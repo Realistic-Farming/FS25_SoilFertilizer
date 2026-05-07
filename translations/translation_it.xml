@@ -84,8 +84,8 @@
     <e k="sf_hud_yield" v="Resa" eh="97345487" />
     <e k="sf_hud_estYield" v="Resa Stim." eh="32a4135e" />
     <e k="sf_hud_optimal" v="Ottimale" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="[EN] Post-harvest · Fertilize" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="Trascina: muovi  Angolo: ridimensiona  RMB/Shift+H: fatto" eh="987ebf45" />
+    <e k="sf_hud_post_harvest" v="Post-raccolta · Concimazione" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="Trascina: muovi  Angolo: ridimensiona  RMB: fatto" eh="987ebf45" />
     <e k="sf_hud_hint_normal" v="RMB: muovi/ridimensiona" eh="afc8f13b" />
     <e k="sf_use_imperial_short" v="Unità imperiali" eh="ff2701ad" />
     <e k="sf_use_imperial_long" v="Mostra le dosi in gal/ac e lb/ac (off = L/ha e kg/ha)" eh="17efa489" />
@@ -588,12 +588,12 @@
     <e k="sf_admin_save_desc" v="Forza il salvataggio di tutti i dati del suolo ora" eh="f365613a" />
     <e k="sf_admin_reset_label" v="Reset Tutte le Impostazioni" eh="6e7d5f9f" />
     <e k="sf_admin_reset_desc" v="Ripristina ogni impostazione al valore predefinito" eh="599b7454" />
-		<e k="sf_panel_hdr_field_tools" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_label" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_desc" v="[EN] Open specific tools to inspect and modify field states" eh="360db19b" />
-		<e k="sf_panel_hdr_vehicle_tools" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_label" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_desc" v="[EN] Open specific tools for connected vehicles and implements" eh="1a8b2100" />
+		<e k="sf_panel_hdr_field_tools" v="Strumenti Campo" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="Strumenti Campo" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="Apri strumenti specifici per ispezionare e modificare lo stato dei campi" eh="360db19b" />
+    <e k="sf_panel_hdr_vehicle_tools" v="Strumenti Veicolo" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="Strumenti Veicolo" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="Apri strumenti specifici per veicoli e attrezzi collegati" eh="1a8b2100" />
     <e k="sf_admin_drain_label" v="Svuota Serbatoi Veicolo" eh="d216b101" />
     <e k="sf_admin_drain_desc" v="Svuota irroratrice + attrezzi (rimborso 50%)" eh="5e048a34" />
     <e k="sf_admin_field_info_label" v="Info Campo Corrente" eh="5df500d6" />
@@ -602,10 +602,10 @@
     <e k="sf_admin_field_forecast_desc" v="Previsione della resa per il campo in posizione" eh="67e56b9d" />
     <e k="sf_admin_list_fields_label" v="Elenca Tutti i Campi" eh="efeb1b25" />
     <e k="sf_admin_list_fields_desc" v="Esporta tutti i dati del suolo nel log di gioco" eh="c9fa812e" />
-		<e k="sf_admin_field_set_state_label" v="[EN] Set Field State" eh="5b0d7a31" />
-		<e k="sf_admin_field_set_state_desc" v="[EN] Manually tweak N, P, K, pH, and OM values for current field" eh="a491e190" />
-		<e k="sf_admin_field_recover_label" v="[EN] Recover Field" eh="e1c82ff0" />
-		<e k="sf_admin_field_recover_desc" v="[EN] Reset the current field to default safe values (fix mistakes)" eh="68b687a2" />
+    <e k="sf_admin_field_set_state_label" v="Imposta Stato Campo" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="Modifica manualmente i valori di N, P, K, pH e SO per il campo attuale" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="Ripristina Campo" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="Ripristina il campo attuale ai valori predefiniti di sicurezza (corregge errori)" eh="68b687a2" />
     <e k="sf_infobox_title" v="Nutrienti del Suolo" eh="64377acf" />
     <e k="sf_infobox_grade" v="Qualità Suolo" eh="65d1be5f" />
     <e k="sf_infobox_needs" v="Fabbisogni" eh="94d6125d" />
