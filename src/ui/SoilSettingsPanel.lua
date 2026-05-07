@@ -341,7 +341,7 @@ function SoilSettingsPanel:open()
     if g_inputBinding and g_inputBinding.setShowMouseCursor then
         g_inputBinding:setShowMouseCursor(true, true)
     end
-    SoilLogger.info("SoilSettingsPanel: opened")
+    SoilLogger.debug("SoilSettingsPanel: opened")
 end
 
 function SoilSettingsPanel:close()
@@ -350,7 +350,7 @@ function SoilSettingsPanel:close()
     if g_inputBinding and g_inputBinding.setShowMouseCursor then
         g_inputBinding:setShowMouseCursor(false)
     end
-    SoilLogger.info("SoilSettingsPanel: closed")
+    SoilLogger.debug("SoilSettingsPanel: closed")
 end
 
 -- Called every frame by SoilFertilityManager:update(). Keeps cursor shown and camera frozen.

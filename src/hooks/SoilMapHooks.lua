@@ -25,7 +25,7 @@ local function isSoilPageActive(frame)
     if isActive ~= frame._soilPageWasActive then
         frame._soilPageWasActive = isActive
         if isActive then
-            SoilLogger.info("SoilMapHooks: PDA Soil page activated")
+            SoilLogger.debug("SoilMapHooks: PDA Soil page activated")
         end
     end
     
@@ -81,7 +81,7 @@ function SoilMapHooks:onLoadMapFinished()
             end
             if ref then
                 soilOverlay.ingameMapRef = ref
-                SoilLogger.info("SoilMapHooks: ingameMap ref cached for minimap overlay (state=%s)", tostring(ref.state))
+                SoilLogger.debug("SoilMapHooks: ingameMap ref cached for minimap overlay (state=%s)", tostring(ref.state))
             else
                 SoilLogger.warning("SoilMapHooks: could not capture ingameMap ref — minimap overlay will not render")
             end
@@ -101,7 +101,7 @@ function SoilMapHooks:setupMapOverview()
     -- FS25 InGameMenuMapFrame.mapSelectorTexts is usually 1-indexed table of strings
     table.insert(self.mapSelectorTexts, pageText)
     self.soilMapPageIndex = #self.mapSelectorTexts
-    SoilLogger.info("SoilMapHooks: Registered native page index %d", self.soilMapPageIndex)
+    SoilLogger.debug("SoilMapHooks: Registered native page index %d", self.soilMapPageIndex)
 
     self.mapOverviewSelector:setTexts(self.mapSelectorTexts)
 
@@ -122,7 +122,7 @@ function SoilMapHooks:onClickMapOverviewSelector(state)
         return
     end
 
-    SoilLogger.info("SoilMapHooks: Selector changed to Soil page (%d)", state)
+    SoilLogger.debug("SoilMapHooks: Selector changed to Soil page (%d)", state)
 
     local soilOverlay = getSoilOverlay(self)
     if soilOverlay == nil then return end
@@ -179,7 +179,7 @@ function SoilMapHooks.onDrawIngameMapElement(elementSelf, ...)
     local _soilOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
     if _soilOverlay and not _soilOverlay.ingameMapRef and elementSelf.ingameMap.layout then
         _soilOverlay.ingameMapRef = elementSelf.ingameMap
-        SoilLogger.info("SoilMapHooks: ingameMap ref captured from PDA draw (fallback)")
+        SoilLogger.debug("SoilMapHooks: ingameMap ref captured from PDA draw (fallback)")
     end
 
     -- Walk up (max 6 levels) to find the frame that has soilMapPageIndex
