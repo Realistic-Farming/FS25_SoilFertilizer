@@ -79,7 +79,7 @@ end
 
 ---@param fieldId number
 function SoilTreatmentDialog.show(fieldId)
-    SoilLogger.info("SoilTreatmentDialog.show(fieldId=%s)", tostring(fieldId))
+    SoilLogger.debug("SoilTreatmentDialog.show(fieldId=%s)", tostring(fieldId))
     
     if SoilTreatmentDialog.INSTANCE == nil then
         SoilTreatmentDialog.register(SF_TREAT_MOD_DIR)

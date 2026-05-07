@@ -537,7 +537,7 @@ end
 -- ── SmoothList Delegate ───────────────────────────────────
 
 function SoilPDAScreen:onListSelectionChanged(list, section, index)
-    SoilLogger.info("SoilPDAScreen: onListSelectionChanged index: %s", tostring(index))
+    SoilLogger.debug("SoilPDAScreen: onListSelectionChanged index: %s", tostring(index))
     if index > 0 then
         if list == self.sidebarFieldList then
             self.selectedFieldIndex = index
@@ -553,7 +553,7 @@ end
 function SoilPDAScreen:onClickFieldRow(element)
     -- Use stored index from population
     local index = element and element.rowDataIndex
-    SoilLogger.info("SoilPDAScreen: onClickFieldRow index: %s", tostring(index))
+    SoilLogger.debug("SoilPDAScreen: onClickFieldRow index: %s", tostring(index))
     if index and index > 0 then
         self:_openFieldDetail(index)
     end
@@ -562,7 +562,7 @@ end
 --- Called by ListItem.onClick in PDA Treatment tab (XML)
 function SoilPDAScreen:onClickTreatmentRow(element)
     local index = element and element.rowDataIndex
-    SoilLogger.info("SoilPDAScreen: onClickTreatmentRow index: %s", tostring(index))
+    SoilLogger.debug("SoilPDAScreen: onClickTreatmentRow index: %s", tostring(index))
     if index and index > 0 then
         self:_openTreatmentDetail(index)
     end
@@ -572,7 +572,7 @@ end
 
 function SoilPDAScreen:_openFieldDetail(index)
     local entry = self.fieldData[index]
-    SoilLogger.info("SoilPDAScreen: _openFieldDetail index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
+    SoilLogger.debug("SoilPDAScreen: _openFieldDetail index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
     if not entry then return end
     if SoilFieldDetailDialog then
         SoilFieldDetailDialog.show(entry.fieldId)
@@ -581,7 +581,7 @@ end
 
 function SoilPDAScreen:_openTreatmentDetail(index)
     local entry = self.treatmentData[index]
-    SoilLogger.info("SoilPDAScreen: _openTreatmentDetail index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
+    SoilLogger.debug("SoilPDAScreen: _openTreatmentDetail index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
     if not entry then return end
     if SoilTreatmentDialog then
         SoilTreatmentDialog.show(entry.fieldId)

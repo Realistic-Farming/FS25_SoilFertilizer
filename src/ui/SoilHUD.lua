@@ -177,7 +177,7 @@ function SoilHUD:enterEditMode()
             end
         end
     end
-    SoilLogger.info("[SoilHUD] Edit mode ON")
+    SoilLogger.debug("[SoilHUD] Edit mode ON")
 end
 
 function SoilHUD:exitEditMode()
@@ -199,7 +199,7 @@ function SoilHUD:exitEditMode()
             g_SoilFertilityManager.settingsUI:refreshUI()
         end
     end
-    SoilLogger.info("[SoilHUD] Edit mode OFF — pos=(%.3f,%.3f) scale=%.2f",
+    SoilLogger.debug("[SoilHUD] Edit mode OFF — pos=(%.3f,%.3f) scale=%.2f",
         self.panelX, self.panelY, self.scale)
 end
 

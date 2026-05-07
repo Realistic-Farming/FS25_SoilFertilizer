@@ -154,7 +154,7 @@ function SoilMapOverlay:setLayer(layerIdx)
     if self.settings.activeMapLayer == layerIdx then return end
     self.settings.activeMapLayer = layerIdx
     self:requestRefresh()
-    SoilLogger.info("SoilMapOverlay: layer set to %d (%s)", layerIdx, g_i18n:getText(SoilMapOverlay.LAYER_KEYS[layerIdx] or "unknown"))
+    SoilLogger.debug("SoilMapOverlay: layer set to %d (%s)", layerIdx, g_i18n:getText(SoilMapOverlay.LAYER_KEYS[layerIdx] or "unknown"))
 end
 
 function SoilMapOverlay:cycleLayer()
@@ -321,7 +321,7 @@ function SoilMapOverlay:updateSamplePoints(force)
     end
 
     if g_currentMission == nil or g_fieldManager == nil then
-        SoilLogger.info("SoilMapOverlay: Sampling aborted - mission or fieldManager nil")
+        SoilLogger.debug("SoilMapOverlay: Sampling aborted - mission or fieldManager nil")
         return
     end
 
@@ -331,7 +331,7 @@ function SoilMapOverlay:updateSamplePoints(force)
     -- a single centroid point for very small fields or when polygon data is absent.
     local fields = g_fieldManager.fields
     if fields == nil then
-        SoilLogger.info("SoilMapOverlay: g_fieldManager.fields is nil")
+        SoilLogger.debug("SoilMapOverlay: g_fieldManager.fields is nil")
         return
     end
 
@@ -418,10 +418,10 @@ function SoilMapOverlay:updateSamplePoints(force)
     end
 
     if totalPoints > 0 then
-        SoilLogger.info("SoilMapOverlay: Sampled %d polygon fill points for layer %d (fields: %d)",
+        SoilLogger.debug("SoilMapOverlay: Sampled %d polygon fill points for layer %d (fields: %d)",
                         totalPoints, layerIdx, #fields)
     else
-        SoilLogger.info("SoilMapOverlay: No fields found to sample (fields count: %d)", #fields)
+        SoilLogger.debug("SoilMapOverlay: No fields found to sample (fields count: %d)", #fields)
     end
 end
 

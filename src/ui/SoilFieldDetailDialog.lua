@@ -86,11 +86,11 @@ end
 
 ---@param fieldId number
 function SoilFieldDetailDialog.show(fieldId)
-    SoilLogger.info("SoilFieldDetailDialog.show(fieldId=%s)", tostring(fieldId))
+    SoilLogger.debug("SoilFieldDetailDialog.show(fieldId=%s)", tostring(fieldId))
     
     -- Lazy-register if not yet loaded
     if SoilFieldDetailDialog.INSTANCE == nil then
-        SoilLogger.info("SoilFieldDetailDialog: lazy-registering from show()")
+        SoilLogger.debug("SoilFieldDetailDialog: lazy-registering from show()")
         SoilFieldDetailDialog.register(SF_DETAIL_MOD_DIR)
     end
 
@@ -104,11 +104,11 @@ function SoilFieldDetailDialog.show(fieldId)
     
     -- Ensure we are in a state to show a dialog
     if g_gui:getIsGuiVisible() then
-        SoilLogger.info("SoilFieldDetailDialog: showing dialog via showDialog()")
+        SoilLogger.debug("SoilFieldDetailDialog: showing dialog via showDialog()")
         g_gui:showDialog("SoilFieldDetailDialog")
     else
         -- PDA might be closed, but we were called somehow?
-        SoilLogger.info("SoilFieldDetailDialog: showing via showGui()")
+        SoilLogger.debug("SoilFieldDetailDialog: showing via showGui()")
         g_gui:showGui("SoilFieldDetailDialog")
     end
 end
@@ -117,7 +117,7 @@ end
 
 function SoilFieldDetailDialog:onGuiSetupFinished()
     SoilFieldDetailDialog:superClass().onGuiSetupFinished(self)
-    SoilLogger.info("SoilFieldDetailDialog: onGuiSetupFinished")
+    SoilLogger.debug("SoilFieldDetailDialog: onGuiSetupFinished")
 
     -- Cache references
     self.detailTitle         = self:getDescendantById("detailTitle")
@@ -145,13 +145,13 @@ function SoilFieldDetailDialog:onGuiSetupFinished()
 end
 
 function SoilFieldDetailDialog:onOpen()
-    SoilLogger.info("SoilFieldDetailDialog: onOpen(fieldId=%s)", tostring(self._fieldId))
+    SoilLogger.debug("SoilFieldDetailDialog: onOpen(fieldId=%s)", tostring(self._fieldId))
     SoilFieldDetailDialog:superClass().onOpen(self)
     self:_populateData()
 end
 
 function SoilFieldDetailDialog:onClose()
-    SoilLogger.info("SoilFieldDetailDialog: onClose()")
+    SoilLogger.debug("SoilFieldDetailDialog: onClose()")
     SoilFieldDetailDialog:superClass().onClose(self)
     self._fieldId = nil
 end
