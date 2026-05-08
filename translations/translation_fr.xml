@@ -640,12 +640,12 @@
     <e k="sf_admin_save_desc" v="Forcer l'enregistrement de toutes les données du sol maintenant" eh="f365613a" />
     <e k="sf_admin_reset_label" v="Réinitialiser tous les paramètres" eh="6e7d5f9f" />
     <e k="sf_admin_reset_desc" v="Restaurer tous les paramètres par défaut" eh="599b7454" />
-		<e k="sf_panel_hdr_field_tools" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_label" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_desc" v="[EN] Open specific tools to inspect and modify field states" eh="360db19b" />
-		<e k="sf_panel_hdr_vehicle_tools" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_label" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_desc" v="[EN] Open specific tools for connected vehicles and implements" eh="1a8b2100" />
+	<e k="sf_panel_hdr_field_tools" v="Outils de champ" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="Outils de champ" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="Ouvrir des outils spécifiques pour inspecter et modifier l’état des champs" eh="360db19b" />
+    <e k="sf_panel_hdr_vehicle_tools" v="Outils des véhicules" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="Outils des véhicules" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="Ouvrir des outils spécifiques pour les véhicules et outils connectés" eh="1a8b2100" />
     <e k="sf_admin_drain_label" v="Vider les réservoirs des véhicules" eh="d216b101" />
     <e k="sf_admin_drain_desc" v="Vider pulvérisateur + outils (50% remboursé)" eh="5e048a34" />
     <e k="sf_admin_field_info_label" v="Infos du champ actuel" eh="5df500d6" />
@@ -654,17 +654,17 @@
     <e k="sf_admin_field_forecast_desc" v="Prévision de rendement pour le champ à la position" eh="67e56b9d" />
     <e k="sf_admin_list_fields_label" v="Lister tous les champs" eh="efeb1b25" />
     <e k="sf_admin_list_fields_desc" v="Exporter toutes les données de sol des champs dans le log du jeu" eh="c9fa812e" />
-		<e k="sf_admin_field_set_state_label" v="[EN] Set Field State" eh="5b0d7a31" />
-		<e k="sf_admin_field_set_state_desc" v="[EN] Manually tweak N, P, K, pH, and OM values for current field" eh="a491e190" />
-		<e k="sf_admin_field_recover_label" v="[EN] Recover Field" eh="e1c82ff0" />
-		<e k="sf_admin_field_recover_desc" v="[EN] Reset the current field to default safe values (fix mistakes)" eh="68b687a2" />
+	<e k="sf_admin_field_set_state_label" v="Définir l'état du champ" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="Modifier manuellement les valeurs N, P, K, pH et MO du champ actuel" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="Restaurer le champ" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="Réinitialiser le champ actuel avec des valeurs sûres par défaut (corriger les erreurs)" eh="68b687a2" />
     <e k="sf_infobox_title" v="Nutriments du sol" eh="64377acf" />
     <e k="sf_infobox_grade" v="Qualité du sol" eh="65d1be5f" />
     <e k="sf_infobox_needs" v="Besoins" eh="94d6125d" />
     <e k="sf_infobox_fertilizer" v="Engrais" eh="cd248829" />
 
     <!-- ======================================================
-         FIELD INFO BOX (native FS25 FIELD INFO panel extension)
+         BOÎTE D'INFORMATIONS DU CHAMP (extension du panneau d'informations de champ natif FS25)
          ====================================================== -->
     <e k="sf_fieldinfo_box_title" v="Nutriments du sol" eh="64377acf" />
     <e k="sf_fieldinfo_grade" v="Qualité du sol" eh="65d1be5f" />

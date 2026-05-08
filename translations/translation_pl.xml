@@ -18,8 +18,8 @@
     <e k="sf_pest_pressure_long" v="Włącz/wyłącz system  szkodników i owadów" eh="18015099" />
     <e k="sf_disease_pressure_short" v="Presja chorób" eh="953fd6c0" />
     <e k="sf_disease_pressure_long" v="Włącz/wyłącz system chorób grzybowych i roślinnych" eh="2c36ea57" />
-    <e k="sf_compaction_short" v="Zagęszczenie Gleby" eh="00000000" />
-    <e k="sf_compaction_long" v="Włącz/wyłącz system zagęszczenia gleby" eh="00000000" />
+    <e k="sf_compaction_short" v="Zagęszczenie Gleby" eh="68734a56" />
+    <e k="sf_compaction_long" v="Włącz/wyłącz system zagęszczenia gleby" eh="a0995ec5" />
     <e k="sf_fertility_short" v="System Żyzności" eh="f7e27d58" />
     <e k="sf_fertility_long" v="Włącz/wyłącz dynamiczny system żyzności gleby" eh="ea074366" />
     <e k="sf_nutrients_short" v="Cykle Składników" eh="ffab595d" />
@@ -82,7 +82,7 @@
     <e k="input_SF_OPEN_SETTINGS" v="Otwórz ustawienia gleby" eh="2e31c0dd" />
     <e k="sf_reset" v="Resetuj ustawienia gleby" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Przełącz HUD gleby" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="Tryb przeciągania HUD" eh="00000000" />
+    <e k="input_SF_HUD_DRAG" v="Tryb przeciągania HUD" eh="cb2eb762" />
     <e k="input_SF_SOIL_REPORT" v="Raport Gleby" eh="c33180ef" />
     <e k="input_SF_RATE_UP" v="Zwiększ dawkę nawozu" eh="6e601ef5" />
     <e k="input_SF_RATE_DOWN" v="Zmniejsz dawkę nawozu" eh="30712026" />
@@ -365,7 +365,7 @@
 	<e k="sf_map_layer_weed" v="Presja chwastów" eh="53f8b936" />
 	<e k="sf_map_layer_pest" v="Presja szkodników" eh="18a7c2be" />
 	<e k="sf_map_layer_disease" v="Presja chorób" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="Zagęszczenie" eh="00000000" />
+    <e k="sf_map_layer_compaction" v="Zagęszczenie" eh="19cf3ee7" />
 	<e k="sf_map_overlay_cycle" v="Shift+M: przełącz warstwy gleby" eh="032fdac7" />
 	<e k="sf_map_page_title" v="Warstwy gleby" eh="04a675fb" />
 	<e k="sf_map_sidebar_header" v="Warstwa mapy glebowej" eh="81332549" />
@@ -426,7 +426,7 @@
     <e k="sf_pda_help_text" v="Cześć, jestem deweloperem! Jak widzisz, ta strona jest jeszcze w trakcie budowy. Warstwy mapy to obecnie tylko podglądy wizualne (niedziałające do zaznaczania), a wiele elementów interfejsu wymaga jeszcze ostatecznych poprawek." eh="58e05bdf" />
     <e k="sf_pda_help_github" v="TWOJA OPINIA MA ZNACZENIE! Jeśli napotkasz błędy, masz sugestie dotyczące nowych funkcji lub chcesz wnieść wkład w kod, odwiedź projekt na GitHubie. Możesz otworzyć Issue lub Pull Request w dowolnym momencie, aby pomóc ulepszyć ten mod dla wszystkich. Dziękujemy za testowanie!" eh="3a10b023" />
 	<e k="sf_pda_help_note" v="Zakładka &quot;Warstwy gleby&quot; na stronie mapy NIE DZIAŁA. Wiem o tym i pracuję nad rozwiązaniem tego problemu (co może trochę potrwać)." eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="Podgląd mapy niedostępny" eh="00000000" />
+    <e k="sf_pda_map_unavailable" v="Podgląd mapy niedostępny" eh="43983f81" />
 	<e k="sf_map_health_overall" v="Średni poziom zdrowia gleby" eh="5533cbe3" />
 	<e k="sf_map_btn_report" v="Otwórz przegląd gospodarstwa" eh="6f0800e8" />
 	<e k="sf_map_btn_help" v=" Notatka od wydawcy (aktualnie nie działa)" eh="800e465a" />
@@ -654,12 +654,12 @@
     <e k="sf_admin_save_desc" v="Wymuś zapisanie wszystkich danych gleby" eh="f365613a" />
     <e k="sf_admin_reset_label" v="Resetuj wszystkie ustawienia" eh="6e7d5f9f" />
     <e k="sf_admin_reset_desc" v="Przywróć każde ustawienie do wartości domyślnej" eh="599b7454" />
-		<e k="sf_panel_hdr_field_tools" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_label" v="[EN] Field Tools" eh="2b250a56" />
-		<e k="sf_nav_field_tools_desc" v="[EN] Open specific tools to inspect and modify field states" eh="360db19b" />
-		<e k="sf_panel_hdr_vehicle_tools" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_label" v="[EN] Vehicle Tools" eh="9b6d6e4c" />
-		<e k="sf_nav_vehicle_tools_desc" v="[EN] Open specific tools for connected vehicles and implements" eh="1a8b2100" />
+    <e k="sf_panel_hdr_field_tools" v="Narzędzia pola" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="Narzędzia pola" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="Otwórz konkretne narzędzia do inspekcji i modyfikacji stanu pola" eh="360db19b" />
+    <e k="sf_panel_hdr_vehicle_tools" v="Narzędzia pojazdu" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="Narzędzia pojazdu" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="Otwórz konkretne narzędzia dla połączonych pojazdów i urządzeń" eh="1a8b2100" />
     <e k="sf_admin_drain_label" v="Opróżnij zbiorniki pojazdu" eh="d216b101" />
     <e k="sf_admin_drain_desc" v="Opróżnij opryskiwacz + narzędzia (50% zwrotu)" eh="5e048a34" />
     <e k="sf_admin_field_info_label" v="Informacje o polu" eh="5df500d6" />
@@ -668,10 +668,10 @@
     <e k="sf_admin_field_forecast_desc" v="Prognoza plonu dla pola na którym jesteś" eh="67e56b9d" />
     <e k="sf_admin_list_fields_label" v="Lista wszystkich pól" eh="efeb1b25" />
     <e k="sf_admin_list_fields_desc" v="Zapisz dane wszystkich pól do logu gry" eh="c9fa812e" />
-		<e k="sf_admin_field_set_state_label" v="[EN] Set Field State" eh="5b0d7a31" />
-		<e k="sf_admin_field_set_state_desc" v="[EN] Manually tweak N, P, K, pH, and OM values for current field" eh="a491e190" />
-		<e k="sf_admin_field_recover_label" v="[EN] Recover Field" eh="e1c82ff0" />
-		<e k="sf_admin_field_recover_desc" v="[EN] Reset the current field to default safe values (fix mistakes)" eh="68b687a2" />
+    <e k="sf_admin_field_set_state_label" v="Ustaw stan pola" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="Ręcznie dostosuj wartości N, P, K, pH i OM dla aktualnego pola" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="Przywróć pole" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="Zresetuj aktualne pole do domyślnych bezpiecznych wartości (napraw błędy)" eh="68b687a2" />
     <e k="sf_infobox_title" v="Składniki odżywcze gleby" eh="64377acf" />
     <e k="sf_infobox_grade" v="Stopień gleby" eh="65d1be5f" />
     <e k="sf_infobox_needs" v="Potrzeby" eh="94d6125d" />
