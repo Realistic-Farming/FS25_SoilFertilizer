@@ -691,6 +691,17 @@ SoilConstants.WEED_PRESSURE = {
     },
     -- Pressure points removed on a single herbicide application
     HERBICIDE_PRESSURE_REDUCTION = 30,
+    -- Canopy Suppression (Issue #327)
+    -- Crops block sunlight, slowing or stopping weed growth as they mature.
+    CANOPY_SUPPRESSION_THRESHOLD = 0.5, -- Crop growth state % (0.0 to 1.0) where suppression begins
+    CANOPY_SUPPRESSION_MAX       = 1.0, -- Crop growth state % where weed growth is completely stopped
+
+    -- Nutrient Depletion by Weeds (Issue #327)
+    -- Daily nutrient drain at 100% weed pressure (scales linearly with pressure)
+    NUTRIENT_DEPLETION_N = 0.8, -- Nitrogen loss per day at max weed pressure
+    NUTRIENT_DEPLETION_P = 0.4, -- Phosphorus loss per day at max weed pressure
+    NUTRIENT_DEPLETION_K = 0.6, -- Potassium loss per day at max weed pressure
+
     -- Number of in-game days herbicide suppresses weed growth after application
     HERBICIDE_DURATION_DAYS = 14,
 

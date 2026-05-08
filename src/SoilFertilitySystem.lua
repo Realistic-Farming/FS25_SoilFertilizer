@@ -1416,7 +1416,44 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     rainBonus = wp.RAIN_BONUS
                 end
 
-                field.weedPressure = math.min(100, pressure + baseRate * seasonMult + rainBonus)
+                local canopyFactor = 1.0
+                if g_fieldManager and g_fieldManager.fields then
+                    local fsField = nil
+                    for _, f in ipairs(g_fieldManager.fields) do
+                        if f and f.farmland and f.farmland.id == fieldId then
+                            fsField = f
+                            break
+                        end
+                    end
+                    if fsField and fsField.posX and fsField.posZ then
+                        local ok, fieldState = pcall(function()
+                            local fs = FieldState.new()
+                            fs:update(fsField.posX, fsField.posZ)
+                            return fs
+                        end)
+                        if ok and fieldState and fieldState.fruitTypeIndex ~= FruitType.UNKNOWN then
+                            local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
+                            if fruitDesc and fruitDesc.numGrowthStates and fruitDesc.numGrowthStates > 0 then
+                                local progress = math.min(1.0, math.max(0, fieldState.growthState / fruitDesc.numGrowthStates))
+                                local suppressThresh = wp.CANOPY_SUPPRESSION_THRESHOLD or 0.5
+                                local suppressMax = wp.CANOPY_SUPPRESSION_MAX or 1.0
+                                if progress >= suppressThresh and suppressMax > suppressThresh then
+                                    canopyFactor = math.max(0.0, 1.0 - (progress - suppressThresh) / (suppressMax - suppressThresh))
+                                end
+                            end
+                        end
+                    end
+                end
+
+                field.weedPressure = math.min(100, pressure + (baseRate * seasonMult + rainBonus) * canopyFactor)
+            end
+
+            -- Weeds consume nutrients
+            if pressure > 0 then
+                local pRatio = pressure / 100
+                field.nitrogen = math.max(limits.MIN, field.nitrogen - (wp.NUTRIENT_DEPLETION_N or 0) * pRatio)
+                field.phosphorus = math.max(limits.MIN, field.phosphorus - (wp.NUTRIENT_DEPLETION_P or 0) * pRatio)
+                field.potassium = math.max(limits.MIN, field.potassium - (wp.NUTRIENT_DEPLETION_K or 0) * pRatio)
             end
         end
     end
