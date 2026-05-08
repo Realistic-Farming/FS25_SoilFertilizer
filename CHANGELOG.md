@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.5.4] - 2026-05-08
+
+### Fixed
+- Issue with loading a bigBag with the front wheel loader
+
+### Added
+-  Weed canopy suppression and nutrient depletion
+
+
+---
+
 ## [2.1.1.0] - 2026-05-06
 
 ### Fixed

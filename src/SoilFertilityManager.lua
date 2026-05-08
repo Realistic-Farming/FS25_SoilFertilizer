@@ -588,10 +588,8 @@ function SoilFertilityManager:deferredSoilSystemInit()
                         .. "Author: TisonK\n"
                         .. sep .. "\n\n"
                         .. "What's new:\n"
-                        .. "  - Created this new version dialog on startup\n"
-                        .. "  - Removed Precision Farming dependency\n"
-                        .. "  - Fixed debug logging in field hooks\n"
-                        .. "  - Community translations updated (FR, PL, IT)\n\n"
+                        .. "  - Fixed issue with bigbag loading with front loader\n"
+                        .. "  - Added weed canopy suppression and nutrient depletion\n\n"
                         .. sep .. "\n\n"
                         .. g_i18n:getText("sf_startup_dialog_footer")
                     InfoDialog.show(text)

@@ -132,17 +132,33 @@ local function loadedMission(mission, node)
     if g_fillTypeManager then
         local hudDir = modDirectory .. "textures/hud/fillTypes/"
         local icons = {
-            UAN32       = "hud_fill_UAN32.dds",
-            UAN28       = "hud_fill_UAN28.dds",
-            ANHYDROUS   = "hud_fill_anhydrous.dds",
-            STARTER     = "hud_fill_Starter.dds",
-            UREA        = "hud_fill_UREA.dds",
-            AMS         = "hud_fill_AMS.dds",
-            MAP         = "hud_fill_map.dds",
-            DAP         = "hud_fill_dap.dds",
-            POTASH      = "hud_fill_potash.dds",
-            INSECTICIDE = "hud_fill_insecticide.dds",
-            FUNGICIDE   = "hud_fill_fungicide.dds",
+            -- Liquid nitrogen sources
+            UAN32          = "hud_fill_UAN32.dds",
+            UAN28          = "hud_fill_UAN28.dds",
+            ANHYDROUS      = "hud_fill_anhydrous.dds",
+            STARTER        = "hud_fill_Starter.dds",
+            -- Solid granular sources
+            UREA           = "hud_fill_UREA.dds",
+            AMS            = "hud_fill_AMS.dds",
+            MAP            = "hud_fill_map.dds",
+            DAP            = "hud_fill_dap.dds",
+            POTASH         = "hud_fill_potash.dds",
+            -- Liquid variants (reuse solid counterpart icon)
+            LIQUID_UREA    = "hud_fill_UREA.dds",
+            LIQUID_AMS     = "hud_fill_AMS.dds",
+            LIQUID_MAP     = "hud_fill_map.dds",
+            LIQUID_DAP     = "hud_fill_dap.dds",
+            LIQUID_POTASH  = "hud_fill_potash.dds",
+            -- Crop protection
+            INSECTICIDE    = "hud_fill_insecticide.dds",
+            FUNGICIDE      = "hud_fill_fungicide.dds",
+            -- Organic / soil amendments
+            GYPSUM         = "hud_fill_gypsum.dds",
+            COMPOST        = "hud_fill_compost.dds",
+            BIOSOLIDS      = "hud_fill_biosolids.dds",
+            CHICKEN_MANURE = "hud_fill_chickenlitter.dds",
+            PELLETIZED_MANURE = "hud_fill_pelletizedmanure.dds",
+            LIQUIDLIME     = "hud_fill_liquidlime.dds",
         }
         local patched = 0
         local failed  = 0
