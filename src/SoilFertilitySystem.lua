@@ -134,10 +134,6 @@ function SoilFertilitySystem:initialize()
     -- Log multifruit compatibility status
     self:logCropProfileStatus()
 
-    -- Show notification
-    if self.settings.enabled and self.settings.showNotifications then
-        self:showNotification(g_i18n:getText("sf_notify_mod_active_title"), g_i18n:getText("sf_notify_mod_active_body"))
-    end
 end
 
 -- Log which registered fruit types have explicit extraction profiles

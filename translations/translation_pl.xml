@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Gleba &amp; Nawóz" eh="f31197fb" />
@@ -541,8 +541,7 @@
          NOTIFICATIONS
          ====================================================== -->
     <e k="sf_notify_welcome" v="Realistyczne Nawożenie &amp; Gleby Włączone | J = HUD | K = Raport glebowy | Użyj 'soilfertility' dla komend" eh="3fde93cd" />
-    <e k="sf_notify_mod_active_title" v="Realistyczne Nawożenie &amp; Gleby Włączone" eh="15edc102" />
-    <e k="sf_notify_mod_active_body" v="System realistycznych gleb i nawożeń z pełnym zestawem funkcji i zdarzeń" eh="901e2106" />
+    <e k="sf_startup_dialog_footer" v="[EN] Happy farming!" />
     <e k="sf_notify_init_delayed" v="Mod gleby Opóźnienie w inicjalizacji pola. Próbuję zastosować alternatywną metodę..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Mod gleby: Inicjalizacja pola zakończona sukcesem!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Krytyczne zaniedbanie" eh="3f981d0c" />

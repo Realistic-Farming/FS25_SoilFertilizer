@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_hud_color_1" v="绿色" eh="d382816a" />
@@ -497,8 +497,7 @@
     <e k="sf_sprayer_burn_possible" v="[EN] BURN RISK: POSSIBLE" eh="25b251b6" />
     <!-- Notifications -->
     <e k="sf_notify_welcome" v="[EN] Soil &amp; Fertilizer Mod Active | J = HUD | K = Soil Report | Type 'soilfertility' for commands" eh="3fde93cd" />
-    <e k="sf_notify_mod_active_title" v="[EN] Soil &amp; Fertilizer Mod Active" eh="15edc102" />
-    <e k="sf_notify_mod_active_body" v="[EN] Real soil system with full event hooks" eh="901e2106" />
+    <e k="sf_startup_dialog_footer" v="[EN] Happy farming!" />
     <e k="sf_notify_init_delayed" v="[EN] Soil Mod: Field initialization delayed. Trying alternative method..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="[EN] Soil Mod: Field initialization successful!" eh="46214360" />
     <e k="sf_notify_critical_title" v="[EN] Critical Care Alert" eh="3f981d0c" />

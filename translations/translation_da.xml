@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_hud_color_1" v="Grøn" eh="d382816a" />
@@ -491,8 +491,7 @@
     <e k="sf_sprayer_burn_possible" v="RISIKO FOR SVIDNING: MULIG" eh="25b251b6" />
     <!-- Notifications -->
     <e k="sf_notify_welcome" v="Jord &amp; gødningsmod aktiv | j = hud | k = jordrapport | skriv 'soilfertility' for at se kommandoer" eh="3fde93cd" />
-    <e k="sf_notify_mod_active_title" v="Jord &amp; gødningsmod aktiv" eh="15edc102" />
-    <e k="sf_notify_mod_active_body" v="Realistisk jordsystem med fuld event-integration" eh="901e2106" />
+    <e k="sf_startup_dialog_footer" v="[EN] Happy farming!" />
     <e k="sf_notify_init_delayed" v="Jordmod: initialisering af marken er forsinket. forsøger alternativ metode..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Jordmod: initialisering af marken gennemført!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Kritisk alarm" eh="3f981d0c" />

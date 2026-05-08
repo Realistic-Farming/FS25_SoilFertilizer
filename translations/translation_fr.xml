@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Sol et engrais" eh="d30a22a9" />
@@ -539,8 +539,7 @@
     
     <!-- Notifications -->
     <e k="sf_notify_welcome" v="Mod Sol &amp; Engrais actif | J = HUD | K = Rapport du sol | Tapez 'soilfertility' pour les commandes" eh="3fde93cd" />
-    <e k="sf_notify_mod_active_title" v="Mod Sol &amp; Engrais actif" eh="15edc102" />
-    <e k="sf_notify_mod_active_body" v="Système de sol réaliste avec gestion complète des événements" eh="901e2106" />
+    <e k="sf_startup_dialog_footer" v="[EN] Happy farming!" />
     <e k="sf_notify_init_delayed" v="Mod Sol : initialisation des champs retardée. Tentative d'une méthode alternative..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Mod Sol : initialisation des champs réussie !" eh="46214360" />
     <e k="sf_notify_critical_title" v="Alerte critique" eh="3f981d0c" />

@@ -542,8 +542,7 @@
          NOTIFICATIONS
          ====================================================== -->
     <e k="sf_notify_welcome" v="Soil &amp; Fertilizer Mod Active | Shift+O to open settings | Type 'soilfertility' for commands" eh="3fde93cd" />
-    <e k="sf_notify_mod_active_title" v="FS25_SoilFertilizer | v2.0.9.1 | Author: TisonK" eh="15edc102" />
-    <e k="sf_notify_mod_active_body" v="Real soil system with full event hooks" eh="901e2106" />
+    <e k="sf_startup_dialog_footer" v="Happy farming!" />
     <e k="sf_notify_init_delayed" v="Soil Mod: Field initialization delayed. Trying alternative method..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Soil Mod: Field initialization successful!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Critical Care Alert" eh="3f981d0c" />

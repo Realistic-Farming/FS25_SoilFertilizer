@@ -578,12 +578,21 @@ function SoilFertilityManager:deferredSoilSystemInit()
                 -- Load saved soil data now that savegameDirectory is set
                 self.sfm:loadSoilData()
 
-                -- Show activation notification
-                if self.sfm.settings.showNotifications and g_currentMission and g_currentMission.hud then
-                    g_currentMission.hud:showBlinkingWarning(
-                        g_i18n:getText("sf_notify_mod_active_hud"),
-                        8000
-                    )
+                -- Show activation dialog
+                if self.sfm.settings.showNotifications and InfoDialog.INSTANCE ~= nil then
+                    local modInfo = g_modManager and g_modManager:getModByName(g_currentModName)
+                    local version = (modInfo and modInfo.version) or "?"
+                    local sep = "--------------------------------"
+                    local text = "Soil & Fertilizer  |  v" .. version .. "\n"
+                        .. sep .. "\n\n"
+                        .. "What's new:\n"
+                        .. "  - Removed Precision Farming dependency\n"
+                        .. "  - Fixed debug logging in field hooks\n"
+                        .. "  - Community translations updated (FR, PL, IT)\n\n"
+                        .. sep .. "\n"
+                        .. "Author: TisonK\n\n"
+                        .. g_i18n:getText("sf_startup_dialog_footer")
+                    InfoDialog.show(text)
                 end
             end)
 
