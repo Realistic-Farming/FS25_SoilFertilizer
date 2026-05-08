@@ -2003,7 +2003,7 @@ function HookManager:installFillUnitHookEarly()
         return false
     end
 
-    local solidNames         = {"UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames         = {"UREA", "AN", "AMS", "MAP", "DAP", "POTASH",
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM"}
     local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
@@ -2097,7 +2097,7 @@ function HookManager:installFillUnitHook()
     -- support both) but rejected by dedicated spreaders (MANURE-only fill unit).
     local manureIndex = fm:getFillTypeIndexByName("MANURE")
 
-    local solidNames  = {"UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames  = {"UREA", "AN", "AMS", "MAP", "DAP", "POTASH",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM"}
     local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
@@ -2295,7 +2295,7 @@ function HookManager:installPurchaseRefillHook()
         "INSECTICIDE", "FUNGICIDE",
         "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
         -- Solid
-        "UREA", "AMS", "MAP", "DAP", "POTASH",
+        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH",
         "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
     }
 
@@ -3107,6 +3107,7 @@ function HookManager:installFillTypeMaterialHook()
         -- ── GRANULAR MINERAL FERTILIZERS ──────────────────────────────────
         -- White to off-white crystalline/granular powders
         UREA     = { "LIME", "FERTILIZER" },            -- Urea is bright white granular → LIME first
+        AN       = { "LIME", "FERTILIZER" },            -- AN is also white granular
         AMS      = { "FERTILIZER", "LIME" },            -- AMS is off-white/light grey granular
         MAP      = { "FERTILIZER", "LIME" },            -- MAP is off-white/light brown granular
         DAP      = { "FERTILIZER", "LIME" },            -- DAP is off-white/grey-brown granular
@@ -3355,7 +3356,5 @@ function HookManager:installClientJoinHook()
     )
     self:register(FSBaseMission, "onConnectionFinished", original, "FSBaseMission.onConnectionFinished (Client Join)")
     SoilLogger.info("[OK] Client join hook installed successfully")
-    return true
-end.info("[OK] Client join hook installed successfully")
     return true
 end
