@@ -126,6 +126,7 @@
     <e k="sf_anhydrous_title" v="Anhydrous Ammonia (N)" eh="3fc85c02" />
     <e k="sf_starter_title" v="Starter Fertilizer 10-34-0 (P)" eh="8c1a1ddc" />
     <e k="sf_urea_title" v="Urea 46-0-0 (N)" eh="659b3097" />
+    <e k="sf_an_title" v="Ammonium Nitrate 34.5-0-0 (N)" eh="" />
     <e k="sf_ams_title" v="Ammonium Sulfate 21-0-0 (N)" eh="033d1845" />
     <e k="sf_map_title" v="MAP Fertilizer 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="DAP Fertilizer 18-46-0 (P)" eh="5030a80a" />
@@ -146,6 +147,8 @@
     <e k="sf_bigBag_anhydrous_function" v="Nitrogen Fertilizer (liquid)" eh="27de5f41" />
     <e k="sf_bigBag_urea_name" v="Big Bag Urea 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="Nitrogen Fertilizer (dry)" eh="63efea20" />
+    <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="" />
+    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry)" eh="" />
     <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="Nitrogen Fertilizer (dry)" eh="63efea20" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
@@ -542,7 +545,11 @@
          NOTIFICATIONS
          ====================================================== -->
     <e k="sf_notify_welcome" v="Soil &amp; Fertilizer Mod Active | Shift+O to open settings | Type 'soilfertility' for commands" eh="3fde93cd" />
-    <e k="sf_startup_dialog_footer" v="Your soil remembers everything 🌱" />
+    <e k="sf_startup_dialog_version" v="What's new in this version:" />
+    <e k="sf_startup_dialog_footer" v="Thank you for using my mod, it means a lot to me <3" />
+    <e k="sf_startup_dialog_footer2" v="Found a bug? Please report it on github!" />
+    <e k="sf_startup_dialog_footer3" v="Happy farming and don't forget:" />
+    <e k="sf_startup_dialog_footer4" v="Your soil remembers everything..." />
     <e k="sf_notify_init_delayed" v="Soil Mod: Field initialization delayed. Trying alternative method..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Soil Mod: Field initialization successful!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Critical Care Alert" eh="3f981d0c" />

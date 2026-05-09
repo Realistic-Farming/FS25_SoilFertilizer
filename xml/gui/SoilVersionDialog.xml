@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    Version / Changelog Dialog
+    Shown once per version on first load of a savegame.
+    Controller: SoilVersionDialog (src/ui/SoilVersionDialog.lua)
+
+    Changelog lines are created dynamically in Lua (no fixed slots).
+    sfVer_changelogBox is a vertical BoxLayout — Lua adds TextElements to it.
+    Footer is anchored from the bottom of the dialog, not to changelog content.
+-->
+<GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
+  <GuiElement profile="newLayer"/>
+  <Bitmap profile="dialogFullscreenBg" id="dialogBg"/>
+
+  <GuiElement profile="sfVer_bg" id="dialogElement">
+
+    <ThreePartBitmap profile="fs25_dialogBgMiddle"/>
+    <ThreePartBitmap profile="fs25_dialogBgTop"/>
+    <ThreePartBitmap profile="fs25_dialogBgBottom"/>
+
+    <GuiElement profile="fs25_dialogContentContainer">
+
+      <!-- Title: mod name + version (set at runtime) -->
+      <Text profile="fs25_dialogTitle" id="sfVer_title"
+            text="FS25_SoilFertilizer" position="0px -30px"/>
+
+      <!-- Author -->
+      <Text profile="sfVer_author"
+            text="Author: TisonK" position="0px -62px"/>
+
+      <!-- Top separator -->
+      <Bitmap profile="sfVer_sep" position="0px -86px" size="560px 2px"/>
+
+      <!-- "What's new" section header (set at runtime via i18n) -->
+      <Text profile="sfVer_sectionHeader" id="sfVer_changelogHeader"
+            text="" position="0px -104px"/>
+
+      <!-- Dynamic changelog lines added here by Lua at onOpen() -->
+      <BoxLayout profile="sfVer_changelogBox" id="sfVer_changelogBox"
+                 position="0px -124px"/>
+
+      <!-- Bottom separator — anchored from bottom of dialog -->
+      <Bitmap profile="sfVer_sep" id="sfVer_bottomSep"
+              position="0px -255px" size="560px 2px"/>
+
+      <!-- Footer (set at runtime via i18n) -->
+      <Text profile="sfVer_footer" id="sfVer_footer1"
+            text="" position="0px -275px"/>
+      <Text profile="sfVer_footer" id="sfVer_footer2"
+            text="" position="0px -293px"/>
+
+      <Text profile="sfVer_tagline1" id="sfVer_footer3"
+            text="" position="0px -320px"/>
+      <Text profile="sfVer_tagline2" id="sfVer_footer4"
+            text="" position="0px -338px"/>
+
+    </GuiElement>
+
+    <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonOK" id="sfVer_dontShowBtn"
+              text="Don't show again" onClick="onClickDontShowAgain"/>
+      <Button profile="buttonOK" id="sfVer_okBtn"
+              text="OK" onClick="onClickOk"/>
+    </BoxLayout>
+
+  </GuiElement>
+
+  <GUIProfiles>
+    <Profile name="sfVer_bg" extends="fs25_dialogBg">
+      <size value="640px 480px"/>
+    </Profile>
+    <Profile name="sfVer_author" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textColor value="$preset_colorWhite_50"/>
+    </Profile>
+    <Profile name="sfVer_sep" extends="baseReference" with="anchorTopCenter">
+      <imageColor value="1.0 1.0 1.0 0.15"/>
+    </Profile>
+    <Profile name="sfVer_sectionHeader" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textUpperCase value="true"/>
+      <textColor value="0.35 0.85 0.40 1.0"/>
+    </Profile>
+    <!-- Vertical BoxLayout — Lua adds TextElements here dynamically -->
+    <Profile name="sfVer_changelogBox" extends="emptyPanel" with="anchorTopCenter">
+      <size value="560px 130px"/>
+      <flowDirection value="vertical"/>
+      <useFullVisibility value="false"/>
+      <alignmentX value="center"/>
+      <elementSpacing value="4px"/>
+    </Profile>
+    <!-- Used by Lua when creating each changelog TextElement -->
+    <Profile name="sfVer_changelogLine" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textColor value="$preset_colorWhite"/>
+    </Profile>
+    <Profile name="sfVer_footer" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textColor value="$preset_colorWhite_50"/>
+    </Profile>
+    <Profile name="sfVer_tagline1" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="12px"/>
+      <textColor value="$preset_colorWhite_50"/>
+    </Profile>
+    <Profile name="sfVer_tagline2" extends="fs25_dialogText" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="0.35 0.85 0.40 1.0"/>
+    </Profile>
+  </GUIProfiles>
+</GUI>

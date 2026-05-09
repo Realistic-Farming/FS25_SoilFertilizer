@@ -138,6 +138,7 @@
         <storeItem xmlFilename="objects/liquidTank/liquidlime/multiPurchaseLiquidTank_liquidlime.xml"/>
         <!-- Big Bags / Solid (multi-purchase) -->
         <storeItem xmlFilename="objects/bigBag/urea/multiPurchaseBigBag_urea.xml"/>
+        <storeItem xmlFilename="objects/bigBag/an/multiPurchaseBigBag_an.xml"/>
         <storeItem xmlFilename="objects/bigBag/ams/multiPurchaseBigBag_ams.xml"/>
         <storeItem xmlFilename="objects/bigBag/map/multiPurchaseBigBag_map.xml"/>
         <storeItem xmlFilename="objects/bigBag/dap/multiPurchaseBigBag_dap.xml"/>
@@ -161,6 +162,7 @@
         <storeItem xmlFilename="objects/liquidTank/fungicide/liquidTank_fungicide.xml"/>
         <storeItem xmlFilename="objects/liquidTank/liquidlime/liquidTank_liquidlime.xml"/>
         <storeItem xmlFilename="objects/bigBag/urea/bigBag_urea.xml"/>
+        <storeItem xmlFilename="objects/bigBag/an/bigBag_an.xml"/>
         <storeItem xmlFilename="objects/bigBag/ams/bigBag_ams.xml"/>
         <storeItem xmlFilename="objects/bigBag/map/bigBag_map.xml"/>
         <storeItem xmlFilename="objects/bigBag/dap/bigBag_dap.xml"/>

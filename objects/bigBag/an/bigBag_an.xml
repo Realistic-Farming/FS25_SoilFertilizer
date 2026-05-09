@@ -2,18 +2,18 @@
 <vehicle type="bigBag" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../shared/xml/schema/vehicle.xsd">
 
     <storeData>
-        <name>$l10n_sf_bigBag_urea_name</name>
+        <name>$l10n_sf_bigBag_an_name</name>
         <specs>
             <weight ignore="true"/>
         </specs>
-        <image>$moddir$/objects/bigBag/urea/store_bigBagHelm_fertilizer_urea.dds</image>
+        <image>$moddir$/objects/bigBag/an/store_bigBagHelm_fertilizer_an.dds</image>
         <price>1850</price>
         <allowLeasing>false</allowLeasing>
         <canBeSold>false</canBeSold>
         <rotation>0</rotation>
         <brand>LIZARD</brand>
         <category>bigbags palletFertilizerHerbicide</category>
-        <functions><function>$l10n_sf_bigBag_urea_function</function></functions>
+        <functions><function>$l10n_sf_bigBag_an_function</function></functions>
         <financeCategory>PURCHASE_FERTILIZER</financeCategory>
         <shopHeight>2</shopHeight>
         <showInStore>false</showInStore>
@@ -30,7 +30,7 @@
 
     <base>
         <typeDesc>$l10n_typeDesc_pallet</typeDesc>
-        <filename>objects/bigBag/urea/bigBag_urea.i3d</filename>
+        <filename>objects/bigBag/an/bigBag_an.i3d</filename>
         <size width="1.25" length="1.25" height="1.75"/>
         <input allowed="false"/>
         <canBeReset>false</canBeReset>

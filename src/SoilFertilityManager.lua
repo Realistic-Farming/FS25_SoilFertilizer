@@ -23,6 +23,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     self.modDirectory = modDirectory
     self.modName = modName
     self.disableGUI = disableGUI or false
+    self.lastSeenVersion = ""
 
     -- Settings
     if not Settings then
@@ -101,6 +102,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         if SoilTreatmentDialog and g_gui then
             SoilTreatmentDialog.register(modDirectory)
             SoilLogger.info("Soil Treatment dialog registered")
+        end
+
+        -- Version/changelog dialog (shown once per version on load)
+        if SoilVersionDialog and g_gui then
+            SoilVersionDialog.register(modDirectory)
+            SoilLogger.info("Soil Version dialog registered")
         end
 
         -- Map overlay (client only)
@@ -578,21 +585,15 @@ function SoilFertilityManager:deferredSoilSystemInit()
                 -- Load saved soil data now that savegameDirectory is set
                 self.sfm:loadSoilData()
 
-                -- Show version dialog
-                -- The hardcoded values are here for a reason, and will NOT be translated.
-                if self.sfm.settings.showNotifications and InfoDialog.INSTANCE ~= nil then
+                -- Show version dialog (once per version only).
+                -- The hardcoded changelog values are here for a reason, and will NOT be translated.
+                if self.sfm.settings.showNotifications and SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
                     local modInfo = g_modManager and g_modManager:getModByName(self.sfm.modName)
                     local version = (modInfo and modInfo.version) or "?"
-                    local sep = "--------------------------------"
-                    local text = "FS25_SoilFertilizer  |  v" .. version .. "\n"
-                        .. "Author: TisonK\n"
-                        .. sep .. "\n\n"
-                        .. "What's new:\n"
-                        .. "  - Fixed a math error in mowing depletion\n"
-                        .. "  - Fixed a bug in fertilizer application rates\n\n"
-                        .. sep .. "\n\n"
-                        .. g_i18n:getText("sf_startup_dialog_footer")
-                    InfoDialog.show(text)
+
+                    if self.sfm.lastSeenVersion ~= version then
+                        SoilVersionDialog.show(version)
+                    end
                 end
             end)
 
@@ -859,6 +860,7 @@ function SoilFertilityManager:saveSoilData()
 
     if xmlFile then
         self.soilSystem:saveToXMLFile(xmlFile, "soilData")
+        setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
@@ -891,6 +893,7 @@ function SoilFertilityManager:loadSoilData()
         local xmlFile = loadXMLFile("soilData", xmlPath)
         if xmlFile then
             self.soilSystem:loadFromXMLFile(xmlFile, "soilData")
+            self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
             delete(xmlFile)
             local fieldCount = 0
             if self.soilSystem.fieldData then

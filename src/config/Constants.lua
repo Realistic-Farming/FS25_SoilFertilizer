@@ -244,6 +244,7 @@ SoilConstants.FERTILIZER_PROFILES = {
     ANHYDROUS         = { N=793.6, P=0.00, K=0.00 }, -- 28.0 L/ha: ~60N ppm (strongest)
     AMS               = { N=66.2,  P=0.00, K=0.00 }, -- 168 kg/ha: ~30N ppm
     UREA              = { N=154.6, P=0.00, K=0.00 }, -- 168 kg/ha: ~70N ppm
+    AN                = { N=114.0, P=0.00, K=0.00 }, -- 200 kg/ha: ~62N ppm (AN 34.5% N)
 
     -- Starter fertilizer (High-P pop-up)
     STARTER           = { N=63.5, P=595.0, K=0.00 }, -- 46.8 L/ha: ~8N, ~15P ppm
@@ -279,7 +280,7 @@ SoilConstants.FERTILIZER_TYPES = {
     -- Base game
     "LIQUIDFERTILIZER", "FERTILIZER", "MANURE", "LIQUIDMANURE", "DIGESTATE", "LIME",
     -- Nitrogen sources
-    "UAN32", "UAN28", "ANHYDROUS", "AMS", "UREA",
+    "UAN32", "UAN28", "ANHYDROUS", "AMS", "UREA", "AN",
     -- Starter
     "STARTER",
     -- Gypsum
@@ -617,6 +618,7 @@ SoilConstants.SPRAYER_RATE = {
         ANHYDROUS         = { value =    28.0, unit = "liquid" },  -- ~3 gal/ac
         AMS               = { value =   168.0, unit = "dry"    },  -- ~150 lb/ac
         UREA              = { value =   168.0, unit = "dry"    },
+        AN                = { value =   200.0, unit = "dry"    },  -- ~178 lb/ac (200 kg/ha typical UK rate)
         LIQUID_UREA       = { value =   168.0, unit = "liquid" },
         LIQUID_AMS        = { value =   168.0, unit = "liquid" },
         -- Starter / P&K sources

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Gleba &amp; Nawóz" eh="f31197fb" />
@@ -126,7 +126,8 @@
     <e k="sf_anhydrous_title" v="Amoniak bezwodny (N)" eh="3fc85c02" />
     <e k="sf_starter_title" v="Nawóz startowy 10-34-0 (P)" eh="8c1a1ddc" />
     <e k="sf_urea_title" v="Mocznik 46-0-0 (N)" eh="659b3097" />
-    <e k="sf_ams_title" v="Siarczan amonu 21-0-0 (N)" eh="033d1845" />
+        <e k="sf_an_title" v="Ammonium Nitrate 34.5-0-0 (N)" eh="" />
+<e k="sf_ams_title" v="Siarczan amonu 21-0-0 (N)" eh="033d1845" />
     <e k="sf_map_title" v="Nawóz MAP 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="Nawóz DAP 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Sól potasowa 0-0-60 (K)" eh="8db6c54c" />
@@ -146,7 +147,9 @@
     <e k="sf_bigBag_anhydrous_function" v="Nawóz azotowy (ciekły)" eh="27de5f41" />
     <e k="sf_bigBag_urea_name" v="Big Bag Mocznik 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="Nawóz azotowy (suchy)" eh="63efea20" />
-    <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
+        <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="" />
+    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry)" eh="" />
+<e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="Nawóz azotowy (suchy)" eh="63efea20" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="Nawóz fosforowy (suchy)" eh="0cc85c60" />
@@ -541,7 +544,11 @@
          NOTIFICATIONS
          ====================================================== -->
     <e k="sf_notify_welcome" v="Realistyczne Nawożenie &amp; Gleby Włączone | J = HUD | K = Raport glebowy | Użyj 'soilfertility' dla komend" eh="3fde93cd" />
-    <e k="sf_startup_dialog_footer" v="[EN] Your soil remembers everything 🌱" />
+    <e k="sf_startup_dialog_version" v="What's new in this version:" />
+    <e k="sf_startup_dialog_footer" v="Thank you for using my mod, it means a lot to me &lt;3" />
+    <e k="sf_startup_dialog_footer2" v="Found a bug? Please report it on github!" />
+    <e k="sf_startup_dialog_footer3" v="Happy farming and don't forget:" />
+    <e k="sf_startup_dialog_footer4" v="Your soil remembers everything..." />
     <e k="sf_notify_init_delayed" v="Mod gleby Opóźnienie w inicjalizacji pola. Próbuję zastosować alternatywną metodę..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Mod gleby: Inicjalizacja pola zakończona sukcesem!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Krytyczne zaniedbanie" eh="3f981d0c" />

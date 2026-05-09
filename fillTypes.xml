@@ -49,6 +49,15 @@
             <pallet filename="objects/bigBag/urea/bigBag_urea.xml" />
         </fillType>
 
+        <fillType name="AN" title="$l10n_sf_an_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.92" maxPhysicalSurfaceAngle="15"/>
+            <economy pricePerLiter="1.55"/>
+            <image hud="$moddir$textures/hud/fillTypes/hud_fill_AN.dds"/>
+            <textures diffuse="textures/fillPlanes/urea_diffuse.dds" normal="textures/fillPlanes/urea_normal.dds" height="textures/fillPlanes/urea_height.dds" displacement="textures/fillPlanes/urea_displacement.dds"/>
+            <sprayType sprayTypeStr="SOLID"/>
+            <pallet filename="objects/bigBag/an/bigBag_an.xml" />
+        </fillType>
+
         <fillType name="AMS" title="$l10n_sf_ams_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.87" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.40"/>
@@ -217,7 +226,7 @@
             names, any spreader that already accepts FERTILIZER will automatically also
             accept UREA, AMS, MAP, DAP, POTASH without any equipment mod changes.
         -->
-        <fillTypeCategory name="SPREADER">FERTILIZER UREA AMS MAP DAP POTASH GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
+        <fillTypeCategory name="SPREADER">FERTILIZER UREA AN AMS MAP DAP POTASH GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
 
         <!--
             Same principle for liquid sprayers — extend LIQUIDFERTILIZER so vanilla sprayers
