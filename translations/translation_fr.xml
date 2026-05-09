@@ -12,8 +12,8 @@
     <e k="sf_rain_effects_long" v="Activer/désactiver l'impact de la pluie sur le sol (lessivage des nutriments, changements de pH)" eh="de3b14b9" />
     <e k="sf_plowing_bonus_short" v="Bonus de labour" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Activer/désactiver les bénéfices du labour sur la fertilité du sol (amélioration de l'azote et de la matière organique)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="[EN] Residue Incorporation" eh="" />
-    <e k="sf_residue_incorporation_long" v="[EN] Enable/disable nutrient release from crop residue worked into soil by tillage tools (cultivators, plows, strip-till, direct drills)" eh="" />
+    <e k="sf_residue_incorporation_short" v="Incorporation des résidus" eh="d2e254bc" />
+    <e k="sf_residue_incorporation_long" v="Activer/désactiver la libération des nutriments des résidus culturals incorporés dans le sol par les outils de travail du sol (cultivateurs, socs, labour à bande, semoirs directs)" eh="a3b365cd" />
     <e k="sf_weed_pressure_short" v="Pression des mauvaises herbes" eh="53f8b936" />
     <e k="sf_weed_pressure_long" v="Activer/désactiver la croissance dynamique des mauvaises herbes et leur impact sur le rendement" eh="ac99a865" />
     <e k="sf_pest_pressure_short" v="Pression des ravageurs" eh="18a7c2be" />
@@ -606,7 +606,7 @@
     <e k="sf_desc_seasonalEffects" v="Évolutions du sol liées aux saisons" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="La pluie provoque le lessivage des nutriments" eh="82fec75d" />
     <e k="sf_desc_plowingBonus" v="Bonus de labour pour la récupération du sol" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="[EN] Tillage releases residue nutrients" eh="" />
+    <e k="sf_desc_residueIncorporation" v="Le travail du sol libère les nutriments des résidus" eh="d2e254bc" />
     <e k="sf_desc_weedPressure" v="Suivi et pénalisation de la propagation des mauvaises herbes" eh="df20c38d" />
     <e k="sf_desc_pestPressure" v="Suivi des infestations d'insectes ravageurs" eh="12b3412e" />
     <e k="sf_desc_diseasePressure" v="Suivi des maladies fongiques des cultures" eh="0858395f" />
