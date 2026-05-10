@@ -12,8 +12,8 @@
     <e k="sf_rain_effects_long" v="Activer/désactiver l'impact de la pluie sur le sol (lessivage des nutriments, changements de pH)" eh="de3b14b9" />
     <e k="sf_plowing_bonus_short" v="Bonus de labour" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Activer/désactiver les bénéfices du labour sur la fertilité du sol (amélioration de l'azote et de la matière organique)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="[EN] Residue Incorporation" eh="" />
-    <e k="sf_residue_incorporation_long" v="[EN] Enable/disable nutrient release from crop residue worked into soil by tillage tools (cultivators, plows, strip-till, direct drills)" eh="" />
+    <e k="sf_residue_incorporation_short" v="Incorporation des résidus" eh="" />
+    <e k="sf_residue_incorporation_long" v="Activer/désactiver la libération des nutriments provenant des résidus de culture incorporés au sol par les outils de travail du sol (cultivateurs, charrues, strip-till, semis direct)" eh="" />
     <e k="sf_weed_pressure_short" v="Pression des mauvaises herbes" eh="53f8b936" />
     <e k="sf_weed_pressure_long" v="Activer/désactiver la croissance dynamique des mauvaises herbes et leur impact sur le rendement" eh="ac99a865" />
     <e k="sf_pest_pressure_short" v="Pression des ravageurs" eh="18a7c2be" />
@@ -89,8 +89,8 @@
     <e k="input_SF_RATE_UP" v="Augmenter la dose d'engrais" eh="6e601ef5" />
     <e k="input_SF_RATE_DOWN" v="Diminuer la dose d'engrais" eh="30712026" />
     <e k="input_SF_TOGGLE_AUTO" v="Activer/désactiver le mode automatique" eh="a8642cf0" />
-        <e k="input_SF_CYCLE_MAP_LAYER" v="Changer la couche de carte du sol" eh="8e4a716c" />
-        <e k="input_SF_SOIL_PDA" v="Ouvrir la PDA du sol" eh="7d70f7b4" />
+    <e k="input_SF_CYCLE_MAP_LAYER" v="Changer la couche de carte du sol" eh="8e4a716c" />
+    <e k="input_SF_SOIL_PDA" v="Ouvrir la PDA du sol" eh="7d70f7b4" />
     <e k="sf_report_title" v="Rapport Sol et engrais" eh="a76f8218" />
     <e k="sf_report_fields_tracked" v="Champs suivis :" eh="7b1e59b8" />
     <e k="sf_report_need_fert" v="Besoin d'engrais :" eh="110b60f2" />
@@ -128,8 +128,8 @@
     <e k="sf_anhydrous_title" v="Ammoniac anhydre (N)" eh="3fc85c02" />
     <e k="sf_starter_title" v="Engrais de démarrage 10-34-0 (P)" eh="8c1a1ddc" />
     <e k="sf_urea_title" v="Urée 46-0-0 (N)" eh="659b3097" />
-        <e k="sf_an_title" v="Ammonium Nitrate 34.5-0-0 (N)" eh="" />
-<e k="sf_ams_title" v="Sulfate d'ammonium 21-0-0 (N)" eh="033d1845" />
+    <e k="sf_an_title" v="Nitrate d'ammonium 34.5-0-0 (N)" eh="" />
+    <e k="sf_ams_title" v="Sulfate d'ammonium 21-0-0 (N)" eh="033d1845" />
     <e k="sf_map_title" v="Engrais MAP 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="Engrais DAP 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Potasse 0-0-60 (K)" eh="8db6c54c" />
@@ -149,9 +149,9 @@
     <e k="sf_bigBag_anhydrous_function" v="Engrais azoté (liquide)" eh="27de5f41" />
     <e k="sf_bigBag_urea_name" v="Big Bag Urée 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="Engrais azoté (sec)" eh="63efea20" />
-        <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="" />
+    <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="" />
     <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry)" eh="" />
-<e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
+    <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="Engrais azoté (sec)" eh="63efea20" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="Engrais phosphaté (sec)" eh="0cc85c60" />
@@ -606,7 +606,7 @@
     <e k="sf_desc_seasonalEffects" v="Évolutions du sol liées aux saisons" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="La pluie provoque le lessivage des nutriments" eh="82fec75d" />
     <e k="sf_desc_plowingBonus" v="Bonus de labour pour la récupération du sol" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="[EN] Tillage releases residue nutrients" eh="" />
+    <e k="sf_desc_residueIncorporation" v="Le travail du sol libère les nutriments des résidus" eh="" />
     <e k="sf_desc_weedPressure" v="Suivi et pénalisation de la propagation des mauvaises herbes" eh="df20c38d" />
     <e k="sf_desc_pestPressure" v="Suivi des infestations d'insectes ravageurs" eh="12b3412e" />
     <e k="sf_desc_diseasePressure" v="Suivi des maladies fongiques des cultures" eh="0858395f" />
