@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new cell report HUD (tracks per-cell)
 - Added new settings option for cell report HUD
 - Added new soil map cell dialog (shows detailed info on each cell)
+- Improved mouseEvent in soil overlay
 
 ---
 
