@@ -30,8 +30,8 @@
         <!-- SIDEBAR A: Full field list shown on Overview tab -->
         <GuiElement id="sidebarOverview" position="0px 0px" width="420px" height="640px">
           <Text profile="sf_sectionHeader" text="$l10n_sf_pda_tab_fields" position="10px -10px"/>
-          <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"  position="10px  -50px" size="60px 24px"/>
-          <Text profile="sf_colHeader"      text="N"                        position="76px  -50px" size="58px 24px"/>
+          <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"  position="10px -50px" size="60px 24px"/>
+          <Text profile="sf_colHeader"      text="N"                        position="76px -50px" size="58px 24px"/>
           <Text profile="sf_colHeader"      text="P"                        position="138px -50px" size="58px 24px"/>
           <Text profile="sf_colHeader"      text="K"                        position="200px -50px" size="58px 24px"/>
           <Text profile="sf_colHeader"      text="pH"                       position="262px -50px" size="48px 24px"/>
@@ -42,8 +42,8 @@
                         endClipperElementName="sideListEnd">
               <ListItem profile="sf_listRow" onClick="onClickFieldRow">
                 <Bitmap profile="sf_rowBg" name="alternating"/>
-                <Text profile="sf_cellLeft"  name="fieldRowId"     size="60px  28px"/>
-                <Text profile="sf_cellRight" name="fieldRowN"      position="76px  0" size="58px 28px"/>
+                <Text profile="sf_cellLeft"  name="fieldRowId"     size="60px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowN"      position="76px 0" size="58px 28px"/>
                 <Text profile="sf_cellRight" name="fieldRowP"      position="138px 0" size="58px 28px"/>
                 <Text profile="sf_cellRight" name="fieldRowK"      position="200px 0" size="58px 28px"/>
                 <Text profile="sf_cellRight" name="fieldRowPH"     position="262px 0" size="48px 28px"/>
@@ -124,8 +124,8 @@
       <!-- TAB 2: TREATMENT PLAN -->
       <GuiElement id="treatmentContent" position="0px 0px" width="1000px" height="668px" visible="false">
         <Text profile="sf_sectionHeader" text="$l10n_sf_pda_treatment_section_title" position="0px 648px"/>
-        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"    position="8px   618px" size="80px  24px"/>
-        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_priority" position="90px  618px" size="120px 24px"/>
+        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"    position="8px 618px" size="80px 24px"/>
+        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_priority" position="90px 618px" size="120px 24px"/>
         <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_needs"    position="220px 618px" size="740px 24px"/>
         <GuiElement id="treatmentListContainer" position="0px 100px" width="1000px" height="508px">
           <SmoothList id="treatmentList" profile="sf_smoothList"
@@ -133,8 +133,8 @@
                       endClipperElementName="tlEnd">
             <ListItem profile="sf_listRow" onClick="onClickTreatmentRow">
               <Bitmap profile="sf_rowBg" name="alternating"/>
-              <Text profile="sf_cellLeft"  name="treatRowId"      size="80px  28px"/>
-              <Text profile="sf_cellRight" name="treatRowUrgency" position="90px  0" size="120px 28px"/>
+              <Text profile="sf_cellLeft"  name="treatRowId"      size="80px 28px"/>
+              <Text profile="sf_cellRight" name="treatRowUrgency" position="90px 0" size="120px 28px"/>
               <Text profile="sf_cellLeft"  name="treatRowNeeds"   position="220px 0" size="760px 28px"/>
             </ListItem>
           </SmoothList>
@@ -151,8 +151,8 @@
 
       <!-- Tab bar — 2 tabs, evenly spaced -->
       <GuiElement id="tabBar" profile="emptyPanel" position="0px 668px" width="1000px" height="58px">
-        <Text   profile="sf_tabLabel"     id="tabLabelOverview"      text="$l10n_sf_pda_section_farm_overview" onClick="onClickTabOverview"   position="0px   30px" size="500px 28px"/>
-        <Bitmap profile="sf_tabUnderline" id="tabUnderlineOverview"                                                                            position="0px   28px" size="500px 2px"/>
+        <Text   profile="sf_tabLabel"     id="tabLabelOverview"      text="$l10n_sf_pda_section_farm_overview" onClick="onClickTabOverview"   position="0px 30px" size="500px 28px"/>
+        <Bitmap profile="sf_tabUnderline" id="tabUnderlineOverview"                                                                            position="0px 28px" size="500px 2px"/>
         <Text   profile="sf_tabLabel"     id="tabLabelTreatment"     text="$l10n_sf_pda_tab_treatment"         onClick="onClickTabTreatment"   position="500px 30px" size="500px 28px"/>
         <Bitmap profile="sf_tabUnderline" id="tabUnderlineTreatment"                                                                            position="500px 28px" size="500px 2px" visible="false"/>
       </GuiElement>
