@@ -1320,20 +1320,10 @@ function HookManager:installSprayerAreaHook()
                 local rateMultiplier = (rm ~= nil) and rm:getMultiplier(self.id) or 1.0
                 local effectiveLiters = liters * rateMultiplier
 
-                -- Section Control: scale nutrient credit when outer boom sections are off.
+                -- Section Control double-penalty fix (Issue #345):
                 -- wap.usage already reflects section shutoff (VariableWorkWidth.getIsWorkAreaActive
-                -- gates each work area on section.isActive). We apply the fraction here so that
-                -- effectiveLiters correctly represents the nutrient dose for the active portion
-                -- of the field, especially when rateMultiplier != 1.0.
-                local coverageFraction = 1.0
-                if SoilUtils and SoilUtils.getSectionCoverageFraction then
-                    coverageFraction = SoilUtils.getSectionCoverageFraction(self)
-                    if coverageFraction < 1.0 then
-                        effectiveLiters = effectiveLiters * coverageFraction
-                        SoilLogger.debug("SectionControl: %.0f%% boom active → liters scaled to %.4fL",
-                            coverageFraction * 100, effectiveLiters)
-                    end
-                end
+                -- gates each work area on section.isActive), so 'liters' is already proportionally reduced.
+                -- Do NOT multiply by coverageFraction again, otherwise we quadratically penalize the dosage.
 
                 -- ── Coverage tracking (raw liters, before rateMultiplier) ─────────
                 -- Must run for ALL product types (fertilizer AND crop protection).
