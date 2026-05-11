@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<vehicle type="bigBag" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../shared/xml/schema/vehicle.xsd">
+
+    <storeData>
+        <name>$l10n_sf_bigBag_pelletized_manure_10k_name</name>
+        <specs>
+            <weight ignore="true"/>
+        </specs>
+        <image>$moddir$/objects/bigBag/gypsum/store_bigBagHelm_fertilizer_gypsum.dds</image>
+        <price>9500</price>
+        <allowLeasing>false</allowLeasing>
+        <canBeSold>false</canBeSold>
+        <rotation>0</rotation>
+        <brand>LIZARD</brand>
+        <category>bigbags palletFertilizerHerbicide</category>
+        <functions><function>$l10n_sf_bigBag_pelletized_manure_function</function></functions>
+        <financeCategory>PURCHASE_FERTILIZER</financeCategory>
+        <shopHeight>2</shopHeight>
+        <showInStore>false</showInStore>
+        <vertexBufferMemoryUsage>113152</vertexBufferMemoryUsage>
+        <indexBufferMemoryUsage>40960</indexBufferMemoryUsage>
+        <textureMemoryUsage>851968</textureMemoryUsage>
+        <instanceVertexBufferMemoryUsage>0</instanceVertexBufferMemoryUsage>
+        <instanceIndexBufferMemoryUsage>0</instanceIndexBufferMemoryUsage>
+        <storeIconRendering>
+            <settings cameraXRot="-15" cameraYRot="35"/>
+        </storeIconRendering>
+        <audioMemoryUsage>0</audioMemoryUsage>
+    </storeData>
+
+    <base>
+        <typeDesc>$l10n_typeDesc_pallet</typeDesc>
+        <filename>objects/bigBag/pelletized_manure/bigBag_pelletized_manure.i3d</filename>
+        <size width="1.25" length="1.25" height="1.75"/>
+        <input allowed="false"/>
+        <canBeReset>false</canBeReset>
+        <components maxMass="850">
+            <component centerOfMass="0 0.1 0" solverIterationCount="40" mass="150" />
+            <component centerOfMass="0 0 0"   solverIterationCount="40" mass="100" />
+            <joint component1="2" component2="1" node="componentJointHook" rotLimit="0 0 0" transLimit="0 0 0" rotLimitSpring="50 50 50" rotLimitDamping="65 65 65"/>
+        </components>
+        <showInVehicleMenu>false</showInVehicleMenu>
+        <mapHotspot available="false" />
+        <schemaOverlay attacherJointPosition="0 0" name="IMPLEMENT" />
+    </base>
+
+    <attachable>
+        <inputAttacherJoints>
+            <inputAttacherJoint node="attacherJoint01" rootNode="bigBag_hook_component2" jointType="bigBag" lowerRotLimitScale="1 1 1" upperRotLimitScale="1 1 1" attachAngleLimitAxis="3"/>
+            <inputAttacherJoint node="attacherJoint02" rootNode="bigBag_hook_component2" jointType="bigBag" lowerRotLimitScale="1 1 1" upperRotLimitScale="1 1 1" attachAngleLimitAxis="3"/>
+        </inputAttacherJoints>
+    </attachable>
+
+    <animations>
+        <animation name="bigBagSizeAnimation">
+            <part node="sizeCollision01" startTime="0" endTime="1.0" startTrans="-0.075 0.0 -0.125" endTrans="-0.25 0 -0.25"/>
+            <part node="sizeCollision02" startTime="0" endTime="1.0" startTrans="0.1 0.0 -0.125" endTrans="0.25 0 -0.25"/>
+            <part node="sizeCollision03" startTime="0" endTime="1.0" startTrans="0.1 0.0 0.15" endTrans="0.25 0 0.25"/>
+            <part node="sizeCollision04" startTime="0" endTime="1.0" startTrans="-0.075 0.0 0.15" endTrans="-0.25 0 0.25"/>
+            <part node="sizeJoint08" startTime="0.0" endTime="1.0" startTrans="0.0 0 -0.24" endTrans="0.0 0.0 -0.38" />
+            <part node="sizeJoint07" startTime="0.0" endTime="1.0" startTrans="0.0 0 0.267" endTrans="0.0 0.0 0.38" />
+            <part node="sizeJoint06" startTime="0.0" endTime="1.0" startTrans="0.245 0 0.0" endTrans="0.45 0.0 0.0" />
+            <part node="sizeJoint05" startTime="0.0" endTime="1.0" startTrans="-0.245 0 0.0" endTrans="-0.45 0.0 0.0" />
+            <part node="sizeJoint04" startTime="0.0" endTime="1.0" startTrans="-0.2 0 0.2" endTrans="-0.405 0.0 0.304" />
+            <part node="sizeJoint03" startTime="0.0" endTime="1.0" startTrans="0.2 0 0.2" endTrans="0.405 0.0 0.304" />
+            <part node="sizeJoint02" startTime="0.0" endTime="1.0" startTrans="0.2 0 -0.2" endTrans="0.405 0.0 -0.304" />
+            <part node="sizeJoint01" startTime="0.0" endTime="1.0" startTrans="-0.2 0 -0.2" endTrans="-0.405 0.0 -0.304" />
+            <part node="tensionBeltMesh01" startTime="0" endTime="1.0" startScale="0.735 1.0 0.854" endScale="1 1 1"/>
+            <part node="tensionBeltMesh02" startTime="0" endTime="1.0" startScale="0.6 1.0 0.8" endScale="1 1 1"/>
+        </animation>
+    </animations>
+
+    <bigBag fillUnitIndex="1">
+        <sizeAnimation name="bigBagSizeAnimation" minTime="0.4" maxTime="1" liftShrinkTime="0.15"/>
+        <componentJoint index="1" minRotLimit="0 0 0" maxRotLimit="0 55 55" minTransLimit="0.2 0 0" maxTransLimit="0.1 0 0" angularDamping="1"/>
+    </bigBag>
+
+    <fillUnit>
+        <fillUnitConfigurations>
+            <fillUnitConfiguration name="$l10n_configuration_valueDefault">
+                <fillUnits removeVehicleIfEmpty="true">
+                    <fillUnit unitTextOverride="$l10n_unit_literShort" fillTypes="PELLETIZED_MANURE" capacity="10000" startFillType="PELLETIZED_MANURE" startFillLevel="10000" ignoreFillLimit="true">
+                        <fillRootNode node="0>" />
+                        <fillTypeMaterials>
+                            <material fillType="PELLETIZED_MANURE" node="bigBag_vis" refNode="fertilizer_mat"/>
+                        </fillTypeMaterials>
+                    </fillUnit>
+                </fillUnits>
+            </fillUnitConfiguration>
+        </fillUnitConfigurations>
+    </fillUnit>
+
+    <dischargeable requiresTipOcclusionArea="false">
+        <dischargeNode node="raycastNode" emptySpeed="250" fillUnitIndex="1" maxDistance="6" canStartDischargeAutomatically="true">
+            <raycast useWorldNegYDirection="true" />
+            <info width="0.4" length="0.4" />
+            <activationTrigger node="dischargeActivationTrigger" />
+            <stateObjectChanges>
+                <objectChange node="outputOpen" visibilityActive="true" visibilityInactive="false"/>
+                <objectChange node="outputClose" visibilityActive="false" visibilityInactive="true"/>
+            </stateObjectChanges>
+            <distanceObjectChanges threshold="0.3">
+                <objectChange node="outputParts" visibilityActive="true" visibilityInactive="false"/>
+            </distanceObjectChanges>
+            <effects>
+                <effectNode effectClass="PipeEffect" effectNode="pipeEffect"  materialType="pipe"           delay="0"   maxBending="1"  positionUpdateNodes="smokeEffect"/>
+                <effectNode                          effectNode="smokeEffect" materialType="unloadingSmoke" delay="0.1" alignToWorldY="true"/>
+            </effects>
+        </dischargeNode>
+    </dischargeable>
+
+    <fillTriggerVehicle triggerNode="fillTrigger" fillUnitIndex="1" litersPerSecond="200"/>
+
+    <tensionBeltObject>
+        <meshNodes>
+            <meshNode node="tensionBeltMesh01"/>
+            <meshNode node="tensionBeltMesh02"/>
+        </meshNodes>
+    </tensionBeltObject>
+
+    <i3dMappings>
+        <i3dMapping id="raycastNode"                node="0>0|0" />
+        <i3dMapping id="fillTrigger"                node="0>0|1" />
+        <i3dMapping id="dischargeActivationTrigger" node="0>0|2" />
+        <i3dMapping id="tensionBeltMesh02"          node="0>0|3" />
+        <i3dMapping id="bigBag_vis"                 node="0>1|0" />
+        <i3dMapping id="outputParts"                node="0>1|1" />
+        <i3dMapping id="outputOpen"                 node="0>1|1|0" />
+        <i3dMapping id="pipeEffect"                 node="0>1|1|0|0|0" />
+        <i3dMapping id="smokeEffect"                node="0>1|1|0|0|1" />
+        <i3dMapping id="outputClose"                node="0>1|1|1" />
+        <i3dMapping id="chickenFood_mat"            node="0>1|2|0" />
+        <i3dMapping id="horseFood_mat"              node="0>1|2|1" />
+        <i3dMapping id="lime_mat"                   node="0>1|2|2" />
+        <i3dMapping id="pigFood_mat"                node="0>1|2|3" />
+        <i3dMapping id="roadSalt_mat"               node="0>1|2|4" />
+        <i3dMapping id="seeds_mat"                  node="0>1|2|5" />
+        <i3dMapping id="stones_mat"                 node="0>1|2|6" />
+        <i3dMapping id="fertilizer_mat"             node="0>1|2|7" />
+        <i3dMapping id="fertilizerHelm_mat"         node="0>1|2|8" />
+        <i3dMapping id="sizeCollision01"            node="0>2|0" />
+        <i3dMapping id="sizeCollision02"            node="0>2|1" />
+        <i3dMapping id="sizeCollision03"            node="0>2|2" />
+        <i3dMapping id="sizeCollision04"            node="0>2|3" />
+        <i3dMapping id="sizeJoint01"                node="0>2|4" />
+        <i3dMapping id="sizeJoint02"                node="0>2|5" />
+        <i3dMapping id="sizeJoint03"                node="0>2|6" />
+        <i3dMapping id="sizeJoint04"                node="0>2|7" />
+        <i3dMapping id="sizeJoint05"                node="0>2|8" />
+        <i3dMapping id="sizeJoint06"                node="0>2|9" />
+        <i3dMapping id="sizeJoint07"                node="0>2|10" />
+        <i3dMapping id="sizeJoint08"                node="0>2|11" />
+        <i3dMapping id="bigBag_hook_component2"     node="1>" />
+        <i3dMapping id="componentJointHook"         node="1>0" />
+        <i3dMapping id="attacherJoint01"            node="1>1" />
+        <i3dMapping id="attacherJoint02"            node="1>2" />
+        <i3dMapping id="tensionBeltMesh01"          node="1>3" />
+    </i3dMappings>
+
+</vehicle>

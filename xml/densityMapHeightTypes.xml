@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<map>
+    <densityMapHeightTypes>
+        <densityMapHeightType fillType="UREA" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="AN" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="AMS" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="MAP" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="DAP" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="POTASH" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="GYPSUM" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="COMPOST" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="BIOSOLIDS" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="CHICKEN_MANURE" maxAllowedHeight="0.8" minHeight="0.05" />
+        <densityMapHeightType fillType="PELLETIZED_MANURE" maxAllowedHeight="0.8" minHeight="0.05" />
+    </densityMapHeightTypes>
+</map>

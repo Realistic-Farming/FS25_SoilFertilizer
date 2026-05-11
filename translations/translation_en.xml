@@ -183,10 +183,13 @@
     <e k="sf_bigBag_compost_name" v="Big Bag Compost" eh="14322c5d" />
     <e k="sf_bigBag_compost_function" v="Organic Soil Amendment (dry)" eh="9dd2256a" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosolids" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="Organic Fertilizer (dry)" eh="374c7b1e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Chicken Manure" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Chicken Manure (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="Organic Fertilizer (dry)" eh="374c7b1e" />
-    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletized Manure" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletized Manure" eh="42d76587" />
+    <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="Organic Fertilizer (dry)" eh="374c7b1e" />
     <e k="sf_bigBag_liquidlime_name" v="Liquid Lime Tank" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="pH Raising Agent (liquid)" eh="7a118b6d" />

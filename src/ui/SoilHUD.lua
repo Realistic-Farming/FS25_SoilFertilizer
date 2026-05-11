@@ -515,6 +515,10 @@ function SoilHUD:updateFieldInfoBox()
     local box = self.fieldInfoBox
     if not box then return end
 
+    -- Only show the native FIELD INFO style box when actually on a field.
+    -- This prevents it from showing up on roads, grass, or yards (Tier 2 farmland fallback).
+    if not self.isOnField then return end
+
     local info = self.cachedFieldInfo
     if not info then return end
 
@@ -661,6 +665,7 @@ function SoilHUD:refreshFieldData()
     local fieldId, x, z = self:detectCurrentFieldId()
     local prevId  = self.cachedFieldId
     self.cachedFieldId = fieldId
+    self.isOnField     = (fieldId ~= nil)
     self.cachedPlayerX = x
     self.cachedPlayerZ = z
 

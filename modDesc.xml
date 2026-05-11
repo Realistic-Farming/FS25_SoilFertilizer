@@ -150,8 +150,11 @@
         <storeItem xmlFilename="objects/bigBag/gypsum/multiPurchaseBigBag_gypsum.xml"/>
         <storeItem xmlFilename="objects/bigBag/compost/multiPurchaseBigBag_compost.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/multiPurchaseBigBag_biosolids.xml"/>
+        <storeItem xmlFilename="objects/bigBag/biosolids/multiPurchaseBigBag_biosolids_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/chicken_manure/multiPurchaseBigBag_chicken_manure.xml"/>
+        <storeItem xmlFilename="objects/bigBag/chicken_manure/multiPurchaseBigBag_chicken_manure_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/pelletized_manure/multiPurchaseBigBag_pelletized_manure.xml"/>
+        <storeItem xmlFilename="objects/bigBag/pelletized_manure/multiPurchaseBigBag_pelletized_manure_10k.xml"/>
         <!-- Single items — registered for multiPurchase spawning, hidden from shop UI -->
         <storeItem xmlFilename="objects/liquidTank/uan32/liquidTank_uan32.xml"/>
         <storeItem xmlFilename="objects/liquidTank/uan28/liquidTank_uan28.xml"/>
@@ -174,8 +177,11 @@
         <storeItem xmlFilename="objects/bigBag/gypsum/bigBag_gypsum.xml"/>
         <storeItem xmlFilename="objects/bigBag/compost/bigBag_compost.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/bigBag_biosolids.xml"/>
+        <storeItem xmlFilename="objects/bigBag/biosolids/bigBag_biosolids_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/chicken_manure/bigBag_chicken_manure.xml"/>
+        <storeItem xmlFilename="objects/bigBag/chicken_manure/bigBag_chicken_manure_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/pelletized_manure/bigBag_pelletized_manure.xml"/>
+        <storeItem xmlFilename="objects/bigBag/pelletized_manure/bigBag_pelletized_manure_10k.xml"/>
     </storeItems>
 
 

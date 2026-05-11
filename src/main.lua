@@ -355,6 +355,31 @@ if FillTypeManager and type(FillTypeManager.loadModFillTypes) == "function" then
     FillTypeManager.loadModFillTypes = Utils.prependedFunction(FillTypeManager.loadModFillTypes, injectSFModFillTypes)
 end
 
+-- =========================================================
+-- TIP ON GROUND FIX: Register densityMapHeightTypes
+-- Enables mod fill types to be tipped on the ground (CTRL+I).
+-- We inject our XML into DensityMapHeightManager's loading queue.
+-- =========================================================
+if DensityMapHeightManager and type(DensityMapHeightManager.loadMapData) == "function" then
+    local function injectSFHeightTypes(densityMapHeightManager)
+        if densityMapHeightManager.modDensityHeightMapTypeFilenames then
+            local filename = modDirectory .. "xml/densityMapHeightTypes.xml"
+            local alreadyAdded = false
+            for _, existing in ipairs(densityMapHeightManager.modDensityHeightMapTypeFilenames) do
+                if existing == filename then
+                    alreadyAdded = true
+                    break
+                end
+            end
+            if not alreadyAdded then
+                SoilLogger.info("Tip On Ground Fix: Registering densityMapHeightTypes.xml")
+                table.insert(densityMapHeightManager.modDensityHeightMapTypeFilenames, filename)
+            end
+        end
+    end
+    DensityMapHeightManager.loadMapData = Utils.prependedFunction(DensityMapHeightManager.loadMapData, injectSFHeightTypes)
+end
+
 -- Route mouse events to SoilHUD (for drag/resize edit mode).
 -- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) — not via RMB.
 -- RMB only exits edit mode (and only when this mod is already in edit mode).

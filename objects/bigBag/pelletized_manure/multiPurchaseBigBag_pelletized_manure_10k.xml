@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<vehicle type="multipleItemPurchase" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../shared/xml/schema/vehicle.xsd">
+
+    <storeData>
+        <n>Big Bag Pelletized Manure 10000L</n>
+        <name>$l10n_sf_bigBag_pelletized_manure_10k_name</name>
+        <specs><weight ignore="true"/></specs>
+        <functions><function>$l10n_sf_bigBag_pelletized_manure_function</function></functions>
+        <image>objects/bigBag/gypsum/store_bigBagHelm_fertilizer_gypsum.dds</image>
+        <price>9500</price>
+        <lifetime>600</lifetime>
+        <allowLeasing>false</allowLeasing>
+        <canBeSold>false</canBeSold>
+        <rotation>0</rotation>
+        <brand>LIZARD</brand>
+        <category>bigbags palletFertilizerHerbicide</category>
+        <financeCategory>PURCHASE_FERTILIZER</financeCategory>
+        <shopLoadingDelay initial="0.2" config="0.2"/>
+        <storeIconRendering><settings cameraXRot="-15" cameraYRot="35"/></storeIconRendering>
+        <vertexBufferMemoryUsage>512</vertexBufferMemoryUsage>
+        <indexBufferMemoryUsage>256</indexBufferMemoryUsage>
+        <textureMemoryUsage>65536</textureMemoryUsage>
+        <instanceVertexBufferMemoryUsage>0</instanceVertexBufferMemoryUsage>
+        <instanceIndexBufferMemoryUsage>0</instanceIndexBufferMemoryUsage>
+        <audioMemoryUsage>0</audioMemoryUsage>
+    </storeData>
+
+    <base>
+        <typeDesc>$l10n_storeItem_kornKali</typeDesc>
+        <filename>$data/objects/multiPurchaseItem/multiPurchaseItem.i3d</filename>
+        <size width="2.0" length="3.4" height="1.65"/>
+        <components>
+            <component centerOfMass="0 0 0" solverIterationCount="10" mass="100"/>
+        </components>
+    </base>
+
+    <fillUnit>
+        <fillUnitConfigurations>
+            <fillUnitConfiguration>
+                <fillUnits>
+                    <fillUnit fillTypes="PELLETIZED_MANURE" capacity="10000"/>
+                </fillUnits>
+            </fillUnitConfiguration>
+        </fillUnitConfigurations>
+    </fillUnit>
+
+    <multipleItemPurchase filename="objects/bigBag/pelletized_manure/bigBag_pelletized_manure_10k.xml" isVehicle="true">
+        <offsets>
+            <offset amount="2" offset="0.5 0 0"/>
+            <offset amount="3" offset="0.5 0 0.425"/>
+            <offset amount="5" offset="0.5 0 0.850"/>
+            <offset amount="7" offset="0.5 0 1.275"/>
+        </offsets>
+        <itemPositions>
+            <itemPosition position="0 0 0"      rotation="0 0 0"/>
+            <itemPosition position="-1 0 0"     rotation="0 0 0"/>
+            <itemPosition position="0 0 -0.85"  rotation="0 0 0"/>
+            <itemPosition position="-1 0 -0.85" rotation="0 0 0"/>
+            <itemPosition position="0 0 -1.7"   rotation="0 0 0"/>
+            <itemPosition position="-1 0 -1.7"  rotation="0 0 0"/>
+            <itemPosition position="0 0 -2.55"  rotation="0 0 0"/>
+            <itemPosition position="-1 0 -2.55" rotation="0 0 0"/>
+        </itemPositions>
+    </multipleItemPurchase>
+
+    <multipleItemPurchaseAmountConfigurations>
+        <multipleItemPurchaseAmountConfiguration name="1" price="0"/>
+        <multipleItemPurchaseAmountConfiguration name="2" price="19000"/>
+        <multipleItemPurchaseAmountConfiguration name="3" price="28500"/>
+        <multipleItemPurchaseAmountConfiguration name="4" price="38000"/>
+        <multipleItemPurchaseAmountConfiguration name="5" price="47500"/>
+        <multipleItemPurchaseAmountConfiguration name="6" price="57000"/>
+        <multipleItemPurchaseAmountConfiguration name="7" price="66500"/>
+        <multipleItemPurchaseAmountConfiguration name="8" price="76000"/>
+    </multipleItemPurchaseAmountConfigurations>
+
+</vehicle>
