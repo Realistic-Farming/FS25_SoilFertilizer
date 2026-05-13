@@ -24,9 +24,20 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "Translation Update",
-    "- All 25 languages have been written in their respective language",
-    "- All 25 translations (627 keys per language) are synced to the english version",
+    "Bug Fixes & Improvements",
+    "- Fixed potassium fertilizer rates (K-rates now agronomically correct)",
+    "- Fixed herbicide cell updates (weed pressure now reflects per-cell spray)",
+    "- Fixed zoneData not syncing to clients on dedicated servers",
+    "- Fixed player-created and expanded fields not being detected by the mod",
+    "- Fixed Section Control double-penalty on herbicide/fertilizer application",
+    "- Fixed network sync, HUD fallback, and save state persistence",
+    "- Fixed UI elements misalignment in settings menu",
+    "- Fixed XML parse failure causing PDA text misalignment",
+    "New Features",
+    "- Luzerne and clover now recognized as legumes (low N target, spring bonus)",
+    "- Weed suppression scales with time-of-season (row closure mechanic)",
+    "- Added 10,000L big bags for bulk fertilizer handling",
+    "- Time-scaling for weed/pest/disease growth speed",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
