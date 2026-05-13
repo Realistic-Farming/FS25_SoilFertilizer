@@ -1980,10 +1980,17 @@ function HookManager:installSowingHook()
                     tostring(spec.workAreaParameters.seedsFruitType))
                 if not fieldId or fieldId <= 0 then return end
 
-                local statsArea = spec.workAreaParameters.lastStatsArea or spec.workAreaParameters.lastChangedArea or 0.001
+                local statsArea = spec.workAreaParameters.lastStatsArea or spec.workAreaParameters.lastChangedArea or 0
+                if statsArea <= 0 then return end
+                -- Convert density-map pixels → hectares (same as plow/cultivator/mower hooks).
+                -- Passing raw pixels directly caused factor = pixels/fieldAreaHa, exploding
+                -- NPK to max in the first sowing tick (same bug fixed for plow in 51083e7).
+                if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
+                local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
+                if areaHa <= 0 then return end
                 g_SoilFertilityManager.soilSystem._lastTillageX = x
                 g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                g_SoilFertilityManager.soilSystem:onSowing(fieldId, statsArea)
+                g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa)
             end)
 
             if not ok then
