@@ -24,9 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: soil map tiles now update correctly after applying fertilizer",
-    "- Fixed: tiles pre-stamped by tillage (plow, sow) no longer stay stale after spraying",
-    "- Fixed: full boom width cell coverage reflects applied nutrients immediately",
+    "- Fixed: server crash with dry fertilizer (urea spreader) — zone cell packet overflow",
+    "- Fixed: soil map tiles now update after fertilizer on dedicated server clients",
+    "- Added: Colorblind Mode toggle in Display settings (orange/blue palette for deuteranopia)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

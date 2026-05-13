@@ -23,11 +23,16 @@ SoilTreatmentDialog.INSTANCE = nil
 SoilTreatmentDialog.xmlPath  = nil
 
 -- Colors
-local COLOR_GOOD  = {0.25, 0.85, 0.25, 1.0}
-local COLOR_FAIR  = {0.90, 0.82, 0.18, 1.0}
-local COLOR_POOR  = {0.88, 0.25, 0.25, 1.0}
 local COLOR_WHITE = {1.00, 1.00, 1.00, 1.0}
 local COLOR_DIM   = {0.60, 0.60, 0.60, 1.0}
+
+local function getStatusColors()
+    local cb = g_SoilFertilityManager and g_SoilFertilityManager.settings and g_SoilFertilityManager.settings.colorblindMode
+    if cb then
+        return {0.90, 0.37, 0.00, 1.0}, {0.94, 0.86, 0.00, 1.0}, {0.00, 0.45, 0.70, 1.0}
+    end
+    return {0.88, 0.25, 0.25, 1.0}, {0.90, 0.82, 0.18, 1.0}, {0.25, 0.85, 0.25, 1.0}
+end
 
 -- ── i18n helper ───────────────────────────────────────────
 
@@ -132,6 +137,7 @@ end
 -- ── Data Population ───────────────────────────────────────
 
 function SoilTreatmentDialog:_populateData()
+    local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
     local fieldId = self._fieldId
     local sfm = g_SoilFertilityManager
 

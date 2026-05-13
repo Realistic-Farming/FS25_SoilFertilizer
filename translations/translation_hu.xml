@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="Tápanyagréteg megjelenítése átfedésként a PDA térképen" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Térkép részletesség" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Mintavételi pontok kerete a PDA talajátfedéshez. Alacsony = jobb FPS, Magas = teljesebb lefedettség nagy térképeken." eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="Talaj beállítások megnyitása" eh="2e31c0dd" />
     <e k="sf_reset" v="Talajbeállítások alaphelyzetbe állítása" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Talaj HUD váltása" eh="f0224a10" />
@@ -612,6 +614,7 @@
     <e k="sf_desc_cropRotation" v="Vetésforgó előnyök és büntetések" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Tápanyagréteg a PDA térképen" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Mintapont keret (Alacsony=8k, Közepes=20k, Magas=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
     <!-- Multi-option values -->
     <e k="sf_rr_1" v="Nagyon lassú (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Lassú (0.5x)" eh="db69874d" />

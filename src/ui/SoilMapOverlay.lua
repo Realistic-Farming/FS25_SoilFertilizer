@@ -34,6 +34,10 @@ SoilMapOverlay.DENSITY_POINTS   = {8000, 20000, 40000}
 SoilMapOverlay.C_POOR = {0.88, 0.25, 0.25}
 SoilMapOverlay.C_FAIR = {0.90, 0.82, 0.18}
 SoilMapOverlay.C_GOOD = {0.25, 0.85, 0.25}
+-- Okabe-Ito colorblind-safe palette (orange / yellow / blue)
+SoilMapOverlay.CB_POOR = {0.90, 0.37, 0.00}
+SoilMapOverlay.CB_FAIR = {0.94, 0.86, 0.00}
+SoilMapOverlay.CB_GOOD = {0.00, 0.45, 0.70}
 
 -- Per-layer accent color
 SoilMapOverlay.LAYER_ACCENT = {
@@ -687,28 +691,29 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         renderText(bx + boxW - padX, midY, textSz, value)
     end
 
+    local ttPOOR, ttFAIR, ttGOOD = self:statusColors()
     local function nColor(status)
-        if status == "Good" then return 0.25, 0.85, 0.25
-        elseif status == "Fair" then return 0.90, 0.82, 0.18
-        else return 0.88, 0.25, 0.25 end
+        if status == "Good" then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif status == "Fair" then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
     end
     local function phColor(ph)
         local rc = SoilConstants.REPORT_COLORS
-        if ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH then return 0.25, 0.85, 0.25
-        elseif ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH then return 0.90, 0.82, 0.18
-        else return 0.88, 0.25, 0.25 end
+        if ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
     end
     local function omColor(om)
         local rc = SoilConstants.REPORT_COLORS
-        if om >= rc.OM_GOOD then return 0.25, 0.85, 0.25
-        elseif om >= rc.OM_FAIR then return 0.90, 0.82, 0.18
-        else return 0.88, 0.25, 0.25 end
+        if om >= rc.OM_GOOD then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif om >= rc.OM_FAIR then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
     end
     local function pressureColor(pct)
         local wp = SoilConstants.WEED_PRESSURE
-        if pct < wp.LOW then return 0.25, 0.85, 0.25
-        elseif pct < wp.MEDIUM then return 0.90, 0.82, 0.18
-        else return 0.88, 0.25, 0.25 end
+        if pct < wp.LOW then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif pct < wp.MEDIUM then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
     end
 
     -- Rows step downward from just below the title divider
@@ -925,12 +930,13 @@ function SoilMapOverlay:drawLegend(panelX, bottomY, panelWidth)
     drawFilledRect(panelX, legendY, panelWidth, legendH, 0.04, 0.04, 0.04, 0.80)
     self:drawThinBorder(panelX, legendY, panelWidth, legendH, 0.35, 0.35, 0.35, 0.5)
 
+    local lPOOR, lFAIR, lGOOD = self:statusColors()
     local items = {
-        { r = SoilMapOverlay.C_POOR[1], g = SoilMapOverlay.C_POOR[2], b = SoilMapOverlay.C_POOR[3],
+        { r = lPOOR[1], g = lPOOR[2], b = lPOOR[3],
           key = "sf_pda_map_legend_poor", label = "Poor" },
-        { r = SoilMapOverlay.C_FAIR[1], g = SoilMapOverlay.C_FAIR[2], b = SoilMapOverlay.C_FAIR[3],
+        { r = lFAIR[1], g = lFAIR[2], b = lFAIR[3],
           key = "sf_pda_map_legend_fair", label = "Fair" },
-        { r = SoilMapOverlay.C_GOOD[1], g = SoilMapOverlay.C_GOOD[2], b = SoilMapOverlay.C_GOOD[3],
+        { r = lGOOD[1], g = lGOOD[2], b = lGOOD[3],
           key = "sf_pda_map_legend_good", label = "Good" },
     }
 
@@ -1005,15 +1011,21 @@ local LAYER_GRLE_NAME = {
     [5] = "infoLayer_soilOM",
 }
 
+-- Returns poor, fair, good color tables based on colorblind setting.
+function SoilMapOverlay:statusColors()
+    if self.settings and self.settings.colorblindMode then
+        return SoilMapOverlay.CB_POOR, SoilMapOverlay.CB_FAIR, SoilMapOverlay.CB_GOOD
+    end
+    return SoilMapOverlay.C_POOR, SoilMapOverlay.C_FAIR, SoilMapOverlay.C_GOOD
+end
+
 -- Convert a raw decoded value (from the density map layer) to a colour.
 -- Mirrors the same thresholds used in getLayerColor so the per-pixel path
 -- matches the per-field fallback path exactly.
 ---@param layerIdx integer  1-5 (soil nutrient layers)
 ---@param val      number   Decoded semantic float from readValueAtWorld
 function SoilMapOverlay:valueToLayerColor(layerIdx, val)
-    local POOR = SoilMapOverlay.C_POOR
-    local FAIR = SoilMapOverlay.C_FAIR
-    local GOOD = SoilMapOverlay.C_GOOD
+    local POOR, FAIR, GOOD = self:statusColors()
     local T    = SoilConstants.STATUS_THRESHOLDS
 
     if layerIdx == 1 then
@@ -1044,9 +1056,7 @@ end
 -- ── Layer color logic ─────────────────────────────────────
 
 function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
-    local POOR = SoilMapOverlay.C_POOR
-    local FAIR = SoilMapOverlay.C_FAIR
-    local GOOD = SoilMapOverlay.C_GOOD
+    local POOR, FAIR, GOOD = self:statusColors()
     local T    = SoilConstants.STATUS_THRESHOLDS
 
     if layerIdx == 1 then

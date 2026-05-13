@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="Nährstoffebene, die als Overlay in der PDA-Karte angezeigt wird" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Kartendetails" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Abtastpunktbudget für das PDA-Bodenoverlay. Niedrig = bessere FPS, Hoch = vollständigere Abdeckung auf großen Karten." eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="Bodeneinstellungen öffnen" eh="2e31c0dd" />
     <e k="sf_reset" v="Bodeneinstellungen zurücksetzen" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Boden-HUD umschalten" eh="f0224a10" />
@@ -593,6 +595,7 @@
     <e k="sf_desc_cropRotation" v="Vorteile und Nachteile der Fruchtfolge" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Nährstoffebene in der PDA-Karte" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Abtastpunktbudget (Niedrig=8k, Mittel=20k, Hoch=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
 
     <e k="sf_rr_1" v="Sehr langsam (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Langsam (0.5x)" eh="db69874d" />

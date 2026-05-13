@@ -32,12 +32,20 @@ SoilReportDialog.MAX_ROWS = 10
 SoilReportDialog.instance = nil
 SoilReportDialog.xmlPath = nil
 
--- Status colors
+-- Status colors (static; only used as fallbacks — see getStatusColors() for runtime palette)
 SoilReportDialog.COLOR_GOOD  = {0.25, 0.85, 0.25, 1.0}
 SoilReportDialog.COLOR_FAIR  = {0.90, 0.82, 0.18, 1.0}
 SoilReportDialog.COLOR_POOR  = {0.88, 0.25, 0.25, 1.0}
 SoilReportDialog.COLOR_WHITE = {1.00, 1.00, 1.00, 1.0}
 SoilReportDialog.COLOR_DIM   = {0.60, 0.60, 0.60, 1.0}
+
+local function getStatusColors()
+    local cb = g_SoilFertilityManager and g_SoilFertilityManager.settings and g_SoilFertilityManager.settings.colorblindMode
+    if cb then
+        return {0.90, 0.37, 0.00, 1.0}, {0.94, 0.86, 0.00, 1.0}, {0.00, 0.45, 0.70, 1.0}
+    end
+    return SoilReportDialog.COLOR_POOR, SoilReportDialog.COLOR_FAIR, SoilReportDialog.COLOR_GOOD
+end
 
 function SoilReportDialog.getInstance(modDirectory)
     if SoilReportDialog.instance == nil then
@@ -267,35 +275,38 @@ end
 -- ── Status color helpers ──────────────────────────────────────────────
 
 local function getStatusColor(status)
-    if status == "Good" then return SoilReportDialog.COLOR_GOOD
-    elseif status == "Fair" then return SoilReportDialog.COLOR_FAIR
-    elseif status == "Poor" then return SoilReportDialog.COLOR_POOR
+    local poor, fair, good = getStatusColors()
+    if status == "Good" then return good
+    elseif status == "Fair" then return fair
+    elseif status == "Poor" then return poor
     end
     return SoilReportDialog.COLOR_WHITE
 end
 
 local function getPHColor(ph)
     local rc = SoilConstants.REPORT_COLORS
-    if ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH then return SoilReportDialog.COLOR_GOOD
-    elseif ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH then return SoilReportDialog.COLOR_FAIR
+    local poor, fair, good = getStatusColors()
+    if ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH then return good
+    elseif ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH then return fair
     end
-    return SoilReportDialog.COLOR_POOR
+    return poor
 end
 
 local function getOMColor(om)
     local rc = SoilConstants.REPORT_COLORS
-    if om >= rc.OM_GOOD then return SoilReportDialog.COLOR_GOOD
-    elseif om >= rc.OM_FAIR then return SoilReportDialog.COLOR_FAIR
+    local poor, fair, good = getStatusColors()
+    if om >= rc.OM_GOOD then return good
+    elseif om >= rc.OM_FAIR then return fair
     end
-    return SoilReportDialog.COLOR_POOR
+    return poor
 end
 
 local function getPressureColor(pct)
-    -- Aligned with SoilConstants.WEED_PRESSURE thresholds (LOW=20, MEDIUM=50, same for pest/disease)
     local wp = SoilConstants.WEED_PRESSURE
-    if pct < wp.LOW    then return SoilReportDialog.COLOR_GOOD
-    elseif pct < wp.MEDIUM then return SoilReportDialog.COLOR_FAIR
-    else return SoilReportDialog.COLOR_POOR end
+    local poor, fair, good = getStatusColors()
+    if pct < wp.LOW    then return good
+    elseif pct < wp.MEDIUM then return fair
+    else return poor end
 end
 
 -- ── Overall status helpers ────────────────────────────────────────────
@@ -305,38 +316,42 @@ end
 ---@return string "Good"|"Fair"|"Poor"
 ---@return table color RGBA
 local function getOverallStatus(info)
-    local function colorRank(c)
-        if c == SoilReportDialog.COLOR_POOR then return 3
-        elseif c == SoilReportDialog.COLOR_FAIR then return 2
-        else return 1 end
-    end
+    local rc = SoilConstants.REPORT_COLORS
+    local wp = SoilConstants.WEED_PRESSURE
     local worst = 1
-    -- N / P / K
+    -- N / P / K (status strings)
     for _, key in ipairs({"nitrogen", "phosphorus", "potassium"}) do
         local s = info[key].status
         local r = (s == "Poor") and 3 or (s == "Fair") and 2 or 1
         if r > worst then worst = r end
     end
-    -- pH and OM
+    -- pH (threshold-based)
     if info.pH then
-        local r = colorRank(getPHColor(info.pH))
+        local ph = info.pH
+        local r = (ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH) and 1
+               or (ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH) and 2
+               or 3
         if r > worst then worst = r end
     end
+    -- OM (threshold-based)
     if info.organicMatter then
-        local r = colorRank(getOMColor(info.organicMatter))
+        local om = info.organicMatter
+        local r = (om >= rc.OM_GOOD) and 1 or (om >= rc.OM_FAIR) and 2 or 3
         if r > worst then worst = r end
     end
     -- Weed / pest / disease pressures (stored as 0-100)
     for _, key in ipairs({"weedPressure", "pestPressure", "diseasePressure"}) do
         local val = info[key]
         if val and val > 0 then
-            local r = colorRank(getPressureColor(math.floor(val + 0.5)))
+            local pct = math.floor(val + 0.5)
+            local r = (pct >= wp.MEDIUM) and 3 or (pct >= wp.LOW) and 2 or 1
             if r > worst then worst = r end
         end
     end
-    if worst == 3 then return "Poor", SoilReportDialog.COLOR_POOR
-    elseif worst == 2 then return "Fair", SoilReportDialog.COLOR_FAIR
-    else return "Good", SoilReportDialog.COLOR_GOOD end
+    local poor, fair, good = getStatusColors()
+    if worst == 3 then return "Poor", poor
+    elseif worst == 2 then return "Fair", fair
+    else return "Good", good end
 end
 
 --- Compute average farm health across all owned fields.

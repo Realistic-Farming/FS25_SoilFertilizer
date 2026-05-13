@@ -130,7 +130,7 @@ local CATEGORIES = {
         sections = {
             {
                 headerKey = "sf_panel_hdr_visibility",
-                items     = { "showHUD", "showMiniReport", "useImperialUnits" }
+                items     = { "showHUD", "showMiniReport", "useImperialUnits", "colorblindMode" }
             },
             {
                 headerKey = "sf_panel_hdr_hud_style",
@@ -202,6 +202,7 @@ local SETTING_DESCS = {
     hudPosition       = "sf_desc_hudPosition",
     activeMapLayer    = "sf_desc_activeMapLayer",
     overlayDensity    = "sf_desc_overlayDensity",
+    colorblindMode    = "sf_desc_colorblindMode",
     enabled           = "sf_desc_enabled",
     debugMode         = "sf_desc_debugMode",
     showNotifications = "sf_desc_showNotifications",

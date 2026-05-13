@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="PDAマップにオーバーレイ表示される養分レイヤー" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="マップの詳細度" eh="a525859a" />
     <e k="sf_overlay_density_long" v="PDA土壌オーバーレイのサンプルポイント予算。低 = FPS向上、高 = 大規模マップでの網羅性向上。" eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="土壌設定を開く" eh="2e31c0dd" />
     <e k="sf_reset" v="土壌設定をリセット" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="土壌HUDの切替" eh="f0224a10" />
@@ -617,6 +619,7 @@
     <e k="sf_desc_cropRotation" v="輪作によるメリットとデメリット" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="PDA マップに表示する養分レイヤー" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="サンプルポイント予算 (低=8k, 中=20k, 高=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
 
     <!-- 多肢選択値 -->
     <e k="sf_rr_1" v="極めて遅い (0.25x)" eh="b681a1b4" />

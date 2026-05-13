@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="Couche de nutriments affichée en superposition sur la carte PDA" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Détail de la carte" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Budget de points d'échantillonnage pour la superposition du sol sur la PDA. Faible = meilleures performances, Élevé = couverture plus complète sur les grandes cartes." eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="Ouvrir les paramètres du sol" eh="2e31c0dd" />
     <e k="sf_reset" v="Réinitialiser les paramètres du sol" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Activer/désactiver le HUD du sol" eh="f0224a10" />
@@ -622,6 +624,7 @@
     <e k="sf_desc_cropRotation" v="Avantages et pénalités de la rotation des cultures" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Couche de nutriments affichée sur la carte PDA" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Budget des points d'échantillonnage (Bas=8k, Moyen=20k, Élevé=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
 
     <!-- Valeurs multi-options -->
     <e k="sf_rr_1" v="Très lent (0.25x)" eh="b681a1b4" />

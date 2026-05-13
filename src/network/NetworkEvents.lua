@@ -646,12 +646,17 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         end
 
         -- Zone cell data: per-cell soil state for the PDA cell-report overlay.
-        -- Added in v2.1.6 so dedi clients receive accumulated cell data on join.
+        -- Capped at 500 cells per field to prevent packet overflow on large fields.
         local zd = field.zoneData or {}
-        local zdCount = 0
-        for _ in pairs(zd) do zdCount = zdCount + 1 end
-        streamWriteInt32(streamId, zdCount)
+        local ZONE_SYNC_MAX = 500
+        local zdSent = {}
         for cellKey, cell in pairs(zd) do
+            if #zdSent >= ZONE_SYNC_MAX then break end
+            table.insert(zdSent, {key = cellKey, cell = cell})
+        end
+        streamWriteInt32(streamId, #zdSent)
+        for _, entry in ipairs(zdSent) do
+            local cellKey, cell = entry.key, entry.cell
             streamWriteInt32(streamId,   tonumber(cellKey) or 0)
             streamWriteFloat32(streamId, cell.N  or 0)
             streamWriteFloat32(streamId, cell.P  or 0)
@@ -948,23 +953,13 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
         streamWriteFloat32(streamId, amount)
     end
 
-    -- Zone cell data (added v2.1.6)
-    local zd = self.field.zoneData or {}
-    local zdCount = 0
-    for _ in pairs(zd) do zdCount = zdCount + 1 end
-    streamWriteInt32(streamId, zdCount)
-    for cellKey, cell in pairs(zd) do
-        streamWriteInt32(streamId,   tonumber(cellKey) or 0)
-        streamWriteFloat32(streamId, cell.N  or 0)
-        streamWriteFloat32(streamId, cell.P  or 0)
-        streamWriteFloat32(streamId, cell.K  or 0)
-        streamWriteFloat32(streamId, cell.pH or 6.0)
-        streamWriteFloat32(streamId, cell.OM or 0)
-        streamWriteFloat32(streamId, cell.weedPressure    or 0)
-        streamWriteFloat32(streamId, cell.pestPressure    or 0)
-        streamWriteFloat32(streamId, cell.diseasePressure or 0)
-        streamWriteFloat32(streamId, cell.compaction      or 0)
-    end
+    -- Zone cell data: send 0 cells in per-update broadcasts.
+    -- All zone cells are already synced to the field aggregate after each apply, so
+    -- sending them here is redundant — and on large fields with wide-boom spreaders
+    -- the cell count can reach thousands, overflowing the FS25 packet size limit and
+    -- crashing the dedicated server. Clients fall back to getLayerColor() (aggregate)
+    -- for any cells not in their local zoneData, so the overlay is still correct.
+    streamWriteInt32(streamId, 0)
 end
 
 function SoilFieldUpdateEvent:run(connection)
@@ -972,15 +967,38 @@ function SoilFieldUpdateEvent:run(connection)
     if g_client == nil then return end
 
     if g_SoilFertilityManager and g_SoilFertilityManager.soilSystem then
-        g_SoilFertilityManager.soilSystem.fieldData[self.fieldId] = self.field
+        local soilSys = g_SoilFertilityManager.soilSystem
+        local newField = self.field
 
-        -- Refresh overlay so the map tile updates on the client without waiting for the 4.5-s timer
+        -- Preserve the client's local zoneData and sync all existing cells to the
+        -- new aggregate values. The broadcast no longer ships zone cells (packet
+        -- overflow risk on wide-boom spreaders), so we reconstruct per-cell display
+        -- from the field aggregate — same as what applyFertilizer does server-side.
+        local existing = soilSys.fieldData[self.fieldId]
+        if existing and existing.zoneData then
+            newField.zoneData = existing.zoneData
+            for _, cell in pairs(newField.zoneData) do
+                cell.N  = newField.nitrogen
+                cell.P  = newField.phosphorus
+                cell.K  = newField.potassium
+                cell.pH = newField.pH
+                cell.OM = newField.organicMatter
+                cell.weedPressure    = newField.weedPressure    or cell.weedPressure
+                cell.pestPressure    = newField.pestPressure    or cell.pestPressure
+                cell.diseasePressure = newField.diseasePressure or cell.diseasePressure
+                cell.compaction      = newField.compaction      or cell.compaction
+            end
+        end
+
+        soilSys.fieldData[self.fieldId] = newField
+
+        -- Refresh overlay so the map tile updates on the client without waiting for the timer
         local overlay = g_SoilFertilityManager.soilMapOverlay
         if overlay then overlay:requestRefresh() end
 
         if g_SoilFertilityManager.settings.debugMode then
             SoilLogger.debug("Client: Field %d synced from server (N=%.1f, P=%.1f, K=%.1f)",
-                self.fieldId, self.field.nitrogen, self.field.phosphorus, self.field.potassium)
+                self.fieldId, newField.nitrogen, newField.phosphorus, newField.potassium)
         end
     end
 end

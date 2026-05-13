@@ -2033,6 +2033,10 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     )
 end
 
+-- Maximum zone cells stored per field. Prevents unbounded memory growth and network
+-- packet overflow on large/intensively-farmed fields (see markBoomCells, applyFertilizer).
+local MAX_ZONE_CELLS = 1000
+
 -- Apply fertilizer
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     if not self.settings.enabled then return end
@@ -2201,17 +2205,21 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
 
             if not field.zoneData then field.zoneData = {} end
             if not field.zoneData[cellKey] then
-                field.zoneData[cellKey] = {
-                    N  = field.nitrogen,
-                    P  = field.phosphorus,
-                    K  = field.potassium,
-                    pH = field.pH,
-                    OM = field.organicMatter,
-                    weedPressure = field.weedPressure,
-                    pestPressure = field.pestPressure,
-                    diseasePressure = field.diseasePressure,
-                    compaction = field.compaction,
-                }
+                local zdCount = 0
+                for _ in pairs(field.zoneData) do zdCount = zdCount + 1 end
+                if zdCount < MAX_ZONE_CELLS then
+                    field.zoneData[cellKey] = {
+                        N  = field.nitrogen,
+                        P  = field.phosphorus,
+                        K  = field.potassium,
+                        pH = field.pH,
+                        OM = field.organicMatter,
+                        weedPressure = field.weedPressure,
+                        pestPressure = field.pestPressure,
+                        diseasePressure = field.diseasePressure,
+                        compaction = field.compaction,
+                    }
+                end
             end
             local cell = field.zoneData[cellKey]
             -- cellFactor must use areaInHa (not zone.CELL_AREA_HA) so that each cell
@@ -2429,19 +2437,30 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
         if not seen[cellKey] then
             seen[cellKey] = true
             if not field.zoneData then field.zoneData = {} end
-            -- Always sync to current field values so lateral boom cells reflect the
-            -- fertilizer that was just applied, not stale values from a previous pass.
-            field.zoneData[cellKey] = {
-                N  = field.nitrogen       or SoilConstants.FIELD_DEFAULTS.nitrogen,
-                P  = field.phosphorus     or SoilConstants.FIELD_DEFAULTS.phosphorus,
-                K  = field.potassium      or SoilConstants.FIELD_DEFAULTS.potassium,
-                pH = field.pH             or SoilConstants.FIELD_DEFAULTS.pH,
-                OM = field.organicMatter  or SoilConstants.FIELD_DEFAULTS.organicMatter,
-                weedPressure    = field.weedPressure    or 0,
-                pestPressure    = field.pestPressure    or 0,
-                diseasePressure = field.diseasePressure or 0,
-                compaction      = field.compaction      or 0,
-            }
+            -- Enforce cell cap: existing cells are always synced via applyFertilizer,
+            -- so skipping new ones beyond the cap only affects sub-field visual detail,
+            -- not correctness of the aggregate nutrient values.
+            local canWrite = true
+            if field.zoneData[cellKey] == nil then
+                local count = 0
+                for _ in pairs(field.zoneData) do count = count + 1 end
+                if count >= MAX_ZONE_CELLS then canWrite = false end
+            end
+            if canWrite then
+                -- Always sync to current field values so lateral boom cells reflect the
+                -- fertilizer that was just applied, not stale values from a previous pass.
+                field.zoneData[cellKey] = {
+                    N  = field.nitrogen       or SoilConstants.FIELD_DEFAULTS.nitrogen,
+                    P  = field.phosphorus     or SoilConstants.FIELD_DEFAULTS.phosphorus,
+                    K  = field.potassium      or SoilConstants.FIELD_DEFAULTS.potassium,
+                    pH = field.pH             or SoilConstants.FIELD_DEFAULTS.pH,
+                    OM = field.organicMatter  or SoilConstants.FIELD_DEFAULTS.organicMatter,
+                    weedPressure    = field.weedPressure    or 0,
+                    pestPressure    = field.pestPressure    or 0,
+                    diseasePressure = field.diseasePressure or 0,
+                    compaction      = field.compaction      or 0,
+                }
+            end
         end
     end
 end

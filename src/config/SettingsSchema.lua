@@ -223,6 +223,13 @@ SettingsSchema.definitions = {
         uiId = "sf_overlay_density",
         localOnly = true,  -- per-player render preference, not synced to server
     },
+    {
+        id = "colorblindMode",
+        type = "boolean",
+        default = false,
+        uiId = "sf_colorblind_mode",
+        localOnly = true,  -- per-player accessibility preference, not synced to server
+    },
 }
 
 -- Build lookup table by id for fast access

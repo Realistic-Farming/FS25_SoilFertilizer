@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="Couche de nutriments affichée en surimpression sur la carte PDA" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Détails de la carte" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Budget de points d'échantillonnage pour l'incrustation du sol PDA. Bas = meilleur FPS, Haut = couverture plus complète." eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="Ouvrir réglages du sol" eh="2e31c0dd" />
     <e k="sf_reset" v="Réinitialiser réglages du sol" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Basculer HUD sol" eh="f0224a10" />
@@ -593,6 +595,7 @@
     <e k="sf_desc_cropRotation" v="Avantages et pénalités de rotation" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Couche affichée sur la carte PDA" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Budget points (Bas=8k, Moyen=20k, Haut=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
 
     <e k="sf_rr_1" v="Très lent (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Lent (0.5x)" eh="db69874d" />

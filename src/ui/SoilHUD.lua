@@ -39,6 +39,10 @@ SoilHUD.C_BAR_BG     = {0.18, 0.18, 0.18, 0.90}   -- neutral bar track
 SoilHUD.C_GOOD       = {0.25, 0.85, 0.25, 1.00}   -- green  — data color, keep
 SoilHUD.C_FAIR       = {0.90, 0.82, 0.18, 1.00}   -- yellow — data color, keep
 SoilHUD.C_POOR       = {0.88, 0.25, 0.25, 1.00}   -- red    — data color, keep
+-- Okabe-Ito colorblind-safe palette (orange / yellow / blue)
+SoilHUD.CB_GOOD      = {0.00, 0.45, 0.70, 1.00}   -- blue
+SoilHUD.CB_FAIR      = {0.94, 0.86, 0.00, 1.00}   -- yellow
+SoilHUD.CB_POOR      = {0.90, 0.37, 0.00, 1.00}   -- vermillion/orange
 SoilHUD.C_LABEL      = {0.72, 0.72, 0.72, 1.00}   -- neutral gray, no green tint
 SoilHUD.C_VALUE      = {1.00, 1.00, 1.00, 1.00}
 SoilHUD.C_DIM        = {0.52, 0.52, 0.52, 0.85}   -- neutral dim
@@ -770,22 +774,34 @@ function SoilHUD:toggleVisibility()
 end
 
 -- ── Color helpers ────────────────────────────────────────
+
+-- Returns poor, fair, good color tables based on colorblind setting.
+function SoilHUD:palette()
+    if self.settings and self.settings.colorblindMode then
+        return SoilHUD.CB_POOR, SoilHUD.CB_FAIR, SoilHUD.CB_GOOD
+    end
+    return SoilHUD.C_POOR, SoilHUD.C_FAIR, SoilHUD.C_GOOD
+end
+
 function SoilHUD:statusColor(status)
-    if status == "Good" then return SoilHUD.C_GOOD
-    elseif status == "Fair" then return SoilHUD.C_FAIR
-    else return SoilHUD.C_POOR end
+    local poor, fair, good = self:palette()
+    if status == "Good" then return good
+    elseif status == "Fair" then return fair
+    else return poor end
 end
 
 function SoilHUD:pHColor(pH)
-    if pH >= 6.5 and pH <= 7.0 then return SoilHUD.C_GOOD
-    elseif pH >= 5.5 and pH <= 7.5 then return SoilHUD.C_FAIR
-    else return SoilHUD.C_POOR end
+    local poor, fair, good = self:palette()
+    if pH >= 6.5 and pH <= 7.0 then return good
+    elseif pH >= 5.5 and pH <= 7.5 then return fair
+    else return poor end
 end
 
 function SoilHUD:omColor(om)
-    if om >= 4.0 then return SoilHUD.C_GOOD
-    elseif om >= 2.5 then return SoilHUD.C_FAIR
-    else return SoilHUD.C_POOR end
+    local poor, fair, good = self:palette()
+    if om >= 4.0 then return good
+    elseif om >= 2.5 then return fair
+    else return poor end
 end
 
 function SoilHUD:overallStatus(info)
@@ -796,18 +812,20 @@ function SoilHUD:overallStatus(info)
         local r = rank[info[key].status] or 3
         if r > worst then worst = r end
     end
-    -- pH
+    -- pH (threshold-based, palette-independent)
     if info.pH then
-        local r = rank[self:pHColor(info.pH) == SoilHUD.C_POOR and "Poor"
-                    or self:pHColor(info.pH) == SoilHUD.C_FAIR and "Fair"
-                    or "Good"] or 1
+        local s = (info.pH >= 6.5 and info.pH <= 7.0) and "Good"
+               or (info.pH >= 5.5 and info.pH <= 7.5) and "Fair"
+               or "Poor"
+        local r = rank[s] or 1
         if r > worst then worst = r end
     end
-    -- OM
+    -- OM (threshold-based, palette-independent)
     if info.organicMatter then
-        local r = rank[self:omColor(info.organicMatter) == SoilHUD.C_POOR and "Poor"
-                    or self:omColor(info.organicMatter) == SoilHUD.C_FAIR and "Fair"
-                    or "Good"] or 1
+        local s = (info.organicMatter >= 4.0) and "Good"
+               or (info.organicMatter >= 2.5) and "Fair"
+               or "Poor"
+        local r = rank[s] or 1
         if r > worst then worst = r end
     end
     -- Weed / pest / disease pressures (0-100, 3-level: <25 Good, <60 Fair, else Poor)
@@ -818,9 +836,10 @@ function SoilHUD:overallStatus(info)
             if r > worst then worst = r end
         end
     end
-    if worst == 1 then return "Good", SoilHUD.C_GOOD
-    elseif worst == 2 then return "Fair", SoilHUD.C_FAIR
-    else return "Poor", SoilHUD.C_POOR end
+    local poor, fair, good = self:palette()
+    if worst == 1 then return "Good", good
+    elseif worst == 2 then return "Fair", fair
+    else return "Poor", poor end
 end
 
 -- ── Draw helper ──────────────────────────────────────────
@@ -1089,8 +1108,9 @@ function SoilHUD:drawPanel()
                 local covPct = math.floor(cov * 100 + 0.5)
                 local minPct = math.floor(minCov * 100 + 0.5)
                 local covText = string.format(g_i18n:getText("sf_hud_coverage"), covPct, minPct)
-                local cr, cg, cb = 0.90, 0.35, 0.15  -- amber-red: below threshold
-                if cov >= minCov then cr, cg, cb = 0.32, 0.88, 0.44 end  -- green: at/above
+                local covPoor, _, covGood = self:palette()
+                local cr, cg, cb = covPoor[1], covPoor[2], covPoor[3]
+                if cov >= minCov then cr, cg, cb = covGood[1], covGood[2], covGood[3] end
                 local pad = SoilHUD.PAD * s
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
@@ -1565,16 +1585,17 @@ function SoilHUD:drawMiniReport()
 
             -- Status color: thresholds at 33% / 66% of range
             local col
+            local barPoor, barFair, barGood = self:palette()
             if row.label == "pH" then
                 -- pH sweet-spot 6.0-7.0; outside is worse
                 local norm = (row.val - 5.0) / 2.5  -- 0=5.0, 1=7.5
-                if norm >= 0.40 and norm <= 0.80 then col = SoilHUD.C_GOOD
-                elseif norm >= 0.20 and norm <= 0.90 then col = SoilHUD.C_FAIR
-                else col = SoilHUD.C_POOR end
+                if norm >= 0.40 and norm <= 0.80 then col = barGood
+                elseif norm >= 0.20 and norm <= 0.90 then col = barFair
+                else col = barPoor end
             else
-                if frac >= 0.66 then col = SoilHUD.C_GOOD
-                elseif frac >= 0.33 then col = SoilHUD.C_FAIR
-                else col = SoilHUD.C_POOR end
+                if frac >= 0.66 then col = barGood
+                elseif frac >= 0.33 then col = barFair
+                else col = barPoor end
             end
 
             -- Bar track

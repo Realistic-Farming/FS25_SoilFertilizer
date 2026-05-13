@@ -83,6 +83,8 @@
     <e k="sf_active_map_layer_long" v="Lapisan nutrisi ditampilkan sebagai overlay di peta PDA" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Detail Peta" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Anggaran titik sampel untuk overlay tanah PDA. Rendah = FPS lebih baik, Tinggi = cakupan lebih penuh pada peta besar." eh="89215ce5" />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="input_SF_OPEN_SETTINGS" v="Buka Pengaturan Tanah" eh="2e31c0dd" />
     <e k="sf_reset" v="Atur Ulang Pengaturan Tanah" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Beralih HUD Tanah" eh="f0224a10" />
@@ -631,6 +633,7 @@
     <e k="sf_desc_cropRotation" v="Manfaat dan penalti rotasi" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Lapisan nutrisi ditunjukkan di peta PDA" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Anggaran titik sampel (Rendah=8k, Sed=20k, Tinggi=40k)" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
 
     <!-- ======================================================
          SETTINGS PANEL — MULTI-OPTION VALUES
