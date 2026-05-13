@@ -1,7 +1,7 @@
 # Repository Traffic Dashboard
 
-**Last updated:** 2026-05-12T00:03:13Z
-**Days tracked:** 36 | **Download snapshots:** 515 (hourly)
+**Last updated:** 2026-05-13T00:05:23Z
+**Days tracked:** 37 | **Download snapshots:** 524 (hourly)
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Metric | 14-Day Total | Unique |
 |--------|-------------|--------|
-| Page Views | 10720 | 1095 |
-| Git Clones | 4577 | 1225 |
+| Page Views | 10197 | 1061 |
+| Git Clones | 4622 | 1216 |
 
-> **Engagement:** 9.7 pages per visitor (14-day avg)
+> **Engagement:** 9.6 pages per visitor (14-day avg)
 
 ---
 
@@ -30,9 +30,9 @@
 
 ![Conversion](charts/conversion.png)
 
-> **14-day conversion:** 3014 of 1095 visitors cloned or downloaded (**275.2%**)
+> **14-day conversion:** 3021 of 1061 visitors cloned or downloaded (**284.7%**)
 >
-> Unique cloners: 1225 | Release downloads: 1789
+> Unique cloners: 1216 | Release downloads: 1805
 
 ---
 
@@ -42,9 +42,9 @@
 
 | Channel | Count |
 |---------|-------|
-| Zip Downloads | 1789 |
-| Git Clones (14-day) | 4577 |
-| **Total Acquisitions** | **6366** |
+| Zip Downloads | 1805 |
+| Git Clones (14-day) | 4622 |
+| **Total Acquisitions** | **6427** |
 
 ---
 
@@ -54,16 +54,16 @@
 
 | Source | Views | Unique |
 |--------|-------|--------|
-| github.com | 2368 | 183 |
-| kingmods.net | 1020 | 241 |
-| Google | 745 | 191 |
-| Bing | 101 | 27 |
-| ntp.msn.com | 42 | 3 |
+| github.com | 2364 | 179 |
+| kingmods.net | 960 | 232 |
+| Google | 742 | 189 |
+| Bing | 85 | 26 |
 | search.brave.com | 41 | 7 |
-| com.reddit.frontpage | 31 | 24 |
-| reddit.com | 28 | 19 |
+| ntp.msn.com | 40 | 2 |
+| com.reddit.frontpage | 28 | 21 |
+| reddit.com | 27 | 18 |
+| DuckDuckGo | 7 | 5 |
 | symbaloo.com | 6 | 1 |
-| DuckDuckGo | 5 | 4 |
 
 ---
 
@@ -83,16 +83,16 @@
 
 | Page | Views | Unique |
 |------|-------|--------|
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer` | 3837 | 864 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases` | 1292 | 292 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues` | 1047 | 168 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer` | 3758 | 835 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases` | 1251 | 293 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues` | 1011 | 169 |
 | `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.0.9.0` | 298 | 180 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.0.6.0` | 173 | 89 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/blob/main/CHANGELOG.md` | 138 | 111 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions` | 137 | 61 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.5.5` | 128 | 96 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues/292` | 116 | 40 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/pulls` | 105 | 53 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/blob/main/CHANGELOG.md` | 142 | 112 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.5.5` | 131 | 97 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues/292` | 119 | 41 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.0.9.1` | 108 | 48 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions` | 106 | 64 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.5.4` | 102 | 76 |
 
 ---
 
