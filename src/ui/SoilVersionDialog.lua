@@ -24,10 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: sowing no longer instantly maxes out NPK",
-    "- Fixed: soil map cell display now covers full boom width",
-    "- Fixed: custom fill types work correctly with ground tipping",
-    "- Fixed: density map type load order stability improvement",
+    "- Fixed: organic fill type piles no longer render black",
+    "- Fixed: pile textures now apply correctly after map load",
+    "- Fixed: pile height now uses correct density map height type",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
