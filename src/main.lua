@@ -99,22 +99,75 @@ local function loadedMission(mission, node)
     end
     sfm:onMissionLoaded()
 
-    -- TIP ON GROUND FIX: register density map height types now that fill types are live.
-    -- At this point g_fillTypeManager resolves our fill type names correctly (confirmed by
-    -- HUD icon patching below). All earlier hook points fire before the engine finishes
-    -- its modDesc.xml <fillTypes> pass, leaving our types nil.
-    if g_densityMapHeightManager ~= nil
-    and type(g_densityMapHeightManager.loadDensityMapHeightTypes) == "function" then
-        local htFile = loadXMLFile("soilHeightTypes", modDirectory .. "xml/densityMapHeightTypes.xml")
-        if htFile ~= nil and htFile ~= 0 then
-            g_densityMapHeightManager:loadDensityMapHeightTypes(htFile, mission.missionInfo, modDirectory, false)
-            delete(htFile)
-            SoilLogger.info("Tip On Ground Fix: Height types registered in loadedMission")
+    -- TIP ON GROUND FIX: directly inject our solid fill types into the
+    -- DensityMapHeightManager Lua tables so they can be tipped to the ground.
+    --
+    -- Root cause: loadDensityMapHeightTypes() is a C++ native that uses a C++
+    -- fill type registry populated only during DensityMapHeightManager.loadMapData
+    -- (before mod fill types are available). Calling it later always returns
+    -- "invalid fill type 'nil'" for all our types.
+    --
+    -- Solution: populate the Lua tables directly at loadMission00Finished time,
+    -- using the FERTILIZER entry as the structural template. Field values confirmed
+    -- from debug pass 2 (2026-05-13): allowsSmoothing, canBeTipped, collisionBaseOffset,
+    -- collisionScale, fillToGroundScale, fillTypeIndex, fillTypeName, index,
+    -- maxCollisionOffset, maxSurfaceAngle, minCollisionOffset.
+    do
+        local dmhm = g_densityMapHeightManager
+        local ftm  = g_fillTypeManager
+        if dmhm and ftm and dmhm.heightTypes and dmhm.fillTypeIndexToHeightType then
+            -- Use FERTILIZER as the structural template (confirmed working, granular).
+            local tmpl = nil
+            local fertIdx = ftm:getFillTypeIndexByName("FERTILIZER")
+            if fertIdx then tmpl = dmhm.fillTypeIndexToHeightType[fertIdx] end
+
+            if tmpl then
+                -- Our 11 solid fill types that need ground-tipping support.
+                local solidTypes = {
+                    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH",
+                    "GYPSUM", "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE",
+                }
+                local registered = 0
+                for _, typeName in ipairs(solidTypes) do
+                    local idx = ftm:getFillTypeIndexByName(typeName)
+                    if idx and not dmhm.fillTypeIndexToHeightType[idx] then
+                        local nextSlot = dmhm.numHeightTypes + 1
+                        -- Build a new height type object mirroring the FERTILIZER template.
+                        local ht = {
+                            allowsSmoothing    = false,
+                            canBeTipped        = true,
+                            collisionBaseOffset = 0.0,
+                            collisionScale      = 1,
+                            fillToGroundScale   = 1,
+                            fillTypeIndex       = idx,
+                            fillTypeName        = typeName,
+                            index               = nextSlot,
+                            maxCollisionOffset  = 0.0,
+                            maxSurfaceAngle     = tmpl.maxSurfaceAngle,
+                            minCollisionOffset  = 0,
+                        }
+                        dmhm.fillTypeIndexToHeightType[idx]       = ht
+                        dmhm.fillTypeNameToHeightType[typeName]   = ht
+                        dmhm.heightTypeIndexToFillTypeIndex[nextSlot] = idx
+                        dmhm.heightTypes[nextSlot]                = ht
+                        dmhm.numHeightTypes                       = nextSlot
+                        registered = registered + 1
+                    end
+                end
+                -- Verify at least one registration worked by checking getMinValidLiterValue.
+                local testIdx = ftm:getFillTypeIndexByName("UREA")
+                local ok, val = pcall(function() return dmhm:getMinValidLiterValue(testIdx) end)
+                SoilLogger.info(string.format(
+                    "[TIP FIX] Injected %d solid fill types into DMHM. " ..
+                    "getMinValidLiterValue(UREA)=%s (>0 = success)",
+                    registered, tostring(ok and val or "ERROR")
+                ))
+            else
+                SoilLogger.warning("[TIP FIX] FERTILIZER template not found in DMHM — tip injection skipped")
+            end
         else
-            SoilLogger.warning("Tip On Ground Fix: Could not open densityMapHeightTypes.xml")
+            SoilLogger.warning("[TIP FIX] g_densityMapHeightManager not available at loadedMission — tip injection skipped")
         end
-    else
-        SoilLogger.warning("Tip On Ground Fix: g_densityMapHeightManager not available")
     end
 
     -- Fallback: register atlas if it was skipped at load time (g_overlayManager was nil then).
