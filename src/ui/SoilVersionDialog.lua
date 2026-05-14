@@ -28,9 +28,6 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed: liquid fertilizer StreamWriteInt32 nil crash — sprayer rate events now have nil-safe fallbacks",
     "- Fixed: server crash during sprayer rate sync (nil network ID in writeStream)",
     "- Fixed: server crash with dry fertilizer (urea spreader) — zone cell packet overflow",
-    "- Fixed: soil map tiles now update after fertilizer on dedicated server clients",
-    "- Added: Colorblind Mode toggle in Display settings (orange/blue palette for deuteranopia)",
-    "- Added: Field Info Box toggle in Display settings (show/hide soil panel on field entry)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
