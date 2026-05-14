@@ -24,10 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: HUD layout now saves to modSettings/ — dedicated server clients keep preferences",
-    "- Fixed: HUD visibility (J key) now saves immediately on toggle",
-    "- Fixed: modSettings folder name corrected (was modsSettings — settings were lost)",
-    "- Added: debug output files in modSettings/FS25_SoilFertilizer/Debug/",
+    "- Fixed HUD layout now saves to modSettings/ — dedicated server clients keep preferences",
+    "- Fixed HUD visibility (J key) now saves immediately on toggle",
+    "- Fixed modSettings folder name corrected (was modsSettings — settings were lost)",
+    "- Added debug output files in modSettings/FS25_SoilFertilizer/Debug/",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
