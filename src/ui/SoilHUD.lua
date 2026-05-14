@@ -219,6 +219,19 @@ end
 
 -- ── HUD layout persistence ────────────────────────────────
 function SoilHUD:getLayoutPath()
+    -- Per-player UI state must live in the user profile, not the savegame.
+    -- Savegame paths are inaccessible to clients on dedicated servers and may
+    -- resolve to "Savegame0" on first load before the save directory exists.
+    local ok, profilePath = pcall(getUserProfileAppPath)
+    if ok and profilePath and profilePath ~= "" then
+        if profilePath:sub(-1) ~= "/" and profilePath:sub(-1) ~= "\\" then
+            profilePath = profilePath .. "/"
+        end
+        local dir = profilePath .. "modsSettings"
+        createFolder(dir)
+        return dir .. "/" .. (g_currentModName or "FS25_SoilFertilizer") .. "_hud.xml"
+    end
+    -- Fallback for self-hosted / singleplayer environments without a profile path.
     if g_currentMission and g_currentMission.missionInfo and g_currentMission.missionInfo.savegameDirectory then
         return g_currentMission.missionInfo.savegameDirectory .. "/FS25_SoilFertilizer_hud.xml"
     end
@@ -766,6 +779,7 @@ function SoilHUD:toggleVisibility()
     if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
         g_currentMission.hud:showBlinkingWarning(msg, 2000)
     end
+    self:saveLayout()
 end
 
 -- ── Color helpers ────────────────────────────────────────
