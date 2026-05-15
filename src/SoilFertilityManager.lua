@@ -951,7 +951,7 @@ function SoilFertilityManager:loadSoilData()
 
     local savegamePath = g_currentMission.missionInfo.savegameDirectory
     if not savegamePath then
-        SoilLogger.error("loadSoilData: savegameDirectory is nil")
+        SoilLogger.warning("loadSoilData: savegameDirectory not set yet (new career or early load) — starting with defaults")
         return
     end
 

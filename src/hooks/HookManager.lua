@@ -1148,9 +1148,12 @@ function HookManager:installMowerHook()
 
             -- lastStatsArea: density-map pixels processed this tick (same unit as Cutter's lastArea)
             local area = spec.workAreaParameters.lastStatsArea or 0
+            local fruitType = spec.workAreaParameters.lastInputFruitType
+
+            SoilLogger.debug("[MowerHook] fired: area=%.1f fruitType=%s", area, tostring(fruitType))
+
             if area <= 0 then return end
 
-            local fruitType = spec.workAreaParameters.lastInputFruitType
             if not fruitType or fruitType <= 0 then return end
 
             local success, errorMsg = pcall(function()
