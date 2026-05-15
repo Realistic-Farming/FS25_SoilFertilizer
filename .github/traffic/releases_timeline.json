@@ -547,11 +547,11 @@
   "v2.1.6.8": {
     "published_at": "2026-05-14T12:06:49Z",
     "tag": "v2.1.6.8",
-    "peak_downloads": 107
+    "peak_downloads": 117
   },
   "v2.1.6.9-digestate-beta.1": {
     "published_at": "2026-05-14T22:26:01Z",
     "tag": "v2.1.6.9-digestate-beta.1",
-    "peak_downloads": 0
+    "peak_downloads": 3
   }
 }
