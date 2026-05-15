@@ -44,7 +44,7 @@
             <physics massPerLiter="0.77" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.65"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/urea/bigBag_urea.xml" />
         </fillType>
@@ -56,7 +56,8 @@
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" unitSize="0.4" blendContrast="0.2" noiseScale="0.5" porosityAtZeroRoughness="0.9" porosityAtFullRoughness="1"
                       normal="$data/fillPlanes/fertilizer_normal.png"
                       height="$data/fillPlanes/fertilizer_height.png"
-                      displacement="$data/fillPlanes/fertilizer_displacement.png" displacementMaxHeight="0.2" firmness="0.3" viscosity="0.5"/>
+                      displacement="$data/fillPlanes/fertilizer_displacement.png" displacementMaxHeight="0.2" firmness="0.3" viscosity="0.5"
+                      distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/an/bigBag_an.xml" />
         </fillType>
@@ -65,7 +66,7 @@
             <physics massPerLiter="0.87" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.40"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/ams/bigBag_ams.xml" />
         </fillType>
@@ -74,7 +75,7 @@
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.95"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/map/bigBag_map.xml" />
         </fillType>
@@ -83,7 +84,7 @@
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.75"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/dap/bigBag_dap.xml" />
         </fillType>
@@ -92,7 +93,7 @@
             <physics massPerLiter="0.95" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.80"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/potash/bigBag_potash.xml" />
         </fillType>
@@ -165,7 +166,7 @@
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="0.55"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/lime_diffuse.dds" normal="$data/fillPlanes/lime_normal.dds" height="$data/fillPlanes/lime_height.dds" displacement="$data/fillPlanes/lime_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/lime_diffuse.dds" normal="$data/fillPlanes/lime_normal.dds" height="$data/fillPlanes/lime_height.dds" displacement="$data/fillPlanes/lime_displacement.dds" distance="$data/fillPlanes/distance/limeDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/gypsum/bigBag_gypsum.xml" />
         </fillType>
@@ -174,7 +175,7 @@
             <physics massPerLiter="0.60" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="0.35"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$data/fillPlanes/distance/woodChipsDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/compost/bigBag_compost.xml" />
         </fillType>
@@ -183,7 +184,7 @@
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="0.50"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$data/fillPlanes/distance/manureDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/biosolids/bigBag_biosolids.xml" />
         </fillType>
@@ -192,7 +193,7 @@
             <physics massPerLiter="0.65" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="0.45"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$data/fillPlanes/distance/manureDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/chicken_manure/bigBag_chicken_manure.xml" />
         </fillType>
@@ -201,7 +202,7 @@
             <physics massPerLiter="0.75" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="1.10"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/mineralFeed_diffuse.dds" normal="$data/fillPlanes/mineralFeed_normal.dds" height="$data/fillPlanes/mineralFeed_height.dds" displacement="$data/fillPlanes/mineralFeed_displacement.dds"/>
+            <textures diffuse="$data/fillPlanes/mineralFeed_diffuse.dds" normal="$data/fillPlanes/mineralFeed_normal.dds" height="$data/fillPlanes/mineralFeed_height.dds" displacement="$data/fillPlanes/mineralFeed_displacement.dds" distance="$data/fillPlanes/distance/mineralFeedDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/pelletized_manure/bigBag_pelletized_manure.xml" />
         </fillType>
