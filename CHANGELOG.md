@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `debug.xml` — buffered `SoilLogger.debug()` messages (flushed when debug mode is toggled off or the game session ends)
   - `field_dump.xml` — full nutrient snapshot for a single field (written each time `SoilFieldInfo <id>` is run)
   - `soil_export.xml` — snapshot of all tracked field data (written each time `SoilSaveData` is run)
+- **Current-pass coverage tracker** — The HUD now shows spray-pass progress as `"Pass: 45% (Digestate)"` regardless of the native FS25 fertilizer density-map state. Farmers working a field already at 100% vanilla fertilizer state could no longer see which strips they had covered (soil doesn't darken further); the new tracker accumulates coverage area independently and displays the localized product name alongside the percentage. Turns green at the ≥70% full-coverage threshold. Resets on harvest; survives game-day rollovers mid-pass.
 
 ---
 

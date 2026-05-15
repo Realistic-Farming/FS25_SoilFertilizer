@@ -292,6 +292,14 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
     -- nutrients regardless of the yield modifier applied in the combine hook.
     self:updateFieldNutrients(fieldId, fruitTypeIndex, liters, strawRatio, area)
 
+    -- Reset session spray coverage so the next fertilizing pass starts fresh
+    local harvestField = self.fieldData[fieldId]
+    if harvestField then
+        harvestField.sessionCoverageHa       = 0
+        harvestField.sessionCoverageFraction = 0
+        harvestField.sessionLastProduct      = nil
+    end
+
     SoilLogger.debug("Harvest: Field %d, Crop %d, %.0fL (biological), area=%.1f", fieldId, fruitTypeIndex, liters, area or 0)
 
     -- Broadcast to clients if server in multiplayer
@@ -1549,6 +1557,9 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         totalFieldCells = 0,  -- Legacy: kept for daily reset compat
         coveredAreaHa = 0,    -- Hectares covered today (area-based tracker, reset daily)
         coverageFraction = 0, -- Fraction of field covered today (0.0–1.0)
+        sessionCoverageHa = 0,       -- Hectares covered this game session (resets on harvest, not daily)
+        sessionCoverageFraction = 0, -- Derived 0.0–1.0 fraction for current-pass HUD display
+        sessionLastProduct = nil,    -- Fill type name of last product applied this session
         compaction = 0,            -- field-average compaction 0–100 (derived from cells)
         compactionCells = {},      -- {cellKey → 0-100} per-cell compaction (10×10 m grid)
         compactionCellDays = {},   -- {cellKey → day} per-cell once-per-day throttle (transient)
@@ -2437,6 +2448,11 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName)
     local prevCoverage = field.coverageFraction or 0
     field.coverageFraction = math.min(1.0, field.coveredAreaHa / areaInHa)
 
+    -- Session accumulator: persists across daily resets, clears only on harvest
+    field.sessionCoverageHa       = math.min(areaInHa, (field.sessionCoverageHa or 0) + areaThisTick)
+    field.sessionCoverageFraction = math.min(1.0, field.sessionCoverageHa / areaInHa)
+    if fillTypeName then field.sessionLastProduct = fillTypeName end
+
     local milestones = { 0.10, 0.25, 0.50, 0.75, 1.0 }
     for _, m in ipairs(milestones) do
         if prevCoverage < m and field.coverageFraction >= m then
@@ -2814,8 +2830,10 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         diseasePressure = field.diseasePressure or 0,
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         burnDaysLeft = field.burnDaysLeft or 0,
-        nutrientBuffer   = field.nutrientBuffer or {},
-        coverageFraction = field.coverageFraction or 0,
+        nutrientBuffer          = field.nutrientBuffer or {},
+        coverageFraction        = field.coverageFraction or 0,
+        sessionCoverageFraction = field.sessionCoverageFraction or 0,
+        sessionLastProduct      = field.sessionLastProduct,
         compaction = field.compaction or 0,
         needsFertilization = (
             field.nitrogen < fertThresholds.nitrogen or

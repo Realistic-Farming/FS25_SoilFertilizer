@@ -288,7 +288,7 @@ function SoilHUD:calculateHeight()
             if mgr.settings.weedPressure and (info.weedPressure or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.pestPressure and (info.pestPressure or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.diseasePressure and (info.diseasePressure or 0) > 0 then h = h + SoilHUD.LINE_H end
-            if (info.coverageFraction or 0) > 0 then h = h + SoilHUD.LINE_H end
+            if (info.sessionCoverageFraction or info.coverageFraction or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then h = h + SoilHUD.LINE_H end
         end
         
@@ -1102,13 +1102,21 @@ function SoilHUD:drawPanel()
                     info.fungicideActive, px, cy, pw, s, fontMult)
             end
 
-            -- Coverage fraction row (only when actively fertilizing this field today)
-            local cov = info.coverageFraction or 0
+            -- Coverage row: session fraction (survives daily resets) with product label
+            local cov = info.sessionCoverageFraction or info.coverageFraction or 0
             if cov > 0 then
                 local minCov = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
                 local covPct = math.floor(cov * 100 + 0.5)
-                local minPct = math.floor(minCov * 100 + 0.5)
-                local covText = string.format(g_i18n:getText("sf_hud_coverage"), covPct, minPct)
+                local covText
+                local lastProd = info.sessionLastProduct
+                if lastProd then
+                    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByName(lastProd)
+                    local productLabel = (ft and ft.title) or lastProd
+                    covText = string.format(g_i18n:getText("sf_hud_pass_coverage"), covPct, productLabel)
+                else
+                    local minPct = math.floor(minCov * 100 + 0.5)
+                    covText = string.format(g_i18n:getText("sf_hud_coverage"), covPct, minPct)
+                end
                 local covPoor, _, covGood = self:palette()
                 local cr, cg, cb = covPoor[1], covPoor[2], covPoor[3]
                 if cov >= minCov then cr, cg, cb = covGood[1], covGood[2], covGood[3] end

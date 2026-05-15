@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Půda &amp; Hnojivo" eh="f31197fb" />
@@ -542,6 +542,7 @@
     <e k="sf_hud_label_om" v="OM" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Pokrytí: %d%% / %d%%" eh="d407bb6d" />
+    <e k="sf_hud_pass_coverage" v="Průjezd: %d%% (%s)" eh="00000000" />
     <e k="sf_hud_compaction" v="Zhutnění: %d%%" eh="bef3a4f5" />
 
     <!-- ======================================================
