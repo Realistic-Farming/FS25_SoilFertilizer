@@ -714,16 +714,21 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local zdCount = streamReadInt32(streamId)
         for _ = 1, zdCount do
             local keyInt = streamReadInt32(streamId)
+            local zN  = streamReadFloat32(streamId)
+            local zP  = streamReadFloat32(streamId)
+            local zK  = streamReadFloat32(streamId)
+            local zpH = streamReadFloat32(streamId)
+            local zOM = streamReadFloat32(streamId)
             zd[tostring(keyInt)] = {
-                N               = streamReadFloat32(streamId),
-                P               = streamReadFloat32(streamId),
-                K               = streamReadFloat32(streamId),
-                pH              = streamReadFloat32(streamId),
-                OM              = streamReadFloat32(streamId),
-                weedPressure    = streamReadFloat32(streamId),
-                pestPressure    = streamReadFloat32(streamId),
-                diseasePressure = streamReadFloat32(streamId),
-                compaction      = streamReadFloat32(streamId),
+                N               = math.max(0, math.min(100, zN)),
+                P               = math.max(0, math.min(100, zP)),
+                K               = math.max(0, math.min(100, zK)),
+                pH              = math.max(5.0, math.min(8.5, zpH)),
+                OM              = math.max(0, math.min(10, zOM)),
+                weedPressure    = math.max(0, math.min(100, streamReadFloat32(streamId))),
+                pestPressure    = math.max(0, math.min(100, streamReadFloat32(streamId))),
+                diseasePressure = math.max(0, math.min(100, streamReadFloat32(streamId))),
+                compaction      = math.max(0, math.min(100, streamReadFloat32(streamId))),
             }
         end
 
@@ -855,16 +860,21 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local zdCount = streamReadInt32(streamId)
     for _ = 1, zdCount do
         local keyInt = streamReadInt32(streamId)
+        local zN  = streamReadFloat32(streamId)
+        local zP  = streamReadFloat32(streamId)
+        local zK  = streamReadFloat32(streamId)
+        local zpH = streamReadFloat32(streamId)
+        local zOM = streamReadFloat32(streamId)
         zd[tostring(keyInt)] = {
-            N               = streamReadFloat32(streamId),
-            P               = streamReadFloat32(streamId),
-            K               = streamReadFloat32(streamId),
-            pH              = streamReadFloat32(streamId),
-            OM              = streamReadFloat32(streamId),
-            weedPressure    = streamReadFloat32(streamId),
-            pestPressure    = streamReadFloat32(streamId),
-            diseasePressure = streamReadFloat32(streamId),
-            compaction      = streamReadFloat32(streamId),
+            N               = math.max(0, math.min(100, zN)),
+            P               = math.max(0, math.min(100, zP)),
+            K               = math.max(0, math.min(100, zK)),
+            pH              = math.max(5.0, math.min(8.5, zpH)),
+            OM              = math.max(0, math.min(10, zOM)),
+            weedPressure    = math.max(0, math.min(100, streamReadFloat32(streamId))),
+            pestPressure    = math.max(0, math.min(100, streamReadFloat32(streamId))),
+            diseasePressure = math.max(0, math.min(100, streamReadFloat32(streamId))),
+            compaction      = math.max(0, math.min(100, streamReadFloat32(streamId))),
         }
     end
 

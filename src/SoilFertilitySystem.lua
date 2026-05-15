@@ -2174,7 +2174,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor) end
         if entry.K then field.potassium  = math.min(limits.MAX, field.potassium  + entry.K * factor) end
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor)) end
-        if entry.OM then field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor) end
+        if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor)) end
 
         -- Sync all existing zone cells to the updated field values so cells stamped
         -- by previous tillage operations reflect the fertilizer that was just applied.
@@ -2274,7 +2274,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             if entry.P  then cell.P  = math.min(limits.MAX,                     cell.P  + entry.P  * cellFactor) end
             if entry.K  then cell.K  = math.min(limits.MAX,                     cell.K  + entry.K  * cellFactor) end
             if entry.pH then cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * cellFactor)) end
-            if entry.OM then cell.OM = math.min(limits.ORGANIC_MATTER_MAX,      cell.OM + entry.OM * cellFactor) end
+            if entry.OM then cell.OM = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, cell.OM + entry.OM * cellFactor)) end
 
             -- Also update pressure in cell if entry has reductions (direct path fallback)
             if entry.pestReduction    then cell.pestPressure    = math.max(0, (cell.pestPressure or field.pestPressure or 0) - entry.pestReduction * cellFactor) end
@@ -2989,11 +2989,11 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
 
         self.fieldData[fieldId] = {
             fieldArea = getXMLFloat(xmlFile, fieldKey .. "#fieldArea") or 1.0,
-            nitrogen = getXMLFloat(xmlFile, fieldKey .. "#nitrogen") or defaults.nitrogen,
-            phosphorus = getXMLFloat(xmlFile, fieldKey .. "#phosphorus") or defaults.phosphorus,
-            potassium = getXMLFloat(xmlFile, fieldKey .. "#potassium") or defaults.potassium,
-            organicMatter = getXMLFloat(xmlFile, fieldKey .. "#organicMatter") or defaults.organicMatter,
-            pH = getXMLFloat(xmlFile, fieldKey .. "#pH") or defaults.pH,
+            nitrogen = math.max(0, math.min(100, getXMLFloat(xmlFile, fieldKey .. "#nitrogen") or defaults.nitrogen)),
+            phosphorus = math.max(0, math.min(100, getXMLFloat(xmlFile, fieldKey .. "#phosphorus") or defaults.phosphorus)),
+            potassium = math.max(0, math.min(100, getXMLFloat(xmlFile, fieldKey .. "#potassium") or defaults.potassium)),
+            organicMatter = math.max(0, math.min(10, getXMLFloat(xmlFile, fieldKey .. "#organicMatter") or defaults.organicMatter)),
+            pH = math.max(5.0, math.min(8.5, getXMLFloat(xmlFile, fieldKey .. "#pH") or defaults.pH)),
             lastCrop = getXMLString(xmlFile, fieldKey .. "#lastCrop"),
             lastCrop2 = getXMLString(xmlFile, fieldKey .. "#lastCrop2"),
             lastCrop3 = getXMLString(xmlFile, fieldKey .. "#lastCrop3"),
