@@ -275,6 +275,14 @@ SoilConstants.CROP_EXTRACTION_FORAGE = { N=1.40, P=0.55, K=1.80 }
 -- Compare: wheat harvest 1ha at 7000L → N=14.7, P=6.3, K=11.9. Forage ~57% of grain.
 SoilConstants.MOWER_HA_FACTOR = 6.0
 
+-- Harvest area calibration factor.
+-- addCutterArea's liters parameter is a 0/1 flag, not actual yield volume.
+-- Area is used instead; this factor scales it to match extraction rate calibration.
+-- Value = typical yield in L/ha / 1000 = 8000/1000 = 8.0.
+-- Formula: factor = (areaHa / fieldAreaHa) * HARVEST_HA_FACTOR
+-- At factor=8.0, wheat 1ha: N=16, P=6.4, K=12 depleted (matches extraction rate comments).
+SoilConstants.HARVEST_HA_FACTOR = 8.0
+
 -- ========================================
 -- FERTILIZER PROFILES (per 1,000 liters applied)
 -- ========================================

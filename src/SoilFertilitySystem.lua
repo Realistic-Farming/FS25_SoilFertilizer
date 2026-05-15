@@ -1997,7 +1997,7 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     if area and area > 0 then
         if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
         areaHa = MathUtil.areaToHa(area, g_currentMission:getFruitPixelsToSqm())
-        factor = areaHa / fieldAreaHa
+        factor = (areaHa / fieldAreaHa) * SoilConstants.HARVEST_HA_FACTOR
     else
         return
     end
@@ -2054,7 +2054,7 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     -- harvestedLiters is unreliable (0/1 flag); estimate biological yield from area instead.
     local sr = strawRatio or 0
     if sr > 0 and areaHa > 0 then
-        local estimatedLiters = areaHa * 6000  -- 6000 L/ha average yield density
+        local estimatedLiters = areaHa * 8000  -- 8000 L/ha average yield density (matches HARVEST_HA_FACTOR)
         local omGain = (estimatedLiters / 1000) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE
         field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX, (field.organicMatter or 0) + omGain)
     end
