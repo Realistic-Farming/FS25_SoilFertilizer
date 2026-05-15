@@ -24,6 +24,7 @@ SettingsSchema.definitions = {
         type = "boolean",
         default = false,
         uiId = "sf_debug",
+        localOnly = true,  -- debug output is per-player; applying via event causes async delay that misses hook messages
     },
     {
         id = "fertilitySystem",
