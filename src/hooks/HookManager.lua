@@ -1353,10 +1353,15 @@ function HookManager:installSprayerAreaHook()
                 -- gates each work area on section.isActive), so 'liters' is already proportionally reduced.
                 -- Do NOT multiply by coverageFraction again, otherwise we quadratically penalize the dosage.
 
-                -- ── Coverage tracking (raw liters, before rateMultiplier) ─────────
-                -- Must run for ALL product types (fertilizer AND crop protection).
+                -- ── Coverage tracking ──────────────────────────────────────────────
+                -- updateFractions=false: markBoomCells (called below) owns coverage for
+                -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
+                -- only records the product name for the HUD label.
+                -- Crop protection direct paths (herbicide/insecticide/fungicide) call
+                -- trackSprayerCoverage with default updateFractions=true since they have
+                -- no boomPoints.
                 if g_SoilFertilityManager.soilSystem then
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, false)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────

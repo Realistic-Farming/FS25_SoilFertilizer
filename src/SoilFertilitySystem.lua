@@ -311,6 +311,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
     if harvestField then
         harvestField.sessionCoverageHa       = 0
         harvestField.sessionCoverageFraction = 0
+        harvestField.sessionCoverageCells    = {}
         harvestField.sessionLastProduct      = nil
     end
 
@@ -1569,10 +1570,12 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         coveredCells = {},    -- Legacy: kept for daily reset compat (no longer used for coverage calc)
         coveredCellCount = 0, -- Legacy: kept for daily reset compat
         totalFieldCells = 0,  -- Legacy: kept for daily reset compat
-        coveredAreaHa = 0,    -- Hectares covered today (area-based tracker, reset daily)
+        coveredAreaHa = 0,    -- Hectares covered today (cell-dedup, reset daily)
         coverageFraction = 0, -- Fraction of field covered today (0.0–1.0)
-        sessionCoverageHa = 0,       -- Hectares covered this game session (resets on harvest, not daily)
-        sessionCoverageFraction = 0, -- Derived 0.0–1.0 fraction for current-pass HUD display
+        dailyCoverageCells = {},     -- Unique 10×10 m cells sprayed today (reset daily)
+        sessionCoverageHa = 0,       -- Hectares covered this session (cell-dedup, resets on harvest)
+        sessionCoverageFraction = 0, -- Derived 0.0–1.0 fraction for HUD display
+        sessionCoverageCells = {},   -- Unique 10×10 m cells sprayed this session (resets on harvest)
         sessionLastProduct = nil,    -- Fill type name of last product applied this session
         compaction = 0,            -- field-average compaction 0–100 (derived from cells)
         compactionCells = {},      -- {cellKey → 0-100} per-cell compaction (10×10 m grid)
@@ -1648,6 +1651,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.coveredCellCount        = 0
     field.coveredAreaHa           = 0
     field.coverageFraction        = 0
+    field.dailyCoverageCells      = {}
     field._covLastX               = nil
     field._covLastZ               = nil
     field._farmlandAreaConfirmed  = nil
@@ -2437,20 +2441,28 @@ end
 -- Dividing by the product's reference rate (L/ha) converts liters → hectares covered.
 -- This is field-size and boom-size independent and matches real application density.
 --
--- Called from the sprayer hook with raw liters (before rateMultiplier) so that a
--- 1.5× rate setting doesn't inflate coverage beyond actual area worked.
----@param fieldId     number
----@param liters      number  Raw liters consumed this tick (pre-rateMultiplier)
----@param fillTypeName string|nil  Fill type name for base-rate lookup
-function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName)
+-- Called from the sprayer hook with raw liters (before rateMultiplier).
+-- For fertilizer products, updateFractions should be false because markBoomCells
+-- handles coverage via spatial cell deduplication (eliminates overlap inflation).
+-- For crop protection direct paths (herbicide/insecticide/fungicide) where no
+-- boomPoints are available, updateFractions remains true (liter-based fallback).
+---@param fieldId        number
+---@param liters         number   Raw liters consumed this tick (pre-rateMultiplier)
+---@param fillTypeName   string|nil
+---@param updateFractions boolean|nil  false = skip area update, only record product name
+function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions)
     if not liters or liters <= 0 then return end
     local field = self.fieldData[fieldId]
     if not field then return end
 
+    if fillTypeName then field.sessionLastProduct = fillTypeName end
+
+    -- Fertilizer products: coverage is handled by markBoomCells (cell dedup).
+    if updateFractions == false then return end
+
+    -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
 
-    -- Look up the reference application rate for this product (L/ha or kg/ha).
-    -- liters / ratePerHa gives the hectares covered this tick.
     local baseRates = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.BASE_RATES
     local rateEntry = fillTypeName and baseRates and (baseRates[fillTypeName] or baseRates.DEFAULT)
     local ratePerHa = (rateEntry and rateEntry.value and rateEntry.value > 0) and rateEntry.value or 93.5
@@ -2461,10 +2473,8 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName)
     local prevCoverage = field.coverageFraction or 0
     field.coverageFraction = math.min(1.0, field.coveredAreaHa / areaInHa)
 
-    -- Session accumulator: persists across daily resets, clears only on harvest
     field.sessionCoverageHa       = math.min(areaInHa, (field.sessionCoverageHa or 0) + areaThisTick)
     field.sessionCoverageFraction = math.min(1.0, field.sessionCoverageHa / areaInHa)
-    if fillTypeName then field.sessionLastProduct = fillTypeName end
 
     local milestones = { 0.10, 0.25, 0.50, 0.75, 1.0 }
     for _, m in ipairs(milestones) do
@@ -2476,9 +2486,10 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName)
     end
 end
 
---- Stamp display-only zone cells at every position in boomPoints.
---- No nutrient delta is applied; each new cell is initialised with the current
---- field average so the PDA map shows which areas the boom has passed over.
+--- Stamp zone cells at every position in boomPoints and update cell-deduped coverage.
+--- Coverage (session + daily) is incremented only for cells not previously visited,
+--- eliminating overlap inflation from headland turns and second passes.
+--- Also stamps visual overlay entries (zoneData) for the PDA map.
 --- Called from HookManager after applySingle to fill in the full lateral sweep.
 ---@param fieldId   number
 ---@param boomPoints table  Array of {x=, z=} world positions
@@ -2487,7 +2498,14 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
 
-    local zone = SoilConstants.ZONE
+    local zone     = SoilConstants.ZONE
+    local cellArea = zone.CELL_AREA_HA  -- 0.01 ha per 10×10 m cell
+    local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
+
+    if not field.sessionCoverageCells then field.sessionCoverageCells = {} end
+    if not field.dailyCoverageCells   then field.dailyCoverageCells   = {} end
+    if not field.zoneData             then field.zoneData             = {} end
+
     local seen = {}
     for _, pt in ipairs(boomPoints) do
         local cx = math.floor(pt.x / zone.CELL_SIZE)
@@ -2495,10 +2513,19 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
         local cellKey = tostring(cx * 10000 + cz)
         if not seen[cellKey] then
             seen[cellKey] = true
-            if not field.zoneData then field.zoneData = {} end
-            -- Enforce cell cap: existing cells are always synced via applyFertilizer,
-            -- so skipping new ones beyond the cap only affects sub-field visual detail,
-            -- not correctness of the aggregate nutrient values.
+
+            -- ── Coverage deduplication ─────────────────────────────────────────
+            if not field.sessionCoverageCells[cellKey] then
+                field.sessionCoverageCells[cellKey] = true
+                field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
+            end
+            if not field.dailyCoverageCells[cellKey] then
+                field.dailyCoverageCells[cellKey] = true
+                field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellArea)
+            end
+
+            -- ── Visual overlay (zoneData) ──────────────────────────────────────
+            -- Enforce cell cap: only affects sub-field visual detail, not coverage accuracy.
             local canWrite = true
             if field.zoneData[cellKey] == nil then
                 local count = 0
@@ -2506,8 +2533,6 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
                 if count >= MAX_ZONE_CELLS then canWrite = false end
             end
             if canWrite then
-                -- Always sync to current field values so lateral boom cells reflect the
-                -- fertilizer that was just applied, not stale values from a previous pass.
                 field.zoneData[cellKey] = {
                     N  = field.nitrogen       or SoilConstants.FIELD_DEFAULTS.nitrogen,
                     P  = field.phosphorus     or SoilConstants.FIELD_DEFAULTS.phosphorus,
@@ -2522,6 +2547,10 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
             end
         end
     end
+
+    -- Recompute fractions after all cells are processed
+    field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
+    field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)
 end
 
 --- Direct-path buffering for non-profile products (Herbicide/Insecticide/Fungicide)
@@ -3031,6 +3060,12 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             initialized = true,
             nutrientBuffer = {},
             zoneData = {},
+            coveredAreaHa = 0,
+            dailyCoverageCells = {},
+            sessionCoverageHa = 0,
+            sessionCoverageFraction = 0,
+            sessionCoverageCells = {},
+            sessionLastProduct = nil,
         }
 
         -- Load daily application throttles
