@@ -758,8 +758,11 @@ SoilConstants.WEED_PRESSURE = {
         HERBICIDE = 1.0,
         PESTICIDE = 0.8,
     },
-    -- Pressure points removed on a single herbicide application
-    HERBICIDE_PRESSURE_REDUCTION = 30,
+    -- Pressure points removed on a single herbicide application.
+    -- One full-field pass at the reference rate (BASE_RATES.HERBICIDE = 1.5 L/ha) removes this
+    -- many points. 50 ensures MEDIUM tier (0–50) is fully cleared in one pass, while PEAK (75–100)
+    -- still requires multiple treatments (100−50=50 → MEDIUM; 75−50=25 → below LOW).
+    HERBICIDE_PRESSURE_REDUCTION = 50,
     -- Canopy Suppression (Issue #327)
     -- Crops block sunlight, slowing or stopping weed growth as they mature.
     CANOPY_SUPPRESSION_THRESHOLD = 0.5, -- Crop growth state % (0.0 to 1.0) where suppression begins
@@ -832,8 +835,9 @@ SoilConstants.PEST_PRESSURE = {
     INSECTICIDE_TYPES = {
         INSECTICIDE = 1.0,
     },
-    -- Pressure points removed on a single insecticide application
-    INSECTICIDE_PRESSURE_REDUCTION = 25,
+    -- Pressure points removed on a single insecticide application.
+    -- 50 ensures MEDIUM tier (0–50) is fully cleared in one pass at the reference rate.
+    INSECTICIDE_PRESSURE_REDUCTION = 50,
     -- Days insecticide suppresses pest growth after application
     INSECTICIDE_DURATION_DAYS = 30,
 
@@ -899,8 +903,9 @@ SoilConstants.DISEASE_PRESSURE = {
     FUNGICIDE_TYPES = {
         FUNGICIDE = 1.0,
     },
-    -- Pressure points removed on a single fungicide application
-    FUNGICIDE_PRESSURE_REDUCTION = 20,
+    -- Pressure points removed on a single fungicide application.
+    -- 50 ensures MEDIUM tier (0–50) is fully cleared in one pass at the reference rate.
+    FUNGICIDE_PRESSURE_REDUCTION = 50,
     -- Days fungicide suppresses disease growth after application
     FUNGICIDE_DURATION_DAYS = 35,
 
