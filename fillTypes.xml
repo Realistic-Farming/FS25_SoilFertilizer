@@ -66,7 +66,11 @@
             <physics massPerLiter="0.87" maxPhysicalSurfaceAngle="15"/>
             <economy pricePerLiter="1.40"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
+            <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" unitSize="0.4" blendContrast="0.2" noiseScale="0.5" porosityAtZeroRoughness="0.9" porosityAtFullRoughness="1"
+                      normal="$data/fillPlanes/fertilizer_normal.png"
+                      height="$data/fillPlanes/fertilizer_height.png"
+                      displacement="$data/fillPlanes/fertilizer_displacement.png" displacementMaxHeight="0.2" firmness="0.3" viscosity="0.5"
+                      distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="SOLID"/>
             <pallet filename="objects/bigBag/ams/bigBag_ams.xml" />
         </fillType>
