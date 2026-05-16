@@ -218,14 +218,28 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         local nDef = math.max(0, thresh - field.nitrogen)   / thresh
         local pDef = math.max(0, thresh - field.phosphorus) / thresh
         local kDef = math.max(0, thresh - field.potassium)  / thresh
-        local avgDef = (nDef + pDef + kDef) / 3
+
+        -- When Precision Farming is active its ExtendedCombine already applies an N-based
+        -- yield penalty. Exclude N from SF's average to avoid stacking both penalties on
+        -- the same deficiency. P and K are SF-exclusive (PF does not track them).
+        local avgDef
+        if self.pfBridge and self.pfBridge.isActive then
+            avgDef = (pDef + kDef) / 2
+        else
+            avgDef = (nDef + pDef + kDef) / 3
+        end
 
         local nutrientPenalty = math.min(ys.MAX_PENALTY, avgDef * tierData.scale)
         if nutrientPenalty > 0 then
             modifier = modifier * (1.0 - nutrientPenalty)
-            self:log("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
-                fieldId, cropName, tier, field.nitrogen, field.phosphorus, field.potassium,
-                nutrientPenalty * 100)
+            if self.pfBridge and self.pfBridge.isActive then
+                self:log("Nutrient penalty field %d (%s/%s) [PF Mode - P/K only]: P=%.0f K=%.0f → -%.0f%%",
+                    fieldId, cropName, tier, field.phosphorus, field.potassium, nutrientPenalty * 100)
+            else
+                self:log("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
+                    fieldId, cropName, tier, field.nitrogen, field.phosphorus, field.potassium,
+                    nutrientPenalty * 100)
+            end
         end
     end
 

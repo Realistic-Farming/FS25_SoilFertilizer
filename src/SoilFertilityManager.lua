@@ -25,6 +25,10 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     self.disableGUI = disableGUI or false
     self.lastSeenVersion = ""
 
+    -- PF bridge (created early so SoilPFDump works before deferred init fires)
+    self.pfBridge = PrecisionFarmingBridge and PrecisionFarmingBridge:new() or nil
+    self.hasPrecisionFarming = false
+
     -- Settings
     if not Settings then
         SoilLogger.error("CRITICAL: Settings not loaded — check source order in main.lua")
@@ -635,6 +639,14 @@ function SoilFertilityManager:deferredSoilSystemInit()
 
             local initSuccess, initError = pcall(function()
                 self.sfm.soilSystem:initialize()
+
+                -- Detect Precision Farming and verify its read API.
+                -- Must run after soilSystem:initialize() so g_precisionFarming is guaranteed live.
+                if self.sfm.pfBridge then
+                    self.sfm.hasPrecisionFarming = self.sfm.pfBridge:initialize()
+                    -- Give soil system a direct reference so it can gate logic without a global lookup
+                    self.sfm.soilSystem.pfBridge = self.sfm.pfBridge
+                end
 
                 -- Load saved soil data now that savegameDirectory is set
                 self.sfm:loadSoilData()

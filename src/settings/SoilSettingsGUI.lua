@@ -43,6 +43,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilSaveData", "Force save soil data", "consoleCommandSaveData", self)
     addConsoleCommand("SoilDebug", "Toggle debug mode", "consoleCommandDebug", self)
     addConsoleCommand("SoilDrainVehicle", "Drain custom fertilizer from current vehicle/implements (50% refund)", "consoleCommandDrainVehicle", self)
+    addConsoleCommand("SoilPFDump", "Dump Precision Farming bridge API for integration diagnostics", "consoleCommandPFDump", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -68,6 +69,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilSaveData - Force save soil data")
     print("SoilDebug - Toggle debug mode")
     print("SoilDrainVehicle - Drain custom fertilizer from vehicle/implements (50% refund)")
+    print("SoilPFDump - Dump Precision Farming API for integration diagnostics")
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
     print("==============================================")
@@ -677,4 +679,21 @@ function SoilSettingsGUI:consoleCommandRecoverField(fieldId)
     local msg = string.format("Field %d recovered to defaults.", fid)
     if not isServer then msg = msg .. " (Client only! Run on server to persist)" end
     return msg
+end
+
+function SoilSettingsGUI:consoleCommandPFDump()
+    if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
+        g_SoilFertilityManager.pfBridge:dumpApi()
+        return "PF dump written — check the console output above"
+    end
+    -- Bridge not yet initialised — probe directly
+    if g_precisionFarming == nil then
+        print("[SoilPFDump] g_precisionFarming = nil — Precision Farming is not active")
+        return "Precision Farming not detected"
+    end
+    print("[SoilPFDump] g_precisionFarming found but SF bridge not yet initialised")
+    for k, v in pairs(g_precisionFarming) do
+        print(string.format("[SoilPFDump]   .%s = %s", tostring(k), type(v)))
+    end
+    return "PF raw dump written (bridge not initialised yet)"
 end
