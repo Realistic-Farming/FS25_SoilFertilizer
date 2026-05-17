@@ -816,8 +816,9 @@ function SoilHUD:overallStatus(info)
     end
     -- pH (threshold-based, palette-independent)
     if info.pH then
-        local s = (info.pH >= 6.5 and info.pH <= 7.0) and "Good"
-               or (info.pH >= 5.5 and info.pH <= 7.5) and "Fair"
+        local phR = math.floor((info.pH * 10) + 0.5) / 10
+        local s = (phR >= 6.5 and phR <= 7.0) and "Good"
+               or (phR >= 5.5 and phR <= 7.5) and "Fair"
                or "Poor"
         local r = rank[s] or 1
         if r > worst then worst = r end

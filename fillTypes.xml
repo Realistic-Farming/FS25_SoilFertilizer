@@ -179,7 +179,7 @@
             <physics massPerLiter="0.60" maxPhysicalSurfaceAngle="20"/>
             <economy pricePerLiter="0.35"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
-            <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$data/fillPlanes/distance/woodChipsDistance_diffuse.dds"/>
+            <!-- No <textures> override — maps that define their own COMPOST fill plane visual keep it -->
             <sprayType sprayTypeStr="MANURE"/>
             <pallet filename="objects/bigBag/compost/bigBag_compost.xml" />
         </fillType>

@@ -848,7 +848,7 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
     if phEl then
         local phVal = string.format("%.1f", info.pH or SoilConstants.FIELD_DEFAULTS.pH)
         phEl:setText(phVal)
-        local ph = info.pH or SoilConstants.FIELD_DEFAULTS.pH
+        local ph = math.floor(((info.pH or SoilConstants.FIELD_DEFAULTS.pH) * 10) + 0.5) / 10
         if ph >= 6.5 and ph <= 7.0 then
             phEl:setTextColor(unpack(COLOR_GOOD))
         elseif ph >= 6.0 and ph < 7.5 then
@@ -862,7 +862,7 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
     if omEl then
         local omVal = string.format("%.1f", info.organicMatter or 3.5)
         omEl:setText(omVal)
-        local om = info.organicMatter or 3.5
+        local om = math.floor(((info.organicMatter or 3.5) * 10) + 0.5) / 10
         if om >= 4.0 then
             omEl:setTextColor(unpack(COLOR_GOOD))
         elseif om >= 2.5 then
