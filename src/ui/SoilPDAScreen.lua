@@ -862,7 +862,7 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
     if omEl then
         local omVal = string.format("%.1f", info.organicMatter or 3.5)
         omEl:setText(omVal)
-        local om = info.organicMatter or 3.5
+        local om = math.floor(((info.organicMatter or 3.5) * 10) + 0.5) / 10
         if om >= 4.0 then
             omEl:setTextColor(unpack(COLOR_GOOD))
         elseif om >= 2.5 then

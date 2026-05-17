@@ -746,7 +746,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 5 then
         -- ── Organic Matter ──────────────────────────────────────
-        local om = info.organicMatter or 0
+        local om = math.floor(((info.organicMatter or 0) * 10) + 0.5) / 10
         local rc = SoilConstants.REPORT_COLORS
         local omR, omG, omB, hint
         if om >= (rc and rc.OM_GOOD or 4.0) then
@@ -1249,13 +1249,13 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
         elseif v < T.potassium.fair then return FAIR[1], FAIR[2], FAIR[3]
         else                             return GOOD[1], GOOD[2], GOOD[3] end
     elseif layerIdx == 4 then
-        local pH = info.pH or 7.0
+        local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
         if pH >= 6.5 and pH <= 7.0 then     return GOOD[1], GOOD[2], GOOD[3]    -- optimal
         elseif pH > 7.0 and pH <= 7.5 then  return POOR[1], POOR[2], POOR[3]   -- over-limed
         elseif pH >= 5.5 then               return FAIR[1], FAIR[2], FAIR[3]    -- slightly acidic
         else                                return POOR[1], POOR[2], POOR[3] end -- very acidic
     elseif layerIdx == 5 then
-        local om = info.organicMatter or 0
+        local om = math.floor(((info.organicMatter or 0) * 10) + 0.5) / 10
         if om >= 4.0     then return GOOD[1], GOOD[2], GOOD[3]
         elseif om >= 2.5 then return FAIR[1], FAIR[2], FAIR[3]
         else                  return POOR[1], POOR[2], POOR[3] end

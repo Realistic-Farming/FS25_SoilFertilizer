@@ -256,7 +256,7 @@ function SoilFieldDetailDialog:_populateData()
         self.detailOM:setText(string.format("%.1f", info.organicMatter or 3.5))
     end
     if self.detailOMStatus then
-        local om = info.organicMatter or 3.5
+        local om = math.floor(((info.organicMatter or 3.5) * 10) + 0.5) / 10
         local omStatus, omColor
         if om >= 4.0 then
             omStatus = tr("sf_pda_status_good", "Good")
