@@ -793,9 +793,10 @@ end
 
 function SoilHUD:pHColor(pH)
     local poor, fair, good = self:palette()
-    if pH >= 6.5 and pH <= 7.0 then return good
-    elseif pH >= 5.5 and pH <= 7.5 then return fair
-    else return poor end
+    if pH >= 6.5 and pH <= 7.0 then return good            -- optimal band
+    elseif pH > 7.0 and pH <= 7.5 then return poor         -- over-limed: treat as poor so players stop adding lime
+    elseif pH >= 5.5 then return fair                       -- slightly acidic: fair
+    else return poor end                                    -- very acidic
 end
 
 function SoilHUD:omColor(om)
@@ -995,7 +996,10 @@ function SoilHUD:drawPanel()
         local rateMultiplier = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
 
         -- N / P / K rows
-        cy = self:drawNutrientRow("N", info.nitrogen,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
+        -- When PF is active, N is owned by PF's per-pixel map — label with * so players know
+        local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+        local nLabel = (pfBridge and pfBridge.isActive) and "N*" or "N"
+        cy = self:drawNutrientRow(nLabel, info.nitrogen,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
         cy = self:drawNutrientRow("P", info.phosphorus,  px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
         cy = self:drawNutrientRow("K", info.potassium,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
 
@@ -1174,12 +1178,13 @@ end
 -- Returns the new cy after drawing the row.
 -- label must be "N", "P", or "K" — used to look up ppm conversion + thresholds.
 function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
-    local pad    = SoilHUD.PAD * s
-    local rowH   = SoilHUD.ROW_H * s
-    local barH   = SoilHUD.BAR_H * s
-    local barW   = SoilHUD.BAR_W * s
-    local tx     = px + pad
-    local col    = self:statusColor(nutrient.status)
+    local pad       = SoilHUD.PAD * s
+    local rowH      = SoilHUD.ROW_H * s
+    local barH      = SoilHUD.BAR_H * s
+    local barW      = SoilHUD.BAR_W * s
+    local tx        = px + pad
+    local col       = self:statusColor(nutrient.status)
+    local baseLabel = label:match("^%a+") or label   -- strip suffix like "*" from "N*"
 
     cy = cy - rowH
 
@@ -1229,9 +1234,9 @@ function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info,
     end
 
     -- Threshold tick marks (global poor/fair)
-    local thresholdKey = label == "N" and "nitrogen"
-                      or label == "P" and "phosphorus"
-                      or label == "K" and "potassium"
+    local thresholdKey = baseLabel == "N" and "nitrogen"
+                      or baseLabel == "P" and "phosphorus"
+                      or baseLabel == "K" and "potassium"
                       or nil
     if thresholdKey then
         local th = SoilConstants.STATUS_THRESHOLDS[thresholdKey]
@@ -1247,7 +1252,7 @@ function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info,
     end
 
     -- Per-crop target tick at optimal level (bright cyan, taller than status ticks)
-    local cropTarget = info and info.cropTargets and info.cropTargets[label]
+    local cropTarget = info and info.cropTargets and info.cropTargets[baseLabel]
     if cropTarget then
         local tickW = 0.0008 * s
         local tickH = barH + 0.005 * s

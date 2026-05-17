@@ -24,11 +24,16 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed Harvesting now correctly drains nitrogen, phosphorus and potassium from your fields",
-    "- Fixed Swath and windrow harvesting also now properly removes soil nutrients",
-    "- Fixed New fields and new games now show soil readings in the cell report right away",
-    "- Fixed Fertilizer and amendment piles no longer cause rendering errors when viewed from a distance",
-    "- Fixed Oats now tracked as a separate crop for nutrient extraction (was grouped with wheat)",
+    "- HUD now shows a session-based current-pass coverage tracker so you can see field progress in real time",
+    "- Fixed Biosolids spread on fields now appears near-black (correct color) instead of brown",
+    "- Fixed Harvest nutrient depletion now calculates correctly using field area (fixes 8x over/under-depletion)",
+    "- Fixed Nutrients now deplete properly when harvesting in swath/windrow mode",
+    "- Fixed Oat nutrient extraction was using the wrong lookup key — corrected",
+    "- Fixed Organic Matter (OM) is now clamped to a valid range on all load and save paths",
+    "- Fixed All solid fill types now have distance textures (fixes visual pop-in at range)",
+    "- Fixed Cell report now shows field averages even when no soil zone cells have been sampled yet",
+    "- Fixed SoilDebug console command now takes effect immediately without requiring a restart",
+    "- Fixed False 'savegame not found' warning no longer appears on brand-new careers",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
@@ -49,7 +54,7 @@ end
 
 function SoilVersionDialog.new(target, customMt)
     local self = ScreenElement.new(target, customMt or SoilVersionDialog_mt)
-    self._changelogLineEls = {}  -- holds dynamically created TextElements
+    self._changelogLineEls = {}
     return self
 end
 

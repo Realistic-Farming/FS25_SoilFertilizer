@@ -32,7 +32,7 @@
         <vi>Đất &amp; Phân Bón Thực Tế</vi>
     </title>
     <description>
-        <en>Adds realistic per-field soil management to Farming Simulator 25. Tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH for every field on the map. Crops deplete nutrients at harvest; fertilizers, manure, and lime replenish them. Rain causes leaching, seasons shift nitrogen levels, and neglected fields slowly recover on their own. Includes a live soil HUD, a full farm soil report (K key), and 9 custom fertilizer types. Fully multiplayer with server-authoritative settings. Works on multifruit maps — unknown crops use a balanced fallback rate.</en>
+        <en>Adds realistic per-field soil management to Farming Simulator 25. Tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH for every field on the map. Crops deplete nutrients at harvest; fertilizers, manure, and lime replenish them. Rain causes leaching, seasons shift nitrogen levels, and neglected fields slowly recover on their own. Includes a live soil HUD, a full farm soil report (K key), and 9 custom fertilizer types. Fully multiplayer with server-authoritative settings. Works on multifruit maps — unknown crops use a balanced fallback rate. Optional: install the Precision Farming DLC + [TH] Precision Farming Configurator for full integration — custom fertilizers are recognized by PF's nitrogen map.</en>
         <de>Fügt realistisches feldspezifisches Bodenmanagement zu Farming Simulator 25 hinzu. Verfolgt Stickstoff, Phosphor, Kalium, organische Substanz und pH-Wert für jedes Feld. Ernten erschöpfen Nährstoffe; Dünger, Mist und Kalk ergänzen sie. Regen verursacht Auswaschung, Jahreszeiten beeinflussen den Stickstoffgehalt, und brachliegende Felder erholen sich langsam von selbst. Enthält ein Live-Boden-HUD, einen vollständigen Hofbodenbericht (K-Taste) und 9 benutzerdefinierte Düngertypen. Vollständig multiplayer-fähig mit serverautoritativen Einstellungen.</de>
         <fr>Ajoute une gestion réaliste du sol par parcelle à Farming Simulator 25. Suit l'Azote, le Phosphore, le Potassium, la Matière Organique et le pH pour chaque champ. Les récoltes épuisent les nutriments ; les engrais, le fumier et la chaux les reconstituent. La pluie lessive les nutriments, les saisons font varier l'azote, et les champs abandonnés se régénèrent lentement. Comprend un HUD sol en direct, un rapport complet de la ferme (touche K) et 9 types d'engrais personnalisés. Multijoueur complet avec paramètres contrôlés par le serveur.</fr>
         <pl>Dodaje realistyczne zarządzanie glebą per-pole do Farming Simulator 25. Śledzi Azot, Fosfor, Potas, Materię Organiczną i pH dla każdego pola. Zbiory wyczerpują składniki odżywcze; nawozy, obornik i wapno je uzupełniają. Deszcz powoduje wymywanie, pory roku wpływają na poziom azotu, a zaniedbane pola powoli się regenerują. Zawiera HUD gleby, pełny raport gleby (klawisz K) i 9 niestandardowych typów nawozów. Pełna obsługa trybu wieloosobowego.</pl>
@@ -445,5 +445,164 @@
         </category>
 
     </helpLines>
+
+    <!--
+        ══════════════════════════════════════════════════════════════════════
+        [TH] PRECISION FARMING CONFIGURATOR INTEGRATION
+        Requires: FS25_precisionFarming DLC + FS25_0_THPFConfigurator mod.
+        If either is absent this block is silently ignored — all three
+        operating modes (SF-only, SF+PF, SF+PF+THPF) are fully supported.
+
+        <sprayTypes>    — tells THPF the N content and PF application rates
+                          for our N-bearing fill types so PF can paint its
+                          nitrogen density map correctly.
+        <sprayTypeMapping> — tells THPF what group each custom fill type
+                          belongs to (FERTILIZER / MANURE / DIGESTATE /
+                          LIME / HERBICIDE). Enables PF HUD naming and
+                          auto-injection into compatible vehicles/storages.
+        ══════════════════════════════════════════════════════════════════════
+    -->
+    <thPFConfig>
+
+        <sprayTypes>
+            <!-- Liquid nitrogen fertilizers -->
+            <sprayType name="UAN32" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="60"/>
+                    <soil soilTypeIndex="2" rate="80"/>
+                    <soil soilTypeIndex="3" rate="100"/>
+                    <soil soilTypeIndex="4" rate="80"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.32"/> <!-- UAN 32% N by weight -->
+            </sprayType>
+
+            <sprayType name="UAN28" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="60"/>
+                    <soil soilTypeIndex="2" rate="80"/>
+                    <soil soilTypeIndex="3" rate="100"/>
+                    <soil soilTypeIndex="4" rate="80"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.28"/> <!-- UAN 28% N by weight -->
+            </sprayType>
+
+            <sprayType name="ANHYDROUS" litersPerSecond="0.0081" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="40"/>
+                    <soil soilTypeIndex="2" rate="55"/>
+                    <soil soilTypeIndex="3" rate="70"/>
+                    <soil soilTypeIndex="4" rate="55"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.82"/> <!-- Anhydrous ammonia 82% N by weight -->
+            </sprayType>
+
+            <sprayType name="LIQUID_UREA" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="60"/>
+                    <soil soilTypeIndex="2" rate="80"/>
+                    <soil soilTypeIndex="3" rate="100"/>
+                    <soil soilTypeIndex="4" rate="80"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.29"/> <!-- Liquid urea ~29% N -->
+            </sprayType>
+
+            <sprayType name="LIQUID_AMS" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="100">
+                    <soil soilTypeIndex="1" rate="50"/>
+                    <soil soilTypeIndex="2" rate="65"/>
+                    <soil soilTypeIndex="3" rate="80"/>
+                    <soil soilTypeIndex="4" rate="65"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.21"/> <!-- AMS solution ~21% N -->
+            </sprayType>
+
+            <sprayType name="LIQUID_DAP" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="60">
+                    <soil soilTypeIndex="1" rate="30"/>
+                    <soil soilTypeIndex="2" rate="40"/>
+                    <soil soilTypeIndex="3" rate="50"/>
+                    <soil soilTypeIndex="4" rate="40"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.18"/> <!-- DAP solution 18-46-0, 18% N -->
+            </sprayType>
+
+            <sprayType name="LIQUID_MAP" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="60">
+                    <soil soilTypeIndex="1" rate="30"/>
+                    <soil soilTypeIndex="2" rate="40"/>
+                    <soil soilTypeIndex="3" rate="50"/>
+                    <soil soilTypeIndex="4" rate="40"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.11"/> <!-- MAP solution 11-52-0, 11% N -->
+            </sprayType>
+
+            <!-- Solid granular nitrogen fertilizers -->
+            <sprayType name="UREA" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="60"/>
+                    <soil soilTypeIndex="2" rate="80"/>
+                    <soil soilTypeIndex="3" rate="100"/>
+                    <soil soilTypeIndex="4" rate="80"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.46"/> <!-- Urea 46% N by weight -->
+            </sprayType>
+
+            <sprayType name="AN" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="120">
+                    <soil soilTypeIndex="1" rate="60"/>
+                    <soil soilTypeIndex="2" rate="80"/>
+                    <soil soilTypeIndex="3" rate="100"/>
+                    <soil soilTypeIndex="4" rate="80"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.345"/> <!-- Ammonium nitrate 34.5% N by weight -->
+            </sprayType>
+
+            <sprayType name="AMS" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="100">
+                    <soil soilTypeIndex="1" rate="50"/>
+                    <soil soilTypeIndex="2" rate="65"/>
+                    <soil soilTypeIndex="3" rate="80"/>
+                    <soil soilTypeIndex="4" rate="65"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.21"/> <!-- Ammonium sulfate 21% N by weight -->
+            </sprayType>
+
+            <!-- Lime types (pH amendment — no N content) -->
+            <sprayType name="LIQUIDLIME" litersPerSecond="0.0815" type="LIME" sprayGroundType="LIME"/>
+            <sprayType name="GYPSUM"     litersPerSecond="0.0600" type="LIME" sprayGroundType="LIME"/>
+        </sprayTypes>
+
+        <sprayTypeMapping>
+            <!-- Liquid nitrogen fertilizers -->
+            <sprayType name="UAN32"       group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="UAN28"       group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="ANHYDROUS"   group="FERTILIZER" isLiquid="true" aliasNames="NH3"/>
+            <sprayType name="STARTER"     group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="LIQUID_UREA" group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="LIQUID_AMS"  group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="LIQUID_DAP"  group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="LIQUID_MAP"  group="FERTILIZER" isLiquid="true"/>
+            <sprayType name="LIQUID_POTASH" group="FERTILIZER" isLiquid="true"/>
+            <!-- Solid NPK fertilizers -->
+            <sprayType name="UREA"   group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="AN"     group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="AMS"    group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="MAP"    group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="DAP"    group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="POTASH" group="FERTILIZER" isLiquid="false"/>
+            <!-- Organic amendments -->
+            <sprayType name="COMPOST"           group="MANURE" isLiquid="false"/>
+            <sprayType name="BIOSOLIDS"         group="MANURE" isLiquid="false"/>
+            <sprayType name="CHICKEN_MANURE"    group="MANURE" isLiquid="false"/>
+            <sprayType name="PELLETIZED_MANURE" group="MANURE" isLiquid="false"/>
+            <!-- Lime / pH amendments -->
+            <sprayType name="LIQUIDLIME" group="LIME" isLiquid="true"/>
+            <sprayType name="GYPSUM"     group="LIME" isLiquid="false"/>
+            <!-- Crop protection -->
+            <sprayType name="INSECTICIDE" group="HERBICIDE" isLiquid="true"/>
+            <sprayType name="FUNGICIDE"   group="HERBICIDE" isLiquid="true"/>
+        </sprayTypeMapping>
+
+    </thPFConfig>
 
 </modDesc>

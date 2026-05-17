@@ -66,6 +66,7 @@ source(modDirectory .. "src/network/NetworkEvents.lua")
 
 -- 6. Integrations
 source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
+source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 
 -- Register our custom density map height types with the DMHM mod file list.
 -- DensityMapHeightManager:loadMapData iterates modDensityHeightMapTypeFilenames and
@@ -547,6 +548,7 @@ function soilfertility()
         print("SoilResetSettings - Reset to defaults")
         print("SoilFieldInfo <fieldId> - Show field soil info")
         print("SoilSaveData - Force save soil data")
+        print("SoilPFDump - Dump Precision Farming API (for integration diagnostics)")
         print("")
         print("NOTE: In multiplayer, only server admins can change settings")
         print("================================")
@@ -561,11 +563,14 @@ function soilStatus()
         local isServer = g_server ~= nil
         local isClient = g_client ~= nil
 
+        local pfBridge = g_SoilFertilityManager.pfBridge
+        local pfStatus = (pfBridge and pfBridge.isActive) and "ACTIVE (N/pH deferred to PF)" or "not detected"
         print(string.format(
             "=== Soil & Fertilizer Status ===\n" ..
             "Mode: %s\n" ..
             "Role: %s\n" ..
             "Enabled: %s\n" ..
+            "Precision Farming: %s\n" ..
             "Fertility System: %s\n" ..
             "Nutrient Cycles: %s\n" ..
             "Fertilizer Costs: %s\n" ..
@@ -578,6 +583,7 @@ function soilStatus()
             isMultiplayer and "Multiplayer" or "Singleplayer",
             isServer and "Server" or (isClient and "Client" or "Unknown"),
             tostring(s.enabled),
+            pfStatus,
             tostring(s.fertilitySystem),
             tostring(s.nutrientCycles),
             tostring(s.fertilizerCosts),
@@ -636,10 +642,22 @@ function SoilSprayerDebug()
         tostring(spec._soilEffectsActive), tostring(spec._soilManagedFillType)))
 end
 
+-- Dump Precision Farming bridge status and API discovery to the log.
+function SoilPFDump()
+    if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
+        g_SoilFertilityManager.pfBridge:dumpApi()
+        return "PF dump written to log (check console output)"
+    end
+    -- Bridge created in SoilFertilityManager.new() so this only happens before mission load.
+    print("[SoilPFDump] SF bridge not yet initialised — load a savegame first, then run SoilPFDump")
+    return "Bridge not ready — load savegame first"
+end
+
 -- Expose global console functions
 getfenv(0)["soilfertility"] = soilfertility
 getfenv(0)["soilStatus"] = soilStatus
 getfenv(0)["SoilSprayerDebug"] = SoilSprayerDebug
+getfenv(0)["SoilPFDump"] = SoilPFDump
 getfenv(0)["soilEnable"] = function()
     if g_SoilFertilityManager and g_SoilFertilityManager.settingsGUI then
         return g_SoilFertilityManager.settingsGUI:consoleCommandSoilEnable()

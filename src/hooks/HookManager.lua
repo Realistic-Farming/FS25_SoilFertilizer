@@ -1003,6 +1003,28 @@ function HookManager:installHarvestHook()
         end
     end
 
+    -- Late-patch combines spawned AFTER hook installation.
+    -- FS25's specialization system captures the Combine.addCutterArea reference at
+    -- vehicle-type registration time (before our hook). New vehicles of combine types
+    -- use that captured original as their instance method, bypassing the class-level
+    -- replacement. Hooking VehicleSystem:addVehicle ensures every combine — including
+    -- mod vehicles bought from the shop mid-session — gets the wrapper on first spawn.
+    if type(VehicleSystem) == "table" and type(VehicleSystem.addVehicle) == "function" then
+        local origAddVehicle = VehicleSystem.addVehicle
+        VehicleSystem.addVehicle = function(vsSelf, vehicle)
+            local r = origAddVehicle(vsSelf, vehicle)
+            if vehicle and vehicle.spec_combine and type(vehicle.addCutterArea) == "function" then
+                if vehicle.addCutterArea ~= Combine.addCutterArea then
+                    vehicle.addCutterArea = makeHarvestWrapper(vehicle.addCutterArea)
+                    SoilLogger.debug("[HarvestHook] Late-patched new combine: %s",
+                        tostring(vehicle.configFileName or vehicle.typeName or "?"))
+                end
+            end
+            return r
+        end
+        self:register(VehicleSystem, "addVehicle", origAddVehicle, "VehicleSystem.addVehicle (harvest late-patch)")
+    end
+
     SoilLogger.info("[OK] Harvest hook installed (Combine.addCutterArea) — %d existing combines patched", patched)
     return true
 end
@@ -1152,11 +1174,9 @@ function HookManager:installMowerHook()
 
             -- lastStatsArea: density-map pixels processed this tick (same unit as Cutter's lastArea)
             local area = spec.workAreaParameters.lastStatsArea or 0
-            local fruitType = spec.workAreaParameters.lastInputFruitType
-
-            SoilLogger.debug("[MowerHook] fired: area=%.1f fruitType=%s", area, tostring(fruitType))
-
             if area <= 0 then return end
+
+            local fruitType = spec.workAreaParameters.lastInputFruitType
 
             if not fruitType or fruitType <= 0 then return end
 
@@ -1222,6 +1242,20 @@ function HookManager:installSprayerAreaHook()
                not g_SoilFertilityManager.soilSystem or
                not g_SoilFertilityManager.settings.enabled then
                 return
+            end
+
+            -- Phase 3: Inject SF's custom fill types into PF's nitrogen recognition tables.
+            -- Runs once on the first spray event where a PF extendedSprayer spec is found.
+            -- PF adds extendedSprayer to ALL sprayers when active, so any sprayer triggers this.
+            local pfBridge = g_SoilFertilityManager.pfBridge
+            -- Fill type injection: only needed when THPF Configurator is absent.
+            -- When THPF is loaded it reads our <thPFConfig> block and handles this natively.
+            if pfBridge and pfBridge.isActive and not pfBridge.thpfActive and not pfBridge.fillTypesInjected then
+                local pfSpec = self["spec_FS25_precisionFarming.extendedSprayer"]
+                if pfSpec then
+                    SoilLogger.info("[PFBridge] Injecting SF fill types into PF nitrogen map (fallback — THPF absent)...")
+                    pfBridge:injectCustomFillTypes(pfSpec.nitrogenMap)
+                end
             end
 
             local spec = self.spec_sprayer
@@ -1290,6 +1324,37 @@ function HookManager:installSprayerAreaHook()
 
                 if not isFertilizer and not herbOnlyDirect and not pestOnlyDirect and not diseaseOnlyDirect then return end
 
+                -- PF mode: validate fertilizer was actually consumed before crediting nutrients.
+                -- PF's extendedSprayer can block tank drain (when field is at target N) without
+                -- clearing wap.usage. Compare current fill level against sprayFillLevel (captured
+                -- at frame start by vanilla onStartWorkAreaProcessing) — if unchanged, PF skipped
+                -- the application and we must not credit nutrients for product that wasn't used.
+                -- External-fill (BUY) mode is exempt: the tank intentionally stays full there.
+                do
+                    local pfBridgeRef = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+                    if pfBridgeRef and pfBridgeRef.isActive and isFertilizer then
+                        local PF_OWNED = { FERTILIZER=true, LIQUIDFERTILIZER=true, MANURE=true, LIQUIDMANURE=true, DIGESTATE=true }
+                        if PF_OWNED[fillType.name] then
+                            local wap = spec.workAreaParameters
+                            local isExternalFill = wap and (wap.sprayVehicle == nil)
+                            if not isExternalFill then
+                                local fuIdx = nil
+                                pcall(function() fuIdx = self:getSprayerFillUnitIndex() end)
+                                if fuIdx then
+                                    local curLevel = nil
+                                    pcall(function() curLevel = self:getFillUnitFillLevel(fuIdx) end)
+                                    -- 0.01 L tolerance for float rounding in fill level calculations
+                                    if curLevel and curLevel >= sprayFillLevel - 0.01 then
+                                        SoilLogger.debug("[PFBridge] fill unchanged (%.2fL >= %.2fL start) — PF blocked consumption, skipping SF update",
+                                            curLevel, sprayFillLevel)
+                                        return
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
                 -- Resolve field from vehicle root position.
                 -- When the tractor body straddles a field boundary (common on edge fields),
                 -- rootNode may fall outside the polygon and return nil. Fall back to the
@@ -1298,8 +1363,12 @@ function HookManager:installSprayerAreaHook()
                 local x, _, z = getWorldTranslation(self.rootNode)
                 if not x then return end
 
-                -- PHASE 5: route through shared MapDataGrid-backed cache
-                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z)
+                -- PHASE 5: route through shared MapDataGrid-backed cache.
+                -- skipNegativeCache=true: if the cache has a stale -1 for this position
+                -- (queried before the field was registered, e.g. freshly-purchased land),
+                -- fall through to the live g_fieldManager slow-path query rather than
+                -- returning nil and silently dropping the fertilizer application.
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
 
                 -- Fallback: try the midpoints of work areas on attached implements
                 if not fieldId or fieldId <= 0 then
@@ -1310,13 +1379,13 @@ function HookManager:installSprayerAreaHook()
                             if obj then
                                 -- Try implement rootNode first
                                 local ix, _, iz = getWorldTranslation(obj.rootNode)
-                                if ix then fieldId = hookMgrRef:getFieldIdAtWorldPosition(ix, iz) end
+                                if ix then fieldId = hookMgrRef:getFieldIdAtWorldPosition(ix, iz, true) end
                                 -- Then try each work area start point
                                 if (not fieldId or fieldId <= 0) and obj.spec_workArea and obj.spec_workArea.workAreas then
                                     for _, wa in ipairs(obj.spec_workArea.workAreas) do
                                         if wa.start then
                                             local sx, _, sz = getWorldTranslation(wa.start)
-                                            if sx then fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz) end
+                                            if sx then fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz, true) end
                                         end
                                         if fieldId and fieldId > 0 then break end
                                     end
@@ -1327,7 +1396,11 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
 
-                if not fieldId or fieldId <= 0 then return end
+                if not fieldId or fieldId <= 0 then
+                    SoilLogger.debug("SprayerHook: no field at rootNode (%.1f,%.1f) — skipping %s apply",
+                        x, z, fillType and fillType.name or "?")
+                    return
+                end
 
                 -- Apply rate multiplier
                 local rm = g_SoilFertilityManager.sprayerRateManager
@@ -1339,10 +1412,15 @@ function HookManager:installSprayerAreaHook()
                 -- gates each work area on section.isActive), so 'liters' is already proportionally reduced.
                 -- Do NOT multiply by coverageFraction again, otherwise we quadratically penalize the dosage.
 
-                -- ── Coverage tracking (raw liters, before rateMultiplier) ─────────
-                -- Must run for ALL product types (fertilizer AND crop protection).
+                -- ── Coverage tracking ──────────────────────────────────────────────
+                -- updateFractions=false: markBoomCells (called below) owns coverage for
+                -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
+                -- only records the product name for the HUD label.
+                -- Crop protection direct paths (herbicide/insecticide/fungicide) call
+                -- trackSprayerCoverage with default updateFractions=true since they have
+                -- no boomPoints.
                 if g_SoilFertilityManager.soilSystem then
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, false)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
@@ -1424,6 +1502,36 @@ function HookManager:installSprayerAreaHook()
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
                     if boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
+                    end
+                end
+
+                -- PF N relay: fires whenever PF is active (with or without THPF).
+                -- THPF handles HUD recognition and application rate recommendations,
+                -- but PF's nitrogen density map painting is triggered by PF's own hook
+                -- checking workAreaParameters.sprayFillType against its fertilizerFillTypes
+                -- table — and our custom fill types don't pass that check natively.
+                -- By swapping to a scaled LIQUIDFERTILIZER volume we signal PF to paint
+                -- the correct N amount for the next frame when PF re-reads workAreaParameters.
+                -- SF's own nutrient accounting already ran above using the real fill type.
+                -- TIMING NOTE: both hooks are appendedFunctions on onEndWorkAreaProcessing.
+                -- PF loads before SF (alphabetical order), so PF's hook fires first this frame.
+                -- The swap is visible to PF on the following frame; the engine resets
+                -- sprayFillType/usage in onStartWorkAreaProcessing so no persistent corruption.
+                do
+                    local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+                    if pfBridge and pfBridge.isActive and g_fillTypeManager then
+                        local nKgPerL = PrecisionFarmingBridge.SF_FILL_TYPE_N_AMOUNTS[fillType.name]
+                        if nKgPerL and nKgPerL > 0 then
+                            local lfFT = g_fillTypeManager:getFillTypeByName("LIQUIDFERTILIZER")
+                            if lfFT then
+                                local scaledLiters = liters * (nKgPerL / PrecisionFarmingBridge.PF_LF_N_KG_PER_L)
+                                spec.workAreaParameters.sprayFillType = lfFT.index
+                                spec.workAreaParameters.usage = scaledLiters
+                                SoilLogger.debug("[PFRelay] %s → LIQUIDFERTILIZER x%.3f (%.2fL → %.2fL)",
+                                    fillType.name, nKgPerL / PrecisionFarmingBridge.PF_LF_N_KG_PER_L,
+                                    liters, scaledLiters)
+                            end
+                        end
                     end
                 end
 

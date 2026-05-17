@@ -39,20 +39,20 @@
       <BoxLayout profile="sfVer_changelogBox" id="sfVer_changelogBox"
                  position="0px -124px"/>
 
-      <!-- Bottom separator — anchored from bottom of dialog -->
+      <!-- Bottom separator — sits 10px below the changelog box -->
       <Bitmap profile="sfVer_sep" id="sfVer_bottomSep"
-              position="0px -314px" size="560px 2px"/>
+              position="0px -414px" size="560px 2px"/>
 
       <!-- Footer (set at runtime via i18n) -->
       <Text profile="sfVer_footer" id="sfVer_footer1"
-            text="" position="0px -334px"/>
+            text="" position="0px -434px"/>
       <Text profile="sfVer_footer" id="sfVer_footer2"
-            text="" position="0px -352px"/>
+            text="" position="0px -452px"/>
 
       <Text profile="sfVer_tagline1" id="sfVer_footer3"
-            text="" position="0px -379px"/>
+            text="" position="0px -479px"/>
       <Text profile="sfVer_tagline2" id="sfVer_footer4"
-            text="" position="0px -397px"/>
+            text="" position="0px -497px"/>
 
     </GuiElement>
 
@@ -67,7 +67,7 @@
 
   <GUIProfiles>
     <Profile name="sfVer_bg" extends="fs25_dialogBg">
-      <size value="640px 530px"/>
+      <size value="640px 630px"/>
     </Profile>
     <Profile name="sfVer_author" extends="fs25_dialogText" with="anchorTopCenter">
       <textSize value="13px"/>
@@ -84,7 +84,7 @@
     </Profile>
     <!-- Vertical BoxLayout — Lua adds TextElements here dynamically -->
     <Profile name="sfVer_changelogBox" extends="emptyPanel" with="anchorTopCenter">
-      <size value="560px 180px"/>
+      <size value="560px 280px"/>
       <flowDirection value="vertical"/>
       <useFullVisibility value="false"/>
       <alignmentX value="center"/>

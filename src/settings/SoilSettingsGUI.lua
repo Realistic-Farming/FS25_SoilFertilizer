@@ -43,6 +43,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilSaveData", "Force save soil data", "consoleCommandSaveData", self)
     addConsoleCommand("SoilDebug", "Toggle debug mode", "consoleCommandDebug", self)
     addConsoleCommand("SoilDrainVehicle", "Drain custom fertilizer from current vehicle/implements (50% refund)", "consoleCommandDrainVehicle", self)
+    addConsoleCommand("SoilPFDump", "Dump Precision Farming bridge API for integration diagnostics", "consoleCommandPFDump", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -68,6 +69,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilSaveData - Force save soil data")
     print("SoilDebug - Toggle debug mode")
     print("SoilDrainVehicle - Drain custom fertilizer from vehicle/implements (50% refund)")
+    print("SoilPFDump - Dump Precision Farming API for integration diagnostics")
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
     print("==============================================")
@@ -677,4 +679,13 @@ function SoilSettingsGUI:consoleCommandRecoverField(fieldId)
     local msg = string.format("Field %d recovered to defaults.", fid)
     if not isServer then msg = msg .. " (Client only! Run on server to persist)" end
     return msg
+end
+
+function SoilSettingsGUI:consoleCommandPFDump()
+    if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
+        g_SoilFertilityManager.pfBridge:dumpApi()
+        return "PF dump written — check the console output above"
+    end
+    print("[SoilPFDump] SF bridge not yet initialised — load a savegame first, then run SoilPFDump")
+    return "Bridge not ready — load savegame first"
 end

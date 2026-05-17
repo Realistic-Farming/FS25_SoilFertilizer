@@ -398,14 +398,19 @@ function SoilMapOverlay:updateSamplePoints(force)
                         end
                     elseif layerIdx >= 1 and layerIdx <= 10 then
                         -- zoneData per-cell path: standard maps, layers 1-10.
-                        -- Cells that have been modified show their local value; unvisited cells
-                        -- fall back to the field average so the map is always fully coloured.
+                        -- Cells that have been measured (sprayer/harvester passed) show their
+                        -- real local value at full opacity. Unvisited cells fall back to the
+                        -- field-level average at half opacity so the map stays fully coloured
+                        -- but players can tell measured zones from estimated ones.
                         local fieldEntry = self.soilSystem.fieldData and self.soilSystem.fieldData[farmlandId]
                         local zoneData = fieldEntry and fieldEntry.zoneData
                         local zone = SoilConstants.ZONE
                         for _, pt in ipairs(polyPts) do
                             if totalPoints < maxPoints then
-                                local r, g, b
+                                local r, g, b, a
+                                -- Draw position: use cell centre so the dot on-screen
+                                -- aligns exactly with the zone cell the tooltip reads.
+                                local dotX, dotZ = pt.x, pt.z
                                 if zoneData then
                                     local cx = math.floor(pt.x / zone.CELL_SIZE)
                                     local cz = math.floor(pt.z / zone.CELL_SIZE)
@@ -413,11 +418,20 @@ function SoilMapOverlay:updateSamplePoints(force)
                                     local cell = zoneData[cellKey]
                                     if cell then
                                         local val = getCellLayerValue(cell, layerIdx)
-                                        if val then r, g, b = self:valueToLayerColor(layerIdx, val) end
+                                        if val then
+                                            r, g, b = self:valueToLayerColor(layerIdx, val)
+                                            a = 1.0   -- measured: full opacity
+                                            -- Anchor dot at cell centre so it matches tooltip lookup
+                                            dotX = cx * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
+                                            dotZ = cz * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
+                                        end
                                     end
                                 end
-                                if not r then r, g, b = self:getLayerColor(layerIdx, info, farmlandId) end
-                                table.insert(self.samplePoints, {x = pt.x, z = pt.z, r = r, g = g, b = b})
+                                if not r then
+                                    r, g, b = self:getLayerColor(layerIdx, info, farmlandId)
+                                    a = 0.45  -- estimated (field average): dimmed
+                                end
+                                table.insert(self.samplePoints, {x = dotX, z = dotZ, r = r, g = g, b = b, a = a})
                                 totalPoints = totalPoints + 1
                             end
                         end
@@ -496,7 +510,7 @@ function SoilMapOverlay:onDraw(frame, mapElement, ingameMap, pageIndex)
         if screenX >= mapX and screenX <= mapMaxX
            and screenY >= mapY and screenY <= mapMaxY then
             drawFilledRect(screenX - halfX, screenY - halfY, sizeX, sizeY,
-                           point.r, point.g, point.b, SoilMapOverlay.ALPHA)
+                           point.r, point.g, point.b, (point.a or 1.0) * SoilMapOverlay.ALPHA)
         end
     end
 
@@ -603,18 +617,22 @@ function SoilMapOverlay:onMapClick(ingameMap, screenX, screenY)
     end
 
     self.selectedCell = {
-        cellCX    = cellCX,
-        cellCZ    = cellCZ,
-        worldX    = cellWorldX,
-        worldZ    = cellWorldZ,
-        farmlandId = farmlandId,
-        info      = info,
+        cellCX       = cellCX,
+        cellCZ       = cellCZ,
+        worldX       = cellWorldX,
+        worldZ       = cellWorldZ,
+        farmlandId   = farmlandId,
+        info         = info,
+        fromZoneCell = info.fromZoneCell or false,
     }
+    -- Force overlay refresh so tile colors match the freshly-read tooltip data
+    self.nextSampleUpdateTime = 0
     SoilLogger.debug("SoilMapOverlay: cell selected field=%s cell=[%d,%d]",
         tostring(farmlandId), cellCX, cellCZ)
 end
 
 --- Draw the cell-inspection tooltip over the selected cell on the PDA map.
+--- Content is layer-specific: only data relevant to the active layer is shown.
 ---@param ingameMap table
 ---@param mapX      number  Left edge of map render area (normalized)
 ---@param mapY      number  Bottom edge of map render area (normalized)
@@ -630,46 +648,227 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     sx = math.max(mapX, math.min(mapX + mapWidth,  sx))
     sy = math.max(mapY, math.min(mapY + mapHeight, sy))
 
-    local info = sel.info
-    local ppm  = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
+    local info     = sel.info
+    local layerIdx = self.settings.activeMapLayer or 1
+    local est      = not sel.fromZoneCell
+    local ppm      = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
 
-    -- getNormalizedScreenValues(widthPx, heightPx) → normalizedW, normalizedH
-    -- Always capture both return values and use the one that matches the axis.
-    local boxW,  boxH   = getNormalizedScreenValues(200, 168)
-    local padX,  _      = getNormalizedScreenValues(10,  0)
-    local _,     lineH  = getNormalizedScreenValues(0,   15)
-    local _,     titleH = getNormalizedScreenValues(0,   22)
-    local _,     textSz = getNormalizedScreenValues(0,   11)
-    local _,     titSz  = getNormalizedScreenValues(0,   13)
-    local _,     bdrT   = getNormalizedScreenValues(0,   1)
-    local dotSz, _      = getNormalizedScreenValues(5,   0)
+    local ttPOOR, ttFAIR, ttGOOD = self:statusColors()
+    local DIM = { 0.55, 0.55, 0.62 }
+    local NEU = { 0.85, 0.85, 0.90 }
 
-    -- Box position: prefer right of anchor, flip left if it overflows
+    local function fmtV(s) return est and (s .. "~") or s end
+    local function clrStatus(status)
+        if status == "Good" then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif status == "Fair" then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
+    end
+    local function clrPct(pct, low, med)
+        if pct < low then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif pct < med then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
+    end
+    local function cropTitle(name)
+        if not name or name == "" then return nil end
+        return (name:sub(1,1):upper() .. name:sub(2):lower()):gsub("_", " ")
+    end
+
+    -- Build layer-specific row list: each entry { label, value, r, g, b }
+    local rows = {}
+    local function addRow(lbl, val, r, g, b)
+        rows[#rows + 1] = { label = lbl, value = val, r = r, g = g, b = b }
+    end
+
+    if layerIdx >= 1 and layerIdx <= 3 then
+        -- ── Nutrient layer (N / P / K) ──────────────────────────
+        local nInfo, ppmMul, lbl
+        if     layerIdx == 1 then nInfo = info.nitrogen;   ppmMul = ppm.N; lbl = "Nitrogen (N)"
+        elseif layerIdx == 2 then nInfo = info.phosphorus; ppmMul = ppm.P; lbl = "Phosphorus (P)"
+        else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = "Potassium (K)" end
+
+        local val = (nInfo.value or 0) * ppmMul
+        addRow(lbl, fmtV(string.format("%d ppm", math.floor(val + 0.5))), clrStatus(nInfo.status))
+
+        local targKey = (layerIdx == 1) and "N" or (layerIdx == 2) and "P" or "K"
+        local ct = info.cropTargets
+        if ct and ct[targKey] then
+            local target = ct[targKey] * ppmMul
+            local gap    = val - target
+            local crop   = cropTitle(info.lastCrop) or "Crop"
+            addRow("Target (" .. crop .. ")", string.format("%d ppm", math.floor(target + 0.5)), NEU[1], NEU[2], NEU[3])
+            if gap >= 0 then
+                addRow("Gap", string.format("+%d ppm", math.floor(gap + 0.5)), ttGOOD[1], ttGOOD[2], ttGOOD[3])
+            else
+                addRow("Gap", string.format("%d ppm needed", math.floor(-gap + 0.5)), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+            end
+        else
+            local crop = cropTitle(info.lastCrop)
+            addRow("Target", crop and ("No data: " .. crop) or "No crop planted", DIM[1], DIM[2], DIM[3])
+        end
+
+    elseif layerIdx == 4 then
+        -- ── pH layer ────────────────────────────────────────────
+        local pH = info.pH or 7.0
+        local condLabel, actionLabel, condR, condG, condB
+        if pH >= 6.5 and pH <= 7.0 then
+            condLabel = "Optimal";              actionLabel = "None needed"
+            condR, condG, condB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        elseif pH > 7.0 and pH <= 7.5 then
+            condLabel = "Over-limed";           actionLabel = "Allow to normalize"
+            condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+        elseif pH > 7.5 then
+            condLabel = "Severely over-limed";  actionLabel = "Apply sulfur"
+            condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+        elseif pH >= 5.5 then
+            condLabel = "Slightly acidic";      actionLabel = "Apply lime"
+            condR, condG, condB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else
+            condLabel = "Very acidic";          actionLabel = "Apply lime urgently"
+            condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+        end
+        addRow("pH",        fmtV(string.format("%.1f", pH)), condR, condG, condB)
+        addRow("Condition", condLabel,   condR, condG, condB)
+        addRow("Treatment", actionLabel, NEU[1], NEU[2], NEU[3])
+
+    elseif layerIdx == 5 then
+        -- ── Organic Matter ──────────────────────────────────────
+        local om = info.organicMatter or 0
+        local rc = SoilConstants.REPORT_COLORS
+        local omR, omG, omB, hint
+        if om >= (rc and rc.OM_GOOD or 4.0) then
+            omR, omG, omB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
+            hint = "Healthy — maintain with straw"
+        elseif om >= (rc and rc.OM_FAIR or 2.5) then
+            omR, omG, omB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
+            hint = "Incorporate straw / manure"
+        else
+            omR, omG, omB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+            hint = "Low — add manure or digestate"
+        end
+        addRow("Organic Matter", fmtV(string.format("%.1f%%", om)), omR, omG, omB)
+        addRow("Tip",            hint, NEU[1], NEU[2], NEU[3])
+
+    elseif layerIdx == 6 then
+        -- ── Field Urgency ───────────────────────────────────────
+        local urgency = self.soilSystem and self.soilSystem:getFieldUrgency(sel.farmlandId) or 0
+        local uR, uG, uB
+        if urgency > 66 then uR, uG, uB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+        elseif urgency > 33 then uR, uG, uB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
+        else uR, uG, uB = ttGOOD[1], ttGOOD[2], ttGOOD[3] end
+        addRow("Urgency", string.format("%d / 100", math.floor(urgency + 0.5)), uR, uG, uB)
+
+        local T = SoilConstants.STATUS_THRESHOLDS
+        local limLabel = "Balanced"
+        local limR, limG, limB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
+        local worst = 0
+        local function checkNutrient(val, thresh, name)
+            if val < thresh then
+                local def = thresh - val
+                if def > worst then
+                    worst = def; limLabel = name
+                    limR, limG, limB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
+                end
+            end
+        end
+        checkNutrient(info.nitrogen.value   or 0, (T.nitrogen   and T.nitrogen.fair)   or 50, "Nitrogen (N)")
+        checkNutrient(info.phosphorus.value or 0, (T.phosphorus and T.phosphorus.fair) or 30, "Phosphorus (P)")
+        checkNutrient(info.potassium.value  or 0, (T.potassium  and T.potassium.fair)  or 80, "Potassium (K)")
+        addRow("Limiting", limLabel, limR, limG, limB)
+
+        local crop = cropTitle(info.lastCrop) or "Fallow"
+        addRow("Crop", crop, NEU[1], NEU[2], NEU[3])
+
+    elseif layerIdx == 7 then
+        -- ── Weed Pressure ───────────────────────────────────────
+        local wp     = math.floor((info.weedPressure or 0) + 0.5)
+        local wConst = SoilConstants.WEED_PRESSURE or {}
+        local wLow, wMed = wConst.LOW or 20, wConst.MEDIUM or 50
+        addRow("Weed Pressure", string.format("%d%%", wp), clrPct(wp, wLow, wMed))
+        if info.herbicideActive then
+            addRow("Herbicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+        elseif wp >= wLow then
+            addRow("Herbicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+        else
+            addRow("Herbicide", "Not needed", NEU[1], NEU[2], NEU[3])
+        end
+
+    elseif layerIdx == 8 then
+        -- ── Pest Pressure ───────────────────────────────────────
+        local pp = math.floor((info.pestPressure or 0) + 0.5)
+        addRow("Pest Pressure", string.format("%d%%", pp), clrPct(pp, 20, 50))
+        if info.insecticideActive then
+            addRow("Insecticide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+        elseif pp >= 20 then
+            addRow("Insecticide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+        else
+            addRow("Insecticide", "Not needed", NEU[1], NEU[2], NEU[3])
+        end
+
+    elseif layerIdx == 9 then
+        -- ── Disease Pressure ────────────────────────────────────
+        local dp = math.floor((info.diseasePressure or 0) + 0.5)
+        addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
+        if info.fungicideActive then
+            addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+        elseif dp >= 20 then
+            addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+        else
+            addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+        end
+
+    elseif layerIdx == 10 then
+        -- ── Compaction ──────────────────────────────────────────
+        local comp = math.floor((info.compaction or 0) + 0.5)
+        local cR, cG, cB, action
+        if comp < 25 then
+            cR, cG, cB = ttGOOD[1], ttGOOD[2], ttGOOD[3]; action = "No action needed"
+        elseif comp < 60 then
+            cR, cG, cB = ttFAIR[1], ttFAIR[2], ttFAIR[3]; action = "Subsoiling recommended"
+        else
+            cR, cG, cB = ttPOOR[1], ttPOOR[2], ttPOOR[3]; action = "Subsoiling urgent"
+        end
+        addRow("Compaction", string.format("%d%%", comp), cR, cG, cB)
+        addRow("Treatment",  action, cR, cG, cB)
+    else
+        return
+    end
+
+    if #rows == 0 then return end
+
+    -- ── Box sizing: height grows with row count ───────────────
+    local nRows   = #rows
+    local boxW, _ = getNormalizedScreenValues(200, 0)
+    local padX, _ = getNormalizedScreenValues(10,  0)
+    local _, lineH  = getNormalizedScreenValues(0, 15)
+    local _, titleH = getNormalizedScreenValues(0, 22)
+    local _, textSz = getNormalizedScreenValues(0, 11)
+    local _, titSz  = getNormalizedScreenValues(0, 13)
+    local _, bdrT   = getNormalizedScreenValues(0,  1)
+    local dotSz, _  = getNormalizedScreenValues(5,  0)
+    local boxH = titleH + lineH * nRows + lineH * 0.9
+
+    -- ── Box position ─────────────────────────────────────────
     local gapX = getNormalizedScreenValues(16, 0)
     local bx = sx + gapX
-    if bx + boxW > mapX + mapWidth then
-        bx = sx - boxW - gapX
-    end
+    if bx + boxW > mapX + mapWidth then bx = sx - boxW - gapX end
     local by = sy - boxH * 0.5
     by = math.max(mapY, math.min(mapY + mapHeight - boxH, by))
 
-    -- Highlight dot
+    -- ── Highlight dot + connector ─────────────────────────────
     drawFilledRect(sx - dotSz * 0.5, sy - dotSz * 0.5, dotSz, dotSz, 1, 1, 1, 0.95)
-
-    -- Connector line
     local lineEndX = (bx > sx) and bx or (bx + boxW)
     local _, lineH1 = getNormalizedScreenValues(0, 1)
     drawFilledRect(math.min(sx, lineEndX), sy - lineH1 * 0.5,
                    math.abs(lineEndX - sx), lineH1, 0.6, 0.7, 0.9, 0.5)
 
-    -- Background + borders
+    -- ── Background + borders ──────────────────────────────────
     drawFilledRect(bx, by, boxW, boxH, 0.04, 0.04, 0.07, 0.93)
     drawFilledRect(bx,               by + boxH - bdrT, boxW, bdrT, 0.4, 0.65, 1.0, 0.8)
     drawFilledRect(bx,               by,               boxW, bdrT, 0.4, 0.65, 1.0, 0.4)
     drawFilledRect(bx,               by,               bdrT, boxH, 0.4, 0.65, 1.0, 0.4)
     drawFilledRect(bx + boxW - bdrT, by,               bdrT, boxH, 0.4, 0.65, 1.0, 0.4)
 
-    -- Title bar
+    -- ── Title bar ─────────────────────────────────────────────
     local titleY = by + boxH - titleH
     setTextBold(true)
     setTextColor(0.65, 0.85, 1.0, 1.0)
@@ -680,59 +879,18 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     setTextBold(false)
     drawFilledRect(bx + padX, titleY - bdrT, boxW - padX * 2, bdrT, 0.4, 0.65, 1.0, 0.3)
 
-    -- Row helper: label left, value right, at absolute screen Y
-    local function row(label, value, absY, r, g, b)
-        local midY = absY + lineH * 0.5
-        setTextColor(0.55, 0.55, 0.62, 1.0)
+    -- ── Data rows ─────────────────────────────────────────────
+    local rowY = titleY - lineH * 1.1
+    for _, r in ipairs(rows) do
+        local midY = rowY + lineH * 0.5
+        setTextColor(DIM[1], DIM[2], DIM[3], 1.0)
         setTextAlignment(RenderText.ALIGN_LEFT)
-        renderText(bx + padX, midY, textSz, label)
-        setTextColor(r, g, b, 1.0)
+        renderText(bx + padX, midY, textSz, r.label)
+        setTextColor(r.r, r.g, r.b, 1.0)
         setTextAlignment(RenderText.ALIGN_RIGHT)
-        renderText(bx + boxW - padX, midY, textSz, value)
+        renderText(bx + boxW - padX, midY, textSz, r.value)
+        rowY = rowY - lineH
     end
-
-    local ttPOOR, ttFAIR, ttGOOD = self:statusColors()
-    local function nColor(status)
-        if status == "Good" then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
-        elseif status == "Fair" then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
-        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
-    end
-    local function phColor(ph)
-        local rc = SoilConstants.REPORT_COLORS
-        if ph >= rc.PH_GOOD_LOW and ph <= rc.PH_GOOD_HIGH then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
-        elseif ph >= rc.PH_FAIR_LOW and ph <= rc.PH_FAIR_HIGH then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
-        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
-    end
-    local function omColor(om)
-        local rc = SoilConstants.REPORT_COLORS
-        if om >= rc.OM_GOOD then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
-        elseif om >= rc.OM_FAIR then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
-        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
-    end
-    local function pressureColor(pct)
-        local wp = SoilConstants.WEED_PRESSURE
-        if pct < wp.LOW then return ttGOOD[1], ttGOOD[2], ttGOOD[3]
-        elseif pct < wp.MEDIUM then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
-        else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
-    end
-
-    -- Rows step downward from just below the title divider
-    local rowY = titleY - lineH * 1.15
-    row("Nitrogen (N)",   string.format("%d ppm", math.floor(info.nitrogen.value   * ppm.N + 0.5)), rowY, nColor(info.nitrogen.status)) ; rowY = rowY - lineH
-    row("Phosphorus (P)", string.format("%d ppm", math.floor(info.phosphorus.value * ppm.P + 0.5)), rowY, nColor(info.phosphorus.status)) ; rowY = rowY - lineH
-    row("Potassium (K)",  string.format("%d ppm", math.floor(info.potassium.value  * ppm.K + 0.5)), rowY, nColor(info.potassium.status)) ; rowY = rowY - lineH
-    row("pH",             string.format("%.1f",   info.pH),                                         rowY, phColor(info.pH)) ; rowY = rowY - lineH
-    row("Organic Matter", string.format("%.1f%%", info.organicMatter),                              rowY, omColor(info.organicMatter)) ; rowY = rowY - lineH * 0.8
-
-    drawFilledRect(bx + padX, rowY + lineH * 0.4, boxW - padX * 2, bdrT, 0.3, 0.3, 0.4, 0.4)
-    rowY = rowY - lineH * 0.6
-
-    local wp = math.floor((info.weedPressure    or 0) + 0.5)
-    local pp = math.floor((info.pestPressure    or 0) + 0.5)
-    local dp = math.floor((info.diseasePressure or 0) + 0.5)
-    row("Weed",    string.format("%d%%", wp), rowY, pressureColor(wp)) ; rowY = rowY - lineH
-    row("Pest",    string.format("%d%%", pp), rowY, pressureColor(pp)) ; rowY = rowY - lineH
-    row("Disease", string.format("%d%%", dp), rowY, pressureColor(dp))
 
     setTextBold(false)
     setTextColor(1, 1, 1, 1)
@@ -1041,9 +1199,10 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
         elseif val < T.potassium.fair then return FAIR[1], FAIR[2], FAIR[3]
         else                               return GOOD[1], GOOD[2], GOOD[3] end
     elseif layerIdx == 4 then
-        if val >= 6.5 and val <= 7.0   then return GOOD[1], GOOD[2], GOOD[3]
-        elseif val >= 5.5 and val <= 7.5 then return FAIR[1], FAIR[2], FAIR[3]
-        else                                  return POOR[1], POOR[2], POOR[3] end
+        if val >= 6.5 and val <= 7.0   then return GOOD[1], GOOD[2], GOOD[3]   -- optimal
+        elseif val > 7.0 and val <= 7.5 then return POOR[1], POOR[2], POOR[3]  -- over-limed: same as poor so the map signals "stop adding lime"
+        elseif val >= 5.5              then return FAIR[1], FAIR[2], FAIR[3]    -- slightly acidic
+        else                                return POOR[1], POOR[2], POOR[3] end
     elseif layerIdx == 5 then
         if val >= 4.0     then return GOOD[1], GOOD[2], GOOD[3]
         elseif val >= 2.5 then return FAIR[1], FAIR[2], FAIR[3]
@@ -1076,9 +1235,10 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
         else                             return GOOD[1], GOOD[2], GOOD[3] end
     elseif layerIdx == 4 then
         local pH = info.pH or 7.0
-        if pH >= 6.5 and pH <= 7.0 then     return GOOD[1], GOOD[2], GOOD[3]
-        elseif pH >= 5.5 and pH <= 7.5 then return FAIR[1], FAIR[2], FAIR[3]
-        else                                return POOR[1], POOR[2], POOR[3] end
+        if pH >= 6.5 and pH <= 7.0 then     return GOOD[1], GOOD[2], GOOD[3]    -- optimal
+        elseif pH > 7.0 and pH <= 7.5 then  return POOR[1], POOR[2], POOR[3]   -- over-limed
+        elseif pH >= 5.5 then               return FAIR[1], FAIR[2], FAIR[3]    -- slightly acidic
+        else                                return POOR[1], POOR[2], POOR[3] end -- very acidic
     elseif layerIdx == 5 then
         local om = info.organicMatter or 0
         if om >= 4.0     then return GOOD[1], GOOD[2], GOOD[3]
