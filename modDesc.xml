@@ -567,6 +567,47 @@
                 <fertilizerUsage amount="0.21"/> <!-- Ammonium sulfate 21% N by weight -->
             </sprayType>
 
+            <!-- Phosphorus & potassium products (PF does not manage P/K — fertilizerUsage declares N content only) -->
+            <sprayType name="LIQUID_POTASH" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="100">
+                    <soil soilTypeIndex="1" rate="50"/>
+                    <soil soilTypeIndex="2" rate="70"/>
+                    <soil soilTypeIndex="3" rate="90"/>
+                    <soil soilTypeIndex="4" rate="70"/>
+                </applicationRate>
+                <fertilizerUsage amount="0"/> <!-- 0-0-60 — pure K, zero N -->
+            </sprayType>
+
+            <sprayType name="POTASH" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="200">
+                    <soil soilTypeIndex="1" rate="100"/>
+                    <soil soilTypeIndex="2" rate="140"/>
+                    <soil soilTypeIndex="3" rate="180"/>
+                    <soil soilTypeIndex="4" rate="140"/>
+                </applicationRate>
+                <fertilizerUsage amount="0"/> <!-- 0-0-60 granular — zero N -->
+            </sprayType>
+
+            <sprayType name="MAP" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="225">
+                    <soil soilTypeIndex="1" rate="110"/>
+                    <soil soilTypeIndex="2" rate="150"/>
+                    <soil soilTypeIndex="3" rate="190"/>
+                    <soil soilTypeIndex="4" rate="150"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.11"/> <!-- 11-52-0 granular — 11% N -->
+            </sprayType>
+
+            <sprayType name="DAP" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="225">
+                    <soil soilTypeIndex="1" rate="110"/>
+                    <soil soilTypeIndex="2" rate="150"/>
+                    <soil soilTypeIndex="3" rate="190"/>
+                    <soil soilTypeIndex="4" rate="150"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.18"/> <!-- 18-46-0 granular — 18% N -->
+            </sprayType>
+
             <!-- Lime types (pH amendment — no N content) -->
             <sprayType name="LIQUIDLIME" litersPerSecond="0.0815" type="LIME" sprayGroundType="LIME"/>
             <sprayType name="GYPSUM"     litersPerSecond="0.0600" type="LIME" sprayGroundType="LIME"/>
