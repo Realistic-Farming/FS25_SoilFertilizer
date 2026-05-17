@@ -311,6 +311,7 @@ end
 ---@param suffix     string    "%" or ""
 ---@param cropTarget table|nil {min=number, opt=number} per-crop target (internal scale)
 function SoilFieldDetailDialog:_setNutrient(valueEl, statusEl, value, statusStr, suffix, cropTarget)
+    local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
     suffix = suffix or ""
     if valueEl then
         valueEl:setText(math.floor(value + 0.5) .. suffix)
@@ -355,6 +356,7 @@ end
 ---@param pressure      number    0-100
 ---@param activeProduct boolean   true if protection product active
 function SoilFieldDetailDialog:_setPressure(valueEl, statusEl, pressure, activeProduct)
+    local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
     if valueEl then
         valueEl:setText(string.format("%.0f%%", pressure))
     end

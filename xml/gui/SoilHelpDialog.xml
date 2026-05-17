@@ -62,15 +62,17 @@
       <textUpperCase value="true"/>
       <textColor value="0.35 0.85 0.40 1.0"/>
     </Profile>
-    <!-- Body line: normal weight, white -->
+    <!-- Body line: normal weight, white, left-aligned -->
     <Profile name="sfHelp_colBody" extends="fs25_dialogText" with="anchorTopLeft">
       <textSize value="12px"/>
       <textColor value="$preset_colorWhite"/>
+      <textAlignment value="left"/>
     </Profile>
     <!-- Spacer: invisible placeholder for vertical gap -->
     <Profile name="sfHelp_colSpacer" extends="fs25_dialogText" with="anchorTopLeft">
       <textSize value="6px"/>
       <textColor value="0.0 0.0 0.0 0.0"/>
+      <textAlignment value="left"/>
     </Profile>
   </GUIProfiles>
 </GUI>
