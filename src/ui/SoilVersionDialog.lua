@@ -24,16 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- NEW  Precision Farming DLC: N/P/K bars now update live from PF sensors as you drive",
-    "- NEW  Map shows real per-zone variation — lime one half of a field, map shows two different colors",
-    "- NEW  Over-limed soil (pH above 7.0) now correctly shows red on the map instead of yellow",
-    "- NEW  Click any map tile to see focused info for that layer only — no more wall of numbers",
-    "- NEW  pH tile shows your condition (Optimal / Acidic / Over-limed) and what treatment to apply",
-    "- NEW  N, P, K tiles show your crop's target and exactly how far above or below you are",
-    "- NEW  Weed, pest and disease tiles show whether your protection product is still active",
-    "- Fixed Map tile colors now refresh the moment you click — no more stale colors after spraying",
-    "- Fixed N bar tick marks now show correctly when Precision Farming mod is active",
-    "- Fixed Straw chopping now builds Organic Matter correctly based on your field's actual size",
+    "- NEW  In-game help guide: press the ? button in the PDA soil screen for a full reference",
+    "- NEW  Soil map overlay Help button: explains layers, colours, tooltip, and tips in-context",
+    "- Fixed Field Detail dialog crash — all nutrient and pressure rows now show correct colors",
+    "- Fixed Treatment plan no longer says 'blended FERTILIZER' — now names the actual product",
+    "  (P deficit → Liquid MAP / Liquid DAP / DAP;  K deficit → Liquid Potash / Potash)",
+    "- Fixed Compost fill plane no longer overrides map-defined custom visuals",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
