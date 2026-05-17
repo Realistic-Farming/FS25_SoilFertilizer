@@ -24,16 +24,16 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- HUD now shows a session-based current-pass coverage tracker so you can see field progress in real time",
-    "- Fixed Biosolids spread on fields now appears near-black (correct color) instead of brown",
-    "- Fixed Harvest nutrient depletion now calculates correctly using field area (fixes 8x over/under-depletion)",
-    "- Fixed Nutrients now deplete properly when harvesting in swath/windrow mode",
-    "- Fixed Oat nutrient extraction was using the wrong lookup key — corrected",
-    "- Fixed Organic Matter (OM) is now clamped to a valid range on all load and save paths",
-    "- Fixed All solid fill types now have distance textures (fixes visual pop-in at range)",
-    "- Fixed Cell report now shows field averages even when no soil zone cells have been sampled yet",
-    "- Fixed SoilDebug console command now takes effect immediately without requiring a restart",
-    "- Fixed False 'savegame not found' warning no longer appears on brand-new careers",
+    "- NEW  Precision Farming DLC: N/P/K bars now update live from PF sensors as you drive",
+    "- NEW  Map shows real per-zone variation — lime one half of a field, map shows two different colors",
+    "- NEW  Over-limed soil (pH above 7.0) now correctly shows red on the map instead of yellow",
+    "- NEW  Click any map tile to see focused info for that layer only — no more wall of numbers",
+    "- NEW  pH tile shows your condition (Optimal / Acidic / Over-limed) and what treatment to apply",
+    "- NEW  N, P, K tiles show your crop's target and exactly how far above or below you are",
+    "- NEW  Weed, pest and disease tiles show whether your protection product is still active",
+    "- Fixed Map tile colors now refresh the moment you click — no more stale colors after spraying",
+    "- Fixed N bar tick marks now show correctly when Precision Farming mod is active",
+    "- Fixed Straw chopping now builds Organic Matter correctly based on your field's actual size",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
