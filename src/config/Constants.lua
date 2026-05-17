@@ -188,11 +188,12 @@ SoilConstants.FALLOW_RECOVERY = {
 -- ========================================
 -- When a combine chops straw instead of dropping it, the material decomposes
 -- into the soil and adds organic matter (realistic agricultural behaviour).
--- Rate is per 1000L of harvested crop, scaled by strawRatio (0.0-1.0).
--- Example: 5000L wheat, strawRatio=0.5 → 5 × 0.5 × 0.20 = 0.50 OM
--- (comparable to one plowing event on the 0-10 OM scale)
+-- OM is a concentration — gain uses (areaHa / fieldAreaHa) * strawRatio * OM_RATE.
+-- A complete field harvest at strawRatio=1.0 adds exactly OM_RATE to the field,
+-- regardless of field size. Partial passes add a proportional fraction.
+-- Example: full 5ha field, strawRatio=0.5 → 0.5 × 0.20 = 0.10 OM
 SoilConstants.CHOPPED_STRAW = {
-    OM_RATE = 0.20,   -- OM gain per 1000L harvested at full strawRatio=1.0
+    OM_RATE = 0.20,   -- OM gain per full-field harvest at strawRatio=1.0
 }
 
 -- ========================================

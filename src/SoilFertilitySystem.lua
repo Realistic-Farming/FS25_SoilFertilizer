@@ -2073,11 +2073,11 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     end
 
     -- Step 4: Chopped straw/chaff adds organic matter.
-    -- harvestedLiters is unreliable (0/1 flag); estimate biological yield from area instead.
+    -- OM is a concentration, so gain scales by fraction of field harvested this call,
+    -- not by absolute area. A full harvest at sr=1.0 adds exactly OM_RATE to the field.
     local sr = strawRatio or 0
     if sr > 0 and areaHa > 0 then
-        local estimatedLiters = areaHa * 8000  -- 8000 L/ha average yield density (matches HARVEST_HA_FACTOR)
-        local omGain = (estimatedLiters / 1000) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE
+        local omGain = (areaHa / fieldAreaHa) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE
         field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX, (field.organicMatter or 0) + omGain)
     end
 
@@ -2085,11 +2085,13 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     field.lastHarvest = (g_currentMission and g_currentMission.environment and g_currentMission.environment.currentDay) or 0
 
     self:log(
-        "Harvest depletion field %d (%s): -N %.5f -P %.5f -K %.5f",
+        "Harvest depletion field %d (%s): -N %.5f -P %.5f -K %.5f  straw sr=%.2f +OM %.5f",
         fieldId, fruitDesc.name,
         rates.N * factor,
         rates.P * factor,
-        rates.K * factor
+        rates.K * factor,
+        sr,
+        (sr > 0 and areaHa > 0) and (areaHa / fieldAreaHa) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE or 0
     )
 end
 
