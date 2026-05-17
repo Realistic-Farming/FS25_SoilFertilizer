@@ -848,7 +848,7 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
     if phEl then
         local phVal = string.format("%.1f", info.pH or SoilConstants.FIELD_DEFAULTS.pH)
         phEl:setText(phVal)
-        local ph = info.pH or SoilConstants.FIELD_DEFAULTS.pH
+        local ph = math.floor(((info.pH or SoilConstants.FIELD_DEFAULTS.pH) * 10) + 0.5) / 10
         if ph >= 6.5 and ph <= 7.0 then
             phEl:setTextColor(unpack(COLOR_GOOD))
         elseif ph >= 6.0 and ph < 7.5 then

@@ -722,7 +722,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 4 then
         -- ── pH layer ────────────────────────────────────────────
-        local pH = info.pH or 7.0
+        local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
         local condLabel, actionLabel, condR, condG, condB
         if pH >= 6.5 and pH <= 7.0 then
             condLabel = "Optimal";              actionLabel = "None needed"

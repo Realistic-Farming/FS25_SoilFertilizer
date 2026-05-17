@@ -235,7 +235,7 @@ function SoilFieldDetailDialog:_populateData()
         self.detailPH:setText(string.format("%.2f", info.pH or 7.0))
     end
     if self.detailPHStatus then
-        local ph = info.pH or 7.0
+        local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
         local phStatus, phColor
         if ph >= 6.5 and ph <= 7.0 then
             phStatus = tr("sf_pda_status_good",  "Good")

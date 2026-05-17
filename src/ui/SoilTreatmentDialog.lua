@@ -157,7 +157,7 @@ function SoilTreatmentDialog:_populateData()
     end
 
     -- 1. pH Action
-    local ph = info.pH or 7.0
+    local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
     if ph < 6.5 then
         self:_setAction(self.treatPHAction, tr("sf_treat_action_lime", "Apply LIME or LIQUID LIME to raise pH."), COLOR_POOR)
     elseif ph > 7.5 then
