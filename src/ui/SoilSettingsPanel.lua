@@ -130,7 +130,7 @@ local CATEGORIES = {
         sections = {
             {
                 headerKey = "sf_panel_hdr_visibility",
-                items     = { "showHUD", "showMiniReport", "showFieldInfoBox", "useImperialUnits", "colorblindMode" }
+                items     = { "showHUD", "showMiniReport", "showFieldInfoBox", "useImperialUnits", "colorblindMode", "pfCompatibilityMode" }
             },
             {
                 headerKey = "sf_panel_hdr_hud_style",

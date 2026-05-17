@@ -868,7 +868,14 @@ function SoilHUD:draw()
     end
 
     self:drawPanel()
-    self:drawSprayerRatePanel()
+
+    -- Suppress SF rate panel when PF compat mode is on — PF manages rate control in that case
+    local pfBridgeHud = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+    local pfCompatActive = pfBridgeHud and pfBridgeHud.isActive and self.settings.pfCompatibilityMode
+    if not pfCompatActive then
+        self:drawSprayerRatePanel()
+    end
+
     if self.settings.showMiniReport then
         self:drawMiniReport()
     end
