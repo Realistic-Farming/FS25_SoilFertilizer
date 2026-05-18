@@ -185,6 +185,7 @@
     <e k="sf_bigBag_gypsum_name" v="Big Bag Guix" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="Esmena del sòl (seca) — pH -0.15/pass @ 1500 kg/ha" eh="51503c54" />
     <e k="sf_bigBag_compost_name" v="Big Bag Compost" eh="14322c5d" />
+    <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" />
     <e k="sf_bigBag_compost_function" v="Esmena orgànica del sòl (seca) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="9dd2256a" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosòlids" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />

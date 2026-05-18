@@ -149,6 +149,7 @@
         <storeItem xmlFilename="objects/bigBag/potash/multiPurchaseBigBag_potash.xml"/>
         <storeItem xmlFilename="objects/bigBag/gypsum/multiPurchaseBigBag_gypsum.xml"/>
         <storeItem xmlFilename="objects/bigBag/compost/multiPurchaseBigBag_compost.xml"/>
+        <storeItem xmlFilename="objects/bigBag/compost/multiPurchaseBigBag_compost_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/multiPurchaseBigBag_biosolids.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/multiPurchaseBigBag_biosolids_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/chicken_manure/multiPurchaseBigBag_chicken_manure.xml"/>
@@ -176,6 +177,7 @@
         <storeItem xmlFilename="objects/bigBag/potash/bigBag_potash.xml"/>
         <storeItem xmlFilename="objects/bigBag/gypsum/bigBag_gypsum.xml"/>
         <storeItem xmlFilename="objects/bigBag/compost/bigBag_compost.xml"/>
+        <storeItem xmlFilename="objects/bigBag/compost/bigBag_compost_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/bigBag_biosolids.xml"/>
         <storeItem xmlFilename="objects/bigBag/biosolids/bigBag_biosolids_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/chicken_manure/bigBag_chicken_manure.xml"/>
