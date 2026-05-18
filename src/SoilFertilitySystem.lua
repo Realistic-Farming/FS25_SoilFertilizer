@@ -1676,8 +1676,12 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                         f:update(fsField.posX, fsField.posZ)
                         return f
                     end)
-                    if ok and fs and fs.isValid then
-                        gameWeedFactor = fs.weedFactor or 1.0
+                    -- Only trust weedFactor when a crop is present.
+                    -- On bare/plowed fields FS25 leaves weedFactor=0 (its default),
+                    -- and (1-0)*100 = 100 even though there are genuinely no weeds.
+                    -- In Lua, 0 is truthy so "or 1.0" never fires — explicit guard needed.
+                    if ok and fs and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
+                        gameWeedFactor = fs.weedFactor
                     end
                 end
             end
@@ -2085,11 +2089,19 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor)) end
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor)) end
 
-        -- No bulk zone-cell sync. Each cell accumulates nutrients only from actual
-        -- spray passes through its position (via the cellFactor path below). This
-        -- preserves per-zone variation on the map overlay — the field-level values
-        -- (field.nitrogen, field.pH, etc.) are the aggregate for HUD and yield;
-        -- zone cells are the per-area record for the overlay.
+        -- Sync all existing zone cells with the same delta applied to the field average.
+        -- Without this, cells created before a spray job keep their old values while the
+        -- HUD average climbs, causing the cell report panel to show values wildly out of
+        -- step with the field average (reported by Seb, May 2026 — K 39 vs avg 244).
+        if field.zoneData then
+            for _, cell in pairs(field.zoneData) do
+                if entry.N  then cell.N  = math.min(limits.MAX,                     cell.N  + entry.N  * factor) end
+                if entry.P  then cell.P  = math.min(limits.MAX,                     cell.P  + entry.P  * factor) end
+                if entry.K  then cell.K  = math.min(limits.MAX,                     cell.K  + entry.K  * factor) end
+                if entry.pH then cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX,  cell.pH + entry.pH * factor)) end
+                if entry.OM then cell.OM = math.max(0, math.min(limits.ORGANIC_MATTER_MAX,  cell.OM + entry.OM * factor)) end
+            end
+        end
 
         -- Throttled per-field diagnostic (debug mode, lime types always logged; nutrients every 4 s).
         -- Validates that pH shift and nutrient deltas are agronomically sensible.
@@ -2181,14 +2193,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             -- gain nutrients up to 1000× faster than the field total, causing the HUD
             -- to show near-complete N saturation after less than 1% field coverage
             -- (issue #205 Bug 2).
+            -- N/P/K/pH/OM for this cell are already updated by the bulk sync above.
+            -- Only apply spatial crop-protection reductions here (pest/disease sprays
+            -- are position-specific; the bulk sync doesn't cover them).
             local cellFactor = (liters / 1000.0) / areaInHa
-            if entry.N  then cell.N  = math.min(limits.MAX,                     cell.N  + entry.N  * cellFactor) end
-            if entry.P  then cell.P  = math.min(limits.MAX,                     cell.P  + entry.P  * cellFactor) end
-            if entry.K  then cell.K  = math.min(limits.MAX,                     cell.K  + entry.K  * cellFactor) end
-            if entry.pH then cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * cellFactor)) end
-            if entry.OM then cell.OM = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, cell.OM + entry.OM * cellFactor)) end
-
-            -- Also update pressure in cell if entry has reductions (direct path fallback)
             if entry.pestReduction    then cell.pestPressure    = math.max(0, (cell.pestPressure or field.pestPressure or 0) - entry.pestReduction * cellFactor) end
             if entry.diseaseReduction then cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - entry.diseaseReduction * cellFactor) end
         end
