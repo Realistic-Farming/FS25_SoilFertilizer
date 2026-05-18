@@ -551,7 +551,6 @@ function SoilFertilityManager:onMissionLoaded()
     local success, errorMsg = pcall(function()
         if self.soilHUD then
             self.soilHUD:initialize()
-            self.soilHUD:loadLayout()
         end
 
         if self.settingsPanel then
