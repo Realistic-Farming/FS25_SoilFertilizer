@@ -224,7 +224,7 @@
     <e k="sf_report_yield_hint" v="Optimal eşiğe göre N/P/K baz alınmıştır" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Verim ~-%d%%" eh="d64d5d59" />
     <e k="sf_pf_compat_short" v="PF Compat Mode" />
-    <e k="sf_pf_compat_long" v="Enable Precision Farming integration — SF adjusts yield calculations and fill type relays to work alongside PF. Disable to run SF fully independently." />
+    <e k="sf_pf_compat_long" v="Hide SF nitrogen data when Precision Farming is active — prevents conflicting N readings between the two mods" />
 
     <e k="helpLine_sf_cat_overview" v="Genel Bakış" eh="3b878279" />
     <e k="helpLine_sf_cat_started" v="Başlangıç" eh="bf647454" />

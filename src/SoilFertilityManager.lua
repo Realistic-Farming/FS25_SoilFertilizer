@@ -587,11 +587,7 @@ function SoilFertilityManager:onMissionStarted()
         self.soilSystem:initialize()
 
         if self.pfBridge then
-            self.pfBridge:initialize()
-            if not self.settings.pfCompatibilityMode then
-                self.pfBridge.isActive = false
-            end
-            self.hasPrecisionFarming = self.pfBridge.isActive
+            self.hasPrecisionFarming = self.pfBridge:initialize()
             self.soilSystem.pfBridge = self.pfBridge
         end
 
