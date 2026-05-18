@@ -289,7 +289,11 @@ function SoilHUD:calculateHeight()
         h = h + SoilHUD.LINE_H
         h = h + SoilHUD.PAD * 1.6
         
-        h = h + SoilHUD.ROW_H * 3
+        -- N row is hidden when PF compat mode is on (PF owns N tracking)
+        local _pfB = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+        local _pfS = g_SoilFertilityManager and g_SoilFertilityManager.settings
+        local _nHidden = _pfB and _pfB.isActive and _pfS and _pfS.pfCompatibilityMode
+        h = h + SoilHUD.ROW_H * (_nHidden and 2 or 3)
         h = h + SoilHUD.PAD * 1.3
         
         h = h + SoilHUD.LINE_H
