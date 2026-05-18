@@ -1049,14 +1049,14 @@ function SoilHUD:drawPanel()
         local rateMultiplier = self._cachedRateMult
 
         -- N / P / K rows
-        -- When PF is active, N is owned by PF's per-pixel map — label with * so players know.
-        -- When pfCompatibilityMode is also enabled, skip the N row entirely to avoid conflicting displays.
+        -- When pfCompatibilityMode is enabled AND PF is active, skip the N row entirely (PF owns it).
+        -- When pfCompatibilityMode is OFF, SF owns N — show plain "N" regardless of PF presence.
         local pfBridge  = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
         local settings  = g_SoilFertilityManager and g_SoilFertilityManager.settings
         local pfActive  = pfBridge and pfBridge.isActive
         local hideN     = pfActive and settings and settings.pfCompatibilityMode
         if not hideN then
-            local nLabel     = pfActive and "N*" or "N"
+            local nLabel     = "N"
             local nBaseLabel = "N"
             cy = self:drawNutrientRow(nLabel, nBaseLabel, info.nitrogen, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_N)
         end
@@ -1321,8 +1321,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
         self:drawRect(optX, tickY, tickW, tickH, {0.20, 0.85, 0.85, 0.90})
     end
 
-    -- ppmMult still needed for ghost-bar delta and crop-target suffix; use baseLabel so
-    -- "N*" (PF-compat mode) looks up correctly in PPM_DISPLAY["N"].
+    -- ppmMult uses baseLabel ("N"/"P"/"K") so it always resolves correctly in PPM_DISPLAY.
     local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[baseLabel] or 1.0
     local valX    = barX + barW + 0.006*s
 

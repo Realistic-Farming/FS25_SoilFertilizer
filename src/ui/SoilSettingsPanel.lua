@@ -692,11 +692,23 @@ function SoilSettingsPanel:drawCategoryPage()
             string.upper(tr(sec.headerKey) or ""), cat.accent, RenderText.ALIGN_LEFT, true)
 
         for _, settingId in ipairs(sec.items) do
-            curY = curY - ROW_H
-            if curY < CY_BOT then break end
-
-            rowIdx = rowIdx + 1
-            self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
+            -- Hide pfCompatibilityMode when PF is not installed — irrelevant to non-PF players
+            if settingId == "pfCompatibilityMode" then
+                local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
+                if not (pfBridge and pfBridge.isActive) then
+                    -- skip
+                else
+                    curY = curY - ROW_H
+                    if curY < CY_BOT then break end
+                    rowIdx = rowIdx + 1
+                    self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
+                end
+            else
+                curY = curY - ROW_H
+                if curY < CY_BOT then break end
+                rowIdx = rowIdx + 1
+                self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
+            end
         end
 
         -- Small gap between sections

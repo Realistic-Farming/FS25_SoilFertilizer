@@ -792,6 +792,27 @@ function SoilFieldBatchSyncEvent:run(connection)
         for _ in pairs(soilSystem.fieldData) do total = total + 1 end
         SoilLogger.info("Client: Full field sync complete (%d total fields)", total)
 
+        -- Rebuild activeFieldIds from current farmland ownership state.
+        -- scanFields() may have run before the server's ownership data arrived on
+        -- the client, leaving activeFieldIds empty and the overlay blank. Now that
+        -- fieldData is fully populated we re-check ownership and fill the set.
+        if g_farmlandManager then
+            for farmlandId in pairs(soilSystem.fieldData) do
+                local owner = g_farmlandManager:getFarmlandOwner(farmlandId)
+                if owner and owner > 0 then
+                    soilSystem:_addToActiveSet(farmlandId)
+                end
+            end
+            SoilLogger.info("Client: activeFieldIds rebuilt (%d owned fields)", (function()
+                local n = 0; for _ in pairs(soilSystem.activeFieldIds) do n = n + 1 end; return n
+            end)())
+        end
+
+        -- Force overlay to resample now that activeFieldIds is correct
+        if g_SoilFertilityManager.soilMapOverlay then
+            g_SoilFertilityManager.soilMapOverlay:requestRefresh()
+        end
+
         -- Refresh any open UI panels
         if g_SoilFertilityManager.settingsUI then
             g_SoilFertilityManager.settingsUI:refreshUI()
