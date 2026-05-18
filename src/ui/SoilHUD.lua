@@ -98,6 +98,24 @@ function SoilHUD.new(soilSystem, settings)
     self.cachedFieldInfo  = nil
     self.fieldDetectTimer = 0
 
+    -- Pre-formatted display strings (updated in refreshFieldData at 2 Hz, not in draw at 60 FPS)
+    self._fmt_fieldText = nil
+    self._fmt_cropText  = nil
+    self._fmt_pHStr     = nil
+    self._fmt_omStr     = nil
+    self._fmt_N         = nil
+    self._fmt_P         = nil
+    self._fmt_K         = nil
+
+    -- Cached sprayer state (updated in update(), consumed in draw())
+    self._cachedSprayer    = nil
+    self._cachedFillType   = nil
+    self._cachedProfile    = nil
+    self._cachedRateMult   = 1.0
+
+    -- Height dirty flag: set by refreshFieldData, cleared after calculateHeight()
+    self._heightDirty = true
+
     -- Single overlay handle
     self.fillOverlay = nil
 
@@ -467,7 +485,10 @@ end
 -- ── Update ───────────────────────────────────────────────
 function SoilHUD:update(dt)
     self.animTimer = self.animTimer + dt
-    self:calculateHeight()
+    if self._heightDirty then
+        self:calculateHeight()
+        self._heightDirty = false
+    end
 
     local currentPosition = self.settings.hudPosition or 1
     if not self.editMode and not self.dragging and self.lastHudPosition ~= currentPosition then
@@ -505,6 +526,14 @@ function SoilHUD:update(dt)
         self.fieldDetectTimer = 0
         self:refreshFieldData()
     end
+
+    -- Cache sprayer state once per frame here so draw() never traverses vehicle tables
+    local sprayer = self:getCurrentSprayer()
+    self._cachedSprayer  = sprayer
+    self._cachedFillType = self:getSprayerFillType(sprayer)
+    self._cachedProfile  = self._cachedFillType and SoilConstants.FERTILIZER_PROFILES[self._cachedFillType.name]
+    local rm             = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
+    self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
 
     self:updateFieldInfoBox()
 end
@@ -702,6 +731,35 @@ function SoilHUD:refreshFieldData()
             SoilLogger.debug("HUD field → off-field (was %s)", tostring(prevId))
         end
     end
+
+    -- Pre-format display strings so draw() at 60 FPS never calls string.format
+    local info = self.cachedFieldInfo
+    if info and fieldId then
+        self._fmt_fieldText = string.format(g_i18n:getText("sf_hud_field"), fieldId) .. " (Avg)"
+        local crop = info.lastCrop
+        if crop and crop ~= "" then
+            self._fmt_cropText = crop:sub(1,1):upper() .. crop:sub(2)
+        else
+            self._fmt_cropText = g_i18n:getText("sf_hud_fallow")
+        end
+        self._fmt_pHStr = string.format("%.1f",  info.pH)
+        self._fmt_omStr = string.format("%.1f%%", info.organicMatter)
+        -- N/P/K value strings pre-computed here; ghost-bar delta is still live in draw()
+        local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
+        self._fmt_N = tostring(math.floor(info.nitrogen.value   * (ppm.N or 1) + 0.5))
+        self._fmt_P = tostring(math.floor(info.phosphorus.value * (ppm.P or 1) + 0.5))
+        self._fmt_K = tostring(math.floor(info.potassium.value  * (ppm.K or 1) + 0.5))
+    else
+        self._fmt_fieldText = g_i18n:getText("sf_hud_noField")
+        self._fmt_cropText  = nil
+        self._fmt_pHStr     = nil
+        self._fmt_omStr     = nil
+        self._fmt_N         = nil
+        self._fmt_P         = nil
+        self._fmt_K         = nil
+    end
+
+    self._heightDirty = true
 end
 
 function SoilHUD:detectCurrentFieldId()
@@ -959,20 +1017,9 @@ function SoilHUD:drawPanel()
     -- Current Y cursor (below title bar)
     local cy = py + ph - titleH - pad
 
-    -- Field / crop row
-    local fieldText, cropText
-    if info then
-        fieldText = string.format(g_i18n:getText("sf_hud_field"), self.cachedFieldId) .. " (Avg)"
-        local crop = info.lastCrop
-        if crop and crop ~= "" then
-            cropText = crop:sub(1,1):upper() .. crop:sub(2)
-        else
-            cropText = g_i18n:getText("sf_hud_fallow")
-        end
-    else
-        fieldText = g_i18n:getText("sf_hud_noField")
-        cropText  = nil
-    end
+    -- Field / crop row (strings pre-formatted in refreshFieldData at 2 Hz)
+    local fieldText = self._fmt_fieldText
+    local cropText  = self._fmt_cropText
 
     cy = cy - SoilHUD.LINE_H * s
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
@@ -995,13 +1042,11 @@ function SoilHUD:drawPanel()
     cy = cy - pad * 0.8
 
     if info then
-        -- Detect current sprayer activity for "Projected" ghost bars
-        local sprayer = self:getCurrentSprayer()
-        local fillType = self:getSprayerFillType(sprayer)
-        local profile = fillType and SoilConstants.FERTILIZER_PROFILES[fillType.name]
-        -- Rate multiplier — needed so ghost bar reflects current rate setting (issue #278)
-        local rm = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
-        local rateMultiplier = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
+        -- Use cached sprayer state (populated in update() to keep draw() free of game-object traversal)
+        local sprayer        = self._cachedSprayer
+        local fillType       = self._cachedFillType
+        local profile        = self._cachedProfile
+        local rateMultiplier = self._cachedRateMult
 
         -- N / P / K rows
         -- When PF is active, N is owned by PF's per-pixel map — label with * so players know.
@@ -1011,11 +1056,12 @@ function SoilHUD:drawPanel()
         local pfActive  = pfBridge and pfBridge.isActive
         local hideN     = pfActive and settings and settings.pfCompatibilityMode
         if not hideN then
-            local nLabel = pfActive and "N*" or "N"
-            cy = self:drawNutrientRow(nLabel, info.nitrogen, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
+            local nLabel     = pfActive and "N*" or "N"
+            local nBaseLabel = "N"
+            cy = self:drawNutrientRow(nLabel, nBaseLabel, info.nitrogen, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_N)
         end
-        cy = self:drawNutrientRow("P", info.phosphorus,  px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
-        cy = self:drawNutrientRow("K", info.potassium,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
+        cy = self:drawNutrientRow("P", "P", info.phosphorus,  px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_P)
+        cy = self:drawNutrientRow("K", "K", info.potassium,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_K)
 
         -- Divider
         cy = cy - pad * 0.5
@@ -1029,13 +1075,13 @@ function SoilHUD:drawPanel()
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
         renderText(tx, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"))
         setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
-        renderText(tx + 0.020*s, cy, 0.010 * fontMult * s, string.format("%.1f", info.pH))
+        renderText(tx + 0.020*s, cy, 0.010 * fontMult * s, self._fmt_pHStr or "")
 
         local omX = tx + pw * 0.50
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
         renderText(omX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"))
         setTextColor(omCol[1], omCol[2], omCol[3], 1.0)
-        renderText(omX + 0.020*s, cy, 0.010 * fontMult * s, string.format("%.1f%%", info.organicMatter))
+        renderText(omX + 0.020*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
 
         -- Divider below pH/OM row
         cy = cy - SoilHUD.LINE_H * s
@@ -1190,15 +1236,15 @@ end
 
 -- ── Nutrient bar row ─────────────────────────────────────
 -- Returns the new cy after drawing the row.
--- label must be "N", "P", or "K" — used to look up ppm conversion + thresholds.
-function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier)
-    local pad       = SoilHUD.PAD * s
-    local rowH      = SoilHUD.ROW_H * s
-    local barH      = SoilHUD.BAR_H * s
-    local barW      = SoilHUD.BAR_W * s
-    local tx        = px + pad
-    local col       = self:statusColor(nutrient.status)
-    local baseLabel = label:match("^%a+") or label   -- strip suffix like "*" from "N*"
+-- label is the display label ("N", "N*", "P", "K"). baseLabel is the clean version ("N", "P", "K").
+-- cachedValStr is the pre-formatted base value string (no ghost-bar delta suffix yet).
+function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, cachedValStr)
+    local pad   = SoilHUD.PAD * s
+    local rowH  = SoilHUD.ROW_H * s
+    local barH  = SoilHUD.BAR_H * s
+    local barW  = SoilHUD.BAR_W * s
+    local tx    = px + pad
+    local col   = self:statusColor(nutrient.status)
 
     cy = cy - rowH
 
@@ -1275,9 +1321,9 @@ function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info,
         self:drawRect(optX, tickY, tickW, tickH, {0.20, 0.85, 0.85, 0.90})
     end
 
-    -- Value displayed in ppm (with crop-optimal target when a crop is planted)
-    local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[label] or 1.0
-    local ppmVal  = math.floor(nutrient.value * ppmMult + 0.5)
+    -- ppmMult still needed for ghost-bar delta and crop-target suffix; use baseLabel so
+    -- "N*" (PF-compat mode) looks up correctly in PPM_DISPLAY["N"].
+    local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[baseLabel] or 1.0
     local valX    = barX + barW + 0.006*s
 
     -- Derive color from crop target if available, otherwise keep status color
@@ -1293,7 +1339,10 @@ function SoilHUD:drawNutrientRow(label, nutrient, px, cy, pw, s, fontMult, info,
     end
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)
 
-    local valStr = string.format("%d", ppmVal)
+    -- Base value string is pre-formatted in refreshFieldData (cachedValStr); only the
+    -- optional ghost-bar delta suffix is computed live here because it depends on the
+    -- current sprayer state which changes independently of the 0.5s field-detect cycle.
+    local valStr = cachedValStr or tostring(math.floor(nutrient.value * ppmMult + 0.5))
     if cropTarget then
         local optPpm = math.floor(cropTarget.opt * ppmMult + 0.5)
         valStr = valStr .. "/" .. tostring(optPpm)

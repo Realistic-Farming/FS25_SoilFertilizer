@@ -12,6 +12,8 @@
 SoilFertilitySystem = {}
 local SoilFertilitySystem_mt = Class(SoilFertilitySystem)
 
+local COVERAGE_MILESTONES = { 0.10, 0.25, 0.50, 0.75, 1.0 }
+
 function SoilFertilitySystem.new(settings)
     local self = setmetatable({}, SoilFertilitySystem_mt)
     self.settings = settings
@@ -2483,8 +2485,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     field.sessionCoverageHa       = math.min(areaInHa, (field.sessionCoverageHa or 0) + areaThisTick)
     field.sessionCoverageFraction = math.min(1.0, field.sessionCoverageHa / areaInHa)
 
-    local milestones = { 0.10, 0.25, 0.50, 0.75, 1.0 }
-    for _, m in ipairs(milestones) do
+    for _, m in ipairs(COVERAGE_MILESTONES) do
         if prevCoverage < m and field.coverageFraction >= m then
             SoilLogger.debug("Coverage field=%d  %.0f%% covered (%.3f/%.3f ha)  type=%s",
                 fieldId, m * 100, field.coveredAreaHa, areaInHa, fillTypeName or "?")

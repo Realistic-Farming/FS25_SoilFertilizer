@@ -649,14 +649,20 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         -- Capped at 500 cells per field to prevent packet overflow on large fields.
         local zd = field.zoneData or {}
         local ZONE_SYNC_MAX = 500
-        local zdSent = {}
-        for cellKey, cell in pairs(zd) do
-            if #zdSent >= ZONE_SYNC_MAX then break end
-            table.insert(zdSent, {key = cellKey, cell = cell})
+
+        -- Pass 1: count without building an intermediate table
+        local zdCount = 0
+        for _ in pairs(zd) do
+            zdCount = zdCount + 1
+            if zdCount >= ZONE_SYNC_MAX then break end
         end
-        streamWriteInt32(streamId, #zdSent)
-        for _, entry in ipairs(zdSent) do
-            local cellKey, cell = entry.key, entry.cell
+        streamWriteInt32(streamId, zdCount)
+
+        -- Pass 2: serialize directly into the stream
+        local sent = 0
+        for cellKey, cell in pairs(zd) do
+            if sent >= ZONE_SYNC_MAX then break end
+            sent = sent + 1
             streamWriteInt32(streamId,   tonumber(cellKey) or 0)
             streamWriteFloat32(streamId, cell.N  or 0)
             streamWriteFloat32(streamId, cell.P  or 0)
