@@ -1214,6 +1214,7 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
         elseif val < T.potassium.fair then return FAIR[1], FAIR[2], FAIR[3]
         else                               return GOOD[1], GOOD[2], GOOD[3] end
     elseif layerIdx == 4 then
+        val = math.floor((val * 10) + 0.5) / 10
         if val >= 6.5 and val <= 7.0   then return GOOD[1], GOOD[2], GOOD[3]   -- optimal
         elseif val > 7.0 and val <= 7.5 then return POOR[1], POOR[2], POOR[3]  -- over-limed: same as poor so the map signals "stop adding lime"
         elseif val >= 5.5              then return FAIR[1], FAIR[2], FAIR[3]    -- slightly acidic

@@ -14,6 +14,7 @@ function HookManager.new()
     local self = setmetatable({}, HookManager_mt)
     self.hooks = {}
     self.installed = false
+    self._sectionScratch = {}   -- reused scratch table for sprayer section loops
     return self
 end
 
@@ -1460,17 +1461,21 @@ function HookManager:installSprayerAreaHook()
                 end
 
                 if vww and vww.sections and #vww.sections > 0 then
-                    -- Collect active sections
-                    local activeSections = {}
+                    -- Collect active sections into pre-allocated scratch table (avoids per-tick allocation)
+                    local scratch = hookMgrRef._sectionScratch
+                    local scratchN = 0
                     for _, section in ipairs(vww.sections) do
                         if section.isActive or section.isCenter then
-                            table.insert(activeSections, section)
+                            scratchN = scratchN + 1
+                            scratch[scratchN] = section
                         end
                     end
+                    for i = scratchN + 1, #scratch do scratch[i] = nil end
 
-                    if #activeSections > 0 then
-                        local litersPerSection = effectiveLiters / #activeSections
-                        for _, section in ipairs(activeSections) do
+                    if scratchN > 0 then
+                        local litersPerSection = effectiveLiters / scratchN
+                        for i = 1, scratchN do
+                            local section = scratch[i]
                             local sx, sz = rootX, rootZ
                             if not section.isCenter and section.maxWidthNode ~= nil then
                                 local wx, _, wz = getWorldTranslation(section.maxWidthNode)
