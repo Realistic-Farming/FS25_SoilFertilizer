@@ -63,7 +63,7 @@ function SettingsManager:loadSettings(settingsObject)
         end
     end
 
-    SoilLogger.info("No saved settings found, using defaults")
+    SoilLogger.debug("No saved settings found, using defaults")
     self:applyDefaults(settingsObject)
 end
 

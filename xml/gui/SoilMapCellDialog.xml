@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    Soil Map Cell Dialog
+    Shows per-cell soil data on map click with full-screen map view.
+    Controller: SoilMapCellDialog (src/ui/SoilMapCellDialog.lua)
+-->
 <GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
     <GuiElement profile="newLayer" />
     <Bitmap profile="dialogFullscreenBg" id="dialogBg" />
@@ -9,65 +14,81 @@
         <ThreePartBitmap profile="fs25_dialogBgBottom" />
 
         <GuiElement profile="fs25_dialogContentContainer">
+
             <!-- Title -->
             <Text profile="fs25_dialogTitle" id="dialogTitleElement" position="0px -30px" text="$l10n_sf_cell_dialog_title"/>
 
-            <!-- Main Content Area: Map + Sidebar -->
+            <!-- Main Content: Map + Sidebar -->
             <GuiElement position="0px -80px" size="1160px 600px">
-                
+
                 <!-- Map Element (Left) -->
-                <IngameMap id="mapElement" profile="fs25_ingameMap" position="0px 0px" size="800px 600px" 
+                <IngameMap id="mapElement" profile="fs25_ingameMap" position="0px 0px" size="800px 600px"
                            onClickMap="onClickMap" onDrawPostIngameMap="onDrawPostIngameMap" />
 
                 <!-- Sidebar (Right) -->
                 <GuiElement id="sidebarContainer" position="820px 0px" size="340px 600px">
                     <ThreePartBitmap profile="fs25_subCategoryContainer" size="340px 600px" position="0px 0px">
                         <GuiElement profile="fs25_subCategoryContainer" width="320px">
+
                             <Text profile="sf_sectionHeader" text="$l10n_sf_cell_sidebar_header" position="10px -10px"/>
-                            
-                            <!-- Detail Fields -->
-                            <GuiElement id="detailsGroup" position="0px -50px" visible="false">
-                                <Text profile="sf_detailLabel" text="$l10n_sf_detail_field_label" position="10px -10px"/>
-                                <Text profile="sf_detailValueLarge" id="valFieldId" text="--" position="200px -10px" textAlignment="right" size="100px 24px"/>
-                                
-                                <Text profile="sf_detailLabel" text="$l10n_sf_cell_coord" position="10px -40px"/>
-                                <Text profile="sf_detailValueLarge" id="valCoords" text="[0, 0]" position="150px -40px" textAlignment="right" size="150px 24px"/>
-                                
-                                <Bitmap profile="sf_tabDivider" position="0px -75px" size="300px 2px"/>
-                                
-                                <Text profile="sf_detailLabel" text="Nitrogen (N)" position="10px -100px"/>
-                                <Text profile="sf_detailValueLarge" id="valN" text="--%" position="200px -100px" textAlignment="right" size="100px 24px"/>
-                                
-                                <Text profile="sf_detailLabel" text="Phosphorus (P)" position="10px -130px"/>
-                                <Text profile="sf_detailValueLarge" id="valP" text="--%" position="200px -130px" textAlignment="right" size="100px 24px"/>
-                                
-                                <Text profile="sf_detailLabel" text="Potassium (K)" position="10px -160px"/>
-                                <Text profile="sf_detailValueLarge" id="valK" text="--%" position="200px -160px" textAlignment="right" size="100px 24px"/>
-                                
-                                <Text profile="sf_detailLabel" text="pH Level" position="10px -190px"/>
-                                <Text profile="sf_detailValueLarge" id="valPH" text="--%" position="200px -190px" textAlignment="right" size="100px 24px"/>
-                                
-                                <Text profile="sf_detailLabel" text="Organic Matter" position="10px -220px"/>
-                                <Text profile="sf_detailValueLarge" id="valOM" text="--%" position="200px -220px" textAlignment="right" size="100px 24px"/>
 
-                                <Bitmap profile="sf_tabDivider" position="0px -255px" size="300px 2px"/>
+                            <!-- Detail Fields (hidden until map click) -->
+                            <GuiElement id="detailsGroup" position="0px -48px" visible="false">
 
-                                <Text profile="sf_detailLabel" text="Weed Pressure" position="10px -280px"/>
-                                <Text profile="sf_detailValueLarge" id="valWeed" text="--%" position="200px -280px" textAlignment="right" size="100px 24px"/>
+                                <!-- Field ID + Coords row -->
+                                <GuiElement profile="sf_infoRow" position="0px 0px">
+                                    <Bitmap profile="sf_infoRowBg" position="0px 0px"/>
+                                    <Text profile="sf_detailLabel" text="$l10n_sf_detail_field_label" position="8px -5px"/>
+                                    <Text profile="sf_detailValue" id="valFieldId" text="--" position="200px -5px" size="100px 22px"/>
+                                    <Text profile="sf_detailLabel" text="$l10n_sf_cell_coord" position="8px -28px"/>
+                                    <Text profile="sf_detailValue" id="valCoords" text="[0, 0]" position="150px -28px" size="140px 22px"/>
+                                </GuiElement>
 
-                                <Text profile="sf_detailLabel" text="Pest Pressure" position="10px -310px"/>
-                                <Text profile="sf_detailValueLarge" id="valPest" text="--%" position="200px -310px" textAlignment="right" size="100px 24px"/>
+                                <!-- Nutrients section -->
+                                <GuiElement profile="sf_nutrientSection" position="0px -62px">
+                                    <Bitmap profile="sf_nutrientBg" position="0px 0px"/>
+                                    <Text profile="sf_sidebarSectionHeader" text="Nutrients" position="8px -5px"/>
 
-                                <Text profile="sf_detailLabel" text="Disease Pressure" position="10px -340px"/>
-                                <Text profile="sf_detailValueLarge" id="valDisease" text="--%" position="200px -340px" textAlignment="right" size="100px 24px"/>
+                                    <Text profile="sf_detailLabel" text="Nitrogen (N)"     position="8px  -30px"/>
+                                    <Text profile="sf_detailValue" id="valN"  text="--%" position="195px -30px" size="100px 22px"/>
 
-                                <Text profile="sf_detailLabel" text="Compaction" position="10px -370px"/>
-                                <Text profile="sf_detailValueLarge" id="valCompaction" text="--%" position="200px -370px" textAlignment="right" size="100px 24px"/>
+                                    <Text profile="sf_detailLabel" text="Phosphorus (P)"   position="8px  -55px"/>
+                                    <Text profile="sf_detailValue" id="valP"  text="--%" position="195px -55px" size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="Potassium (K)"    position="8px  -80px"/>
+                                    <Text profile="sf_detailValue" id="valK"  text="--%" position="195px -80px" size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="pH Level"         position="8px  -105px"/>
+                                    <Text profile="sf_detailValue" id="valPH" text="--%" position="195px -105px" size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="Organic Matter"   position="8px  -130px"/>
+                                    <Text profile="sf_detailValue" id="valOM" text="--%" position="195px -130px" size="100px 22px"/>
+                                </GuiElement>
+
+                                <!-- Pressures section -->
+                                <GuiElement profile="sf_pressureSection" position="0px -230px">
+                                    <Bitmap profile="sf_pressureBg" position="0px 0px"/>
+                                    <Text profile="sf_sidebarSectionHeader" text="Crop Pressure" position="8px -5px"/>
+
+                                    <Text profile="sf_detailLabel" text="Weed Pressure"   position="8px  -30px"/>
+                                    <Text profile="sf_detailValue" id="valWeed"       text="--%" position="195px -30px"  size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="Pest Pressure"   position="8px  -55px"/>
+                                    <Text profile="sf_detailValue" id="valPest"       text="--%" position="195px -55px"  size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="Disease Pressure" position="8px -80px"/>
+                                    <Text profile="sf_detailValue" id="valDisease"    text="--%" position="195px -80px"  size="100px 22px"/>
+
+                                    <Text profile="sf_detailLabel" text="Compaction"      position="8px  -105px"/>
+                                    <Text profile="sf_detailValue" id="valCompaction" text="--%" position="195px -105px" size="100px 22px"/>
+                                </GuiElement>
+
                             </GuiElement>
 
-                            <!-- Hint Text -->
+                            <!-- Hint Text (shown before map click) -->
                             <Text profile="sf_hintText" id="hintText" text="$l10n_sf_cell_click_hint"
                                   position="10px -100px" size="300px 200px" wrapText="true" visible="true" textAlignment="center"/>
+
                         </GuiElement>
                     </ThreePartBitmap>
                 </GuiElement>
@@ -75,53 +96,83 @@
 
         </GuiElement>
 
-        <!-- Button bar -->
         <BoxLayout profile="fs25_dialogButtonBox">
             <Button profile="buttonBack" text="$l10n_sf_detail_close" onClick="onCancel"/>
         </BoxLayout>
     </GuiElement>
 
     <GUIProfiles>
-        <!-- Map element profile (IngameMap) -->
+
         <Profile name="fs25_ingameMap" extends="baseReference" with="anchorTopLeft">
             <imageColor value="1 1 1 1"/>
         </Profile>
 
-        <!-- Profile for section headers in sidebar -->
+        <!-- Sidebar section header -->
         <Profile name="sf_sectionHeader" extends="fs25_textDefault" with="anchorTopLeft">
-            <size value="300px 30px"/>
-            <textSize value="16px"/>
+            <size value="300px 28px"/>
+            <textSize value="15px"/>
             <textBold value="true"/>
             <textColor value="0.65 0.80 0.95 1"/>
         </Profile>
 
-        <!-- Profile for detail labels -->
+        <!-- Field ID / coord info row -->
+        <Profile name="sf_infoRow" extends="emptyPanel" with="anchorTopLeft">
+            <size value="310px 58px"/>
+        </Profile>
+        <Profile name="sf_infoRowBg" extends="baseReference" with="anchorTopLeft">
+            <size value="310px 58px"/>
+            <imageColor value="0.08 0.08 0.12 0.9"/>
+        </Profile>
+
+        <!-- Nutrients section -->
+        <Profile name="sf_nutrientSection" extends="emptyPanel" with="anchorTopLeft">
+            <size value="310px 163px"/>
+        </Profile>
+        <Profile name="sf_nutrientBg" extends="baseReference" with="anchorTopLeft">
+            <size value="310px 163px"/>
+            <imageColor value="0.06 0.10 0.14 0.9"/>
+        </Profile>
+
+        <!-- Pressure section -->
+        <Profile name="sf_pressureSection" extends="emptyPanel" with="anchorTopLeft">
+            <size value="310px 138px"/>
+        </Profile>
+        <Profile name="sf_pressureBg" extends="baseReference" with="anchorTopLeft">
+            <size value="310px 138px"/>
+            <imageColor value="0.10 0.07 0.06 0.9"/>
+        </Profile>
+
+        <!-- Sidebar section header (inside panels) -->
+        <Profile name="sf_sidebarSectionHeader" extends="fs25_textDefault" with="anchorTopLeft">
+            <size value="295px 22px"/>
+            <textSize value="12px"/>
+            <textBold value="true"/>
+            <textColor value="1 0.8 0.2 1"/>
+        </Profile>
+
+        <!-- Row label -->
         <Profile name="sf_detailLabel" extends="fs25_textDefault" with="anchorTopLeft">
-            <size value="180px 24px"/>
+            <size value="185px 22px"/>
             <textSize value="12px"/>
             <textColor value="0.65 0.65 0.65 1"/>
         </Profile>
 
-        <!-- Profile for large detail values -->
-        <Profile name="sf_detailValueLarge" extends="fs25_textDefault" with="anchorTopLeft">
-            <size value="120px 24px"/>
+        <!-- Row value -->
+        <Profile name="sf_detailValue" extends="fs25_textDefault" with="anchorTopLeft">
+            <size value="100px 22px"/>
             <textSize value="13px"/>
             <textBold value="true"/>
             <textColor value="1 1 1 1"/>
+            <textAlignment value="right"/>
         </Profile>
 
-        <!-- Profile for dividers -->
-        <Profile name="sf_tabDivider" extends="baseReference" with="anchorTopLeft">
-            <size value="300px 2px"/>
-            <imageColor value="0.2 0.25 0.35 0.5"/>
-        </Profile>
-
-        <!-- Profile for hint text -->
+        <!-- Hint text -->
         <Profile name="sf_hintText" extends="fs25_textDefault" with="anchorTopLeft">
             <size value="300px 200px"/>
             <textSize value="14px"/>
-            <textColor value="0.6 0.6 0.6 1"/>
+            <textColor value="0.65 0.65 0.65 1"/>
             <textAlignment value="center"/>
         </Profile>
+
     </GUIProfiles>
 </GUI>

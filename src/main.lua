@@ -114,6 +114,13 @@ local function isEnabled()
     return sfm ~= nil
 end
 
+-- Called when mission starts (player enters world, all fields populated)
+local function missionStarted(mission)
+    if sfm then
+        sfm:onMissionStarted()
+    end
+end
+
 -- Called after mission loaded
 local function loadedMission(mission, node)
     if mission.cancelLoading then return end
@@ -431,7 +438,7 @@ local function hookSaveLoadEvents()
         SoilLogger.warning("FSCareerMissionInfo.saveToXMLFile not found — soil data will NOT be saved")
     end
 
-    -- Load is handled in SoilFertilityManager:deferredSoilSystemInit() after soilSystem:initialize().
+    -- Load is handled in SoilFertilityManager:onMissionStarted() after soilSystem:initialize().
     -- This guarantees missionInfo.savegameDirectory is set (it is nil at constructor time
     -- for new careers) before we attempt to read soilData.xml.
 end
@@ -441,6 +448,7 @@ end
 -- mission object is completely set up before our load() accesses it.
 Mission00.load = Utils.appendedFunction(Mission00.load, load)
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, loadedMission)
+Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, missionStarted)
 -- Prepend so our cleanup runs before FS25 tears down g_inputBinding/HUD (fixes black screen with AGS)
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 

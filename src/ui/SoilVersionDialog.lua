@@ -31,17 +31,10 @@ SoilVersionDialog.CHANGELOG = {
     "  (P deficit → Liquid MAP / Liquid DAP / DAP;  K deficit → Liquid Potash / Potash)",
     "- Fixed Compost fill plane no longer overrides map-defined custom visuals",
     "- Fixed pH display rounding — tooltip and map tile colors now always match",
-    "",
-    "PERFORMANCE",
-    "- Soil map overlay is now up to 8x faster on large maps — only your owned fields are",
-    "  drawn instead of every field on the map. Big improvement for anyone playing on",
-    "  community servers or large maps with hundreds of unowned parcels.",
-    "- Spraying large fields is smoother — less stuttering and frame drops while the",
-    "  sprayer is running across a big parcel.",
-    "- HUD nutrient display refreshes more efficiently — less background work every",
-    "  frame, especially on lower-end machines.",
-    "- Multiplayer join sync is lighter — connecting to a server with lots of fields",
-    "  sends less data and causes fewer hitches.",
+    "- Soil map overlay only draws your owned fields — big FPS boost on large maps",
+    "- Spraying large fields is smoother — less stuttering while the boom is running",
+    "- HUD nutrient display is lighter on your CPU, especially on lower-end machines",
+    "- Multiplayer join is faster — less data when connecting to a busy server",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

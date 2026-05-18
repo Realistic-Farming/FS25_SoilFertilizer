@@ -243,7 +243,7 @@ SettingsSchema.definitions = {
         type = "boolean",
         default = false,
         uiId = "sf_pf_compat",
-        localOnly = true,  -- per-player; PF presence is client-side, not synced
+        -- server-synced: controls fill type relay and yield modifier, not just display
     },
 }
 

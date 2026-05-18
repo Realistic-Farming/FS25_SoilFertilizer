@@ -20,66 +20,59 @@
       <Text profile="fs25_dialogTitle" id="treatTitle"
             text="$l10n_sf_treat_title" position="0px -30px"/>
 
-      <!-- Field ID -->
+      <!-- Field ID (outside sections) -->
       <Text profile="sfTreat_fieldId" id="treatFieldId"
-            text="" position="0px -65px" size="340px 24px"/>
+            text="" position="0px -63px" size="500px 24px"/>
 
-      <!-- ─── SOIL AMELIORATION ─── -->
-      <Text profile="sfTreat_sectionHeader"
-            text="$l10n_sf_treat_section_soil" position="0px -105px"/>
+      <!-- ─── SOIL AMELIORATION section ─── -->
+      <GuiElement profile="sfTreat_section2" position="0px -95px">
+        <Bitmap profile="sfTreat_sectionBg2" position="0px 0px"/>
+        <Text profile="sfTreat_sectionHeader"
+              text="$l10n_sf_treat_section_soil" position="0px -5px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_col_ph"
-            position="0px -140px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatPHAction"
-            text="--"  position="190px -140px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_col_ph" position="-270px -33px"/>
+        <Text profile="sfTreat_action" id="treatPHAction" text="--"  position="60px -33px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_col_om"
-            position="0px -165px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatOMAction"
-            text="--"  position="190px -165px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_col_om" position="-270px -58px"/>
+        <Text profile="sfTreat_action" id="treatOMAction" text="--"  position="60px -58px"/>
+      </GuiElement>
 
-      <!-- ─── FERTILIZATION ─── -->
-      <Text profile="sfTreat_sectionHeader"
-            text="$l10n_sf_treat_section_fert" position="0px -215px"/>
+      <!-- ─── FERTILIZATION section ─── -->
+      <GuiElement profile="sfTreat_section3" position="0px -194px">
+        <Bitmap profile="sfTreat_sectionBg3" position="0px 0px"/>
+        <Text profile="sfTreat_sectionHeader"
+              text="$l10n_sf_treat_section_fert" position="0px -5px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_col_n"
-            position="0px -250px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatNAction"
-            text="--"  position="190px -250px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_col_n" position="-270px -33px"/>
+        <Text profile="sfTreat_action" id="treatNAction" text="--"  position="60px -33px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_col_p"
-            position="0px -275px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatPAction"
-            text="--"  position="190px -275px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_col_p" position="-270px -58px"/>
+        <Text profile="sfTreat_action" id="treatPAction" text="--"  position="60px -58px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_col_k"
-            position="0px -300px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatKAction"
-            text="--"  position="190px -300px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_col_k" position="-270px -83px"/>
+        <Text profile="sfTreat_action" id="treatKAction" text="--"  position="60px -83px"/>
+      </GuiElement>
 
-      <!-- ─── CROP PROTECTION ─── -->
-      <Text profile="sfTreat_sectionHeader"
-            text="$l10n_sf_treat_section_prot" position="0px -350px"/>
+      <!-- ─── CROP PROTECTION section ─── -->
+      <GuiElement profile="sfTreat_section3prot" position="0px -319px">
+        <Bitmap profile="sfTreat_sectionBgProt" position="0px 0px"/>
+        <Text profile="sfTreat_sectionHeader"
+              text="$l10n_sf_treat_section_prot" position="0px -5px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_need_weed"
-            position="0px -385px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatWeedAction"
-            text="--"  position="190px -385px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_need_weed"    position="-270px -33px"/>
+        <Text profile="sfTreat_action" id="treatWeedAction"    text="--" position="60px -33px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_need_pest"
-            position="0px -410px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatPestAction"
-            text="--"  position="190px -410px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_need_pest"    position="-270px -58px"/>
+        <Text profile="sfTreat_action" id="treatPestAction"    text="--" position="60px -58px"/>
 
-      <Text profile="sfTreat_label" text="$l10n_sf_pda_need_disease"
-            position="0px -435px"   size="180px 22px"/>
-      <Text profile="sfTreat_action" id="treatDiseaseAction"
-            text="--"  position="190px -435px" size="480px 22px"/>
+        <Text profile="sfTreat_label" text="$l10n_sf_pda_need_disease" position="-270px -83px"/>
+        <Text profile="sfTreat_action" id="treatDiseaseAction" text="--" position="60px -83px"/>
+      </GuiElement>
 
-      <!-- Summary hint -->
+      <!-- Summary hint (outside sections) -->
       <Text profile="sfTreat_hint" id="treatHint"
             text="$l10n_sf_treat_hint"
-            position="0px -485px" size="680px 40px" wrapText="true"/>
+            position="0px -450px" size="680px 36px" wrapText="true"/>
 
     </GuiElement>
 
@@ -91,33 +84,72 @@
   </GuiElement>
 
   <GUIProfiles>
+
     <Profile name="sfTreat_bg" extends="fs25_dialogBg">
-      <size value="760px 600px"/>
+      <size value="760px 560px"/>
     </Profile>
-    <Profile name="sfTreat_fieldId" extends="fs25_dialogText" with="anchorTopLeft">
+
+    <!-- 2-row section (soil amelioration) -->
+    <Profile name="sfTreat_section2" extends="emptyPanel" with="anchorTopCenter">
+      <size value="700px 91px"/>
+    </Profile>
+    <Profile name="sfTreat_sectionBg2" extends="baseReference" with="anchorTopCenter">
+      <size value="700px 91px"/>
+      <imageColor value="0.08 0.08 0.12 0.9"/>
+    </Profile>
+
+    <!-- 3-row section (fertilization) -->
+    <Profile name="sfTreat_section3" extends="emptyPanel" with="anchorTopCenter">
+      <size value="700px 116px"/>
+    </Profile>
+    <Profile name="sfTreat_sectionBg3" extends="baseReference" with="anchorTopCenter">
+      <size value="700px 116px"/>
+      <imageColor value="0.06 0.10 0.14 0.9"/>
+    </Profile>
+
+    <!-- 3-row section (crop protection — slight warm tint) -->
+    <Profile name="sfTreat_section3prot" extends="emptyPanel" with="anchorTopCenter">
+      <size value="700px 116px"/>
+    </Profile>
+    <Profile name="sfTreat_sectionBgProt" extends="baseReference" with="anchorTopCenter">
+      <size value="700px 116px"/>
+      <imageColor value="0.10 0.07 0.06 0.9"/>
+    </Profile>
+
+    <!-- Section header: gold, bold, centered -->
+    <Profile name="sfTreat_sectionHeader" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="660px 22px"/>
+      <textSize value="14px"/>
+      <textBold value="true"/>
+      <textColor value="1 0.8 0.2 1"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="sfTreat_fieldId" extends="fs25_textDefault" with="anchorTopCenter">
       <textSize value="18px"/>
       <textBold value="true"/>
       <textColor value="0.35 0.85 0.40 1.0"/>
-    </Profile>
-    <Profile name="sfTreat_sectionHeader" extends="fs25_dialogText" with="anchorTopLeft">
-      <textSize value="14px"/>
-      <textBold value="true"/>
-      <textUpperCase value="true"/>
-      <textColor value="0.35 0.85 0.40 1.0"/>
-    </Profile>
-    <Profile name="sfTreat_label" extends="fs25_dialogText" with="anchorTopLeft">
-      <textSize value="13px"/>
-      <textColor value="$preset_colorWhite_50"/>
-    </Profile>
-    <Profile name="sfTreat_action" extends="fs25_dialogText" with="anchorTopLeft">
-      <textSize value="13px"/>
-      <textBold value="true"/>
-      <textColor value="$preset_colorWhite"/>
-    </Profile>
-    <Profile name="sfTreat_hint" extends="fs25_dialogText" with="anchorTopLeft">
-      <textSize value="12px"/>
-      <textColor value="$preset_colorWhite_50"/>
       <textAlignment value="center"/>
     </Profile>
+
+    <Profile name="sfTreat_label" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="140px 22px"/>
+      <textSize value="12px"/>
+      <textColor value="0.65 0.65 0.65 1"/>
+    </Profile>
+
+    <Profile name="sfTreat_action" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="500px 22px"/>
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="1 1 1 1"/>
+    </Profile>
+
+    <Profile name="sfTreat_hint" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="12px"/>
+      <textColor value="0.65 0.65 0.65 1"/>
+      <textAlignment value="center"/>
+    </Profile>
+
   </GUIProfiles>
 </GUI>
