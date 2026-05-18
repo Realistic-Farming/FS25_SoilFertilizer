@@ -543,14 +543,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     return self
 end
 
---- Called after mission is loaded
---- Initializes HUD and sets up deferred hook installation
+--- Called after mission is loaded (loadMission00Finished).
+--- Initializes HUD and settings panel — fields not yet guaranteed populated at this point.
 function SoilFertilityManager:onMissionLoaded()
     if not self.settings.enabled then return end
 
     local success, errorMsg = pcall(function()
-        -- Initialize HUD immediately (client-side only)
-        -- Input binding (J key) is registered via PlayerInputComponent hook in new(), not here
         if self.soilHUD then
             self.soilHUD:initialize()
             self.soilHUD:loadLayout()
@@ -559,10 +557,6 @@ function SoilFertilityManager:onMissionLoaded()
         if self.settingsPanel then
             self.settingsPanel:initialize()
         end
-
-        -- Defer soil system initialization (hook installation) until game is ready
-        -- This fixes the timing issue where FruitUtil, Sprayer, g_farmlandManager aren't loaded yet
-        self:deferredSoilSystemInit()
     end)
 
     if not success then
@@ -572,127 +566,45 @@ function SoilFertilityManager:onMissionLoaded()
     end
 end
 
---- Deferred initialization of soil system using updater pattern
---- Waits for game to be fully ready before installing hooks
-function SoilFertilityManager:deferredSoilSystemInit()
+--- Called when mission actually starts (Mission00.onStartMission).
+--- At this point the loading screen is gone, the player is in the world, and
+--- g_fieldManager.fields is fully populated — safe to initialize the soil system.
+function SoilFertilityManager:onMissionStarted()
     if not self.soilSystem then return end
 
-    SoilLogger.info("Scheduling deferred soil system initialization...")
+    -- Reload settings: savegameDirectory is guaranteed set by onStartMission time.
+    -- The load() call in new() fires during Mission00.load before savegameDirectory
+    -- is available on fresh saves, so it falls back to defaults.
+    self.settings:load()
 
-    local hookInstaller = {
-        sfm = self,
-        installed = false,
-        attempts = 0,
-        maxAttempts = 3000,  -- ~50s at 60fps — covers very heavy modded servers
+    if not self.settings.enabled then
+        SoilLogger.info("Mod disabled in settings — skipping soil system init")
+        return
+    end
 
-        update = function(self, dt)
-            if self.installed then
-                g_currentMission:removeUpdateable(self)
-                return
-            end
+    SoilLogger.info("Mission started — initializing soil system (fields guaranteed populated)...")
 
-            self.attempts = self.attempts + 1
-
-            -- Guard 1: Mission must exist and be in a started state.
-            -- FS25 does not reliably expose isMissionStarted; instead check missionDynamicInfo.isStarted
-            -- which is set once the loading screen completes, with a fallback to checking that hud
-            -- exists (initialized late in the load sequence) for older or modded builds.
-            local missionReady = g_currentMission ~= nil and (
-                (g_currentMission.missionDynamicInfo ~= nil and g_currentMission.missionDynamicInfo.isStarted) or
-                (g_currentMission.hud ~= nil)
-            )
-            if not missionReady then
-                if self.attempts >= self.maxAttempts then
-                    SoilLogger.warning("Deferred init timeout: Mission not ready after %d attempts", self.attempts)
-                    g_currentMission:removeUpdateable(self)
-                end
-                return
-            end
-
-            -- Guard 2: Field manager must be ready AND populated with at least one field.
-            -- On 100+ mod servers, g_fieldManager.fields exists as an empty table for several
-            -- seconds before the game finishes populating it — we must wait for next() to return
-            -- a valid entry, not just check for non-nil.
-            if not g_fieldManager or not g_fieldManager.fields or next(g_fieldManager.fields) == nil then
-                if self.attempts >= self.maxAttempts then
-                    SoilLogger.warning("Deferred init timeout: FieldManager not populated after %d attempts", self.attempts)
-                    g_currentMission:removeUpdateable(self)
-                end
-                return
-            end
-
-            -- Guard 3: FarmlandManager must be available for ownership hook installation.
-            -- Without this, the ownership hook fails on heavily modded servers where
-            -- farmlandManager loads after fieldManager.
-            if not g_farmlandManager then
-                if self.attempts >= self.maxAttempts then
-                    SoilLogger.warning("Deferred init timeout: FarmlandManager not available after %d attempts", self.attempts)
-                    g_currentMission:removeUpdateable(self)
-                end
-                return
-            end
-
-            -- All guards passed - initialize soil system now
-            SoilLogger.info("Game ready after %d update cycles - initializing soil system...", self.attempts)
-
-            -- Reload settings here: savegameDirectory is now guaranteed available.
-            -- The earlier load() in new() fires before savegameDirectory is set on
-            -- dedicated servers (Mission00.load timing), so it falls back to defaults.
-            -- This reload picks up the actual saved XML values.
-            self.sfm.settings:load()
-
-            -- Guard: if settings were saved with enabled=false, respect that.
-            if not self.sfm.settings.enabled then
-                SoilLogger.info("Mod disabled in settings — skipping soil system init")
-                self.installed = true
-                g_currentMission:removeUpdateable(self)
-                return
-            end
-
-            local initSuccess, initError = pcall(function()
-                self.sfm.soilSystem:initialize()
-
-                -- Detect Precision Farming via g_modManager (shared C++ object, cross-mod visible).
-                -- Must run after mission is fully loaded so g_modManager has all mod entries.
-                if self.sfm.pfBridge then
-                    self.sfm.hasPrecisionFarming = self.sfm.pfBridge:initialize()
-                    -- Give soil system a direct reference so it can gate logic without a global lookup
-                    self.sfm.soilSystem.pfBridge = self.sfm.pfBridge
-                end
-
-                -- Load saved soil data now that savegameDirectory is set
-                self.sfm:loadSoilData()
-
-                -- Show version dialog (once per version only).
-                -- The hardcoded changelog values are here for a reason, and will NOT be translated.
-                if self.sfm.settings.showNotifications and SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
-                    local modInfo = g_modManager and g_modManager:getModByName(self.sfm.modName)
-                    local version = (modInfo and modInfo.version) or "?"
-
-                    if self.sfm.lastSeenVersion ~= version then
-                        SoilVersionDialog.show(version)
-                    end
-                end
-            end)
-
-            if not initSuccess then
-                SoilLogger.error("Deferred soil system init failed: %s", tostring(initError))
-            end
-
-            self.installed = true
-            g_currentMission:removeUpdateable(self)
-        end
-    }
-
-    -- Register updater with mission
-    if g_currentMission and g_currentMission.addUpdateable then
-        g_currentMission:addUpdateable(hookInstaller)
-        SoilLogger.info("Deferred init updater registered - waiting for game readiness...")
-    else
-        -- Fallback: try immediate initialization
-        SoilLogger.warning("Mission.addUpdateable not available - attempting immediate init")
+    local ok, err = pcall(function()
         self.soilSystem:initialize()
+
+        if self.pfBridge then
+            self.hasPrecisionFarming = self.pfBridge:initialize()
+            self.soilSystem.pfBridge = self.pfBridge
+        end
+
         self:loadSoilData()
+
+        if self.settings.showNotifications and SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
+            local modInfo = g_modManager and g_modManager:getModByName(self.modName)
+            local version = (modInfo and modInfo.version) or "?"
+            if self.lastSeenVersion ~= version then
+                SoilVersionDialog.show(version)
+            end
+        end
+    end)
+
+    if not ok then
+        SoilLogger.error("onMissionStarted init failed: %s", tostring(err))
     end
 end
 
