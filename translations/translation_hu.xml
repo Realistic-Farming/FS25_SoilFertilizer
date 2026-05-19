@@ -83,10 +83,10 @@
     <e k="sf_active_map_layer_long" v="Tápanyagréteg megjelenítése átfedésként a PDA térképen" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Térkép részletesség" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Mintavételi pontok kerete a PDA talajátfedéshez. Alacsony = jobb FPS, Magas = teljesebb lefedettség nagy térképeken." eh="89215ce5" />
-    <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
-    <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
-    <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
-    <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
+    <e k="sf_colorblind_mode_short" v="Színtévesztő mód" />
+    <e k="sf_colorblind_mode_long" v="A piros/zöld állapotszíneket narancs/kék színekre cseréli (Okabe–Ito paletta) a deuteranópia és protanópia jobb támogatásához." />
+    <e k="sf_show_field_info_box_short" v="Mezőinformációs panel" />
+    <e k="sf_show_field_info_box_long" v="Talajtápanyagok megjelenítése az alap Mezőinformáció panelen, amikor mezőn állsz." />
     <e k="input_SF_OPEN_SETTINGS" v="Talaj beállítások megnyitása" eh="2e31c0dd" />
     <e k="sf_reset" v="Talajbeállítások alaphelyzetbe állítása" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Talaj HUD váltása" eh="f0224a10" />
@@ -149,55 +149,55 @@
     <e k="sf_fungicide_title" v="Gombaölő szer" eh="e8512698" />
     <e k="sf_report_page_info" v="Mezők %d-%d / %d  |  Oldal %d / %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
-    <e k="sf_bigBag_uan32_function" v="Nitrogén műtrágya (folyékony) — +44N ppm/ha @ 60.8 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_uan32_function" v="Nitrogén műtrágya (folyékony)" eh="27de5f41" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
-    <e k="sf_bigBag_uan28_function" v="Nitrogén műtrágya (folyékony) — +38N ppm/ha @ 60.8 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_uan28_function" v="Nitrogén műtrágya (folyékony)" eh="27de5f41" />
     <e k="sf_bigBag_anhydrous_name" v="IBC Vízmentes ammónia 82-0-0" eh="fb09e6ce" />
-    <e k="sf_bigBag_anhydrous_function" v="Nitrogén műtrágya (folyékony) — +67N ppm/ha @ 28 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_anhydrous_function" v="Nitrogén műtrágya (folyékony)" eh="27de5f41" />
     <e k="sf_bigBag_urea_name" v="Big Bag Karbamid 46-0-0" eh="8e8cbaae" />
-    <e k="sf_bigBag_urea_function" v="Nitrogén műtrágya (száraz) — +78N ppm/ha @ 168 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_urea_function" v="Nitrogén műtrágya (száraz)" eh="63efea20" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
-    <e k="sf_bigBag_an_function" v="Nitrogén műtrágya (száraz) — +68N ppm/ha @ 200 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_an_function" v="Nitrogén műtrágya (száraz)" eh="63efea20" />
     <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
-    <e k="sf_bigBag_ams_function" v="Nitrogén műtrágya (száraz) — +33N ppm/ha @ 168 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_ams_function" v="Nitrogén műtrágya (száraz)" eh="63efea20" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
-    <e k="sf_bigBag_map_function" v="Foszfor műtrágya (száraz) — +8N +56P ppm/ha @ 225 kg/ha" eh="0cc85c60" />
+    <e k="sf_bigBag_map_function" v="Foszfor műtrágya (száraz)" eh="0cc85c60" />
     <e k="sf_bigBag_dap_name" v="Big Bag DAP 18-46-0" eh="fb4e9987" />
-    <e k="sf_bigBag_dap_function" v="Foszfor műtrágya (száraz) — +11N +44P ppm/ha @ 225 kg/ha" eh="0cc85c60" />
+    <e k="sf_bigBag_dap_function" v="Foszfor műtrágya (száraz)" eh="0cc85c60" />
     <e k="sf_bigBag_potash_name" v="Big Bag Hamuzsír 0-0-60" eh="eb771556" />
-    <e k="sf_bigBag_potash_function" v="Kálium műtrágya (száraz) — +90K ppm/ha @ 225 kg/ha" eh="18015099" />
+    <e k="sf_bigBag_potash_function" v="Kálium műtrágya (száraz)" eh="18015099" />
     <e k="sf_bigBag_liquid_urea_name" v="IBC Folyékony karbamid" eh="c40b906f" />
-    <e k="sf_bigBag_liquid_urea_function" v="Nitrogén műtrágya (folyékony) — +78N ppm/ha @ 168 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_liquid_urea_function" v="Nitrogén műtrágya (folyékony)" eh="27de5f41" />
     <e k="sf_bigBag_liquid_ams_name" v="IBC Folyékony AMS" eh="32e6c8bb" />
-    <e k="sf_bigBag_liquid_ams_function" v="Nitrogén műtrágya (folyékony) — +33N ppm/ha @ 168 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_liquid_ams_function" v="Nitrogén műtrágya (folyékony)" eh="27de5f41" />
     <e k="sf_bigBag_liquid_map_name" v="IBC Folyékony MAP" eh="4628addb" />
-    <e k="sf_bigBag_liquid_map_function" v="Foszfor műtrágya (folyékony) — +8N +56P ppm/ha @ 225 L/ha" eh="eeb5ef5d" />
+    <e k="sf_bigBag_liquid_map_function" v="Foszfor műtrágya (folyékony)" eh="eeb5ef5d" />
     <e k="sf_bigBag_liquid_dap_name" v="IBC Folyékony DAP" eh="82fb3c06" />
-    <e k="sf_bigBag_liquid_dap_function" v="Foszfor műtrágya (folyékony) — +11N +44P ppm/ha @ 225 L/ha" eh="eeb5ef5d" />
+    <e k="sf_bigBag_liquid_dap_function" v="Foszfor műtrágya (folyékony)" eh="eeb5ef5d" />
     <e k="sf_bigBag_liquid_potash_name" v="IBC Folyékony hamuzsír" eh="7176856d" />
-    <e k="sf_bigBag_liquid_potash_function" v="Kálium műtrágya (folyékony) — +90K ppm/ha @ 225 L/ha" eh="52169d4a" />
-    <e k="sf_bigBag_starter_name" v="IBC Starter 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_liquid_potash_function" v="Kálium műtrágya (folyékony)" eh="52169d4a" />
+    <e k="sf_bigBag_starter_name" v="IBC Starter műtrágya 10-34-0" eh="62b13bd1" />
     <e k="sf_bigBag_insecticide_name" v="IBC Rovarölő szer" eh="c8f0aabb" />
     <e k="sf_bigBag_insecticide_function" v="Rovarölő szer (folyékony)" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="IBC Gombaölő szer" eh="2a1c78d4" />
     <e k="sf_bigBag_fungicide_function" v="Gombaölő szer (folyékony)" eh="745c34cb" />
-    <e k="sf_bigBag_starter_function" v="Starter műtrágya (folyékony) — +9N +17P ppm/ha @ 46.8 L/ha" eh="2c36ea57" />
+    <e k="sf_bigBag_starter_function" v="Starter műtrágya (folyékony)" eh="2c36ea57" />
     <e k="sf_bigBag_gypsum_name" v="Big Bag Gipsz" eh="40fc8169" />
-    <e k="sf_bigBag_gypsum_function" v="Talajjavító (száraz) — pH -0.15/pass @ 1500 kg/ha" eh="51503c54" />
+    <e k="sf_bigBag_gypsum_function" v="Talajjavító (száraz)" eh="51503c54" />
     <e k="sf_bigBag_compost_name" v="Big Bag Komposzt" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" />
-    <e k="sf_bigBag_compost_function" v="Szerves talajjavító (száraz) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="9dd2256a" />
-    <e k="sf_bigBag_biosolids_name" v="Big Bag Bioszolárd" eh="61a60ff3" />
-    <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
-    <e k="sf_bigBag_biosolids_function" v="Szerves műtrágya (száraz) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="374c7b1e" />
+    <e k="sf_bigBag_compost_function" v="Szerves talajjavító (száraz)" eh="9dd2256a" />
+    <e k="sf_bigBag_biosolids_name" v="Big Bag Bioszilárd" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Bioszilárd (10 000L)" />
+    <e k="sf_bigBag_biosolids_function" v="Szerves műtrágya (száraz)" eh="374c7b1e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Csirketrágya" eh="cb60fddc" />
-    <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
-    <e k="sf_bigBag_chicken_manure_function" v="Szerves műtrágya (száraz) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="374c7b1e" />
+    <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Csirketrágya (10 000L)" />
+    <e k="sf_bigBag_chicken_manure_function" v="Szerves műtrágya (száraz)" eh="374c7b1e" />
     <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletált trágya" eh="064be7fa" />
-    <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
-    <e k="sf_bigBag_pelletized_manure_function" v="Szerves műtrágya (száraz) — +22N +2P +33K ppm @ 450 kg/ha" eh="374c7b1e" />
+    <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletált trágya (10 000L)" />
+    <e k="sf_bigBag_pelletized_manure_function" v="Szerves műtrágya (száraz)" eh="374c7b1e" />
     <e k="sf_bigBag_liquidlime_name" v="Folyékony mész tartály" eh="4f8caca1" />
-    <e k="sf_bigBag_liquidlime_function" v="pH növelő szer (folyékony) — pH +0.40/pass @ 374 L/ha" eh="7a118b6d" />
+    <e k="sf_bigBag_liquidlime_function" v="pH növelő szer (folyékony)" eh="7a118b6d" />
     <e k="sf_hud_title" v="TALAJ MONITOR" eh="f8cda642" />
     <e k="sf_hud_field" v="Mező %d" eh="08988997" />
     <e k="sf_hud_noField" v="Sétáljon egy mezőre" eh="62c55e9e" />
@@ -224,8 +224,8 @@
     <e k="sf_report_pressure_high" v="Magas" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Az N/P/K arány alapján az optimális küszöbhöz képest" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Hozam ~-%d%%" eh="d64d5d59" />
-    <e k="sf_pf_compat_short" v="PF Compat Mode" />
-    <e k="sf_pf_compat_long" v="Hide SF nitrogen data when Precision Farming is active — prevents conflicting N readings between the two mods" />
+    <e k="sf_pf_compat_short" v="PF kompatibilitási mód" />
+    <e k="sf_pf_compat_long" v="Elrejti az SF nitrogénadatait, amikor a Precision Farming aktív — megakadályozza a két mod közti ütköző N-értékek megjelenését." />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
@@ -288,7 +288,7 @@
     <!-- Category 3 continued -->
     <e k="helpLine_sf_nu_p3_title" v="Szerves anyag" eh="6305f4bb" />
     <e k="helpLine_sf_nu_p3_om_title" v="Szerves anyag (OM) - Skála 0-tól 10-ig" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="Nagyon lassan épül fel. Gyenge: 2.5 alatt. Jó: 4.0 felett. Emelés: trágya, hígtrágya, komposzt, bioszólárd, csirketrágya, pelletált trágya vagy a szalma visszadolgozása a mezőbe." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_om_text" v="Nagyon lassan épül fel. Gyenge: 2.5 alatt. Jó: 4.0 felett. Emelés: trágya, hígtrágya, komposzt, bioszilárd, csirketrágya, pelletált trágya vagy a szalma visszadolgozása a mezőbe." eh="f9a02359" />
     <e k="helpLine_sf_nu_p3_fallow_title" v="Ugar regeneráció" eh="14133b0b" />
     <e k="helpLine_sf_nu_p3_fallow_text" v="A 7+ napig bevetetlen mező lassan regenerálódik. Naponta: N +0.07, P +0.03, K +0.05, OM +0.01. A vetésforgónak és a pihentetésnek valódi értéke van ebben a modban." eh="81fa82b3" />
 
@@ -303,11 +303,11 @@
     <e k="helpLine_sf_fe_p2_n_title" v="Nitrogén források (egyedi zsákok)" eh="9dfe5a5a" />
     <e k="helpLine_sf_fe_p2_n_text" v="Az UAN-32 és UAN-28 folyékony nitrogén oldatok. A vízmentes ammónia a legmagasabb N tartalmú termék. A karbamid és az AMS száraz granulátumok. Csak N-t tartalmaznak." eh="6a100c25" />
     <e k="helpLine_sf_fe_p2_pk_title" v="Foszfor és Kálium források" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP: legmagasabb P tartalom. DAP: magas P és némi N. Hamuzsír: tiszta K. Starter: magas P tartalmú termék kiegyensúlyozott N+K aránnyal. Mind elérhető a boltban." eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): legmagasabb P tartalom. DAP (18-46-0): magas P és némi N. Hamuzsír (0-0-60): tiszta K. Starter műtrágya (10-34-0): magas P tartalmú termék kiegyensúlyozott N+K aránnyal. Mind elérhető a boltban." eh="75a86964" />
 
     <e k="helpLine_sf_fe_p3_title" v="Szerves termékek és kiégési kockázat" eh="7ab807d1" />
     <e k="helpLine_sf_fe_p3_organic_title" v="Szerves és lassú felszívódású termékek" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="A komposzt a legerősebb OM építő. A bioszólárd és csirketrágya N, P és OM-et ad. A pelletált trágya koncentrált, kiegyensúlyozott szerves anyag. Egyedi típusokként érhetők el." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="A komposzt a legerősebb OM építő. A bioszilárd és csirketrágya N, P és OM-et ad. A pelletált trágya koncentrált, kiegyensúlyozott szerves anyag. Egyedi típusokként érhetők el." eh="3d16e4ee" />
     <e k="helpLine_sf_fe_p3_burn_title" v="Túladagolási kiégési kockázat" eh="e986cc54" />
     <e k="helpLine_sf_fe_p3_burn_text" v="Az alapmennyiség 1.25-szöröse felett fennáll a kiégés veszélye (-0.15 pH és -5 N). 1.50-szeres felett a kiégés garantált (-0.30 pH és -12 N). Használja az arányvezérlő gombokat." eh="7bccc46a" />
 
@@ -358,7 +358,7 @@
     <e k="sf_report_rotation_ok" v="Vetésforgó: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gipsz (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Komposzt (szerves)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="Bioszólárd (N+P)" eh="f0c901dc" />
+    <e k="sf_biosolids_title" v="Bioszilárd (N+P)" eh="f0c901dc" />
     <e k="sf_chicken_manure_title" v="Csirketrágya (N+P)" eh="338128e2" />
     <e k="sf_pelletized_manure_title" v="Pelletált trágya (NPK)" eh="c1b39b71" />
     <e k="sf_liquidlime_title" v="Folyékony mész (pH+)" eh="d4ec4bb9" />
@@ -443,7 +443,7 @@
     <e k="sf_pda_map_unavailable" v="Térkép előnézet nem elérhető" eh="43983f81" />
     <e k="sf_map_health_overall" v="Átlagos talaj egészség" eh="5533cbe3" />
     <e k="sf_map_btn_report" v="Gazdaság áttekintés" eh="6f0800e8" />
-    <e k="sf_map_btn_help" v="Help" eh="800e465a" />
+    <e k="sf_map_btn_help" v="Súgó" eh="800e465a" />
     <e k="sf_map_btn_cycle_layer" v="Réteg váltás" eh="875dbf22" />
     <e k="sf_map_btn_treatment" v="Kezelési terv" eh="4ba012e2" />
     <e k="sf_map_btn_disable" v="Átfedés kikapcsolása" eh="8e75dec5" />
@@ -525,17 +525,17 @@
     <e k="sf_treat_action_n_poor" v="Alkalmazzon UAN32-t, KARBAMIDOT vagy VÍZMENTES AMMÓNIÁT." eh="ebc225b0" />
     <e k="sf_treat_action_n_fair" v="Alkalmazzon AMS-t vagy STARTER műtrágyát." eh="dc8fbeba" />
     <e k="sf_treat_action_p_poor" v="Alkalmazzon MAP-ot vagy DAP-ot (Foszfor)." eh="ec2d9afa" />
-    <e k="sf_treat_action_p_fair" v="Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="6f802546" />
+    <e k="sf_treat_action_p_fair" v="Alkalmazzon kevert MŰTRÁGYÁT." eh="6f802546" />
     <e k="sf_treat_action_k_poor" v="Alkalmazzon HAMUZSÍRT (Kálium)." eh="bb2960f3" />
-    <e k="sf_treat_action_k_fair" v="Top-up with Liquid Potash or Potash (K)." eh="6f802546" />
+    <e k="sf_treat_action_k_fair" v="Alkalmazzon kevert MŰTRÁGYÁT." eh="6f802546" />
     <e k="sf_treat_action_weed" v="Azonnal alkalmazzon GYOMIRTÓT." eh="625551c5" />
     <e k="sf_treat_action_pest" v="Azonnal alkalmazzon ROVARÖLŐT." eh="f4db9a03" />
     <e k="sf_treat_action_disease" v="Azonnal alkalmazzon GOMBAÖLŐT." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_detail_yield_eff_label" v="Yield eff." />
-    <e k="sf_detail_yield_optimal" v="Optimal" />
     <e k="sf_detail_rotation_bonus" v="Pillangós bónusz (+N)" eh="8ab86f6a" />
     <e k="sf_detail_rotation_fatigue" v="Fáradtság (x1.15 kimerülés)" eh="522a6d93" />
+    <e k="sf_detail_yield_eff_label" v="Yield eff." />
+    <e k="sf_detail_yield_optimal" v="Optimal" />
     <e k="sf_detail_no_field" v="Nincs elérhető adat." eh="c6d95d5e" />
     <e k="sf_detail_no_crop" v="Nincs rögzítve" eh="a4b5a996" />
     <!-- HUD labels -->
@@ -594,7 +594,7 @@
     <e k="sf_panel_singleplayer" v="Egyjátékos mód" eh="da602601" />
     <e k="sf_panel_btn_back" v="&lt; Vissza" eh="36cf3e1f" />
     <e k="sf_panel_btn_reset_cat" v="Kategória alaphelyzet" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="SHIFT+O a bezáráshoz" eh="254406e3" />
+    <e k="sf_panel_btn_close_hint" v="Bezárás: SHIFT+O" eh="254406e3" />
     <e k="sf_panel_select_category" v="Válasszon kategóriát a beállításokhoz" eh="a277d257" />
     <e k="sf_panel_btn_configure" v="Konfigurálás &gt;&gt;" eh="a2cb3902" />
     <e k="sf_panel_btn_open" v="Megnyitás &gt;&gt;" eh="6624d17c" />
@@ -626,8 +626,8 @@
     <e k="sf_desc_cropRotation" v="Vetésforgó előnyök és büntetések" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Tápanyagréteg a PDA térképen" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Mintapont keret (Alacsony=8k, Közepes=20k, Magas=40k)" eh="42503763" />
-    <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
-    <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
+    <e k="sf_desc_colorblindMode" v="Narancs/kék színpaletta használata piros/zöld helyett" />
+    <e k="sf_desc_showFieldInfoBox" v="Talajadatok megjelenítése a Mezőinformáció panelen" />
     <!-- Multi-option values -->
     <e k="sf_rr_1" v="Nagyon lassú (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Lassú (0.5x)" eh="db69874d" />
@@ -692,7 +692,7 @@
     <e k="sf_cell_report" v="Cella jelentés" eh="2a403943" />
     <e k="sf_cell_no_data_title" v="Nem található cellaadat" eh="dc41c753" />
     <e k="sf_cell_no_data" v="Nincs talajadat ezen a helyen" eh="5dfa58aa" />
-    <e k="sf_field_avg" v="Field avg" />
+    <e k="sf_field_avg" v="Mező átlaga" />
     <e k="sf_cell" v="Cella" eh="1a66ab62" />
     <e k="sf_cell_dialog_title" v="Talajcella vizsgálat" eh="7ce7fc03" />
     <e k="sf_cell_sidebar_header" v="Cella részletei" eh="6fc5243e" />
