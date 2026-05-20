@@ -477,7 +477,7 @@
   "v2.1.5.4": {
     "published_at": "2026-05-08T17:59:51Z",
     "tag": "v2.1.5.4",
-    "peak_downloads": 119
+    "peak_downloads": 120
   },
   "v2.1.5.5": {
     "published_at": "2026-05-09T12:37:00Z",
@@ -502,7 +502,7 @@
   "test-1": {
     "published_at": "2026-05-12T23:13:08Z",
     "tag": "test-1",
-    "peak_downloads": 1
+    "peak_downloads": 2
   },
   "v2.1.6.0": {
     "published_at": "2026-05-13T07:09:03Z",
@@ -542,7 +542,7 @@
   "v2.1.6.7": {
     "published_at": "2026-05-14T07:54:11Z",
     "tag": "v2.1.6.7",
-    "peak_downloads": 43
+    "peak_downloads": 44
   },
   "v2.1.6.8": {
     "published_at": "2026-05-14T12:06:49Z",
@@ -567,7 +567,7 @@
   "v2.2.0.0": {
     "published_at": "2026-05-17T12:36:37Z",
     "tag": "v2.2.0.0",
-    "peak_downloads": 129
+    "peak_downloads": 130
   },
   "v2.2.0.1": {
     "published_at": "2026-05-18T07:27:39Z",
@@ -577,6 +577,6 @@
   "v2.2.1.0": {
     "published_at": "2026-05-19T09:27:07Z",
     "tag": "v2.2.1.0",
-    "peak_downloads": 137
+    "peak_downloads": 142
   }
 }
