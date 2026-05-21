@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * FS25_UsedPlus - Find Unused Code Scanner
+ * FS25_SoilFertilizer - Find Unused Code Scanner
  *
  * Scans the codebase for potentially orphaned:
  * - Lua files not registered in modDesc.xml
@@ -68,6 +68,27 @@ function parseModDescSources(modRoot) {
 }
 
 /**
+ * Follow source() chains from an entry file and collect all transitively loaded files.
+ * SoilFertilizer loads everything via source() from src/main.lua.
+ */
+function traceSourceChain(modRoot, entryRelPath, visited = new Set()) {
+    if (visited.has(entryRelPath)) return visited;
+    visited.add(entryRelPath);
+
+    const fullPath = path.join(modRoot, entryRelPath);
+    if (!fs.existsSync(fullPath)) return visited;
+
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const srcRegex = /\bsource\s*\([^"']*["']([^"']+\.lua)["']/g;
+    let match;
+    while ((match = srcRegex.exec(content)) !== null) {
+        const rel = match[1].replace(/\//g, path.sep);
+        traceSourceChain(modRoot, rel, visited);
+    }
+    return visited;
+}
+
+/**
  * Recursively find all files matching a pattern
  */
 function findFiles(dir, pattern, results = []) {
@@ -104,8 +125,8 @@ function findAllLuaFiles(modRoot) {
 function findAllDialogs(modRoot) {
     const dialogs = {};
 
-    // Find Lua dialog files in src/gui
-    const guiDir = path.join(modRoot, 'src', 'gui');
+    // Find Lua dialog files in src/ui/
+    const guiDir = path.join(modRoot, 'src', 'ui');
     if (fs.existsSync(guiDir)) {
         const luaFiles = findFiles(guiDir, /Dialog\.lua$/);
         for (const file of luaFiles) {
@@ -114,8 +135,8 @@ function findAllDialogs(modRoot) {
         }
     }
 
-    // Find XML dialog files in gui/
-    const xmlDir = path.join(modRoot, 'gui');
+    // Find XML dialog files in xml/gui/
+    const xmlDir = path.join(modRoot, 'xml', 'gui');
     if (fs.existsSync(xmlDir)) {
         const xmlFiles = findFiles(xmlDir, /Dialog\.xml$/);
         for (const file of xmlFiles) {
@@ -274,20 +295,13 @@ function gatherStatistics(modRoot) {
 
     // Categories to track
     const categories = {
-        'src/gui': 'GUI Screens',
-        'src/gui/financepanels': 'Finance Panels',
-        'src/events': 'Network Events',
-        'src/managers': 'Managers',
-        'src/managers/usedvehicle': 'Used Vehicle Modules',
-        'src/extensions': 'Extensions',
-        'src/specializations': 'Specializations',
-        'src/specializations/maintenance': 'Maintenance Modules',
+        'src/ui': 'GUI / UI Layer',
+        'src/network': 'Network Events',
+        'src/integrations': 'Integrations',
+        'src/hooks': 'Hooks',
         'src/utils': 'Utilities',
-        'src/data': 'Data Classes',
+        'src/config': 'Config',
         'src/settings': 'Settings',
-        'src/core': 'Core',
-        'vehicles': 'Vehicles',
-        'placeables': 'Placeables'
     };
 
     // Initialize categories
@@ -369,7 +383,7 @@ function gatherStatistics(modRoot) {
     stats.lua.largestFiles = stats.lua.largestFiles.slice(0, 10);
 
     // Count XML files
-    const xmlDirs = ['gui', 'translations'];
+    const xmlDirs = [path.join('xml', 'gui'), 'translations'];
     for (const dir of xmlDirs) {
         const dirPath = path.join(modRoot, dir);
         if (fs.existsSync(dirPath)) {
@@ -541,36 +555,21 @@ function gatherModInfo(modRoot) {
 
     // Detect features from code patterns
     const featurePatterns = [
-        { pattern: /FinanceManager|FinanceDeal/g, feature: 'Vehicle/Equipment Financing', icon: '💰' },
-        { pattern: /LeaseDeal|LeaseVehicle/g, feature: 'Vehicle Leasing', icon: '📋' },
-        { pattern: /LandLeaseDeal|LandLeaseEvent/g, feature: 'Land Leasing', icon: '🏞️' },
-        { pattern: /CreditSystem|CreditScore/g, feature: 'Dynamic Credit Scoring (300-850)', icon: '📊' },
-        { pattern: /TakeLoanDialog|TakeLoanEvent/g, feature: 'Collateral-Based Cash Loans', icon: '🏦' },
-        { pattern: /UsedVehicleManager|UsedVehicleSearch/g, feature: 'Used Vehicle Marketplace', icon: '🚜' },
-        { pattern: /VehicleSaleManager|VehicleSaleListing/g, feature: 'Agent-Based Vehicle Sales', icon: '🏷️' },
-        { pattern: /NegotiationDialog|SellerResponseDialog/g, feature: 'Price Negotiation System', icon: '🤝' },
-        { pattern: /InspectionReport|VehicleInspection/g, feature: 'Vehicle Inspection Reports', icon: '🔍' },
-        { pattern: /RepairDialog|RepairVehicleEvent/g, feature: 'Partial Repair System (1-100%)', icon: '🔧' },
-        { pattern: /TiresDialog|MaintenanceTires/g, feature: 'Tire Replacement System', icon: '⚙️' },
-        { pattern: /FluidsDialog|MaintenanceFluids/g, feature: 'Fluid Service (Oil/Hydraulic)', icon: '🛢️' },
-        { pattern: /FieldServiceKit/g, feature: 'Field Service Kit (Roadside Repairs)', icon: '🧰' },
-        { pattern: /OBDScanner|DiagnosisData/g, feature: 'OBD Scanner Diagnostics', icon: '📟' },
-        { pattern: /MaintenanceReliability|MaintenanceEngine/g, feature: 'Component Reliability System', icon: '⚡' },
-        { pattern: /TradeInCalculations|tradeIn/gi, feature: 'Trade-In System', icon: '🔄' },
-        { pattern: /DepreciationCalculations/g, feature: 'Realistic Depreciation', icon: '📉' },
-        { pattern: /DifficultyScalingManager/g, feature: 'Difficulty-Based Pricing', icon: '⚖️' },
-        { pattern: /BankInterestManager/g, feature: 'Bank Interest on Cash', icon: '💵' },
-        { pattern: /PaymentTracker|PaymentHistory/g, feature: 'Payment History Tracking', icon: '📅' },
-        { pattern: /RepossessionDialog/g, feature: 'Vehicle Repossession System', icon: '🚨' },
-        { pattern: /FinanceManagerFrame/g, feature: 'ESC Menu Finance Manager', icon: '📱' },
-        { pattern: /FinancialDashboard/g, feature: 'Financial Dashboard', icon: '📈' }
+        { pattern: /SoilFertilityManager/g, feature: 'Soil Fertility Tracking', icon: '🌱' },
+        { pattern: /SoilFertilitySystem/g, feature: 'Soil Fertility System', icon: '🌍' },
+        { pattern: /SprayerRateManager/g, feature: 'Sprayer Rate Management', icon: '💧' },
+        { pattern: /SoilMapOverlay/g, feature: 'Soil Map Overlay', icon: '🗺️' },
+        { pattern: /SoilHUD/g, feature: 'Soil HUD Display', icon: '📊' },
+        { pattern: /SoilReportDialog/g, feature: 'Soil Report Dialog', icon: '📋' },
+        { pattern: /SoilTreatmentDialog/g, feature: 'Treatment Recommendations', icon: '🔧' },
+        { pattern: /SoilPDAScreen/g, feature: 'PDA Screen Integration', icon: '📱' },
+        { pattern: /NetworkEvents/g, feature: 'Multiplayer Sync', icon: '🌐' },
     ];
 
     // Detect cross-mod compatibility
     const crossModPatterns = [
-        { pattern: /RVB|RealisticVehicleBreakdown/gi, mod: 'FS25_RealisticVehicleBreakdown (RVB)', icon: '🔗' },
-        { pattern: /UYT|UsedYourTool/gi, mod: 'FS25_UsedYourTool (UYT)', icon: '🔗' },
-        { pattern: /ModCompatibility/g, mod: 'Generic Mod Compatibility Layer', icon: '🔌' }
+        { pattern: /PrecisionFarmingBridge/g, mod: 'FS25_PrecisionFarming integration', icon: '🔗' },
+        { pattern: /SectionControlIntegration/g, mod: 'Section Control integration', icon: '🔗' },
     ];
 
     // Scan source files for features
@@ -599,8 +598,8 @@ function gatherModInfo(modRoot) {
         }
     }
 
-    // Count settings from UsedPlusSettings
-    const settingsPath = path.join(modRoot, 'src', 'settings', 'UsedPlusSettings.lua');
+    // Count settings from Settings.lua
+    const settingsPath = path.join(modRoot, 'src', 'settings', 'Settings.lua');
     if (fs.existsSync(settingsPath)) {
         const settingsContent = fs.readFileSync(settingsPath, 'utf8');
         const settingRegex = /["'](\w+)["']\s*[=:]/g;
@@ -971,7 +970,7 @@ function main() {
     const verbose = args.includes('--verbose') || args.includes('-v');
     const checkFunctions = args.includes('--check-functions') || args.includes('-f');
 
-    console.log(`\n${colors.bold}${colors.cyan}=== FS25_UsedPlus Unused Code Scanner ===${colors.reset}\n`);
+    console.log(`\n${colors.bold}${colors.cyan}=== FS25_SoilFertilizer Unused Code Scanner ===${colors.reset}\n`);
 
     const modRoot = getModRoot();
     console.log(`Mod root: ${modRoot}\n`);
@@ -981,9 +980,15 @@ function main() {
     // === Check 1: Unregistered Lua files ===
     console.log(`${colors.bold}[1] Checking for unregistered Lua files...${colors.reset}`);
     const registered = parseModDescSources(modRoot);
+    // SoilFertilizer loads all files via source() chains — trace from each entry
+    // Start with empty set so traceSourceChain reads each entry file (not pre-blocked)
+    const expanded = new Set();
+    for (const entry of registered) {
+        traceSourceChain(modRoot, entry, expanded);
+    }
     const allLua = findAllLuaFiles(modRoot);
 
-    const unregistered = [...allLua].filter(f => !registered.has(f));
+    const unregistered = [...allLua].filter(f => !expanded.has(f));
     if (unregistered.length > 0) {
         console.log(`${colors.yellow}  Found ${unregistered.length} unregistered file(s):${colors.reset}`);
         for (const f of unregistered.sort()) {

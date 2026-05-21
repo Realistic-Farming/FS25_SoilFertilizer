@@ -17,4 +17,7 @@ desktop.ini
 *.zip.old
 *_temp/
 
+# Tool outputs
+GLOBAL_LEAK_AUDIT.md
+
 translations/translations/

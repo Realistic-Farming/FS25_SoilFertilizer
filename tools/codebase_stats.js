@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * FS25_UsedPlus Codebase Statistics Generator v2.0
+ * FS25_SoilFertilizer Codebase Statistics Generator v2.0
  *
  * Generates comprehensive, verified statistics about the codebase.
  * Separates mod code from project support files (docs, tools, etc.)
@@ -148,41 +148,41 @@ function countFeatures(data) {
     const luaRels = data.allFiles.filter(f => f.ext === '.lua').map(f => f.rel);
     const xmlRels = data.allFiles.filter(f => f.ext === '.xml').map(f => f.rel);
 
-    // GUI XML — all XML files in gui/ directory
-    const guiXml = xmlRels.filter(f => f.startsWith('gui/') && f.endsWith('.xml'));
+    // GUI XML — all XML files in xml/gui/
+    const guiXml = xmlRels.filter(f => f.startsWith('xml/gui/') && f.endsWith('.xml'));
     const dialogXml = guiXml.filter(f => f.includes('Dialog'));
-    const frameXml = guiXml.filter(f => f.includes('Frame'));
-    const otherGuiXml = guiXml.filter(f => !f.includes('Dialog') && !f.includes('Frame'));
+    const frameXml = guiXml.filter(f => f.includes('Screen') || f.includes('Frame'));
+    const otherGuiXml = guiXml.filter(f => !f.includes('Dialog') && !f.includes('Screen') && !f.includes('Frame'));
 
-    // GUI Lua — all Lua files in src/gui/
-    const guiLua = luaRels.filter(f => f.startsWith('src/gui/'));
+    // GUI Lua — all Lua files in src/ui/
+    const guiLua = luaRels.filter(f => f.startsWith('src/ui/'));
     const dialogLua = guiLua.filter(f => f.includes('Dialog'));
 
-    // Managers — all Lua files in src/managers/ (including sub-directories)
-    const managers = luaRels.filter(f => f.startsWith('src/managers/'));
+    // Core managers — root-level src files
+    const managers = luaRels.filter(f => /^src\/(SoilFertilityManager|SoilFertilitySystem|SprayerRateManager)\.lua$/.test(f));
 
-    // Events — all Lua files in src/events/
-    const events = luaRels.filter(f => f.startsWith('src/events/'));
+    // Events — all Lua files in src/network/
+    const events = luaRels.filter(f => f.startsWith('src/network/'));
 
-    // Specializations — all Lua files in src/specializations/
-    const specs = luaRels.filter(f => f.startsWith('src/specializations/'));
+    // Specializations — none in this mod
+    const specs = [];
 
-    // Extensions — all Lua files in src/extensions/
-    const extensions = luaRels.filter(f => f.startsWith('src/extensions/'));
+    // Integrations — all Lua files in src/integrations/
+    const extensions = luaRels.filter(f => f.startsWith('src/integrations/'));
 
     // Utilities — all Lua files in src/utils/
     const utilities = luaRels.filter(f => f.startsWith('src/utils/'));
 
-    // Vehicle scripts — Lua files in vehicles/ root
-    const vehicleScripts = luaRels.filter(f => f.startsWith('vehicles/') && f.endsWith('.lua'));
+    // Hooks — all Lua files in src/hooks/
+    const vehicleScripts = luaRels.filter(f => f.startsWith('src/hooks/'));
 
-    // Core — Lua files in src/core/ and src/data/
-    const coreFiles = luaRels.filter(f => f.startsWith('src/core/') || f.startsWith('src/data/'));
+    // Config/Settings — src/config/ + src/settings/
+    const coreFiles = luaRels.filter(f => f.startsWith('src/config/') || f.startsWith('src/settings/'));
 
     // Translation files — XML files matching translations/translation_*.xml
     const translationFiles = xmlRels.filter(f => /^translations\/translation_\w+\.xml$/.test(f));
 
-    // Translation key count from English file
+    // Translation key count from English file (uses <e k="..." /> format)
     let translationKeys = 0;
     const enFile = path.join(MOD_ROOT, 'translations', 'translation_en.xml');
     if (fs.existsSync(enFile)) {
@@ -191,8 +191,8 @@ function countFeatures(data) {
         translationKeys = matches ? matches.length : 0;
     }
 
-    // Icons — PNG files in gui/icons/
-    const icons = data.allFiles.filter(f => f.rel.startsWith('gui/icons/') && f.ext === '.png');
+    // Icons — PNG files anywhere
+    const icons = data.allFiles.filter(f => f.ext === '.png');
 
     // Assets
     const ddsFiles = data.allFiles.filter(f => f.ext === '.dds');
@@ -239,7 +239,7 @@ function printTerminal(data, features) {
 
     console.log();
     console.log(c.cyan + '═══════════════════════════════════════════════════════════════════════');
-    console.log('  FS25_UsedPlus — Codebase Statistics v2.0');
+    console.log('  FS25_SoilFertilizer — Codebase Statistics v2.0');
     console.log('═══════════════════════════════════════════════════════════════════════' + c.reset);
 
     // ── Overall Summary ──
@@ -280,15 +280,14 @@ function printTerminal(data, features) {
     console.log();
     console.log(c.bold + '  ARCHITECTURE' + c.reset);
     console.log(c.dim + '  ─────────────────────────────────────────────────────' + c.reset);
-    console.log(`  GUI Screens:        ${features.guiXml.length} XML  ${c.dim}(${features.dialogXml.length} dialogs, ${features.frameXml.length} frames, ${features.otherGuiXml.length} panels)${c.reset}`);
+    console.log(`  GUI Screens:        ${features.guiXml.length} XML  ${c.dim}(${features.dialogXml.length} dialogs, ${features.frameXml.length} screens, ${features.otherGuiXml.length} panels)${c.reset}`);
     console.log(`  GUI Lua:            ${features.guiLua.length} files  ${c.dim}(${features.dialogLua.length} dialog controllers)${c.reset}`);
-    console.log(`  Managers:           ${features.managers.length} files`);
+    console.log(`  Core Managers:      ${features.managers.length} files`);
     console.log(`  Network Events:     ${features.events.length} files`);
-    console.log(`  Specializations:    ${features.specs.length} files`);
-    console.log(`  Extensions:         ${features.extensions.length} files`);
+    console.log(`  Integrations:       ${features.extensions.length} files`);
     console.log(`  Utilities:          ${features.utilities.length} files`);
-    console.log(`  Vehicle Scripts:    ${features.vehicleScripts.length} files`);
-    console.log(`  Core/Data:          ${features.coreFiles.length} files`);
+    console.log(`  Hooks:              ${features.vehicleScripts.length} files`);
+    console.log(`  Config/Settings:    ${features.coreFiles.length} files`);
 
     // ── Assets ──
     console.log();
@@ -324,11 +323,13 @@ function printTerminal(data, features) {
     console.log(c.dim + '  ─────────────────────────────────────────────────────' + c.reset);
 
     const categories = [
-        ['Managers', features.managers],
-        ['Events', features.events],
-        ['Specializations', features.specs],
-        ['Extensions', features.extensions],
+        ['Core Managers', features.managers],
+        ['Network Events', features.events],
+        ['UI Dialogs', features.guiLua],
+        ['Integrations', features.extensions],
         ['Utilities', features.utilities],
+        ['Hooks', features.vehicleScripts],
+        ['Config/Settings', features.coreFiles],
     ];
 
     for (const [label, files] of categories) {
@@ -392,11 +393,13 @@ function printMarkdown(data, features) {
     out.push('');
 
     const categories = [
-        ['Manager Layer', features.managers],
+        ['Core Managers', features.managers],
         ['Network Events', features.events],
-        ['Specializations', features.specs],
-        ['Extensions', features.extensions],
+        ['UI Layer', features.guiLua],
+        ['Integrations', features.extensions],
         ['Utilities', features.utilities],
+        ['Hooks', features.vehicleScripts],
+        ['Config/Settings', features.coreFiles],
     ];
 
     for (const [label, files] of categories) {
@@ -409,12 +412,9 @@ function printMarkdown(data, features) {
 
     // Dialog categories — count by name pattern
     const dialogCategories = {
-        'Finance System': features.dialogLua.filter(f => /Finance|Loan|Credit|Payment|Lease|Repossession|Deal/.test(f)),
-        'Marketplace - Buying': features.dialogLua.filter(f => /Search|Used|Preview|Inspection|Negotiation/.test(f)),
-        'Marketplace - Selling': features.dialogLua.filter(f => /Sale|Sell|Offer/.test(f)),
-        'Maintenance & Repair': features.dialogLua.filter(f => /Repair|Maintenance|Fluid|Tire|FaultTracer/.test(f)),
-        'Service Truck': features.dialogLua.filter(f => /ServiceTruck/.test(f)),
-        'Purchase System': features.dialogLua.filter(f => /Purchase|UnifiedLand/.test(f)),
+        'Soil Info': features.dialogLua.filter(f => /SoilFieldDetail|SoilMapCell|SoilReport/.test(f)),
+        'Help & Info': features.dialogLua.filter(f => /SoilHelp|SoilOverlayHelp|SoilVersion/.test(f)),
+        'Treatment': features.dialogLua.filter(f => /SoilTreatment/.test(f)),
     };
 
     out.push('**Dialog Categories**:');

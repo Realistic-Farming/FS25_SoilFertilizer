@@ -83,7 +83,8 @@ function analyzeFile(filePath) {
                     linesBefore.push(line);
                     return;
                 }
-                if (trimmed.endsWith(',') || trimmed.endsWith('},')) {
+                const strippedComment = trimmed.replace(/--.*$/, '').trim();
+                if (strippedComment.endsWith(',') || strippedComment.endsWith('},') || strippedComment.endsWith('}')) {
                     // Part of table initialization
                     linesBefore.push(line);
                     return;
@@ -162,7 +163,7 @@ function generateReport() {
     const medium = issues.filter(i => categorizeIssue(i) === 'MEDIUM');
     const low = issues.filter(i => categorizeIssue(i) === 'LOW');
 
-    let report = `# GLOBAL VARIABLE LEAK AUDIT - FS25_UsedPlus\n\n`;
+    let report = `# GLOBAL VARIABLE LEAK AUDIT - FS25_SoilFertilizer\n\n`;
     report += `**Generated:** ${new Date().toISOString()}\n`;
     report += `**Total Lua files scanned:** ${totalFiles}\n`;
     report += `**Potential leaks found:** ${issues.length}\n\n`;

@@ -124,9 +124,14 @@ foreach ($file in $LuaFiles) {
             }
         }
 
-        # Check for debug code (skip comments and the core logging file itself)
-        if (-not $isComment -and $line -match '\bprint\s*\(' -and $line -notmatch 'SoilFertilizer\.log' -and $RelPath -notmatch 'SoilFertilizerCore\.lua') {
-            Add-Warning -File $RelPath -Category "DEBUG_CODE" -Line $lineNum -Message "Raw print() - use SoilFertilizer.log* instead"
+        # Check for debug code (skip comments, logger, dev tools, and console-command files where print() is intentional)
+        if (-not $isComment -and $line -match '\bprint\s*\(' `
+            -and $RelPath -notmatch 'Logger\.lua' `
+            -and $RelPath -notmatch '^tools\\' `
+            -and $RelPath -notmatch 'src\\main\.lua' `
+            -and $RelPath -notmatch 'PrecisionFarmingBridge\.lua' `
+            -and $RelPath -notmatch 'SoilSettingsGUI\.lua') {
+            Add-Warning -File $RelPath -Category "DEBUG_CODE" -Line $lineNum -Message "Raw print() - use the mod logger instead"
         }
     }
 }
