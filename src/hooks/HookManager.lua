@@ -377,7 +377,7 @@ function HookManager:registerCustomSprayTypes()
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
                           "LIQUIDMANURE", "MANURE", "DIGESTATE" }
     -- Granular/solid types → inherit visual from FERTILIZER
-    local solidNames  = { "UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
 
     local registered = 0
@@ -457,7 +457,7 @@ function HookManager:installEffectTypeHook()
     -- Build remap: customFillTypeIndex → vanillaFillTypeIndex
     local remap = {}
     if fertIdx then
-        for _, name in ipairs({ "UREA", "AMS", "MAP", "DAP", "POTASH",
+        for _, name in ipairs({ "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }) do
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = fertIdx end
@@ -616,7 +616,7 @@ end
 ---@return boolean success
 function HookManager:installSprayTypeEffectsHook()
     -- Solid custom types visually match FERTILIZER spreading
-    local solidNames  = { "UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     -- Liquid custom types visually match LIQUIDFERTILIZER spraying
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
@@ -798,7 +798,7 @@ function HookManager:installDensityMapSprayHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
-    local solidNames  = { "UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
 
     local remap = {}
@@ -823,26 +823,31 @@ function HookManager:installDensityMapSprayHook()
     local count = 0
     for _ in pairs(remap) do count = count + 1 end
 
-    -- Append to onStartWorkAreaProcessing (event listener — dynamic lookup, reaches all vehicles).
-    -- After the original resolves wap.sprayType = getSprayTypeIndexByFillTypeIndex(fillType),
-    -- remap any custom index to the vanilla equivalent so processSprayerArea passes a valid
-    -- C++ index to FSDensityMapUtil.updateSprayArea.
+    -- MUST use appendedFunction (not prependedFunction) — fix for issue #415 (section control).
+    --
+    -- WHY APPEND:
+    --   onStartWorkAreaProcessing (original) sets wap.sprayType = getSprayTypeIndexByFillTypeIndex(fillType).
+    --   A prepended hook runs BEFORE the original, so the original's assignment overwrites the remap every
+    --   frame. processSprayerArea then calls FSDensityMapUtil.updateSprayArea with our custom index, which
+    --   C++ doesn't recognise → silently writes nothing → returns changedArea=0 always → PF's inside-field
+    --   section control (which reads changedArea to detect already-treated areas) gets no signal → sections
+    --   stay open over fertilised soil while moving.
+    --
+    --   With APPEND the remap runs AFTER the original sets wap.sprayType. processSprayerArea receives the
+    --   vanilla index → updateSprayArea writes the density map correctly → changedArea reflects actual soil
+    --   state → overlap-prevention section control works while moving (fix for Tomi89's Discord report).
+    --
+    -- WHY THIS IS SAFE FOR TANK DRAIN:
+    --   getSprayerUsage(fillType, dt) uses the fill type (not wap.sprayType) to look up LPS from
+    --   g_sprayTypeManager. Our custom fill types are registered there with their correct application
+    --   rates, so tank drain is unaffected by what wap.sprayType contains.
     local original = Sprayer.onStartWorkAreaProcessing
-    Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         original,
         function(sprayerSelf, dt)
             local spec = sprayerSelf.spec_sprayer
             local wap  = spec and spec.workAreaParameters
             if not wap then return end
-
-            -- If sprayType is nil (vehicle loaded before our custom types were registered),
-            -- try to resolve it now from sprayFillType so the remap below can fire.
-            -- MUST run as prependedFunction (before vanilla + processSprayerArea) so that
-            -- wap.sprayType is valid when processSprayerArea calls getSprayerUsage.
-            -- A nil sprayType causes lps=nil → usage=0 → tank never depletes for solid types.
-            if not wap.sprayType and wap.sprayFillType and wap.sprayFillType > 0 then
-                wap.sprayType = g_sprayTypeManager:getSprayTypeIndexByFillTypeIndex(wap.sprayFillType)
-            end
 
             if wap.sprayType then
                 local vanillaIdx = remap[wap.sprayType]
@@ -855,7 +860,7 @@ function HookManager:installDensityMapSprayHook()
     self:register(Sprayer, "onStartWorkAreaProcessing", original,
         "Sprayer.onStartWorkAreaProcessing (density map sprayType remap)")
 
-    SoilLogger.info("[OK] DensityMap spray hook installed on onStartWorkAreaProcessing — %d custom spray types remapped to vanilla for C++ density map call", count)
+    SoilLogger.info("[OK] DensityMap spray hook installed on onStartWorkAreaProcessing (APPEND) — %d custom spray types remapped to vanilla for C++ density map call; section control overlap fix active", count)
     return true
 end
 

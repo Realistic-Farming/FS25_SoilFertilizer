@@ -24,21 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "v2.2.1.0",
-    "- NEW  Polifoska 6-20-30 compound NPK fertilizer — buy as a 1 000 L big bag",
-    "- NEW  Yield efficiency indicator on the HUD — see your field's harvest modifier",
-    "- NEW  Treatment rate panel — recommended application rate shown for active product",
-    "- NEW  Hungarian translation — full native translation by @MathiasHun",
-    "- Fixed Sprayer implements permanently showing 'not a fertilizer applicator' after load",
-    "  (rate-control HUD panel now appears correctly on first use without restarting)",
-    "- Fixed Large combine headers missing field detection — nutrient depletion now",
-    "  uses the cutter/header position when the combine body is outside the polygon",
-    "- Fixed Weed pressure formula was inverted — clean fields had full penalty applied,",
-    "  weedy fields had none. Corrected; weed penalties now match actual field state",
-    "- Fixed Weeds showing 100% on bare / never-farmed fields",
-    "- Fixed Rain effects (leaching, seasonal N) were silently not running",
-    "- Fixed Weed/pest/disease penalties applied even when nutrient cycles disabled",
-    "- Fixed pfCompatibilityMode toggle now takes effect immediately without reload",
+    "v2.2.2.0",
+    "- Fixed Section control overlap prevention not working while moving with Precision",
+    "  Farming active — sections now correctly close over already-fertilized areas",
+    "  inside the field, not just at headland/field boundaries (#415)",
+    "- Fixed SoilMapCellDialog class not loaded on mod startup — no-op guard meant",
+    "  the Shift+S map cell popup silently never registered (#tools)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

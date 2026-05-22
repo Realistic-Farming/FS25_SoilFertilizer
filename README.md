@@ -29,29 +29,13 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 ---
 
-## 🆕 What's New in v2.2.0
+## 🆕 What's New in v2.2.2.0
 
-### Precision Farming DLC Support
-If you run the Precision Farming DLC, the soil HUD bars now read **live sensor data** as you drive. Nitrogen, Phosphorus and Potassium update in real time across different parts of the field — you'll see the variation with your own eyes as you cross from a worked strip into an untouched one.
+### Section Control Overlap Fix (Precision Farming)
+Section control with the Precision Farming DLC now correctly **closes individual boom sections over already-fertilized areas while the sprayer is moving** — not just at headland/field boundaries. Previously, all sections opened the moment you drove back onto the field, even over soil that was 100% at target nutrient levels. This fix resolves the issue reported by community member Tomi89.
 
-### The Map Finally Shows What's Happening in Each Spot
-The soil overlay has been rebuilt to show **real per-zone data**, not just a single colour for the whole field. Lime the east half of a field and come back — the east shows green (optimal), the west still shows yellow (acidic). Two halves of the same field, two different stories.
-
-Over-limed areas (pH above 7.0) now correctly show **red**. Too much lime locks out nutrients just like too little does. The map now makes that visible.
-
-### Click a Tile — See Only What Matters
-The info box that pops up when you click a map tile is now **layer-specific**. On the pH layer you see: your pH reading, what that means (*Optimal*, *Acidic*, *Over-limed*), and exactly what to do about it. On the Nitrogen layer you see: your current N level, the target for the crop you're growing, and how many ppm you're over or under. No more scrolling through eight rows of numbers to find the one thing you're looking for.
-
-### "How Much More Does My Crop Actually Need?"
-The N, P and K tooltips now pull in the **nutrient target for your specific crop**. Wheat has different N needs than potatoes. The tooltip shows the target for what's in the ground right now and tells you whether you're above it, hitting it, or short — and by exactly how much.
-
-### Treatment Status at a Glance
-The Weed, Pest and Disease map layers now show whether a protection product is still active on that tile. Green means you're covered. Amber means the pressure is building and nothing's been applied. No guessing whether your herbicide from last week is still doing its job.
-
-### Fixes
-- N bar tick marks and crop targets now work correctly when Precision Farming mod is active
-- Straw chopping now builds Organic Matter correctly based on your field's actual size (was previously using concentration instead of area)
-- Map tiles now refresh immediately when clicked — no more stale colors after applying lime or fertilizer
+### Startup Loader Fix
+`SoilMapCellDialog` (the Shift+S map tile popup) was silently never registering because its class file was missing from the mod's load chain. It now loads correctly on every startup.
 
 ---
 
@@ -408,7 +392,7 @@ This mod is licensed under **[CC BY-NC-ND 4.0](https://creativecommons.org/licen
 
 You may share it in its original form with attribution. You may not sell it, modify and redistribute it, or reupload it under a different name or authorship. Contributions via pull request are explicitly permitted and encouraged.
 
-**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.2.1.0
+**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.2.2.0
 
 © 2026 TisonK — See [LICENSE](LICENSE) for full terms.
 
