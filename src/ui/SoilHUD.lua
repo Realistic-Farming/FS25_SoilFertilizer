@@ -1022,7 +1022,7 @@ function SoilHUD:drawPanel()
 
     cy = cy - SoilHUD.LINE_H * s
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    renderText(tx, cy, 0.010 * fontMult * s, fieldText)
+    renderText(tx, cy, 0.010 * fontMult * s, fieldText or "")
     if cropText then
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
