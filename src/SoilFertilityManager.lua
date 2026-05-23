@@ -599,7 +599,8 @@ function SoilFertilityManager:onMissionStarted()
 
         self:loadSoilData()
 
-        if self.settings.showNotifications and SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
+        -- Show version dialog whenever the mod version changes, regardless of notification settings
+        if SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
             local modInfo = g_modManager and g_modManager:getModByName(self.modName)
             local version = (modInfo and modInfo.version) or "?"
             if self.lastSeenVersion ~= version then

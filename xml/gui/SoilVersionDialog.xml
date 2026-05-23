@@ -55,6 +55,8 @@
     <BoxLayout profile="fs25_dialogButtonBox">
       <Button profile="buttonOK" id="sfVer_dontShowBtn"
               text="Don't show again" onClick="onClickDontShowAgain"/>
+      <Button profile="buttonOK" id="sfVer_guideBtn"
+              text="Field Guide" onClick="onClickGuide"/>
       <Button profile="buttonOK" id="sfVer_okBtn"
               text="OK" onClick="onClickOk"/>
     </BoxLayout>

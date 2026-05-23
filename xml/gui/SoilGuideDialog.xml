@@ -56,19 +56,19 @@
   <GUIProfiles>
 
     <Profile name="sfGuide_bg" extends="fs25_dialogBg">
-      <size value="1060px 800px"/>
+      <size value="1120px 900px"/>
     </Profile>
 
     <!-- Horizontal tab button row -->
     <Profile name="sfGuide_tabRow" extends="emptyPanel" with="anchorTopCenter">
-      <size value="920px 38px"/>
+      <size value="960px 38px"/>
       <flowDirection value="horizontal"/>
       <elementSpacing value="10px"/>
     </Profile>
 
     <!-- Individual tab button -->
     <Profile name="sfGuide_tab" extends="buttonOK">
-      <size value="164px 36px"/>
+      <size value="174px 36px"/>
       <textSize value="11px"/>
       <textUpperCase value="true"/>
     </Profile>
@@ -82,22 +82,22 @@
 
     <!-- Column panel container -->
     <Profile name="sfGuide_colPanel" extends="emptyPanel" with="anchorTopCenter">
-      <size value="490px 530px"/>
+      <size value="510px 600px"/>
     </Profile>
 
     <!-- Column backgrounds -->
     <Profile name="sfGuide_colBg" extends="baseReference" with="anchorTopCenter">
-      <size value="490px 530px"/>
+      <size value="510px 600px"/>
       <imageColor value="0.08 0.08 0.12 0.90"/>
     </Profile>
     <Profile name="sfGuide_colBgAlt" extends="baseReference" with="anchorTopCenter">
-      <size value="490px 530px"/>
+      <size value="510px 600px"/>
       <imageColor value="0.06 0.10 0.14 0.90"/>
     </Profile>
 
     <!-- Vertical content BoxLayout — Lua adds TextElements at runtime -->
     <Profile name="sfGuide_col" extends="emptyPanel" with="anchorTopCenter">
-      <size value="474px 514px"/>
+      <size value="494px 584px"/>
       <flowDirection value="vertical"/>
       <useFullVisibility value="false"/>
       <alignmentX value="left"/>
