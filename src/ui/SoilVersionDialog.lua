@@ -26,9 +26,7 @@ SoilVersionDialog.INSTANCE = nil
 SoilVersionDialog.CHANGELOG = {
     "- Version dialog layout improved: wider dialog, text no longer clipped",
     "- All keybindings now ship UNBOUND by default",
-    "- Soil Cell Map dialog now auto-shows data for your current position on open",
-    "- Fixed the ingame map overlay no longer breaks the PDA map draw",
-    "- Fixed the Soil Cell Map dialog close button now works correctly",
+    "- Removed the Cell Report Dialog and all its functions",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
