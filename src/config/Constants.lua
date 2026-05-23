@@ -486,8 +486,11 @@ SoilConstants.CRITICAL_ALERT_THRESHOLD = 50
 -- Raw penalty      = combined_deficit * tier.scale
 -- Final penalty %  = min(MAX_PENALTY, raw_penalty) * 100
 SoilConstants.YIELD_SENSITIVITY = {
-    -- Nutrients must be at or above this value (0–100) for full yield
-    OPTIMAL_THRESHOLD = 70,
+    -- Nutrients must be at or above this value (0–100) for full yield.
+    -- Set to 50 so that reaching GOOD crop-target status translates to near-full yield.
+    -- At 70 a field green on all nutrients still showed a 12-15% yield penalty,
+    -- which confused players who were above their crop targets.
+    OPTIMAL_THRESHOLD = 50,
 
     -- Hard cap on how much yield can be lost to nutrient stress
     MAX_PENALTY = 0.50,
@@ -744,11 +747,11 @@ SoilConstants.WEED_PRESSURE = {
         HERBICIDE = 1.0,
         PESTICIDE = 0.8,
     },
-    -- Pressure points removed on a single herbicide application (immediate UI response).
-    -- One full-field pass at the reference rate (BASE_RATES.HERBICIDE = 1.5 L/ha) removes this
-    -- many points. 50 ensures MEDIUM tier (0–50) is fully cleared in one pass, while PEAK (75–100)
-    -- still requires multiple treatments.
-    HERBICIDE_PRESSURE_REDUCTION = 50,
+    -- Pressure points removed on a single full-field herbicide application.
+    -- 100 = one full-field pass at the reference rate (1.5 L/ha) fully clears any pressure tier.
+    -- Partial tank coverage scales proportionally: 50% field covered → 50 pts removed.
+    -- Matches cultivation weed clearing (WEED_PRESSURE_REDUCTION = 100 already).
+    HERBICIDE_PRESSURE_REDUCTION = 100,
 
     -- Number of in-game days the HUD "herbicide active" indicator stays lit after application
     HERBICIDE_DURATION_DAYS = 14,
@@ -814,9 +817,9 @@ SoilConstants.PEST_PRESSURE = {
     INSECTICIDE_TYPES = {
         INSECTICIDE = 1.0,
     },
-    -- Pressure points removed on a single insecticide application.
-    -- 50 ensures MEDIUM tier (0–50) is fully cleared in one pass at the reference rate.
-    INSECTICIDE_PRESSURE_REDUCTION = 50,
+    -- Pressure points removed on a single full-field insecticide application.
+    -- 100 = one full pass at reference rate fully clears any pressure tier.
+    INSECTICIDE_PRESSURE_REDUCTION = 100,
     -- Days insecticide suppresses pest growth after application
     INSECTICIDE_DURATION_DAYS = 30,
 
@@ -882,9 +885,9 @@ SoilConstants.DISEASE_PRESSURE = {
     FUNGICIDE_TYPES = {
         FUNGICIDE = 1.0,
     },
-    -- Pressure points removed on a single fungicide application.
-    -- 50 ensures MEDIUM tier (0–50) is fully cleared in one pass at the reference rate.
-    FUNGICIDE_PRESSURE_REDUCTION = 50,
+    -- Pressure points removed on a single full-field fungicide application.
+    -- 100 = one full pass at reference rate fully clears any pressure tier.
+    FUNGICIDE_PRESSURE_REDUCTION = 100,
     -- Days fungicide suppresses disease growth after application
     FUNGICIDE_DURATION_DAYS = 35,
 
