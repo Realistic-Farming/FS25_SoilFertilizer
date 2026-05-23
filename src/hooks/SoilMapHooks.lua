@@ -339,14 +339,10 @@ end
 -- the vanilla draw body runs (prevents "attempt to index nil with 'drawMapOnly'").
 if IngameMapElement ~= nil then
     IngameMapElement.draw = Utils.overwrittenFunction(IngameMapElement.draw, function(self, superFunc, clipX1, clipY1, clipX2, clipY2)
-        -- Guard: if ingameMap is not yet set, skip entirely (avoids vanilla crash at drawMapOnly)
-        if self.ingameMap == nil then
-            SoilLogger.warning("SoilMapHooks: IngameMapElement.draw skipped — ingameMap is nil")
-            return
-        end
-        -- Run the original vanilla draw
+        -- Standalone <IngameMap> XML elements inherit this draw but have self.ingameMap == nil.
+        -- Vanilla line 570 crashes on that, so guard before calling superFunc.
+        if self.ingameMap == nil then return end
         superFunc(self, clipX1, clipY1, clipX2, clipY2)
-        -- Then our overlay hook
         SoilMapHooks.onDrawIngameMapElement(self)
     end)
     SoilLogger.info("SoilMapHooks: IngameMapElement.draw hook installed for overlay drawing")

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="106">
     <author>TisonK</author>
-    <version>2.2.2.4</version>
+    <version>2.2.2.5</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -76,7 +76,6 @@
         <action name="SF_CYCLE_MAP_LAYER" category="ONFOOT" />
         <action name="SF_OPEN_SETTINGS"   category="ONFOOT" />
         <action name="SF_HUD_DRAG"        category="ONFOOT" />
-        <action name="SF_TOGGLE_CELL_MAP" category="ONFOOT VEHICLE" />
     </actions>
 
     <l10n filenamePrefix="translations/translation" />
@@ -90,7 +89,6 @@
         <actionBinding action="SF_CYCLE_MAP_LAYER" />
         <actionBinding action="SF_OPEN_SETTINGS" />
         <actionBinding action="SF_HUD_DRAG" />
-        <actionBinding action="SF_TOGGLE_CELL_MAP" />
     </inputBinding>
 
     <!-- Custom fill types declared in external file (FS25 requires filename= attribute) -->

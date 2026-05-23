@@ -20,7 +20,7 @@
     <GuiElement profile="fs25_dialogContentContainer">
 
       <!-- Title: mod name + version (set at runtime) -->
-      <Text profile="fs25_dialogTitle" id="sfVer_title"
+      <Text profile="sfVer_title" id="sfVer_title"
             text="FS25_SoilFertilizer" position="0px -30px"/>
 
       <!-- Author -->
@@ -106,11 +106,32 @@
       <elementSpacing value="5px"/>
     </Profile>
 
+    <!-- Title: override fs25_dialogTitle to avoid forced uppercase -->
+    <Profile name="sfVer_title" extends="fs25_dialogTitle">
+      <textUpperCase value="false"/>
+      <textColor value="0.90 0.90 1.00 1"/>
+    </Profile>
+
     <!-- Each changelog line: fixed width enables word wrap -->
     <Profile name="sfVer_changelogLine" extends="fs25_textDefault" with="anchorTopLeft">
       <size value="620px 18px"/>
       <textSize value="13px"/>
-      <textColor value="1 1 1 1"/>
+      <textColor value="0.88 0.88 0.88 1"/>
+    </Profile>
+
+    <!-- Version header line (e.g. "v2.2.2.4"): gold, bold, slightly larger -->
+    <Profile name="sfVer_changelogVersion" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="620px 22px"/>
+      <textSize value="14px"/>
+      <textBold value="true"/>
+      <textColor value="1.0 0.78 0.18 1"/>
+    </Profile>
+
+    <!-- Indented / continuation lines: dimmer, smaller -->
+    <Profile name="sfVer_changelogIndent" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="620px 17px"/>
+      <textSize value="12px"/>
+      <textColor value="0.60 0.62 0.68 1"/>
     </Profile>
 
     <Profile name="sfVer_author" extends="fs25_textDefault" with="anchorTopCenter">

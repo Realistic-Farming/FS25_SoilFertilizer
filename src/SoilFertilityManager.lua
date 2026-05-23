@@ -145,13 +145,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Settings panel created")
         end
 
-        -- Soil Map Cell dialog (F7)
-        if SoilMapCellDialog and g_gui then
-            local dialog = SoilMapCellDialog.new()
-            g_gui:loadGui(modDirectory .. "xml/gui/SoilMapCellDialog.xml", "SoilMapCellDialog", dialog)
-            self.soilMapCellDialog = dialog  -- must be stored so the F7 input guard passes
-            SoilLogger.info("Soil Map Cell dialog registered")
-        end
 
         -- Hook PlayerInputComponent.registerActionEvents to register J/K in the PLAYER context.
         -- PLAYER context is reused (not recreated) when the player returns on foot, so these
@@ -197,20 +190,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map Inspection (F7)
-                if g_SoilFertilityManager.soilMapCellDialog then
-                    local cellOk, cellId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onToggleCellMapInput,
-                        false, true, false, true
-                    )
-                    if cellOk and cellId then
-                        g_SoilFertilityManager.toggleCellMapEventId = cellId
-                        g_inputBinding:setActionEventTextVisibility(cellId, true)
-                        g_inputBinding:setActionEventText(cellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.info("Soil Cell Map (F7) registered in PLAYER context")
-                    end
-                end
 
                 -- Map layer cycle (Shift+M) — registered in PLAYER context only
                 -- (pause-menu map is accessible regardless of context, but the key
@@ -313,11 +292,10 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     "vehicleHUDEventId", "vehicleReportEventId",
                     "rateUpEventId",     "rateDownEventId",
                     "toggleAutoEventId", "vehicleSettingsPanelEventId",
-                    "vehicleHudDragEventId", "vehicleCellMapEventId",
+                    "vehicleHudDragEventId",
                     -- PLAYER context IDs (invalidated as a side-effect of the above removes)
                     "toggleHUDEventId", "soilReportEventId",
                     "cycleMapLayerEventId", "settingsPanelEventId", "hudDragEventId",
-                    "toggleCellMapEventId",
                 }
                 for _, field in ipairs(staleIds) do
                     local oldId = mgr[field]
@@ -353,20 +331,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map (F7) in vehicle
-                if g_SoilFertilityManager.soilMapCellDialog then
-                    local vCellOk, vCellId = binding:registerActionEvent(
-                        InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onToggleCellMapInput,
-                        false, true, false, true
-                    )
-                    if vCellOk and vCellId then
-                        g_SoilFertilityManager.vehicleCellMapEventId = vCellId
-                        binding:setActionEventTextVisibility(vCellId, true)
-                        binding:setActionEventText(vCellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.debug("Soil Cell Map (F7) registered in VEHICLE context")
-                    end
-                end
 
                 -- Rate UP (])
                 local upOk, upId = binding:registerActionEvent(
@@ -498,20 +462,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map (F7) re-registration in PLAYER context
-                if g_SoilFertilityManager.soilMapCellDialog then
-                    local pCellOk, pCellId = binding:registerActionEvent(
-                        InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onToggleCellMapInput,
-                        false, true, false, true
-                    )
-                    if pCellOk and pCellId then
-                        g_SoilFertilityManager.toggleCellMapEventId = pCellId
-                        binding:setActionEventTextVisibility(pCellId, true)
-                        binding:setActionEventText(pCellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.debug("Cell Map (F7) re-registered in PLAYER context after vehicle exit")
-                    end
-                end
 
                 binding:endActionEventsModification()
                 SoilLogger.debug("PLAYER context inputs restored after vehicle exit")
@@ -751,18 +701,6 @@ function SoilFertilityManager:onCycleMapLayerInput()
     end
 end
 
--- Input callback for Soil Cell Map dialog (F7)
-function SoilFertilityManager:onToggleCellMapInput()
-    if not self.soilMapCellDialog or not g_gui then return end
-    local currentName = g_gui.currentGui and g_gui.currentGui.name
-    if currentName == "SoilMapCellDialog" then
-        g_gui:closeDialogByName("SoilMapCellDialog")
-    elseif currentName == nil then
-        -- Only open when nothing else is already showing
-        g_gui:showDialog("SoilMapCellDialog")
-    end
-    -- If a different dialog/GUI is open, do nothing — prevents cross-mod GUI corruption
-end
 
 --- Helper function to determine if a vehicle is a fertilizer applicator (sprayer, spreader, planter)
 --- This includes vehicles with spec_sprayer or vehicles with fill units whose SUPPORTED fill types
@@ -1228,15 +1166,6 @@ function SoilFertilityManager:delete()
         self.vehicleSettingsPanelEventId = nil
     end
 
-    if self.toggleCellMapEventId and g_inputBinding then
-        g_inputBinding:removeActionEvent(self.toggleCellMapEventId)
-        self.toggleCellMapEventId = nil
-    end
-
-    if self.vehicleCellMapEventId and g_inputBinding then
-        g_inputBinding:removeActionEvent(self.vehicleCellMapEventId)
-        self.vehicleCellMapEventId = nil
-    end
 
     if self.soilReportDialog then
         if g_gui then g_gui:closeDialogByName("SoilReportDialog") end

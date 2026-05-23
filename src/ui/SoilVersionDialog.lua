@@ -24,11 +24,11 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "v2.2.2.4",
     "- Version dialog layout improved: wider dialog, text no longer clipped",
     "- All keybindings now ship UNBOUND by default",
-    "  Go to Controls > Mods and assign your preferred keys.",
     "- Soil Cell Map dialog now auto-shows data for your current position on open",
+    "- Fixed the ingame map overlay no longer breaks the PDA map draw",
+    "- Fixed the Soil Cell Map dialog close button now works correctly",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
@@ -145,22 +145,39 @@ end
 function SoilVersionDialog:_buildChangelogLines()
     if not self._elChangelogBox then return end
 
-    local profile = g_gui:getProfile("sfVer_changelogLine")
-    if not profile then
+    local profileLine    = g_gui:getProfile("sfVer_changelogLine")
+    local profileVersion = g_gui:getProfile("sfVer_changelogVersion")
+    local profileIndent  = g_gui:getProfile("sfVer_changelogIndent")
+    if not profileLine then
         SoilLogger.warning("SoilVersionDialog: profile 'sfVer_changelogLine' not found")
         return
     end
 
     for _, lineText in ipairs(SoilVersionDialog.CHANGELOG) do
+        -- Detect line type: version header, bullet, or indented continuation
+        local profile
+        local displayText = lineText
+        if lineText:match("^v%d") then
+            profile = profileVersion or profileLine
+        elseif lineText:match("^%s%s") then
+            -- Indented continuation — strip leading spaces, add em-dash indent
+            displayText = "    " .. lineText:match("^%s*(.+)$")
+            profile = profileIndent or profileLine
+        elseif lineText:match("^%- ") then
+            displayText = "  >  " .. lineText:sub(3)
+            profile = profileLine
+        else
+            profile = profileLine
+        end
+
         local el = TextElement.new()
         el:loadProfile(profile, true)
-        el:setText(lineText)
+        el:setText(displayText)
         self._elChangelogBox:addElement(el)
         el:onGuiSetupFinished()
         table.insert(self._changelogLineEls, el)
     end
 
-    -- Notify the layout to reflow after all children are added
     self._elChangelogBox:invalidateLayout()
 end
 
