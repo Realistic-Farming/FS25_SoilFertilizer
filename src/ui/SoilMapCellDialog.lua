@@ -32,25 +32,64 @@ end
 
 function SoilMapCellDialog:onOpen()
     SoilMapCellDialog:superClass().onOpen(self)
-    
+
     if self.mapElement then
         self.mapElement:setMapCenter(0.5, 0.5)
         self.mapElement:setMapZoom(1.0)
     end
-    
+
     if self.detailsGroup then
         self.detailsGroup:setVisible(false)
     end
-    
+
     if self.hintText then
         self.hintText:setVisible(true)
         self.hintText:setText(tr("sf_cell_click_hint", "Click map to inspect cell"))
     end
-    
-    -- Sync map overlay state
+
     if self.overlay then
         self.overlay.isMapOpen = true
     end
+
+    -- Auto-show data for the current player/vehicle position so the dialog
+    -- is never blank on open — onClickMap handles the "no farmland here" case
+    -- gracefully by keeping the hint visible.
+    local x, z = SoilMapCellDialog._getPlayerWorldXZ()
+    if x ~= nil then
+        self:onClickMap(x, z)
+    end
+end
+
+-- Returns the current player/vehicle world X, Z position (or nil, nil on failure).
+function SoilMapCellDialog._getPlayerWorldXZ()
+    if g_localPlayer then
+        if type(g_localPlayer.getPosition) == "function" then
+            local ok, x, y, z = pcall(g_localPlayer.getPosition, g_localPlayer)
+            if ok and x then return x, z end
+        end
+        if g_localPlayer.rootNode then
+            local ok, x, y, z = pcall(getWorldTranslation, g_localPlayer.rootNode)
+            if ok and x then return x, z end
+        end
+        if type(g_localPlayer.getIsInVehicle) == "function" and g_localPlayer:getIsInVehicle() then
+            local v = type(g_localPlayer.getCurrentVehicle) == "function" and g_localPlayer:getCurrentVehicle()
+            if v and v.rootNode then
+                local ok, x, y, z = pcall(getWorldTranslation, v.rootNode)
+                if ok and x then return x, z end
+            end
+        end
+    end
+    if g_currentMission then
+        if g_currentMission.player and g_currentMission.player.rootNode then
+            local ok, x, y, z = pcall(getWorldTranslation, g_currentMission.player.rootNode)
+            if ok and x then return x, z end
+        end
+        if g_currentMission.controlledVehicle and g_currentMission.controlledVehicle.rootNode then
+            local ok, x, y, z = pcall(getWorldTranslation, g_currentMission.controlledVehicle.rootNode)
+            if ok and x then return x, z end
+        end
+    end
+    return nil, nil
 end
 
 function SoilMapCellDialog:onClose()

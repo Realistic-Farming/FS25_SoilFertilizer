@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="106">
     <author>TisonK</author>
-    <version>2.2.2.1</version>
+    <version>2.2.2.2</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -107,7 +107,7 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
         </actionBinding>
         <actionBinding action="SF_TOGGLE_CELL_MAP">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_s" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_F7" />
         </actionBinding>
     </inputBinding>
 

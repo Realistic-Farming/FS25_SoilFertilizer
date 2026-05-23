@@ -139,11 +139,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Settings panel created")
         end
 
-        -- Soil Map Cell dialog (Shift+S)
+        -- Soil Map Cell dialog (F7)
         if SoilMapCellDialog and g_gui then
             local dialog = SoilMapCellDialog.new()
             g_gui:loadGui(modDirectory .. "xml/gui/SoilMapCellDialog.xml", "SoilMapCellDialog", dialog)
-            self.soilMapCellDialog = dialog  -- must be stored so the Shift+S input guard passes
+            self.soilMapCellDialog = dialog  -- must be stored so the F7 input guard passes
             SoilLogger.info("Soil Map Cell dialog registered")
         end
 
@@ -191,7 +191,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map Inspection (Shift+S)
+                -- Cell Map Inspection (F7)
                 if g_SoilFertilityManager.soilMapCellDialog then
                     local cellOk, cellId = g_inputBinding:registerActionEvent(
                         InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
@@ -202,7 +202,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                         g_SoilFertilityManager.toggleCellMapEventId = cellId
                         g_inputBinding:setActionEventTextVisibility(cellId, true)
                         g_inputBinding:setActionEventText(cellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.info("Soil Cell Map (Shift+S) registered in PLAYER context")
+                        SoilLogger.info("Soil Cell Map (F7) registered in PLAYER context")
                     end
                 end
 
@@ -347,7 +347,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map (Shift+S) in vehicle
+                -- Cell Map (F7) in vehicle
                 if g_SoilFertilityManager.soilMapCellDialog then
                     local vCellOk, vCellId = binding:registerActionEvent(
                         InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
@@ -358,7 +358,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                         g_SoilFertilityManager.vehicleCellMapEventId = vCellId
                         binding:setActionEventTextVisibility(vCellId, true)
                         binding:setActionEventText(vCellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.debug("Soil Cell Map (Shift+S) registered in VEHICLE context")
+                        SoilLogger.debug("Soil Cell Map (F7) registered in VEHICLE context")
                     end
                 end
 
@@ -492,7 +492,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Cell Map (Shift+S) re-registration in PLAYER context
+                -- Cell Map (F7) re-registration in PLAYER context
                 if g_SoilFertilityManager.soilMapCellDialog then
                     local pCellOk, pCellId = binding:registerActionEvent(
                         InputAction.SF_TOGGLE_CELL_MAP, g_SoilFertilityManager,
@@ -503,7 +503,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                         g_SoilFertilityManager.toggleCellMapEventId = pCellId
                         binding:setActionEventTextVisibility(pCellId, true)
                         binding:setActionEventText(pCellId, g_i18n:getText("input_SF_TOGGLE_CELL_MAP"))
-                        SoilLogger.debug("Cell Map (Shift+S) re-registered in PLAYER context after vehicle exit")
+                        SoilLogger.debug("Cell Map (F7) re-registered in PLAYER context after vehicle exit")
                     end
                 end
 
@@ -738,17 +738,17 @@ function SoilFertilityManager:onCycleMapLayerInput()
     end
 end
 
--- Input callback for Soil Cell Map dialog (Shift+S)
+-- Input callback for Soil Cell Map dialog (F7)
 function SoilFertilityManager:onToggleCellMapInput()
-    if self.soilMapCellDialog and g_gui then
-        if g_gui.currentGui ~= nil then
-            if g_gui.currentGui.name == "SoilMapCellDialog" then
-                g_gui:closeDialogByName("SoilMapCellDialog")
-            end
-        else
-            g_gui:showDialog("SoilMapCellDialog")
-        end
+    if not self.soilMapCellDialog or not g_gui then return end
+    local currentName = g_gui.currentGui and g_gui.currentGui.name
+    if currentName == "SoilMapCellDialog" then
+        g_gui:closeDialogByName("SoilMapCellDialog")
+    elseif currentName == nil then
+        -- Only open when nothing else is already showing
+        g_gui:showDialog("SoilMapCellDialog")
     end
+    -- If a different dialog/GUI is open, do nothing — prevents cross-mod GUI corruption
 end
 
 --- Helper function to determine if a vehicle is a fertilizer applicator (sprayer, spreader, planter)
