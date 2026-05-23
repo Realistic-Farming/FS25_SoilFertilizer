@@ -138,7 +138,7 @@ local CATEGORIES = {
             },
             {
                 headerKey = "sf_panel_hdr_position",
-                items     = { "hudPosition" }
+                items     = { "hudPosition", "independentPanels" }
             },
         }
     },
@@ -205,10 +205,14 @@ local SETTING_DESCS = {
     activeMapLayer    = "sf_desc_activeMapLayer",
     overlayDensity    = "sf_desc_overlayDensity",
     colorblindMode    = "sf_desc_colorblindMode",
-    showFieldInfoBox  = "sf_desc_showFieldInfoBox",
-    enabled           = "sf_desc_enabled",
-    debugMode         = "sf_desc_debugMode",
-    showNotifications = "sf_desc_showNotifications",
+    showFieldInfoBox      = "sf_desc_showFieldInfoBox",
+    enabled               = "sf_desc_enabled",
+    debugMode             = "sf_desc_debugMode",
+    showNotifications     = "sf_desc_showNotifications",
+    smartSensorEnabled    = "sf_desc_smartSensorEnabled",
+    seeAndSprayEnabled    = "sf_desc_seeAndSprayEnabled",
+    variableRateEnabled   = "sf_desc_variableRateEnabled",
+    independentPanels     = "sf_desc_independentPanels",
 }
 
 -- Page states
@@ -218,6 +222,7 @@ local PAGE_ADMIN    = "admin"
 local PAGE_SET_STATE = "set_state"
 local PAGE_FIELD_TOOLS = "field_tools"
 local PAGE_VEHICLE_TOOLS = "vehicle_tools"
+local PAGE_SMART_SYSTEMS = "smart_systems"
 
 -- ── Admin page layout ─────────────────────────────────────
 local ADMIN_ROW_H = 0.033   -- setting rows (toggle/multi)
@@ -225,6 +230,16 @@ local ADMIN_ACT_H = 0.028   -- action button rows
 local ADMIN_ACCENT = {0.88, 0.25, 0.25}   -- red accent for admin
 
 local ADMIN_SECTIONS = {
+    {
+        headerKey = "sf_panel_hdr_actions",
+        items     = {
+            { stype = "action", id = "admin_save" },
+            { stype = "danger", id = "admin_reset" },
+            { stype = "action", id = "nav_field_tools" },
+            { stype = "action", id = "nav_vehicle_tools" },
+            { stype = "action", id = "nav_smart_systems" },
+        },
+    },
     {
         headerKey = "sf_panel_hdr_mod_ctrl",
         items     = {
@@ -248,15 +263,6 @@ local ADMIN_SECTIONS = {
             { stype = "setting", id = "compactionEnabled" },
         },
     },
-    {
-        headerKey = "sf_panel_hdr_actions",
-        items     = {
-            { stype = "action", id = "admin_save" },
-            { stype = "danger", id = "admin_reset" },
-            { stype = "action", id = "nav_field_tools" },
-            { stype = "action", id = "nav_vehicle_tools" },
-        },
-    },
 }
 
 local FIELD_TOOLS_SECTIONS = {
@@ -277,6 +283,27 @@ local VEHICLE_TOOLS_SECTIONS = {
         headerKey = "sf_panel_hdr_vehicle_tools",
         items     = {
             { stype = "action", id = "admin_drain" },
+        },
+    },
+}
+
+local SMART_SYSTEMS_SECTIONS = {
+    {
+        headerKey = "sf_panel_hdr_smart_sensor_sys",
+        items     = {
+            { stype = "setting", id = "smartSensorEnabled" },
+        },
+    },
+    {
+        headerKey = "sf_panel_hdr_see_spray_sys",
+        items     = {
+            { stype = "setting", id = "seeAndSprayEnabled" },
+        },
+    },
+    {
+        headerKey = "sf_panel_hdr_var_rate_sys",
+        items     = {
+            { stype = "setting", id = "variableRateEnabled" },
         },
     },
 }
@@ -477,7 +504,8 @@ function SoilSettingsPanel:draw()
             self:drawLandingPage()
         elseif self.page == PAGE_CATEGORY then
             self:drawCategoryPage()
-        elseif self.page == PAGE_ADMIN or self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS then
+        elseif self.page == PAGE_ADMIN or self.page == PAGE_FIELD_TOOLS
+            or self.page == PAGE_VEHICLE_TOOLS or self.page == PAGE_SMART_SYSTEMS then
             self:drawAdminPage()
         elseif self.page == PAGE_SET_STATE then
             if self.drawSetStatePage then self:drawSetStatePage() end
@@ -509,7 +537,13 @@ function SoilSettingsPanel:drawTitleBar()
 
     -- Title text
     local title = "SOIL & FERTILIZER SETTINGS"
-    if self.page == PAGE_ADMIN then
+    if self.page == PAGE_SMART_SYSTEMS then
+        title = title .. "  /  ADMIN PANEL  /  SMART SYSTEMS"
+    elseif self.page == PAGE_FIELD_TOOLS then
+        title = title .. "  /  ADMIN PANEL  /  FIELD TOOLS"
+    elseif self.page == PAGE_VEHICLE_TOOLS then
+        title = title .. "  /  ADMIN PANEL  /  VEHICLE TOOLS"
+    elseif self.page == PAGE_ADMIN then
         title = title .. "  /  ADMIN PANEL"
     elseif self.activeCatIdx then
         local cat = CATEGORIES[self.activeCatIdx]
@@ -553,7 +587,8 @@ function SoilSettingsPanel:drawInfoBar()
     self:drawText(PX + PAD + 0.10, textY, TS_SMALL, "·  " .. modeText, C.info_mode, RenderText.ALIGN_LEFT, false)
 
     if self.page == PAGE_CATEGORY or self.page == PAGE_ADMIN or self.page == PAGE_SET_STATE
-       or self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS then
+       or self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS
+       or self.page == PAGE_SMART_SYSTEMS then
         -- Back button
         local bbW = 0.085
         local bbH = IB_H * 0.62
@@ -694,9 +729,12 @@ function SoilSettingsPanel:drawCategoryPage()
         self:drawText(CX + 0.012, curY + SEC_H * 0.25, TS_SMALL,
             string.upper(tr(sec.headerKey) or ""), cat.accent, RenderText.ALIGN_LEFT, true)
 
-        for _, settingId in ipairs(sec.items) do
-            -- Hide pfCompatibilityMode when PF is not installed — irrelevant to non-PF players
+        for _, item in ipairs(sec.items) do
+            local settingId = type(item) == "string" and item or nil
+            local itemDef   = type(item) == "table"  and item or nil
+
             if settingId == "pfCompatibilityMode" then
+                -- Hide pfCompatibilityMode when PF is not installed
                 local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
                 if not (pfBridge and pfBridge.isActive) then
                     -- skip
@@ -706,11 +744,45 @@ function SoilSettingsPanel:drawCategoryPage()
                     rowIdx = rowIdx + 1
                     self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
                 end
-            else
+            elseif settingId then
                 curY = curY - ROW_H
                 if curY < CY_BOT then break end
                 rowIdx = rowIdx + 1
                 self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
+            elseif itemDef and (itemDef.stype == "action" or itemDef.stype == "danger") then
+                local rh = ADMIN_ACT_H
+                curY = curY - rh
+                if curY < CY_BOT then break end
+                rowIdx = rowIdx + 1
+                if rowIdx % 2 == 0 then self:drawRect(CX, curY, CW, rh, C.row_alt) end
+
+                local isDanger = (itemDef.stype == "danger")
+                local btnW = 0.130
+                local btnH = rh * 0.72
+                local btnX = CX + CW - btnW - 0.012
+                local btnY = curY + (rh - btnH) * 0.5
+                local hov  = self:hitTest(btnX, btnY, btnW, btnH, self.mouseX, self.mouseY)
+
+                local aLabel = tr("sf_" .. itemDef.id .. "_label", itemDef.id)
+                local aDesc  = tr("sf_" .. itemDef.id .. "_desc",  "")
+                self:drawText(CX + 0.008, curY + rh * 0.55, TS_BODY, aLabel, C.white, RenderText.ALIGN_LEFT, true)
+                self:drawText(CX + 0.008, curY + rh * 0.15, TS_TINY, aDesc,  C.dim,   RenderText.ALIGN_LEFT, false)
+
+                local acCol = isDanger and ADMIN_ACCENT or cat.accent
+                local bgCol = isDanger
+                    and (hov and {0.65, 0.10, 0.10, 0.95} or {0.30, 0.06, 0.06, 0.85})
+                    or  (hov and {acCol[1]*0.4, acCol[2]*0.4, acCol[3]*0.4, 0.95}
+                              or {acCol[1]*0.15, acCol[2]*0.15, acCol[3]*0.15, 0.85})
+                self:drawRect(btnX, btnY, btnW, btnH, bgCol)
+                self:drawRect(btnX, btnY, 0.002, btnH, acCol)
+                self:drawText(btnX + btnW * 0.5, btnY + btnH * 0.20, TS_TINY,
+                    ">  " .. aLabel,
+                    hov and {1,1,1,1} or {0.75,0.75,0.75,1},
+                    RenderText.ALIGN_CENTER, false)
+                self:registerClick("cat_action_" .. itemDef.id, btnX, btnY, btnW, btnH,
+                    { actionId = itemDef.id })
+
+                self:drawRect(CX, curY, CW, 0.0005, C.divider, 0.35)
             end
         end
 
@@ -880,6 +952,8 @@ function SoilSettingsPanel:drawAdminPage()
         sections = FIELD_TOOLS_SECTIONS
     elseif self.page == PAGE_VEHICLE_TOOLS then
         sections = VEHICLE_TOOLS_SECTIONS
+    elseif self.page == PAGE_SMART_SYSTEMS then
+        sections = SMART_SYSTEMS_SECTIONS
     end
 
     for _, sec in ipairs(sections) do
@@ -1257,7 +1331,8 @@ function SoilSettingsPanel:handleClick(id, data)
         self:close()
 
     elseif id == "back" then
-        if self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS or self.page == PAGE_SET_STATE then
+        if self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS
+           or self.page == PAGE_SET_STATE or self.page == PAGE_SMART_SYSTEMS then
             self.page = PAGE_ADMIN
         else
             self.page = PAGE_LANDING
@@ -1355,6 +1430,10 @@ function SoilSettingsPanel:handleClick(id, data)
             return
         elseif actionId == "nav_vehicle_tools" then
             self.page = PAGE_VEHICLE_TOOLS
+            self.pageScrollIdx = 0
+            return
+        elseif actionId == "nav_smart_systems" then
+            self.page = PAGE_SMART_SYSTEMS
             self.pageScrollIdx = 0
             return
         end

@@ -259,6 +259,17 @@ function HookManager:installAll(soilSystem)
     -- N content, which is 0 for K-only and P-only products. Optional: no-op when PF is absent.
     self:installPFNitrogenMapHook()
 
+    -- Smart Soil Sensor: per-section spray suppression based on SF soil data.
+    -- Appended AFTER installDensityMapSprayHook so cleanup unwinds correctly.
+    -- No-ops when PF compat mode is on (PF owns section control in that mode).
+    self:installSectionControlHook()
+
+    -- System 2: See & Spray — per-cell spot-spray suppression (appended after Smart Sensor).
+    self:installSeeAndSprayHook()
+
+    -- System 3: Variable Rate — per-section rate pre-computation (appended after See & Spray).
+    self:installVariableRateHook()
+
     self.installed = true
 end
 
@@ -864,6 +875,413 @@ function HookManager:installDensityMapSprayHook()
     return true
 end
 
+-- =========================================================
+-- SMART SOIL SENSOR: per-section spray suppression
+-- =========================================================
+-- Appended to Sprayer.onStartWorkAreaProcessing (after the density map remap).
+-- For each VWW section that VWW marked active, checks SF soil data at that
+-- section's world position. If the product loaded is not needed at that spot
+-- (pest=0, disease=0, K≥target, or P≥target) the section is temporarily set
+-- to isActive=false. VWW resets it on the next tick — no persistent corruption.
+--
+-- Guard: entire hook is a no-op when PF compat mode is on, because PF owns
+-- section control in that mode and we must not fight its density-map logic.
+function HookManager:installSectionControlHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[SectionSensor] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    -- Build fill-type lookup tables from Constants at install time.
+    -- These are constant for the session, so we pre-compute once.
+    local pestFillTypes    = {}   -- ftName → true  (insecticides)
+    local diseaseFillTypes = {}   -- ftName → true  (fungicides)
+    local kOnlyFillTypes   = {}   -- ftName → true  (K dominant, P=0)
+    local pDomFillTypes    = {}   -- ftName → true  (P dominant, K=0)
+
+    local pp = SoilConstants.PEST_PRESSURE
+    if pp and pp.INSECTICIDE_TYPES then
+        for name, _ in pairs(pp.INSECTICIDE_TYPES) do pestFillTypes[name] = true end
+    end
+    local dp = SoilConstants.DISEASE_PRESSURE
+    if dp and dp.FUNGICIDE_TYPES then
+        for name, _ in pairs(dp.FUNGICIDE_TYPES) do diseaseFillTypes[name] = true end
+    end
+    local profs = SoilConstants.FERTILIZER_PROFILES
+    if profs then
+        for name, prof in pairs(profs) do
+            local n = prof.N or 0
+            local p = prof.P or 0
+            local k = prof.K or 0
+            if k > 0 and p == 0 then kOnlyFillTypes[name] = true end
+            if p > 0 and k == 0 then pDomFillTypes[name]  = true end
+        end
+    end
+
+    local NUTRIENT_TARGET = SoilSensorManager and SoilSensorManager.NUTRIENT_TARGET or 70
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            -- Gate 1: SF must be initialised
+            local sfm = g_SoilFertilityManager
+            if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
+
+            -- Gate 2: skip entirely in PF compat mode — PF manages section control
+            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+
+            -- Gate 2b: skip if admin has disabled Smart Sensor globally
+            if sfm.settings and sfm.settings.smartSensorEnabled == false then return end
+
+            local sensorMgr = sfm.sensorManager
+
+            -- Gate 3: vehicle must have VWW sections
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections or #vww.sections == 0 then return end
+
+            -- Gate 4: read fill type from wap (set by the original onStartWorkAreaProcessing)
+            local spec = sprayerSelf.spec_sprayer
+            local wap  = spec and spec.workAreaParameters
+            if not wap then return end
+
+            local fillTypeIndex = wap.sprayFillType
+            if not fillTypeIndex or fillTypeIndex == 0 then return end
+
+            local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+            if not ft then return end
+
+            local vehicleId = sprayerSelf.id
+
+            -- Classify the fill type
+            local isPest    = pestFillTypes[ft.name]    == true
+            local isDisease = diseaseFillTypes[ft.name] == true
+            local isKOnly   = kOnlyFillTypes[ft.name]   == true
+            local isPDom    = pDomFillTypes[ft.name]    == true
+
+            if not isPest and not isDisease and not isKOnly and not isPDom then return end
+
+            -- Check which sensors are active for this vehicle
+            local pestOn    = isPest                and sensorMgr:isPestEnabled(vehicleId)
+            local diseaseOn = isDisease             and sensorMgr:isDiseaseEnabled(vehicleId)
+            local nutrientOn = (isKOnly or isPDom)  and sensorMgr:isNutrientEnabled(vehicleId)
+
+            if not pestOn and not diseaseOn and not nutrientOn then return end
+
+            -- Pre-fetch root position (fallback for sections without a width node)
+            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            if not rootX then return end
+
+            local soilSys = sfm.soilSystem
+
+            for _, section in ipairs(vww.sections) do
+                -- Only consider sections that VWW has already decided are active.
+                -- isCenter sections: VWW never touches their isActive — always leave them on.
+                if section.isActive and not section.isCenter then
+                    -- Estimate section world position (midpoint between root and outer edge)
+                    local sx, sz = rootX, rootZ
+                    if section.maxWidthNode then
+                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                        if ok and wx then
+                            sx = (rootX + wx) * 0.5
+                            sz = (rootZ + wz) * 0.5
+                        end
+                    end
+
+                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                    if fieldId and fieldId > 0 then
+                        local fd = soilSys.fieldData[fieldId]
+                        if fd then
+                            local skip = false
+                            if pestOn    then skip = skip or ((fd.pestPressure    or 0) <= 0) end
+                            if diseaseOn then skip = skip or ((fd.diseasePressure or 0) <= 0) end
+                            if nutrientOn and isKOnly then
+                                skip = skip or ((fd.potassium  or 0) >= NUTRIENT_TARGET)
+                            end
+                            if nutrientOn and isPDom then
+                                skip = skip or ((fd.phosphorus or 0) >= NUTRIENT_TARGET)
+                            end
+                            if skip then
+                                section.isActive = false
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    )
+
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF section sensor)")
+
+    SoilLogger.info("[OK] SF Smart Sensor hook installed — pest/disease/nutrient K+P section control active")
+    return true
+end
+
+-- =========================================================
+-- SEE & SPRAY: per-cell spot-spray suppression (System 2)
+-- =========================================================
+-- Appended AFTER the Smart Sensor hook.  Reads field.zoneData[cellKey] for the
+-- exact soil cell under each boom section.  Sections are suppressed when the
+-- cell's pest/disease/weed pressure is below the configured threshold.
+-- Falls back to field average when no cell entry exists (unvisited cell).
+-- No-ops when PF compat mode is on or when admin has disabled See & Spray.
+function HookManager:installSeeAndSprayHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[SeeAndSpray] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    -- Fill-type lookup tables built once at install time
+    local pestFTs    = {}
+    local diseaseFTs = {}
+    local weedFTs    = {}
+
+    local pp = SoilConstants.PEST_PRESSURE
+    if pp and pp.INSECTICIDE_TYPES then
+        for name in pairs(pp.INSECTICIDE_TYPES) do pestFTs[name] = true end
+    end
+    local dp = SoilConstants.DISEASE_PRESSURE
+    if dp and dp.FUNGICIDE_TYPES then
+        for name in pairs(dp.FUNGICIDE_TYPES) do diseaseFTs[name] = true end
+    end
+    local wp = SoilConstants.WEED_PRESSURE
+    if wp and wp.HERBICIDE_TYPES then
+        for name in pairs(wp.HERBICIDE_TYPES) do weedFTs[name] = true end
+    end
+
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            local sfm = g_SoilFertilityManager
+            if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
+            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+            if sfm.settings and sfm.settings.seeAndSprayEnabled == false then return end
+
+            local sensorMgr = sfm.sensorManager
+            local vehicleId = sprayerSelf.id
+
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections or #vww.sections == 0 then return end
+
+            local spec = sprayerSelf.spec_sprayer
+            local wap  = spec and spec.workAreaParameters
+            if not wap then return end
+
+            local fillTypeIndex = wap.sprayFillType
+            if not fillTypeIndex or fillTypeIndex == 0 then return end
+            local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+            if not ft then return end
+
+            local isPest    = pestFTs[ft.name]    == true
+            local isDisease = diseaseFTs[ft.name] == true
+            local isWeed    = weedFTs[ft.name]    == true
+            if not isPest and not isDisease and not isWeed then return end
+
+            local pestSS    = isPest    and sensorMgr:isSeeSprayPestEnabled(vehicleId)
+            local diseaseSS = isDisease and sensorMgr:isSeeSprayDiseaseEnabled(vehicleId)
+            local weedSS    = isWeed    and sensorMgr:isSeeSprayWeedEnabled(vehicleId)
+            if not pestSS and not diseaseSS and not weedSS then return end
+
+            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            if not rootX then return end
+
+            local soilSys = sfm.soilSystem
+            local ssCfg   = SoilConstants.SEE_AND_SPRAY
+            local zone    = SoilConstants.ZONE
+
+            for _, section in ipairs(vww.sections) do
+                if section.isActive and not section.isCenter then
+                    local sx, sz = rootX, rootZ
+                    if section.maxWidthNode then
+                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                        if ok and wx then
+                            sx = (rootX + wx) * 0.5
+                            sz = (rootZ + wz) * 0.5
+                        end
+                    end
+
+                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                    if fieldId and fieldId > 0 then
+                        local fd = soilSys.fieldData[fieldId]
+                        if fd then
+                            local cellKey = tostring(
+                                math.floor(sx / zone.CELL_SIZE) * 10000 +
+                                math.floor(sz / zone.CELL_SIZE))
+                            local cell = fd.zoneData and fd.zoneData[cellKey]
+
+                            local cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
+                            local cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
+                            local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
+
+                            local skip = false
+                            if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
+                            if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
+                            if weedSS    then skip = skip or (cellWeed    < ssCfg.WEED_THRESHOLD)    end
+                            if skip then section.isActive = false end
+                        end
+                    end
+                end
+            end
+        end
+    )
+
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF see-and-spray)")
+    SoilLogger.info("[OK] SF See & Spray hook installed — per-cell pest/disease/weed section control active")
+    return true
+end
+
+-- =========================================================
+-- VARIABLE RATE APPLICATION: per-section rate (System 3)
+-- =========================================================
+-- Appended to onStartWorkAreaProcessing.  Computes a per-section rate multiplier
+-- from the nutrient deficit at the cell directly under each boom section and
+-- stores it in sensorMgr.sectionRates[vehicleId].
+-- The existing VWW section loop in onEndWorkAreaProcessing reads these rates
+-- and scales litersPerSection accordingly.
+-- Only active for NPK fertilizers; no-ops for pest/disease/weed products.
+function HookManager:installVariableRateHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[VariableRate] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    -- Classify fill types at install time
+    local nFerts  = {}   -- N-dominant (UAN, liquid urea, etc.)
+    local pFerts  = {}   -- P-dominant (MAP, DAP, etc.)
+    local kFerts  = {}   -- K-only (POTASH, etc.)
+    local npkFerts = {}  -- multi-nutrient (all N/P/K fertilizers)
+
+    local profs = SoilConstants.FERTILIZER_PROFILES
+    if profs then
+        for name, prof in pairs(profs) do
+            local n = prof.N or 0
+            local p = prof.P or 0
+            local k = prof.K or 0
+            if n > 0 or p > 0 or k > 0 then
+                npkFerts[name] = true
+                if n > 0 and p == 0 and k == 0 then nFerts[name] = true end
+                if p > 0 and k == 0             then pFerts[name] = true end
+                if k > 0 and p == 0             then kFerts[name] = true end
+            end
+        end
+    end
+
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            local sfm = g_SoilFertilityManager
+            if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
+            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+            if sfm.settings and sfm.settings.variableRateEnabled == false then return end
+
+            local sensorMgr = sfm.sensorManager
+            local vehicleId = sprayerSelf.id
+
+            if not sensorMgr:isVariableRateEnabled(vehicleId) then
+                sensorMgr:clearSectionRates(vehicleId)
+                return
+            end
+
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections or #vww.sections == 0 then return end
+
+            local spec = sprayerSelf.spec_sprayer
+            local wap  = spec and spec.workAreaParameters
+            if not wap then return end
+
+            local fillTypeIndex = wap.sprayFillType
+            if not fillTypeIndex or fillTypeIndex == 0 then
+                sensorMgr:clearSectionRates(vehicleId)
+                return
+            end
+            local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+            if not ft or not npkFerts[ft.name] then
+                sensorMgr:clearSectionRates(vehicleId)
+                return
+            end
+
+            local isN   = nFerts[ft.name]  == true
+            local isP   = pFerts[ft.name]  == true
+            local isK   = kFerts[ft.name]  == true
+
+            -- Manual rate ceiling
+            local rm = sfm.sprayerRateManager
+            local manualMult = rm and rm:getMultiplier(vehicleId) or 1.0
+
+            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            if not rootX then return end
+
+            local soilSys = sfm.soilSystem
+            local vrCfg   = SoilConstants.VARIABLE_RATE
+            local target  = vrCfg.NUTRIENT_TARGET
+            local zone    = SoilConstants.ZONE
+
+            sensorMgr:clearSectionRates(vehicleId)
+
+            for _, section in ipairs(vww.sections) do
+                if section.isActive and not section.isCenter then
+                    local sx, sz = rootX, rootZ
+                    if section.maxWidthNode then
+                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                        if ok and wx then
+                            sx = (rootX + wx) * 0.5
+                            sz = (rootZ + wz) * 0.5
+                        end
+                    end
+
+                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                    local rate = vrCfg.MIN_RATE + (vrCfg.MAX_RATE - vrCfg.MIN_RATE) * 0.5  -- default mid
+                    if fieldId and fieldId > 0 then
+                        local fd = soilSys.fieldData[fieldId]
+                        if fd then
+                            local cellKey = tostring(
+                                math.floor(sx / zone.CELL_SIZE) * 10000 +
+                                math.floor(sz / zone.CELL_SIZE))
+                            local cell = fd.zoneData and fd.zoneData[cellKey]
+
+                            local nutrientVal
+                            if isN then
+                                nutrientVal = (cell and cell.N) or fd.nitrogen or target
+                            elseif isP then
+                                nutrientVal = (cell and cell.P) or fd.phosphorus or target
+                            elseif isK then
+                                nutrientVal = (cell and cell.K) or fd.potassium or target
+                            else
+                                -- Complex NPK: use worst (lowest) of the three
+                                local n = (cell and cell.N) or fd.nitrogen   or target
+                                local p = (cell and cell.P) or fd.phosphorus or target
+                                local k = (cell and cell.K) or fd.potassium  or target
+                                nutrientVal = math.min(n, p, k)
+                            end
+
+                            local deficit = math.max(0, target - nutrientVal) / target
+                            rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                        end
+                    end
+
+                    -- Never exceed the player's manual rate ceiling
+                    rate = math.min(rate, manualMult)
+                    sensorMgr:setSectionRate(vehicleId, section, rate)
+                end
+            end
+        end
+    )
+
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF variable rate)")
+    SoilLogger.info("[OK] SF Variable Rate hook installed — per-section NPK rate control active")
+    return true
+end
+
 --- Register a cleanup-only hook (e.g. message center subscriptions).
 ---@param name string A human-readable name for logging
 ---@param cleanupFn function Called during uninstallAll() to undo the hook
@@ -1396,8 +1814,13 @@ function HookManager:installSprayerAreaHook()
             end
 
             if not liters or liters <= 0 then
-                SoilLogger.debug("SprayerHook: usage=0 for fillType=%d fillLevel=%.1f — no product consumed this frame (multi-boom or section-control gate?)",
-                    fillTypeIndex or -1, sprayFillLevel or 0)
+                -- Throttle: log at most once per 3 s per vehicle to avoid headland-turn spam
+                local _now = g_currentMission and g_currentMission.time or 0
+                if not self._sfZeroUsageLogAt or (_now - self._sfZeroUsageLogAt) > 3000 then
+                    self._sfZeroUsageLogAt = _now
+                    SoilLogger.debug("SprayerHook: usage=0 for fillType=%d fillLevel=%.1f — no product consumed (multi-boom or section-control gate?)",
+                        fillTypeIndex or -1, sprayFillLevel or 0)
+                end
                 return
             end
             if not sprayFillLevel or sprayFillLevel <= 0 then return end
@@ -1582,6 +2005,15 @@ function HookManager:installSprayerAreaHook()
 
                     if scratchN > 0 then
                         local litersPerSection = effectiveLiters / scratchN
+                        -- Variable Rate (System 3): look up per-section multiplier if active
+                        local vrSectionRates = nil
+                        do
+                            local sfmVR = g_SoilFertilityManager
+                            local smVR  = sfmVR and sfmVR.sensorManager
+                            if smVR and smVR.sectionRates then
+                                vrSectionRates = smVR.sectionRates[self.id]
+                            end
+                        end
                         for i = 1, scratchN do
                             local section = scratch[i]
                             local sx, sz = rootX, rootZ
@@ -1594,7 +2026,8 @@ function HookManager:installSprayerAreaHook()
                                 end
                             end
                             local sectionFieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                            applySingle(sectionFieldId, litersPerSection, sx, sz)
+                            local vrMult = (vrSectionRates and vrSectionRates[section]) or 1.0
+                            applySingle(sectionFieldId, litersPerSection * vrMult, sx, sz)
                         end
                     else
                         applySingle(fieldId, effectiveLiters, rootX, rootZ)
@@ -2246,7 +2679,7 @@ function HookManager:installFillUnitHookEarly()
         return false
     end
 
-    local solidNames         = {"UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames         = {"UREA", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM"}
     local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
@@ -2283,6 +2716,28 @@ function HookManager:installFillUnitHookEarly()
                     for _, name in ipairs(manureCompatNames) do
                         local idx = fm:getFillTypeIndexByName(name)
                         if idx then fu.supportedFillTypes[idx] = true end
+                    end
+                end
+                -- Category-based expansion: also accept any fill type in the fertilizer/liquid
+                -- categories (safety net for fill types added to fillTypes.xml but not solidNames)
+                if addSolid then
+                    local ok, catTypes = pcall(function()
+                        return fm:getFillTypesByCategoryNames("fertilizer")
+                    end)
+                    if ok and catTypes then
+                        for _, ft in pairs(catTypes) do
+                            if ft and ft.index then fu.supportedFillTypes[ft.index] = true end
+                        end
+                    end
+                end
+                if addLiquid then
+                    local ok, catTypes = pcall(function()
+                        return fm:getFillTypesByCategoryNames("liquidFertilizer")
+                    end)
+                    if ok and catTypes then
+                        for _, ft in pairs(catTypes) do
+                            if ft and ft.index then fu.supportedFillTypes[ft.index] = true end
+                        end
                     end
                 end
             end
@@ -2340,7 +2795,7 @@ function HookManager:installFillUnitHook()
     -- support both) but rejected by dedicated spreaders (MANURE-only fill unit).
     local manureIndex = fm:getFillTypeIndexByName("MANURE")
 
-    local solidNames  = {"UREA", "AMS", "MAP", "DAP", "POTASH",
+    local solidNames  = {"UREA", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM"}
     local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
@@ -2361,6 +2816,26 @@ function HookManager:installFillUnitHook()
     for _, name in ipairs(manureCompatNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then table.insert(manureCompatIndices, idx) end
+    end
+
+    -- Category-based indices: safety net for fill types in our fillTypes.xml not yet in solidNames
+    local categoryFertIndices    = {}
+    local categoryLiqFertIndices = {}
+    local ok1, catFert = pcall(function() return fm:getFillTypesByCategoryNames("fertilizer") end)
+    if ok1 and catFert then
+        for _, ft in pairs(catFert) do
+            if ft and ft.index then table.insert(categoryFertIndices, ft.index) end
+        end
+    end
+    local ok2, catLiq = pcall(function() return fm:getFillTypesByCategoryNames("liquidFertilizer") end)
+    if ok2 and catLiq then
+        for _, ft in pairs(catLiq) do
+            if ft and ft.index then table.insert(categoryLiqFertIndices, ft.index) end
+        end
+    end
+    if #categoryFertIndices > 0 or #categoryLiqFertIndices > 0 then
+        SoilLogger.info("FillUnit hook: detected %d solid + %d liquid category fill types (third-party support)",
+            #categoryFertIndices, #categoryLiqFertIndices)
     end
 
     -- Shared helper: inject custom fill type indices into one vehicle's fill units
@@ -2385,6 +2860,17 @@ function HookManager:installFillUnitHook()
                 end
                 if addManure then
                     for _, idx in ipairs(manureCompatIndices) do
+                        fillUnit.supportedFillTypes[idx] = true
+                    end
+                end
+                -- Category-based expansion: safety net for our own fill types not in solidNames
+                if addSolid then
+                    for _, idx in ipairs(categoryFertIndices) do
+                        fillUnit.supportedFillTypes[idx] = true
+                    end
+                end
+                if addLiquid then
+                    for _, idx in ipairs(categoryLiqFertIndices) do
                         fillUnit.supportedFillTypes[idx] = true
                     end
                 end
@@ -2455,6 +2941,21 @@ function HookManager:installFillUnitHook()
             local manureBase = customToManure[fillType]
             if manureBase and origGetSupports(vehicleSelf, fillUnitIndex, manureBase) then
                 return true
+            end
+            -- Category-based fallback: support any fill type in the "fertilizer" /
+            -- "liquidFertilizer" category for vehicles that already accept the vanilla
+            -- base type. Safety net for our own fill types not in the hardcoded lists.
+            if fertIndex and origGetSupports(vehicleSelf, fillUnitIndex, fertIndex) then
+                local ok, inCat = pcall(function()
+                    return fm:getIsFillTypeInCategory(fillType, "fertilizer")
+                end)
+                if ok and inCat then return true end
+            end
+            if liqFertIndex and origGetSupports(vehicleSelf, fillUnitIndex, liqFertIndex) then
+                local ok, inCat = pcall(function()
+                    return fm:getIsFillTypeInCategory(fillType, "liquidFertilizer")
+                end)
+                if ok and inCat then return true end
             end
             return false
         end

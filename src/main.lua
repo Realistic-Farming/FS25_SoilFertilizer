@@ -40,6 +40,7 @@ source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/SprayerRateManager.lua")
+source(modDirectory .. "src/SoilSensorManager.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 
 -- 3. Settings
@@ -51,6 +52,9 @@ source(modDirectory .. "src/settings/SoilSettingsGUI.lua")
 source(modDirectory .. "src/utils/UIHelper.lua")
 source(modDirectory .. "src/settings/SoilSettingsUI.lua")
 source(modDirectory .. "src/ui/SoilHUD.lua")
+source(modDirectory .. "src/ui/SoilSmartSensorPanel.lua")
+source(modDirectory .. "src/ui/SoilSeeAndSprayPanel.lua")
+source(modDirectory .. "src/ui/SoilVariableRatePanel.lua")
 source(modDirectory .. "src/ui/SoilReportDialog.lua")
 source(modDirectory .. "src/ui/SoilMapOverlay.lua")
 source(modDirectory .. "src/hooks/SoilMapHooks.lua")
@@ -467,6 +471,15 @@ FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission
     end
     if sfm and sfm.settingsPanel then
         sfm.settingsPanel:draw()
+    end
+    if sfm and sfm.smartSensorPanel then
+        sfm.smartSensorPanel:draw()
+    end
+    if sfm and sfm.seeAndSprayPanel then
+        sfm.seeAndSprayPanel:draw()
+    end
+    if sfm and sfm.variableRatePanel then
+        sfm.variableRatePanel:draw()
     end
     -- Soil layer overlay on the HUD minimap (bottom-left corner).
     -- Uses the ingameMap ref captured at map-load time (g_currentMission.ingameMap is nil in FS25).

@@ -253,6 +253,31 @@ SettingsSchema.definitions = {
         uiId = "sf_pf_compat",
         localOnly = true,  -- per-player; PF presence is client-side, not synced
     },
+    {
+        id = "smartSensorEnabled",
+        type = "boolean",
+        default = true,
+        uiId = "sf_smart_sensor",
+    },
+    {
+        id = "seeAndSprayEnabled",
+        type = "boolean",
+        default = true,
+        uiId = "sf_see_and_spray",
+    },
+    {
+        id = "variableRateEnabled",
+        type = "boolean",
+        default = true,
+        uiId = "sf_variable_rate",
+    },
+    {
+        id = "independentPanels",
+        type = "boolean",
+        default = false,
+        uiId = "sf_independent_panels",
+        localOnly = true,  -- per-player layout preference, not synced
+    },
 }
 
 -- Build lookup table by id for fast access

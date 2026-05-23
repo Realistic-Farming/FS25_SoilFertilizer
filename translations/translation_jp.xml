@@ -715,5 +715,69 @@
     <e k="sf_cell_sidebar_header" v="セル詳細" eh="6fc5243e" />
     <e k="sf_cell_coord" v="座標" eh="99171d3a" />
     <e k="sf_cell_click_hint" v="マップをクリックして土壌セルを検査します" eh="fc9d240b" />
+    <!-- SMART SYSTEMS (admin panel section) -->
+    <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
+    <e k="sf_smart_sensor_short"         v="Smart Sensor" />
+    <e k="sf_smart_sensor_long"          v="Enable or disable the Smart Spray Sensor system" />
+    <e k="sf_desc_smartSensorEnabled"    v="Allow players to use Smart Sensor boom-section control based on live soil data" />
+    <!-- SMART SENSOR PANEL -->
+    <e k="sf_sensor_panel_title" v="SMART SENSORS" />
+    <e k="sf_sensor_pest"        v="Pest Sensor" />
+    <e k="sf_sensor_disease"     v="Disease Sensor" />
+    <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
+    <e k="sf_sensor_state_on"    v="ON" />
+    <e k="sf_sensor_state_off"   v="OFF" />
+    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
+    <e k="action_SF_SENSOR_PEST"     v="SF: Toggle Pest Sensor" />
+    <e k="action_SF_SENSOR_DISEASE"  v="SF: Toggle Disease Sensor" />
+    <e k="action_SF_SENSOR_NUTRIENT" v="SF: Toggle Nutrient Sensor" />
+        <!-- SMART SYSTEMS -->
+    <e k="sf_panel_hdr_smart_systems"      v="Smart Systems" />
+    <e k="sf_nav_smart_systems_label"      v="Smart Systems" />
+    <e k="sf_nav_smart_systems_desc"       v="Configure Smart Sensor, See &amp; Spray and Variable Rate systems" />
+    <e k="sf_panel_hdr_smart_sensor_sys"   v="Smart Sensor System" />
+    <e k="sf_panel_hdr_see_spray_sys"      v="See &amp; Spray System" />
+    <e k="sf_panel_hdr_var_rate_sys"       v="Variable Rate System" />
+    <e k="sf_smart_sensor_short"           v="Smart Sensor" />
+    <e k="sf_smart_sensor_long"            v="Enable or disable the Smart Spray Sensor system" />
+    <e k="sf_see_and_spray_short"          v="See &amp; Spray" />
+    <e k="sf_see_and_spray_long"           v="Enable or disable the See &amp; Spray precision spraying system" />
+    <e k="sf_variable_rate_short"          v="Variable Rate" />
+    <e k="sf_variable_rate_long"           v="Enable or disable Variable Rate Application based on soil deficits" />
+    <e k="sf_desc_smartSensorEnabled"      v="Allow players to use Smart Sensor boom-section control based on live soil data" />
+    <e k="sf_desc_seeAndSprayEnabled"      v="Suppress boom sections over areas that do not need spraying" />
+    <e k="sf_desc_variableRateEnabled"     v="Adjust application rate per section based on soil nutrient deficits" />
+    <!-- SMART SENSOR PANEL -->
+    <e k="sf_sensor_panel_title" v="SMART SENSORS" />
+    <e k="sf_sensor_pest"        v="Pest Sensor" />
+    <e k="sf_sensor_disease"     v="Disease Sensor" />
+    <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
+    <e k="sf_sensor_state_on"    v="ON" />
+    <e k="sf_sensor_state_off"   v="OFF" />
+    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
+    <!-- SEE AND SPRAY PANEL -->
+    <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" />
+    <e k="sf_see_spray_pest"        v="Pest" />
+    <e k="sf_see_spray_disease"     v="Disease" />
+    <e k="sf_see_spray_weed"        v="Weed" />
+    <!-- VARIABLE RATE PANEL -->
+    <e k="sf_var_rate_panel_title" v="VARIABLE RATE" />
+    <e k="sf_var_rate_label"       v="Var. Rate" />
+    <!-- INPUT ACTIONS -->
+    <e k="action_SF_SENSOR_PEST"       v="SF: Toggle Pest Sensor" />
+    <e k="action_SF_SENSOR_DISEASE"    v="SF: Toggle Disease Sensor" />
+    <e k="action_SF_SENSOR_NUTRIENT"   v="SF: Toggle Nutrient Sensor" />
+    <e k="action_SF_SEE_SPRAY_PEST"    v="SF: Toggle See &amp; Spray Pest" />
+    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Toggle See &amp; Spray Disease" />
+    <e k="action_SF_SEE_SPRAY_WEED"    v="SF: Toggle See &amp; Spray Weed" />
+    <e k="action_SF_VARIABLE_RATE"     v="SF: Toggle Variable Rate" />
+        <!-- HUD LAYOUT DRAG BUTTON -->
+    <e k="sf_panel_hdr_hud_layout"   v="HUD Layout" />
+    <e k="sf_independent_panels_short" v="Free Panel Layout" />
+    <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" />
+    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." />    <e k="sf_hud_enter_drag_label"   v="Move &amp; Resize Panels" />
+    <e k="sf_hud_enter_drag_desc"    v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" />
     </elements>
+
+
 </l10n>

@@ -743,9 +743,11 @@ SoilConstants.SPRAYER_RATE = {
 SoilConstants.WEED_PRESSURE = {
     -- Herbicide fill type names → effectiveness multiplier (0.0-1.0)
     -- Any fill type not listed here is NOT treated as herbicide
+    -- NOTE: PESTICIDE is the vanilla FS25 / PF insecticide fill type ("Rovarló szer" in HU).
+    -- It belongs in INSECTICIDE_TYPES, NOT here. Listing it here caused PESTICIDE sprays to
+    -- reduce weed pressure instead of pest pressure (bug: 0% pest protection after full tank).
     HERBICIDE_TYPES = {
         HERBICIDE = 1.0,
-        PESTICIDE = 0.8,
     },
     -- Pressure points removed on a single full-field herbicide application.
     -- 100 = one full-field pass at the reference rate (1.5 L/ha) fully clears any pressure tier.
@@ -815,7 +817,8 @@ SoilConstants.PEST_PRESSURE = {
 
     -- Insecticide fill type names → effectiveness multiplier (0.0-1.0)
     INSECTICIDE_TYPES = {
-        INSECTICIDE = 1.0,
+        INSECTICIDE = 1.0,  -- SF custom fill type
+        PESTICIDE   = 1.0,  -- vanilla FS25 / PF fill type ("Rovarló szer" / bug spray)
     },
     -- Pressure points removed on a single full-field insecticide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.
@@ -939,6 +942,28 @@ SoilConstants.COMPACTION = {
     SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass
     MAX_COMPACTION            = 100.0,
     NUTRIENT_PENALTY_MAX      = 0.20,  -- max 20% extra nutrient extraction at max compaction
+}
+
+-- ========================================
+-- SEE & SPRAY (System 2)
+-- ========================================
+-- Per-cell pressure thresholds (0-100 scale, same as PEST/DISEASE/WEED_PRESSURE tiers).
+-- Sections are suppressed when the cell value is BELOW the threshold.
+SoilConstants.SEE_AND_SPRAY = {
+    PEST_THRESHOLD    = 10,   -- suppress if cell pestPressure    < 10
+    DISEASE_THRESHOLD = 10,   -- suppress if cell diseasePressure < 10
+    WEED_THRESHOLD    = 15,   -- suppress if cell weedPressure    < 15 (weeds need more to justify spraying)
+}
+
+-- ========================================
+-- VARIABLE RATE APPLICATION (System 3)
+-- ========================================
+-- Per-section rate multiplier derived from the nutrient deficit at each section's soil cell.
+-- The manual rate setting acts as a ceiling; variable rate cannot exceed it.
+SoilConstants.VARIABLE_RATE = {
+    NUTRIENT_TARGET = 70,     -- "well stocked" level — same as Smart Sensor NUTRIENT_TARGET
+    MIN_RATE        = 0.30,   -- minimum multiplier (field at or above target → light top-up pass)
+    MAX_RATE        = 1.50,   -- maximum multiplier (completely depleted cell)
 }
 
 SoilLogger.info("Constants loaded")

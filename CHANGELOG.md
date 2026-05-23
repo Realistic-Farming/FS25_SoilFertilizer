@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.3.2] - 2026-05-24
+
+### Fixed
+- **Collapsed panel stacking overlap** — When a smart system panel (Smart Sensor, See & Spray, or Variable Rate) was collapsed, panels below it rendered at the wrong position, causing overlap. Root cause: all three panels computed their stacked Y position using `fullPanelH` before evaluating the collapsed state. Each panel now determines `panelH` (actual rendered height) before calculating `stackedY`, so downstream panels anchor to the correct collapsed size.
+- **System panels stay visible when HUD is hidden** — Pressing H to toggle the main Soil Monitor HUD off did not hide the Smart Sensor, See & Spray, or Variable Rate overlay panels. All three now check `hud.visible` in their `draw()` functions and return early when the HUD is hidden.
+- **POLIFOSKA not loading into spreaders** — POLIFOSKA was missing from the hardcoded fill-type allow-list in both `installFillUnitHookEarly` and `installFillUnitHook`. Added to `solidNames` alongside UREA, DAP, etc. Also added a category-based fallback using `getFillTypesByCategoryNames` so any fill type registered in the `fertilizer` or `liquidFertilizer` category is automatically accepted — prevents the same omission from recurring for future fill types.
+
+---
+
+## [2.2.3.1] - 2026-05-23
+
+### Fixed
+- **Smart Sensor panel drag broken** — `SoilFertilityManager` stored the Smart Sensor panel as `self.sensorPanel` but all callers (SoilHUD, SeeAndSpray, VariableRate) referenced `sfm.smartSensorPanel`. The field was always nil; the panel was never draggable. Renamed to `smartSensorPanel` consistently.
+- **Admin page nav buttons cut off** — The Admin settings page placed its Actions section (Save, Reset, Smart Systems, Vehicle Tools nav buttons) at the bottom of a content area that exceeded the visible panel height. Moved the Actions section to the top so navigation buttons are always visible.
+- **Disabled system panels leaving layout gaps** — When a system panel was disabled, it returned early from `draw()` without resetting `lastPanelH`, leaving a stale height value that caused the next enabled panel to leave a gap. All three panels now reset `self.lastPanelH = 0` at the very start of `draw()`.
+- **System panels not visible in Shift+H edit mode without a sprayer** — In edit + independent-panel mode, panels returned early when no sprayer was active, making them invisible and un-draggable without being in a vehicle. Now call `drawPanel()` for hit-testing even with `sprayer = nil`.
+- **System panels visible behind the Shift+O settings panel** — `g_gui:getIsGuiVisible()` does not detect SF's custom settings panel. Added an explicit check for `sfm.settingsPanel.isVisible`.
+
+### Changed
+- Guide dialog, README, and mod description updated to document all three Smart Precision Systems and the Free Panel Layout feature.
+
+---
+
+## [2.2.3.0] - 2026-05-23
+
+### Added
+- **Smart Sensor (System 1)** — Blocks individual sprayer boom sections when the detected pest, disease, or nutrient need for that section's soil cell falls below a configurable threshold. Reduces product waste on areas that do not need treatment. Toggle with Alt+1/2/3 from inside a VWW-equipped sprayer.
+- **See & Spray (System 2)** — In-vehicle HUD overlay displaying live per-cell pest, disease, and weed pressure readings with red/gray dot indicators showing which sections the Smart Sensor is actively suppressing. Toggle with Alt+4/5/6.
+- **Variable Rate Application (System 3)** — Automatically adjusts per-section boom application rate from the current soil nutrient deficit. A bar-chart overlay shows the live rate multiplier for each boom section. Toggle with Alt+7.
+- **Free Panel Layout** — Independent positioning and collapsing for all three smart system panels. Enable in Settings → Display → HUD Layout. Enter Shift+H edit mode to drag each panel; press the **[−]** button in any panel's title bar to collapse it to just the title bar. Positions and collapse state saved to `hud.xml`.
+- **Admin: Smart Systems page** — Dedicated settings page under Admin → Smart Systems with individual enable/disable toggles for each system (`smartSensorEnabled`, `seeAndSprayEnabled`, `variableRateEnabled`).
+- **Move & Resize Panels button** in Display & HUD settings — closes the settings panel and enters HUD drag/resize mode directly.
+- All 26 languages updated with Smart Systems, See & Spray, and Variable Rate keys.
+
+### Fixed
+- **PESTICIDE fill type reducing weed pressure instead of pest pressure** — The vanilla FS25 / PF PESTICIDE fill type was listed in `HERBICIDE_TYPES`. Every insecticide application silently routed to weed-pressure reduction, leaving pest pressure permanently at 0% despite full-tank consumption. Moved PESTICIDE to `INSECTICIDE_TYPES` at 1.0 effectiveness.
+- **SprayerHook usage=0 debug spam** — Throttled to at most once per 3 seconds per vehicle; eliminated 60+ lines/second headland-turn spam in debug mode.
+
+---
+
+## [2.2.2.5] - 2026-05-22
+
+### Fixed
+- **Version dialog cleanup** — Removed stale wording and tightened layout for the startup changelog dialog.
+- **Version dialog deferred 3 s after mission start** — In some savegame configurations the dialog appeared before the GUI was fully ready, causing a visual race condition. Now deferred by 3 seconds after `loadMission00Finished`.
+
+---
+
+## [2.2.2.4] - 2026-05-22
+
+### Added
+- **5-tab Field Guide dialog** — In-game reference guide (accessible via the Guide button on the version dialog or from the settings panel) with tabs covering Soil Nutrients, Crop Health, Fertilizer Types, Smart Systems, and FAQ.
+- **Color-coded HUD tick marks** — Nutrient bar tick marks now reflect status tier (green/amber/red) matching the bar color, making threshold boundaries immediately readable at a glance.
+
+### Fixed
+- **Guide dialog text clipping** — Guide content was overflowing the dialog box on non-default font scales. Dedicated wide text profiles added; box height expanded.
+- **Version dialog showing on every boot** — Changed behavior so the dialog shows on every load until the player explicitly clicks "Don't Show Again", rather than once per session.
+- **Guide button added to version dialog** — Clicking it closes the version dialog and opens the Field Guide directly.
+- **Spray rate panel clears in one pass** — The application rate display no longer requires two consecutive passes to reset after switching products.
+- **Yield threshold aligned with GOOD status** — The yield-efficiency display threshold was inconsistent with the HUD's "Good" status boundary. Aligned to the same constant.
+- **Version dialog auto-saves** — Closing the version dialog now persists the last-seen version immediately without requiring a manual save.
+
+---
+
+## [2.2.2.3] - 2026-05-21
+
+### Changed
+- **All keybindings unbound by default** — Cross-mod conflicts (Shift+H, Shift+M, Shift+O, F7) caused hard-locks when multiple mods shared defaults. All SF input actions now ship unbound; players assign keys once in Controls → Mods.
+
+### Fixed
+- **Soil Cell Map was bound to Shift+S** — Shift+S is the vanilla sprint-backwards combo. Binding any dialog to it caused the popup to open on every backward sprint stop. Reverted and left unbound.
+- **SoilMapCellDialog auto-loads player position on open** — The cell-detail dialog is no longer blank when first opened; it immediately queries the cell at the player or vehicle position.
+
+---
+
+## [2.2.2.1] - 2026-05-20
+
+### Fixed
+- **Section control overlap with Precision Farming** — Switched `installDensityMapSprayHook` from `prependedFunction` to `appendedFunction` on `Sprayer.onStartWorkAreaProcessing`. The original function sets `wap.sprayType` internally; a prepended hook ran before that assignment, so the C++ layer always received an unrecognised custom fill type index, returned `changedArea=0`, and PF's inside-field overlap detection had no valid signal — boom sections stayed open on fully-fertilised soil while moving forward.
+- **AN (Ammonium Nitrate) fill type not recognised** — `AN` was missing from `solidNames` in all four hook functions (`registerCustomSprayTypes`, `installEffectTypeHook`, `installSprayTypeEffectsHook`, `installDensityMapSprayHook`). Spray effects, density map writes, and soil tracking were all silently skipped for AN applications.
+
+---
+
 ## [2.2.1.0] - 2026-05-19
 
 ### Added

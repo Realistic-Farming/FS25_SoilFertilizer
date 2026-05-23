@@ -88,6 +88,15 @@ function SoilHUD.new(soilSystem, settings)
     self.reportDragOffsetY = 0
     self.miniReportRect  = { x=0, y=0, w=0, h=0 }
 
+    -- Sub-panel free positioning (independent mode)
+    self.freePos        = { smartSensor = {}, seeAndSpray = {}, varRate = {} }
+    self.draggingSubKey = nil   -- key into freePos while dragging a sub-panel
+    self.subDragOffX    = 0
+    self.subDragOffY    = 0
+
+    -- Loaded-from-disk collapsed states applied on first panel draw
+    self.savedCollapsed = { smartSensor = false, seeAndSpray = false, varRate = false }
+
     -- Camera freeze (NPCFavor pattern)
     self.savedCamRotX = nil
     self.savedCamRotY = nil
@@ -213,10 +222,11 @@ function SoilHUD:enterEditMode()
 end
 
 function SoilHUD:exitEditMode()
-    self.editMode    = false
-    self.dragging    = false
-    self.resizing    = false
-    self.hoverCorner = nil
+    self.editMode       = false
+    self.dragging       = false
+    self.resizing       = false
+    self.hoverCorner    = nil
+    self.draggingSubKey = nil
     self.savedCamRotX, self.savedCamRotY, self.savedCamRotZ = nil, nil, nil
     if g_inputBinding and g_inputBinding.setShowMouseCursor then
         g_inputBinding:setShowMouseCursor(false)
@@ -256,8 +266,29 @@ function SoilHUD:saveLayout()
         xml:setFloat("hudLayout.panelY",  self.panelY)
         xml:setFloat("hudLayout.scale",   self.scale)
         xml:setBool("hudLayout.visible",  self.visible)
-        -- miniReportX / miniReportY / miniReportScale are persisted exclusively
-        -- through SettingsManager:saveLocalSettings so they are not duplicated here.
+
+        -- Sub-panel free positions
+        for _, key in ipairs({"smartSensor", "seeAndSpray", "varRate"}) do
+            local fp = self.freePos[key]
+            if fp and fp.x ~= nil then
+                xml:setFloat("hudLayout.freePosX_" .. key, fp.x)
+                xml:setFloat("hudLayout.freePosY_" .. key, fp.y)
+            end
+        end
+
+        -- Sub-panel collapsed states
+        local sfm = g_SoilFertilityManager
+        if sfm then
+            local panels = {
+                smartSensor = sfm.smartSensorPanel,
+                seeAndSpray = sfm.seeAndSprayPanel,
+                varRate     = sfm.variableRatePanel,
+            }
+            for key, p in pairs(panels) do
+                if p then xml:setBool("hudLayout.collapsed_" .. key, p.collapsed) end
+            end
+        end
+
         xml:save()
         xml:delete()
     end
@@ -272,7 +303,25 @@ function SoilHUD:loadLayout()
         self.panelY  = xml:getFloat("hudLayout.panelY",  self.panelY)
         self.scale   = xml:getFloat("hudLayout.scale",   self.scale)
         self.visible = xml:getBool("hudLayout.visible",  self.visible)
-        -- miniReport position/scale come from SettingsManager:loadLocalSettings, not here.
+
+        -- Sub-panel free positions
+        for _, key in ipairs({"smartSensor", "seeAndSpray", "varRate"}) do
+            local xKey = "hudLayout.freePosX_" .. key
+            local yKey = "hudLayout.freePosY_" .. key
+            local x = xml:getFloat(xKey, nil)
+            local y = xml:getFloat(yKey, nil)
+            if x ~= nil and y ~= nil then
+                self.freePos[key] = { x = x, y = y }
+            end
+        end
+
+        -- Sub-panel collapsed states (applied on first draw since panels may not exist yet)
+        self.savedCollapsed = {
+            smartSensor = xml:getBool("hudLayout.collapsed_smartSensor", false),
+            seeAndSpray = xml:getBool("hudLayout.collapsed_seeAndSpray", false),
+            varRate     = xml:getBool("hudLayout.collapsed_varRate",     false),
+        }
+
         xml:delete()
         SoilLogger.info("[SoilHUD] Layout loaded: pos=(%.3f,%.3f) scale=%.2f", self.panelX, self.panelY, self.scale)
     end
@@ -362,6 +411,26 @@ function SoilHUD:clampPosition()
     self.panelY = math.max(0.01, math.min(0.98 - ph, self.panelY))
 end
 
+-- ── Sub-panel helpers ────────────────────────────────────
+
+-- Returns (x, y) for sub-panel key. Initialises to (defX, defY) on first call.
+function SoilHUD:getFreePos(key, defX, defY)
+    local fp = self.freePos[key]
+    if not fp then self.freePos[key] = {} ; fp = self.freePos[key] end
+    if fp.x == nil then
+        fp.x = defX
+        fp.y = defY
+    end
+    return fp.x, fp.y
+end
+
+-- Simple AABB hit test for a {x,y,w,h} rect.
+function SoilHUD:hitRect(px, py, rect)
+    if not rect then return false end
+    return px >= rect.x and px <= rect.x + rect.w
+       and py >= rect.y and py <= rect.y + rect.h
+end
+
 -- ── Mouse event ──────────────────────────────────────────
 -- Returns true when the event is consumed so the caller can propagate eventUsed correctly.
 function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
@@ -425,11 +494,48 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
                 return true
             end
         end
+
+        -- 3. Check sub-panel collapse buttons (must be before drag so click doesn't start drag)
+        local sfm = g_SoilFertilityManager
+        if sfm then
+            local subPanels = {
+                { panel = sfm.smartSensorPanel,  key = "smartSensor" },
+                { panel = sfm.seeAndSprayPanel,  key = "seeAndSpray" },
+                { panel = sfm.variableRatePanel, key = "varRate"     },
+            }
+            for _, sp in ipairs(subPanels) do
+                local p = sp.panel
+                if p and self:hitRect(posX, posY, p.collapseButtonRect) then
+                    p.collapsed = not p.collapsed
+                    self:saveLayout()
+                    return true
+                end
+            end
+            -- 4. Sub-panel drag (independent mode only)
+            if self.settings and self.settings.independentPanels then
+                for _, sp in ipairs(subPanels) do
+                    local p = sp.panel
+                    if p and self:hitRect(posX, posY, p.lastDrawRect) then
+                        self.draggingSubKey = sp.key
+                        local fp = self.freePos[sp.key] or {}
+                        self.subDragOffX = posX - (fp.x or posX)
+                        self.subDragOffY = posY - (fp.y or posY)
+                        self.movedInEditMode = true
+                        return true
+                    end
+                end
+            end
+        end
         return false
     end
 
     -- LMB up: release drag/resize
     if isUp and button == Input.MOUSE_BUTTON_LEFT then
+        if self.draggingSubKey then
+            self.draggingSubKey = nil
+            self:saveLayout()
+            return true
+        end
         if self.dragging or self.resizing or self.draggingReport or self.resizingReport then
             self.dragging = false ; self.resizing = false
             self.draggingReport = false ; self.resizingReport = false
@@ -440,6 +546,14 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     end
 
     -- Mouse move
+    if self.draggingSubKey then
+        local fp = self.freePos[self.draggingSubKey]
+        if not fp then self.freePos[self.draggingSubKey] = {} ; fp = self.freePos[self.draggingSubKey] end
+        fp.x = posX - self.subDragOffX
+        fp.y = posY - self.subDragOffY
+        return true
+    end
+
     if self.dragging then
         local pw = SoilHUD.BASE_W * self.scale
         self.panelX = math.max(0.0, math.min(1.0 - pw, posX - self.dragOffsetX))
