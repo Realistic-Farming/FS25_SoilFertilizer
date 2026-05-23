@@ -114,10 +114,16 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Version dialog registered")
         end
 
-        -- PDA help dialog (X button in PDA footer)
+        -- PDA help dialog (legacy — kept for backward compat)
         if SoilHelpDialog and g_gui then
             SoilHelpDialog.register(modDirectory)
             SoilLogger.info("Soil Help dialog registered")
+        end
+
+        -- Multi-page field guide (opened from PDA Help button)
+        if SoilGuideDialog and g_gui then
+            SoilGuideDialog.register(modDirectory)
+            SoilLogger.info("Soil Guide dialog registered")
         end
 
         -- Overlay help dialog (4th sidebar button on soil map)

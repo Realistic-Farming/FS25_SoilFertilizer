@@ -1262,8 +1262,8 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
             local tickY  = barY - 0.001 * s
             local poorX  = barX + barW * (th.poor / 100) - tickW * 0.5
             local fairX  = barX + barW * (th.fair / 100) - tickW * 0.5
-            self:drawRect(poorX, tickY, tickW, tickH, {0.70, 0.70, 0.70, 0.50})
-            self:drawRect(fairX, tickY, tickW, tickH, {0.70, 0.70, 0.70, 0.50})
+            self:drawRect(poorX, tickY, tickW, tickH, {0.90, 0.35, 0.20, 0.75})  -- orange-red  = poor/fair boundary
+            self:drawRect(fairX, tickY, tickW, tickH, {0.90, 0.80, 0.20, 0.75})  -- yellow      = fair/good boundary
         end
     end
 

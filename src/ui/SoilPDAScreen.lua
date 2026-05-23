@@ -467,7 +467,9 @@ end
 -- ── Map Tab button ────────────────────────────────────────
 
 function SoilPDAScreen:onClickHelp()
-    if SoilHelpDialog then
+    if SoilGuideDialog then
+        SoilGuideDialog.show()
+    elseif SoilHelpDialog then
         SoilHelpDialog.show()
     end
 end

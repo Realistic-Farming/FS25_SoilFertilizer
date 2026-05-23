@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    Soil & Fertilizer — Multi-Page Field Guide
+    5 tabs: Overview | HUD Guide | Workflow | Products | F.A.Q.
+    Content is built dynamically in Lua (single column pair, swapped per tab).
+    Controller: SoilGuideDialog (src/ui/SoilGuideDialog.lua)
+-->
+<GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
+  <GuiElement profile="newLayer"/>
+  <Bitmap profile="dialogFullscreenBg" id="dialogBg"/>
+
+  <GuiElement profile="sfGuide_bg" id="dialogElement">
+
+    <ThreePartBitmap profile="fs25_dialogBgMiddle"/>
+    <ThreePartBitmap profile="fs25_dialogBgTop"/>
+    <ThreePartBitmap profile="fs25_dialogBgBottom"/>
+
+    <GuiElement profile="fs25_dialogContentContainer">
+
+      <!-- Title -->
+      <Text profile="fs25_dialogTitle" id="sfGuide_title"
+            text="Soil &amp; Fertilizer — Field Guide" position="0px -28px"/>
+
+      <!-- Tab row — 5 tab buttons, horizontal -->
+      <BoxLayout profile="sfGuide_tabRow" position="0px -66px">
+        <Button profile="sfGuide_tab" id="sfGuide_tab1" text="OVERVIEW"  onClick="onClickTab1"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab2" text="HUD GUIDE" onClick="onClickTab2"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab3" text="WORKFLOW"  onClick="onClickTab3"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab4" text="PRODUCTS"  onClick="onClickTab4"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab5" text="F.A.Q."   onClick="onClickTab5"/>
+      </BoxLayout>
+
+      <!-- Subtitle — updated per tab to show current page description -->
+      <Text profile="sfGuide_subtitle" id="sfGuide_subtitle" text="" position="0px -110px"/>
+
+      <!-- Left content column -->
+      <GuiElement profile="sfGuide_colPanel" position="-253px -138px">
+        <Bitmap profile="sfGuide_colBg" position="0px 0px"/>
+        <BoxLayout profile="sfGuide_col" id="sfGuide_col1" position="0px -8px"/>
+      </GuiElement>
+
+      <!-- Right content column -->
+      <GuiElement profile="sfGuide_colPanel" position="253px -138px">
+        <Bitmap profile="sfGuide_colBgAlt" position="0px 0px"/>
+        <BoxLayout profile="sfGuide_col" id="sfGuide_col2" position="0px -8px"/>
+      </GuiElement>
+
+    </GuiElement>
+
+    <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonOK" text="Close" onClick="onClickClose"/>
+    </BoxLayout>
+
+  </GuiElement>
+
+  <GUIProfiles>
+
+    <Profile name="sfGuide_bg" extends="fs25_dialogBg">
+      <size value="1060px 800px"/>
+    </Profile>
+
+    <!-- Horizontal tab button row -->
+    <Profile name="sfGuide_tabRow" extends="emptyPanel" with="anchorTopCenter">
+      <size value="920px 38px"/>
+      <flowDirection value="horizontal"/>
+      <elementSpacing value="10px"/>
+    </Profile>
+
+    <!-- Individual tab button -->
+    <Profile name="sfGuide_tab" extends="buttonOK">
+      <size value="164px 36px"/>
+      <textSize value="11px"/>
+      <textUpperCase value="true"/>
+    </Profile>
+
+    <!-- Page subtitle (italic gold, centered) -->
+    <Profile name="sfGuide_subtitle" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="11px"/>
+      <textColor value="0.85 0.75 0.30 0.90"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <!-- Column panel container -->
+    <Profile name="sfGuide_colPanel" extends="emptyPanel" with="anchorTopCenter">
+      <size value="490px 530px"/>
+    </Profile>
+
+    <!-- Column backgrounds -->
+    <Profile name="sfGuide_colBg" extends="baseReference" with="anchorTopCenter">
+      <size value="490px 530px"/>
+      <imageColor value="0.08 0.08 0.12 0.90"/>
+    </Profile>
+    <Profile name="sfGuide_colBgAlt" extends="baseReference" with="anchorTopCenter">
+      <size value="490px 530px"/>
+      <imageColor value="0.06 0.10 0.14 0.90"/>
+    </Profile>
+
+    <!-- Vertical content BoxLayout — Lua adds TextElements at runtime -->
+    <Profile name="sfGuide_col" extends="emptyPanel" with="anchorTopCenter">
+      <size value="474px 514px"/>
+      <flowDirection value="vertical"/>
+      <useFullVisibility value="false"/>
+      <alignmentX value="left"/>
+      <elementSpacing value="3px"/>
+    </Profile>
+
+  </GUIProfiles>
+</GUI>
