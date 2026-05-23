@@ -104,5 +104,28 @@
       <elementSpacing value="3px"/>
     </Profile>
 
+    <!-- Guide-specific text profiles — explicit 472px width prevents clipping in wider columns -->
+    <Profile name="sfGuide_colHeader" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="472px 22px"/>
+      <textSize value="15px"/>
+      <textBold value="true"/>
+      <textUpperCase value="true"/>
+      <textColor value="1 0.8 0.2 1"/>
+      <textAlignment value="left"/>
+    </Profile>
+
+    <Profile name="sfGuide_colBody" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="472px 19px"/>
+      <textSize value="14px"/>
+      <textColor value="1 1 1 1"/>
+      <textAlignment value="left"/>
+    </Profile>
+
+    <Profile name="sfGuide_colSpacer" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="472px 10px"/>
+      <textSize value="8px"/>
+      <textColor value="0.0 0.0 0.0 0.0"/>
+    </Profile>
+
   </GUIProfiles>
 </GUI>

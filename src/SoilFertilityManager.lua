@@ -605,9 +605,11 @@ function SoilFertilityManager:onMissionStarted()
         if SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
             local modInfo = g_modManager and g_modManager:getModByName(self.modName)
             local version = (modInfo and modInfo.version) or "?"
+            SoilLogger.info("Version check: save=%s mod=%s", tostring(self.lastSeenVersion), tostring(version))
             if self.lastSeenVersion ~= version then
                 self.lastSeenVersion = version
                 self:saveSoilData()
+                SoilLogger.info("New version detected — showing changelog dialog")
                 SoilVersionDialog.show(version)
             end
         end

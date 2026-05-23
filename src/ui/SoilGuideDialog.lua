@@ -403,12 +403,12 @@ end
 -- ── Content builder ───────────────────────────────────────
 
 function SoilGuideDialog:_buildContent(pageNum)
-    local profileH = g_gui:getProfile("sfHelp_colHeader")
-    local profileB = g_gui:getProfile("sfHelp_colBody")
-    local profileS = g_gui:getProfile("sfHelp_colSpacer")
+    local profileH = g_gui:getProfile("sfGuide_colHeader")
+    local profileB = g_gui:getProfile("sfGuide_colBody")
+    local profileS = g_gui:getProfile("sfGuide_colSpacer")
 
     if not profileH or not profileB then
-        SoilLogger.warning("SoilGuideDialog: sfHelp column profiles not found — check SoilHelpDialog loaded first")
+        SoilLogger.warning("SoilGuideDialog: sfGuide column profiles not found")
         return
     end
 
