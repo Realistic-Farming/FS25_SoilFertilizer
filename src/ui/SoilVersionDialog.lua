@@ -24,17 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Version dialog layout improved: wider dialog, text no longer clipped",
-    "- All keybindings now ship UNBOUND by default",
-    "- Removed the Cell Report Dialog and all its functions",
-    "- NEW: Smart Sensor System — blocks spraying on sections with no pest/disease/nutrient need",
-    "- NEW: See & Spray System — per-cell pressure overlay with live suppression indicators",
-    "- NEW: Variable Rate Application — adjusts boom rate per section based on soil deficits",
-    "- Admin panel: Smart Systems page with per-system toggles (Smart Sensor, See&Spray, Var. Rate)",
-    "- Fixed createImageOverlay null-check for invalid overlay handle (entity id 0 flood)",
-    "- NEW: Free Panel Layout — toggle in Display settings to drag each system panel independently",
-    "- System panels can be collapsed to title bar in edit mode via the − button",
-    "- Panel positions and collapse state saved to hud.xml and restored on next load",
+    "- Fix: Smart Sensor panel now correctly tracked as smartSensorPanel (drag now works)",
+    "- Fix: Admin page nav buttons (Smart Systems, Vehicle Tools) visible at top of page",
+    "- Fix: Disabled system panels no longer leave gaps — lastPanelH resets to 0",
+    "- Fix: System panels visible and draggable in Shift+H edit mode without a sprayer",
+    "- Fix: System panels now hidden when the Settings panel (Shift+O) is open",
+    "- Guide, README and mod description updated to cover all smart systems features",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

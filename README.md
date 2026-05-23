@@ -29,13 +29,26 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 ---
 
-## 🆕 What's New in v2.2.2.0
+## 🆕 What's New in v2.2.3.x
 
-### Section Control Overlap Fix (Precision Farming)
-Section control with the Precision Farming DLC now correctly **closes individual boom sections over already-fertilized areas while the sprayer is moving** — not just at headland/field boundaries. Previously, all sections opened the moment you drove back onto the field, even over soil that was 100% at target nutrient levels. This fix resolves the issue reported by community member Tomi89.
+### Smart Sensor System
+A new in-vehicle panel appears when you're in a VWW-capable sprayer. It shows pest, disease, and nutrient sensor states for each boom section — and **blocks spraying on sections where no active need is detected**. Each sensor type (pest / disease / nutrient) has its own toggle via keybinds (Alt+1/2/3 by default, rebindable). Enable in **Settings → Admin → Smart Systems**.
 
-### Startup Loader Fix
-`SoilMapCellDialog` (the Shift+S map tile popup) was silently never registering because its class file was missing from the mod's load chain. It now loads correctly on every startup.
+### See & Spray System
+A second vehicle panel shows live per-cell pressure readings at the sprayer's current position — coloured bars that tell you in real time which sections of the boom are over cells that actually need treatment. Toggles per type via Alt+4/5/6.
+
+### Variable Rate Application
+A third vehicle panel shows per-section rate bars (green → yellow → red) and **automatically adjusts boom output rate** based on the soil deficit for the currently loaded product. Sections over well-stocked soil spray less; sections over depleted soil spray more. Toggle via Alt+7.
+
+### Free Panel Layout
+Enable **Free Panel Layout** in Settings → Display → Position to unlock independent positioning for all three smart system panels. Enter Shift+H edit mode and drag each panel to wherever you want it. Press **[−]** in any panel's title bar to collapse it to just the title bar — state is saved to `hud.xml` and restored on load.
+
+### v2.2.3.1 — Hotfix
+- Fixed `sensorPanel` naming mismatch that prevented Smart Sensor panel from being dragged independently
+- Admin page Smart Systems / Vehicle Tools nav buttons moved to the top — they were previously cut off below the visible area
+- Disabled system panels now correctly contribute 0 height to stacked layout (no gaps)
+- System panels are now visible and draggable in Shift+H edit mode even without being in a sprayer
+- System panels are now correctly hidden when the SF settings panel (Shift+O) is open
 
 ---
 
@@ -191,6 +204,20 @@ The mod isn't just about what you put in — it's about what the world takes out
 | 🌾 **Fallow recovery** | Fields left unplanted for 7+ days slowly recover nutrients on their own. |
 | 🚜 **Plowing bonus** | Aerates soil, nudging pH toward neutral and boosting organic matter mixing. |
 | 🌿 **Residue incorporation** | Working post-harvest stubble back into the soil releases a small NPK and OM pulse from decomposing straw. Deeper tillage releases more; direct-drills release the least. |
+
+### 🤖 Smart Precision Systems (VWW sprayer required)
+
+Three in-vehicle overlay panels activate when you enter a Variable Work Width (VWW) capable sprayer. Each appears as a collapsible HUD panel that can be independently repositioned in Free Panel Layout mode.
+
+| System | What it does | Keybind |
+|---|---|---|
+| **Smart Sensor** | Monitors pest, disease, and nutrient need per section. Blocks spraying on sections with no active need detected. | Alt+1 / Alt+2 / Alt+3 (per type) |
+| **See & Spray** | Shows live per-cell pressure for pest, disease, and weed at the sprayer's current position. Colour-coded per section. | Alt+4 / Alt+5 / Alt+6 (per type) |
+| **Variable Rate** | Adjusts boom output rate per section based on soil deficits for the loaded product. Green bar = low rate; red bar = high rate. | Alt+7 (on/off) |
+
+All three require a VWW-capable sprayer and must be enabled individually via **Settings → Admin → Smart Systems**.
+
+**Free Panel Layout** — Enable in Settings → Display → Position, then use the Shift+H edit mode to drag each panel independently. Press **[−]** in any panel's title bar to collapse it to the title bar only. Positions and collapse states are saved to `hud.xml`.
 
 ### 📊 Soil HUD
 
@@ -392,7 +419,7 @@ This mod is licensed under **[CC BY-NC-ND 4.0](https://creativecommons.org/licen
 
 You may share it in its original form with attribution. You may not sell it, modify and redistribute it, or reupload it under a different name or authorship. Contributions via pull request are explicitly permitted and encouraged.
 
-**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.2.3.0
+**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.2.3.1
 
 © 2026 TisonK — See [LICENSE](LICENSE) for full terms.
 
