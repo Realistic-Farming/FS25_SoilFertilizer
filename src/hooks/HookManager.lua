@@ -259,6 +259,15 @@ function HookManager:installAll(soilSystem)
     -- N content, which is 0 for K-only and P-only products. Optional: no-op when PF is absent.
     self:installPFNitrogenMapHook()
 
+    -- Fix 1: Standstill suppression — shut all sections off when the vehicle is not moving.
+    -- Appended early so downstream hooks (Smart Sensor, See & Spray) can rely on the gate.
+    self:installStandstillSuppressHook()
+
+    -- Fix 2: Off-field section suppression — deactivate any boom section whose midpoint
+    -- falls outside a field, for ALL spray types (not just crop protection).
+    -- Appended before Smart Sensor so the field-boundary gate runs universally.
+    self:installOffFieldSectionSuppressHook()
+
     -- Smart Soil Sensor: per-section spray suppression based on SF soil data.
     -- Appended AFTER installDensityMapSprayHook so cleanup unwinds correctly.
     -- No-ops when PF compat mode is on (PF owns section control in that mode).
@@ -1022,6 +1031,154 @@ end
 -- =========================================================
 -- SEE & SPRAY: per-cell spot-spray suppression (System 2)
 -- =========================================================
+-- =========================================================
+-- Fix 1: Standstill Suppression
+-- Two-layer fix:
+--   Layer A — section.isActive: appended to onStartWorkAreaProcessing so that
+--             all downstream hooks (Smart Sensor, See & Spray) see every section
+--             as inactive and skip their work.  Also prevents the soil system
+--             from crediting nutrients for a stationary spray event.
+--   Layer B — getAreEffectsVisible: the vanilla game calls this to decide whether
+--             nozzle particle effects play.  We wrap it so it returns false when
+--             the vehicle is not moving, which stops the visual spray even for
+--             vanilla fill types that our custom effect hook doesn't manage.
+-- Speed threshold: < 0.5 km/h → treat as stationary.
+-- =========================================================
+function HookManager:installStandstillSuppressHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[StandstillSuppress] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    local MIN_SPEED_KMH = 0.5   -- km/h — below this, treat as stationary
+
+    -- Helper: resolve the effective speed for any sprayer (self-propelled or towed).
+    local function getEffectiveSpeedKmh(sprayerSelf)
+        local spd = sprayerSelf.lastSpeed
+        if spd == nil then
+            -- Towed implement: borrow speed from root vehicle (tractor).
+            local root = sprayerSelf.rootVehicle
+            if root and root ~= sprayerSelf then
+                spd = root.lastSpeed
+            end
+        end
+        if spd == nil then return nil end
+        return math.abs(spd) * 3600  -- m/s → km/h
+    end
+
+    -- Layer A: suppress section.isActive when stationary.
+    -- Appended to onStartWorkAreaProcessing so all later hooks (Smart Sensor,
+    -- See & Spray, Variable Rate) see every section as inactive and bail early.
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            local speedKmh = getEffectiveSpeedKmh(sprayerSelf)
+            -- Fail open: if speed is unavailable assume the vehicle is moving.
+            if speedKmh == nil or speedKmh >= MIN_SPEED_KMH then return end
+
+            -- Vehicle is stationary — suppress all sections including center.
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections then return end
+            for _, section in ipairs(vww.sections) do
+                section.isActive = false
+            end
+        end
+    )
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF standstill suppress — section layer)")
+
+    -- Layer B: suppress nozzle particle effects when stationary.
+    -- getAreEffectsVisible() is the vanilla gate that drives both the built-in
+    -- nozzle particle system and our custom-fill-type visual hook.  Wrapping it
+    -- here ensures the spray visuals stop the moment the vehicle halts, even for
+    -- vanilla fill types (LIQUIDFERTILIZER, HERBICIDE, …) that bypass the custom
+    -- effect hook entirely.
+    if type(Sprayer.getAreEffectsVisible) == "function" then
+        local origGetEffects = Sprayer.getAreEffectsVisible
+        Sprayer.getAreEffectsVisible = function(sprayerSelf, ...)
+            local speedKmh = getEffectiveSpeedKmh(sprayerSelf)
+            -- Fail open: unknown speed → delegate to original.
+            if speedKmh ~= nil and speedKmh < MIN_SPEED_KMH then
+                return false
+            end
+            return origGetEffects(sprayerSelf, ...)
+        end
+        self:register(Sprayer, "getAreEffectsVisible", origGetEffects,
+            "Sprayer.getAreEffectsVisible (SF standstill suppress — visual layer)")
+        SoilLogger.info("[OK] SF Standstill Suppress hook installed — sections + nozzle visuals disabled when speed < %.1f km/h", MIN_SPEED_KMH)
+    else
+        SoilLogger.warning("[StandstillSuppress] Sprayer.getAreEffectsVisible not found — section layer active but visual nozzles may still show when stationary")
+        SoilLogger.info("[OK] SF Standstill Suppress hook installed (section layer only) — speed < %.1f km/h", MIN_SPEED_KMH)
+    end
+
+    return true
+end
+
+-- =========================================================
+-- Fix 2: Off-Field Section Suppression (all spray types)
+-- Deactivates any boom section whose estimated midpoint position is not on a
+-- registered field.  This runs for ALL fill types so fertilizer, lime, and
+-- every other product respects field boundaries — not just crop-protection
+-- products handled by See & Spray.
+-- Appended AFTER the standstill gate so we only check live, active sections.
+-- =========================================================
+function HookManager:installOffFieldSectionSuppressHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[OffFieldSuppress] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections or #vww.sections == 0 then return end
+
+            -- Only act if at least one section is currently active (early-out when
+            -- standstill hook has already suppressed everything).
+            local anyActive = false
+            for _, section in ipairs(vww.sections) do
+                if section.isActive then anyActive = true break end
+            end
+            if not anyActive then return end
+
+            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            if not rootX then return end
+
+            for _, section in ipairs(vww.sections) do
+                if section.isActive then
+                    -- Estimate section world position (midpoint between vehicle root and
+                    -- outer boom edge — same approach used by Smart Sensor / See & Spray).
+                    local sx, sz = rootX, rootZ
+                    if section.maxWidthNode then
+                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                        if ok and wx then
+                            sx = (rootX + wx) * 0.5
+                            sz = (rootZ + wz) * 0.5
+                        end
+                    end
+
+                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                    if not fieldId or fieldId <= 0 then
+                        -- Section midpoint is off any registered field — suppress it.
+                        section.isActive = false
+                    end
+                end
+            end
+        end
+    )
+
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF off-field section suppress)")
+
+    SoilLogger.info("[OK] SF Off-Field Section Suppress hook installed — boom sections outside field boundaries are automatically disabled for all spray types")
+    return true
+end
+
 -- Appended AFTER the Smart Sensor hook.  Reads field.zoneData[cellKey] for the
 -- exact soil cell under each boom section.  Sections are suppressed when the
 -- cell's pest/disease/weed pressure is below the configured threshold.
@@ -1094,12 +1251,15 @@ function HookManager:installSeeAndSprayHook()
             local ssCfg   = SoilConstants.SEE_AND_SPRAY
             local zone    = SoilConstants.ZONE
 
+            -- VWW does NOT reset center sections between ticks (unlike non-center sections).
+            -- We own the restore cycle: unconditionally reset center sections to true first,
+            -- then apply suppressions below.  This lets us gate center sections for this tick
+            -- without permanently locking them off and breaking the spray visual.
             for _, section in ipairs(vww.sections) do
-                -- Include center sections: VWW resets ALL section states at the top of each
-                -- onStartWorkAreaProcessing tick (before our appended function runs), so setting
-                -- isActive=false here is safe — it auto-recovers next tick. SeeAndSpray must gate
-                -- the center section too; leaving it exempt causes it to spray even when no pests
-                -- are detected and even while the vehicle is stationary.
+                if section.isCenter then section.isActive = true end
+            end
+
+            for _, section in ipairs(vww.sections) do
                 if section.isActive then
                     local sx, sz = rootX, rootZ
                     if section.maxWidthNode then
