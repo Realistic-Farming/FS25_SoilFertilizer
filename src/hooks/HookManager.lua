@@ -1114,9 +1114,12 @@ function HookManager:installSeeAndSprayHook()
                                 math.floor(sz / zone.CELL_SIZE))
                             local cell = fd.zoneData and fd.zoneData[cellKey]
 
-                            local cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
-                            local cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
-                            local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
+                            -- Pest/disease are field-level phenomena — zoneData snapshots are from
+                            -- tilling time and go stale as pressure grows. Use live field values.
+                            -- Weed IS tracked per-cell (updated during cultivation), so cell lookup is valid.
+                            local cellPest    = fd.pestPressure    or 0
+                            local cellDisease = fd.diseasePressure or 0
+                            local cellWeed    = (cell and cell.weedPressure) or (fd.weedPressure or 0)
 
                             local skip = false
                             if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end

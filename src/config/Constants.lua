@@ -950,8 +950,8 @@ SoilConstants.COMPACTION = {
 -- Per-cell pressure thresholds (0-100 scale, same as PEST/DISEASE/WEED_PRESSURE tiers).
 -- Sections are suppressed when the cell value is BELOW the threshold.
 SoilConstants.SEE_AND_SPRAY = {
-    PEST_THRESHOLD    = 10,   -- suppress if cell pestPressure    < 10
-    DISEASE_THRESHOLD = 10,   -- suppress if cell diseasePressure < 10
+    PEST_THRESHOLD    = 2,    -- suppress if field pestPressure    < 2 (any real infestation triggers spray)
+    DISEASE_THRESHOLD = 2,    -- suppress if field diseasePressure < 2 (any real infection triggers spray)
     WEED_THRESHOLD    = 15,   -- suppress if cell weedPressure    < 15 (weeds need more to justify spraying)
 }
 
