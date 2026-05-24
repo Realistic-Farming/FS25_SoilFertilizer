@@ -17367,5 +17367,406 @@
     "stars": 64,
     "forks": 10,
     "watchers": 10
+  },
+  {
+    "timestamp": "2026-05-24T00:01:30Z",
+    "date": "2026-05-24",
+    "views": {
+      "count": 7753,
+      "uniques": 1046
+    },
+    "clones": {
+      "count": 3426,
+      "uniques": 1028
+    },
+    "referrers": [
+      {
+        "referrer": "github.com",
+        "count": 1708,
+        "uniques": 190
+      },
+      {
+        "referrer": "kingmods.net",
+        "count": 778,
+        "uniques": 210
+      },
+      {
+        "referrer": "Google",
+        "count": 596,
+        "uniques": 202
+      },
+      {
+        "referrer": "Bing",
+        "count": 103,
+        "uniques": 18
+      },
+      {
+        "referrer": "youtube.com",
+        "count": 83,
+        "uniques": 57
+      },
+      {
+        "referrer": "Yahoo",
+        "count": 15,
+        "uniques": 2
+      },
+      {
+        "referrer": "reddit.com",
+        "count": 14,
+        "uniques": 10
+      },
+      {
+        "referrer": "l.messenger.com",
+        "count": 9,
+        "uniques": 1
+      },
+      {
+        "referrer": "DuckDuckGo",
+        "count": 7,
+        "uniques": 5
+      },
+      {
+        "referrer": "search.brave.com",
+        "count": 3,
+        "uniques": 3
+      }
+    ],
+    "popular_paths": [
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer",
+        "title": "Overview",
+        "count": 3033,
+        "uniques": 798
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases",
+        "title": "/releases",
+        "count": 944,
+        "uniques": 237
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/issues",
+        "title": "/issues",
+        "count": 613,
+        "uniques": 152
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.0.0",
+        "title": "/releases/tag/v2.2.0.0",
+        "count": 213,
+        "uniques": 149
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.1.0",
+        "title": "/releases/tag/v2.2.1.0",
+        "count": 179,
+        "uniques": 126
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.7.0",
+        "title": "/releases/tag/v2.1.7.0",
+        "count": 163,
+        "uniques": 113
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.5.5",
+        "title": "/releases/tag/v2.1.5.5",
+        "count": 133,
+        "uniques": 99
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/issues/378",
+        "title": "/issues/378",
+        "count": 123,
+        "uniques": 23
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.0.1",
+        "title": "/releases/tag/v2.2.0.1",
+        "count": 80,
+        "uniques": 66
+      },
+      {
+        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.1.5.7",
+        "title": "/releases/tag/v2.1.5.7",
+        "count": 78,
+        "uniques": 58
+      }
+    ],
+    "releases": [
+      {
+        "assets": [
+          {
+            "downloads": 9,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.3.2"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 32,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.3.1"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 59,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.2.5"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 36,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.2.4"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 10,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.2.3"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 51,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.2.1"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 6,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.2.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 241,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.1.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 140,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.0.1"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 202,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.2.0.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 146,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.7.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 105,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.9"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 129,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.8"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 44,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.7"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 63,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.5"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 23,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.3"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 20,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.2"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 52,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.1"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 31,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 0,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.6.6"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 0,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "test-2"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 147,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.7"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 58,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.6"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 2,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "test-1"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 158,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.5"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 120,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.4"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 54,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.3"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 25,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.2"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 69,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "v2.1.5.0"
+      },
+      {
+        "assets": [
+          {
+            "downloads": 8,
+            "name": "FS25_SoilFertilizer.zip"
+          }
+        ],
+        "tag": "2.1.5.1"
+      }
+    ],
+    "stars": 65,
+    "forks": 10,
+    "watchers": 10
   }
 ]
