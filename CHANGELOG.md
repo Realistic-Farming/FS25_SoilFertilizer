@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.3.3] - Not yet released
+
+### Added
+- **Settings panel scrolling** — Category pages now scroll when content exceeds the visible area; a proportional scrollbar with up/down arrows appears automatically when needed.
+
+### Fixed
+- **POLIFOSKA fully wired** — Drain rate, spreader effects, visual texture, PF/THPF recognition, and refill pricing now all work correctly (6-20-30 compound, 250 kg/ha calibrated rate, 1.35 $/L refill price).
+
+---
+
 ## [2.2.3.2] - 2026-05-24
 
 ### Fixed

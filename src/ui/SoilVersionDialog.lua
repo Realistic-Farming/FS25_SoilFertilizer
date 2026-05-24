@@ -24,13 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- The System panels (Smart Sensor, See & Spray, Variable Rate) now collapse cleanly",
-    "- Stacked panels no longer overlap when a panel above them is collapsed",
-    "- System panels now hide when the main HUD is toggled off (H key)",
-    "- POLIFOSKA (and any other SF fill type missing from the spreader allow-list) now",
-    " loads into and refills from spreaders correctly",
-    "- POLIFOSKA tank drain rate, spreader effects, and PF/THPF recognition now work",
-    " correctly (6-20-30 compound, 250 kg/ha calibrated rate)",
+    "- Settings panel now scrolls when category content exceeds the visible area",
+    "- POLIFOSKA fully wired: drain rate, spreader effects, visual texture,",
+    "  PF/THPF recognition, and refill pricing all now work correctly",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
