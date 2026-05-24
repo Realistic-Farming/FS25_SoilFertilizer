@@ -17369,7 +17369,7 @@
     "watchers": 10
   },
   {
-    "timestamp": "2026-05-24T12:03:17Z",
+    "timestamp": "2026-05-24T18:00:54Z",
     "date": "2026-05-24",
     "views": {
       "count": 7700,
@@ -17497,7 +17497,7 @@
       {
         "assets": [
           {
-            "downloads": 45,
+            "downloads": 118,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
@@ -17587,7 +17587,7 @@
       {
         "assets": [
           {
-            "downloads": 205,
+            "downloads": 209,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
@@ -17765,7 +17765,7 @@
         "tag": "v2.1.5.0"
       }
     ],
-    "stars": 65,
+    "stars": 66,
     "forks": 10,
     "watchers": 10
   }
