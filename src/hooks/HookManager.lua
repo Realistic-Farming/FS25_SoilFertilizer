@@ -388,7 +388,7 @@ function HookManager:registerCustomSprayTypes()
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
                           "LIQUIDMANURE", "MANURE", "DIGESTATE" }
     -- Granular/solid types → inherit visual from FERTILIZER
-    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
 
     local registered = 0
@@ -468,7 +468,7 @@ function HookManager:installEffectTypeHook()
     -- Build remap: customFillTypeIndex → vanillaFillTypeIndex
     local remap = {}
     if fertIdx then
-        for _, name in ipairs({ "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
+        for _, name in ipairs({ "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }) do
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = fertIdx end
@@ -627,7 +627,7 @@ end
 ---@return boolean success
 function HookManager:installSprayTypeEffectsHook()
     -- Solid custom types visually match FERTILIZER spreading
-    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     -- Liquid custom types visually match LIQUIDFERTILIZER spraying
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
@@ -809,7 +809,7 @@ function HookManager:installDensityMapSprayHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
-    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH",
+    local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
 
     local remap = {}

@@ -606,6 +606,16 @@
                 <fertilizerUsage amount="0.18"/> <!-- 18-46-0 granular — 18% N -->
             </sprayType>
 
+            <sprayType name="POLIFOSKA" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
+                <applicationRate autoAdjustToFruit="true" regularRate="250">
+                    <soil soilTypeIndex="1" rate="120"/>
+                    <soil soilTypeIndex="2" rate="165"/>
+                    <soil soilTypeIndex="3" rate="210"/>
+                    <soil soilTypeIndex="4" rate="165"/>
+                </applicationRate>
+                <fertilizerUsage amount="0.06"/> <!-- 6-20-30 compound — 6% N by weight -->
+            </sprayType>
+
             <!-- Lime types (pH amendment — no N content) -->
             <sprayType name="LIQUIDLIME" litersPerSecond="0.0815" type="LIME" sprayGroundType="LIME"/>
             <sprayType name="GYPSUM"     litersPerSecond="0.0600" type="LIME" sprayGroundType="LIME"/>
@@ -626,9 +636,10 @@
             <sprayType name="UREA"   group="FERTILIZER" isLiquid="false"/>
             <sprayType name="AN"     group="FERTILIZER" isLiquid="false"/>
             <sprayType name="AMS"    group="FERTILIZER" isLiquid="false"/>
-            <sprayType name="MAP"    group="FERTILIZER" isLiquid="false"/>
-            <sprayType name="DAP"    group="FERTILIZER" isLiquid="false"/>
-            <sprayType name="POTASH" group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="MAP"      group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="DAP"      group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="POTASH"   group="FERTILIZER" isLiquid="false"/>
+            <sprayType name="POLIFOSKA" group="FERTILIZER" isLiquid="false"/>
             <!-- Organic amendments -->
             <sprayType name="COMPOST"           group="MANURE" isLiquid="false"/>
             <sprayType name="BIOSOLIDS"         group="MANURE" isLiquid="false"/>
