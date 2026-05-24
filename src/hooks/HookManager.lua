@@ -1095,7 +1095,12 @@ function HookManager:installSeeAndSprayHook()
             local zone    = SoilConstants.ZONE
 
             for _, section in ipairs(vww.sections) do
-                if section.isActive and not section.isCenter then
+                -- Include center sections: VWW resets ALL section states at the top of each
+                -- onStartWorkAreaProcessing tick (before our appended function runs), so setting
+                -- isActive=false here is safe — it auto-recovers next tick. SeeAndSpray must gate
+                -- the center section too; leaving it exempt causes it to spray even when no pests
+                -- are detected and even while the vehicle is stationary.
+                if section.isActive then
                     local sx, sz = rootX, rootZ
                     if section.maxWidthNode then
                         local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
