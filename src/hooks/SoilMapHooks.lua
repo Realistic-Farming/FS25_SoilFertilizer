@@ -18,9 +18,9 @@ local function isSoilPageActive(frame)
     if frame == nil or frame.soilMapPageIndex == nil or frame.mapOverviewSelector == nil then
         return false
     end
-    
+
     local isActive = frame.mapOverviewSelector:getState() == frame.soilMapPageIndex
-    
+
     -- Local tracking to log transitions
     if isActive ~= frame._soilPageWasActive then
         frame._soilPageWasActive = isActive
@@ -28,7 +28,7 @@ local function isSoilPageActive(frame)
             SoilLogger.debug("SoilMapHooks: PDA Soil page activated")
         end
     end
-    
+
     return isActive
 end
 
@@ -91,17 +91,22 @@ end
 
 function SoilMapHooks:setupMapOverview()
     if self.soilMapPageIndex ~= nil then return end
-    if self.mapSelectorTexts == nil or self.mapOverviewSelector == nil then return end
+
+    if self.mapSelectorTexts == nil or self.mapOverviewSelector == nil then
+        return
+    end
 
     local soilOverlay = getSoilOverlay(self)
-    if soilOverlay == nil then return end
+    if soilOverlay == nil then
+        return
+    end
 
     local pageText = g_i18n:getText("sf_map_page_title") or "Soil Nutrients"
-    
+
     -- FS25 InGameMenuMapFrame.mapSelectorTexts is usually 1-indexed table of strings
     table.insert(self.mapSelectorTexts, pageText)
     self.soilMapPageIndex = #self.mapSelectorTexts
-    SoilLogger.debug("SoilMapHooks: Registered native page index %d", self.soilMapPageIndex)
+    SoilLogger.info("SoilMapHooks: Registered native page index %d", self.soilMapPageIndex)
 
     self.mapOverviewSelector:setTexts(self.mapSelectorTexts)
 
@@ -335,12 +340,8 @@ if InGameMenuMapFrame ~= nil then
 end
 
 -- Hook IngameMapElement.draw at class level.
--- Use overwrittenFunction so we can guard against ingameMap being nil before
--- the vanilla draw body runs (prevents "attempt to index nil with 'drawMapOnly'").
 if IngameMapElement ~= nil then
     IngameMapElement.draw = Utils.overwrittenFunction(IngameMapElement.draw, function(self, superFunc, clipX1, clipY1, clipX2, clipY2)
-        -- Standalone <IngameMap> XML elements inherit this draw but have self.ingameMap == nil.
-        -- Vanilla line 570 crashes on that, so guard before calling superFunc.
         if self.ingameMap == nil then return end
         superFunc(self, clipX1, clipY1, clipX2, clipY2)
         SoilMapHooks.onDrawIngameMapElement(self)

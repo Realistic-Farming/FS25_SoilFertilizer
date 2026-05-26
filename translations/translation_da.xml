@@ -59,12 +59,12 @@
     <e k="sf_diff_long" v="Sværhedsgrad for jordstyring" eh="d6f4560c" />
     <e k="sf_rr_short" v="Genopfyldningshastighed" eh="b363b336" />
     <e k="sf_rr_long" v="Hvor hurtigt gødning genopretter næringsstoffer i marken (0,25x meget langsomt til 2,0x meget hurtigt)" eh="afe78a6d" />
-    <e k="sf_dm_short" v="[EN] Disease Climate" />
-    <e k="sf_dm_long" v="[EN] Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" />
-    <e k="sf_dm_1" v="[EN] Arid" />
-    <e k="sf_dm_2" v="[EN] Temperate" />
-    <e k="sf_dm_3" v="[EN] Humid" />
-    <e k="sf_dm_4" v="[EN] Wet" />
+    <e k="sf_dm_short" v="Sygdomsklima" />
+    <e k="sf_dm_long" v="Klimaets fugtighedsniveau — styrer hvor hurtigt svampesygdomme udvikler sig, og hvor længe svampebeskyttelse varer" />
+    <e k="sf_dm_1" v="Tørt" />
+    <e k="sf_dm_2" v="Tempereret" />
+    <e k="sf_dm_3" v="“Fugtigt" />
+    <e k="sf_dm_4" v="Vådt" />
     <e k="sf_auto_rate_short" v="Automatisk hastighedskontrol" eh="6f99137d" />
     <e k="sf_auto_rate_long" v="Justerer automatisk gødningsraten baseret på markens behov" eh="a9ca9f6b" />
     <e k="sf_hud_theme_1" v="Grøn" eh="d382816a" />
@@ -89,10 +89,10 @@
     <e k="sf_active_map_layer_long" v="Næringsstoflag vist som overlejring på PDA-kortet" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Kortdetalje" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Prøvepunktsbudget for PDA-jordoverlejringen. Lav = bedre FPS, Høj = bedre dækning på store kort." eh="89215ce5" />
-    <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
-    <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
-    <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
-    <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
+    <e k="sf_colorblind_mode_short" v="Farveblindtilstand" />
+    <e k="sf_colorblind_mode_long" v="“Erstatter røde/grønne statusfarver med orange/blå (Okabe-Ito-paletten) for bedre tilgængelighed ved deuteranopi og protanopi" />
+    <e k="sf_show_field_info_box_short" v="Markinfo-boks" />
+    <e k="sf_show_field_info_box_long" v="Vis jordens næringsstoffer i det indbyggede markinfo-panel, når du står på en mark." />
     <e k="input_SF_OPEN_SETTINGS" v="Åbn jordindstillinger" eh="2e31c0dd" />
     <e k="sf_reset" v="Nulstil jordindstillinger" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Slå jord-HUD til/fra" eh="f0224a10" />
@@ -174,7 +174,7 @@
     <e k="sf_bigBag_potash_name" v="Big Bag Kaliumklorid 0-0-60" eh="eb771556" />
     <e k="sf_bigBag_potash_function" v="Kaliumgødning (tør) — +90K ppm/ha @ 225 kg/ha" eh="18015099" />
     <e k="sf_bigBag_polifoska_name" v="Big Bag Polifoska 6-20-30" />
-    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (dry) — +4N +21P +50K ppm/ha @ 250 kg/ha" />
+    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (tør) — +4N +21P +50K ppm/ha @ 250 kg/ha" />
     <e k="sf_bigBag_liquid_urea_name" v="IBC Flydende Urea" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="Kvælstofgødning (flydende) — +78N ppm/ha @ 168 L/ha" eh="27de5f41" />
     <e k="sf_bigBag_liquid_ams_name" v="IBC Flydende AMS" eh="32e6c8bb" />
@@ -197,13 +197,13 @@
     <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" />
     <e k="sf_bigBag_compost_function" v="Organisk jordforbedring (tør) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="9dd2256a" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosolider" eh="61a60ff3" />
-    <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
+    <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Bioslam (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="Organisk gødning (tør) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="374c7b1e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Hønsemøg" eh="cb60fddc" />
-    <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
+    <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Hønse Møg (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="Organisk gødning (tør) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="374c7b1e" />
     <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelleteret Gødning" eh="064be7fa" />
-    <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
+    <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelleteret gødning (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="Organisk gødning (tør) — +22N +2P +33K ppm @ 450 kg/ha" eh="374c7b1e" />
     <e k="sf_bigBag_liquidlime_name" v="Flydende Kalktank" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="pH-hævende middel (flydende) — pH +0.40/pass @ 374 L/ha" eh="7a118b6d" />
@@ -233,8 +233,8 @@
     <e k="sf_report_pressure_high" v="Høj" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Baseret på N/P/K vs. optimal grænse" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Udbytte ~-%d%%" eh="d64d5d59" />
-    <e k="sf_pf_compat_short" v="PF Compat Mode" />
-    <e k="sf_pf_compat_long" v="Hide SF nitrogen data when Precision Farming is active — prevents conflicting N readings between the two mods" />
+    <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" />
+    <e k="sf_incompatibility_pf_text" v="Soil & Fertilizer Mod has been disabled because Precision Farming was detected.\n\nThese two mods are not compatible and cannot be used together." />
 
     <e k="helpLine_sf_cat_overview" v="Oversigt" eh="3b878279" />
     <e k="helpLine_sf_cat_started" v="Kom godt i gang" eh="bf647454" />
@@ -608,7 +608,7 @@
     <e k="sf_desc_weedPressure" v="Spor og straf ukrudtsspredning" eh="df20c38d" />
     <e k="sf_desc_pestPressure" v="Spor insektangreb" eh="12b3412e" />
     <e k="sf_desc_diseasePressure" v="Spor svampesygdomme" eh="0858395f" />
-    <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
+    <e k="sf_desc_diseaseMoisture" v="Klimaets fugtighedsniveau, som påvirker sygdomsspredning og fungicidets varighed”" />
     <e k="sf_desc_compactionEnabled" v="Jordpakning fra tunge køretøjer" eh="a7d3a795" />
     <e k="sf_desc_difficulty" v="Intensitet af næringsstofdræn" eh="54a7902e" />
     <e k="sf_desc_replenishmentRate" v="Hastighed for gødningsgenopbygning" eh="858d2b23" />
@@ -617,8 +617,8 @@
     <e k="sf_desc_cropRotation" v="Sædskiftefordele og -ulemper" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Næringslag vist på PDA-kortet" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Antal datapunkter (Lav=8k, Mid=20k, Høj=40k)" eh="42503763" />
-    <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
-    <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
+    <e k="sf_desc_colorblindMode" v="Brug orange/blå farvepalette i stedet for rød/grøn" />
+    <e k="sf_desc_showFieldInfoBox" v="Vis jorddata i markinfo-panelet" />
 
     <e k="sf_rr_1" v="Meget langsom (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Langsom (0.5x)" eh="db69874d" />
@@ -691,68 +691,62 @@
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
-    <e k="sf_smart_sensor_long"          v="Enable or disable the Smart Spray Sensor system" />
-    <e k="sf_desc_smartSensorEnabled"    v="Allow players to use Smart Sensor boom-section control based on live soil data" />
+    <e k="sf_smart_sensor_long"          v="Aktivér eller deaktiver Smart Spray Sensor-systemet" />
+    <e k="sf_desc_smartSensorEnabled"    v="Tillad spillere at bruge Smart Sensor-bomsektionsstyring baseret på jorddata" />
     <!-- SMART SENSOR PANEL -->
     <e k="sf_sensor_panel_title" v="SMART SENSORS" />
-    <e k="sf_sensor_pest"        v="Pest Sensor" />
-    <e k="sf_sensor_disease"     v="Disease Sensor" />
-    <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
-    <e k="sf_sensor_state_on"    v="ON" />
-    <e k="sf_sensor_state_off"   v="OFF" />
-    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
-    <e k="action_SF_SENSOR_PEST"     v="SF: Toggle Pest Sensor" />
-    <e k="action_SF_SENSOR_DISEASE"  v="SF: Toggle Disease Sensor" />
-    <e k="action_SF_SENSOR_NUTRIENT" v="SF: Toggle Nutrient Sensor" />
+    <e k="sf_sensor_pest"        v="Skadedyrssensor" />
+    <e k="sf_sensor_disease"     v="Sygdomssensor" />
+    <e k="sf_sensor_nutrient"    v="Næringsstofsensor" />
+    <e k="sf_sensor_state_on"    v="TÆNDT" />
+    <e k="sf_sensor_state_off"   v="SLUKKET" />
+    <e k="action_SF_SENSOR_PEST"     v="SF: Aktivér eller deaktiver skadedyrssensor" />
+    <e k="action_SF_SENSOR_DISEASE"  v="SF: Aktiver eller deaktiver sygdomssensor" />
+    <e k="action_SF_SENSOR_NUTRIENT" v="SF: Aktiver eller deaktiver Næringstofsensor" />
         <!-- SMART SYSTEMS -->
     <e k="sf_panel_hdr_smart_systems"      v="Smart Systems" />
     <e k="sf_nav_smart_systems_label"      v="Smart Systems" />
-    <e k="sf_nav_smart_systems_desc"       v="Configure Smart Sensor, See &amp; Spray and Variable Rate systems" />
-    <e k="sf_nav_tuning_label"            v="Constants Tuning Editor" />
-    <e k="sf_nav_tuning_desc"             v="Fine-tune simulation constants: depletion rates, stress growth, starting soil values" />
+    <e k="sf_nav_smart_systems_desc"       v="Opsæt Smart Sensor, præcisionssprøjtningssystemet til variabel dosering" />
     <e k="sf_panel_hdr_smart_sensor_sys"   v="Smart Sensor System" />
-    <e k="sf_panel_hdr_see_spray_sys"      v="See &amp; Spray System" />
-    <e k="sf_panel_hdr_var_rate_sys"       v="Variable Rate System" />
+    <e k="sf_panel_hdr_see_spray_sys"      v="præcisionssprøjtning" />
+    <e k="sf_panel_hdr_var_rate_sys"       v="variabelt doseringssystem" />
     <e k="sf_smart_sensor_short"           v="Smart Sensor" />
-    <e k="sf_smart_sensor_long"            v="Enable or disable the Smart Spray Sensor system" />
-    <e k="sf_see_and_spray_short"          v="See &amp; Spray" />
-    <e k="sf_see_and_spray_long"           v="Enable or disable the See &amp; Spray precision spraying system" />
-    <e k="sf_variable_rate_short"          v="Variable Rate" />
-    <e k="sf_variable_rate_long"           v="Enable or disable Variable Rate Application based on soil deficits" />
-    <e k="sf_desc_smartSensorEnabled"      v="Allow players to use Smart Sensor boom-section control based on live soil data" />
-    <e k="sf_desc_seeAndSprayEnabled"      v="Suppress boom sections over areas that do not need spraying" />
-    <e k="sf_desc_variableRateEnabled"     v="Adjust application rate per section based on soil nutrient deficits" />
+    <e k="sf_smart_sensor_long"            v="Aktivér eller deaktiver Smart Spray Sensor-systemet" />
+    <e k="sf_see_and_spray_short"          v="præcisionssprøjtning" />
+    <e k="sf_see_and_spray_long"           v="Aktivér eller deaktiver præcisionssprøjtningssystemet" />
+    <e k="sf_variable_rate_short"          v="variabel dosering" />
+    <e k="sf_variable_rate_long"           v="Aktivér eller deaktiver variabel dosering baseret på jordfugtighedsunderskud" />
+    <e k="sf_desc_smartSensorEnabled"      v="Tillad spillere at bruge Smart Sensor-bomsektionsstyring baseret på jorddata" />
+    <e k="sf_desc_seeAndSprayEnabled"      v="Deaktivér bomsektioner over områder, der ikke har behov for sprøjtning" />
+    <e k="sf_desc_variableRateEnabled"     v="Juster udbringningsmængden pr. sektion baseret på jordens næringsstofunderskud" />
     <!-- SMART SENSOR PANEL -->
     <e k="sf_sensor_panel_title" v="SMART SENSORS" />
-    <e k="sf_sensor_pest"        v="Pest Sensor" />
-    <e k="sf_sensor_disease"     v="Disease Sensor" />
-    <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
-    <e k="sf_sensor_state_on"    v="ON" />
-    <e k="sf_sensor_state_off"   v="OFF" />
-    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
+    <e k="sf_sensor_pest"        v="Skadedyrssensor" />
+    <e k="sf_sensor_disease"     v="Sygdomssensor" />
+    <e k="sf_sensor_nutrient"    v="Næringsstofsensor" />
+    <e k="sf_sensor_state_on"    v="TÆNDT" />
+    <e k="sf_sensor_state_off"   v="SLUKKET" />
     <!-- SEE AND SPRAY PANEL -->
-    <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" />
-    <e k="sf_see_spray_pest"        v="Pest" />
-    <e k="sf_see_spray_disease"     v="Disease" />
-    <e k="sf_see_spray_weed"        v="Weed" />
+    <e k="sf_see_spray_panel_title" v="PRÆCISIONSPRØJTNING" />
+    <e k="sf_see_spray_pest"        v="Skadedyr" />
+    <e k="sf_see_spray_disease"     v="Sygdom" />
+    <e k="sf_see_spray_weed"        v="Ukrudt" />
     <!-- VARIABLE RATE PANEL -->
-    <e k="sf_var_rate_panel_title" v="VARIABLE RATE" />
-    <e k="sf_var_rate_label"       v="Var. Rate" />
+    <e k="sf_var_rate_panel_title" v="VARIABEL DOSERING" />
+    <e k="sf_var_rate_label"       v="Var. dose" />
     <!-- INPUT ACTIONS -->
-    <e k="action_SF_SENSOR_PEST"       v="SF: Toggle Pest Sensor" />
-    <e k="action_SF_SENSOR_DISEASE"    v="SF: Toggle Disease Sensor" />
-    <e k="action_SF_SENSOR_NUTRIENT"   v="SF: Toggle Nutrient Sensor" />
-    <e k="action_SF_SEE_SPRAY_PEST"    v="SF: Toggle See &amp; Spray Pest" />
-    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Toggle See &amp; Spray Disease" />
-    <e k="action_SF_SEE_SPRAY_WEED"    v="SF: Toggle See &amp; Spray Weed" />
-    <e k="action_SF_VARIABLE_RATE"     v="SF: Toggle Variable Rate" />
+    <e k="action_SF_SENSOR_PEST"       v="SF: Aktivér eller deaktiver skadedyrssensor" />
+    <e k="action_SF_SENSOR_DISEASE"    v="SF: Aktiver eller deaktiver sygdomssensor" />
+    <e k="action_SF_SENSOR_NUTRIENT"   v="SF: Aktiver eller deaktiver Næringstofsensor" />
+    <e k="action_SF_SEE_SPRAY_PEST"    v="SF: Aktiver eller deaktiver Spøjtning for skadedyr" />
+    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Aktiver eller deaktiver spøjtning for sygdom" />
+    <e k="action_SF_SEE_SPRAY_WEED"    v="SF: Aktiver eller deaktiver spøjtning for ukrudt" />
+    <e k="action_SF_VARIABLE_RATE"     v="SF: Aktiver eller deaktiver Variabel dosering" />
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_panel_hdr_hud_layout"   v="HUD Layout" />
-    <e k="sf_independent_panels_short" v="Free Panel Layout" />
-    <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" />
-    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." />    <e k="sf_hud_enter_drag_label"   v="Move &amp; Resize Panels" />
-    <e k="sf_hud_enter_drag_desc"    v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" />
+    <e k="sf_independent_panels_short" v="Panel Layout" />
+    <e k="sf_independent_panels_long" v="Tillad, at smart system-paneler kan placeres uafhængigt i redigeringstilstand" />
+    <e k="sf_desc_independentPanels" v="Træk hvert panel frit i Shift+H-redigeringstilstand. Minimer paneler med knappen (-) i deres titellinje." />    <e k="sf_hud_enter_drag_label"   v="Flyt &amp; tilpas størrelse på paneler" />
+    <e k="sf_hud_enter_drag_desc"    v="Træk HUD’en for at flytte den — træk i hjørnet for at ændre størrelse — højreklik eller Esc for at afslutte" />
     </elements>
-
-
 </l10n>

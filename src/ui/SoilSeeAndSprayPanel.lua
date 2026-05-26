@@ -177,7 +177,6 @@ end
 
 function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
     local sensorMgr  = sfm.sensorManager
-    local pfActive   = sfm.settings and sfm.settings.pfCompatibilityMode
     local indMode    = sfm.settings and sfm.settings.independentPanels
 
     local hud = sfm.soilHUD
@@ -201,13 +200,13 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
     local rateGap    = (6  / 1080) * s
 
     -- Smart Sensor panel height (use actual rendered height to handle collapse)
-    local ssPanelRows  = pfActive and 1 or 3
+    local ssPanelRows  = 3
     local ssFallbackH  = 0.022*s + 0.006*s + ssPanelRows * 0.024*s + 0.006*s
     local ssActualH    = (sfm.smartSensorPanel and sfm.smartSensorPanel.lastPanelH) or ssFallbackH
     local ssGap        = 0.007 * s
 
     -- Stacked anchor position (below Smart Sensor panel)
-    local numRows      = pfActive and 1 or 3
+    local numRows      = 3
     local rowH         = SoilSeeAndSprayPanel.ROW_H   * s
     local pad          = SoilSeeAndSprayPanel.PAD     * s
     local titleH       = SoilSeeAndSprayPanel.TITLE_H * s
@@ -305,17 +304,6 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
     end
 
     local cx = panelX + pw * 0.5
-
-    if pfActive then
-        setTextAlignment(RenderText.ALIGN_CENTER)
-        setTextColor(SoilSeeAndSprayPanel.C_WARN[1], SoilSeeAndSprayPanel.C_WARN[2],
-            SoilSeeAndSprayPanel.C_WARN[3], 1.0)
-        local fs = 0.008 * s
-        renderText(cx, panelY + pad + rowH * 0.5 - fs * 0.45, fs,
-            g_i18n:getText("sf_sensor_pf_mode"))
-        setTextColor(1, 1, 1, 1); setTextAlignment(RenderText.ALIGN_LEFT); setTextBold(false)
-        return
-    end
 
     local vehicleId = sprayer.id
     local _, fd, cell = self:getCellData(sprayer)

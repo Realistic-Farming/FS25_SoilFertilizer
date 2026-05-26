@@ -930,7 +930,7 @@ function HookManager:installSectionControlHook()
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
             -- Gate 2: skip entirely in PF compat mode — PF manages section control
-            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+
 
             -- Gate 2b: skip if admin has disabled Smart Sensor globally
             if sfm.settings and sfm.settings.smartSensorEnabled == false then return end
@@ -1059,7 +1059,7 @@ function HookManager:installSeeAndSprayHook()
         function(sprayerSelf, dt)
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
-            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+
             if sfm.settings and sfm.settings.seeAndSprayEnabled == false then return end
 
             local sensorMgr = sfm.sensorManager
@@ -1180,7 +1180,7 @@ function HookManager:installVariableRateHook()
         function(sprayerSelf, dt)
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
-            if sfm.settings and sfm.settings.pfCompatibilityMode then return end
+
             if sfm.settings and sfm.settings.variableRateEnabled == false then return end
 
             local sensorMgr = sfm.sensorManager
@@ -1764,21 +1764,6 @@ function HookManager:installSprayerAreaHook()
                 return
             end
 
-            -- Phase 3: Inject SF's custom fill types into PF's nitrogen recognition tables.
-            -- Runs once on the first spray event where a PF extendedSprayer spec is found.
-            -- PF adds extendedSprayer to ALL sprayers when active, so any sprayer triggers this.
-            local pfBridge = g_SoilFertilityManager.pfBridge
-            -- Fill type injection: only needed when THPF Configurator is absent.
-            -- When THPF is loaded it reads our <thPFConfig> block and handles this natively.
-            local sfSet1 = g_SoilFertilityManager and g_SoilFertilityManager.settings
-            if pfBridge and pfBridge.isActive and sfSet1 and sfSet1.pfCompatibilityMode and not pfBridge.thpfActive and not pfBridge.fillTypesInjected then
-                local pfSpec = self["spec_FS25_precisionFarming.extendedSprayer"]
-                if pfSpec then
-                    SoilLogger.info("[PFBridge] Injecting SF fill types into PF nitrogen map (fallback — THPF absent)...")
-                    pfBridge:injectCustomFillTypes(pfSpec.nitrogenMap)
-                end
-            end
-
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
 
@@ -1853,38 +1838,6 @@ function HookManager:installSprayerAreaHook()
                 local diseaseOnlyDirect = diseaseEffectiveness and not isFertilizer
 
                 if not isFertilizer and not herbOnlyDirect and not pestOnlyDirect and not diseaseOnlyDirect then return end
-
-                -- PF mode: validate fertilizer was actually consumed before crediting nutrients.
-                -- PF's extendedSprayer can block tank drain (when field is at target N) without
-                -- clearing wap.usage. Compare current fill level against sprayFillLevel (captured
-                -- at frame start by vanilla onStartWorkAreaProcessing) — if unchanged, PF skipped
-                -- the application and we must not credit nutrients for product that wasn't used.
-                -- External-fill (BUY) mode is exempt: the tank intentionally stays full there.
-                do
-                    local pfBridgeRef = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-                    local sfSet2 = g_SoilFertilityManager and g_SoilFertilityManager.settings
-                    if pfBridgeRef and pfBridgeRef.isActive and sfSet2 and sfSet2.pfCompatibilityMode and isFertilizer then
-                        local PF_OWNED = { FERTILIZER=true, LIQUIDFERTILIZER=true, MANURE=true, LIQUIDMANURE=true, DIGESTATE=true }
-                        if PF_OWNED[fillType.name] then
-                            local wap = spec.workAreaParameters
-                            local isExternalFill = wap and (wap.sprayVehicle == nil)
-                            if not isExternalFill then
-                                local fuIdx = nil
-                                pcall(function() fuIdx = self:getSprayerFillUnitIndex() end)
-                                if fuIdx then
-                                    local curLevel = nil
-                                    pcall(function() curLevel = self:getFillUnitFillLevel(fuIdx) end)
-                                    -- 0.01 L tolerance for float rounding in fill level calculations
-                                    if curLevel and curLevel >= sprayFillLevel - 0.01 then
-                                        SoilLogger.debug("[PFBridge] fill unchanged (%.2fL >= %.2fL start) — PF blocked consumption, skipping SF update",
-                                            curLevel, sprayFillLevel)
-                                        return
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
 
                 -- Resolve field from vehicle root position.
                 -- When the tractor body straddles a field boundary (common on edge fields),
@@ -2048,37 +2001,6 @@ function HookManager:installSprayerAreaHook()
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
                     if boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
-                    end
-                end
-
-                -- PF N relay: fires whenever PF is active (with or without THPF).
-                -- THPF handles HUD recognition and application rate recommendations,
-                -- but PF's nitrogen density map painting is triggered by PF's own hook
-                -- checking workAreaParameters.sprayFillType against its fertilizerFillTypes
-                -- table — and our custom fill types don't pass that check natively.
-                -- By swapping to a scaled LIQUIDFERTILIZER volume we signal PF to paint
-                -- the correct N amount for the next frame when PF re-reads workAreaParameters.
-                -- SF's own nutrient accounting already ran above using the real fill type.
-                -- TIMING NOTE: both hooks are appendedFunctions on onEndWorkAreaProcessing.
-                -- PF loads before SF (alphabetical order), so PF's hook fires first this frame.
-                -- The swap is visible to PF on the following frame; the engine resets
-                -- sprayFillType/usage in onStartWorkAreaProcessing so no persistent corruption.
-                do
-                    local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-                    local sfSet3 = g_SoilFertilityManager and g_SoilFertilityManager.settings
-                    if pfBridge and pfBridge.isActive and sfSet3 and sfSet3.pfCompatibilityMode and g_fillTypeManager then
-                        local nKgPerL = PrecisionFarmingBridge.SF_FILL_TYPE_N_AMOUNTS[fillType.name]
-                        if nKgPerL and nKgPerL > 0 then
-                            local lfFT = g_fillTypeManager:getFillTypeByName("LIQUIDFERTILIZER")
-                            if lfFT then
-                                local scaledLiters = liters * (nKgPerL / PrecisionFarmingBridge.PF_LF_N_KG_PER_L)
-                                spec.workAreaParameters.sprayFillType = lfFT.index
-                                spec.workAreaParameters.usage = scaledLiters
-                                SoilLogger.debug("[PFRelay] %s → LIQUIDFERTILIZER x%.3f (%.2fL → %.2fL)",
-                                    fillType.name, nKgPerL / PrecisionFarmingBridge.PF_LF_N_KG_PER_L,
-                                    liters, scaledLiters)
-                            end
-                        end
                     end
                 end
 

@@ -233,8 +233,8 @@
     <e k="sf_report_pressure_high" v="Élevé" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Basé sur N/P/K par rapport au seuil optimal" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Rendement ~-%d%%" eh="d64d5d59" />
-    <e k="sf_pf_compat_short" v="PF Compat Mode" />
-    <e k="sf_pf_compat_long" v="Masquer les données d’azote SF lorsque Precision Farming est actif — évite les lectures d’azote conflictuelles entre les deux mods" />
+    <e k="sf_incompatibility_pf_title" v="Incompatibilité détectée" />
+    <e k="sf_incompatibility_pf_text" v="Le mod Soil & Fertilizer a été désactivé car Precision Farming a été détecté.\n\nCes deux mods ne sont pas compatibles et ne peuvent pas être utilisés ensemble." />
 
     <!-- ======================================================
          LIGNES D’AIDE (ESC > Aide > Sol & Fertilisation réalistes)
@@ -739,7 +739,6 @@
     <e k="sf_sensor_nutrient" v="Capteur de nutriments" />
     <e k="sf_sensor_state_on" v="ON" />
     <e k="sf_sensor_state_off" v="OFF" />
-    <e k="sf_sensor_pf_mode" v="Désactivé (mode compatibilité PF)" />
 	
     <!-- PANNEAU SEE & SPRAY -->
     <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" />

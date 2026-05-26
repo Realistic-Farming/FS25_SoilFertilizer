@@ -338,11 +338,7 @@ function SoilHUD:calculateHeight()
         h = h + SoilHUD.LINE_H
         h = h + SoilHUD.PAD * 1.6
         
-        -- N row is hidden when PF compat mode is on (PF owns N tracking)
-        local _pfB = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-        local _pfS = g_SoilFertilityManager and g_SoilFertilityManager.settings
-        local _nHidden = _pfB and _pfB.isActive and _pfS and _pfS.pfCompatibilityMode
-        h = h + SoilHUD.ROW_H * (_nHidden and 2 or 3)
+        h = h + SoilHUD.ROW_H * 3
         h = h + SoilHUD.PAD * 1.3
         
         h = h + SoilHUD.LINE_H
@@ -1038,12 +1034,7 @@ function SoilHUD:draw()
 
     self:drawPanel()
 
-    -- Suppress SF rate panel when PF compat mode is on — PF manages rate control in that case
-    local pfBridgeHud = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-    local pfCompatActive = pfBridgeHud and pfBridgeHud.isActive and self.settings.pfCompatibilityMode
-    if not pfCompatActive then
-        self:drawSprayerRatePanel()
-    end
+    self:drawSprayerRatePanel()
 
     if self.settings.showMiniReport then
         self:drawMiniReport()
@@ -1159,17 +1150,7 @@ function SoilHUD:drawPanel()
         local rateMultiplier = self._cachedRateMult
 
         -- N / P / K rows
-        -- When pfCompatibilityMode is enabled AND PF is active, skip the N row entirely (PF owns it).
-        -- When pfCompatibilityMode is OFF, SF owns N — show plain "N" regardless of PF presence.
-        local pfBridge  = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-        local settings  = g_SoilFertilityManager and g_SoilFertilityManager.settings
-        local pfActive  = pfBridge and pfBridge.isActive
-        local hideN     = pfActive and settings and settings.pfCompatibilityMode
-        if not hideN then
-            local nLabel     = "N"
-            local nBaseLabel = "N"
-            cy = self:drawNutrientRow(nLabel, nBaseLabel, info.nitrogen, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_N)
-        end
+        cy = self:drawNutrientRow("N", "N", info.nitrogen, px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_N)
         cy = self:drawNutrientRow("P", "P", info.phosphorus,  px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_P)
         cy = self:drawNutrientRow("K", "K", info.potassium,   px, cy, pw, s, fontMult, info, profile, fillType, rateMultiplier, self._fmt_K)
 

@@ -24,9 +24,13 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: HUD layout/move mode now exits cleanly when on foot (outside a vehicle).",
-    "  Second press of the drag key correctly releases the mouse cursor and restores",
-    "  camera control. (Previously the cursor stayed locked on foot only.)",
+    "NOTE FROM THE AUTHOR:",
+    "From this release onward, we are NO longer integrating with Precision Farming. I wont give support if you try to run both :)",
+    "",
+    "- Added a detection mechanism that will disable our mod if Precision Farming is detected, to prevent conflicts and data corruption",
+    "- Fixed a issue where our injection failed on load due to loading order issues",
+    "",
+    "Upcoming releases will be focused on clearing all the remaining bugs. If you find any, please report them on github!",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

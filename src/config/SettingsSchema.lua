@@ -247,13 +247,6 @@ SettingsSchema.definitions = {
         localOnly = true,  -- per-player display preference, not synced to server
     },
     {
-        id = "pfCompatibilityMode",
-        type = "boolean",
-        default = false,
-        uiId = "sf_pf_compat",
-        localOnly = true,  -- per-player; PF presence is client-side, not synced
-    },
-    {
         id = "smartSensorEnabled",
         type = "boolean",
         default = true,

@@ -233,8 +233,8 @@
     <e k="sf_report_pressure_high" v="Magas" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Az N/P/K arány alapján az optimális küszöbhöz képest" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Hozam ~-%d%%" eh="d64d5d59" />
-    <e k="sf_pf_compat_short" v="PF kompatibilitási mód" />
-    <e k="sf_pf_compat_long" v="Elrejti az SF nitrogénadatait, amikor a Precision Farming aktív — megakadályozza a két mod közti ütköző N-értékek megjelenését." />
+    <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" />
+    <e k="sf_incompatibility_pf_text" v="Soil & Fertilizer Mod has been disabled because Precision Farming was detected.\n\nThese two mods are not compatible and cannot be used together." />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
@@ -720,7 +720,6 @@
     <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
     <e k="sf_sensor_state_on"    v="ON" />
     <e k="sf_sensor_state_off"   v="OFF" />
-    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
     <e k="action_SF_SENSOR_PEST"     v="SF: Toggle Pest Sensor" />
     <e k="action_SF_SENSOR_DISEASE"  v="SF: Toggle Disease Sensor" />
     <e k="action_SF_SENSOR_NUTRIENT" v="SF: Toggle Nutrient Sensor" />
@@ -749,7 +748,6 @@
     <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
     <e k="sf_sensor_state_on"    v="ON" />
     <e k="sf_sensor_state_off"   v="OFF" />
-    <e k="sf_sensor_pf_mode"     v="Disabled (PF Compat Mode)" />
     <!-- SEE AND SPRAY PANEL -->
     <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" />
     <e k="sf_see_spray_pest"        v="Pest" />

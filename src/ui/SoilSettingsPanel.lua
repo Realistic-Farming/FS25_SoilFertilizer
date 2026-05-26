@@ -130,7 +130,7 @@ local CATEGORIES = {
         sections = {
             {
                 headerKey = "sf_panel_hdr_visibility",
-                items     = { "showHUD", "showMiniReport", "showFieldInfoBox", "useImperialUnits", "colorblindMode", "pfCompatibilityMode" }
+                items     = { "showHUD", "showMiniReport", "showFieldInfoBox", "useImperialUnits", "colorblindMode" }
             },
             {
                 headerKey = "sf_panel_hdr_hud_style",
@@ -719,12 +719,7 @@ function SoilSettingsPanel:_catContentHeight(cat)
         h = h + SEC_H + 0.005
         for _, item in ipairs(sec.items) do
             if type(item) == "string" then
-                if item == "pfCompatibilityMode" then
-                    local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-                    if pfBridge and pfBridge.isActive then h = h + ROW_H end
-                else
-                    h = h + ROW_H
-                end
+                h = h + ROW_H
             elseif type(item) == "table" then
                 h = h + ADMIN_ACT_H
             end
@@ -838,17 +833,7 @@ function SoilSettingsPanel:drawCategoryPage()
             local settingId = type(item) == "string" and item or nil
             local itemDef   = type(item) == "table"  and item or nil
 
-            if settingId == "pfCompatibilityMode" then
-                local pfBridge = g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-                if pfBridge and pfBridge.isActive then
-                    curY = curY - ROW_H
-                    if curY < CY_BOT then break end
-                    rowIdx = rowIdx + 1
-                    if curY <= CY_TOP then
-                        self:drawSettingRow(CX, curY, CW, settingId, rowIdx, isAdmin)
-                    end
-                end
-            elseif settingId then
+            if settingId then
                 curY = curY - ROW_H
                 if curY < CY_BOT then break end
                 rowIdx = rowIdx + 1

@@ -100,6 +100,6 @@ function Settings:resetToDefaults(saveImmediately)
 
     if saveImmediately then
         self:save()
-        print("[SoilFertilizer] Settings reset to defaults")
+        SoilLogger.info("Settings reset to defaults")
     end
 end

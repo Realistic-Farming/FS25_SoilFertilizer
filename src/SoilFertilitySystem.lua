@@ -218,28 +218,13 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         local pDef = math.max(0, thresh - field.phosphorus) / thresh
         local kDef = math.max(0, thresh - field.potassium)  / thresh
 
-        -- When Precision Farming is active its ExtendedCombine already applies an N-based
-        -- yield penalty. Exclude N from SF's average to avoid stacking both penalties on
-        -- the same deficiency. P and K are SF-exclusive (PF does not track them).
-        local avgDef
-        local pfActive = self.pfBridge and self.pfBridge.isActive and self.settings.pfCompatibilityMode
-        if pfActive then
-            avgDef = (pDef + kDef) / 2
-        else
-            avgDef = (nDef + pDef + kDef) / 3
-        end
+        local avgDef = (nDef + pDef + kDef) / 3
 
         local nutrientPenalty = math.min(ys.MAX_PENALTY, avgDef * tierData.scale)
         if nutrientPenalty > 0 then
             modifier = modifier * (1.0 - nutrientPenalty)
-            if pfActive then
-                self:log("Nutrient penalty field %d (%s/%s) [PF Mode - P/K only]: P=%.0f K=%.0f → -%.0f%%",
-                    fieldId, cropName, tier, field.phosphorus, field.potassium, nutrientPenalty * 100)
-            else
-                self:log("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
-                    fieldId, cropName, tier, field.nitrogen, field.phosphorus, field.potassium,
-                    nutrientPenalty * 100)
-            end
+            self:log("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
+                fieldId, cropName, tier, field.nitrogen, field.phosphorus, field.potassium, nutrientPenalty * 100)
         end
     end
 
@@ -2831,9 +2816,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             local pDef = math.max(0, thresh - p) / thresh
             local kDef = math.max(0, thresh - k) / thresh
 
-            local pfActive = self.pfBridge and self.pfBridge.isActive and
-                self.settings and self.settings.pfCompatibilityMode
-            local avgDef = pfActive and (pDef + kDef) / 2 or (nDef + pDef + kDef) / 3
+            local avgDef = (nDef + pDef + kDef) / 3
 
             local tier     = ys.CROP_TIERS[cropLowerInfo] or ys.DEFAULT_TIER
             local tierData = ys.TIERS[tier]
@@ -3012,11 +2995,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
 
             index = index + 1
         else
-            print(string.format(
-                "[SoilFertilizer WARNING] Skipping corrupted field entry %s (type: %s)",
-                tostring(fieldId),
-                type(field)
-            ))
+            SoilLogger.warning("Skipping corrupted field entry %s (type: %s)", tostring(fieldId), type(field))
         end
     end
 

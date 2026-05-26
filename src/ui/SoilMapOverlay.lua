@@ -687,27 +687,17 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     if layerIdx >= 1 and layerIdx <= 3 then
         -- ── Nutrient layer (N / P / K) ──────────────────────────
-        -- When PF compat mode is on and PF is active, suppress the N layer tooltip
-        -- to avoid showing two conflicting nitrogen readings side-by-side.
-        local pfBridge  = layerIdx == 1 and g_SoilFertilityManager and g_SoilFertilityManager.pfBridge
-        local sfSettings = layerIdx == 1 and g_SoilFertilityManager and g_SoilFertilityManager.settings
-        local suppressN = pfBridge and pfBridge.isActive and sfSettings and sfSettings.pfCompatibilityMode
+        local nInfo, ppmMul, lbl
+        if     layerIdx == 1 then nInfo = info.nitrogen;   ppmMul = ppm.N; lbl = "Nitrogen (N)"
+        elseif layerIdx == 2 then nInfo = info.phosphorus; ppmMul = ppm.P; lbl = "Phosphorus (P)"
+        else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = "Potassium (K)" end
 
-        if suppressN then
-            addRow("Nitrogen (N)", "managed by PF", DIM[1], DIM[2], DIM[3])
-            addRow("Tip", "Disable PF Compat Mode to see SF N data", DIM[1], DIM[2], DIM[3])
-        else
-            local nInfo, ppmMul, lbl
-            if     layerIdx == 1 then nInfo = info.nitrogen;   ppmMul = ppm.N; lbl = "Nitrogen (N)"
-            elseif layerIdx == 2 then nInfo = info.phosphorus; ppmMul = ppm.P; lbl = "Phosphorus (P)"
-            else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = "Potassium (K)" end
+        local val = (nInfo.value or 0) * ppmMul
+        addRow(lbl, fmtV(string.format("%d ppm", math.floor(val + 0.5))), clrStatus(nInfo.status))
 
-            local val = (nInfo.value or 0) * ppmMul
-            addRow(lbl, fmtV(string.format("%d ppm", math.floor(val + 0.5))), clrStatus(nInfo.status))
-
-            local targKey = (layerIdx == 1) and "N" or (layerIdx == 2) and "P" or "K"
-            local ct = info.cropTargets
-            if ct and ct[targKey] then
+        local targKey = (layerIdx == 1) and "N" or (layerIdx == 2) and "P" or "K"
+        local ct = info.cropTargets
+        if ct and ct[targKey] then
                 local target = ct[targKey].opt * ppmMul
                 local gap    = val - target
                 local crop   = cropTitle(info.lastCrop) or "Crop"
@@ -721,7 +711,6 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
                 local crop = cropTitle(info.lastCrop)
                 addRow("Target", crop and ("No data: " .. crop) or "No crop planted", DIM[1], DIM[2], DIM[3])
             end
-        end
 
     elseif layerIdx == 4 then
         -- ── pH layer ────────────────────────────────────────────

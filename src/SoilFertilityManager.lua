@@ -45,10 +45,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     if not SoilFertilitySystem then
         SoilLogger.error("CRITICAL: SoilFertilitySystem not loaded - mod cannot initialize")
         if g_gui then
-            g_gui:showInfoDialog({
-                text = "Soil & Fertilizer Mod failed to load.\n\nCritical module 'SoilFertilitySystem' is missing.\n\nPlease reinstall the mod or check for conflicts with other mods.",
-                title = "Mod Load Error"
-            })
+            InfoDialog.show("Soil & Fertilizer Mod failed to load.\n\nCritical module 'SoilFertilitySystem' is missing.\n\nPlease reinstall the mod or check for conflicts with other mods.", nil, nil, DialogElement.TYPE_ERROR)
         end
         return nil
     end
@@ -82,10 +79,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         if not SoilHUD then
             SoilLogger.error("CRITICAL: SoilHUD not loaded - HUD will be disabled")
             if g_gui then
-                g_gui:showInfoDialog({
-                    text = "Soil & Fertilizer Mod: HUD module failed to load.\n\nThe mod will run without the HUD display.\n\nCore features remain active.",
-                    title = "HUD Load Warning"
-                })
+                InfoDialog.show("Soil & Fertilizer Mod: HUD module failed to load.\n\nThe mod will run without the HUD display.\n\nCore features remain active.")
             end
             self.soilHUD = nil
         else
@@ -622,20 +616,44 @@ function SoilFertilityManager:onMissionStarted()
     -- is available on fresh saves, so it falls back to defaults.
     self.settings:load()
 
-    if not self.settings.enabled then
-        SoilLogger.info("Mod disabled in settings — skipping soil system init")
-        return
-    end
-
-    SoilLogger.info("Mission started — initializing soil system (fields guaranteed populated)...")
+    SoilLogger.info("Mission started — checking for Precision Farming compatibility...")
 
     local ok, err = pcall(function()
-        self.soilSystem:initialize()
-
+        -- Incompatibility check: if Precision Farming is present, disable our mod immediately.
         if self.pfBridge then
             self.hasPrecisionFarming = self.pfBridge:initialize()
-            self.soilSystem.pfBridge = self.pfBridge
+            if self.hasPrecisionFarming then
+                SoilLogger.warning("Precision Farming detected! Soil & Fertilizer mod is NOT compatible and will be disabled.")
+                self.settings.enabled = false
+                
+                -- Queue incompatibility dialog with a delay to ensure GUI is stable
+                if not self.disableGUI then
+                    SoilLogger.info("Incompatibility dialog queued (3.5s delay)")
+                    self._pendingIncompatDialog = true
+                    self._pendingIncompatDelay  = 3500
+                end
+                return
+            else
+                -- PF is absent. If the mod was previously disabled solely by the PF incompatibility 
+                -- gate, we should re-enable it. 
+                -- We track this via the fact that `self.settings.enabled` is currently false 
+                -- but PF is gone.
+                if not self.settings.enabled then
+                    SoilLogger.info("Precision Farming not detected — re-enabling Soil & Fertilizer")
+                    self.settings.enabled = true
+                    -- Save the re-enabled state
+                    self.settings:save()
+                end
+            end
         end
+
+        if not self.settings.enabled then
+            SoilLogger.info("Mod disabled in settings — skipping soil system init")
+            return
+        end
+
+        SoilLogger.info("Initializing soil system (fields guaranteed populated)...")
+        self.soilSystem:initialize()
 
         self:loadSoilData()
 
@@ -667,6 +685,7 @@ end
 
 -- Input callback for HUD toggle (J)
 function SoilFertilityManager:onToggleHUDInput()
+    if not (self.settings and self.settings.enabled) then return end
     if self.soilHUD then
         self.soilHUD:toggleVisibility()
     end
@@ -674,6 +693,7 @@ end
 
 -- Input callback for Settings Panel (Shift+O)
 function SoilFertilityManager:onOpenSettingsInput()
+    if not (self.settings and self.settings.enabled) then return end
     if self.settingsPanel then
         self.settingsPanel:toggle()
     end
@@ -695,6 +715,7 @@ end
 
 -- Input callback for Soil Report dialog (K)
 function SoilFertilityManager:onSoilReportInput()
+    if not (self.settings and self.settings.enabled) then return end
     if self.soilReportDialog then
         self.soilReportDialog:show()
     end
@@ -818,7 +839,7 @@ local function showSensorMsg(name, on)
 end
 
 function SoilFertilityManager:onSensorPestInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:togglePest(vehicle.id)
@@ -827,7 +848,7 @@ function SoilFertilityManager:onSensorPestInput()
 end
 
 function SoilFertilityManager:onSensorDiseaseInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleDisease(vehicle.id)
@@ -836,7 +857,7 @@ function SoilFertilityManager:onSensorDiseaseInput()
 end
 
 function SoilFertilityManager:onSensorNutrientInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleNutrient(vehicle.id)
@@ -847,7 +868,7 @@ end
 -- ── System 2: See & Spray input callbacks ─────────────────
 
 function SoilFertilityManager:onSeeSprayPestInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayPest(vehicle.id)
@@ -856,7 +877,7 @@ function SoilFertilityManager:onSeeSprayPestInput()
 end
 
 function SoilFertilityManager:onSeeSprayDiseaseInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayDisease(vehicle.id)
@@ -865,7 +886,7 @@ function SoilFertilityManager:onSeeSprayDiseaseInput()
 end
 
 function SoilFertilityManager:onSeeSprayWeedInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayWeed(vehicle.id)
@@ -876,7 +897,7 @@ end
 -- ── System 3: Variable Rate input callback ─────────────────
 
 function SoilFertilityManager:onVariableRateInput()
-    if self.settings and self.settings.pfCompatibilityMode then return end
+
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleVariableRate(vehicle.id)
@@ -1049,6 +1070,24 @@ end
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
 function SoilFertilityManager:update(dt)
+    -- Deferred incompatibility dialog (Precision Farming)
+    if self._pendingIncompatDialog then
+        self._pendingIncompatDelay = (self._pendingIncompatDelay or 0) - dt
+        if self._pendingIncompatDelay <= 0 then
+            self._pendingIncompatDialog = nil
+            self._pendingIncompatDelay  = nil
+            if g_gui then
+                SoilLogger.info("Showing incompatibility dialog (PF detected)")
+                InfoDialog.show(g_i18n:getText("sf_incompatibility_pf_text"))
+            end
+        end
+    end
+
+    -- ── MANDATORY GUARD: Mod must be enabled ──────────────────
+    if not (self.settings and self.settings.enabled) then
+        return
+    end
+
     -- Always update soil system (server side)
     if self.soilSystem then
         self.soilSystem:update(dt)

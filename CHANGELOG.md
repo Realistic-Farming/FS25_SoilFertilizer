@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.2.3.4] - Not yet released
+## [2.2.3.5]
+
+### Fixed
+- Added a detection mechanism that will disable our mod if Precision Farming is detected, to prevent conflicts and data corruption
+- Fixed a issue where our injection failed on load due to loading order issues
+
+---
+
+## [2.2.3.4] - Pre Built (beta)
 
 ### Fixed
 - **HUD layout mode stuck on foot** ([reported by Tomi89](https://github.com/TheCodingDad-TisonK/FS25_SoilFertilizer/issues)) — When toggling HUD layout/drag mode with a custom keybind while on foot (outside a vehicle), the second press (close) did not release the mouse cursor or restore camera rotation. The cursor remained locked on screen, preventing the player from looking around. Root cause: `SoilHUD:update()` was calling `g_inputBinding:setShowMouseCursor(true, true)` every frame while in edit mode, creating a persistent forced-cursor state that the single `setShowMouseCursor(false)` call in `exitEditMode()` could not clear. The per-frame cursor call was removed; cursor management is now handled exclusively by `enterEditMode()` / `exitEditMode()` state transitions (matching the FS25 reference pattern). Works correctly in vehicles because vehicle mount/dismount resets all input state as a side effect.

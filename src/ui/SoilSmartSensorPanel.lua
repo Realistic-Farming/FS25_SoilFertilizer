@@ -190,7 +190,6 @@ end
 
 function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     local sensorMgr  = sfm.sensorManager
-    local pfActive   = sfm.settings and sfm.settings.pfCompatibilityMode
     local indMode    = sfm.settings and sfm.settings.independentPanels
 
     local hud = sfm.soilHUD
@@ -213,7 +212,7 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     local ratePanelH = padV + barH + padV + scrollH + padV + headerH
     local gap     = (6  / 1080) * s
 
-    local numRows      = pfActive and 1 or 3
+    local numRows      = 3
     local rowH         = SoilSmartSensorPanel.ROW_H   * s
     local pad          = SoilSmartSensorPanel.PAD     * s
     local titleH       = SoilSmartSensorPanel.TITLE_H * s
@@ -307,20 +306,6 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     end
 
     local cx = panelX + pw * 0.5
-
-    -- PF compat mode notice
-    if pfActive then
-        setTextAlignment(RenderText.ALIGN_CENTER)
-        setTextColor(SoilSmartSensorPanel.C_WARN[1], SoilSmartSensorPanel.C_WARN[2],
-            SoilSmartSensorPanel.C_WARN[3], 1.0)
-        local fs = 0.008 * s
-        renderText(cx, panelY + pad + rowH * 0.5 - fs * 0.45, fs,
-            g_i18n:getText("sf_sensor_pf_mode"))
-        setTextColor(1, 1, 1, 1)
-        setTextAlignment(RenderText.ALIGN_LEFT)
-        setTextBold(false)
-        return
-    end
 
     -- Field data for status readout
     local _, fd = self:getFieldData(sprayer)

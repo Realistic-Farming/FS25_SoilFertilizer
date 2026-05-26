@@ -85,7 +85,7 @@ function SoilSettingsUI:requestSettingChange(settingName, value)
     else
         self.settings[settingName] = value
         self.settings:save()
-        print(string.format("[SoilFertilizer] Setting '%s' changed to %s", settingName, tostring(value)))
+        SoilLogger.info("Setting '%s' changed to %s", settingName, tostring(value))
     end
 end
 
