@@ -1159,20 +1159,17 @@ function SoilHUD:drawPanel()
         self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
 
-        -- pH + OM row
-        local pHCol = self:pHColor(info.pH)
+        -- pH bar row (issue #438: center-anchored bar with ghost bar)
+        cy = self:drawPHRow(info, px, cy + SoilHUD.ROW_H * s, pw, s, fontMult, fillType)
+
+        -- OM text row (compact, alongside divider)
         local omCol = self:omColor(info.organicMatter)
-
+        local omLabelX = tx
+        local omValX   = tx + 0.018*s
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        renderText(tx, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"))
-        setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
-        renderText(tx + 0.020*s, cy, 0.010 * fontMult * s, self._fmt_pHStr or "")
-
-        local omX = tx + pw * 0.50
-        setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        renderText(omX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"))
+        renderText(omLabelX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"))
         setTextColor(omCol[1], omCol[2], omCol[3], 1.0)
-        renderText(omX + 0.020*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
+        renderText(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
 
         -- Divider below pH/OM row
         cy = cy - SoilHUD.LINE_H * s
@@ -1406,6 +1403,103 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)
     renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, nutrient.status)
+    setTextAlignment(RenderText.ALIGN_LEFT)
+
+    return cy
+end
+
+-- ── pH bar row ───────────────────────────────────────────
+-- Center-anchored bar: left = acidic, right = alkaline, center = optimal (6.75).
+-- Ghost bar shows the direction lime/gypsum will push pH.
+-- Returns updated cy.
+function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
+    local pad  = SoilHUD.PAD * s
+    local rowH = SoilHUD.ROW_H * s
+    local barH = SoilHUD.BAR_H * s
+    local barW = SoilHUD.BAR_W * s
+    local tx   = px + pad
+
+    cy = cy - rowH
+
+    -- Label
+    setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    renderText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"))
+
+    local barX  = tx + 0.015*s
+    local barY  = cy + (rowH - barH) * 0.5
+    local PH_MIN, PH_MAX, PH_OPT = 5.0, 8.5, 6.75
+    local phRange = PH_MAX - PH_MIN
+
+    local pH = info.pH or PH_OPT
+    local phNorm  = (math.max(PH_MIN, math.min(PH_MAX, pH)) - PH_MIN) / phRange
+    local optNorm = (PH_OPT - PH_MIN) / phRange  -- 0.5
+
+    -- Background
+    self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
+
+    -- Colored fill from optimal toward current pH
+    local pHCol = self:pHColor(pH)
+    if phNorm < optNorm then
+        local fillW = (optNorm - phNorm) * barW
+        self:drawRect(barX + phNorm * barW, barY, fillW, barH, pHCol)
+    elseif phNorm > optNorm then
+        local fillW = (phNorm - optNorm) * barW
+        self:drawRect(barX + optNorm * barW, barY, fillW, barH, pHCol)
+    end
+
+    -- Ghost bar: directional preview if a pH-modifying product is loaded
+    if fillType then
+        local profile = SoilConstants.FERTILIZER_PROFILES and SoilConstants.FERTILIZER_PROFILES[fillType.name]
+        if profile and profile.pH then
+            -- Typical full-pass delta is ~0.4 for LIME; scale visually to ~15% of bar width
+            local ghostW = barW * 0.15 * (math.abs(profile.pH) / 0.16)
+            ghostW = math.max(barW * 0.04, math.min(barW * 0.25, ghostW))
+            if profile.pH > 0 then
+                -- Raises pH: ghost extends right from current position
+                local gx = barX + phNorm * barW
+                self:drawRect(gx, barY, ghostW, barH, pHCol, 0.30)
+            else
+                -- Lowers pH: ghost extends left from current position
+                local gx = barX + phNorm * barW - ghostW
+                self:drawRect(gx, barY, ghostW, barH, pHCol, 0.30)
+            end
+        end
+    end
+
+    -- Center optimal line
+    local divW = 0.0005 * s
+    local optX = barX + optNorm * barW
+    self:drawRect(optX - divW*0.5, barY - 0.001*s, divW, barH + 0.002*s, {0.85, 0.85, 0.85, 0.6})
+
+    -- Threshold tick marks: 5.5=poor, 6.0=fair, 7.0=fair, 7.5=poor
+    local ticks = {
+        {pH=5.5, col={0.90, 0.35, 0.20, 0.75}},
+        {pH=6.0, col={0.90, 0.80, 0.20, 0.75}},
+        {pH=7.0, col={0.90, 0.80, 0.20, 0.75}},
+        {pH=7.5, col={0.90, 0.35, 0.20, 0.75}},
+    }
+    local tickW = 0.0005 * s
+    local tickH = barH + 0.002 * s
+    for _, tk in ipairs(ticks) do
+        local tNorm = (tk.pH - PH_MIN) / phRange
+        self:drawRect(barX + tNorm*barW - tickW*0.5, barY - 0.001*s, tickW, tickH, tk.col)
+    end
+
+    -- Numeric value
+    local valX = barX + barW + 0.006*s
+    setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
+    renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
+               string.format("%.1f", pH))
+
+    -- Status text (right-aligned)
+    local phStatus
+    if pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
+    elseif pH >= 5.5 and pH <= 7.5 then phStatus = "Fair"
+    else phStatus = "Poor" end
+    setTextAlignment(RenderText.ALIGN_RIGHT)
+    setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, phStatus)
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy

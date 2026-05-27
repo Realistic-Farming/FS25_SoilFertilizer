@@ -59,12 +59,12 @@
     <e k="sf_diff_long" v="Soil management difficulty level" eh="d6f4560c" />
     <e k="sf_rr_short" v="Replenishment Rate" eh="b363b336" />
     <e k="sf_rr_long" v="How quickly fertilizer restores field nutrients (0.25x Very Slow to 2.0x Very Fast)" eh="afe78a6d" />
-    <e k="sf_dm_short" v="Disease Climate" />
-    <e k="sf_dm_long" v="Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" />
-    <e k="sf_dm_1" v="Arid" />
-    <e k="sf_dm_2" v="Temperate" />
-    <e k="sf_dm_3" v="Humid" />
-    <e k="sf_dm_4" v="Wet" />
+    <e k="sf_dm_short" v="Disease Climate" eh="86eac820" />
+    <e k="sf_dm_long" v="Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
+    <e k="sf_dm_1" v="Arid" eh="cf9aa4a8" />
+    <e k="sf_dm_2" v="Temperate" eh="e8328062" />
+    <e k="sf_dm_3" v="Humid" eh="ccb2fc34" />
+    <e k="sf_dm_4" v="Wet" eh="ae789b86" />
     <e k="sf_auto_rate_short" v="Auto Rate Control" eh="6f99137d" />
     <e k="sf_auto_rate_long" v="Automatically adjusts fertilizer application rate based on field needs" eh="a9ca9f6b" />
     <e k="sf_hud_theme_1" v="Green" eh="d382816a" />
@@ -89,10 +89,10 @@
     <e k="sf_active_map_layer_long" v="Nutrient layer shown as overlay in the PDA map" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Map Detail" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Sample point budget for the PDA soil overlay. Low = better FPS, High = fuller coverage on large maps." eh="89215ce5" />
-    <e k="sf_colorblind_mode_short" v="Colorblind Mode" />
-    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
-    <e k="sf_show_field_info_box_short" v="Field Info Box" />
-    <e k="sf_show_field_info_box_long" v="Show soil nutrients in the native Field Info panel when standing on a field." />
+    <e k="sf_colorblind_mode_short" v="Colorblind Mode" eh="d5a644f4" />
+    <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." eh="4de2f9fb" />
+    <e k="sf_show_field_info_box_short" v="Field Info Box" eh="bf8bc5c7" />
+    <e k="sf_show_field_info_box_long" v="Show soil nutrients in the native Field Info panel when standing on a field." eh="f7cd7156" />
     <e k="input_SF_OPEN_SETTINGS" v="Open Soil Settings" eh="2e31c0dd" />
     <e k="sf_reset" v="Reset Soil Settings" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Toggle Soil HUD" eh="f0224a10" />
@@ -146,7 +146,7 @@
     <e k="sf_map_title" v="MAP Fertilizer 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="DAP Fertilizer 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Potash 0-0-60 (K)" eh="8db6c54c" />
-    <e k="sf_polifoska_title" v="Polifoska 6-20-30 (NPK)" />
+    <e k="sf_polifoska_title" v="Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
     <e k="sf_liquid_urea_title" v="Liquid Urea (N)" eh="7fee4f12" />
     <e k="sf_liquid_ams_title" v="Liquid Ammonium Sulfate (N)" eh="0daf3a6f" />
     <e k="sf_liquid_map_title" v="Liquid MAP (P)" eh="3ce7c8c9" />
@@ -156,57 +156,57 @@
     <e k="sf_fungicide_title" v="Fungicide" eh="e8512698" />
     <e k="sf_report_page_info" v="Fields %d-%d of %d  |  Page %d of %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
-    <e k="sf_bigBag_uan32_function" v="Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_uan32_function" v="Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
-    <e k="sf_bigBag_uan28_function" v="Nitrogen Fertilizer (liquid) — +38N ppm/ha @ 60.8 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_uan28_function" v="Nitrogen Fertilizer (liquid) — +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
     <e k="sf_bigBag_anhydrous_name" v="IBC Anhydrous Ammonia 82-0-0" eh="fb09e6ce" />
-    <e k="sf_bigBag_anhydrous_function" v="Nitrogen Fertilizer (liquid) — +67N ppm/ha @ 28 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_anhydrous_function" v="Nitrogen Fertilizer (liquid) — +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
     <e k="sf_bigBag_urea_name" v="Big Bag Urea 46-0-0" eh="8e8cbaae" />
-    <e k="sf_bigBag_urea_function" v="Nitrogen Fertilizer (dry) — +78N ppm/ha @ 168 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_urea_function" v="Nitrogen Fertilizer (dry) — +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
-    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry) — +68N ppm/ha @ 200 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry) — +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
     <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
-    <e k="sf_bigBag_ams_function" v="Nitrogen Fertilizer (dry) — +33N ppm/ha @ 168 kg/ha" eh="63efea20" />
+    <e k="sf_bigBag_ams_function" v="Nitrogen Fertilizer (dry) — +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
-    <e k="sf_bigBag_map_function" v="Phosphorus Fertilizer (dry) — +8N +56P ppm/ha @ 225 kg/ha" eh="0cc85c60" />
+    <e k="sf_bigBag_map_function" v="Phosphorus Fertilizer (dry) — +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
     <e k="sf_bigBag_dap_name" v="Big Bag DAP 18-46-0" eh="fb4e9987" />
-    <e k="sf_bigBag_dap_function" v="Phosphorus Fertilizer (dry) — +11N +44P ppm/ha @ 225 kg/ha" eh="0cc85c60" />
+    <e k="sf_bigBag_dap_function" v="Phosphorus Fertilizer (dry) — +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
     <e k="sf_bigBag_potash_name" v="Big Bag Potash 0-0-60" eh="eb771556" />
-    <e k="sf_bigBag_potash_function" v="Potassium Fertilizer (dry) — +90K ppm/ha @ 225 kg/ha" eh="18015099" />
-    <e k="sf_bigBag_polifoska_name" v="Big Bag Polifoska 6-20-30" />
-    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (dry) — +4N +21P +50K ppm/ha @ 250 kg/ha" />
+    <e k="sf_bigBag_potash_function" v="Potassium Fertilizer (dry) — +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
+    <e k="sf_bigBag_polifoska_name" v="Big Bag Polifoska 6-20-30" eh="33366162" />
+    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (dry) — +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
     <e k="sf_bigBag_liquid_urea_name" v="IBC Liquid Urea" eh="c40b906f" />
-    <e k="sf_bigBag_liquid_urea_function" v="Nitrogen Fertilizer (liquid) — +78N ppm/ha @ 168 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_liquid_urea_function" v="Nitrogen Fertilizer (liquid) — +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
     <e k="sf_bigBag_liquid_ams_name" v="IBC Liquid AMS" eh="32e6c8bb" />
-    <e k="sf_bigBag_liquid_ams_function" v="Nitrogen Fertilizer (liquid) — +33N ppm/ha @ 168 L/ha" eh="27de5f41" />
+    <e k="sf_bigBag_liquid_ams_function" v="Nitrogen Fertilizer (liquid) — +33N ppm/ha @ 168 L/ha" eh="73a75155" />
     <e k="sf_bigBag_liquid_map_name" v="IBC Liquid MAP" eh="4628addb" />
-    <e k="sf_bigBag_liquid_map_function" v="Phosphorus Fertilizer (liquid) — +8N +56P ppm/ha @ 225 L/ha" eh="eeb5ef5d" />
+    <e k="sf_bigBag_liquid_map_function" v="Phosphorus Fertilizer (liquid) — +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
     <e k="sf_bigBag_liquid_dap_name" v="IBC Liquid DAP" eh="82fb3c06" />
-    <e k="sf_bigBag_liquid_dap_function" v="Phosphorus Fertilizer (liquid) — +11N +44P ppm/ha @ 225 L/ha" eh="eeb5ef5d" />
+    <e k="sf_bigBag_liquid_dap_function" v="Phosphorus Fertilizer (liquid) — +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
     <e k="sf_bigBag_liquid_potash_name" v="IBC Liquid Potash" eh="7176856d" />
-    <e k="sf_bigBag_liquid_potash_function" v="Potassium Fertilizer (liquid) — +90K ppm/ha @ 225 L/ha" eh="52169d4a" />
+    <e k="sf_bigBag_liquid_potash_function" v="Potassium Fertilizer (liquid) — +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
     <e k="sf_bigBag_starter_name" v="IBC Starter 10-34-0" eh="62b13bd1" />
     <e k="sf_bigBag_insecticide_name" v="IBC Insecticide" eh="c8f0aabb" />
     <e k="sf_bigBag_insecticide_function" v="Insecticide (liquid)" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="IBC Fungicide" eh="2a1c78d4" />
     <e k="sf_bigBag_fungicide_function" v="Fungicide (liquid)" eh="745c34cb" />
-    <e k="sf_bigBag_starter_function" v="Starter Fertilizer (liquid) — +9N +17P ppm/ha @ 46.8 L/ha" eh="2c36ea57" />
+    <e k="sf_bigBag_starter_function" v="Starter Fertilizer (liquid) — +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
     <e k="sf_bigBag_gypsum_name" v="Big Bag Gypsum" eh="40fc8169" />
-    <e k="sf_bigBag_gypsum_function" v="Soil Amendment (dry) — pH -0.15/pass @ 1500 kg/ha" eh="51503c54" />
+    <e k="sf_bigBag_gypsum_function" v="Soil Amendment (dry) — pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
     <e k="sf_bigBag_compost_name" v="Big Bag Compost" eh="14322c5d" />
-    <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" />
-    <e k="sf_bigBag_compost_function" v="Organic Soil Amendment (dry) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="9dd2256a" />
+    <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" eh="760ccc30" />
+    <e k="sf_bigBag_compost_function" v="Organic Soil Amendment (dry) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosolids" eh="61a60ff3" />
-    <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Biosolids (10,000L)" />
-    <e k="sf_bigBag_biosolids_function" v="Organic Fertilizer (dry) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="374c7b1e" />
+    <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Biosolids (10,000L)" eh="53b60563" />
+    <e k="sf_bigBag_biosolids_function" v="Organic Fertilizer (dry) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Chicken Manure" eh="cb60fddc" />
-    <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Chicken Manure (10,000L)" />
-    <e k="sf_bigBag_chicken_manure_function" v="Organic Fertilizer (dry) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="374c7b1e" />
-    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletized Manure" eh="42d76587" />
-    <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletized Manure (10,000L)" />
-    <e k="sf_bigBag_pelletized_manure_function" v="Organic Fertilizer (dry) — +22N +2P +33K ppm @ 450 kg/ha" eh="374c7b1e" />
+    <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Chicken Manure (10,000L)" eh="dd621023" />
+    <e k="sf_bigBag_chicken_manure_function" v="Organic Fertilizer (dry) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
+    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletized Manure" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletized Manure (10,000L)" eh="261ca096" />
+    <e k="sf_bigBag_pelletized_manure_function" v="Organic Fertilizer (dry) — +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
     <e k="sf_bigBag_liquidlime_name" v="Liquid Lime Tank" eh="4f8caca1" />
-    <e k="sf_bigBag_liquidlime_function" v="pH Raising Agent (liquid) — pH +0.40/pass @ 374 L/ha" eh="7a118b6d" />
+    <e k="sf_bigBag_liquidlime_function" v="pH Raising Agent (liquid) — pH +0.40/pass @ 374 L/ha" eh="23f18783" />
     <e k="sf_hud_title" v="SOIL MONITOR" eh="f8cda642" />
     <e k="sf_hud_field" v="Field %d" eh="08988997" />
     <e k="sf_hud_noField" v="Walk onto a field" eh="62c55e9e" />
@@ -233,8 +233,8 @@
     <e k="sf_report_pressure_high" v="High" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Based on N/P/K vs optimal threshold" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Yield ~-%d%%" eh="d64d5d59" />
-    <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" />
-    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." />
+    <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" eh="89dbfc90" />
+    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
@@ -451,7 +451,7 @@
     <e k="sf_pda_map_unavailable" v="Map preview unavailable" eh="43983f81" />
     <e k="sf_map_health_overall" v="Average Soil Health" eh="5533cbe3" />
     <e k="sf_map_btn_report" v="Open Farm Overview" eh="6f0800e8" />
-    <e k="sf_map_btn_help" v="Help" eh="800e465a" />
+    <e k="sf_map_btn_help" v="Help" eh="6a26f548" />
     <e k="sf_map_btn_cycle_layer" v="Cycle Layer" eh="875dbf22" />
     <e k="sf_map_btn_treatment" v="Treatment Plan" eh="4ba012e2" />
     <e k="sf_map_btn_disable" v="Disable Overlay" eh="8e75dec5" />
@@ -535,15 +535,15 @@
     <e k="sf_treat_action_n_poor" v="Apply UAN32, UREA, or ANHYDROUS." eh="ebc225b0" />
     <e k="sf_treat_action_n_fair" v="Apply AMS or STARTER fertilizer." eh="dc8fbeba" />
     <e k="sf_treat_action_p_poor" v="Apply MAP or DAP (Phosphorus)." eh="ec2d9afa" />
-    <e k="sf_treat_action_p_fair" v="Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="6f802546" />
+    <e k="sf_treat_action_p_fair" v="Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
     <e k="sf_treat_action_k_poor" v="Apply POTASH (Potassium)." eh="bb2960f3" />
-    <e k="sf_treat_action_k_fair" v="Top-up with Liquid Potash or Potash (K)." eh="6f802546" />
+    <e k="sf_treat_action_k_fair" v="Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
     <e k="sf_treat_action_weed" v="Apply HERBICIDE immediately." eh="625551c5" />
     <e k="sf_treat_action_pest" v="Apply INSECTICIDE immediately." eh="f4db9a03" />
     <e k="sf_treat_action_disease" v="Apply FUNGICIDE immediately." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_detail_yield_eff_label" v="Yield eff." />
-    <e k="sf_detail_yield_optimal" v="Optimal" />
+    <e k="sf_detail_yield_eff_label" v="Yield eff." eh="2aa6bf08" />
+    <e k="sf_detail_yield_optimal" v="Optimal" eh="cb61fef1" />
     <e k="sf_detail_rotation_bonus" v="Legume Bonus (+N)" eh="8ab86f6a" />
     <e k="sf_detail_rotation_fatigue" v="Fatigue (x1.15 depletion)" eh="522a6d93" />
     <e k="sf_detail_no_field" v="No data available." eh="c6d95d5e" />
@@ -556,9 +556,9 @@
     <e k="sf_hud_label_om" v="OM" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Coverage: %d%% / %d%%" eh="d407bb6d" />
-    <e k="sf_hud_pass_coverage" v="Pass: %d%% (%s)" eh="00000000" />
+    <e k="sf_hud_pass_coverage" v="Pass: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Compaction: %d%%" eh="bef3a4f5" />
-    <e k="sf_hud_yield_eff" v="Yield: %d%%" />
+    <e k="sf_hud_yield_eff" v="Yield: %d%%" eh="7b49cf24" />
 
     <!-- ======================================================
          SPRAYER RATE HUD
@@ -587,6 +587,10 @@
     <e k="sf_notify_burn_title" v="Fertilizer Burn" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Field %d: over-application damage (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Data sync issue detected. Please report if this persists." eh="1a307946" />
+    <e k="sf_notify_lime_crop_title" v="Amendment Warning" eh="33228c86" />
+    <e k="sf_notify_lime_crop_body" v="Field %d: Lime on growing crop — yield -80%% at harvest!" eh="75217c5a" />
+    <e k="sf_notify_om_crop_title" v="Amendment Warning" eh="33228c86" />
+    <e k="sf_notify_om_crop_body" v="Field %d: Organic matter on growing crop — yield -20%% at harvest." eh="5f47bb88" />
 
     <!-- ======================================================
          SETTINGS PANEL — CATEGORIES & SECTION HEADERS
@@ -609,12 +613,12 @@
     <e k="sf_panel_hdr_mod_ctrl" v="Mod Control &amp; Difficulty" eh="ae2e88fb" />
     <e k="sf_panel_hdr_systems" v="Systems" eh="d6856404" />
     <e k="sf_panel_hdr_actions" v="Actions &amp; Field Tools" eh="f64ba1c9" />
-    <e k="sf_panel_hdr_hud_layout" v="HUD Layout" />
-    <e k="sf_hud_enter_drag_label" v="Move &amp; Resize Panels" />
-    <e k="sf_hud_enter_drag_desc" v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" />
-    <e k="sf_independent_panels_short" v="Free Panel Layout" />
-    <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" />
-    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." />
+    <e k="sf_panel_hdr_hud_layout" v="HUD Layout" eh="54e1930b" />
+    <e k="sf_hud_enter_drag_label" v="Move &amp; Resize Panels" eh="be34d24d" />
+    <e k="sf_hud_enter_drag_desc" v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" eh="13230ef7" />
+    <e k="sf_independent_panels_short" v="Free Panel Layout" eh="704a20a4" />
+    <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
+    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />
 
     <!-- ======================================================
          SETTINGS PANEL — CHROME
@@ -652,7 +656,7 @@
     <e k="sf_desc_weedPressure" v="Track and penalize weed spread" eh="df20c38d" />
     <e k="sf_desc_pestPressure" v="Track insect pest infestation" eh="12b3412e" />
     <e k="sf_desc_diseasePressure" v="Track fungal crop diseases" eh="0858395f" />
-    <e k="sf_desc_diseaseMoisture" v="Climate moisture level affecting disease spread and fungicide duration" />
+    <e k="sf_desc_diseaseMoisture" v="Climate moisture level affecting disease spread and fungicide duration" eh="97cb48de" />
     <e k="sf_desc_compactionEnabled" v="Heavy vehicle soil compaction" eh="a7d3a795" />
     <e k="sf_desc_difficulty" v="Nutrient drain intensity level" eh="54a7902e" />
     <e k="sf_desc_replenishmentRate" v="Fertilizer nutrient restoration speed" eh="858d2b23" />
@@ -661,8 +665,8 @@
     <e k="sf_desc_cropRotation" v="Rotation benefits and penalties" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Nutrient layer shown in PDA map" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Sample point budget (Low=8k, Med=20k, High=40k)" eh="42503763" />
-    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" />
-    <e k="sf_desc_showFieldInfoBox" v="Show soil data in the Field Info panel" />
+    <e k="sf_desc_colorblindMode" v="Use orange/blue palette instead of red/green" eh="2862b921" />
+    <e k="sf_desc_showFieldInfoBox" v="Show soil data in the Field Info panel" eh="815e419e" />
 
     <!-- ======================================================
          SETTINGS PANEL — MULTI-OPTION VALUES
@@ -735,7 +739,7 @@
     <e k="sf_cell_report" v="Cell Report" eh="2a403943" />
     <e k="sf_cell_no_data_title" v="No cell data found" eh="dc41c753" />
     <e k="sf_cell_no_data" v="No soil data at this location" eh="5dfa58aa" />
-    <e k="sf_field_avg" v="Field avg" />
+    <e k="sf_field_avg" v="Field avg" eh="e01500f8" />
     <e k="sf_cell" v="Cell" eh="1a66ab62" />
     <e k="sf_cell_dialog_title" v="Soil Cell Inspection" eh="7ce7fc03" />
     <e k="sf_cell_sidebar_header" v="Cell Details" eh="6fc5243e" />
@@ -770,7 +774,7 @@
     <!-- ======================================================
          SMART SENSOR PANEL
          ====================================================== -->
-    <e k="sf_sensor_panel_title" v="SMART SENSORS" />
+    <e k="sf_sensor_panel_title" v="SMART SENSORS" eh="33809906" />
     <e k="sf_sensor_pest"        v="Pest Sensor" />
     <e k="sf_sensor_disease"     v="Disease Sensor" />
     <e k="sf_sensor_nutrient"    v="Nutrient Sensor" />
@@ -780,7 +784,7 @@
     <!-- ======================================================
          SEE & SPRAY PANEL
          ====================================================== -->
-    <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" />
+    <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" eh="a7e00bf0" />
     <e k="sf_see_spray_pest"        v="Pest" />
     <e k="sf_see_spray_disease"     v="Disease" />
     <e k="sf_see_spray_weed"        v="Weed" />
@@ -788,7 +792,7 @@
     <!-- ======================================================
          VARIABLE RATE PANEL
          ====================================================== -->
-    <e k="sf_var_rate_panel_title" v="VARIABLE RATE" />
+    <e k="sf_var_rate_panel_title" v="VARIABLE RATE" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. Rate" />
 
     <!-- input action display names -->
@@ -796,7 +800,7 @@
     <e k="action_SF_SENSOR_DISEASE"   v="SF: Toggle Disease Sensor" />
     <e k="action_SF_SENSOR_NUTRIENT"  v="SF: Toggle Nutrient Sensor" />
     <e k="action_SF_SEE_SPRAY_PEST"   v="SF: Toggle See &amp; Spray Pest" />
-    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Toggle See &amp; Spray Disease" />
+    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Toggle See &amp; Spray Disease" eh="205a3668" />
     <e k="action_SF_SEE_SPRAY_WEED"   v="SF: Toggle See &amp; Spray Weed" />
     <e k="action_SF_VARIABLE_RATE"    v="SF: Toggle Variable Rate" />
     </elements>

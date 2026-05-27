@@ -283,6 +283,15 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         end
     end
 
+    -- Amendment burn penalty: lime or OM applied to growing crop (issue #437)
+    if field.amendBurnPenalty and field.amendBurnPenalty > 0 then
+        local burnPct = field.amendBurnPenalty
+        modifier = modifier * (1.0 - burnPct)
+        self:log("Amendment burn penalty field %d: -%.0f%%", fieldId, burnPct * 100)
+        field.amendBurnPenalty   = nil
+        field._amendBurnNotified = nil
+    end
+
     return modifier
 end
 
@@ -2088,6 +2097,33 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         return
     end
 
+    -- Issue #437: pH/OM amendment burn on growing crops.
+    -- LIME/LIQUIDLIME on growing crop → -80% yield. OM amendments → -20%.
+    -- Throttled to one warning per field per crop cycle via _amendBurnNotified flag.
+    local isLimeAmendment = entry.pH and entry.pH > 0  -- raises pH (LIME, LIQUIDLIME)
+    local isOMAmendment   = entry.OM and not (entry.pH and entry.pH > 0)
+    if (isLimeAmendment or isOMAmendment) and not field._amendBurnNotified then
+        local spx, spz = self._lastSprayX, self._lastSprayZ
+        if spx and spz and g_fieldManager then
+            local ok, fsField = pcall(g_fieldManager.getFieldAtWorldPosition, g_fieldManager, spx, spz)
+            if ok and fsField and (fsField.fruitType or 0) > 0 then
+                if isLimeAmendment then
+                    field.amendBurnPenalty = 0.80
+                    field._amendBurnNotified = true
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_lime_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
+                else
+                    field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, 0.20)
+                    field._amendBurnNotified = true
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_om_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
+                end
+            end
+        end
+    end
+
     local limits = SoilConstants.NUTRIENT_LIMITS
 
     -- AREA NORMALIZATION: Calculate hectares for this field.
@@ -3010,6 +3046,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLInt(xmlFile, fieldKey .. "#lastAlertSeason", field.lastAlertSeason or 0)
             setXMLFloat(xmlFile, fieldKey .. "#coverageFraction", field.coverageFraction or 0)
             setXMLFloat(xmlFile, fieldKey .. "#compaction", field.compaction or 0)
+            setXMLFloat(xmlFile, fieldKey .. "#amendBurnPenalty", field.amendBurnPenalty or 0)
 
             -- Save daily application throttles
             setXMLInt(xmlFile, fieldKey .. "#herbicideAppliedDay", self.herbicideAppliedDay[fieldId] or 0)
@@ -3090,6 +3127,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             fungicideDaysLeft = getXMLInt(xmlFile, fieldKey .. "#fungicideDaysLeft") or 0,
             dryDayCount = getXMLInt(xmlFile, fieldKey .. "#dryDayCount") or 0,
             burnDaysLeft = getXMLInt(xmlFile, fieldKey .. "#burnDaysLeft") or 0,
+            amendBurnPenalty = getXMLFloat(xmlFile, fieldKey .. "#amendBurnPenalty") or nil,
             coverageFraction = getXMLFloat(xmlFile, fieldKey .. "#coverageFraction") or 0,
             lastAlertSeason = getXMLInt(xmlFile, fieldKey .. "#lastAlertSeason") or nil,
             compaction = 0,
