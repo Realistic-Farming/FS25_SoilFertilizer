@@ -212,6 +212,7 @@ local SETTING_DESCS = {
     smartSensorEnabled    = "sf_desc_smartSensorEnabled",
     seeAndSprayEnabled    = "sf_desc_seeAndSprayEnabled",
     variableRateEnabled   = "sf_desc_variableRateEnabled",
+    fieldBoundaryControl  = "sf_desc_fieldBoundaryControl",
     independentPanels     = "sf_desc_independentPanels",
 }
 
@@ -305,6 +306,12 @@ local SMART_SYSTEMS_SECTIONS = {
         headerKey = "sf_panel_hdr_var_rate_sys",
         items     = {
             { stype = "setting", id = "variableRateEnabled" },
+        },
+    },
+    {
+        headerKey = "sf_panel_hdr_field_boundary",
+        items     = {
+            { stype = "setting", id = "fieldBoundaryControl" },
         },
     },
 }

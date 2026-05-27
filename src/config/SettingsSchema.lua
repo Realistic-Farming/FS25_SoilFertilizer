@@ -265,6 +265,12 @@ SettingsSchema.definitions = {
         uiId = "sf_variable_rate",
     },
     {
+        id = "fieldBoundaryControl",
+        type = "boolean",
+        default = true,
+        uiId = "sf_field_boundary",
+    },
+    {
         id = "independentPanels",
         type = "boolean",
         default = false,

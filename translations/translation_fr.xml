@@ -731,6 +731,10 @@
     <e k="sf_desc_smartSensorEnabled" v="Permet aux joueurs d’utiliser le contrôle des sections de rampe Smart Sensor basé sur les données du sol en temps réel" />
     <e k="sf_desc_seeAndSprayEnabled" v="Désactive les sections de rampe sur les zones ne nécessitant pas de traitement" />
     <e k="sf_desc_variableRateEnabled" v="Ajuste le taux d’application par section selon les déficits de nutriments du sol" />
+    <e k="sf_panel_hdr_field_boundary"     v="Field Boundary Control" />
+    <e k="sf_field_boundary_short"         v="Boundary Control" />
+    <e k="sf_field_boundary_long"          v="Enable or disable automatic field boundary section control" />
+    <e k="sf_desc_fieldBoundaryControl"    v="Automatically shuts off boom sections that extend outside field boundaries, preventing off-field product application." />
 	
     <!-- PANNEAU CAPTEURS INTELLIGENTS -->
     <e k="sf_sensor_panel_title" v="CAPTEURS INTELLIGENTS" />

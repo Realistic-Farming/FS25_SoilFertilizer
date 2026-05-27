@@ -719,6 +719,10 @@
     <e k="sf_desc_smartSensorEnabled"      v="Tillad spillere at bruge Smart Sensor-bomsektionsstyring baseret på jorddata" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Deaktivér bomsektioner over områder, der ikke har behov for sprøjtning" />
     <e k="sf_desc_variableRateEnabled"     v="Juster udbringningsmængden pr. sektion baseret på jordens næringsstofunderskud" />
+    <e k="sf_panel_hdr_field_boundary"     v="Field Boundary Control" />
+    <e k="sf_field_boundary_short"         v="Boundary Control" />
+    <e k="sf_field_boundary_long"          v="Enable or disable automatic field boundary section control" />
+    <e k="sf_desc_fieldBoundaryControl"    v="Automatically shuts off boom sections that extend outside field boundaries, preventing off-field product application." />
     <!-- SMART SENSOR PANEL -->
     <e k="sf_sensor_panel_title" v="SMART SENSORS" />
     <e k="sf_sensor_pest"        v="Skadedyrssensor" />

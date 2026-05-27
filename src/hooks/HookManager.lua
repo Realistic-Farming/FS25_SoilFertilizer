@@ -950,6 +950,31 @@ function HookManager:installSectionControlHook()
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
+            -- Field Boundary Enforcement: suppress boom sections whose outer tip
+            -- extends outside all farmland. Independent of Smart Sensor — applies
+            -- to every fill type when the admin setting is enabled.
+            if sfm.settings and sfm.settings.fieldBoundaryControl then
+                local vwwBE = sprayerSelf.spec_variableWorkWidth
+                if vwwBE and vwwBE.sections and #vwwBE.sections > 0 then
+                    local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
+                    if rx then
+                        for _, section in ipairs(vwwBE.sections) do
+                            if section.isActive and not section.isCenter then
+                                local sx, sz = rx, rz
+                                if section.maxWidthNode then
+                                    local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                                    if ok and wx then sx = wx; sz = wz end
+                                end
+                                local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                                if not fid or fid <= 0 then
+                                    section.isActive = false
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
             -- Gate 2: skip entirely in PF compat mode — PF manages section control
 
 

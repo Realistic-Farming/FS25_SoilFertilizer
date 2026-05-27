@@ -833,9 +833,9 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
     local function setNutrient(el, value, statusStr)
         if not el then return end
         el:setText(tostring(value))
-        if statusStr == "good" then
+        if statusStr == "Good" then
             el:setTextColor(unpack(COLOR_GOOD))
-        elseif statusStr == "fair" then
+        elseif statusStr == "Fair" then
             el:setTextColor(unpack(COLOR_FAIR))
         else
             el:setTextColor(unpack(COLOR_POOR))
