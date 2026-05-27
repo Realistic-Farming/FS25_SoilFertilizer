@@ -305,6 +305,17 @@ end
 
 -- ── Point Sampling (DMF Pattern) ─────────────────────────
 
+-- Maps overlay layer index → SoilLayerSystem layer name.
+-- Must be declared here (before updateSamplePoints) to be in scope as an upvalue.
+-- Layers 6-9 are computed values with no GRLE layer.
+local LAYER_GRLE_NAME = {
+    [1] = "infoLayer_soilN",
+    [2] = "infoLayer_soilP",
+    [3] = "infoLayer_soilK",
+    [4] = "infoLayer_soilPH",
+    [5] = "infoLayer_soilOM",
+}
+
 -- Extract the per-cell value for a given overlay layer index (1-5 only).
 -- Must be defined before updateSamplePoints to be in scope as an upvalue.
 local function getCellLayerValue(cell, layerIdx)
@@ -1166,17 +1177,6 @@ function SoilMapOverlay:getMapRenderBounds(frame, ingameMap)
     local mapW, mapH = layout:getMapSize()
     return mapX, mapY, mapW, mapH
 end
-
--- ── Layer density-map layer names (indices 1-5 have GRLE layers) ─────────────
--- Maps overlay layer index → SoilLayerSystem layer name.
--- Layers 6-9 are computed values (urgency, weed, pest, disease) with no GRLE.
-local LAYER_GRLE_NAME = {
-    [1] = "infoLayer_soilN",
-    [2] = "infoLayer_soilP",
-    [3] = "infoLayer_soilK",
-    [4] = "infoLayer_soilPH",
-    [5] = "infoLayer_soilOM",
-}
 
 -- Returns poor, fair, good color tables based on colorblind setting.
 function SoilMapOverlay:statusColors()

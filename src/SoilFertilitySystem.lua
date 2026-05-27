@@ -1876,8 +1876,8 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     self:showNotification(g_i18n:getText("sf_notify_critical_title"),
                         string.format(g_i18n:getText("sf_notify_critical_body"),
                             fieldId, math.floor(urgency)))
+                    field.lastAlertSeason = season
                 end
-                field.lastAlertSeason = season
             end
         end
     end
@@ -3007,6 +3007,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLInt(xmlFile, fieldKey .. "#fungicideDaysLeft", field.fungicideDaysLeft or 0)
             setXMLInt(xmlFile, fieldKey .. "#dryDayCount", field.dryDayCount or 0)
             setXMLInt(xmlFile, fieldKey .. "#burnDaysLeft", field.burnDaysLeft or 0)
+            setXMLInt(xmlFile, fieldKey .. "#lastAlertSeason", field.lastAlertSeason or 0)
             setXMLFloat(xmlFile, fieldKey .. "#coverageFraction", field.coverageFraction or 0)
             setXMLFloat(xmlFile, fieldKey .. "#compaction", field.compaction or 0)
 
