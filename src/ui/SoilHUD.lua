@@ -1191,6 +1191,7 @@ function SoilHUD:drawPanel()
         cy = self:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
 
         -- OM text row (compact, alongside divider)
+        cy = cy - SoilHUD.LINE_H * s
         local omCol = self:omColor(info.organicMatter)
         local omLabelX = tx
         local omValX   = tx + 0.018*s
