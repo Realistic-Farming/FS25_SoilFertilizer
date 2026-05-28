@@ -104,6 +104,14 @@
     <e k="input_SF_TOGGLE_AUTO" v="Activer/désactiver le mode automatique" eh="a8642cf0" />
     <e k="input_SF_CYCLE_MAP_LAYER" v="Changer la couche de carte du sol" eh="8e4a716c" />
     <e k="input_SF_SOIL_PDA" v="Ouvrir la PDA du sol" eh="7d70f7b4" />
+    <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
+    <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
+    <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
+    <e k="input_SF_SEE_SPRAY_PEST"    v="See &amp; Spray: Pest" />
+    <e k="input_SF_SEE_SPRAY_DISEASE" v="See &amp; Spray: Disease" />
+    <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
+    <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
+    <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
     <e k="sf_report_title" v="Rapport Sol &amp; Fertilisation" eh="3b4e9448" />
     <e k="sf_report_fields_tracked" v="Champs suivis :" eh="7b1e59b8" />
     <e k="sf_report_need_fert" v="Besoin d'engrais :" eh="110b60f2" />
