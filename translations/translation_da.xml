@@ -59,12 +59,12 @@
     <e k="sf_diff_long" v="Sværhedsgrad for jordstyring" eh="d6f4560c" />
     <e k="sf_rr_short" v="Genopfyldningshastighed" eh="b363b336" />
     <e k="sf_rr_long" v="Hvor hurtigt gødning genopretter næringsstoffer i marken (0,25x meget langsomt til 2,0x meget hurtigt)" eh="afe78a6d" />
-    <e k="sf_dm_short" v="[EN] Disease Climate" eh="86eac820" />
-    <e k="sf_dm_long" v="[EN] Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
-    <e k="sf_dm_1" v="[EN] Arid" eh="cf9aa4a8" />
-    <e k="sf_dm_2" v="[EN] Temperate" eh="e8328062" />
-    <e k="sf_dm_3" v="[EN] Humid" eh="ccb2fc34" />
-    <e k="sf_dm_4" v="[EN] Wet" eh="ae789b86" />
+    <e k="sf_dm_short" v="Klimaets fugtighedsniveau" eh="86eac820" />
+    <e k="sf_dm_long" v="Klimaets fugtighedsniveau — styrer hvor hurtigt svampesygdomme udvikler sig, og hvor længe beskyttelsen fra fungicider varer." eh="9948c967" />
+    <e k="sf_dm_1" v="Tørt" eh="cf9aa4a8" />
+    <e k="sf_dm_2" v="Mildt" eh="e8328062" />
+    <e k="sf_dm_3" v="Fugtigt" eh="ccb2fc34" />
+    <e k="sf_dm_4" v="Vådt" eh="ae789b86" />
     <e k="sf_auto_rate_short" v="Automatisk hastighedskontrol" eh="6f99137d" />
     <e k="sf_auto_rate_long" v="Justerer automatisk gødningsraten baseret på markens behov" eh="a9ca9f6b" />
     <e k="sf_hud_theme_1" v="Grøn" eh="d382816a" />
@@ -89,10 +89,10 @@
     <e k="sf_active_map_layer_long" v="Næringsstoflag vist som overlejring på PDA-kortet" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Kortdetalje" eh="a525859a" />
     <e k="sf_overlay_density_long" v="Prøvepunktsbudget for PDA-jordoverlejringen. Lav = bedre FPS, Høj = bedre dækning på store kort." eh="89215ce5" />
-    <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" eh="d5a644f4" />
-    <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." eh="4de2f9fb" />
-    <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" eh="bf8bc5c7" />
-    <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." eh="f7cd7156" />
+    <e k="sf_colorblind_mode_short" v="Farveblindtilstand" eh="d5a644f4" />
+    <e k="sf_colorblind_mode_long" v="Erstatter røde/grønne statusfarver med orange/blå (Okabe-Ito-paletten) for deuteranopi og protanopi." eh="4de2f9fb" />
+    <e k="sf_show_field_info_box_short" v="Markinfo-boks" eh="bf8bc5c7" />
+    <e k="sf_show_field_info_box_long" v="Vis jordnæringsstoffer i det indbyggede Markinfo-panel, når du står på en mark." eh="f7cd7156" />
     <e k="input_SF_OPEN_SETTINGS" v="Åbn jordindstillinger" eh="2e31c0dd" />
     <e k="sf_reset" v="Nulstil jordindstillinger" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Slå jord-HUD til/fra" eh="f0224a10" />
@@ -104,14 +104,14 @@
     <e k="input_SF_TOGGLE_AUTO" v="Skift automatisk hastighed" eh="a8642cf0" />
     <e k="input_SF_CYCLE_MAP_LAYER" v="Skift jordkortlag" eh="8e4a716c" />
     <e k="input_SF_SOIL_PDA" v="Åbn jord-PDA" eh="7d70f7b4" />
-    <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
-    <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
-    <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
-    <e k="input_SF_SEE_SPRAY_PEST"    v="See &amp; Spray: Pest" />
-    <e k="input_SF_SEE_SPRAY_DISEASE" v="See &amp; Spray: Disease" />
-    <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
-    <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
-    <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
+    <e k="input_SF_SENSOR_PEST"       v="Skift skadedyrssensor" />
+    <e k="input_SF_SENSOR_DISEASE"    v="Skift sygdomssensor" />
+    <e k="input_SF_SENSOR_NUTRIENT"   v="Skift næringsstofsensor" />
+    <e k="input_SF_SEE_SPRAY_PEST"    v="Se &amp; Sprøjt: Skadedyr" />
+    <e k="input_SF_SEE_SPRAY_DISEASE" v="Se &amp; Sprøjt: Sygdom" />
+    <e k="input_SF_SEE_SPRAY_WEED"    v="Se &amp; Sprøjt: Ukrudt" />
+    <e k="input_SF_VARIABLE_RATE"     v="Skift variabel dosering" />
+    <e k="input_SF_MINIMAP_ZOOM"      v="Skift minikortzoom" />
     <e k="sf_report_title" v="Jord- &amp; Gødningsrapport" eh="3b4e9448" />
     <e k="sf_report_fields_tracked" v="Sporede marker:" eh="7b1e59b8" />
     <e k="sf_report_need_fert" v="Mangler gødning:" eh="110b60f2" />
@@ -154,7 +154,7 @@
     <e k="sf_map_title" v="MAP-gødning 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="DAP-gødning 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Kaliumklorid 0-0-60 (K)" eh="8db6c54c" />
-    <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
+    <e k="sf_polifoska_title" v="Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
     <e k="sf_liquid_urea_title" v="Flydende urea (N)" eh="7fee4f12" />
     <e k="sf_liquid_ams_title" v="Flydende ammoniumsulfat (N)" eh="0daf3a6f" />
     <e k="sf_liquid_map_title" v="Flydende MAP (P)" eh="3ce7c8c9" />
@@ -164,57 +164,57 @@
     <e k="sf_fungicide_title" v="Fungicid" eh="e8512698" />
     <e k="sf_report_page_info" v="Marker %d-%d af %d  |  Side %d af %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
-    <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
+    <e k="sf_bigBag_uan32_function" v="Kvælstofgødning (flydende) — +44N ppm/ha @ 60,8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
-    <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) — +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
+    <e k="sf_bigBag_uan28_function" v="Kvælstofgødning (flydende) — +38N ppm/ha @ 60,8 L/ha" eh="ceca3b39" />
     <e k="sf_bigBag_anhydrous_name" v="IBC Vandfri Ammoniak 82-0-0" eh="fb09e6ce" />
-    <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) — +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
+    <e k="sf_bigBag_anhydrous_function" v="Kvælstofgødning (flydende) — +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
     <e k="sf_bigBag_urea_name" v="Big Bag Urea 46-0-0" eh="8e8cbaae" />
-    <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) — +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
+    <e k="sf_bigBag_urea_function" v="Kvælstofgødning (tør) — +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
-    <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) — +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
+    <e k="sf_bigBag_an_function" v="Kvælstofgødning (tør) — +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
     <e k="sf_bigBag_ams_name" v="Big Bag AMS 21-0-0-24S" eh="7f71ee68" />
-    <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) — +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
+    <e k="sf_bigBag_ams_function" v="Kvælstofgødning (tør) — +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
     <e k="sf_bigBag_map_name" v="Big Bag MAP 11-52-0" eh="8a5a059b" />
-    <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) — +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
+    <e k="sf_bigBag_map_function" v="Fosforgødning (tør) — +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
     <e k="sf_bigBag_dap_name" v="Big Bag DAP 18-46-0" eh="fb4e9987" />
-    <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) — +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
+    <e k="sf_bigBag_dap_function" v="Fosforgødning (tør) — +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
     <e k="sf_bigBag_potash_name" v="Big Bag Kaliumklorid 0-0-60" eh="eb771556" />
-    <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) — +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
-    <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
-    <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) — +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
+    <e k="sf_bigBag_potash_function" v="Kaliumgødning (tør) — +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
+    <e k="sf_bigBag_polifoska_name" v="Stor pose Polifoska 6-20-30" eh="33366162" />
+    <e k="sf_bigBag_polifoska_function" v="NPK-gødning (tør) — +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
     <e k="sf_bigBag_liquid_urea_name" v="IBC Flydende Urea" eh="c40b906f" />
-    <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) — +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
+    <e k="sf_bigBag_liquid_urea_function" v="Kvælstofgødning (flydende) — +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
     <e k="sf_bigBag_liquid_ams_name" v="IBC Flydende AMS" eh="32e6c8bb" />
-    <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) — +33N ppm/ha @ 168 L/ha" eh="73a75155" />
+    <e k="sf_bigBag_liquid_ams_function" v="Kvælstofgødning (flydende) — +33N ppm/ha @ 168 L/ha" eh="73a75155" />
     <e k="sf_bigBag_liquid_map_name" v="IBC Flydende MAP" eh="4628addb" />
-    <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) — +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
+    <e k="sf_bigBag_liquid_map_function" v="Fosforgødning (flydende) — +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
     <e k="sf_bigBag_liquid_dap_name" v="IBC Flydende DAP" eh="82fb3c06" />
-    <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) — +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
+    <e k="sf_bigBag_liquid_dap_function" v="Fosforgødning (flydende) — +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
     <e k="sf_bigBag_liquid_potash_name" v="IBC Flydende Kaliumklorid" eh="7176856d" />
-    <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) — +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
+    <e k="sf_bigBag_liquid_potash_function" v="Kaliumgødning (flydende) — +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
     <e k="sf_bigBag_starter_name" v="IBC Startgødning 10-34-0" eh="62b13bd1" />
     <e k="sf_bigBag_insecticide_name" v="IBC Insekticid" eh="c8f0aabb" />
     <e k="sf_bigBag_insecticide_function" v="Insekticid (flydende)" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="IBC Fungicid" eh="2a1c78d4" />
     <e k="sf_bigBag_fungicide_function" v="Fungicid (flydende)" eh="745c34cb" />
-    <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) — +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
+    <e k="sf_bigBag_starter_function" v="Startgødning (flydende) — +9N +17P ppm/ha @ 46,8 L/ha" eh="ab9c08be" />
     <e k="sf_bigBag_gypsum_name" v="Big Bag Gips" eh="40fc8169" />
-    <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) — pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
+    <e k="sf_bigBag_gypsum_function" v="Jordforbedringsmiddel (tør) — pH -0,15/pass @ 1500 kg/ha" eh="61a7adbd" />
     <e k="sf_bigBag_compost_name" v="Big Bag Kompost" eh="14322c5d" />
-    <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
-    <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
+    <e k="sf_bigBag_compost_10k_name" v="Stor pose kompost 10000L" eh="760ccc30" />
+    <e k="sf_bigBag_compost_function" v="Organisk jordforbedringsmiddel (tør) — +11N +2P +11K ppm, +3,0% OM @ 5t/ha" eh="3d7d5d60" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosolider" eh="61a60ff3" />
-    <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" eh="53b60563" />
-    <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
+    <e k="sf_bigBag_biosolids_10k_name" v="Stor pose biosolider (10.000L)" eh="53b60563" />
+    <e k="sf_bigBag_biosolids_function" v="Organisk gødning (tør) — +28N +3P +22K ppm, +2,0% OM @ 4,5t/ha" eh="97cb385e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Hønsemøg" eh="cb60fddc" />
-    <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" eh="dd621023" />
-    <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
+    <e k="sf_bigBag_chicken_manure_10k_name" v="Stor pose hønsemøg (10.000L)" eh="dd621023" />
+    <e k="sf_bigBag_chicken_manure_function" v="Organisk gødning (tør) — +22N +3P +22K ppm, +1,1% OM @ 2t/ha" eh="c85fd5c1" />
     <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelleteret Gødning" eh="064be7fa" />
-    <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" eh="261ca096" />
-    <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) — +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
+    <e k="sf_bigBag_pelletized_manure_10k_name" v="Stor pose pelleteret gødning (10.000L)" eh="261ca096" />
+    <e k="sf_bigBag_pelletized_manure_function" v="Organisk gødning (tør) — +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
     <e k="sf_bigBag_liquidlime_name" v="Flydende Kalktank" eh="4f8caca1" />
-    <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) — pH +0.40/pass @ 374 L/ha" eh="23f18783" />
+    <e k="sf_bigBag_liquidlime_function" v="pH-hæver (flydende) — pH +0,40/pass @ 374 L/ha" eh="23f18783" />
     <e k="sf_hud_title" v="JORDMONITOR" eh="f8cda642" />
     <e k="sf_hud_field" v="Mark %d" eh="08988997" />
     <e k="sf_hud_noField" v="Gå ud på en mark" eh="62c55e9e" />
@@ -241,8 +241,8 @@
     <e k="sf_report_pressure_high" v="Høj" eh="655d20c1" />
     <e k="sf_report_yield_hint" v="Baseret på N/P/K vs. optimal grænse" eh="022663e0" />
     <e k="sf_report_yield_loss" v="Udbytte ~-%d%%" eh="d64d5d59" />
-    <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
+    <e k="sf_incompatibility_pf_title" v="Inkompatibilitet opdaget" eh="89dbfc90" />
+    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer-mod er blevet deaktiveret, fordi Precision Farming blev registreret. Disse to mods er ikke kompatible og kan ikke bruges samtidig." eh="8c645296" />
 
     <e k="helpLine_sf_cat_overview" v="Oversigt" eh="3b878279" />
     <e k="helpLine_sf_cat_started" v="Kom godt i gang" eh="bf647454" />
@@ -443,7 +443,7 @@
     <e k="sf_pda_map_unavailable" v="Kortvisning ikke tilgængelig" eh="43983f81" />
     <e k="sf_map_health_overall" v="Gennemsnitlig jordsundhed" eh="5533cbe3" />
     <e k="sf_map_btn_report" v="Åbn gårdsoversigt" eh="6f0800e8" />
-    <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
+    <e k="sf_map_btn_help" v="Hjælp" eh="6a26f548" />
     <e k="sf_map_btn_cycle_layer" v="Skift lag" eh="875dbf22" />
     <e k="sf_map_btn_treatment" v="Behandlingsplan" eh="4ba012e2" />
     <e k="sf_map_btn_disable" v="Deaktiver lag" eh="8e75dec5" />
@@ -523,15 +523,15 @@
     <e k="sf_treat_action_n_poor" v="Anvend UAN32, UREA eller VANDFRI AMMONIAK." eh="ebc225b0" />
     <e k="sf_treat_action_n_fair" v="Anvend AMS eller STARTGØDNING." eh="dc8fbeba" />
     <e k="sf_treat_action_p_poor" v="Anvend MAP eller DAP (Fosfor)." eh="ec2d9afa" />
-    <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
+    <e k="sf_treat_action_p_fair" v="Efterfyld med Flydende MAP, Flydende DAP eller DAP (P)." eh="0c99c3e8" />
     <e k="sf_treat_action_k_poor" v="Anvend KALIUMKLORID (Kalium)." eh="bb2960f3" />
-    <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
+    <e k="sf_treat_action_k_fair" v="Efterfyld med Flydende Kalium eller Kalium (K)." eh="1e12fc32" />
     <e k="sf_treat_action_weed" v="Anvend HERBICID øjeblikkeligt." eh="625551c5" />
     <e k="sf_treat_action_pest" v="Anvend INSEKTICID øjeblikkeligt." eh="f4db9a03" />
     <e k="sf_treat_action_disease" v="Anvend FUNGICID øjeblikkeligt." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
-    <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
+    <e k="sf_detail_yield_eff_label" v="Udbytte." eh="2aa6bf08" />
+    <e k="sf_detail_yield_optimal" v="Optimal" eh="cb61fef1" />
     <e k="sf_detail_rotation_bonus" v="Bælgplantebonus (+N)" eh="8ab86f6a" />
     <e k="sf_detail_rotation_fatigue" v="Træthed (x1,15 udtømning)" eh="522a6d93" />
     <e k="sf_detail_no_field" v="Ingen data tilgængelig." eh="c6d95d5e" />
@@ -541,9 +541,9 @@
     <e k="sf_hud_label_om" v="OM" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Dækning: %d%% / %d%%" eh="d407bb6d" />
-    <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_pass_coverage" v="Passage: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Pakning: %d%%" eh="bef3a4f5" />
-    <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_yield_eff" v="Udbytte: %d%%" eh="7b49cf24" />
 
     <e k="sf_sprayer_auto_on" v="PÅFØRINGSRATE (AUTO: TIL)" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="PÅFØRINGSRATE (AUTO: FRA) [%s]" eh="848cc106" />
@@ -566,10 +566,10 @@
     <e k="sf_notify_burn_title" v="Gødningssvidning" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Mark %d: Skade fra overdosering (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Jordmod: Datasynkroniseringsfejl. Rapportér venligst hvis dette fortsætter." eh="1a307946" />
-		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
-		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop — yield -80%% at harvest!" eh="75217c5a" />
-		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
-		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop — yield -20%% at harvest." eh="5f47bb88" />
+		<e k="sf_notify_lime_crop_title" v="Kalkadvarsel" eh="33228c86" />
+		<e k="sf_notify_lime_crop_body" v="Mark %d: Kalk på voksende afgrøde — udbytte -80%% ved høst!" eh="75217c5a" />
+		<e k="sf_notify_om_crop_title" v="Organisk materiale-advarsel" eh="33228c86" />
+		<e k="sf_notify_om_crop_body" v="Mark %d: Organisk materiale på voksende afgrøde — udbytte -20%% ved høst." eh="5f47bb88" />
 
     <e k="sf_panel_cat_sim" v="Simulering" eh="4f502b57" />
     <e k="sf_panel_cat_sim_desc" v="Landbrugsmekanik, sværhedsgrad og næringsstofkredsløb" eh="3c584cdb" />
@@ -589,9 +589,9 @@
     <e k="sf_panel_hdr_mod_ctrl" v="Mod-kontrol &amp; Sværhedsgrad" eh="ae2e88fb" />
     <e k="sf_panel_hdr_systems" v="Systemer" eh="d6856404" />
     <e k="sf_panel_hdr_actions" v="Handlinger &amp; Markværktøjer" eh="f64ba1c9" />
-		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
-		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
-		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" eh="13230ef7" />
+		<e k="sf_panel_hdr_hud_layout" v="HUD-layout" eh="54e1930b" />
+		<e k="sf_hud_enter_drag_label" v="Flyt og ændr størrelse på paneler" eh="be34d24d" />
+		<e k="sf_hud_enter_drag_desc" v="Træk HUD for at flytte — træk hjørnet for at ændre størrelse — højreklik eller Esc for at afslutte" eh="13230ef7" />
 
     <e k="sf_panel_admin_yes" v="Admin: JA" eh="4628842a" />
     <e k="sf_panel_admin_no" v="Admin: NEJ" eh="a9394f7b" />
@@ -623,7 +623,7 @@
     <e k="sf_desc_weedPressure" v="Spor og straf ukrudtsspredning" eh="df20c38d" />
     <e k="sf_desc_pestPressure" v="Spor insektangreb" eh="12b3412e" />
     <e k="sf_desc_diseasePressure" v="Spor svampesygdomme" eh="0858395f" />
-    <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" eh="97cb48de" />
+    <e k="sf_desc_diseaseMoisture" v="Klimaets fugtighedsniveau, der påvirker sygdomsspredning og fungicidets varighed" eh="97cb48de" />
     <e k="sf_desc_compactionEnabled" v="Jordpakning fra tunge køretøjer" eh="a7d3a795" />
     <e k="sf_desc_difficulty" v="Intensitet af næringsstofdræn" eh="54a7902e" />
     <e k="sf_desc_replenishmentRate" v="Hastighed for gødningsgenopbygning" eh="858d2b23" />
@@ -632,8 +632,8 @@
     <e k="sf_desc_cropRotation" v="Sædskiftefordele og -ulemper" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Næringslag vist på PDA-kortet" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Antal datapunkter (Lav=8k, Mid=20k, Høj=40k)" eh="42503763" />
-    <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" eh="2862b921" />
-    <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" eh="815e419e" />
+    <e k="sf_desc_colorblindMode" v="Brug orange/blå palette i stedet for rød/grøn" eh="2862b921" />
+    <e k="sf_desc_showFieldInfoBox" v="Vis jorddata i Markinfo-panelet" eh="815e419e" />
 
     <e k="sf_rr_1" v="Meget langsom (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Langsom (0.5x)" eh="db69874d" />
@@ -697,26 +697,12 @@
     <e k="sf_cell_report" v="Cellerapport" eh="2a403943" />
     <e k="sf_cell_no_data_title" v="Ingen celledata fundet" eh="dc41c753" />
     <e k="sf_cell_no_data" v="Ingen jorddata på denne placering" eh="5dfa58aa" />
-    <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
+    <e k="sf_field_avg" v="Markgennemsnit" eh="e01500f8" />
     <e k="sf_cell" v="Celle" eh="1a66ab62" />
     <e k="sf_cell_dialog_title" v="Jordcelle-inspektion" eh="7ce7fc03" />
     <e k="sf_cell_sidebar_header" v="Celledetaljer" eh="6fc5243e" />
     <e k="sf_cell_coord" v="Koordinater" eh="99171d3a" />
     <e k="sf_cell_click_hint" v="Klik på kortet for at inspicere en jordcelle" eh="fc9d240b" />
-    <!-- SMART SYSTEMS (admin panel section) -->
-    <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
-    <e k="sf_smart_sensor_short"         v="Smart Sensor" />
-    <e k="sf_smart_sensor_long"          v="Aktivér eller deaktiver Smart Spray Sensor-systemet" />
-    <e k="sf_desc_smartSensorEnabled"    v="Tillad spillere at bruge Smart Sensor-bomsektionsstyring baseret på jorddata" />
-    <!-- SMART SENSOR PANEL -->
-    <e k="sf_sensor_panel_title" v="[EN] SMART SENSORS" eh="33809906" />
-    <e k="sf_sensor_pest"        v="Skadedyrssensor" />
-    <e k="sf_sensor_disease"     v="Sygdomssensor" />
-    <e k="sf_sensor_nutrient"    v="Næringsstofsensor" />
-    <e k="sf_sensor_state_on"    v="TÆNDT" />
-    <e k="sf_sensor_state_off"   v="SLUKKET" />
-    <e k="action_SF_SENSOR_PEST"     v="SF: Aktivér eller deaktiver skadedyrssensor" />
-    <e k="action_SF_SENSOR_DISEASE"  v="SF: Aktiver eller deaktiver sygdomssensor" />
         <!-- SMART SYSTEMS -->
     <e k="sf_panel_hdr_smart_systems"      v="Smart Systems" />
     <e k="sf_nav_smart_systems_label"      v="Smart Systems" />
@@ -744,27 +730,25 @@
     <e k="sf_sensor_state_on"    v="TÆNDT" />
     <e k="sf_sensor_state_off"   v="SLUKKET" />
     <!-- SEE AND SPRAY PANEL -->
-    <e k="sf_see_spray_panel_title" v="[EN] SEE &amp; SPRAY" eh="a7e00bf0" />
+    <e k="sf_see_spray_panel_title" v="SE &amp; SPRØJT" eh="a7e00bf0" />
     <e k="sf_see_spray_pest"        v="Skadedyr" />
     <e k="sf_see_spray_disease"     v="Sygdom" />
     <e k="sf_see_spray_weed"        v="Ukrudt" />
-    <e k="sf_see_spray_suppressed"  v="All sections suppressed: no pressure detected" />
+    <e k="sf_see_spray_suppressed"  v="Alle sektioner deaktiveret: intet tryk registreret" />
     <!-- VARIABLE RATE PANEL -->
-    <e k="sf_var_rate_panel_title" v="[EN] VARIABLE RATE" eh="799c3bf7" />
+    <e k="sf_var_rate_panel_title" v="Variabel dosering" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. dose" />
     <!-- INPUT ACTIONS -->
     <e k="action_SF_SENSOR_PEST"       v="SF: Aktivér eller deaktiver skadedyrssensor" />
     <e k="action_SF_SENSOR_DISEASE"    v="SF: Aktiver eller deaktiver sygdomssensor" />
     <e k="action_SF_SENSOR_NUTRIENT"   v="SF: Aktiver eller deaktiver Næringstofsensor" />
     <e k="action_SF_SEE_SPRAY_PEST"    v="SF: Aktiver eller deaktiver Spøjtning for skadedyr" />
-    <e k="action_SF_SEE_SPRAY_DISEASE" v="[EN] SF: Toggle See &amp; Spray Disease" eh="205a3668" />
+    <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Aktiver eller deaktiver spøjtning for sygdom" eh="205a3668" />
     <e k="action_SF_SEE_SPRAY_WEED"    v="SF: Aktiver eller deaktiver spøjtning for ukrudt" />
     <e k="action_SF_VARIABLE_RATE"     v="SF: Aktiver eller deaktiver Variabel dosering" />
         <!-- HUD LAYOUT DRAG BUTTON -->
-    <e k="sf_panel_hdr_hud_layout"   v="HUD Layout" />
-    <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
-    <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />    <e k="sf_hud_enter_drag_label"   v="Flyt &amp; tilpas størrelse på paneler" />
-    <e k="sf_hud_enter_drag_desc"    v="Træk HUD’en for at flytte den — træk i hjørnet for at ændre størrelse — højreklik eller Esc for at afslutte" />
+    <e k="sf_independent_panels_short" v="Frit panel-layout" eh="704a20a4" />
+    <e k="sf_independent_panels_long" v="Tillad at smart systempaneler placeres individuelt i redigeringstilstand" eh="de43cebd" />
+    <e k="sf_desc_independentPanels" v="Træk hvert panel frit med Shift+H redigeringstilstand. Fold paneler sammen med −-knappen i titellinjen." eh="7c60edfc" />
     </elements>
 </l10n>
