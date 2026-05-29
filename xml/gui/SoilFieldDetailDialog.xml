@@ -95,7 +95,7 @@
   <GUIProfiles>
 
     <Profile name="sfDetail_bg" extends="fs25_dialogBg">
-      <size value="760px 660px"/>
+      <size value="760px 700px"/>
     </Profile>
 
     <!-- 5-row section (nutrients) -->

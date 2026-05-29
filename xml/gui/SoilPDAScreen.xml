@@ -30,24 +30,26 @@
         <!-- SIDEBAR A: Full field list shown on Overview tab -->
         <GuiElement id="sidebarOverview" position="0px 0px" width="420px" height="640px">
           <Text profile="sf_sectionHeader" text="$l10n_sf_pda_tab_fields" position="10px -10px"/>
-          <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"  position="10px -50px" size="60px 24px"/>
-          <Text profile="sf_colHeaderRight"  text="N"                        position="76px -50px" size="58px 24px"/>
-          <Text profile="sf_colHeaderRight"  text="P"                        position="138px -50px" size="58px 24px"/>
-          <Text profile="sf_colHeaderRight"  text="K"                        position="200px -50px" size="58px 24px"/>
-          <Text profile="sf_colHeaderRight"  text="pH"                       position="262px -50px" size="48px 24px"/>
-          <Text profile="sf_colHeaderRight"  text="$l10n_sf_pda_col_status" position="314px -50px" size="96px 24px"/>
+          <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"  position="10px -50px"  size="56px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="N"                        position="70px -50px"  size="44px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="P"                        position="118px -50px" size="44px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="K"                        position="166px -50px" size="44px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="pH"                       position="214px -50px" size="40px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="OM"                       position="258px -50px" size="40px 24px"/>
+          <Text profile="sf_colHeaderRight"  text="$l10n_sf_pda_col_status" position="302px -50px" size="96px 24px"/>
           <GuiElement position="0px -78px" width="420px" height="552px">
             <SmoothList id="sidebarFieldList" profile="sf_smoothList"
                         startClipperElementName="sideListStart"
                         endClipperElementName="sideListEnd">
               <ListItem profile="sf_listRow" onClick="onClickFieldRow">
                 <Bitmap profile="sf_rowBg" name="alternating"/>
-                <Text profile="sf_cellLeft"  name="fieldRowId"     size="60px 28px"/>
-                <Text profile="sf_cellRight" name="fieldRowN"      position="76px 0" size="58px 28px"/>
-                <Text profile="sf_cellRight" name="fieldRowP"      position="138px 0" size="58px 28px"/>
-                <Text profile="sf_cellRight" name="fieldRowK"      position="200px 0" size="58px 28px"/>
-                <Text profile="sf_cellRight" name="fieldRowPH"     position="262px 0" size="48px 28px"/>
-                <Text profile="sf_cellRight" name="fieldRowStatus" position="314px 0" size="96px 28px"/>
+                <Text profile="sf_cellLeft"  name="fieldRowId"     size="56px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowN"      position="70px 0"  size="44px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowP"      position="118px 0" size="44px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowK"      position="166px 0" size="44px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowPH"     position="214px 0" size="40px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowOM"     position="258px 0" size="40px 28px"/>
+                <Text profile="sf_cellRight" name="fieldRowStatus" position="302px 0" size="96px 28px"/>
               </ListItem>
             </SmoothList>
             <Bitmap profile="fs25_secondaryMenuStartClipper" name="sideListStart"/>
@@ -167,7 +169,7 @@
       <size value="50px 50px"/>
       <imageSliceId value="noSlice"/>
       <imageFilename value="g_SFIconMenu"/>
-      <imageColor value="$preset_colorTransparent"/>
+      <imageColor value="1 1 1 1"/>
     </Profile>
     <Profile name="sf_tabLabel" extends="fs25_textDefault" with="anchorTopLeft">
       <isFocusable value="true"/>
