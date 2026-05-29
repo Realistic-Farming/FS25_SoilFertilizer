@@ -24,14 +24,11 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed sprayer effects persisting after Courseplay folds the implement",
-    "- Fixed Field Detail dialog content clipping (dialog height increased)",
-    "- Fixed N/P/K/pH/Status column headers now right-aligned to match data cells",
-    "- Fixed FAIR status text line wrap in Soil Guide overview page",
-    "- Fixed tick mark label inconsistency in Soil Guide HUD page",
-    "- Fixed Soil Guide HUD page right column overflow (trimmed Smart Systems section)",
-    "- Fixed Soil Guide dialog height to prevent column content clipping",
-    "- Updated Soil Guide FAQ: replaced settings/admin entry with yield penalty explanation",
+    "- Fixed PDA tab icon invisible (transparent color fixed)",
+    "- Fixed PDA Farm Overview missing OM column (added between pH and Status)",
+    "- Fixed Field Detail dialog content clipping (dialog height increased to 700px)",
+    "- Fixed shop: all big bags and liquid tanks were missing (objects/ folder in build)",
+    "- Added full translation support for Soil Guide dialog (216 l10n keys, 26 languages)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

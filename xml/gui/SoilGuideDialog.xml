@@ -19,15 +19,15 @@
 
       <!-- Title -->
       <Text profile="fs25_dialogTitle" id="sfGuide_title"
-            text="Soil &amp; Fertilizer — Field Guide" position="0px -28px"/>
+            text="$l10n_sf_guide_title" position="0px -28px"/>
 
       <!-- Tab row — 5 tab buttons, horizontal -->
       <BoxLayout profile="sfGuide_tabRow" position="0px -66px">
-        <Button profile="sfGuide_tab" id="sfGuide_tab1" text="OVERVIEW"  onClick="onClickTab1"/>
-        <Button profile="sfGuide_tab" id="sfGuide_tab2" text="HUD GUIDE" onClick="onClickTab2"/>
-        <Button profile="sfGuide_tab" id="sfGuide_tab3" text="WORKFLOW"  onClick="onClickTab3"/>
-        <Button profile="sfGuide_tab" id="sfGuide_tab4" text="PRODUCTS"  onClick="onClickTab4"/>
-        <Button profile="sfGuide_tab" id="sfGuide_tab5" text="F.A.Q."   onClick="onClickTab5"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab1" text="$l10n_sf_guide_tab_1" onClick="onClickTab1"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab2" text="$l10n_sf_guide_tab_2" onClick="onClickTab2"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab3" text="$l10n_sf_guide_tab_3" onClick="onClickTab3"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab4" text="$l10n_sf_guide_tab_4" onClick="onClickTab4"/>
+        <Button profile="sfGuide_tab" id="sfGuide_tab5" text="$l10n_sf_guide_tab_5" onClick="onClickTab5"/>
       </BoxLayout>
 
       <!-- Subtitle — updated per tab to show current page description -->
@@ -48,7 +48,7 @@
     </GuiElement>
 
     <BoxLayout profile="fs25_dialogButtonBox">
-      <Button profile="buttonOK" text="Close" onClick="onClickClose"/>
+      <Button profile="buttonOK" text="$l10n_sf_detail_close" onClick="onClickClose"/>
     </BoxLayout>
 
   </GuiElement>
