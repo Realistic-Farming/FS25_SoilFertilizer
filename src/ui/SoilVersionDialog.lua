@@ -24,16 +24,14 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed pH bar overlapping K and OM rows in soil HUD (spacing corrected)",
-    "- Fixed herbicide showing only back boom segment (all boom sections now active)",
-    "- Fixed pass counter not updating for solid/MAP spreaders",
-    "- Fixed insecticide/fungicide auto-rate scaling down to 2 gal/ac at zero pressure",
-    "- Fixed herbicide auto-rate scaling down at low weed pressure (now always full rate)",
-    "- Fixed manure/compost auto-rate targeting NPK instead of OM deficit",
-    "- Fixed auto-rate target display showing raw internal units instead of ppm",
-    "- Fixed camera orbiting during HUD adjustment mode in vehicle",
-    "- Added lime/OM crop burn: applying lime to growing crops triggers -80% yield penalty at harvest (OM: -20%)",
-    "- Added pH bar in soil HUD",
+    "- Fixed sprayer effects persisting after Courseplay folds the implement",
+    "- Fixed Field Detail dialog content clipping (dialog height increased)",
+    "- Fixed N/P/K/pH/Status column headers now right-aligned to match data cells",
+    "- Fixed FAIR status text line wrap in Soil Guide overview page",
+    "- Fixed tick mark label inconsistency in Soil Guide HUD page",
+    "- Fixed Soil Guide HUD page right column overflow (trimmed Smart Systems section)",
+    "- Fixed Soil Guide dialog height to prevent column content clipping",
+    "- Updated Soil Guide FAQ: replaced settings/admin entry with yield penalty explanation",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
