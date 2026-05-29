@@ -632,11 +632,16 @@
   "v2.2.3.6": {
     "published_at": "2026-05-27T21:42:02Z",
     "tag": "v2.2.3.6",
-    "peak_downloads": 150
+    "peak_downloads": 151
   },
   "v2.2.3.8": {
     "published_at": "2026-05-29T08:22:25Z",
     "tag": "v2.2.3.8",
-    "peak_downloads": 84
+    "peak_downloads": 85
+  },
+  "v2.2.3.9": {
+    "published_at": "2026-05-29T16:51:59Z",
+    "tag": "v2.2.3.9",
+    "peak_downloads": 38
   }
 }
