@@ -1028,13 +1028,15 @@ function HookManager:installSectionControlHook()
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
             -- Field Boundary Enforcement: suppress boom sections whose outer tip
-            -- extends outside all farmland. Independent of Smart Sensor — applies
-            -- to every fill type when the admin setting is enabled.
+            -- extends outside the current field polygon or onto an adjacent field.
+            -- Independent of Smart Sensor — applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
                 if vwwBE and vwwBE.sections and #vwwBE.sections > 0 then
                     local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
                     if rx then
+                        -- Determine which field the vehicle center is currently on.
+                        local vehicleFieldId = hookMgrRef:getFieldIdAtWorldPosition(rx, rz)
                         for _, section in ipairs(vwwBE.sections) do
                             if section.isActive and not section.isCenter then
                                 local sx, sz = rx, rz
@@ -1043,7 +1045,9 @@ function HookManager:installSectionControlHook()
                                     if ok and wx then sx = wx; sz = wz end
                                 end
                                 local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                                if not fid or fid <= 0 then
+                                -- Suppress if tip is on unfarmed ground OR a different field.
+                                if not fid or fid <= 0 or
+                                   (vehicleFieldId and vehicleFieldId > 0 and fid ~= vehicleFieldId) then
                                     section.isActive = false
                                 end
                             end
