@@ -1872,8 +1872,12 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             end
             -- When herbicide is active the game's density map still shows dying weeds for
             -- 1-2 days — reading it would overwrite the pressure reduction from onHerbicideApplied.
-            -- Under protection, only allow pressure to decrease (weeds dying), never increase.
-            if (field.herbicideDaysLeft or 0) > 0 then
+            -- Under protection, or when herbicide was applied today (even partial coverage), only
+            -- allow pressure to decrease — never let the daily weedFactor read undo a reduction.
+            local herbicideAppliedToday = self.herbicideDailyApplied and
+                self.herbicideDailyApplied[fieldId] and
+                self.herbicideDailyApplied[fieldId].day == currentDay
+            if (field.herbicideDaysLeft or 0) > 0 or herbicideAppliedToday then
                 field.weedPressure = math.min(field.weedPressure or 0, math.max(0, gameWeedFactor * 100))
             else
                 field.weedPressure = math.max(0, math.min(100, gameWeedFactor * 100))
