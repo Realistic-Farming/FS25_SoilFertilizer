@@ -24,12 +24,6 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed N and K starting at 90%+ on new saves (tuning defaults now start at fair range)",
-    "- Fixed Pass% capping at ~50% after a full-field spray (crop polygon area used as denominator)",
-    "- Fixed Partial Width mode crediting inactive boom sections toward Pass% coverage",
-    "- Fixed variable rate display oscillating rapidly with MAP / P-type fertilizers (smoothed)",
-    "- Fixed liquid lime draining entire tank in seconds (spray type index corrected)",
-    "- Updated Danish (da) guide translation — Guide dialog now fully in Danish",
     "- Fixed herbicide session coverage reset (second spray no longer instant-triggers on first tick)",
     "- Fixed Weeds/Pests/Disease HUD bars rendering one row above their labels",
     "- Fixed weed pressure bar oscillating after partial herbicide spray (same-day application now sticky)",

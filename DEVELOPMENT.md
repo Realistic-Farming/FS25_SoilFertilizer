@@ -1,7 +1,7 @@
 # FS25_SoilFertilizer - Developer Guide
 
-**Version**: 2.1.7.0
-**Last Updated**: 2026-05-14
+**Version**: 2.2.5.0
+**Last Updated**: 2026-05-30
 
 ---
 
@@ -34,7 +34,7 @@
 
 2. **Install to FS25**
    - Copy entire folder to `%USERPROFILE%\Documents\My Games\FarmingSimulator2025\mods\`
-   - Or run `bash build.sh --deploy` to build the zip and deploy automatically
+   - Or run `py build.py --deploy` to build the zip and deploy automatically
 
 3. **Enable Developer Console**
    - Edit `game.xml` in FS25 root
@@ -562,7 +562,7 @@ To create them:
 
 ```bash
 # Build zip and deploy to FS25 mods folder
-bash build.sh --deploy
+py build.py --deploy
 ```
 
 Check `log.txt` after launching — search for `[SoilFertilizer]` to verify load.
@@ -574,7 +574,7 @@ Check `log.txt` after launching — search for `[SoilFertilizer]` to verify load
 3. **Update version in `CLAUDE.md` Project Overview**
 4. **Update `CHANGELOG.md`** with all changes since last release
 5. **Update `README.md`** version line at the bottom
-6. **Build**: `bash build.sh --deploy`
+6. **Build**: `py build.py --deploy`
 7. **Test** in singleplayer and multiplayer
 8. **Commit** to `development` branch
 9. **PR** `development` → `main`

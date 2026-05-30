@@ -27,33 +27,34 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 > [!TIP]
 > Want to be part of our community? Share tips, report issues, and chat with other farmers on the **[FS25 Modding Community Discord](https://discord.gg/Th2pnq36)**!
 
+> [!WARNING]
+> **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active and disables itself to prevent conflicts and data corruption. You must choose one or the other — they cannot run at the same time. If PF is installed but disabled in the mod manager, this mod will run normally.
+
 ---
 
-## 🆕 What's New in v2.2.3.x
+## 🆕 What's New in v2.2.5.0
 
-### Smart Sensor System
-A new in-vehicle panel appears when you're in a VWW-capable sprayer. It shows pest, disease, and nutrient sensor states for each boom section — and **blocks spraying on sections where no active need is detected**. Each sensor type (pest / disease / nutrient) has its own toggle via keybinds (Alt+1/2/3 by default, rebindable). Enable in **Settings → Admin → Smart Systems**.
+These are hotfixes over v2.2.4.1:
 
-### See & Spray System
-A second vehicle panel shows live per-cell pressure readings at the sprayer's current position — coloured bars that tell you in real time which sections of the boom are over cells that actually need treatment. Toggles per type via Alt+4/5/6.
+- Fixed weed pressure bar oscillating after partial herbicide spray (same-day sticky fix)
+- Fixed Weeds/Pests/Disease % values misaligned in HUD — values now correctly left-align after their bar
+- Updated French (fr) translation (community contribution)
+- Fixed version dialog not appearing when the mod was previously disabled
+- Fixed Precision Farming detection incorrectly triggering for users with PF installed but disabled in the mod manager
+- Fixed startup crash in fill type category lookup
+- Fixed version dialog being suppressed by crashes during mod initialization
 
-### Variable Rate Application
-A third vehicle panel shows per-section rate bars (green → yellow → red) and **automatically adjusts boom output rate** based on the soil deficit for the currently loaded product. Sections over well-stocked soil spray less; sections over depleted soil spray more. Toggle via Alt+7.
-
-### Free Panel Layout
-Enable **Free Panel Layout** in Settings → Display → Position to unlock independent positioning for all three smart system panels. Enter Shift+H edit mode and drag each panel to wherever you want it. Press **[−]** in any panel's title bar to collapse it to just the title bar — state is saved to `hud.xml` and restored on load.
-
-### v2.2.3.2 — Hotfix
-- System panels now collapse cleanly — stacked panels below no longer overlap when a panel above them is collapsed
-- System panels now hide when the main HUD is toggled off with the H key
-- Third-party fertilizers registered in the `fertilizer` fill category by map mods (e.g. POLIFOSKA on Etruria) now load into and refill from spreaders correctly
-
-### v2.2.3.1 — Hotfix
-- Fixed `sensorPanel` naming mismatch that prevented Smart Sensor panel from being dragged independently
-- Admin page Smart Systems / Vehicle Tools nav buttons moved to the top — they were previously cut off below the visible area
-- Disabled system panels now correctly contribute 0 height to stacked layout (no gaps)
-- System panels are now visible and draggable in Shift+H edit mode even without being in a sprayer
-- System panels are now correctly hidden when the SF settings panel (Shift+O) is open
+### v2.2.4.0 / v2.2.4.1
+- Fixed N and K starting at 90%+ on new saves (defaults now correctly N=50, P=33, K=38)
+- Fixed Pass% capping at ~50% after a full-field spray
+- Fixed Partial Width mode crediting inactive boom sections
+- Fixed variable rate display oscillating with MAP/P-type fertilizers
+- Fixed liquid lime draining entire tank instantly
+- Fixed herbicide session coverage reset between sessions
+- Fixed Weeds/Pests/Disease HUD bars rendering one row above their labels
+- Fixed LIQUIDLIME remapping to the correct spray type
+- Fixed herbicide weed browning and protection window
+- Danish (da) translation update
 
 ---
 
@@ -358,6 +359,7 @@ All integrations are detected automatically at runtime and fail gracefully if th
 
 | Mod | Behaviour |
 |---|---|
+| **FS25_precisionFarming** | **Incompatible.** When Precision Farming is detected as active, this mod automatically disables itself at startup to prevent data corruption. Disable PF in the mod manager to use this mod instead. |
 | **FS25_SeasonalCropStress** | Soil pH and organic matter influence evapotranspiration rates per field. |
 | **FS25_NPCFavor** | NPC neighbour favour quests can reference your fields' soil state. |
 | **FS25_MoistureSystem** | Compatible — both mods use independent hooks. No conflicts. |

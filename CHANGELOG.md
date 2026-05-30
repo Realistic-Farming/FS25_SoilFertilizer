@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.5.0]
+
+### Fixed
+- Fixed weed pressure bar oscillating after partial herbicide spray (same-day sticky fix)
+- Fixed Weeds/Pests/Disease % values misaligned in HUD — values are now left-aligned after their bar, not offset by one row
+- Fixed version dialog not appearing when mod was previously disabled
+- Fixed Precision Farming detection incorrectly triggering for users with PF installed but disabled in mod manager
+- Fixed startup crash in fill type category lookup
+- Fixed version dialog suppressed by crashes during mod initialization
+
+### Translations
+- **French (fr)** — Community translation update
+
+---
+
+## [2.2.4.1]
+
+### Fixed
+- Fixed Weeds/Pests/Disease HUD bars rendering one row above their row labels (visual alignment regression from 2.2.4.0)
+
+---
+
+## [2.2.4.0]
+
+### Fixed
+- Fixed N and K starting at 90%+ on new saves (nutrient defaults now correctly initialize at N=50, P=33, K=38)
+- Fixed Pass% capping at ~50% after a full-field spray
+- Fixed Partial Width mode crediting inactive boom sections toward coverage
+- Fixed variable rate display oscillating when using MAP/P-type fertilizers
+- Fixed liquid lime draining the entire tank instantly
+- Fixed herbicide session coverage resetting between spray sessions
+- Fixed LIQUIDLIME remapping to the correct spray type
+- Fixed herbicide weed browning and protection window
+
+### Translations
+- **Danish (da)** — Translation update
+
+---
+
 ## [2.2.3.6]
 
 ### Fixed

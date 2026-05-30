@@ -18,6 +18,9 @@ Thanks for your interest in contributing! This mod has a specific architecture �
 
 If you skip these and submit a PR that adds a setting without updating `SettingsSchema.lua`, or uses `goto` in Lua 5.1, the review will just send you back.
 
+> [!WARNING]
+> **This mod is NOT compatible with Precision Farming (FS25_precisionFarming).** The mod auto-detects PF and disables itself when PF is enabled. Do NOT submit PRs attempting to add PF compatibility — this is a permanent architectural decision. Players must choose one or the other. If PF is installed but disabled in the mod manager, our mod will run normally.
+
 ---
 
 ## Architecture in a Nutshell
@@ -67,7 +70,7 @@ Wrap anything that could fail in `pcall()`. Don't let hook errors propagate to t
 - Submit a PR that rewrites files you weren't asked to touch
 - Reorder existing entries in `SettingsSchema.definitions` — this breaks saves
 - Add a setting without its `_short` and `_long` translation keys in `modDesc.xml` (all 26 languages)
-- Commit the `.zip` directly — use `build.py` and let the release process handle it
+- Commit the `.zip` directly — use `py build.py --deploy` and let the release process handle it
 - Use `assert()` — use graceful error handling with user-facing dialogs instead
 
 ---
