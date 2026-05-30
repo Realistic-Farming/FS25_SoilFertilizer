@@ -1177,6 +1177,29 @@ function HookManager:installSeeAndSprayHook()
 
     local hookMgrRef = self
 
+    -- Cache of fieldId → fieldState (or false if unavailable). Built lazily per session.
+    local weedFieldStates = {}
+    local function getWeedFieldState(fieldId)
+        if weedFieldStates[fieldId] == nil then
+            local weedSys = g_currentMission and g_currentMission.weedSystem
+            if not weedSys then weedFieldStates[fieldId] = false; return nil end
+            local ok, fields = pcall(function() return weedSys:getFields() end)
+            if not ok or not fields then weedFieldStates[fieldId] = false; return nil end
+            for _, fsField in ipairs(fields) do
+                local fid = fsField.fieldId or fsField.id
+                if fid == fieldId then
+                    local fsok, fs = pcall(function() return fsField:getFieldState() end)
+                    if fsok and fs then
+                        weedFieldStates[fieldId] = fs
+                        return fs
+                    end
+                end
+            end
+            weedFieldStates[fieldId] = false
+        end
+        return weedFieldStates[fieldId] or nil
+    end
+
     local origStart = Sprayer.onStartWorkAreaProcessing
     Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         Sprayer.onStartWorkAreaProcessing,
@@ -1246,13 +1269,25 @@ function HookManager:installSeeAndSprayHook()
                             if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
                             if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
                             if weedSS    then
-                                -- Suppress when below threshold OR when herbicide protection is
-                                -- active (field already sprayed past 80% coverage this session).
-                                -- The herbicideDaysLeft guard catches the case where cell data is
-                                -- stale (only synced on the daily tick) but the field has already
-                                -- been sprayed and weeds are visually dying.
                                 local herbicideActive = (fd.herbicideDaysLeft or 0) > 0
-                                skip = skip or (cellWeed < ssCfg.WEED_THRESHOLD) or herbicideActive
+                                local weedsGone = herbicideActive
+                                if not weedsGone then
+                                    -- Ground truth: query the game's weed density map at this exact position.
+                                    -- weedState 0=none, 1-6=alive, 7-9=withered/dying → suppress 0 or >=7.
+                                    local fs = getWeedFieldState(fieldId)
+                                    if fs then
+                                        local uok = pcall(function() fs:update(sx, sz) end)
+                                        if uok then
+                                            local ws = fs.weedState or -1
+                                            weedsGone = (ws == 0 or ws >= 7)
+                                        end
+                                    end
+                                    -- Fallback to stale cell pressure if weed system unavailable.
+                                    if not weedsGone then
+                                        weedsGone = (cellWeed < ssCfg.WEED_THRESHOLD)
+                                    end
+                                end
+                                skip = skip or weedsGone
                             end
                             if skip then section.isActive = false end
                         end
