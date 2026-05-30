@@ -2831,7 +2831,7 @@ function HookManager:installFillUnitHookEarly()
                     end)
                     if ok and catTypes then
                         for _, ft in pairs(catTypes) do
-                            if ft and ft.index then fu.supportedFillTypes[ft.index] = true end
+                            if ft then fu.supportedFillTypes[ft] = true end
                         end
                     end
                 end
@@ -2841,7 +2841,7 @@ function HookManager:installFillUnitHookEarly()
                     end)
                     if ok and catTypes then
                         for _, ft in pairs(catTypes) do
-                            if ft and ft.index then fu.supportedFillTypes[ft.index] = true end
+                            if ft then fu.supportedFillTypes[ft] = true end
                         end
                     end
                 end
