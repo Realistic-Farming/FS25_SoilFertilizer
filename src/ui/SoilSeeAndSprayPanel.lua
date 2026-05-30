@@ -217,7 +217,7 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
             local ssCfgE = SoilConstants.SEE_AND_SPRAY
             local pVal = fdE and ((cellE and cellE.pestPressure)    or (fdE.pestPressure    or 0)) or 0
             local dVal = fdE and ((cellE and cellE.diseasePressure) or (fdE.diseasePressure or 0)) or 0
-            local wVal = fdE and (fdE.weedPressure or 0) or 0  -- field-level only (always current)
+            local wVal = fdE and ((cellE and cellE.weedPressure) or (fdE.weedPressure or 0)) or 0
             local weedProtected = fdE and ((fdE.herbicideDaysLeft or 0) > 0)
             local anyAbove = (pOn and pVal >= ssCfgE.PEST_THRESHOLD)
                           or (dOn and dVal >= ssCfgE.DISEASE_THRESHOLD)
@@ -339,17 +339,15 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
     local diseaseOn = sensorMgr:isSeeSprayDiseaseEnabled(vehicleId)
     local weedOn    = sensorMgr:isSeeSprayWeedEnabled(vehicleId)
 
-    -- Per-cell values (fall back to field average).
-    -- Weed uses field-level pressure only (always current); cell.weedPressure is
-    -- only synced on the daily tick so it would show a stale value after herbicide.
+    -- Per-cell values (fall back to field average)
     local cellPest, cellDisease, cellWeed = 0, 0, 0
     if fd then
         cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
         cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
-        cellWeed    = fd.weedPressure or 0
+        cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
     end
 
-    -- For weed: also treat herbicide protection period as "no weeds" in the display
+    -- Herbicide protection active → field already sprayed, weeds dying → show as clean
     local herbicideActive = fd and ((fd.herbicideDaysLeft or 0) > 0)
     local weedAboveThreshold = (cellWeed >= ssCfg.WEED_THRESHOLD) and not herbicideActive
 
