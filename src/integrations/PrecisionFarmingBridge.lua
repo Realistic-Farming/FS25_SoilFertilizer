@@ -52,18 +52,27 @@ end
 --- Must be called after mission is fully ready (deferred init phase).
 ---@return boolean isActive
 function PrecisionFarmingBridge:initialize()
-    -- Primary: check g_modManager for the PF mod entry
-    local pfMod = nil
+    -- Primary: check g_modManager for an ENABLED (isLoaded=true) PF entry.
+    -- A mod in the mods folder but disabled will have isLoaded=false — we ignore it.
+    local pfEnabled = false
     if g_modManager then
-        local ok, result = pcall(function()
+        local ok, pfMod = pcall(function()
             return g_modManager:getModByName("FS25_precisionFarming")
         end)
-        if ok then pfMod = result end
+        if ok and pfMod and pfMod.isLoaded == true then
+            pfEnabled = true
+            SoilLogger.info("[PFBridge] PF enabled via mod manager: %s v%s",
+                tostring(pfMod.modName or pfMod.name or "?"),
+                tostring(pfMod.version or "?"))
+        elseif ok and pfMod then
+            SoilLogger.info("[PFBridge] Precision Farming in mods folder but disabled — standalone mode")
+            return false
+        end
     end
 
-    if pfMod == nil then
-        -- Secondary: check if PF's specializations were registered (vehicle spec check)
-        -- g_specializationManager is shared and populated by all mods at load time
+    -- Secondary: if g_modManager missed it, check the specialization registry.
+    -- Only an enabled, loaded mod registers its specializations at startup.
+    if not pfEnabled then
         local hasPFSpec = false
         if g_specializationManager then
             local ok, spec = pcall(function()
@@ -77,11 +86,7 @@ function PrecisionFarmingBridge:initialize()
             return false
         end
 
-        SoilLogger.info("[PFBridge] PF detected via specialization registry (g_modManager miss)")
-    else
-        SoilLogger.info("[PFBridge] PF detected via g_modManager: %s v%s",
-            tostring(pfMod.modName or pfMod.name or "?"),
-            tostring(pfMod.version or "?"))
+        SoilLogger.info("[PFBridge] PF detected via specialization registry (mod manager miss)")
     end
 
     -- PF is confirmed active. Map API is not cross-mod accessible (PF uses its
