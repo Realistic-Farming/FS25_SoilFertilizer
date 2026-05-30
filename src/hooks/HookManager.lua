@@ -4261,16 +4261,13 @@ function HookManager:installSprayerVisualEffectHook()
             end
 
             if not vanillaFillType then
-                -- Vanilla fill type (e.g. HERBICIDE): apply speed gate so effects stop when stationary.
-                -- The vanilla game starts effects each tick before our appended hook runs; we stop them
-                -- once on each stationary→moving transition (state-tracked to avoid per-tick calls).
+                -- Vanilla fill type (e.g. HERBICIDE): stop effects every tick when stationary.
+                -- We run AFTER the vanilla onUpdateTick (appendedFunction), so vanilla may restart
+                -- effects each tick. State-change guards don't work here — must suppress every tick.
+                -- g_effectManager:stopEffects is a no-op when effects are already stopped.
                 local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
-                local wantStopped = speed < 0.5
-                if wantStopped ~= spec._soilVanillaStopActive then
-                    spec._soilVanillaStopActive = wantStopped
-                    if wantStopped then
-                        stopSprayerEffects(sprayerSelf)
-                    end
+                if speed < 0.5 then
+                    stopSprayerEffects(sprayerSelf)
                 end
                 return
             end
