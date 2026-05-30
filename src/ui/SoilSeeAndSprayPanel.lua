@@ -217,10 +217,11 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
             local ssCfgE = SoilConstants.SEE_AND_SPRAY
             local pVal = fdE and ((cellE and cellE.pestPressure)    or (fdE.pestPressure    or 0)) or 0
             local dVal = fdE and ((cellE and cellE.diseasePressure) or (fdE.diseasePressure or 0)) or 0
-            local wVal = fdE and ((cellE and cellE.weedPressure)    or (fdE.weedPressure    or 0)) or 0
+            local wVal = fdE and (fdE.weedPressure or 0) or 0  -- field-level only (always current)
+            local weedProtected = fdE and ((fdE.herbicideDaysLeft or 0) > 0)
             local anyAbove = (pOn and pVal >= ssCfgE.PEST_THRESHOLD)
                           or (dOn and dVal >= ssCfgE.DISEASE_THRESHOLD)
-                          or (wOn and wVal >= ssCfgE.WEED_THRESHOLD)
+                          or (wOn and not weedProtected and wVal >= ssCfgE.WEED_THRESHOLD)
             allSuppressed = not anyAbove
         end
     end
@@ -338,13 +339,19 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
     local diseaseOn = sensorMgr:isSeeSprayDiseaseEnabled(vehicleId)
     local weedOn    = sensorMgr:isSeeSprayWeedEnabled(vehicleId)
 
-    -- Per-cell values (fall back to field average)
+    -- Per-cell values (fall back to field average).
+    -- Weed uses field-level pressure only (always current); cell.weedPressure is
+    -- only synced on the daily tick so it would show a stale value after herbicide.
     local cellPest, cellDisease, cellWeed = 0, 0, 0
     if fd then
         cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
         cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
-        cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
+        cellWeed    = fd.weedPressure or 0
     end
+
+    -- For weed: also treat herbicide protection period as "no weeds" in the display
+    local herbicideActive = fd and ((fd.herbicideDaysLeft or 0) > 0)
+    local weedAboveThreshold = (cellWeed >= ssCfg.WEED_THRESHOLD) and not herbicideActive
 
     local function cellVal(val, threshold, on)
         if not on or not fd then return "" end
@@ -362,7 +369,7 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
           aboveThreshold = cellDisease >= ssCfg.DISEASE_THRESHOLD },
         { label = g_i18n:getText("sf_see_spray_weed"),    on = weedOn,    key = keyWeed,
           val = cellVal(cellWeed,    ssCfg.WEED_THRESHOLD,    weedOn),
-          aboveThreshold = cellWeed    >= ssCfg.WEED_THRESHOLD    },
+          aboveThreshold = weedAboveThreshold },
     }
 
     local fs    = 0.0075 * s

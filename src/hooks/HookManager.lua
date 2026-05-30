@@ -1240,12 +1240,19 @@ function HookManager:installSeeAndSprayHook()
 
                             local cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
                             local cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
-                            local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
+                            -- Weed: use field-level pressure (always current via onHerbicideAppliedDirect)
+                            -- rather than cell data (only synced on the daily tick).
+                            local cellWeed    = fd.weedPressure or 0
 
                             local skip = false
                             if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
                             if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
-                            if weedSS    then skip = skip or (cellWeed    < ssCfg.WEED_THRESHOLD)    end
+                            if weedSS    then
+                                -- Suppress when pressure is below threshold OR when herbicide
+                                -- protection is already active (field was recently sprayed).
+                                local herbicideActive = (fd.herbicideDaysLeft or 0) > 0
+                                skip = skip or (cellWeed < ssCfg.WEED_THRESHOLD) or herbicideActive
+                            end
                             if skip then section.isActive = false end
                         end
                     end
