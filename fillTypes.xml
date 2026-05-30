@@ -232,24 +232,22 @@
 
     <fillTypeCategories>
         <!--
-            Use the NATIVE FS25 category names FERTILIZER and LIQUIDFERTILIZER instead of
-            custom names like SPREADER/SPRAYER.
-
-            Vanilla FS25 equipment (e.g. Case IH spreaders, Amazone sprayers) has fill units
-            that accept the FERTILIZER or LIQUIDFERTILIZER category. If we define a category
-            called "SPREADER", vanilla equipment never matches it because their XML only
-            references "FERTILIZER" — not our new name. By extending the native category
-            names, any spreader that already accepts FERTILIZER will automatically also
-            accept UREA, AMS, MAP, DAP, POTASH without any equipment mod changes.
+            Extend the NATIVE FS25 FERTILIZER category with our custom dry types.
+            Vanilla spreaders, bigBag specialization fill checks, and any other category-based
+            lookup all use "FERTILIZER" — extending it here means our custom types pass
+            every check automatically, including the BigBag fill trigger.
+            The Lua installFillUnitHook also patches supportedFillTypes directly as a
+            belt-and-suspenders fallback for vehicles that use name-based (not category-based)
+            fill unit definitions.
         -->
-        <fillTypeCategory name="SPREADER">FERTILIZER UREA AN AMS MAP DAP POTASH GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
+        <fillTypeCategory name="FERTILIZER">FERTILIZER UREA AN AMS MAP DAP POTASH GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE POLIFOSKA</fillTypeCategory>
 
         <!--
             Same principle for liquid sprayers — extend LIQUIDFERTILIZER so vanilla sprayers
             that already accept LIQUIDFERTILIZER will also accept our liquid nitrogen products
             and starter fertilizer.
         -->
-        <fillTypeCategory name="SPRAYER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
+        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
     </fillTypeCategories>
 
 </map>

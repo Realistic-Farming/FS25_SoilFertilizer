@@ -359,6 +359,7 @@ function SoilHUD:calculateHeight()
 
         h = h + SoilHUD.ROW_H   -- pH bar row
         h = h + SoilHUD.LINE_H  -- OM text row
+        h = h + SoilHUD.LINE_H  -- gap between OM row and divider (matches drawPanel extra subtract)
         h = h + SoilHUD.PAD * 1.3
         
         local mgr = g_SoilFertilityManager
@@ -366,7 +367,7 @@ function SoilHUD:calculateHeight()
             if mgr.settings.weedPressure and (info.weedPressure or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.pestPressure and (info.pestPressure or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.diseasePressure and (info.diseasePressure or 0) > 0 then h = h + SoilHUD.LINE_H end
-            if (info.sessionCoverageFraction or info.coverageFraction or 0) > 0 then h = h + SoilHUD.LINE_H end
+            if self._cachedSprayer and (info.sessionCoverageFraction or info.coverageFraction or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then h = h + SoilHUD.LINE_H end
         end
         if info.yieldEfficiency then h = h + SoilHUD.LINE_H end
@@ -639,7 +640,9 @@ function SoilHUD:update(dt)
                 pcall(setRotation, cam, self.savedCamRotX, self.savedCamRotY, self.savedCamRotZ)
             end
         end
-        -- Vehicle camera freeze: restore spec_cameraSystem rotX/rotY each frame
+        -- Vehicle camera freeze: restore rotX/rotY and push to the scene node each frame.
+        -- Setting ac.rotX/Y alone isn't enough — VehicleCamera calls setRotation(rotateNode)
+        -- BEFORE our update runs (APPEND hook), so we must re-apply to the actual scene node.
         if self.savedVehicleCamRotX ~= nil then
             local cv = g_currentMission and g_currentMission.controlledVehicle
             if cv and cv.spec_cameraSystem then
@@ -647,6 +650,10 @@ function SoilHUD:update(dt)
                 if ac then
                     ac.rotX = self.savedVehicleCamRotX
                     ac.rotY = self.savedVehicleCamRotY
+                    local node = ac.rotateNode or ac.cameraNode
+                    if node and setRotation then
+                        pcall(setRotation, node, self.savedVehicleCamRotX, self.savedVehicleCamRotY, 0)
+                    end
                 end
             end
         end
@@ -1224,9 +1231,9 @@ function SoilHUD:drawPanel()
                     info.fungicideActive, px, cy, pw, s, fontMult)
             end
 
-            -- Coverage row: session fraction (survives daily resets) with product label
+            -- Coverage row: only show when player is actively in a fertilizer applicator
             local cov = info.sessionCoverageFraction or info.coverageFraction or 0
-            if cov > 0 then
+            if self._cachedSprayer and cov > 0 then
                 local minCov = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
                 local covPct = math.floor(cov * 100 + 0.5)
                 local covText
@@ -2006,11 +2013,17 @@ function SoilHUD:drawSprayerRatePanel()
                     pH = defaults.pH,
                     OM = defaults.OM,
                 } or defaults
-                local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
-                if profile.N and profile.N > 0 then targetText = targetText .. math.floor(targets.N * (ppm.N or 1) + 0.5) .. "N " end
-                if profile.P and profile.P > 0 then targetText = targetText .. math.floor(targets.P * (ppm.P or 1) + 0.5) .. "P " end
-                if profile.K and profile.K > 0 then targetText = targetText .. math.floor(targets.K * (ppm.K or 1) + 0.5) .. "K " end
-                if profile.pH and profile.pH > 0 then targetText = targetText .. targets.pH .. "pH " end
+                local isOMPrimary = SoilConstants.OM_PRIMARY_PRODUCTS and SoilConstants.OM_PRIMARY_PRODUCTS[fillType.name]
+                if isOMPrimary then
+                    -- OM-primary products target organic matter, not N/P/K
+                    targetText = targetText .. string.format("%.1f", targets.OM) .. "% OM"
+                else
+                    local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
+                    if profile.N and profile.N > 0 then targetText = targetText .. math.floor(targets.N * (ppm.N or 1) + 0.5) .. "N " end
+                    if profile.P and profile.P > 0 then targetText = targetText .. math.floor(targets.P * (ppm.P or 1) + 0.5) .. "P " end
+                    if profile.K and profile.K > 0 then targetText = targetText .. math.floor(targets.K * (ppm.K or 1) + 0.5) .. "K " end
+                    if profile.pH and profile.pH > 0 then targetText = targetText .. targets.pH .. "pH " end
+                end
                 setTextColor(0.7, 0.9, 0.7, 0.8)
                 renderText(cx, scrollY - self:py(6)*s, 0.008 * fontMult * s, targetText)
             end

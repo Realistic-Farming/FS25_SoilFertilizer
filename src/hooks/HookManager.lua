@@ -651,6 +651,8 @@ function HookManager:installSprayTypeEffectsHook()
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     -- Liquid custom types visually match LIQUIDFERTILIZER spraying
+    -- HERBICIDE is included so it gets added to LIQUIDFERTILIZER slots (full-boom spray),
+    -- but it is a vanilla fill type and must NOT be stripped from HERBICIDE-only slots in Pass 2.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
@@ -660,6 +662,11 @@ function HookManager:installSprayTypeEffectsHook()
     local solidNameSet  = {}
     for _, n in ipairs(liquidNames) do liquidNameSet[string.upper(n)] = true end
     for _, n in ipairs(solidNames)  do solidNameSet[string.upper(n)]  = true end
+
+    -- Pass 2 must NOT strip vanilla fill type names from their native slots.
+    -- HERBICIDE is a vanilla type that lives in HERBICIDE-only slots — removing it would
+    -- break herbicide application. Only strip our own custom types.
+    local vanillaNames = { HERBICIDE = true }  -- extend if more vanilla types added to liquidNames
 
     -- Shared helper: walk a vehicle's sprayType entries and inject our names.
     --
@@ -731,7 +738,8 @@ function HookManager:installSprayTypeEffectsHook()
                 if not hasFert and not hasLiqFert then
                     for i = #st.fillTypes, 1, -1 do
                         local upper = string.upper(st.fillTypes[i])
-                        if liquidNameSet[upper] or solidNameSet[upper] then
+                        -- Don't strip vanilla fill type names — only strip our custom injected names
+                        if not vanillaNames[upper] and (liquidNameSet[upper] or solidNameSet[upper]) then
                             table.remove(st.fillTypes, i)
                         end
                     end
@@ -856,23 +864,30 @@ function HookManager:installDensityMapSprayHook()
         return false
     end
 
-    local liqST = g_sprayTypeManager:getSprayTypeByName("LIQUIDFERTILIZER")
-    local dryST = g_sprayTypeManager:getSprayTypeByName("FERTILIZER")
+    local liqST  = g_sprayTypeManager:getSprayTypeByName("LIQUIDFERTILIZER")
+    local dryST  = g_sprayTypeManager:getSprayTypeByName("FERTILIZER")
+    local limeST = g_sprayTypeManager:getSprayTypeByName("LIME")
 
     if not liqST and not dryST then
         SoilLogger.warning("DensityMap spray hook: vanilla spray types not found - skipping")
         return false
     end
 
-    local liqIdx = liqST and liqST.index
-    local dryIdx = dryST and dryST.index
+    local liqIdx  = liqST  and liqST.index
+    local dryIdx  = dryST  and dryST.index
+    local limeIdx = limeST and limeST.index
 
     -- Build remap: customSprayTypeIndex → vanillaSprayTypeIndex
-    local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-                          "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
+    -- LIQUIDLIME is excluded from liquidNames here — it must remap to LIME (not LIQUIDFERTILIZER)
+    -- so FSDensityMapUtil.updateSprayArea writes the lime ground state, not the fertilizer state.
+    -- HERBICIDE is excluded — it must keep its native HERBICIDE spray type for weed density map.
+    local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
+                          "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
+    -- LIQUIDLIME must remap to LIME so FSDensityMapUtil writes the lime ground state
+    local limeNames   = { "LIQUIDLIME" }
 
     local remap = {}
     if liqIdx then
@@ -885,6 +900,12 @@ function HookManager:installDensityMapSprayHook()
         for _, name in ipairs(solidNames) do
             local st = g_sprayTypeManager:getSprayTypeByName(name)
             if st then remap[st.index] = dryIdx end
+        end
+    end
+    if limeIdx then
+        for _, name in ipairs(limeNames) do
+            local st = g_sprayTypeManager:getSprayTypeByName(name)
+            if st then remap[st.index] = limeIdx end
         end
     end
 
@@ -2768,7 +2789,7 @@ function HookManager:installFillUnitHookEarly()
     local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base)
-    local manureCompatNames  = {"BIOSOLIDS", "CHICKEN_MANURE"}
+    local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
 
     local original = FillUnit.onPostLoad
     FillUnit.onPostLoad = Utils.prependedFunction(original, function(vehicleSelf)
@@ -2883,8 +2904,8 @@ function HookManager:installFillUnitHook()
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM"}
     local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
-    -- These organic dry types also work in manure spreaders (MANURE fill-unit base).
-    local manureCompatNames = {"BIOSOLIDS", "CHICKEN_MANURE"}
+    -- Organic dry types also work in manure spreaders (MANURE fill-unit base).
+    local manureCompatNames = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- Store for deferred re-patch (dedi server timing fix)
     self._fuSolidNames  = solidNames
     self._fuLiquidNames = liquidNames

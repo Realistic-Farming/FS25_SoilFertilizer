@@ -24,11 +24,14 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed PDA tab icon invisible (transparent color fixed)",
-    "- Fixed PDA Farm Overview missing OM column (added between pH and Status)",
-    "- Fixed Field Detail dialog content clipping (dialog height increased to 700px)",
-    "- Fixed shop: all big bags and liquid tanks were missing (objects/ folder in build)",
-    "- Added full translation support for Soil Guide dialog (216 l10n keys, 26 languages)",
+    "- Fixed soil monitor HUD layout: compaction, coverage and hint rows overflowed the panel",
+    "- Fixed coverage % (Pass%) hidden when not in a fertilizer applicator",
+    "- Fixed liquid lime not writing lime ground layer to field (white overlay missing)",
+    "- Fixed OM-spreading products (COMPOST, MANURE, etc.) showing N/P/K targets in auto rate display",
+    "- Fixed edit mode camera orbit no longer drifts (scene node rotation now frozen)",
+    "- Fixed vanilla HERBICIDE spray type inadvertently stripped from HERBICIDE-only sprayer slots",
+    "- Fixed all custom solid fertilizers (UREA, MAP, etc.) unable to fill spreaders via big bag",
+    "- Organic dry types (COMPOST, PELLETIZED MANURE) now also accepted by dedicated manure spreaders",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
