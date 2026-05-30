@@ -32,6 +32,10 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed version dialog not appearing on load when mod was previously disabled",
     "- Fixed Precision Farming detection incorrectly triggering when PF is installed but disabled",
     "- Fixed startup crash when fill type categories return indices instead of descriptors",
+    "- Fixed See & Spray weed detection now uses game density map as ground truth (no more stale pressure reads)",
+    "- Fixed dedicated server fertilizer broadcast throttle — switching N→K now immediately updates client bars",
+    "- Fixed overlay tiles pre-populated on session load — N/P/K/OM/pH map tiles show at full opacity from start",
+    "- Fixed field boundary control now also suppresses boom sections that cross into adjacent fields",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

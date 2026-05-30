@@ -1684,6 +1684,10 @@ end
 
 -- ── Zone Data Pre-Population ──────────────────────────────────────────────────
 
+-- Maximum zone cells stored per field. Prevents unbounded memory growth and network
+-- packet overflow on large/intensively-farmed fields (see markBoomCells, applyFertilizer).
+local MAX_ZONE_CELLS = 1000
+
 -- Ray-casting point-in-polygon (XZ plane). verts: array of {x, z}.
 local function _isPointInPoly(px, pz, verts)
     local n = #verts
@@ -2364,10 +2368,6 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
         (sr > 0 and areaHa > 0) and (areaHa / fieldAreaHa) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE or 0
     )
 end
-
--- Maximum zone cells stored per field. Prevents unbounded memory growth and network
--- packet overflow on large/intensively-farmed fields (see markBoomCells, applyFertilizer).
-local MAX_ZONE_CELLS = 1000
 
 -- Apply fertilizer
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
