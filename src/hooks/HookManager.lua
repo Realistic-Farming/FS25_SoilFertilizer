@@ -4262,7 +4262,9 @@ function HookManager:installSprayerVisualEffectHook()
 
             if not vanillaFillType then return end  -- not our custom type, nothing to manage
 
-            local effectsVisible = sprayerSelf:getAreEffectsVisible()
+            -- Gate on speed: no visual spray when standing still (matches our nutrient hook guard)
+            local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
+            local effectsVisible = sprayerSelf:getAreEffectsVisible() and speed >= 0.5
 
             -- Suppress effects while the fold animation is actively running mid-travel.
             -- Courseplay folds the implement before filling completes, leaving effects stuck on.
