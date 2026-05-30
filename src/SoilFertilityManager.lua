@@ -715,7 +715,7 @@ function SoilFertilityManager:onMissionStarted()
         -- We do NOT save the version here — that's done only by "Don't Show Again".
         -- "OK" just closes the dialog; the player will see it again next boot until
         -- they explicitly dismiss it with "Don't Show Again".
-        if SoilVersionDialog and SoilVersionDialog.INSTANCE ~= nil then
+        if SoilVersionDialog then
             local modInfo = g_modManager and g_modManager:getModByName(self.modName)
             local version = (modInfo and modInfo.version) or "?"
             SoilLogger.info("Version check: save=%s mod=%s", tostring(self.lastSeenVersion), tostring(version))

@@ -1561,13 +1561,12 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
         self:drawRect(barX, barY, barW * fill, barH, col)
     end
 
-    -- Value + protection tag — vertically centred in row
+    -- Value + protection tag — left-aligned right after bar (matches N/P/K value position)
     local label = string.format("%.0f%%", pressure)
     if isProtected then label = label .. " " .. g_i18n:getText("sf_hud_protected") end
-    setTextAlignment(RenderText.ALIGN_RIGHT)
-    setTextColor(col[1], col[2], col[3], 1.0)
-    renderText(px + pw - pad, cy + (rowH - textSize) * 0.5, textSize, label)
     setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(col[1], col[2], col[3], 1.0)
+    renderText(barX + barW + 0.006*s, cy + (rowH - textSize) * 0.5, textSize, label)
 
     return cy
 end
