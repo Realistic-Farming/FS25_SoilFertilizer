@@ -421,14 +421,17 @@ function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters)
         if overlay then overlay:requestRefresh() end
     end
 
-    -- Broadcast to clients in multiplayer, throttled to once every 5 seconds per field
-    -- to avoid flooding the network with 30+ events/second while a sprayer is running.
+    -- Broadcast to clients in multiplayer, throttled to once every 5 seconds per
+    -- field+product combination. Keying on fillTypeIndex means switching fertilizer
+    -- types (e.g. N → K) triggers an immediate first broadcast for the new product,
+    -- rather than inheriting the cooldown from the previous product's last broadcast.
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo and g_currentMission.missionDynamicInfo.isMultiplayer then
         local now = g_currentMission.time or 0
         if not self._fertBroadcastTime then self._fertBroadcastTime = {} end
-        local last = self._fertBroadcastTime[fieldId] or 0
+        local bKey = fieldId .. "_" .. tostring(fillTypeIndex)
+        local last = self._fertBroadcastTime[bKey] or 0
         if (now - last) >= 5000 then
-            self._fertBroadcastTime[fieldId] = now
+            self._fertBroadcastTime[bKey] = now
             local field = self.fieldData[fieldId]
             if field and SoilFieldUpdateEvent then
                 g_server:broadcastEvent(SoilFieldUpdateEvent.new(fieldId, field))
@@ -1671,7 +1674,166 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
 
     self:log("Lazy-created field %d area=%.2f ha confirmed=%s",
         fieldId, self.fieldData[fieldId].fieldArea, tostring(confirmedArea))
+
+    -- Pre-populate zone tiles immediately so the overlay shows at full opacity
+    -- as soon as a new field is created (e.g. on farmland purchase).
+    self:_prePopulateZoneData(fieldId)
+
     return self.fieldData[fieldId]
+end
+
+-- ── Zone Data Pre-Population ──────────────────────────────────────────────────
+
+-- Maximum zone cells stored per field. Prevents unbounded memory growth and network
+-- packet overflow on large/intensively-farmed fields (see markBoomCells, applyFertilizer).
+local MAX_ZONE_CELLS = 1000
+
+-- Ray-casting point-in-polygon (XZ plane). verts: array of {x, z}.
+local function _isPointInPoly(px, pz, verts)
+    local n = #verts
+    if n < 3 then return false end
+    local inside = false
+    local j = n
+    for i = 1, n do
+        local xi, zi = verts[i].x, verts[i].z
+        local xj, zj = verts[j].x, verts[j].z
+        if ((zi > pz) ~= (zj > pz)) and
+           (px < (xj - xi) * (pz - zi) / (zj - zi) + xi) then
+            inside = not inside
+        end
+        j = i
+    end
+    return inside
+end
+
+-- Pre-populate zoneData for a single field so overlay tiles show at full opacity on load.
+-- Samples the field polygon at CELL_SIZE step, clamps total cells to MAX_ZONE_CELLS.
+function SoilFertilitySystem:_prePopulateZoneData(fieldId)
+    local field = self.fieldData[fieldId]
+    if not field then return end
+    -- Skip if already populated (sprayer has already been active this session)
+    if next(field.zoneData) ~= nil then return end
+
+    -- Find the FS25 field object (farmland-keyed) from g_fieldManager
+    local fsField = nil
+    if g_fieldManager and g_fieldManager.fields then
+        for _, f in ipairs(g_fieldManager.fields) do
+            if f and f.farmland and f.farmland.id == fieldId then
+                fsField = f
+                break
+            end
+        end
+    end
+    if not fsField then return end
+
+    -- Collect polygon vertices
+    local polyNodes = fsField.polygonPoints
+    local verts = {}
+    if polyNodes and #polyNodes > 0 then
+        for i = 1, #polyNodes do
+            local nodeId = polyNodes[i]
+            if nodeId and nodeId ~= 0 then
+                local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
+                if ok and wx then
+                    table.insert(verts, {x = wx, z = wz})
+                end
+            end
+        end
+    end
+
+    -- Fallback to centroid only if polygon unavailable
+    if #verts < 3 then
+        if fsField.posX and fsField.posZ then
+            local zone = SoilConstants.ZONE
+            local cx = math.floor(fsField.posX / zone.CELL_SIZE)
+            local cz = math.floor(fsField.posZ / zone.CELL_SIZE)
+            local cellKey = tostring(cx * 10000 + cz)
+            field.zoneData[cellKey] = {
+                N = field.nitrogen, P = field.phosphorus, K = field.potassium,
+                pH = field.pH, OM = field.organicMatter,
+                weedPressure = field.weedPressure or 0,
+                pestPressure = field.pestPressure or 0,
+                diseasePressure = field.diseasePressure or 0,
+                compaction = field.compaction or 0,
+            }
+        end
+        return
+    end
+
+    -- Bounding box
+    local minX, maxX = verts[1].x, verts[1].x
+    local minZ, maxZ = verts[1].z, verts[1].z
+    for i = 2, #verts do
+        if verts[i].x < minX then minX = verts[i].x end
+        if verts[i].x > maxX then maxX = verts[i].x end
+        if verts[i].z < minZ then minZ = verts[i].z end
+        if verts[i].z > maxZ then maxZ = verts[i].z end
+    end
+
+    local zone = SoilConstants.ZONE
+    local step = zone.CELL_SIZE  -- 10 m baseline
+
+    -- Adaptive coarsening: if estimated cell count exceeds MAX_ZONE_CELLS, widen step
+    local bboxW = maxX - minX
+    local bboxH = maxZ - minZ
+    local estCells = math.ceil(bboxW / step) * math.ceil(bboxH / step)
+    if estCells > MAX_ZONE_CELLS then
+        -- Scale step up so total fits, with a generous multiplier
+        step = step * math.ceil(math.sqrt(estCells / MAX_ZONE_CELLS))
+    end
+
+    -- Snapshot current field-average values once (avoids repeated table lookups)
+    local fN  = field.nitrogen
+    local fP  = field.phosphorus
+    local fK  = field.potassium
+    local fPH = field.pH
+    local fOM = field.organicMatter
+    local fW  = field.weedPressure or 0
+    local fPe = field.pestPressure or 0
+    local fD  = field.diseasePressure or 0
+    local fC  = field.compaction or 0
+
+    local count = 0
+    local startX = minX + step * 0.5
+    local startZ = minZ + step * 0.5
+    local x = startX
+    while x <= maxX and count < MAX_ZONE_CELLS do
+        local z = startZ
+        while z <= maxZ and count < MAX_ZONE_CELLS do
+            if _isPointInPoly(x, z, verts) then
+                local cx2 = math.floor(x / zone.CELL_SIZE)
+                local cz2 = math.floor(z / zone.CELL_SIZE)
+                local cellKey = tostring(cx2 * 10000 + cz2)
+                if not field.zoneData[cellKey] then
+                    field.zoneData[cellKey] = {
+                        N = fN, P = fP, K = fK,
+                        pH = fPH, OM = fOM,
+                        weedPressure = fW,
+                        pestPressure = fPe,
+                        diseasePressure = fD,
+                        compaction = fC,
+                    }
+                    count = count + 1
+                end
+            end
+            z = z + step
+        end
+        x = x + step
+    end
+
+    SoilLogger.debug("Pre-populated zone data: field %d, %d cells (step=%.0fm)", fieldId, count, step)
+end
+
+-- Pre-populate zone data for ALL loaded fields that have empty zoneData.
+-- Called once after loadSoilData() so overlay tiles are visible from session start.
+function SoilFertilitySystem:prePopulateAllZoneData()
+    if not (g_fieldManager and g_fieldManager.fields) then return end
+    local count = 0
+    for fieldId in pairs(self.fieldData) do
+        self:_prePopulateZoneData(fieldId)
+        count = count + 1
+    end
+    SoilLogger.info("Zone data pre-population complete: %d field(s) processed", count)
 end
 
 -- Daily soil update — PHASE 4: converted to batch scheduler.
@@ -2207,10 +2369,6 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     )
 end
 
--- Maximum zone cells stored per field. Prevents unbounded memory growth and network
--- packet overflow on large/intensively-farmed fields (see markBoomCells, applyFertilizer).
-local MAX_ZONE_CELLS = 1000
-
 -- Apply fertilizer
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     if not self.settings.enabled then return end
@@ -2241,9 +2399,11 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     local isOMAmendment   = entry.OM and not (entry.pH and entry.pH > 0)
     if (isLimeAmendment or isOMAmendment) and not field._amendBurnNotified then
         local spx, spz = self._lastSprayX, self._lastSprayZ
-        if spx and spz and g_fieldManager then
-            local ok, fsField = pcall(g_fieldManager.getFieldAtWorldPosition, g_fieldManager, spx, spz)
-            if ok and fsField and (fsField.fruitType or 0) > 0 then
+        if spx and spz and g_farmlandManager then
+            local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
+            local fsField = farmlandTmp and g_fieldManager and g_fieldManager.farmlandIdFieldMapping and g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
+            local hasCrop = fsField and fsField.fieldState and fsField.fieldState.fruitTypeIndex and fsField.fieldState.fruitTypeIndex ~= FruitType.UNKNOWN
+            if hasCrop then
                 if isLimeAmendment then
                     field.amendBurnPenalty = 0.80
                     field._amendBurnNotified = true
@@ -2270,8 +2430,14 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     if not field._farmlandAreaConfirmed and g_farmlandManager then
         local farmlandObj = g_farmlandManager:getFarmlandById(fieldId)
         if farmlandObj and farmlandObj.areaInHa and farmlandObj.areaInHa > 0 then
-            -- Try crop polygon area first via world-position lookup
-            local cropField = g_fieldManager and g_fieldManager:getFieldAtWorldPosition(rootX, rootZ)
+            -- Try crop polygon area via farmland mapping (g_fieldManager has no getFieldAtWorldPosition)
+            local cropField = nil
+            if g_farmlandManager and self._lastSprayX and self._lastSprayZ then
+                local _fl = g_farmlandManager:getFarmlandAtWorldPosition(self._lastSprayX, self._lastSprayZ)
+                if _fl and g_fieldManager and g_fieldManager.farmlandIdFieldMapping then
+                    cropField = g_fieldManager.farmlandIdFieldMapping[_fl.id]
+                end
+            end
             local cropArea  = cropField and cropField.areaHa
             if cropArea and math.abs(cropArea - 1.0) > 0.05 then
                 field.fieldArea = cropArea
@@ -2343,17 +2509,15 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
-        -- Sync all existing zone cells with the same delta applied to the field average.
-        -- Without this, cells created before a spray job keep their old values while the
-        -- HUD average climbs, causing the cell report panel to show values wildly out of
-        -- step with the field average (reported by Seb, May 2026 — K 39 vs avg 244).
-        if field.zoneData then
+        -- pH bulk sync: lime raises pH field-wide so all cells track it uniformly.
+        -- N/P/K/OM are NOT bulk-synced — cells visited by the boom (markBoomCells)
+        -- get the updated field average written there, while unvisited pre-populated
+        -- cells keep their initial value. This creates spatial differentiation on the
+        -- overlay map: freshly-sprayed areas show higher nutrient values than areas
+        -- the boom hasn't reached yet.
+        if entry.pH and field.zoneData then
             for _, cell in pairs(field.zoneData) do
-                if entry.N  then cell.N  = math.min(limits.MAX,                     cell.N  + entry.N  * factor) end
-                if entry.P  then cell.P  = math.min(limits.MAX,                     cell.P  + entry.P  * factor) end
-                if entry.K  then cell.K  = math.min(limits.MAX,                     cell.K  + entry.K  * factor) end
-                if entry.pH then cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX,  cell.pH + entry.pH * factor)) end
-                if entry.OM then cell.OM = math.max(0, math.min(limits.ORGANIC_MATTER_MAX,  cell.OM + entry.OM * factor)) end
+                cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * factor))
             end
         end
 
@@ -2391,10 +2555,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
 
         -- Write updated values to density map layers (per-pixel, at sprayer position)
         if self.layerSystem and self.layerSystem.available then
-            local x, _, z = getWorldTranslation(0)  -- fallback; sprayer hook sets vehicle pos via soilSystem
-            if self._lastSprayX and self._lastSprayZ then
-                x, z = self._lastSprayX, self._lastSprayZ
-            end
+            local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
                 if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
                 if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
@@ -3397,6 +3558,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         end
         if pushed > 0 then
             self:info("Pushed %d fields to density map layers after load", pushed)
+            self.layerSystem.hasData = true
         end
     end
 

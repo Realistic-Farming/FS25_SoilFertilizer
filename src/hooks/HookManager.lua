@@ -1028,13 +1028,15 @@ function HookManager:installSectionControlHook()
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
             -- Field Boundary Enforcement: suppress boom sections whose outer tip
-            -- extends outside all farmland. Independent of Smart Sensor — applies
-            -- to every fill type when the admin setting is enabled.
+            -- extends outside the current field polygon or onto an adjacent field.
+            -- Independent of Smart Sensor — applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
                 if vwwBE and vwwBE.sections and #vwwBE.sections > 0 then
                     local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
                     if rx then
+                        -- Determine which field the vehicle center is currently on.
+                        local vehicleFieldId = hookMgrRef:getFieldIdAtWorldPosition(rx, rz)
                         for _, section in ipairs(vwwBE.sections) do
                             if section.isActive and not section.isCenter then
                                 local sx, sz = rx, rz
@@ -1043,7 +1045,9 @@ function HookManager:installSectionControlHook()
                                     if ok and wx then sx = wx; sz = wz end
                                 end
                                 local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                                if not fid or fid <= 0 then
+                                -- Suppress if tip is on unfarmed ground OR a different field.
+                                if not fid or fid <= 0 or
+                                   (vehicleFieldId and vehicleFieldId > 0 and fid ~= vehicleFieldId) then
                                     section.isActive = false
                                 end
                             end
@@ -1177,6 +1181,29 @@ function HookManager:installSeeAndSprayHook()
 
     local hookMgrRef = self
 
+    -- Cache of fieldId → fieldState (or false if unavailable). Built lazily per session.
+    local weedFieldStates = {}
+    local function getWeedFieldState(fieldId)
+        if weedFieldStates[fieldId] == nil then
+            local weedSys = g_currentMission and g_currentMission.weedSystem
+            if not weedSys then weedFieldStates[fieldId] = false; return nil end
+            local ok, fields = pcall(function() return weedSys:getFields() end)
+            if not ok or not fields then weedFieldStates[fieldId] = false; return nil end
+            for _, fsField in ipairs(fields) do
+                local fid = fsField.fieldId or fsField.id
+                if fid == fieldId then
+                    local fsok, fs = pcall(function() return fsField:getFieldState() end)
+                    if fsok and fs then
+                        weedFieldStates[fieldId] = fs
+                        return fs
+                    end
+                end
+            end
+            weedFieldStates[fieldId] = false
+        end
+        return weedFieldStates[fieldId] or nil
+    end
+
     local origStart = Sprayer.onStartWorkAreaProcessing
     Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         Sprayer.onStartWorkAreaProcessing,
@@ -1245,7 +1272,27 @@ function HookManager:installSeeAndSprayHook()
                             local skip = false
                             if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
                             if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
-                            if weedSS    then skip = skip or (cellWeed    < ssCfg.WEED_THRESHOLD)    end
+                            if weedSS    then
+                                local herbicideActive = (fd.herbicideDaysLeft or 0) > 0
+                                local weedsGone = herbicideActive
+                                if not weedsGone then
+                                    -- Ground truth: query the game's weed density map at this exact position.
+                                    -- weedState 0=none, 1-6=alive, 7-9=withered/dying → suppress 0 or >=7.
+                                    local fs = getWeedFieldState(fieldId)
+                                    if fs then
+                                        local uok = pcall(function() fs:update(sx, sz) end)
+                                        if uok then
+                                            local ws = fs.weedState or -1
+                                            weedsGone = (ws == 0 or ws >= 7)
+                                        end
+                                    end
+                                    -- Fallback to stale cell pressure if weed system unavailable.
+                                    if not weedsGone then
+                                        weedsGone = (cellWeed < ssCfg.WEED_THRESHOLD)
+                                    end
+                                end
+                                skip = skip or weedsGone
+                            end
                             if skip then section.isActive = false end
                         end
                     end

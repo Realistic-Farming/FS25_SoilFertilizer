@@ -722,6 +722,7 @@ function SoilFertilityManager:onMissionStarted()
         end
 
         self:loadSoilData()
+        self.soilSystem:prePopulateAllZoneData()
     end)
 
     if not ok then

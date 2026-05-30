@@ -348,11 +348,11 @@ end
 -- Must be declared here (before updateSamplePoints) to be in scope as an upvalue.
 -- Layers 6-9 are computed values with no GRLE layer.
 local LAYER_GRLE_NAME = {
-    [1] = "infoLayer_soilN",
-    [2] = "infoLayer_soilP",
-    [3] = "infoLayer_soilK",
-    [4] = "infoLayer_soilPH",
-    [5] = "infoLayer_soilOM",
+    [1] = "soilN",
+    [2] = "soilP",
+    [3] = "soilK",
+    [4] = "soilPH",
+    [5] = "soilOM",
 }
 
 -- Extract the per-cell value for a given overlay layer index (1-5 only).
@@ -521,6 +521,9 @@ end
 -- ── Draw (called by hook) ────────────────────────────────
 
 function SoilMapOverlay:onDraw(frame, mapElement, ingameMap, pageIndex)
+    local layerIdx = self.settings.activeMapLayer or 0
+    if layerIdx <= 0 then return end
+
     self:updateSamplePoints(false)
 
     if #self.samplePoints == 0 then return end
@@ -528,9 +531,6 @@ function SoilMapOverlay:onDraw(frame, mapElement, ingameMap, pageIndex)
     -- Use the layout-based bounds (DFF pattern) — ingameMap:getPosition() does not exist.
     local mapX, mapY, mapWidth, mapHeight = self:getMapRenderBounds(frame, ingameMap)
     if mapX == nil or mapWidth == nil or mapHeight == nil then return end
-
-    local layerIdx = self.settings.activeMapLayer or 0
-    if layerIdx <= 0 then return end
 
     local mapMaxX = mapX + mapWidth
     local mapMaxY = mapY + mapHeight
@@ -1436,11 +1436,10 @@ function SoilMapOverlay:onDrawMinimap(ingameMap)
 
     if g_client == nil then return end  -- server-only mode has no HUD
 
-    -- When the DMV heatmap overlay is active and rendering per-pixel NPK data,
-    -- skip the polygon dot loop — the overlay already paints every pixel correctly.
-    -- Still draw the live mini-report panel (drawMiniReport is called below).
+    -- When the GRLE heatmap overlay (SoilMinimapLayer) is active and rendering
+    -- per-pixel NPK data, skip centroid dots — the overlay already paints the minimap.
     local sml = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
-    if sml and sml._initialized and sml._hasShownOnce and sml._usingDensityLayers then
+    if sml and sml._initialized and sml._usingDensityLayers then
         self:drawMiniReport(ingameMap)
         return
     end

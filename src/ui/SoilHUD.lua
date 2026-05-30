@@ -1256,8 +1256,8 @@ function SoilHUD:drawPanel()
                 local pad = SoilHUD.PAD * s
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
-                renderText(px + pad, cy, 0.010 * fontMult * s, covText)
                 cy = cy - SoilHUD.LINE_H * s
+                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, covText)
             end
 
             -- Compaction row
@@ -1275,8 +1275,8 @@ function SoilHUD:drawPanel()
                 local pad = SoilHUD.PAD * s
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
-                renderText(px + pad, cy, 0.010 * fontMult * s, string.format(g_i18n:getText("sf_hud_compaction"), compPct))
                 cy = cy - SoilHUD.LINE_H * s
+                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, string.format(g_i18n:getText("sf_hud_compaction"), compPct))
             end
         end
 
@@ -1293,9 +1293,9 @@ function SoilHUD:drawPanel()
             end
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(yr, yg, yb, 1.0)
-            renderText(px + pad, cy, 0.010 * fontMult * s,
-                string.format(g_i18n:getText("sf_hud_yield_eff"), yieldEff))
             cy = cy - SoilHUD.LINE_H * s
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
+                string.format(g_i18n:getText("sf_hud_yield_eff"), yieldEff))
         end
 
         -- Divider before hint
