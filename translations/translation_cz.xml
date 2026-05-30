@@ -108,7 +108,7 @@
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
     <e k="input_SF_SEE_SPRAY_PEST"    v="See &amp; Spray: Pest" />
-    <e k="input_SF_SEE_SPRAY_DISEASE" v="See &amp; Spray: Disease" />
+    <e k="input_SF_SEE_SPRAY_DISEASE" v="[EN] See &amp; Spray: Disease" eh="a5e476a8" />
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
@@ -815,228 +815,228 @@
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
     <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />    <e k="sf_hud_enter_drag_label"   v="Move &amp; Resize Panels" />
     <e k="sf_hud_enter_drag_desc"    v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" />
-    <e k="sf_guide_sub_1" v="Overview — What this mod tracks and why it matters" eh="81726806" />
-    <e k="sf_guide_sub_2" v="HUD Guide — Reading the nutrient bars and on-screen indicators" eh="fd0a8c1d" />
-    <e k="sf_guide_sub_3" v="Workflow — Your daily and seasonal soil management routine" eh="2dc26ccc" />
-    <e k="sf_guide_sub_4" v="Products — What each fertilizer affects and when to use it" eh="17ebc503" />
-    <e k="sf_guide_sub_5" v="F.A.Q. — Common questions answered" eh="a9735b47" />
-    <e k="sf_guide_p1_01" v="WHAT IS THIS MOD" eh="83468bd7" />
-    <e k="sf_guide_p1_02" v="Tracks 5 soil nutrients per field across your" eh="94b33a56" />
-    <e k="sf_guide_p1_03" v="farm. Crops deplete nutrients on harvest." eh="8db042d2" />
-    <e k="sf_guide_p1_04" v="Fertilizer replenishes them. Weather and" eh="abd05a9c" />
-    <e k="sf_guide_p1_05" v="seasons add realistic pressure over time." eh="2173d584" />
-    <e k="sf_guide_p1_06" v="THE 5 SOIL PARAMETERS" eh="5fde1343" />
-    <e k="sf_guide_p1_07" v="N   Nitrogen       Fast depletion. Every harvest." eh="23d3ce22" />
-    <e k="sf_guide_p1_08" v="P   Phosphorus     Slow depletion. Root crops." eh="e44502f1" />
-    <e k="sf_guide_p1_09" v="K   Potassium      Root crops deplete this heavily." eh="4edfc26d" />
-    <e k="sf_guide_p1_10" v="OM  Organic Matter Builds slowly over many seasons." eh="cdb2d933" />
-    <e k="sf_guide_p1_11" v="pH  Soil acidity.  Target range: 6.5 – 7.0." eh="6dfd73f1" />
-    <e k="sf_guide_p1_12" v="STATUS LEVELS" eh="d1b157ef" />
-    <e k="sf_guide_p1_13" v="GOOD (green)  At or above crop's optimal target." eh="36e7061f" />
-    <e k="sf_guide_p1_14" v="  No action needed this season." eh="fc3fe8cf" />
-    <e k="sf_guide_p1_15" v="FAIR (yellow) Below optimal." eh="3a5f2343" />
-    <e k="sf_guide_p1_16" v="  Plan a top-up. Yield slightly reduced." eh="8514a61e" />
-    <e k="sf_guide_p1_17" v="POOR (red)    Below minimum threshold." eh="333c4fc2" />
-    <e k="sf_guide_p1_18" v="  Act now — yield impact is severe." eh="1b962d17" />
-    <e k="sf_guide_p1_19" v="QUICK START (5 STEPS)" eh="5a9cb86e" />
-    <e k="sf_guide_p1_20" v="1. Open PDA (game menu) &gt; Soil &amp; Fertilizer." eh="8093628a" />
-    <e k="sf_guide_p1_21" v="2. Check Farm Overview for red-flagged fields." eh="3bfda016" />
-    <e k="sf_guide_p1_22" v="3. Use Treatment Plan to see what's needed." eh="e19ebe2b" />
-    <e k="sf_guide_p1_23" v="4. Apply the right fertilizer product." eh="315ecea6" />
-    <e k="sf_guide_p1_24" v="5. Harvest normally — nutrients auto-deduct." eh="6c78829c" />
-    <e k="sf_guide_p1_25" v="TOOLS AT A GLANCE" eh="0d78c5c6" />
-    <e k="sf_guide_p1_26" v="HUD Bars     Soil levels for your current field." eh="91a47705" />
-    <e k="sf_guide_p1_27" v="  Key: SF Toggle HUD (Controls &gt; Mods)" eh="71546634" />
-    <e k="sf_guide_p1_28" v="PDA Screen   Full farm overview + treatment plan." eh="84c5722b" />
-    <e k="sf_guide_p1_29" v="  Open via the game's tablet menu." eh="3b2c80b5" />
-    <e k="sf_guide_p1_30" v="Soil Map     Per-cell nutrient colour overlay." eh="7c49f1b1" />
-    <e k="sf_guide_p1_31" v="  Key: SF Toggle Cell Map" eh="4fed89d3" />
-    <e k="sf_guide_p1_32" v="Field Report Detailed single-field breakdown." eh="5c3bfcdf" />
-    <e k="sf_guide_p1_33" v="  Key: SF Soil Report" eh="1d9047fa" />
-    <e k="sf_guide_p1_34" v="Smart Sensor Blocks sections with no active need." eh="8f3e9d62" />
-    <e k="sf_guide_p1_35" v="  Toggles: Alt+1/2/3 in a VWW sprayer." eh="0c364023" />
-    <e k="sf_guide_p1_36" v="See &amp; Spray  Live per-cell pressure in the vehicle." eh="82c711b5" />
-    <e k="sf_guide_p1_37" v="  Toggles: Alt+4/5/6 in a VWW sprayer." eh="c0740086" />
-    <e k="sf_guide_p1_38" v="Variable Rate Auto-adjusts boom rate from deficits." eh="fbd7cfe0" />
-    <e k="sf_guide_p1_39" v="  Toggle:  Alt+7.  Enable in Admin." eh="00361557" />
-    <e k="sf_guide_p1_40" v="KEYBINDINGS" eh="cbc41ad0" />
-    <e k="sf_guide_p1_41" v="All keys ship UNBOUND to avoid conflicts." eh="9652a447" />
-    <e k="sf_guide_p1_42" v="Go to: Options &gt; Controls &gt; Mods" eh="c9fea2e7" />
-    <e k="sf_guide_p1_43" v="Look for actions starting with SF_" eh="fe557f61" />
-    <e k="sf_guide_p1_44" v="Assign keys that don't clash with other mods." eh="b605a223" />
-    <e k="sf_guide_p2_01" v="THE NUTRIENT BARS" eh="64bcec79" />
-    <e k="sf_guide_p2_02" v="The HUD shows one bar per nutrient: N P K OM pH." eh="aeac112b" />
-    <e k="sf_guide_p2_03" v="Bar fills left (0) to right (100 = maximum)." eh="7f23737a" />
-    <e k="sf_guide_p2_04" v="Bar colour tells you status at a glance." eh="33dcb4e1" />
-    <e k="sf_guide_p2_05" v="THE THREE TICK MARKS" eh="d89a45ba" />
-    <e k="sf_guide_p2_06" v="Every bar has three small vertical tick marks." eh="4264137f" />
-    <e k="sf_guide_p2_07" v="ORANGE tick — Poor/Fair boundary." eh="99feda97" />
-    <e k="sf_guide_p2_08" v="  Bar is RED below this line." eh="28547bc6" />
-    <e k="sf_guide_p2_09" v="  Your soil is in POOR condition." eh="2569c8ef" />
-    <e k="sf_guide_p2_10" v="  Action: apply fertilizer immediately." eh="970de608" />
-    <e k="sf_guide_p2_11" v="YELLOW tick — Fair/Good boundary." eh="f8f07ad1" />
-    <e k="sf_guide_p2_12" v="  Bar is YELLOW between orange and yellow ticks." eh="2eb1fb88" />
-    <e k="sf_guide_p2_13" v="  Your soil is FAIR — below the crop's optimum." eh="7987bd5b" />
-    <e k="sf_guide_p2_14" v="  Action: plan a top-up this season." eh="00502703" />
-    <e k="sf_guide_p2_15" v="CYAN tick — Your planted crop's optimal target." eh="a86164b4" />
-    <e k="sf_guide_p2_16" v="  Reach this point for maximum yield." eh="ae26a23a" />
-    <e k="sf_guide_p2_17" v="  Bar is GREEN when you reach it." eh="33a4e76b" />
-    <e k="sf_guide_p2_18" v="  Each crop has different N/P/K targets." eh="7922d64b" />
-    <e k="sf_guide_p2_19" v="THE GHOST BAR" eh="1200754e" />
-    <e k="sf_guide_p2_20" v="A faint extension of the bar (same colour, dimmer)." eh="18f4e711" />
-    <e k="sf_guide_p2_21" v="Shows your projected level AFTER applying the" eh="032d8f35" />
-    <e k="sf_guide_p2_22" v="fertilizer currently loaded in your sprayer." eh="8a82196e" />
-    <e k="sf_guide_p2_23" v="Drive to a field with a loaded sprayer to see it." eh="bd0335a0" />
-    <e k="sf_guide_p2_24" v="Use it to avoid wasting fertilizer by over-applying." eh="944b9e4b" />
-    <e k="sf_guide_p2_25" v="READING THE NUMBERS" eh="9d84b9e8" />
-    <e k="sf_guide_p2_26" v="Format:  value  /  target  ( +projected )" eh="df3bb7c7" />
-    <e k="sf_guide_p2_27" v="Example: 245 / 320 (+85)" eh="136bd377" />
-    <e k="sf_guide_p2_28" v="" eh="00000000" />
-    <e k="sf_guide_p2_29" v="245  = your current nitrogen level in ppm" eh="dbfc1141" />
-    <e k="sf_guide_p2_30" v="320  = the crop's optimal nitrogen target" eh="ba949d8a" />
-    <e k="sf_guide_p2_31" v="+85  = how much your sprayer load will add" eh="92070ec8" />
-    <e k="sf_guide_p2_32" v="STATUS COLOURS" eh="08d6340b" />
-    <e k="sf_guide_p2_33" v="RED bar    Below the orange tick (POOR)." eh="4b18cb90" />
-    <e k="sf_guide_p2_34" v="  Yield penalty. Apply now." eh="b971b10b" />
-    <e k="sf_guide_p2_35" v="YELLOW bar Between orange and yellow ticks (FAIR)." eh="ca7536de" />
-    <e k="sf_guide_p2_36" v="  Slight penalty. Plan ahead." eh="d54afa45" />
-    <e k="sf_guide_p2_37" v="GREEN bar  Above the yellow tick (GOOD)." eh="8545d6fb" />
-    <e k="sf_guide_p2_38" v="  At or above crop optimal. No action." eh="e903aa78" />
-    <e k="sf_guide_p2_39" v="SMART SYSTEM PANELS (VWW sprayer required)" eh="88742d5e" />
-    <e k="sf_guide_p2_40" v="Three panels appear when in a VWW-capable sprayer:" eh="9adaea6c" />
-    <e k="sf_guide_p2_41" v="Smart Sensor / See &amp; Spray / Variable Rate." eh="85d1b46a" />
-    <e k="sf_guide_p2_42" v="Enable each via Admin &gt; Smart Systems in Settings." eh="ea9cbfd6" />
-    <e k="sf_guide_p2_43" v="FREE PANEL LAYOUT" eh="0638d758" />
-    <e k="sf_guide_p2_44" v="Enable in Settings &gt; Display. Use Shift+H to drag." eh="4535e5c1" />
-    <e k="sf_guide_p2_45" v="Press [-] in any title bar to collapse a panel." eh="a40967e4" />
-    <e k="sf_guide_p3_01" v="THE FARMING CYCLE" eh="2d6b6c00" />
-    <e k="sf_guide_p3_02" v="DEPLETE  Harvest removes N/P/K from soil." eh="0c3219fb" />
-    <e k="sf_guide_p3_03" v="         The amount depends on crop type and yield." eh="ab8adace" />
-    <e k="sf_guide_p3_04" v="REPLENISH Apply fertilizer to restore nutrients." eh="d07d37d2" />
-    <e k="sf_guide_p3_05" v="BALANCE  pH and OM change slowly over time." eh="611caf83" />
-    <e k="sf_guide_p3_06" v="         Requires long-term management." eh="128117f3" />
-    <e k="sf_guide_p3_07" v="DAILY HABITS" eh="64d0c6d8" />
-    <e k="sf_guide_p3_08" v="1. Glance at the HUD before working a field." eh="5dce5025" />
-    <e k="sf_guide_p3_09" v="2. Red bar = apply fertilizer before or after crop." eh="83d55f7b" />
-    <e k="sf_guide_p3_10" v="3. Yellow bar = note the field, treat this season." eh="f903dc7c" />
-    <e k="sf_guide_p3_11" v="4. Green bar = carry on, nothing needed." eh="f2109204" />
-    <e k="sf_guide_p3_12" v="WEEKLY ROUTINE" eh="24a8ef8e" />
-    <e k="sf_guide_p3_13" v="Open PDA &gt; Treatment Plan tab." eh="ad687f50" />
-    <e k="sf_guide_p3_14" v="Fields are sorted by urgency (worst first)." eh="571786e6" />
-    <e k="sf_guide_p3_15" v="Work top-down — treat highest-priority fields first." eh="08e04adb" />
-    <e k="sf_guide_p3_16" v="Click a row to open detailed field view." eh="66ce4f4b" />
-    <e k="sf_guide_p3_17" v="READING THE TREATMENT PLAN" eh="4412f706" />
-    <e k="sf_guide_p3_18" v="Priority scores weigh how far below target each" eh="32bc52d7" />
-    <e k="sf_guide_p3_19" v="nutrient is. A field in the red on two nutrients" eh="3382c3d2" />
-    <e k="sf_guide_p3_20" v="ranks higher than one with a single fair level." eh="44e63815" />
-    <e k="sf_guide_p3_21" v="PRE-PLANTING CHECKLIST" eh="f703e663" />
-    <e k="sf_guide_p3_22" v="1. Check N level — depletes every harvest." eh="47054be2" />
-    <e k="sf_guide_p3_23" v="   Apply nitrogen if FAIR or POOR." eh="697781ec" />
-    <e k="sf_guide_p3_24" v="2. Check P and K — change more slowly." eh="636fd8d9" />
-    <e k="sf_guide_p3_25" v="   Top up if below the fair threshold." eh="7d1a903b" />
-    <e k="sf_guide_p3_26" v="3. Check pH — lime if acidic, gypsum if alkaline." eh="bb019f53" />
-    <e k="sf_guide_p3_27" v="4. Check OM — add manure or compost if low." eh="042cb8f2" />
-    <e k="sf_guide_p3_28" v="POST-HARVEST ACTIONS" eh="6a7f0fca" />
-    <e k="sf_guide_p3_29" v="1. Nitrogen is depleted — apply fertilizer soon." eh="577a017a" />
-    <e k="sf_guide_p3_30" v="2. Legume crops (soy, clover) add free N" eh="fd08b3ce" />
-    <e k="sf_guide_p3_31" v="   bonus for the NEXT season automatically." eh="83e833b3" />
-    <e k="sf_guide_p3_32" v="3. Add manure or compost to build OM long-term." eh="575116a9" />
-    <e k="sf_guide_p3_33" v="SEASONAL NOTES" eh="48553a52" />
-    <e k="sf_guide_p3_34" v="SPRING  N demand peaks. Apply before planting." eh="44d69bfd" />
-    <e k="sf_guide_p3_35" v="SUMMER  Monitor pest and disease pressure." eh="14fd9b6f" />
-    <e k="sf_guide_p3_36" v="AUTUMN  Avoid heavy N before forecast rain" eh="0b6cb5e8" />
-    <e k="sf_guide_p3_37" v="        (rain leaches N from soil)." eh="b2a5c269" />
-    <e k="sf_guide_p3_38" v="WINTER  Fallow fields slowly recover nutrients." eh="d76feedb" />
-    <e k="sf_guide_p3_39" v="        Leave a field bare to let it rest." eh="42c72b66" />
-    <e k="sf_guide_p4_01" v="NITROGEN (N) PRODUCTS" eh="bec40ce6" />
-    <e k="sf_guide_p4_02" v="UAN Solution   High N, fast release liquid." eh="8b5a49c9" />
-    <e k="sf_guide_p4_03" v="Urea           High N, standard solid form." eh="a6a58cb1" />
-    <e k="sf_guide_p4_04" v="AMS            Nitrogen + minor sulphur benefit." eh="6050bc15" />
-    <e k="sf_guide_p4_05" v="Manure         Moderate N + large OM boost." eh="f1b898f5" />
-    <e k="sf_guide_p4_06" v="Biosolids      N + P + large OM boost." eh="3ecb89a1" />
-    <e k="sf_guide_p4_07" v="Digestate      Moderate N + light OM benefit." eh="9a0e17d7" />
-    <e k="sf_guide_p4_08" v="PHOSPHORUS (P) PRODUCTS" eh="f246b45f" />
-    <e k="sf_guide_p4_09" v="MAP            High P, small N contribution." eh="f56b59c6" />
-    <e k="sf_guide_p4_10" v="DAP            High P + nitrogen blend." eh="77fa32bc" />
-    <e k="sf_guide_p4_11" v="Liquid MAP     High P, faster uptake." eh="add91c6a" />
-    <e k="sf_guide_p4_12" v="Liquid DAP     High P + N, liquid form." eh="10f16c70" />
-    <e k="sf_guide_p4_13" v="Biosolids      P + N + OM. Efficient multi-nutrient." eh="f65c9491" />
-    <e k="sf_guide_p4_14" v="POTASSIUM (K) PRODUCTS" eh="d4182e1d" />
-    <e k="sf_guide_p4_15" v="Potash         High K, solid form." eh="9c2d1ef4" />
-    <e k="sf_guide_p4_16" v="Liquid Potash  High K, liquid. Faster uptake." eh="07398747" />
-    <e k="sf_guide_p4_17" v="pH CORRECTION" eh="4ffba02e" />
-    <e k="sf_guide_p4_18" v="Target range: 6.5 – 7.0 for most crops." eh="fbb6a132" />
-    <e k="sf_guide_p4_19" v="" eh="00000000" />
-    <e k="sf_guide_p4_20" v="pH too LOW (acidic, below 6.5):" eh="68520f95" />
-    <e k="sf_guide_p4_21" v="  Apply LIME — raises pH toward neutral." eh="def9f79d" />
-    <e k="sf_guide_p4_22" v="pH too HIGH (alkaline, above 7.5):" eh="247708ec" />
-    <e k="sf_guide_p4_23" v="  Apply GYPSUM — lowers pH toward neutral." eh="2ad8d2d3" />
-    <e k="sf_guide_p4_24" v="Allow 1–2 seasons for full normalization." eh="7c2ee55e" />
-    <e k="sf_guide_p4_25" v="ORGANIC MATTER (OM)" eh="75512a9c" />
-    <e k="sf_guide_p4_26" v="Manure         Best OM builder. Also adds N." eh="e6f7a9c4" />
-    <e k="sf_guide_p4_27" v="Compost        Moderate OM, well-balanced." eh="2b996529" />
-    <e k="sf_guide_p4_28" v="Biosolids      OM + N + P. Very efficient." eh="d380c89e" />
-    <e k="sf_guide_p4_29" v="Digestate      Light OM benefit." eh="fd8e1c67" />
-    <e k="sf_guide_p4_30" v="Fallow (bare field) slowly recovers OM over time." eh="9d46f06c" />
-    <e k="sf_guide_p4_31" v="APPLICATION TIPS" eh="5d514e44" />
-    <e k="sf_guide_p4_32" v="* Load fertilizer and check the ghost bar first." eh="35e05de8" />
-    <e k="sf_guide_p4_33" v="  It shows your projected result before you apply." eh="24ff5dde" />
-    <e k="sf_guide_p4_34" v="* Liquid products generally work faster than solid." eh="7b2ad191" />
-    <e k="sf_guide_p4_35" v="* Manure improves OM AND adds N — very efficient." eh="1d9c74bb" />
-    <e k="sf_guide_p4_36" v="* Apply liquid N before rain if possible" eh="90305fce" />
-    <e k="sf_guide_p4_37" v="  (rain leaches some nitrogen after application)." eh="dd45f06b" />
-    <e k="sf_guide_p4_38" v="* Check crop targets for what you're planting" eh="3444bb54" />
-    <e k="sf_guide_p4_39" v="  — different crops need different NPK ratios." eh="60c366af" />
-    <e k="sf_guide_p5_01" v="MY BARS ARE ALWAYS EMPTY — IS IT BROKEN?" eh="2d6aa6d2" />
-    <e k="sf_guide_p5_02" v="No. Soil starts at low base levels on a new save." eh="32490786" />
-    <e k="sf_guide_p5_03" v="A field that was never fertilized shows real values." eh="f72b6313" />
-    <e k="sf_guide_p5_04" v="Apply fertilizer to build levels over time." eh="a2691642" />
-    <e k="sf_guide_p5_05" v="This is intentional — it reflects real soil depletion." eh="67f5d0fc" />
-    <e k="sf_guide_p5_06" v="WHERE DO I ASSIGN KEYBOARD SHORTCUTS?" eh="8171751f" />
-    <e k="sf_guide_p5_07" v="Options &gt; Controls &gt; Mods" eh="134c4fb9" />
-    <e k="sf_guide_p5_08" v="All SF_ keys ship unbound to avoid conflicts" eh="658e7851" />
-    <e k="sf_guide_p5_09" v="with other mods. Find the SF_ actions and" eh="8634e3c4" />
-    <e k="sf_guide_p5_10" v="assign keys that work for your setup." eh="05c1324a" />
-    <e k="sf_guide_p5_11" v="WHY DID MY NITROGEN DROP AFTER RAIN?" eh="08c6cc44" />
-    <e k="sf_guide_p5_12" v="Heavy rain leaches nitrogen from soil." eh="e66f2a7b" />
-    <e k="sf_guide_p5_13" v="This is intentional and realistic." eh="844f3842" />
-    <e k="sf_guide_p5_14" v="Plan N applications before dry weather," eh="5775d792" />
-    <e k="sf_guide_p5_15" v="not before heavy rain forecasts." eh="51b331f3" />
-    <e k="sf_guide_p5_16" v="You can adjust rain sensitivity in Settings." eh="db0521ab" />
-    <e k="sf_guide_p5_17" v="WHAT IS THE GHOST BAR?" eh="b4ac2fb5" />
-    <e k="sf_guide_p5_18" v="The faint extension on a bar shows how much" eh="3bfd13cd" />
-    <e k="sf_guide_p5_19" v="your loaded sprayer will add if applied here." eh="3958b721" />
-    <e k="sf_guide_p5_20" v="Load a fertilizer into a sprayer, drive to any" eh="f7ae557a" />
-    <e k="sf_guide_p5_21" v="field, and the ghost bar appears automatically." eh="549c15e6" />
-    <e k="sf_guide_p5_22" v="DO I NEED TO FERTILIZE EVERY SEASON?" eh="ff4edc94" />
-    <e k="sf_guide_p5_23" v="Nitrogen: Yes, every season if possible." eh="53e7c92e" />
-    <e k="sf_guide_p5_24" v="  It depletes heavily on every harvest." eh="bab86964" />
-    <e k="sf_guide_p5_25" v="P and K: Every 2–3 seasons is usually enough." eh="0bd8fa51" />
-    <e k="sf_guide_p5_26" v="Organic OM: Long-term. Add manure once a year." eh="eda4d593" />
-    <e k="sf_guide_p5_27" v="pH: Only when outside the 6.5–7.0 range." eh="48be5789" />
-    <e k="sf_guide_p5_28" v="HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="5ca9536b" />
-    <e k="sf_guide_p5_29" v="Smart Sensor blocks individual boom sections when" eh="86ab0498" />
-    <e k="sf_guide_p5_30" v="no need is detected (no pest, disease, or nutrient" eh="90e912a2" />
-    <e k="sf_guide_p5_31" v="deficit). See &amp; Spray shows live pressure per cell." eh="30c72641" />
-    <e k="sf_guide_p5_32" v="Variable Rate adjusts boom output from soil data." eh="a260d3d9" />
-    <e k="sf_guide_p5_33" v="All 3 need a VWW-capable sprayer. Enable via" eh="51ea1a4a" />
-    <e k="sf_guide_p5_34" v="Settings &gt; Admin &gt; Smart Systems." eh="37872bd2" />
-    <e k="sf_guide_p5_35" v="CAN I USE THIS IN MULTIPLAYER?" eh="6f6ef016" />
-    <e k="sf_guide_p5_36" v="Yes. The mod is fully multiplayer-compatible." eh="24ab5ab7" />
-    <e k="sf_guide_p5_37" v="Soil data is server-authoritative." eh="a9984593" />
-    <e k="sf_guide_p5_38" v="Clients sync on join. Settings changes require" eh="71e7653d" />
-    <e k="sf_guide_p5_39" v="admin permissions in multiplayer sessions." eh="c884fdf4" />
-    <e k="sf_guide_p5_40" v="HOW DOES SOIL AFFECT YIELD?" eh="0bf98a17" />
-    <e k="sf_guide_p5_41" v="GOOD soil: full yield — no penalty." eh="2bc128e5" />
-    <e k="sf_guide_p5_42" v="FAIR soil: ~5-15% yield penalty per nutrient." eh="b2127c34" />
-    <e k="sf_guide_p5_43" v="POOR soil: up to 40% penalty. Correct it fast." eh="a29f59e5" />
-    <e k="sf_guide_p5_44" v="Penalties stack: POOR N + FAIR P = severe loss." eh="5536d718" />
-    <e k="sf_guide_title" v="Soil &amp; Fertilizer — Field Guide" eh="e1bb101e" />
-    <e k="sf_guide_tab_1" v="OVERVIEW" eh="21f04df7" />
-    <e k="sf_guide_tab_2" v="HUD GUIDE" eh="d285eed7" />
-    <e k="sf_guide_tab_3" v="WORKFLOW" eh="a3f6045a" />
-    <e k="sf_guide_tab_4" v="PRODUCTS" eh="7589c616" />
-    <e k="sf_guide_tab_5" v="F.A.Q." eh="783fecdf" />
+    <e k="sf_guide_sub_1" v="[EN] Overview — What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_guide_sub_2" v="[EN] HUD Guide — Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
+    <e k="sf_guide_sub_3" v="[EN] Workflow — Your daily and seasonal soil management routine" eh="75d263dd" />
+    <e k="sf_guide_sub_4" v="[EN] Products — What each fertilizer affects and when to use it" eh="2a127c60" />
+    <e k="sf_guide_sub_5" v="[EN] F.A.Q. — Common questions answered" eh="4384cacf" />
+    <e k="sf_guide_p1_01" v="[EN] WHAT IS THIS MOD" eh="fe4d3283" />
+    <e k="sf_guide_p1_02" v="[EN] Tracks 5 soil nutrients per field across your" eh="93e6595b" />
+    <e k="sf_guide_p1_03" v="[EN] farm. Crops deplete nutrients on harvest." eh="5e6dc5a8" />
+    <e k="sf_guide_p1_04" v="[EN] Fertilizer replenishes them. Weather and" eh="325d9382" />
+    <e k="sf_guide_p1_05" v="[EN] seasons add realistic pressure over time." eh="bd62219e" />
+    <e k="sf_guide_p1_06" v="[EN] THE 5 SOIL PARAMETERS" eh="6c5948d1" />
+    <e k="sf_guide_p1_07" v="[EN] N   Nitrogen       Fast depletion. Every harvest." eh="df28927d" />
+    <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
+    <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
+    <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
+    <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
+    <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
+    <e k="sf_guide_p1_15" v="[EN] FAIR (yellow) Below optimal." eh="0d30dbe4" />
+    <e k="sf_guide_p1_16" v="Plan a top-up. Yield slightly reduced." eh="0363160b" />
+    <e k="sf_guide_p1_17" v="[EN] POOR (red)    Below minimum threshold." eh="96f2a246" />
+    <e k="sf_guide_p1_18" v="Act now — yield impact is severe." eh="64e9e4f9" />
+    <e k="sf_guide_p1_19" v="[EN] QUICK START (5 STEPS)" eh="f1bcfcdb" />
+    <e k="sf_guide_p1_20" v="[EN] 1. Open PDA (game menu) &gt; Soil &amp; Fertilizer." eh="22539c14" />
+    <e k="sf_guide_p1_21" v="[EN] 2. Check Farm Overview for red-flagged fields." eh="d4e823e8" />
+    <e k="sf_guide_p1_22" v="[EN] 3. Use Treatment Plan to see what's needed." eh="1a0c7961" />
+    <e k="sf_guide_p1_23" v="[EN] 4. Apply the right fertilizer product." eh="b44bcac2" />
+    <e k="sf_guide_p1_24" v="[EN] 5. Harvest normally — nutrients auto-deduct." eh="ba4b5846" />
+    <e k="sf_guide_p1_25" v="[EN] TOOLS AT A GLANCE" eh="103ce1b5" />
+    <e k="sf_guide_p1_26" v="[EN] HUD Bars     Soil levels for your current field." eh="4d0661d7" />
+    <e k="sf_guide_p1_27" v="Key: SF Toggle HUD (Controls &gt; Mods)" eh="fde6e9c0" />
+    <e k="sf_guide_p1_28" v="[EN] PDA Screen   Full farm overview + treatment plan." eh="a6cc969d" />
+    <e k="sf_guide_p1_29" v="Open via the game's tablet menu." eh="dbe326fc" />
+    <e k="sf_guide_p1_30" v="[EN] Soil Map     Per-cell nutrient colour overlay." eh="1ade7e4f" />
+    <e k="sf_guide_p1_31" v="Key: SF Toggle Cell Map" eh="6f62d699" />
+    <e k="sf_guide_p1_32" v="[EN] Field Report Detailed single-field breakdown." eh="4398ce6d" />
+    <e k="sf_guide_p1_33" v="Key: SF Soil Report" eh="364f8595" />
+    <e k="sf_guide_p1_34" v="[EN] Smart Sensor Blocks sections with no active need." eh="dd267572" />
+    <e k="sf_guide_p1_35" v="Toggles: Alt+1/2/3 in a VWW sprayer." eh="5ea6ea68" />
+    <e k="sf_guide_p1_36" v="[EN] See &amp; Spray  Live per-cell pressure in the vehicle." eh="cddacb27" />
+    <e k="sf_guide_p1_37" v="Toggles: Alt+4/5/6 in a VWW sprayer." eh="cd45ce04" />
+    <e k="sf_guide_p1_38" v="[EN] Variable Rate Auto-adjusts boom rate from deficits." eh="38a5c159" />
+    <e k="sf_guide_p1_39" v="Toggle:  Alt+7.  Enable in Admin." eh="31e42fb5" />
+    <e k="sf_guide_p1_40" v="[EN] KEYBINDINGS" eh="07a9ae0d" />
+    <e k="sf_guide_p1_41" v="[EN] All keys ship UNBOUND to avoid conflicts." eh="9ec7b5b5" />
+    <e k="sf_guide_p1_42" v="[EN] Go to: Options &gt; Controls &gt; Mods" eh="e4e8a969" />
+    <e k="sf_guide_p1_43" v="[EN] Look for actions starting with SF_" eh="48d5d3e4" />
+    <e k="sf_guide_p1_44" v="[EN] Assign keys that don't clash with other mods." eh="8c2e27c5" />
+    <e k="sf_guide_p2_01" v="[EN] THE NUTRIENT BARS" eh="ad76f0e9" />
+    <e k="sf_guide_p2_02" v="[EN] The HUD shows one bar per nutrient: N P K OM pH." eh="b84d3955" />
+    <e k="sf_guide_p2_03" v="[EN] Bar fills left (0) to right (100 = maximum)." eh="fb617f3c" />
+    <e k="sf_guide_p2_04" v="[EN] Bar colour tells you status at a glance." eh="e07e4240" />
+    <e k="sf_guide_p2_05" v="[EN] THE THREE TICK MARKS" eh="70556f5d" />
+    <e k="sf_guide_p2_06" v="[EN] Every bar has three small vertical tick marks." eh="65bb2211" />
+    <e k="sf_guide_p2_07" v="[EN] ORANGE tick — Poor/Fair boundary." eh="3eafb9fd" />
+    <e k="sf_guide_p2_08" v="Bar is RED below this line." eh="4cebe452" />
+    <e k="sf_guide_p2_09" v="Your soil is in POOR condition." eh="7a3175e4" />
+    <e k="sf_guide_p2_10" v="Action: apply fertilizer immediately." eh="209e2635" />
+    <e k="sf_guide_p2_11" v="[EN] YELLOW tick — Fair/Good boundary." eh="9f1b02a2" />
+    <e k="sf_guide_p2_12" v="Bar is YELLOW between orange and yellow ticks." eh="cac82a8d" />
+    <e k="sf_guide_p2_13" v="Your soil is FAIR — below the crop's optimum." eh="1ae66c9c" />
+    <e k="sf_guide_p2_14" v="Action: plan a top-up this season." eh="3cf7dfa3" />
+    <e k="sf_guide_p2_15" v="[EN] CYAN tick — Your planted crop's optimal target." eh="20b6c223" />
+    <e k="sf_guide_p2_16" v="Reach this point for maximum yield." eh="cc7c263f" />
+    <e k="sf_guide_p2_17" v="Bar is GREEN when you reach it." eh="b5e669ea" />
+    <e k="sf_guide_p2_18" v="Each crop has different N/P/K targets." eh="d25b96a5" />
+    <e k="sf_guide_p2_19" v="[EN] THE GHOST BAR" eh="becfc79a" />
+    <e k="sf_guide_p2_20" v="[EN] A faint extension of the bar (same colour, dimmer)." eh="98f8ec88" />
+    <e k="sf_guide_p2_21" v="[EN] Shows your projected level AFTER applying the" eh="61741e0c" />
+    <e k="sf_guide_p2_22" v="[EN] fertilizer currently loaded in your sprayer." eh="7f65010e" />
+    <e k="sf_guide_p2_23" v="[EN] Drive to a field with a loaded sprayer to see it." eh="771539b2" />
+    <e k="sf_guide_p2_24" v="[EN] Use it to avoid wasting fertilizer by over-applying." eh="23015626" />
+    <e k="sf_guide_p2_25" v="[EN] READING THE NUMBERS" eh="1764c3ed" />
+    <e k="sf_guide_p2_26" v="[EN] Format:  value  /  target  ( +projected )" eh="6368d79f" />
+    <e k="sf_guide_p2_27" v="[EN] Example: 245 / 320 (+85)" eh="b40caf59" />
+    <e k="sf_guide_p2_28" v="[EN] " eh="d41d8cd9" />
+    <e k="sf_guide_p2_29" v="[EN] 245  = your current nitrogen level in ppm" eh="fd4fee69" />
+    <e k="sf_guide_p2_30" v="[EN] 320  = the crop's optimal nitrogen target" eh="29f8fc0d" />
+    <e k="sf_guide_p2_31" v="[EN] +85  = how much your sprayer load will add" eh="00ac0744" />
+    <e k="sf_guide_p2_32" v="[EN] STATUS COLOURS" eh="e29e5046" />
+    <e k="sf_guide_p2_33" v="[EN] RED bar    Below the orange tick (POOR)." eh="f9522ff8" />
+    <e k="sf_guide_p2_34" v="Yield penalty. Apply now." eh="121691a9" />
+    <e k="sf_guide_p2_35" v="[EN] YELLOW bar Between orange and yellow ticks (FAIR)." eh="3c16bbc5" />
+    <e k="sf_guide_p2_36" v="Slight penalty. Plan ahead." eh="74d99045" />
+    <e k="sf_guide_p2_37" v="[EN] GREEN bar  Above the yellow tick (GOOD)." eh="922aa27a" />
+    <e k="sf_guide_p2_38" v="At or above crop optimal. No action." eh="37eb57bb" />
+    <e k="sf_guide_p2_39" v="[EN] SMART SYSTEM PANELS (VWW sprayer required)" eh="0aabd1ee" />
+    <e k="sf_guide_p2_40" v="[EN] Three panels appear when in a VWW-capable sprayer:" eh="94268ff4" />
+    <e k="sf_guide_p2_41" v="[EN] Smart Sensor / See &amp; Spray / Variable Rate." eh="c55d00f9" />
+    <e k="sf_guide_p2_42" v="[EN] Enable each via Admin &gt; Smart Systems in Settings." eh="1148de7e" />
+    <e k="sf_guide_p2_43" v="[EN] FREE PANEL LAYOUT" eh="49225d9e" />
+    <e k="sf_guide_p2_44" v="[EN] Enable in Settings &gt; Display. Use Shift+H to drag." eh="d0d2147c" />
+    <e k="sf_guide_p2_45" v="[EN] Press [-] in any title bar to collapse a panel." eh="44f81359" />
+    <e k="sf_guide_p3_01" v="[EN] THE FARMING CYCLE" eh="168fa544" />
+    <e k="sf_guide_p3_02" v="[EN] DEPLETE  Harvest removes N/P/K from soil." eh="cc585bcd" />
+    <e k="sf_guide_p3_03" v="The amount depends on crop type and yield." eh="261e13ac" />
+    <e k="sf_guide_p3_04" v="[EN] REPLENISH Apply fertilizer to restore nutrients." eh="91b11b7a" />
+    <e k="sf_guide_p3_05" v="[EN] BALANCE  pH and OM change slowly over time." eh="d6421178" />
+    <e k="sf_guide_p3_06" v="Requires long-term management." eh="7adc65a7" />
+    <e k="sf_guide_p3_07" v="[EN] DAILY HABITS" eh="9df55db7" />
+    <e k="sf_guide_p3_08" v="[EN] 1. Glance at the HUD before working a field." eh="73ebf080" />
+    <e k="sf_guide_p3_09" v="[EN] 2. Red bar = apply fertilizer before or after crop." eh="b0e925a7" />
+    <e k="sf_guide_p3_10" v="[EN] 3. Yellow bar = note the field, treat this season." eh="c93dd62c" />
+    <e k="sf_guide_p3_11" v="[EN] 4. Green bar = carry on, nothing needed." eh="107f713e" />
+    <e k="sf_guide_p3_12" v="[EN] WEEKLY ROUTINE" eh="a303bfde" />
+    <e k="sf_guide_p3_13" v="[EN] Open PDA &gt; Treatment Plan tab." eh="2e03b237" />
+    <e k="sf_guide_p3_14" v="[EN] Fields are sorted by urgency (worst first)." eh="dece938b" />
+    <e k="sf_guide_p3_15" v="[EN] Work top-down — treat highest-priority fields first." eh="3fa2f44c" />
+    <e k="sf_guide_p3_16" v="[EN] Click a row to open detailed field view." eh="147b8267" />
+    <e k="sf_guide_p3_17" v="[EN] READING THE TREATMENT PLAN" eh="ff6ee8e4" />
+    <e k="sf_guide_p3_18" v="[EN] Priority scores weigh how far below target each" eh="39d2360b" />
+    <e k="sf_guide_p3_19" v="[EN] nutrient is. A field in the red on two nutrients" eh="dc519211" />
+    <e k="sf_guide_p3_20" v="[EN] ranks higher than one with a single fair level." eh="41d157db" />
+    <e k="sf_guide_p3_21" v="[EN] PRE-PLANTING CHECKLIST" eh="14b36869" />
+    <e k="sf_guide_p3_22" v="[EN] 1. Check N level — depletes every harvest." eh="3c4a5b54" />
+    <e k="sf_guide_p3_23" v="Apply nitrogen if FAIR or POOR." eh="4c69f9f8" />
+    <e k="sf_guide_p3_24" v="[EN] 2. Check P and K — change more slowly." eh="fa732940" />
+    <e k="sf_guide_p3_25" v="Top up if below the fair threshold." eh="81a25810" />
+    <e k="sf_guide_p3_26" v="[EN] 3. Check pH — lime if acidic, gypsum if alkaline." eh="fa766780" />
+    <e k="sf_guide_p3_27" v="[EN] 4. Check OM — add manure or compost if low." eh="08abc4f1" />
+    <e k="sf_guide_p3_28" v="[EN] POST-HARVEST ACTIONS" eh="eb52e29f" />
+    <e k="sf_guide_p3_29" v="[EN] 1. Nitrogen is depleted — apply fertilizer soon." eh="b2c1db96" />
+    <e k="sf_guide_p3_30" v="[EN] 2. Legume crops (soy, clover) add free N" eh="75f466af" />
+    <e k="sf_guide_p3_31" v="bonus for the NEXT season automatically." eh="80169436" />
+    <e k="sf_guide_p3_32" v="[EN] 3. Add manure or compost to build OM long-term." eh="dc25a4c7" />
+    <e k="sf_guide_p3_33" v="[EN] SEASONAL NOTES" eh="bb392619" />
+    <e k="sf_guide_p3_34" v="[EN] SPRING  N demand peaks. Apply before planting." eh="b402526b" />
+    <e k="sf_guide_p3_35" v="[EN] SUMMER  Monitor pest and disease pressure." eh="76b840ad" />
+    <e k="sf_guide_p3_36" v="[EN] AUTUMN  Avoid heavy N before forecast rain" eh="1d1c0439" />
+    <e k="sf_guide_p3_37" v="(rain leaches N from soil)." eh="6c48f9c9" />
+    <e k="sf_guide_p3_38" v="[EN] WINTER  Fallow fields slowly recover nutrients." eh="b68db0d1" />
+    <e k="sf_guide_p3_39" v="Leave a field bare to let it rest." eh="0f67aea5" />
+    <e k="sf_guide_p4_01" v="[EN] NITROGEN (N) PRODUCTS" eh="6040f0f5" />
+    <e k="sf_guide_p4_02" v="[EN] UAN Solution   High N, fast release liquid." eh="60baf1c0" />
+    <e k="sf_guide_p4_03" v="[EN] Urea           High N, standard solid form." eh="7619f3d7" />
+    <e k="sf_guide_p4_04" v="[EN] AMS            Nitrogen + minor sulphur benefit." eh="9430151c" />
+    <e k="sf_guide_p4_05" v="[EN] Manure         Moderate N + large OM boost." eh="36e4eeef" />
+    <e k="sf_guide_p4_06" v="[EN] Biosolids      N + P + large OM boost." eh="70b8003e" />
+    <e k="sf_guide_p4_07" v="[EN] Digestate      Moderate N + light OM benefit." eh="70740674" />
+    <e k="sf_guide_p4_08" v="[EN] PHOSPHORUS (P) PRODUCTS" eh="b143a8c7" />
+    <e k="sf_guide_p4_09" v="[EN] MAP            High P, small N contribution." eh="f7e3a5e4" />
+    <e k="sf_guide_p4_10" v="[EN] DAP            High P + nitrogen blend." eh="1674361e" />
+    <e k="sf_guide_p4_11" v="[EN] Liquid MAP     High P, faster uptake." eh="59782949" />
+    <e k="sf_guide_p4_12" v="[EN] Liquid DAP     High P + N, liquid form." eh="6eb70f1d" />
+    <e k="sf_guide_p4_13" v="[EN] Biosolids      P + N + OM. Efficient multi-nutrient." eh="7adb8104" />
+    <e k="sf_guide_p4_14" v="[EN] POTASSIUM (K) PRODUCTS" eh="7a9f5cc7" />
+    <e k="sf_guide_p4_15" v="[EN] Potash         High K, solid form." eh="cb71f3a0" />
+    <e k="sf_guide_p4_16" v="[EN] Liquid Potash  High K, liquid. Faster uptake." eh="0c3d2ad4" />
+    <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
+    <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
+    <e k="sf_guide_p4_21" v="Apply LIME — raises pH toward neutral." eh="4df3e7fa" />
+    <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
+    <e k="sf_guide_p4_23" v="Apply GYPSUM — lowers pH toward neutral." eh="e71fa617" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
+    <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
+    <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
+    <e k="sf_guide_p4_28" v="[EN] Biosolids      OM + N + P. Very efficient." eh="ba425a0e" />
+    <e k="sf_guide_p4_29" v="[EN] Digestate      Light OM benefit." eh="73cd0835" />
+    <e k="sf_guide_p4_30" v="[EN] Fallow (bare field) slowly recovers OM over time." eh="da732797" />
+    <e k="sf_guide_p4_31" v="[EN] APPLICATION TIPS" eh="180e4a50" />
+    <e k="sf_guide_p4_32" v="[EN] * Load fertilizer and check the ghost bar first." eh="2126b07c" />
+    <e k="sf_guide_p4_33" v="It shows your projected result before you apply." eh="7ee23768" />
+    <e k="sf_guide_p4_34" v="[EN] * Liquid products generally work faster than solid." eh="a5b6f4a7" />
+    <e k="sf_guide_p4_35" v="[EN] * Manure improves OM AND adds N — very efficient." eh="707c5fe6" />
+    <e k="sf_guide_p4_36" v="[EN] * Apply liquid N before rain if possible" eh="50d601b0" />
+    <e k="sf_guide_p4_37" v="(rain leaches some nitrogen after application)." eh="c10189dd" />
+    <e k="sf_guide_p4_38" v="[EN] * Check crop targets for what you're planting" eh="a3ccec1e" />
+    <e k="sf_guide_p4_39" v="— different crops need different NPK ratios." eh="10bc6a29" />
+    <e k="sf_guide_p5_01" v="[EN] MY BARS ARE ALWAYS EMPTY — IS IT BROKEN?" eh="8772a2e4" />
+    <e k="sf_guide_p5_02" v="[EN] No. Soil starts at low base levels on a new save." eh="459b03bb" />
+    <e k="sf_guide_p5_03" v="[EN] A field that was never fertilized shows real values." eh="0d7762f2" />
+    <e k="sf_guide_p5_04" v="[EN] Apply fertilizer to build levels over time." eh="4419bc2a" />
+    <e k="sf_guide_p5_05" v="[EN] This is intentional — it reflects real soil depletion." eh="50618796" />
+    <e k="sf_guide_p5_06" v="[EN] WHERE DO I ASSIGN KEYBOARD SHORTCUTS?" eh="0717d029" />
+    <e k="sf_guide_p5_07" v="[EN] Options &gt; Controls &gt; Mods" eh="7cf00a23" />
+    <e k="sf_guide_p5_08" v="[EN] All SF_ keys ship unbound to avoid conflicts" eh="f6ca8742" />
+    <e k="sf_guide_p5_09" v="[EN] with other mods. Find the SF_ actions and" eh="6bf65ffa" />
+    <e k="sf_guide_p5_10" v="[EN] assign keys that work for your setup." eh="66e0458d" />
+    <e k="sf_guide_p5_11" v="[EN] WHY DID MY NITROGEN DROP AFTER RAIN?" eh="114dc15a" />
+    <e k="sf_guide_p5_12" v="[EN] Heavy rain leaches nitrogen from soil." eh="e8e84bec" />
+    <e k="sf_guide_p5_13" v="[EN] This is intentional and realistic." eh="e3636ff4" />
+    <e k="sf_guide_p5_14" v="[EN] Plan N applications before dry weather," eh="795c7892" />
+    <e k="sf_guide_p5_15" v="[EN] not before heavy rain forecasts." eh="73782fd0" />
+    <e k="sf_guide_p5_16" v="[EN] You can adjust rain sensitivity in Settings." eh="2b64da19" />
+    <e k="sf_guide_p5_17" v="[EN] WHAT IS THE GHOST BAR?" eh="f0a1df7e" />
+    <e k="sf_guide_p5_18" v="[EN] The faint extension on a bar shows how much" eh="6b72696f" />
+    <e k="sf_guide_p5_19" v="[EN] your loaded sprayer will add if applied here." eh="dfee8857" />
+    <e k="sf_guide_p5_20" v="[EN] Load a fertilizer into a sprayer, drive to any" eh="605a9e8e" />
+    <e k="sf_guide_p5_21" v="[EN] field, and the ghost bar appears automatically." eh="0c120b03" />
+    <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
+    <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
+    <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
+    <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
+    <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
+    <e k="sf_guide_p5_31" v="[EN] deficit). See &amp; Spray shows live pressure per cell." eh="7bba77a1" />
+    <e k="sf_guide_p5_32" v="[EN] Variable Rate adjusts boom output from soil data." eh="a820fc55" />
+    <e k="sf_guide_p5_33" v="[EN] All 3 need a VWW-capable sprayer. Enable via" eh="c3fdd607" />
+    <e k="sf_guide_p5_34" v="[EN] Settings &gt; Admin &gt; Smart Systems." eh="628b6090" />
+    <e k="sf_guide_p5_35" v="[EN] CAN I USE THIS IN MULTIPLAYER?" eh="c58f827c" />
+    <e k="sf_guide_p5_36" v="[EN] Yes. The mod is fully multiplayer-compatible." eh="bb26b4d3" />
+    <e k="sf_guide_p5_37" v="[EN] Soil data is server-authoritative." eh="e8c6a85e" />
+    <e k="sf_guide_p5_38" v="[EN] Clients sync on join. Settings changes require" eh="1d2473fd" />
+    <e k="sf_guide_p5_39" v="[EN] admin permissions in multiplayer sessions." eh="a48c5146" />
+    <e k="sf_guide_p5_40" v="[EN] HOW DOES SOIL AFFECT YIELD?" eh="456d3c9f" />
+    <e k="sf_guide_p5_41" v="[EN] GOOD soil: full yield — no penalty." eh="7fd13553" />
+    <e k="sf_guide_p5_42" v="[EN] FAIR soil: ~5-15% yield penalty per nutrient." eh="bced6a1c" />
+    <e k="sf_guide_p5_43" v="[EN] POOR soil: up to 40% penalty. Correct it fast." eh="244d5bf2" />
+    <e k="sf_guide_p5_44" v="[EN] Penalties stack: POOR N + FAIR P = severe loss." eh="8afb61f9" />
+    <e k="sf_guide_title" v="[EN] Soil &amp; Fertilizer — Field Guide" eh="bb56610f" />
+    <e k="sf_guide_tab_1" v="[EN] OVERVIEW" eh="3b9ae4ee" />
+    <e k="sf_guide_tab_2" v="[EN] HUD GUIDE" eh="843ca8c2" />
+    <e k="sf_guide_tab_3" v="[EN] WORKFLOW" eh="7337e059" />
+    <e k="sf_guide_tab_4" v="[EN] PRODUCTS" eh="d71bd8a0" />
+    <e k="sf_guide_tab_5" v="[EN] F.A.Q." eh="a922ea47" />
     </elements>
 
 
