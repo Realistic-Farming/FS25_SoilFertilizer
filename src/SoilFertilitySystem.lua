@@ -2501,17 +2501,15 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
-        -- Sync all existing zone cells with the same delta applied to the field average.
-        -- Without this, cells created before a spray job keep their old values while the
-        -- HUD average climbs, causing the cell report panel to show values wildly out of
-        -- step with the field average (reported by Seb, May 2026 — K 39 vs avg 244).
-        if field.zoneData then
+        -- pH bulk sync: lime raises pH field-wide so all cells track it uniformly.
+        -- N/P/K/OM are NOT bulk-synced — cells visited by the boom (markBoomCells)
+        -- get the updated field average written there, while unvisited pre-populated
+        -- cells keep their initial value. This creates spatial differentiation on the
+        -- overlay map: freshly-sprayed areas show higher nutrient values than areas
+        -- the boom hasn't reached yet.
+        if entry.pH and field.zoneData then
             for _, cell in pairs(field.zoneData) do
-                if entry.N  then cell.N  = math.min(limits.MAX,                     cell.N  + entry.N  * factor) end
-                if entry.P  then cell.P  = math.min(limits.MAX,                     cell.P  + entry.P  * factor) end
-                if entry.K  then cell.K  = math.min(limits.MAX,                     cell.K  + entry.K  * factor) end
-                if entry.pH then cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX,  cell.pH + entry.pH * factor)) end
-                if entry.OM then cell.OM = math.max(0, math.min(limits.ORGANIC_MATTER_MAX,  cell.OM + entry.OM * factor)) end
+                cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * factor))
             end
         end
 
