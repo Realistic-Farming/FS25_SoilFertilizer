@@ -2736,8 +2736,14 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         local daysPerMonth = (g_currentMission and g_currentMission.environment and g_currentMission.environment.daysPerPeriod) or 1
         -- Only grant protected status once 80% of the field has been covered (issue #441)
         local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
+        local wasProtected = (field.herbicideDaysLeft or 0) > 0
         if (field.sessionCoverageFraction or 0) >= protThreshold then
             field.herbicideDaysLeft = SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS * daysPerMonth
+            -- Apply weed map state (visual browning) exactly once when protection is first granted.
+            -- applyWeedMapState is server-only; guards inside it handle the nil-field case.
+            if not wasProtected and g_server then
+                self:applyWeedMapState(fieldId, SoilConstants.WEED_PRESSURE.WEED_STATE_WITHERED)
+            end
         end
 
         -- Update per-cell weed pressure so the PDA cell-report shows changes immediately.

@@ -33,6 +33,9 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed all custom solid fertilizers (UREA, MAP, etc.) unable to fill spreaders via big bag",
     "- Organic dry types (COMPOST, PELLETIZED MANURE) now also accepted by dedicated manure spreaders",
     "- Fixed herbicide: weed pressure and yield penalty now correctly respect active protection window",
+    "- Fixed herbicide: weeds now visually wither (turn brown) when protection threshold is reached",
+    "- Fixed boom sprayer coverage tracking now uses VWW section positions (no more instant full-pass)",
+    "- Fixed vanilla HERBICIDE spray visual effects no longer display when vehicle is stationary",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

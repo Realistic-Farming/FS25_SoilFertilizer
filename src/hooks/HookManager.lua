@@ -4260,7 +4260,20 @@ function HookManager:installSprayerVisualEffectHook()
                 spec._soilEffectsActive   = nil
             end
 
-            if not vanillaFillType then return end  -- not our custom type, nothing to manage
+            if not vanillaFillType then
+                -- Vanilla fill type (e.g. HERBICIDE): apply speed gate so effects stop when stationary.
+                -- The vanilla game starts effects each tick before our appended hook runs; we stop them
+                -- once on each stationary→moving transition (state-tracked to avoid per-tick calls).
+                local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
+                local wantStopped = speed < 0.5
+                if wantStopped ~= spec._soilVanillaStopActive then
+                    spec._soilVanillaStopActive = wantStopped
+                    if wantStopped then
+                        stopSprayerEffects(sprayerSelf)
+                    end
+                end
+                return
+            end
 
             -- Gate on speed: no visual spray when standing still (matches our nutrient hook guard)
             local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
@@ -4382,16 +4395,31 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     local xs, zs = {}, {}
 
     local function collectFromObj(obj)
-        if not obj or not obj.spec_workArea or not obj.spec_workArea.workAreas then return end
-        for _, wa in ipairs(obj.spec_workArea.workAreas) do
-            if wa.start then
-                local ok, x, _, z = pcall(getWorldTranslation, wa.start)
-                if ok and x then table.insert(xs, x); table.insert(zs, z) end
+        if not obj then return end
+        -- WorkArea start/end nodes
+        if obj.spec_workArea and obj.spec_workArea.workAreas then
+            for _, wa in ipairs(obj.spec_workArea.workAreas) do
+                if wa.start then
+                    local ok, x, _, z = pcall(getWorldTranslation, wa.start)
+                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
+                end
+                local waEnd = wa["end"]  -- "end" is a Lua keyword; must use bracket access
+                if waEnd then
+                    local ok, x, _, z = pcall(getWorldTranslation, waEnd)
+                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
+                end
             end
-            local waEnd = wa["end"]  -- "end" is a Lua keyword; must use bracket access
-            if waEnd then
-                local ok, x, _, z = pcall(getWorldTranslation, waEnd)
-                if ok and x then table.insert(xs, x); table.insert(zs, z) end
+        end
+        -- VWW section maxWidthNodes capture the outer boom edge of each section —
+        -- workArea start/end nodes are often co-located at the centre, giving a
+        -- near-zero span and causing the function to return nil for boom sprayers.
+        local vww = obj.spec_variableWorkWidth
+        if vww and vww.sections then
+            for _, section in ipairs(vww.sections) do
+                if section.maxWidthNode then
+                    local ok, x, _, z = pcall(getWorldTranslation, section.maxWidthNode)
+                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
+                end
             end
         end
     end
