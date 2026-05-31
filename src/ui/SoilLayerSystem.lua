@@ -40,7 +40,7 @@ local SoilLayerSystem_mt = Class(SoilLayerSystem)
 -- ─────────────────────────────────────────────────────────
 local LAYER_DEFS = {
     {
-        name        = "infoLayer_soilN",
+        name        = "soilN",          -- i3d short name; engine saves as infoLayer_soilN.grle
         field       = "nitrogen",       -- key in fieldData
         minVal      = 0,
         maxVal      = 100,
@@ -48,7 +48,7 @@ local LAYER_DEFS = {
         numChannels = 8,
     },
     {
-        name        = "infoLayer_soilP",
+        name        = "soilP",
         field       = "phosphorus",
         minVal      = 0,
         maxVal      = 100,
@@ -56,7 +56,7 @@ local LAYER_DEFS = {
         numChannels = 8,
     },
     {
-        name        = "infoLayer_soilK",
+        name        = "soilK",
         field       = "potassium",
         minVal      = 0,
         maxVal      = 100,
@@ -64,7 +64,7 @@ local LAYER_DEFS = {
         numChannels = 8,
     },
     {
-        name        = "infoLayer_soilPH",
+        name        = "soilPH",
         field       = "pH",
         minVal      = 5.0,              -- FS25 soil pH never goes below 5
         maxVal      = 7.5,
@@ -72,7 +72,7 @@ local LAYER_DEFS = {
         numChannels = 8,
     },
     {
-        name        = "infoLayer_soilOM",
+        name        = "soilOM",
         field       = "organicMatter",
         minVal      = 0,
         maxVal      = 10,
@@ -196,7 +196,7 @@ function SoilLayerSystem:writeValueAtWorld(layerName, worldX, worldZ, value, rad
     local modifier  = entry.modifier
     local filter    = DensityMapFilter.new(modifier)
     -- No filter — write unconditionally to all pixels in radius
-    modifier:setParallelogramWorldCoords(worldX - r, worldZ - r, worldX + r, worldZ - r, worldX - r, worldZ + r, DensityCoordType.POINT)
+    modifier:setParallelogramWorldCoords(worldX - r, worldZ - r, worldX + r, worldZ - r, worldX - r, worldZ + r, DensityCoordType.POINT_POINT_POINT)
     modifier:executeSet(encoded, filter, nil)
 end
 
@@ -222,7 +222,7 @@ function SoilLayerSystem:readValueAtWorld(layerName, worldX, worldZ)
         worldX, worldZ,
         worldX + 0.1, worldZ,
         worldX, worldZ + 0.1,
-        DensityCoordType.POINT
+        DensityCoordType.POINT_POINT_POINT
     )
     local val, _, _ = modifier:executeGet(filter, nil)
     if val == nil then return nil end
@@ -289,7 +289,7 @@ function SoilLayerSystem:readAverageForFarmland(layerName, farmland)
             local wx = (cx - hw) + (xi / (STEPS - 1)) * (hw * 2)
             local wz = (cz - hh) + (zi / (STEPS - 1)) * (hh * 2)
 
-            modifier:setParallelogramWorldCoords(wx, wz, wx + 0.1, wz, wx, wz + 0.1, DensityCoordType.POINT)
+            modifier:setParallelogramWorldCoords(wx, wz, wx + 0.1, wz, wx, wz + 0.1, DensityCoordType.POINT_POINT_POINT)
             local val, _, _ = modifier:executeGet(filter, nil)
             if val ~= nil then
                 sum   = sum + val
@@ -356,7 +356,7 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, farmland)
                 cx - hw, cz - hh,
                 cx + hw, cz - hh,
                 cx - hw, cz + hh,
-                DensityCoordType.POINT
+                DensityCoordType.POINT_POINT_POINT
             )
             modifier:executeSet(encoded, filter, nil)
         end
@@ -399,7 +399,7 @@ function SoilLayerSystem:updatePixelForField(fieldKey, worldX, worldZ, newValue,
         worldX - radius, worldZ - radius,
         worldX + radius, worldZ - radius,
         worldX - radius, worldZ + radius,
-        DensityCoordType.POINT
+        DensityCoordType.POINT_POINT_POINT
     )
     modifier:executeSet(encoded, filter, nil)
 end

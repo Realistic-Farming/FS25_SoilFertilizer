@@ -1222,16 +1222,16 @@ function SoilHUD:drawPanel()
         -- Weed / pest / disease pressure rows
         local mgr = g_SoilFertilityManager
         if mgr then
-            if mgr.settings.weedPressure then
-                cy = self:drawPressureRow("sf_hud_weeds", info.weedPressure or 0,
+            if mgr.settings.weedPressure and (info.weedPressure or 0) > 0 then
+                cy = self:drawPressureRow("sf_hud_weeds", info.weedPressure,
                     info.herbicideActive, px, cy, pw, s, fontMult)
             end
-            if mgr.settings.pestPressure then
-                cy = self:drawPressureRow("sf_hud_pests", info.pestPressure or 0,
+            if mgr.settings.pestPressure and (info.pestPressure or 0) > 0 then
+                cy = self:drawPressureRow("sf_hud_pests", info.pestPressure,
                     info.insecticideActive, px, cy, pw, s, fontMult)
             end
-            if mgr.settings.diseasePressure then
-                cy = self:drawPressureRow("sf_hud_disease", info.diseasePressure or 0,
+            if mgr.settings.diseasePressure and (info.diseasePressure or 0) > 0 then
+                cy = self:drawPressureRow("sf_hud_disease", info.diseasePressure,
                     info.fungicideActive, px, cy, pw, s, fontMult)
             end
 

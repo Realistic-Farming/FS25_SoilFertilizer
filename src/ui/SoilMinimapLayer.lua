@@ -151,7 +151,7 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
     local layerSystem = self.soilSystem and self.soilSystem.layerSystem
     local fieldKey    = LAYER_FIELD_KEYS[layerIdx]
 
-    if layerSystem and layerSystem.available and fieldKey then
+    if layerSystem and layerSystem.available and layerSystem.hasData and fieldKey then
         local entry = layerSystem:getLayerEntryForField(fieldKey)
         if entry then
             local handle = entry.handle

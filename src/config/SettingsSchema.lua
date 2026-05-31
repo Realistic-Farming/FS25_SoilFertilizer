@@ -171,7 +171,7 @@ SettingsSchema.definitions = {
         default = 2,  -- 1=Arid, 2=Temperate, 3=Humid, 4=Wet
         min = 1,
         max = 4,
-        uiId = "sf_disease_moisture",
+        uiId = "sf_dm",
     },
     {
         id = "compactionEnabled",
