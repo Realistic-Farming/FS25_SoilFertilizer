@@ -24,20 +24,11 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed soil map layer names to match engine convention (soilN, soilP, soilK, soilPH, soilOM)",
-    "- Fixed density map coordinate type across all read/write calls — values now land correctly",
-    "- Fixed overlay zones showing identical values — bulk zone sync removed, each zone is now spatial",
-    "- Fixed nil crash: zone cell constants now defined before pre-population runs",
-    "- Fixed overlay tiles pre-populated for all fields on load — map is fully visible from the start",
-    "- Fixed FarmlandManager crash from nil world coordinates in sprayer boundary check",
-    "- Fixed boom sections crossing into adjacent fields are now correctly suppressed",
-    "- Fixed dedicated server fertilizer broadcast keyed per field+product — N→K switch now immediate",
-    "- Fixed See & Spray weed detection now reads from the game density map, not stale cell data",
-    "- Fixed HUD row overlap — Weeds/Pests/Disease bars now render at the correct position",
-    "- Fixed HUD edit mode camera orbit — cursor re-locked every frame during pan",
-    "- Fixed Weed/Pest/Disease HUD rows hidden when pressure is zero (no more empty bars)",
-    "- Fixed admin settings panel missing translation label (sf_dm uiId mismatch resolved)",
-    "- Fixed minimap layer build now guarded until soil layer data is actually available",
+    "v2.3.0.0",
+    "- New: PDA fullscreen map now uses per-pixel density map rendering (same quality as minimap)",
+    "- New: soilPest, soilDisease, soilCompaction density map layers — true per-pixel precision",
+    "- New: Weed pressure synced live from the game's native WeedSystem density map",
+    "- Fixed: Minimap layer indices for pest/disease/compaction now match correctly",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
