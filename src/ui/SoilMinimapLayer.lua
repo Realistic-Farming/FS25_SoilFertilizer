@@ -188,12 +188,15 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
         if entry then
             local handle = entry.handle
             local def    = entry.def
-            -- Value 0 = unwritten pixel → transparent.
-            -- Values 1-255 → decode to semantic float → status color.
-            for i = 1, 255 do
-                local semanticVal = def.minVal + (i / 255.0) * (def.maxVal - def.minVal)
+            -- Engine limit: 16 state color sets max. Read top 4 bits of the 8-bit value
+            -- (firstChannel=4, numChannels=4 → states 0-15 = top nibble).
+            -- State 0 = raw value 0-15 (unwritten or near-zero) → transparent.
+            -- States 1-15 = monotonically increasing semantic value → gradient.
+            setDensityMapVisualizationOverlayStateColor(ov, handle, 4, 0, 4, 0, 0, 0, 0, 0)
+            for i = 1, 15 do
+                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
                 local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
-                setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 8, i, r, g, b, 1.0)
+                setDensityMapVisualizationOverlayStateColor(ov, handle, 4, 0, 4, i, r, g, b, 1.0)
             end
             self._usingDensityLayers = true
             generateDensityMapVisualizationOverlay(ov)

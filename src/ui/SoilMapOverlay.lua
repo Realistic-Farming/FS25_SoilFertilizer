@@ -316,10 +316,14 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
         if entry then
             local handle = entry.handle
             local def    = entry.def
-            for i = 1, 255 do
-                local semanticVal = def.minVal + (i / 255.0) * (def.maxVal - def.minVal)
+            -- Engine limit: 16 state color sets max. Read top 4 bits of 8-bit value
+            -- (firstChannel=4, numChannels=4 → states 0-15 = top nibble).
+            -- State 0 = raw 0-15 (unwritten/near-zero) → transparent.
+            setDensityMapVisualizationOverlayStateColor(ov, handle, 4, 0, 4, 0, 0, 0, 0, 0)
+            for i = 1, 15 do
+                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
                 local r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
-                setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 8, i, r, g, b, 1.0)
+                setDensityMapVisualizationOverlayStateColor(ov, handle, 4, 0, 4, i, r, g, b, 1.0)
             end
             self._pdaUsingDMV = true
             generateDensityMapVisualizationOverlay(ov)
