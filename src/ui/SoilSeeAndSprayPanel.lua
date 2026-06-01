@@ -357,26 +357,37 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
         cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
     end
 
-    -- Herbicide protection active → field already sprayed, weeds dying → show as clean
-    local herbicideActive = fd and ((fd.herbicideDaysLeft or 0) > 0)
+    -- Protection active flags (used to show "Protected" when pressure reaches 0%)
+    local herbicideActive   = fd and (fd.herbicideActive   == true)
+    local insecticideActive = fd and (fd.insecticideActive == true)
+    local fungicideActive   = fd and (fd.fungicideActive   == true)
     local weedAboveThreshold = (cellWeed >= ssCfg.WEED_THRESHOLD) and not herbicideActive
 
-    local function cellVal(val, threshold, on)
-        if not on or not fd then return "" end
+    local function cellVal(val, threshold, on, protected)
+        if not on or not fd then return "", false end
+        if protected and val < threshold then
+            return g_i18n:hasText("sf_see_spray_protected")
+                   and g_i18n:getText("sf_see_spray_protected")
+                   or  "0% (Protected)", true
+        end
         local pct = string.format("%.0f%%", val)
         local src = cell and "cell" or "avg"
-        return string.format("%s (%s)", pct, src)
+        return string.format("%s (%s)", pct, src), false
     end
+
+    local pestVal,    pestProt    = cellVal(cellPest,    ssCfg.PEST_THRESHOLD,    pestOn,    insecticideActive)
+    local diseaseVal, diseaseProt = cellVal(cellDisease, ssCfg.DISEASE_THRESHOLD, diseaseOn, fungicideActive)
+    local weedVal,    weedProt    = cellVal(cellWeed,    ssCfg.WEED_THRESHOLD,    weedOn,    herbicideActive)
 
     local rows = {
         { label = g_i18n:getText("sf_see_spray_pest"),    on = pestOn,    key = keyPest,
-          val = cellVal(cellPest,    ssCfg.PEST_THRESHOLD,    pestOn),
+          val = pestVal,    protected = pestProt,
           aboveThreshold = cellPest    >= ssCfg.PEST_THRESHOLD    },
         { label = g_i18n:getText("sf_see_spray_disease"), on = diseaseOn, key = keyDisease,
-          val = cellVal(cellDisease, ssCfg.DISEASE_THRESHOLD, diseaseOn),
+          val = diseaseVal, protected = diseaseProt,
           aboveThreshold = cellDisease >= ssCfg.DISEASE_THRESHOLD },
         { label = g_i18n:getText("sf_see_spray_weed"),    on = weedOn,    key = keyWeed,
-          val = cellVal(cellWeed,    ssCfg.WEED_THRESHOLD,    weedOn),
+          val = weedVal,    protected = weedProt,
           aboveThreshold = weedAboveThreshold },
     }
 
@@ -418,8 +429,12 @@ function SoilSeeAndSprayPanel:drawPanel(sprayer, sfm)
         setTextAlignment(RenderText.ALIGN_LEFT)
 
         if row.on and row.val ~= "" then
-            setTextColor(SoilSeeAndSprayPanel.C_LABEL[1], SoilSeeAndSprayPanel.C_LABEL[2],
-                SoilSeeAndSprayPanel.C_LABEL[3], 1.0)
+            if row.protected then
+                setTextColor(0.30, 0.90, 0.40, 1.0)  -- green: field is protected
+            else
+                setTextColor(SoilSeeAndSprayPanel.C_LABEL[1], SoilSeeAndSprayPanel.C_LABEL[2],
+                    SoilSeeAndSprayPanel.C_LABEL[3], 1.0)
+            end
             renderText(tx + 0.010*s, midY - fsDim * 0.45 - fsDim * 1.1, fsDim, row.val)
         end
     end
