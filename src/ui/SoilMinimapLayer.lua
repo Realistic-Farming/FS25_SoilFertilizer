@@ -176,9 +176,15 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
     local layerSystem = self.soilSystem and self.soilSystem.layerSystem
     local fieldKey    = LAYER_FIELD_KEYS[layerIdx]
 
+    SoilLogger.info("SoilMinimapLayer: _startBuild layerIdx=%d fieldKey=%s layerSysAvail=%s lastHandle=%s",
+        layerIdx, tostring(fieldKey),
+        tostring(layerSystem and layerSystem.available),
+        tostring(self._lastOverlayHandle))
+
     -- ── Weed layer (game-native foliage density map) ──────────────────────────
     if fieldKey == "weed" and layerSystem and layerSystem.hasWeedLayer then
         local mapId, firstCh, numCh = layerSystem:getWeedMapData()
+        SoilLogger.info("SoilMinimapLayer: weed path — mapId=%s firstCh=%s numCh=%s", tostring(mapId), tostring(firstCh), tostring(numCh))
         if mapId then
             if self._lastOverlayHandle and self._lastOverlayHandle ~= mapId then
                 for s = 0, GRLE_STATE_MAX do
@@ -202,24 +208,20 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
             self._usingDensityLayers = true
             generateDensityMapVisualizationOverlay(ov)
             self._buildInFlight = true
+            SoilLogger.info("SoilMinimapLayer: weed DMV generate triggered (mapId=%s)", tostring(mapId))
             return
         end
     end
 
     -- ── Per-pixel GRLE path (nutrients + pest/disease/compaction) ─────────────
-    -- Reads top 4 bits of each 8-bit GRLE byte (firstChannel=4, numChannels=4)
-    -- → 16 states. State 0 = transparent (zero GRLE byte = never sprayed).
-    -- Regenerating in-place: the async DMV engine keeps the previous result
-    -- visible until the new generation completes — no double-buffer needed.
     if layerSystem and layerSystem.available and fieldKey and fieldKey ~= "weed" then
         local entry = layerSystem:getLayerEntryForField(fieldKey)
+        SoilLogger.info("SoilMinimapLayer: GRLE path — entry=%s", entry and ("handle="..tostring(entry.handle)) or "NIL")
         if entry then
             local handle = entry.handle
             local def    = entry.def
-            -- Zero out the previous layer's handle states before configuring the new one.
-            -- setDensityMapVisualizationOverlayStateColor is additive per handle; old entries
-            -- remain active in the overlay until explicitly cleared.
             if self._lastOverlayHandle and self._lastOverlayHandle ~= handle then
+                SoilLogger.info("SoilMinimapLayer: clearing prev handle %s states before configuring handle %s", tostring(self._lastOverlayHandle), tostring(handle))
                 for s = 0, GRLE_STATE_MAX do
                     setDensityMapVisualizationOverlayStateColor(ov, self._lastOverlayHandle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, s, 0, 0, 0, 0)
                 end
@@ -234,11 +236,13 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
             self._usingDensityLayers = true
             generateDensityMapVisualizationOverlay(ov)
             self._buildInFlight = true
+            SoilLogger.info("SoilMinimapLayer: GRLE DMV generate triggered handle=%s key=%s firstCh=%d numCh=%d", tostring(handle), tostring(fieldKey), GRLE_FIRST_CH, GRLE_NUM_CH)
             return
         end
     end
 
     -- ── Fallback: polygon-fill dots via SoilMapOverlay ────────────────────────
+    SoilLogger.info("SoilMinimapLayer: fallback path — layerSysAvail=%s fieldKey=%s", tostring(layerSystem and layerSystem.available), tostring(fieldKey))
     self._usingDensityLayers = false
 end
 
