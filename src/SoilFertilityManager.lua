@@ -1125,23 +1125,8 @@ function SoilFertilityManager:loadSoilData()
         -- Fresh start: scanFields already seeded fieldData from GRLE layers (if available).
         -- Push that data to the density map layers now so the PDA DMV overlay and minimap
         -- heatmap show real values immediately rather than after the first fertilizer event.
-        local ls = self.soilSystem and self.soilSystem.layerSystem
-        if ls and ls.available and not ls.hasData then
-            local pushed = 0
-            local cleared = 0
-            local activeIds = self.soilSystem.activeFieldIds or {}
-            for fid, data in pairs(self.soilSystem.fieldData) do
-                if activeIds[fid] then
-                    ls:writeFieldToLayers(fid, data, nil)
-                    pushed = pushed + 1
-                else
-                    ls:clearFieldFromLayers(fid, nil)
-                    cleared = cleared + 1
-                end
-            end
-            ls.hasData = true
-            SoilLogger.info("Fresh start: pushed %d owned, cleared %d unowned fields to density layers", pushed, cleared)
-        end
+        -- GRLE minimap heatmap fills in per-pixel from sprayer events.
+        -- No bulk AABB seed here — see SoilFertilitySystem.lua loadFromXMLFile note.
     end
 end
 

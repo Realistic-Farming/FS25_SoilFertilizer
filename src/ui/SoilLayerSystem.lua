@@ -40,6 +40,8 @@ local SoilLayerSystem_mt = Class(SoilLayerSystem)
 -- ─────────────────────────────────────────────────────────
 local LAYER_DEFS = {
     -- ── Nutrients ────────────────────────────────────────────
+    -- perPixel=true: written per-pixel by spray events (updatePixelForField).
+    -- writeFieldToLayers skips these to preserve per-pixel precision.
     {
         name        = "soilN",          -- i3d short name; engine saves as infoLayer_soilN.grle
         field       = "nitrogen",       -- key in fieldData
@@ -47,6 +49,7 @@ local LAYER_DEFS = {
         maxVal      = 100,
         numBits     = 8,                -- 256 steps over 0-100 → ~0.39 units per step
         numChannels = 8,
+        perPixel    = true,
     },
     {
         name        = "soilP",
@@ -55,6 +58,7 @@ local LAYER_DEFS = {
         maxVal      = 100,
         numBits     = 8,
         numChannels = 8,
+        perPixel    = true,
     },
     {
         name        = "soilK",
@@ -63,6 +67,7 @@ local LAYER_DEFS = {
         maxVal      = 100,
         numBits     = 8,
         numChannels = 8,
+        perPixel    = true,
     },
     {
         name        = "soilPH",
@@ -71,6 +76,7 @@ local LAYER_DEFS = {
         maxVal      = 7.5,
         numBits     = 8,
         numChannels = 8,
+        perPixel    = true,
     },
     {
         name        = "soilOM",
@@ -79,8 +85,10 @@ local LAYER_DEFS = {
         maxVal      = 10,
         numBits     = 8,
         numChannels = 8,
+        perPixel    = true,
     },
     -- ── Biotic / physical pressure ───────────────────────────
+    -- perPixel=false (default): no spray hooks; daily update paints field AABB.
     {
         name        = "soilPest",
         field       = "pestPressure",
@@ -491,21 +499,24 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmlan
         return
     end
 
-    -- Paint entire AABB with the current field value for each layer
+    -- Paint entire AABB with the current field value for non-perPixel layers only.
+    -- perPixel layers (N/P/K/pH/OM) are written per-pixel by spray events and must
+    -- not be bulk-overwritten here or the per-pixel precision is lost.
     for _, def in ipairs(LAYER_DEFS) do
-        local entry = self.layerHandles[def.name]
-        if entry and fieldData[def.field] ~= nil then
-            local encoded = encode(fieldData[def.field], def)
-            local modifier = entry.modifier
-            local filter   = DensityMapFilter.new(modifier)
-            -- Parallelogram covering the full AABB
-            modifier:setParallelogramWorldCoords(
-                cx - hw, cz - hh,
-                cx + hw, cz - hh,
-                cx - hw, cz + hh,
-                DensityCoordType.POINT_POINT_POINT
-            )
-            modifier:executeSet(encoded, filter, nil)
+        if not def.perPixel then
+            local entry = self.layerHandles[def.name]
+            if entry and fieldData[def.field] ~= nil then
+                local encoded = encode(fieldData[def.field], def)
+                local modifier = entry.modifier
+                local filter   = DensityMapFilter.new(modifier)
+                modifier:setParallelogramWorldCoords(
+                    cx - hw, cz - hh,
+                    cx + hw, cz - hh,
+                    cx - hw, cz + hh,
+                    DensityCoordType.POINT_POINT_POINT
+                )
+                modifier:executeSet(encoded, filter, nil)
+            end
         end
     end
 

@@ -463,10 +463,6 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     local field = self:getOrCreateField(fieldId, true)
     if field then
         self:_addToActiveSet(fieldId)
-        -- Write GRLE so unmasked DMV shows this newly-owned field on next rebuild.
-        if self.layerSystem and self.layerSystem.available then
-            self.layerSystem:writeFieldToLayers(fieldId, field, nil)
-        end
         SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d — added to active set", fieldId, farmId)
     end
 end
@@ -2597,6 +2593,9 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                 if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
                 if entry.pH then self.layerSystem:updatePixelForField("pH",           x, z, field.pH,            2.0) end
                 if entry.OM then self.layerSystem:updatePixelForField("organicMatter",x, z, field.organicMatter, 2.0) end
+                -- Notify minimap that GRLE data changed
+                local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+                if minimapLayer then minimapLayer:markDirty() end
             end
         end
 
@@ -3569,29 +3568,11 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     end
 
     self:info("Loaded data for %d fields", index)
-
-    -- Push loaded values to density map layers so visual heatmap reflects saved state.
-    -- This runs after loadFromXMLFile, so layerSystem may not be initialized yet
-    -- (it initializes in SoilFertilitySystem:initialize which fires before loadSoilData).
-    -- Guard: only run if the layer system is available.
-    if self.layerSystem and self.layerSystem.available and g_farmlandManager then
-        local pushed = 0
-        local cleared = 0
-        for fieldId, data in pairs(self.fieldData) do
-            local farmland = g_farmlandManager:getFarmlandById(fieldId)
-            if farmland then
-                if self.activeFieldIds[fieldId] then
-                    self.layerSystem:writeFieldToLayers(fieldId, data, farmland)
-                    pushed = pushed + 1
-                else
-                    self.layerSystem:clearFieldFromLayers(fieldId, farmland)
-                    cleared = cleared + 1
-                end
-            end
-        end
-        self.layerSystem.hasData = true
-        self:info("Pushed %d owned fields, cleared %d unowned fields to density map layers after load", pushed, cleared)
-    end
+    -- GRLE minimap heatmap is populated per-pixel by sprayer events (updatePixelForField).
+    -- Bulk AABB seeding at load would paint field bounding boxes onto the terrain texture,
+    -- creating rectangular blobs that ignore field polygon shapes.  The SoilLayerInstaller
+    -- creates blank (all-zero) GRLE files; zero pixels are transparent in the DMV overlay,
+    -- so the minimap correctly starts blank and fills in as the player actually sprays.
 
     -- Re-broadcast after load so clients that were connected during a
     -- save/load cycle get up-to-date values immediately.
