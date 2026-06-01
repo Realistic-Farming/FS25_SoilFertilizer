@@ -196,28 +196,15 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
             -- Engine limit: 16 state color sets. Read top 4 bits of the 8-bit value.
             -- Signature: (overlay, mapId, maskMapId, fieldMask, firstChannel, numChannels, state, r, g, b, a)
             -- State 0 = raw bits 4-7 = 0 (unwritten/near-zero) → always transparent.
+            -- State 0 = raw bits 4-7 = 0 (unwritten/near-zero) → always transparent.
+            -- No masking: our GRLE starts as all-zeros; writeFieldToLayers only paints
+            -- field AABBs, so only field areas ever have non-zero state values.
+            -- Unmasked rendering therefore naturally restricts coloring to field areas.
             setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, 0, 0, 0, 0, 0)
-            -- Use the farmland bit-vector map as a mask so the DMV only renders on
-            -- owned farmland pixels (generic.grle seeds values everywhere on the terrain,
-            -- so without masking the whole map gets coloured).
-            -- Each call adds a render rule: "state i visible where farmland map = farmlandId".
-            local farmlandMap  = self._farmlandMap
-            local activeFields = self.soilSystem and self.soilSystem.activeFieldIds or {}
-            if farmlandMap and next(activeFields) ~= nil then
-                for farmlandId, _ in pairs(activeFields) do
-                    for i = 1, 15 do
-                        local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
-                        local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
-                        setDensityMapVisualizationOverlayStateColor(ov, handle, farmlandMap, farmlandId, 4, 4, i, r, g, b, 1.0)
-                    end
-                end
-            else
-                -- No farmland map or nothing owned — unmasked fallback (shows everywhere).
-                for i = 1, 15 do
-                    local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
-                    local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
-                    setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, i, r, g, b, 1.0)
-                end
+            for i = 1, 15 do
+                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
+                setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, i, r, g, b, 1.0)
             end
             self._usingDensityLayers = true
             generateDensityMapVisualizationOverlay(ov)
