@@ -38,6 +38,7 @@ function SoilMinimapLayer.new(soilSystem, settings)
     self._farmlandNumCh  = nil
     self._nextRebuildMs  = 0
     self._nextPollMs     = 0
+    self._lastOverlayHandle = nil  -- track previous DMV handle to clear its state colors on layer switch
     return self
 end
 
@@ -179,6 +180,12 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
     if fieldKey == "weed" and layerSystem and layerSystem.hasWeedLayer then
         local mapId, firstCh, numCh = layerSystem:getWeedMapData()
         if mapId then
+            if self._lastOverlayHandle and self._lastOverlayHandle ~= mapId then
+                for s = 0, GRLE_STATE_MAX do
+                    setDensityMapVisualizationOverlayStateColor(ov, self._lastOverlayHandle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, s, 0, 0, 0, 0)
+                end
+            end
+            self._lastOverlayHandle = mapId
             local weedColors = {
                 {0.95, 0.85, 0.20},
                 {0.95, 0.70, 0.10},
@@ -209,6 +216,15 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
         if entry then
             local handle = entry.handle
             local def    = entry.def
+            -- Zero out the previous layer's handle states before configuring the new one.
+            -- setDensityMapVisualizationOverlayStateColor is additive per handle; old entries
+            -- remain active in the overlay until explicitly cleared.
+            if self._lastOverlayHandle and self._lastOverlayHandle ~= handle then
+                for s = 0, GRLE_STATE_MAX do
+                    setDensityMapVisualizationOverlayStateColor(ov, self._lastOverlayHandle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, s, 0, 0, 0, 0)
+                end
+            end
+            self._lastOverlayHandle = handle
             setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, 0, 0, 0, 0, 0)
             for i = 1, GRLE_STATE_MAX do
                 local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
