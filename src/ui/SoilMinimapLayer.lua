@@ -5,16 +5,24 @@
 -- the engine-native DensityMap Visualization Overlay API.
 --
 -- Strategy:
---   • Single overlay; generateDensityMapVisualizationOverlay is called
---     in-place — the engine keeps the previous result visible while the
---     new generation runs async, so there is no flicker.
---   • Only regenerates when spray data has changed (_dirty flag) or the
+--   • One DMV overlay per layer, created lazily on first switch.
+--     The engine allows max 8 unique GRLE handles per overlay;
+--     using separate overlays means each overlay only ever sees
+--     its own single handle — no accumulation, no engine limit hit.
+--   • State colours are configured once per overlay and never
+--     change at runtime, so re-generation after field data changes
+--     is just generateDensityMapVisualizationOverlay(ov) with no
+--     colour reconfiguration needed.
+--   • generateDensityMapVisualizationOverlay is called in-place —
+--     the engine keeps the previous result visible while the new
+--     generation runs async, so there is no flicker.
+--   • Only regenerates when data has changed (_dirty flag) or the
 --     active layer changes — idle play costs nothing.
---   • getIsDensityMapVisualizationOverlayReady is polled every 200 ms,
---     not every frame, to avoid per-frame overhead.
+--   • getIsDensityMapVisualizationOverlayReady is polled every
+--     200 ms, not every frame, to avoid per-frame overhead.
 --
--- Fallback: if createDensityMapVisualizationOverlay is unavailable (older
--- engine builds) SoilMapOverlay falls back to polygon-fill dots.
+-- Fallback: if createDensityMapVisualizationOverlay is unavailable
+-- (older engine builds) SoilMapOverlay falls back to polygon dots.
 -- =========================================================
 
 SoilMinimapLayer = {}
@@ -29,16 +37,18 @@ function SoilMinimapLayer.new(soilSystem, settings)
     self.soilSystem = soilSystem
     self.settings   = settings
     self._initialized    = false
-    self._overlay        = nil           -- single overlay; regenerated in-place
-    self._buildInFlight  = false
-    self._hasShownOnce   = false
-    self._dirty          = true          -- force first build on init
-    self._lastLayerIdx   = -1            -- detect layer-switch → force rebuild
+    -- Per-layer overlay table: [layerIdx] = { ov, configured, inFlight, hasShown }
+    self._overlays       = {}
+    self._resX           = SoilMinimapLayer.OVERLAY_RESOLUTION
+    self._resY           = SoilMinimapLayer.OVERLAY_RESOLUTION
+    self._buildInFlight  = false   -- tracks the CURRENT layer's in-flight state
+    self._usingDensityLayers = false
+    self._dirty          = true    -- force first build on init
+    self._lastLayerIdx   = -1      -- detect layer-switch → force rebuild
     self._farmlandMap    = nil
     self._farmlandNumCh  = nil
     self._nextRebuildMs  = 0
     self._nextPollMs     = 0
-    self._lastOverlayHandle = nil  -- track previous DMV handle to clear its state colors on layer switch
     return self
 end
 
@@ -77,28 +87,23 @@ function SoilMinimapLayer:initialize()
             end
         end
     end
-
-    self._overlay = createDensityMapVisualizationOverlay("SF_SoilHeatmap", resX, resY)
-
-    if not self._overlay then
-        SoilLogger.warning("SoilMinimapLayer: failed to create DMV overlay")
-        return false
-    end
+    self._resX = resX
+    self._resY = resY
 
     self._initialized = true
-    SoilLogger.info("[OK] SoilMinimapLayer initialized (DMV overlay %dx%d, single-buffer)", resX, resY)
+    SoilLogger.info("[OK] SoilMinimapLayer initialized (per-layer DMV overlays %dx%d, lazy-created)", resX, resY)
     return true
 end
 
 function SoilMinimapLayer:delete()
     -- Overlay handles are managed by the engine; nothing to free from Lua.
-    self._initialized   = false
-    self._overlay       = nil
+    self._initialized = false
+    self._overlays    = {}
     self._buildInFlight = false
 end
 
--- Call this whenever spray data has been written to the GRLE (updatePixelForField).
--- Marks the overlay dirty so the next rebuild cycle will regenerate it.
+-- Mark the current layer's overlay dirty so the next rebuild cycle regenerates it.
+-- Call this whenever GRLE data has been updated (spray, harvest, daily tick).
 function SoilMinimapLayer:markDirty()
     self._dirty = true
 end
@@ -116,11 +121,12 @@ function SoilMinimapLayer:update(dt, soilMapOverlay)
         self:_pollBuildFinished()
     end
 
-    -- Detect layer change → mark dirty so we rebuild with the new colour ramp
+    -- Detect layer change → mark dirty so we rebuild with the new layer's overlay
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
     if layerIdx ~= self._lastLayerIdx then
         self._lastLayerIdx = layerIdx
-        self._dirty = true
+        self._dirty        = true
+        self._buildInFlight = false  -- cancel any in-flight build from the previous layer
     end
 
     -- Only rebuild when dirty and the previous build has finished
@@ -133,9 +139,13 @@ end
 function SoilMinimapLayer:_pollBuildFinished()
     if not self._buildInFlight then return end
     if not getIsDensityMapVisualizationOverlayReady then return end
-    if getIsDensityMapVisualizationOverlayReady(self._overlay) then
+    local layerIdx = self._lastLayerIdx
+    local entry = self._overlays[layerIdx]
+    if not entry then return end
+    if getIsDensityMapVisualizationOverlayReady(entry.ov) then
+        entry.inFlight    = false
+        entry.hasShown    = true
         self._buildInFlight = false
-        self._hasShownOnce  = true
     end
 end
 
@@ -158,91 +168,100 @@ local LAYER_FIELD_KEYS = {
 -- Engine limit: 16 state colour entries per DMV overlay configuration.
 -- We read only the top 4 bits of each 8-bit GRLE byte (firstChannel=4, numChannels=4)
 -- which maps the full 0-255 byte range to 16 coarser states (0=transparent, 1-15=colour).
--- The GRLE is written with full 8-bit precision by updatePixelForField; the DMV just
--- reads fewer bits so all 16 state slots are used meaningfully.
 local GRLE_FIRST_CH  = 4
 local GRLE_NUM_CH    = 4
 local GRLE_STATE_MAX = 15
 
+-- Returns or lazily creates the overlay entry for layerIdx.
+-- Each overlay is dedicated to exactly one GRLE handle, avoiding the engine's
+-- 8-unique-handle-per-overlay limit when cycling through all soil layers.
+function SoilMinimapLayer:_getOrCreateOverlay(layerIdx)
+    if self._overlays[layerIdx] then return self._overlays[layerIdx] end
+    local ov = createDensityMapVisualizationOverlay("SF_Heatmap_" .. layerIdx, self._resX, self._resY)
+    if not ov then
+        SoilLogger.warning("SoilMinimapLayer: failed to create overlay for layer %d", layerIdx)
+        return nil
+    end
+    local entry = { ov = ov, configured = false, inFlight = false, hasShown = false }
+    self._overlays[layerIdx] = entry
+    SoilLogger.info("SoilMinimapLayer: created overlay for layer %d", layerIdx)
+    return entry
+end
+
 function SoilMinimapLayer:_startBuild(soilMapOverlay)
     local layerIdx = self._lastLayerIdx
     if layerIdx <= 0 then return end
-
-    local ov = self._overlay
-    if not ov then return end
 
     self._dirty = false  -- clear before build; markDirty() during flight re-queues next cycle
 
     local layerSystem = self.soilSystem and self.soilSystem.layerSystem
     local fieldKey    = LAYER_FIELD_KEYS[layerIdx]
 
-    SoilLogger.info("SoilMinimapLayer: _startBuild layerIdx=%d fieldKey=%s layerSysAvail=%s lastHandle=%s",
-        layerIdx, tostring(fieldKey),
-        tostring(layerSystem and layerSystem.available),
-        tostring(self._lastOverlayHandle))
-
     -- ── Weed layer (game-native foliage density map) ──────────────────────────
     if fieldKey == "weed" and layerSystem and layerSystem.hasWeedLayer then
         local mapId, firstCh, numCh = layerSystem:getWeedMapData()
-        SoilLogger.info("SoilMinimapLayer: weed path — mapId=%s firstCh=%s numCh=%s", tostring(mapId), tostring(firstCh), tostring(numCh))
         if mapId then
-            if self._lastOverlayHandle and self._lastOverlayHandle ~= mapId then
-                for s = 0, GRLE_STATE_MAX do
-                    setDensityMapVisualizationOverlayStateColor(ov, self._lastOverlayHandle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, s, 0, 0, 0, 0)
+            local entry = self:_getOrCreateOverlay(layerIdx)
+            if entry then
+                local ov = entry.ov
+                if not entry.configured then
+                    local weedColors = {
+                        {0.95, 0.85, 0.20},
+                        {0.95, 0.70, 0.10},
+                        {0.90, 0.55, 0.05},
+                        {0.85, 0.35, 0.05},
+                        {0.80, 0.20, 0.05},
+                    }
+                    local maxState = math.max(1, (2 ^ (numCh or 4)) - 1)
+                    for state = 1, maxState do
+                        local ci  = math.min(state, #weedColors)
+                        local r, g, b = weedColors[ci][1], weedColors[ci][2], weedColors[ci][3]
+                        setDensityMapVisualizationOverlayStateColor(ov, mapId, 0, 0, firstCh or 0, numCh or 4, state, r, g, b, 0.85)
+                    end
+                    entry.configured = true
+                    SoilLogger.info("SoilMinimapLayer: weed overlay configured (mapId=%s firstCh=%s numCh=%s)", tostring(mapId), tostring(firstCh), tostring(numCh))
                 end
+                self._usingDensityLayers = true
+                generateDensityMapVisualizationOverlay(ov)
+                entry.inFlight    = true
+                self._buildInFlight = true
+                return
             end
-            self._lastOverlayHandle = mapId
-            local weedColors = {
-                {0.95, 0.85, 0.20},
-                {0.95, 0.70, 0.10},
-                {0.90, 0.55, 0.05},
-                {0.85, 0.35, 0.05},
-                {0.80, 0.20, 0.05},
-            }
-            local maxState = math.max(1, (2 ^ (numCh or 4)) - 1)
-            for state = 1, maxState do
-                local ci  = math.min(state, #weedColors)
-                local r, g, b = weedColors[ci][1], weedColors[ci][2], weedColors[ci][3]
-                setDensityMapVisualizationOverlayStateColor(ov, mapId, 0, 0, firstCh or 0, numCh or 4, state, r, g, b, 0.85)
-            end
-            self._usingDensityLayers = true
-            generateDensityMapVisualizationOverlay(ov)
-            self._buildInFlight = true
-            SoilLogger.info("SoilMinimapLayer: weed DMV generate triggered (mapId=%s)", tostring(mapId))
-            return
         end
     end
 
     -- ── Per-pixel GRLE path (nutrients + pest/disease/compaction) ─────────────
+    -- Each layer gets its own dedicated overlay so each overlay only ever has
+    -- one GRLE handle registered — avoids the engine's 8-handle-per-overlay limit.
     if layerSystem and layerSystem.available and fieldKey and fieldKey ~= "weed" then
-        local entry = layerSystem:getLayerEntryForField(fieldKey)
-        SoilLogger.info("SoilMinimapLayer: GRLE path — entry=%s", entry and ("handle="..tostring(entry.handle)) or "NIL")
-        if entry then
-            local handle = entry.handle
-            local def    = entry.def
-            if self._lastOverlayHandle and self._lastOverlayHandle ~= handle then
-                SoilLogger.info("SoilMinimapLayer: clearing prev handle %s states before configuring handle %s", tostring(self._lastOverlayHandle), tostring(handle))
-                for s = 0, GRLE_STATE_MAX do
-                    setDensityMapVisualizationOverlayStateColor(ov, self._lastOverlayHandle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, s, 0, 0, 0, 0)
+        local grleEntry = layerSystem:getLayerEntryForField(fieldKey)
+        if grleEntry then
+            local ovEntry = self:_getOrCreateOverlay(layerIdx)
+            if ovEntry then
+                local ov     = ovEntry.ov
+                local handle = grleEntry.handle
+                local def    = grleEntry.def
+                -- Configure state colours once; they don't change at runtime.
+                if not ovEntry.configured then
+                    setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, 0, 0, 0, 0, 0)
+                    for i = 1, GRLE_STATE_MAX do
+                        local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
+                        setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, i, r, g, b, 1.0)
+                    end
+                    ovEntry.configured = true
+                    SoilLogger.info("SoilMinimapLayer: GRLE overlay configured handle=%s key=%s firstCh=%d numCh=%d", tostring(handle), tostring(fieldKey), GRLE_FIRST_CH, GRLE_NUM_CH)
                 end
+                self._usingDensityLayers = true
+                generateDensityMapVisualizationOverlay(ov)
+                ovEntry.inFlight    = true
+                self._buildInFlight = true
+                return
             end
-            self._lastOverlayHandle = handle
-            setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, 0, 0, 0, 0, 0)
-            for i = 1, GRLE_STATE_MAX do
-                local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
-                local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
-                setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, i, r, g, b, 1.0)
-            end
-            self._usingDensityLayers = true
-            generateDensityMapVisualizationOverlay(ov)
-            self._buildInFlight = true
-            SoilLogger.info("SoilMinimapLayer: GRLE DMV generate triggered handle=%s key=%s firstCh=%d numCh=%d", tostring(handle), tostring(fieldKey), GRLE_FIRST_CH, GRLE_NUM_CH)
-            return
         end
     end
 
     -- ── Fallback: polygon-fill dots via SoilMapOverlay ────────────────────────
-    SoilLogger.info("SoilMinimapLayer: fallback path — layerSysAvail=%s fieldKey=%s", tostring(layerSystem and layerSystem.available), tostring(fieldKey))
     self._usingDensityLayers = false
 end
 
@@ -261,8 +280,6 @@ function SoilMinimapLayer:draw(mapSelf)
 
     if not self._usingDensityLayers then
         -- No GRLE density-map layers on this terrain — hand off to polygon centroid dots.
-        -- mapSelf is the correct HUD minimap instance here (from drawFields hook),
-        -- unlike the PDA ref stored in ingameMapRef which would hit the isFullscreen guard.
         local sfm = g_SoilFertilityManager
         if sfm and sfm.soilMapOverlay then
             sfm.soilMapOverlay:onDrawMinimap(mapSelf)
@@ -270,19 +287,17 @@ function SoilMinimapLayer:draw(mapSelf)
         return
     end
 
-    if not self._hasShownOnce then return end
-
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
     if layerIdx <= 0 then return end
 
-    local ov = self._overlay
+    local ovEntry = self._overlays[layerIdx]
+    if not ovEntry or not ovEntry.hasShown then return end
+
+    local ov = ovEntry.ov
     if not ov then return end
 
     -- Map terrain-space → screen rect using the same math the game uses for
     -- its built-in BMP overlay layers (proven in v2.2.5).
-    -- The DMV overlay covers the full terrain; mapExtension* describe the
-    -- visible window.  We position + scale the overlay so the visible window
-    -- exactly fills the minimap widget rect, then let the minimap clip it.
     local layout = mapSelf.layout
     if not layout then return end
 
