@@ -1033,19 +1033,19 @@ function HookManager:installSectionControlHook()
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
                 if vwwBE and vwwBE.sections and #vwwBE.sections > 0 then
-                    local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
+                    -- Use preserver-cached root position (avoids redundant getWorldTranslation)
+                    local rx = sprayerSelf._sfRootX
+                    local rz = sprayerSelf._sfRootZ
                     if rx then
-                        -- Determine which field the vehicle center is currently on.
                         local vehicleFieldId = hookMgrRef:getFieldIdAtWorldPosition(rx, rz)
-                        for _, section in ipairs(vwwBE.sections) do
+                        local tips = sprayerSelf._sfSectionTip
+                        for i, section in ipairs(vwwBE.sections) do
                             if section.isActive and not section.isCenter then
-                                local sx, sz = rx, rz
-                                if section.maxWidthNode then
-                                    local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
-                                    if ok and wx then sx = wx; sz = wz end
-                                end
+                                -- Boundary uses full tip position (not midpoint)
+                                local tip = tips and tips[i]
+                                local sx = tip and tip[1] or rx
+                                local sz = tip and tip[2] or rz
                                 local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                                -- Suppress if tip is on unfarmed ground OR a different field.
                                 if not fid or fid <= 0 or
                                    (vehicleFieldId and vehicleFieldId > 0 and fid ~= vehicleFieldId) then
                                     section.isActive = false
@@ -1096,26 +1096,23 @@ function HookManager:installSectionControlHook()
 
             if not pestOn and not diseaseOn and not nutrientOn then return end
 
-            -- Pre-fetch root position (fallback for sections without a width node)
-            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            -- Use preserver-cached root position (computed once before all hooks)
+            local rootX = sprayerSelf._sfRootX
+            local rootZ = sprayerSelf._sfRootZ
             if not rootX then return end
 
             local soilSys = sfm.soilSystem
+            local tips = sprayerSelf._sfSectionTip
 
-            for _, section in ipairs(vww.sections) do
+            for i, section in ipairs(vww.sections) do
                 -- Only suppress sections VWW has activated. isCenter sections are never
                 -- added to sectionsLeft/Right so VWW never touches them — leave them alone.
                 -- installSectionStatePreserver() restores isActive after work areas process.
                 if section.isActive and not section.isCenter then
-                    -- Estimate section world position (midpoint between root and outer edge)
-                    local sx, sz = rootX, rootZ
-                    if section.maxWidthNode then
-                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
-                        if ok and wx then
-                            sx = (rootX + wx) * 0.5
-                            sz = (rootZ + wz) * 0.5
-                        end
-                    end
+                    -- Midpoint between root and section outer edge (from preserver cache)
+                    local tip = tips and tips[i]
+                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
+                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     if fieldId and fieldId > 0 then
@@ -1238,23 +1235,21 @@ function HookManager:installSeeAndSprayHook()
             local weedSS    = isWeed    and sensorMgr:isSeeSprayWeedEnabled(vehicleId)
             if not pestSS and not diseaseSS and not weedSS then return end
 
-            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            -- Use preserver-cached root position (computed once before all hooks)
+            local rootX = sprayerSelf._sfRootX
+            local rootZ = sprayerSelf._sfRootZ
             if not rootX then return end
 
             local soilSys = sfm.soilSystem
             local ssCfg   = SoilConstants.SEE_AND_SPRAY
             local zone    = SoilConstants.ZONE
+            local tips    = sprayerSelf._sfSectionTip
 
-            for _, section in ipairs(vww.sections) do
+            for i, section in ipairs(vww.sections) do
                 if section.isActive and not section.isCenter then
-                    local sx, sz = rootX, rootZ
-                    if section.maxWidthNode then
-                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
-                        if ok and wx then
-                            sx = (rootX + wx) * 0.5
-                            sz = (rootZ + wz) * 0.5
-                        end
-                    end
+                    local tip = tips and tips[i]
+                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
+                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     if fieldId and fieldId > 0 then
@@ -1388,26 +1383,24 @@ function HookManager:installVariableRateHook()
             local rm = sfm.sprayerRateManager
             local manualMult = rm and rm:getMultiplier(vehicleId) or 1.0
 
-            local rootX, _, rootZ = getWorldTranslation(sprayerSelf.rootNode)
+            -- Use preserver-cached root position (computed once before all hooks)
+            local rootX = sprayerSelf._sfRootX
+            local rootZ = sprayerSelf._sfRootZ
             if not rootX then return end
 
             local soilSys = sfm.soilSystem
             local vrCfg   = SoilConstants.VARIABLE_RATE
             local target  = vrCfg.NUTRIENT_TARGET
             local zone    = SoilConstants.ZONE
+            local tips    = sprayerSelf._sfSectionTip
 
             sensorMgr:clearSectionRates(vehicleId)
 
-            for _, section in ipairs(vww.sections) do
+            for i, section in ipairs(vww.sections) do
                 if section.isActive and not section.isCenter then
-                    local sx, sz = rootX, rootZ
-                    if section.maxWidthNode then
-                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
-                        if ok and wx then
-                            sx = (rootX + wx) * 0.5
-                            sz = (rootZ + wz) * 0.5
-                        end
-                    end
+                    local tip = tips and tips[i]
+                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
+                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     local rate = vrCfg.MIN_RATE + (vrCfg.MAX_RATE - vrCfg.MIN_RATE) * 0.5  -- default mid
@@ -1487,11 +1480,48 @@ function HookManager:installSectionStatePreserver()
         function(sprayerSelf, dt)
             local vww = sprayerSelf.spec_variableWorkWidth
             if not vww or not vww.sections or #vww.sections == 0 then return end
-            local saved = {}
-            for i, section in ipairs(vww.sections) do
-                saved[i] = section.isActive
+
+            -- Reuse existing table to avoid per-tick allocation
+            local saved = sprayerSelf._sfSavedSectionStates
+            if not saved then
+                saved = {}
+                sprayerSelf._sfSavedSectionStates = saved
             end
-            sprayerSelf._sfSavedSectionStates = saved
+
+            -- Cache root world position once; the three appended hooks read this
+            -- cache instead of calling getWorldTranslation independently.
+            local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
+            sprayerSelf._sfRootX = rx
+            sprayerSelf._sfRootZ = rz
+
+            -- Cache each section's tip node world position so all hooks can
+            -- reuse it without redundant pcall(getWorldTranslation) calls.
+            if rx then
+                local tips = sprayerSelf._sfSectionTip
+                if not tips then
+                    tips = {}
+                    sprayerSelf._sfSectionTip = tips
+                end
+                for i, section in ipairs(vww.sections) do
+                    saved[i] = section.isActive
+                    if section.maxWidthNode then
+                        local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
+                        if ok and wx then
+                            local t = tips[i]
+                            if not t then t = {}; tips[i] = t end
+                            t[1] = wx; t[2] = wz
+                        else
+                            tips[i] = nil
+                        end
+                    else
+                        tips[i] = nil
+                    end
+                end
+            else
+                for i, section in ipairs(vww.sections) do
+                    saved[i] = section.isActive
+                end
+            end
         end
     )
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,

@@ -24,10 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "v2.3.3.0",
-    "- Fixed: DMV heatmap minimap now shows only owned fields (not entire terrain)",
-    "- Fixed: Minimap heatmap no longer disappears after first render",
-    "- Fixed: GRLE cleared for unowned fields on load and on ownership change",
+    "v2.3.4.0",
+    "- Fixed: significant FPS drops when spraying with wide boom sprayers",
+    "- Fixed: frame rate drops while actively fertilizing large fields",
+    "- Improved: much smoother gameplay during all spraying operations",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

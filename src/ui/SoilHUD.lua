@@ -683,6 +683,48 @@ function SoilHUD:update(dt)
     self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
 
     self:updateFieldInfoBox()
+
+    -- Pre-format draw() strings that depend on both field info and sprayer state.
+    -- Doing this in update() (5 Hz for field data, every frame for sprayer state)
+    -- avoids string.format calls inside draw() which runs at 60 FPS.
+    local info = self.cachedFieldInfo
+    if info then
+        -- Coverage text
+        local cov = info.sessionCoverageFraction or info.coverageFraction or 0
+        if sprayer and cov > 0 then
+            local minCov = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
+            local covPct = math.floor(cov * 100 + 0.5)
+            local lastProd = info.sessionLastProduct
+            if lastProd then
+                local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByName(lastProd)
+                local productLabel = (ft and ft.title) or lastProd
+                self._fmt_covText = string.format(g_i18n:getText("sf_hud_pass_coverage"), covPct, productLabel)
+            else
+                local minPct = math.floor(minCov * 100 + 0.5)
+                self._fmt_covText = string.format(g_i18n:getText("sf_hud_coverage"), covPct, minPct)
+            end
+        else
+            self._fmt_covText = nil
+        end
+        -- Compaction text
+        local comp = info.compaction or 0
+        if comp > 0 then
+            self._fmt_compText = string.format(g_i18n:getText("sf_hud_compaction"), math.floor(comp + 0.5))
+        else
+            self._fmt_compText = nil
+        end
+        -- Yield efficiency text
+        local yieldEff = info.yieldEfficiency
+        if yieldEff then
+            self._fmt_yieldText = string.format(g_i18n:getText("sf_hud_yield_eff"), yieldEff)
+        else
+            self._fmt_yieldText = nil
+        end
+    else
+        self._fmt_covText   = nil
+        self._fmt_compText  = nil
+        self._fmt_yieldText = nil
+    end
 end
 
 -- ── Native FIELD INFO box ────────────────────────────────
@@ -905,6 +947,9 @@ function SoilHUD:refreshFieldData()
         self._fmt_N         = nil
         self._fmt_P         = nil
         self._fmt_K         = nil
+        self._fmt_covText   = nil
+        self._fmt_compText  = nil
+        self._fmt_yieldText = nil
     end
 
     self._heightDirty = true
@@ -1237,20 +1282,10 @@ function SoilHUD:drawPanel()
             end
 
             -- Coverage row: only show when player is actively in a fertilizer applicator
-            local cov = info.sessionCoverageFraction or info.coverageFraction or 0
-            if self._cachedSprayer and cov > 0 then
+            local covText = self._fmt_covText
+            if self._cachedSprayer and covText then
+                local cov = info.sessionCoverageFraction or info.coverageFraction or 0
                 local minCov = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
-                local covPct = math.floor(cov * 100 + 0.5)
-                local covText
-                local lastProd = info.sessionLastProduct
-                if lastProd then
-                    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByName(lastProd)
-                    local productLabel = (ft and ft.title) or lastProd
-                    covText = string.format(g_i18n:getText("sf_hud_pass_coverage"), covPct, productLabel)
-                else
-                    local minPct = math.floor(minCov * 100 + 0.5)
-                    covText = string.format(g_i18n:getText("sf_hud_coverage"), covPct, minPct)
-                end
                 local covPoor, _, covGood = self:palette()
                 local cr, cg, cb = covPoor[1], covPoor[2], covPoor[3]
                 if cov >= minCov then cr, cg, cb = covGood[1], covGood[2], covGood[3] end
@@ -1262,41 +1297,41 @@ function SoilHUD:drawPanel()
             end
 
             -- Compaction row
-            local comp = info.compaction or 0
-            if mgr.settings.compactionEnabled and comp > 0 then
-                local compPct = math.floor(comp + 0.5)
+            local compText = self._fmt_compText
+            if mgr.settings.compactionEnabled and compText then
+                local comp = info.compaction or 0
                 local cr, cg, cb
                 if comp > 60 then
-                    cr, cg, cb = 0.88, 0.25, 0.25   -- red: severe
+                    cr, cg, cb = 0.88, 0.25, 0.25
                 elseif comp > 20 then
-                    cr, cg, cb = 0.90, 0.55, 0.10   -- amber: moderate
+                    cr, cg, cb = 0.90, 0.55, 0.10
                 else
-                    cr, cg, cb = 0.32, 0.88, 0.44   -- green: low
+                    cr, cg, cb = 0.32, 0.88, 0.44
                 end
                 local pad = SoilHUD.PAD * s
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
                 cy = cy - SoilHUD.LINE_H * s
-                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, string.format(g_i18n:getText("sf_hud_compaction"), compPct))
+                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText)
             end
         end
 
         -- Yield efficiency summary (nil when no managed crop)
-        local yieldEff = info.yieldEfficiency
-        if yieldEff then
+        local yieldText = self._fmt_yieldText
+        if yieldText then
+            local yieldEff = info.yieldEfficiency or 0
             local yr, yg, yb
             if yieldEff >= 90 then
-                yr, yg, yb = 0.32, 0.88, 0.44   -- green: at or near optimal
+                yr, yg, yb = 0.32, 0.88, 0.44
             elseif yieldEff >= 70 then
-                yr, yg, yb = 0.90, 0.82, 0.18   -- yellow: noticeable penalty
+                yr, yg, yb = 0.90, 0.82, 0.18
             else
-                yr, yg, yb = 0.88, 0.25, 0.25   -- red: significant penalty
+                yr, yg, yb = 0.88, 0.25, 0.25
             end
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(yr, yg, yb, 1.0)
             cy = cy - SoilHUD.LINE_H * s
-            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
-                string.format(g_i18n:getText("sf_hud_yield_eff"), yieldEff))
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, yieldText)
         end
 
         -- Divider before hint
