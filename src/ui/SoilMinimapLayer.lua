@@ -45,6 +45,8 @@ function SoilMinimapLayer.new(soilSystem, settings)
     self._usingDensityLayers = false
     self._dirty          = true    -- force first build on init
     self._lastLayerIdx   = -1      -- detect layer-switch → force rebuild
+    self._prevMW         = nil     -- animation-skip: previous frame's terrain width
+    self._prevMH         = nil     -- animation-skip: previous frame's terrain height
     self._farmlandMap    = nil
     self._farmlandNumCh  = nil
     self._nextRebuildMs  = 0
@@ -124,9 +126,11 @@ function SoilMinimapLayer:update(dt, soilMapOverlay)
     -- Detect layer change → mark dirty so we rebuild with the new layer's overlay
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
     if layerIdx ~= self._lastLayerIdx then
-        self._lastLayerIdx = layerIdx
-        self._dirty        = true
+        self._lastLayerIdx  = layerIdx
+        self._dirty         = true
         self._buildInFlight = false  -- cancel any in-flight build from the previous layer
+        self._prevMW        = nil    -- reset animation baseline for the new layer
+        self._prevMH        = nil
     end
 
     -- Only rebuild when dirty and the previous build has finished
@@ -320,7 +324,17 @@ function SoilMinimapLayer:draw(mapSelf)
     local rx = (px + x) - mx
     local ry = (py + y) - my
 
-    -- Clip rect (circular minimap mask)
+    -- Skip rendering while the minimap layout is animating between states.
+    local prevMW = self._prevMW
+    local prevMH = self._prevMH
+    self._prevMW = mw
+    self._prevMH = mh
+    if prevMW ~= nil and (math.abs(mw - prevMW) > 0.003 or math.abs(mh - prevMH) > 0.003) then
+        return
+    end
+
+    setOverlayUVs(ov, 0, 0, 0, 1, 1, 0, 1, 1)
+
     local didClip = false
     local uL, vT, uR, vB = 0, 0, 1, 1
     if mapSelf.clipX1 ~= nil then

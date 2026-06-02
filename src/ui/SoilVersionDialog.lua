@@ -24,6 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "v2.3.5.0",
+    "- Fixed: minimap heatmap spray trail — daily updates no longer wipe",
+    "  per-pixel nutrient data, so sprayed areas now visually differ from",
+    "  unsprayed areas on the soil layer overlay",
     "v2.3.4.0",
     "- Fixed: significant FPS drops when spraying with wide boom sprayers",
     "- Fixed: frame rate drops while actively fertilizing large fields",
