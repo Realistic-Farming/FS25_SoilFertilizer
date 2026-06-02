@@ -43,13 +43,6 @@ function SoilFertilitySystem.new(settings)
     -- Stores the game day, not a timestamp, so the notification fires at most once per field per in-game day.
     self.fertNotifyShown = {}
 
-    -- Per-field throttle for GRLE pixel writes (fieldId → mission time of last write, ms).
-    -- The spray hook fires many times per second; writing to DensityMapModifier on every
-    -- call costs 5 GPU terrain writes per section per tick. We only need to update the GRLE
-    -- fast enough for the minimap (3 s rebuild interval), so 2.5 s per field is sufficient.
-    self._pixelWriteLastMs = {}
-    self._pixelWriteIntervalMs = 2500
-
     -- Per-day throttle tables for crop protection pressure reductions (fieldId → game day last applied).
     -- The sprayer hook fires every frame while the sprayer is active. Without throttling, a single
     -- pass across a field applies the full pressure reduction 60+ times per second, instantly
@@ -2605,26 +2598,17 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         end
 
         -- Write updated values to density map layers (per-pixel, at sprayer position).
-        -- Throttled to once per 2.5 s per field — the spray hook fires many times per
-        -- second (one call per VWW section per tick), but DensityMapModifier GPU writes
-        -- only need to keep pace with the minimap rebuild interval (3 s).
-        -- markDirty() is always called so the minimap queues a rebuild regardless.
+        -- No throttle — live updates paint a continuous trail on the minimap heatmap.
         if self.layerSystem and self.layerSystem.available then
             local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
                 local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
                 if minimapLayer then minimapLayer:markDirty() end
-
-                local now = g_currentMission and g_currentMission.time or 0
-                local lastWrite = self._pixelWriteLastMs[fieldId] or 0
-                if (now - lastWrite) >= self._pixelWriteIntervalMs then
-                    self._pixelWriteLastMs[fieldId] = now
-                    if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
-                    if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
-                    if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
-                    if entry.pH then self.layerSystem:updatePixelForField("pH",           x, z, field.pH,            2.0) end
-                    if entry.OM then self.layerSystem:updatePixelForField("organicMatter",x, z, field.organicMatter, 2.0) end
-                end
+                if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
+                if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
+                if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
+                if entry.pH then self.layerSystem:updatePixelForField("pH",           x, z, field.pH,            2.0) end
+                if entry.OM then self.layerSystem:updatePixelForField("organicMatter",x, z, field.organicMatter, 2.0) end
             end
         end
 
