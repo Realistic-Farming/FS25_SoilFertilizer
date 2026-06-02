@@ -2222,12 +2222,13 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     end
 
     -- ── Sync all nutrient/pressure layers to density maps ───────────────────
-    -- Paint the exact field polygon with current daily values so the minimap
-    -- heatmap stays current after harvest depletion, rain, and seasonal changes.
+    -- Paint non-perPixel layers (pest/disease/compaction) with the daily average.
+    -- N/P/K/pH/OM are skipped (skipPerPixel=true) so per-pixel spray history is
+    -- preserved between daily updates.
     if layerSys and layerSys.available then
         local fsField = g_fieldManager and g_fieldManager.fields and g_fieldManager.fields[fieldId]
         if fsField then
-            layerSys:writeFieldToLayers(fieldId, field, fsField)
+            layerSys:writeFieldToLayers(fieldId, field, fsField, true)
         end
     end
 

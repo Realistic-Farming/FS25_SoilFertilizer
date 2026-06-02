@@ -480,7 +480,7 @@ end
 ---@param fieldId   number
 ---@param fieldData table   The fieldData[fieldId] table
 ---@param fsFieldOrFarmland table  FS25 Field object preferred; farmland ID used to look up Field if needed
-function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmland)
+function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmland, skipPerPixel)
     if not self.available then return end
     if not fieldData then return end
 
@@ -513,11 +513,13 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmlan
         end
     end
 
-    -- Paint the field polygon (or AABB fallback) for ALL layers.
-    -- perPixel layers (N/P/K/pH/OM) are painted with the field-average value so the
-    -- heatmap stays accurate after harvest depletion and seasonal changes.
-    -- Spray events then overlay precise per-pixel values on top.
+    -- Paint the field polygon (or AABB fallback) for the appropriate layers.
+    -- When skipPerPixel=true (daily update), N/P/K/pH/OM are skipped so that
+    -- per-pixel spray history written by updatePixelForField is preserved.
+    -- When skipPerPixel=false/nil (startup seed), all layers are written to
+    -- initialize the GRLE from the loaded save data.
     for _, def in ipairs(LAYER_DEFS) do
+        if not (skipPerPixel and def.perPixel) then
         local entry = self.layerHandles[def.name]
         if entry and fieldData[def.field] ~= nil then
             local encoded = encode(fieldData[def.field], def)
@@ -545,6 +547,7 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmlan
 
             modifier:executeSet(encoded, filter, nil)
         end
+        end  -- if not (skipPerPixel and def.perPixel)
     end
 
     SoilLogger.debug("SoilLayerSystem: painted field %d to density layers", fieldId)
