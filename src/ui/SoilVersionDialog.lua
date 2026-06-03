@@ -24,7 +24,6 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "v2.3.6.0",
     "- New: harvest trail overlay — amber dots show combine pass in the",
     "  game world and on the minimap; clears when full field is covered",
     "- New: harvester panel stats bar — 4 cells showing estimated t/ha,",
@@ -35,10 +34,6 @@ SoilVersionDialog.CHANGELOG = {
     "  title bar so you always know the active rate at a glance",
     "- Fixed: colorblind mode now auto-enables when the game's own",
     "  colorblind setting is turned on",
-    "v2.3.5.0",
-    "- Fixed: minimap heatmap spray trail — daily updates no longer wipe",
-    "  per-pixel nutrient data, so sprayed areas now visually differ from",
-    "  unsprayed areas on the soil layer overlay",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
