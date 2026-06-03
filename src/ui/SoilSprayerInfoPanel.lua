@@ -493,6 +493,19 @@ function SoilSprayerInfoPanel:draw()
                fertTitle .. fieldStr)
     setTextBold(false)
 
+    -- SF rate multiplier badge (top-right of title bar)
+    if sprayer and g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager then
+        local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(sprayer.id or 0)
+        local rateTxt = string.format("%.1fx", mult)
+        local rateColor = (math.abs(mult - 1.0) < 0.01)
+            and SoilSprayerInfoPanel.C_DIM
+            or  { 1.00, 0.88, 0.30, 1.00 }
+        setTextAlignment(RenderText.ALIGN_RIGHT)
+        setTextColor(unpack(rateColor))
+        renderText(panelX + panelW - pad, panelTop - titleH * 0.5 - titleFontSize * 0.5,
+                   titleFontSize, rateTxt)
+    end
+
     -- Content rows
     local labelW = 0.020
     local valW   = 0.032

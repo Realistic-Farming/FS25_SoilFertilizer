@@ -3852,8 +3852,8 @@ function HookManager:installSprayerUsageHook()
                 local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillType)
                 if ft then ftName = ft.name end
                 SoilLogger.debug(
-                    "SprayUsage veh=%d type=%-12s  spd=%.1f km/h  w=%.1fm  lps=%.6f  scale=%.2f  usage/s=%.4f L/s  eff=%.1f L/ha",
-                    vehId, ftName, actualSpeedKmh, workWidth, lps, fillScale, usagePerSec, effectiveLpha)
+                    "SprayUsage veh=%d type=%-12s  spd=%.1f km/h  w=%.1fm  lps=%.6f  scale=%.2f  rate=%.2fx  usage/s=%.4f L/s  eff=%.1f L/ha",
+                    vehId, ftName, actualSpeedKmh, workWidth, lps, fillScale, mapMult, usagePerSec, effectiveLpha)
             end
 
             return usage

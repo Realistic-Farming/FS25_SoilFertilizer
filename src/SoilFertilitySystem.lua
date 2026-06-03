@@ -2051,10 +2051,19 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             local herbicideAppliedToday = self.herbicideDailyApplied and
                 self.herbicideDailyApplied[fieldId] and
                 self.herbicideDailyApplied[fieldId].day == currentDay
+            local target = math.max(0, math.min(100, gameWeedFactor * 100))
             if (field.herbicideDaysLeft or 0) > 0 or herbicideAppliedToday then
-                field.weedPressure = math.min(field.weedPressure or 0, math.max(0, gameWeedFactor * 100))
+                -- Under herbicide protection: only allow pressure to decrease
+                field.weedPressure = math.min(field.weedPressure or 0, target)
             else
-                field.weedPressure = math.max(0, math.min(100, gameWeedFactor * 100))
+                local current = field.weedPressure or 0
+                if target > current then
+                    -- Cap the daily increase to prevent reload/time-skip spikes (#536)
+                    local maxIncrease = SoilConstants.WEED_PRESSURE.MAX_DAILY_INCREASE or 20
+                    field.weedPressure = math.min(target, current + maxIncrease)
+                else
+                    field.weedPressure = target
+                end
             end
 
             -- Sync zone cells so overlay map matches field-level weed pressure.

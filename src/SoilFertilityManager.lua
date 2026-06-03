@@ -680,6 +680,19 @@ function SoilFertilityManager:onMissionStarted()
     -- is available on fresh saves, so it falls back to defaults.
     self.settings:load()
 
+    -- Auto-detect game colorblind mode (issue #539): if the player has enabled
+    -- colorblind mode in game settings, mirror that into SF's colorblind setting.
+    -- Only activate — never force-disable if the user has explicitly turned it on.
+    if not self.settings.colorblindMode and g_gameSettings then
+        local ok, gameColorblind = pcall(function()
+            return g_gameSettings:getValue("useColorblindMode")
+        end)
+        if ok and gameColorblind then
+            self.settings.colorblindMode = true
+            SoilLogger.info("Colorblind mode auto-enabled from game settings")
+        end
+    end
+
     SoilLogger.info("Mission started — checking for Precision Farming compatibility...")
 
     local ok, err = pcall(function()

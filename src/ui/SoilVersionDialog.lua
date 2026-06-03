@@ -24,6 +24,13 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "v2.3.6.0",
+    "- Fixed: weed pressure no longer spikes on reload or time-skip;",
+    "  increases are now capped at 20 pts/day so pressure rises gradually",
+    "- Fixed: SF application rate multiplier now shown in sprayer panel",
+    "  title bar so you always know the active rate at a glance",
+    "- Fixed: colorblind mode now auto-enables when the game's own",
+    "  colorblind setting is turned on",
     "v2.3.5.0",
     "- Fixed: minimap heatmap spray trail — daily updates no longer wipe",
     "  per-pixel nutrient data, so sprayed areas now visually differ from",

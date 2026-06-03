@@ -792,6 +792,11 @@ SoilConstants.WEED_PRESSURE = {
     -- 0 = no weeds, 1-6 = living stages, 7-9 = withered (dying/brown visual)
     WEED_STATE_CLEAR     = 0,
     WEED_STATE_WITHERED  = 7,   -- small withered — visible brown weeds
+
+    -- Maximum weed pressure increase per daily update.
+    -- Prevents the snap-to-game-weedFactor spike on reload/time-skip (issue #536).
+    -- Decreases still happen immediately so herbicide/cultivation relief is instant.
+    MAX_DAILY_INCREASE   = 20,
 }
 
 -- ========================================
