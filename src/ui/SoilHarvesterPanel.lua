@@ -6,6 +6,7 @@
 --   • Grain tank: 10-segment battery bar, fill level, %
 --   • Yield efficiency from soil data (how soil affects yield)
 --   • Warning flash when tank is almost full (> 85 %)
+--   • Stats bar: est. t/ha | coverage % | session ha | total ha
 --
 -- Position: free-floating, draggable via Shift+H edit mode.
 -- Saved to harvesterPanel.xml alongside the other HUD layouts.
@@ -25,11 +26,23 @@ SoilHarvesterPanel.SEG_H   = 0.014   -- tank bar height
 SoilHarvesterPanel.SEG_N   = 10      -- number of segments
 SoilHarvesterPanel.SEG_GAP = 0.0018  -- gap between segments
 SoilHarvesterPanel.PANEL_W = 0.210
+SoilHarvesterPanel.STAT_H  = 0.040   -- stats bar (icons + values) at bottom
 
 SoilHarvesterPanel.DEFAULT_X = 0.015625
 SoilHarvesterPanel.DEFAULT_Y = 0.340
 
 SoilHarvesterPanel.WARN_THRESHOLD = 0.85  -- flash warning above this fill ratio
+
+-- Base crop yields (t/ha) for the yield estimate cell
+SoilHarvesterPanel.BASE_YIELD = {
+    wheat=8, barley=7, oat=6, rye=6, triticale=7,
+    corn=12, maize=12, sorghum=10,
+    canola=4, rapeseed=4, sunflower=4,
+    soybean=4, beans=4,
+    potato=45, sugarbeet=65, sugarcane=80,
+    cotton=3, tobacco=3,
+    default=8,
+}
 
 -- ── Colors ───────────────────────────────────────────────
 SoilHarvesterPanel.C_BG       = {0.05, 0.05, 0.05, 0.82}
@@ -76,6 +89,11 @@ function SoilHarvesterPanel.new(soilSystem, settings)
     self._detectTimer = 0
     self._fieldId     = nil
     self._fieldInfo   = nil
+
+    -- Session grain tracking for t/ha estimate
+    self._sessGrainL   = 0
+    self._lastTankLvl  = nil
+    self._lastHarvFId  = nil
 
     return self
 end
@@ -364,6 +382,28 @@ function SoilHarvesterPanel:update(dt)
     else
         self._fieldInfo = nil
     end
+
+    -- Track grain accumulated this harvest session for t/ha estimate
+    local tank = self:getGrainTank(combine)
+    if tank then
+        if self._lastHarvFId ~= fieldId then
+            -- Switched to a new field — reset session counter
+            self._sessGrainL  = 0
+            self._lastTankLvl = tank.level
+            self._lastHarvFId = fieldId
+        elseif self._lastTankLvl ~= nil then
+            local delta = tank.level - self._lastTankLvl
+            if delta > 0 then
+                self._sessGrainL = self._sessGrainL + delta
+            end
+            -- delta < 0 means tank was emptied (pipe-out); keep the running total
+            self._lastTankLvl = tank.level
+        else
+            self._lastTankLvl = tank.level
+        end
+    else
+        self._lastTankLvl = nil
+    end
 end
 
 -- ── Draw helpers ──────────────────────────────────────────
@@ -419,10 +459,10 @@ function SoilHarvesterPanel:draw()
     local segH   = SoilHarvesterPanel.SEG_H
     local panelW = SoilHarvesterPanel.PANEL_W
 
-    -- Rows: tank bar row + fill text row + divider row + yield row
-    -- In edit mode with no combine: show placeholder rows
+    -- Rows: tank bar + fill text + divider + yield  (+stats bar when active)
     local numContentRows = isActive and 4 or 1
-    local panelH = titleH + pad + numContentRows * rowH + pad
+    local statH  = isActive and SoilHarvesterPanel.STAT_H or 0
+    local panelH = titleH + pad + numContentRows * rowH + statH + pad
 
     -- Position
     local panelX, panelBot
@@ -575,6 +615,136 @@ function SoilHarvesterPanel:draw()
             setTextColor(unpack(SoilHarvesterPanel.C_DIM))
             renderText(panelX + panelW - pad, yieldTextY, valSz, "--")
         end
+
+        -- ── Stats bar ──────────────────────────────────────────
+        -- 4 cells: [wheat t/ha] [coverage %] [session ha] [total ha]
+        local sbY = panelBot
+        local sbH = SoilHarvesterPanel.STAT_H
+        local sbW = panelW
+
+        -- Dark separator line above stats bar
+        self:drawRect(panelX, sbY + sbH - 0.0015, panelW, 0.0015,
+                      SoilHarvesterPanel.C_DIVIDER, 0.80)
+
+        -- Faint cell dividers
+        local cellW = sbW / 4
+        for i = 1, 3 do
+            self:drawRect(panelX + cellW * i - 0.0008, sbY + pad,
+                          0.0008, sbH - pad * 2,
+                          SoilHarvesterPanel.C_BORDER, 0.60)
+        end
+
+        -- Gather values
+        local fieldArea = (info and info.fieldArea) or 0
+        local sessCov   = (info and info.sessionCoverageFraction) or 0
+        local totCov    = (info and info.coverageFraction) or 0
+        local sessHa    = sessCov * fieldArea
+        local totHa     = fieldArea
+
+        -- Yield estimate: yieldEfficiency * base crop yield (t/ha)
+        local cropName  = info and info.lastCrop
+        local cropKey   = cropName and string.lower(cropName) or "default"
+        local baseYield = SoilHarvesterPanel.BASE_YIELD[cropKey]
+                       or SoilHarvesterPanel.BASE_YIELD.default
+        local yieldEff  = (info and info.yieldEfficiency) or 100
+        local estTha    = baseYield * (yieldEff / 100)
+
+        -- ── Cell 1: Wheat icon + estimated t/ha ───────────────
+        local cell1X = panelX
+        local C = SoilHarvesterPanel
+
+        -- Icon
+        local ic1 = cell1X + cellW * 0.5
+        local ic1by = sbY + sbH * 0.45
+        local isz = sbH * 0.38
+        -- Stalk
+        self:drawRect(ic1 - isz*0.065, ic1by, isz*0.13, isz*0.78, C.C_TITLE_FG, 0.90)
+        -- Centre grain head
+        self:drawRect(ic1 - isz*0.11, ic1by + isz*0.74, isz*0.22, isz*0.28, C.C_TITLE_FG)
+        -- Left grain
+        self:drawRect(ic1 - isz*0.29, ic1by + isz*0.60, isz*0.20, isz*0.24, C.C_TITLE_FG, 0.85)
+        -- Right grain
+        self:drawRect(ic1 + isz*0.07, ic1by + isz*0.60, isz*0.20, isz*0.24, C.C_TITLE_FG, 0.85)
+        -- Leaf nubs
+        self:drawRect(ic1 - isz*0.28, ic1by + isz*0.44, isz*0.22, isz*0.10, C.C_TITLE_FG, 0.60)
+        self:drawRect(ic1 + isz*0.06, ic1by + isz*0.28, isz*0.22, isz*0.10, C.C_TITLE_FG, 0.60)
+
+        local thaStr = string.format("%.1f t/ha", estTha)
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(unpack(C.C_VALUE))
+        renderText(cell1X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, thaStr)
+
+        -- ── Cell 2: Coverage % + mini progress bar ─────────────
+        local cell2X = panelX + cellW
+        local covPct  = math.floor(sessCov * 100 + 0.5)
+        local covStr  = string.format("%d%%", covPct)
+        local covCol  = (sessCov >= 0.80) and C.C_GOOD
+                     or (sessCov >= 0.40) and C.C_FAIR
+                     or C.C_LABEL
+
+        -- Small mini-bar (3 segments) showing coverage
+        local mbW  = cellW * 0.72
+        local mbH  = 0.0045
+        local mbX  = cell2X + (cellW - mbW) * 0.5
+        local mbY  = sbY + sbH * 0.60
+        local mSeg = 4
+        local mGap = 0.0015
+        local mSW  = (mbW - (mSeg-1)*mGap) / mSeg
+        local mFill = sessCov * mSeg
+        for mi = 0, mSeg - 1 do
+            local msx = mbX + mi * (mSW + mGap)
+            self:drawRect(msx, mbY, mSW, mbH, C.C_SEG_BG)
+            local mfrac = math.max(0, math.min(1, mFill - mi))
+            if mfrac > 0 then
+                self:drawRect(msx, mbY, mSW * mfrac, mbH, covCol)
+            end
+        end
+
+        -- Coverage % text
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(covCol[1], covCol[2], covCol[3], covCol[4] or 1)
+        renderText(cell2X + cellW * 0.5, sbY + (sbH * 0.30 - 0.0075) * 0.5 + mbH + 0.003, 0.0080, covStr)
+
+        -- ── Cell 3: Field icon + session area (ha) ─────────────
+        local cell3X = panelX + cellW * 2
+        local ic3sz  = isz
+        local ic3lx  = cell3X + (cellW - ic3sz) * 0.5
+        local ic3by  = sbY + sbH * 0.45
+        local ib     = ic3sz * 0.11
+        -- Outer square outline
+        self:drawRect(ic3lx,               ic3by,               ic3sz, ib,     C.C_LABEL, 0.80)
+        self:drawRect(ic3lx,               ic3by + ic3sz - ib,  ic3sz, ib,     C.C_LABEL, 0.80)
+        self:drawRect(ic3lx,               ic3by,               ib,    ic3sz,  C.C_LABEL, 0.80)
+        self:drawRect(ic3lx + ic3sz - ib,  ic3by,               ib,    ic3sz,  C.C_LABEL, 0.80)
+        -- Centre cross
+        local icm = ib * 0.70
+        self:drawRect(ic3lx + ib, ic3by + ic3sz*0.5 - icm*0.5, ic3sz-ib*2, icm, C.C_LABEL, 0.40)
+        self:drawRect(ic3lx + ic3sz*0.5 - icm*0.5, ic3by + ib, icm, ic3sz-ib*2, C.C_LABEL, 0.40)
+
+        local sessHaStr = string.format("%.1f ha", sessHa)
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(unpack(C.C_VALUE))
+        renderText(cell3X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, sessHaStr)
+
+        -- ── Cell 4: Sigma field icon + total field area (ha) ───
+        local cell4X = panelX + cellW * 3
+        local ic4sz  = isz
+        local ic4lx  = cell4X + (cellW - ic4sz) * 0.5 + ic4sz * 0.15
+        local ic4by  = sbY + sbH * 0.45
+        -- Same field icon (slightly right to leave room for Σ)
+        self:drawRect(ic4lx,               ic4by,               ic4sz * 0.85, ib,              C.C_DIM, 0.80)
+        self:drawRect(ic4lx,               ic4by + ic4sz - ib,  ic4sz * 0.85, ib,              C.C_DIM, 0.80)
+        self:drawRect(ic4lx,               ic4by,               ib,           ic4sz,            C.C_DIM, 0.80)
+        self:drawRect(ic4lx + ic4sz*0.85 - ib, ic4by,           ib,           ic4sz,            C.C_DIM, 0.80)
+        -- Σ prefix (tiny, left of icon)
+        setTextAlignment(RenderText.ALIGN_RIGHT)
+        setTextColor(C.C_DIM[1], C.C_DIM[2], C.C_DIM[3], 0.90)
+        renderText(ic4lx - 0.001, ic4by + ic4sz * 0.25, ic4sz * 0.55, "S")
+
+        local totHaStr = string.format("%.1f ha", totHa)
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(C.C_DIM[1], C.C_DIM[2], C.C_DIM[3], 0.90)
+        renderText(cell4X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, totHaStr)
     end
 
     -- Reset text state

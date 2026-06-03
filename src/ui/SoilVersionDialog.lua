@@ -25,6 +25,8 @@ SoilVersionDialog.INSTANCE = nil
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
     "v2.3.6.0",
+    "- New: harvester panel stats bar — 4 cells showing estimated t/ha,",
+    "  field coverage %, session area harvested, and total field area",
     "- Fixed: weed pressure no longer spikes on reload or time-skip;",
     "  increases are now capped at 20 pts/day so pressure rises gradually",
     "- Fixed: SF application rate multiplier now shown in sprayer panel",
@@ -35,10 +37,6 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed: minimap heatmap spray trail — daily updates no longer wipe",
     "  per-pixel nutrient data, so sprayed areas now visually differ from",
     "  unsprayed areas on the soil layer overlay",
-    "v2.3.4.0",
-    "- Fixed: significant FPS drops when spraying with wide boom sprayers",
-    "- Fixed: frame rate drops while actively fertilizing large fields",
-    "- Improved: much smoother gameplay during all spraying operations",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
