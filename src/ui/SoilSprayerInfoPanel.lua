@@ -534,7 +534,8 @@ function SoilSprayerInfoPanel:draw()
         local info = self._fieldInfo
         for _, nd in ipairs(activeRows) do
             local pKey    = nd.profileKey
-            local rawVal  = info[nd.fieldKey] or 0
+            local rawRet  = info[nd.fieldKey]
+            local rawVal  = (type(rawRet) == "table") and (rawRet.value or 0) or (rawRet or 0)
             local maxVal  = nd.maxVal
             local rowBot  = cy - rowH
             local barMidY = rowBot + (rowH - barH) * 0.5
