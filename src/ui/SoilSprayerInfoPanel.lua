@@ -69,13 +69,18 @@ function SoilSprayerInfoPanel.new(soilSystem, settings)
     self.panelX = nil
     self.panelY = nil
 
-    -- Edit mode / drag state
-    self.editMode        = false
-    self.dragging        = false
-    self.dragOffsetX     = 0
-    self.dragOffsetY     = 0
-    self.movedInEditMode = false
-    self._animTimer      = 0
+    -- Edit mode / drag / resize state
+    self.editMode         = false
+    self.dragging         = false
+    self.dragOffsetX      = 0
+    self.dragOffsetY      = 0
+    self.resizing         = false
+    self.resizeStartX     = 0
+    self.resizeStartY     = 0
+    self.resizeStartScale = 1.0
+    self.userScale        = 1.0
+    self.movedInEditMode  = false
+    self._animTimer       = 0
 
     -- Last rendered rect (for hit testing in edit mode)
     self._lastPanelX = SoilSprayerInfoPanel.DEFAULT_X
@@ -128,6 +133,7 @@ end
 function SoilSprayerInfoPanel:exitEditMode()
     self.editMode = false
     self.dragging = false
+    self.resizing = false
     if self.movedInEditMode then
         self.movedInEditMode = false
         self:saveLayout()
@@ -151,6 +157,7 @@ function SoilSprayerInfoPanel:saveLayout()
     if xml then
         xml:setFloat("sprayerPanelLayout.panelX", self.panelX or SoilSprayerInfoPanel.DEFAULT_X)
         xml:setFloat("sprayerPanelLayout.panelY", self.panelY or SoilSprayerInfoPanel.DEFAULT_Y)
+        xml:setFloat("sprayerPanelLayout.scale",  self.userScale or 1.0)
         xml:save()
         xml:delete()
         SoilLogger.debug("[SoilSprayerInfoPanel] Layout saved: (%.3f, %.3f)", self.panelX or 0, self.panelY or 0)
@@ -169,6 +176,7 @@ function SoilSprayerInfoPanel:loadLayout()
             self.panelY = y
             SoilLogger.info("[SoilSprayerInfoPanel] Layout loaded: (%.3f, %.3f)", x, y)
         end
+        self.userScale = xml:getFloat("sprayerPanelLayout.scale", 1.0)
         xml:delete()
     end
 end
@@ -178,10 +186,17 @@ end
 function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     if not self.editMode then return false end
 
-    -- LMB up: release drag (must check before the move block)
+    local px = self._lastPanelX
+    local py = self._lastPanelY
+    local pw = self._lastPanelW
+    local ph = self._lastPanelH
+    local hs = 0.015 * (self.userScale or 1.0)
+
+    -- LMB up: release drag or resize
     if isUp and button == Input.MOUSE_BUTTON_LEFT then
-        if self.dragging then
+        if self.dragging or self.resizing then
             self.dragging = false
+            self.resizing = false
             return true
         end
         return false
@@ -194,9 +209,29 @@ function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eve
         return true
     end
 
-    -- LMB down: start drag if clicking inside panel
+    -- Mouse move: update scale while resizing (distance-from-center approach)
+    if self.resizing then
+        local cx = px + pw * 0.5
+        local cy = py + ph * 0.5
+        local startDist = math.sqrt((self.resizeStartX - cx)^2 + (self.resizeStartY - cy)^2)
+        local currDist  = math.sqrt((posX - cx)^2 + (posY - cy)^2)
+        local delta = (currDist - startDist) * 2.5
+        self.userScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        return true
+    end
+
+    -- LMB down: resize corner (bottom-right) takes priority over drag
     if isDown and button == Input.MOUSE_BUTTON_LEFT then
-        local px, py, pw, ph = self._lastPanelX, self._lastPanelY, self._lastPanelW, self._lastPanelH
+        if posX >= (px + pw - hs) and posX <= (px + pw) and
+           posY >= py and posY <= (py + hs) then
+            self.resizing         = true
+            self.dragging         = false
+            self.resizeStartX     = posX
+            self.resizeStartY     = posY
+            self.resizeStartScale = self.userScale or 1.0
+            self.movedInEditMode  = true
+            return true
+        end
         if posX >= px and posX <= px + pw and posY >= py and posY <= py + ph then
             self.dragging        = true
             self.dragOffsetX     = posX - px
@@ -400,18 +435,19 @@ function SoilSprayerInfoPanel:draw()
     -- Only draw when in a sprayer (or in edit mode for positioning)
     if not self.editMode and not isActive then return end
 
-    -- Panel dimensions
-    local pad    = SoilSprayerInfoPanel.PAD
-    local titleH = SoilSprayerInfoPanel.TITLE_H
-    local rowH   = SoilSprayerInfoPanel.ROW_H
-    local barH   = SoilSprayerInfoPanel.BAR_H
-    local flagW  = SoilSprayerInfoPanel.FLAG_W
-    local flagCap = SoilSprayerInfoPanel.FLAG_CAP
+    -- Panel dimensions (scaled by userScale)
+    local sc      = self.userScale or 1.0
+    local pad     = SoilSprayerInfoPanel.PAD    * sc
+    local titleH  = SoilSprayerInfoPanel.TITLE_H * sc
+    local rowH    = SoilSprayerInfoPanel.ROW_H   * sc
+    local barH    = SoilSprayerInfoPanel.BAR_H   * sc
+    local flagW   = SoilSprayerInfoPanel.FLAG_W  * sc
+    local flagCap = SoilSprayerInfoPanel.FLAG_CAP * sc
 
-    local hasField  = self._fieldInfo ~= nil
+    local hasField   = self._fieldInfo ~= nil
     local numContent = isActive and (#activeRows + (hasField and 0 or 1)) or 1
-    local panelH    = titleH + pad + numContent * rowH + pad
-    local panelW    = 0.190
+    local panelH     = titleH + pad + numContent * rowH + pad
+    local panelW     = 0.190 * sc
 
     -- Determine panel bottom-left corner
     local panelX, panelBot
@@ -456,7 +492,7 @@ function SoilSprayerInfoPanel:draw()
     -- ── Render ──────────────────────────────────────────────
 
     -- Shadow
-    self:drawRect(panelX + 0.002, panelBot - 0.002, panelW, panelH, {0, 0, 0, 1}, 0.22)
+    self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0, 0, 0, 1}, 0.22)
     -- Background
     self:drawRect(panelX, panelBot, panelW, panelH, SoilSprayerInfoPanel.C_BG)
     -- Border
@@ -464,20 +500,23 @@ function SoilSprayerInfoPanel:draw()
     -- Title bar
     self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilSprayerInfoPanel.C_TITLE_BG)
 
-    -- Edit mode chrome: pulsing blue border + "DRAG" hint
+    -- Edit mode chrome: pulsing border + resize handle
     if self.editMode then
         local pulse = 0.55 + 0.45 * math.sin(self._animTimer * 0.004)
-        local ebw = 0.002
+        local ebw = 0.002 * sc
         setOverlayColor(self.fillOverlay, SoilSprayerInfoPanel.C_EDIT_HDL[1], SoilSprayerInfoPanel.C_EDIT_HDL[2],
                         SoilSprayerInfoPanel.C_EDIT_HDL[3], SoilSprayerInfoPanel.C_EDIT_HDL[4] * pulse)
-        renderOverlay(self.fillOverlay, panelX,               panelBot, ebw,    panelH)
-        renderOverlay(self.fillOverlay, panelX + panelW - ebw, panelBot, ebw,    panelH)
-        renderOverlay(self.fillOverlay, panelX,               panelBot, panelW, ebw)
-        renderOverlay(self.fillOverlay, panelX,               panelTop - ebw, panelW, ebw)
+        renderOverlay(self.fillOverlay, panelX,                panelBot,          ebw,    panelH)
+        renderOverlay(self.fillOverlay, panelX + panelW - ebw,  panelBot,          ebw,    panelH)
+        renderOverlay(self.fillOverlay, panelX,                panelBot,          panelW, ebw)
+        renderOverlay(self.fillOverlay, panelX,                panelTop - ebw,    panelW, ebw)
+        -- Resize handle (bottom-right corner)
+        local hs = 0.015 * sc
+        self:drawRect(panelX + panelW - hs, panelBot, hs, hs, SoilSprayerInfoPanel.C_EDIT_HDL)
     end
 
     -- Title text
-    local titleFontSize = 0.0095
+    local titleFontSize = 0.0095 * sc
     local fertTitle = (fillType and (fillType.title or fillType.name)) or "Sprayer Panel"
     local fieldStr  = ""
     if self._fieldId then
@@ -507,12 +546,12 @@ function SoilSprayerInfoPanel:draw()
     end
 
     -- Content rows
-    local labelW = 0.020
-    local valW   = 0.032
+    local labelW = 0.020 * sc
+    local valW   = 0.032 * sc
     local barX   = panelX + pad + labelW
     local barW   = panelW - pad - labelW - pad * 0.5 - valW
-    local lblSz  = 0.0085
-    local valSz  = 0.0085
+    local lblSz  = 0.0085 * sc
+    local valSz  = 0.0085 * sc
     local cy     = panelTop - titleH - pad
 
     if not isActive then
@@ -555,7 +594,7 @@ function SoilSprayerInfoPanel:draw()
             -- Finish flag at target threshold
             local tFrac = targetFraction(pKey, maxVal)
             local fX    = barX + barW * tFrac - flagW * 0.5
-            self:drawRect(fX, barMidY - 0.0012, flagW, barH + 0.0024, SoilSprayerInfoPanel.C_FLAG)
+            self:drawRect(fX, barMidY - 0.0012*sc, flagW, barH + 0.0024*sc, SoilSprayerInfoPanel.C_FLAG)
             self:drawRect(fX + flagW, barMidY + barH * 0.35, flagCap, barH * 0.55, SoilSprayerInfoPanel.C_FLAG, 0.80)
 
             -- Value

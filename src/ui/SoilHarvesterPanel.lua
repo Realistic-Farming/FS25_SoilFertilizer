@@ -73,12 +73,17 @@ function SoilHarvesterPanel.new(soilSystem, settings)
     self.panelX = nil
     self.panelY = nil
 
-    self.editMode        = false
-    self.dragging        = false
-    self.dragOffsetX     = 0
-    self.dragOffsetY     = 0
-    self.movedInEditMode = false
-    self._animTimer      = 0
+    self.editMode         = false
+    self.dragging         = false
+    self.dragOffsetX      = 0
+    self.dragOffsetY      = 0
+    self.resizing         = false
+    self.resizeStartX     = 0
+    self.resizeStartY     = 0
+    self.resizeStartScale = 1.0
+    self.userScale        = 1.0
+    self.movedInEditMode  = false
+    self._animTimer       = 0
 
     self._lastPanelX = SoilHarvesterPanel.DEFAULT_X
     self._lastPanelY = SoilHarvesterPanel.DEFAULT_Y
@@ -132,6 +137,7 @@ end
 function SoilHarvesterPanel:exitEditMode()
     self.editMode = false
     self.dragging = false
+    self.resizing = false
     if self.movedInEditMode then
         self.movedInEditMode = false
         self:saveLayout()
@@ -155,6 +161,7 @@ function SoilHarvesterPanel:saveLayout()
     if xml then
         xml:setFloat("harvesterPanelLayout.panelX", self.panelX or SoilHarvesterPanel.DEFAULT_X)
         xml:setFloat("harvesterPanelLayout.panelY", self.panelY or SoilHarvesterPanel.DEFAULT_Y)
+        xml:setFloat("harvesterPanelLayout.scale",  self.userScale or 1.0)
         xml:save()
         xml:delete()
     end
@@ -171,6 +178,7 @@ function SoilHarvesterPanel:loadLayout()
             self.panelX = x
             self.panelY = y
         end
+        self.userScale = xml:getFloat("harvesterPanelLayout.scale", 1.0)
         xml:delete()
     end
 end
@@ -180,22 +188,52 @@ end
 function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     if not self.editMode then return false end
 
+    local px = self._lastPanelX
+    local py = self._lastPanelY
+    local pw = self._lastPanelW
+    local ph = self._lastPanelH
+    local hs = 0.015 * (self.userScale or 1.0)
+
+    -- LMB up: release drag or resize
     if isUp and button == Input.MOUSE_BUTTON_LEFT then
-        if self.dragging then
+        if self.dragging or self.resizing then
             self.dragging = false
+            self.resizing = false
             return true
         end
         return false
     end
 
+    -- Mouse move: update position while dragging
     if self.dragging then
         self.panelX = math.max(0, math.min(0.85, posX - self.dragOffsetX))
         self.panelY = math.max(0.02, math.min(0.95, posY - self.dragOffsetY))
         return true
     end
 
+    -- Mouse move: update scale while resizing (distance-from-center approach)
+    if self.resizing then
+        local cx = px + pw * 0.5
+        local cy = py + ph * 0.5
+        local startDist = math.sqrt((self.resizeStartX - cx)^2 + (self.resizeStartY - cy)^2)
+        local currDist  = math.sqrt((posX - cx)^2 + (posY - cy)^2)
+        local delta = (currDist - startDist) * 2.5
+        self.userScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        return true
+    end
+
+    -- LMB down: resize corner (bottom-right) takes priority over drag
     if isDown and button == Input.MOUSE_BUTTON_LEFT then
-        local px, py, pw, ph = self._lastPanelX, self._lastPanelY, self._lastPanelW, self._lastPanelH
+        if posX >= (px + pw - hs) and posX <= (px + pw) and
+           posY >= py and posY <= (py + hs) then
+            self.resizing         = true
+            self.dragging         = false
+            self.resizeStartX     = posX
+            self.resizeStartY     = posY
+            self.resizeStartScale = self.userScale or 1.0
+            self.movedInEditMode  = true
+            return true
+        end
         if posX >= px and posX <= px + pw and posY >= py and posY <= py + ph then
             self.dragging        = true
             self.dragOffsetX     = posX - px
@@ -415,9 +453,9 @@ function SoilHarvesterPanel:drawRect(x, y, w, h, c, a)
 end
 
 -- Draws the 10-segment battery-style bar
-function SoilHarvesterPanel:drawTankBar(x, y, w, h, ratio, isWarning, pulse)
-    local N      = SoilHarvesterPanel.SEG_N
-    local gap    = SoilHarvesterPanel.SEG_GAP
+function SoilHarvesterPanel:drawTankBar(x, y, w, h, ratio, isWarning, pulse, gap)
+    local N   = SoilHarvesterPanel.SEG_N
+    gap = gap or SoilHarvesterPanel.SEG_GAP
     local segW   = (w - (N - 1) * gap) / N
     local filled = ratio * N
 
@@ -452,16 +490,17 @@ function SoilHarvesterPanel:draw()
 
     if not self.editMode and not isActive then return end
 
-    -- Layout
-    local pad    = SoilHarvesterPanel.PAD
-    local titleH = SoilHarvesterPanel.TITLE_H
-    local rowH   = SoilHarvesterPanel.ROW_H
-    local segH   = SoilHarvesterPanel.SEG_H
-    local panelW = SoilHarvesterPanel.PANEL_W
+    -- Layout (scaled by userScale)
+    local sc     = self.userScale or 1.0
+    local pad    = SoilHarvesterPanel.PAD    * sc
+    local titleH = SoilHarvesterPanel.TITLE_H * sc
+    local rowH   = SoilHarvesterPanel.ROW_H   * sc
+    local segH   = SoilHarvesterPanel.SEG_H   * sc
+    local panelW = SoilHarvesterPanel.PANEL_W  * sc
 
     -- Rows: tank bar + fill text + divider + yield  (+stats bar when active)
     local numContentRows = isActive and 4 or 1
-    local statH  = isActive and SoilHarvesterPanel.STAT_H or 0
+    local statH  = isActive and (SoilHarvesterPanel.STAT_H * sc) or 0
     local panelH = titleH + pad + numContentRows * rowH + statH + pad
 
     -- Position
@@ -486,7 +525,7 @@ function SoilHarvesterPanel:draw()
     -- ── Render ──────────────────────────────────────────────
 
     -- Shadow
-    self:drawRect(panelX + 0.002, panelBot - 0.002, panelW, panelH, {0,0,0,1}, 0.22)
+    self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0,0,0,1}, 0.22)
     -- Background
     self:drawRect(panelX, panelBot, panelW, panelH, SoilHarvesterPanel.C_BG)
     -- Border
@@ -494,19 +533,22 @@ function SoilHarvesterPanel:draw()
     -- Title bar
     self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilHarvesterPanel.C_TITLE_BG)
 
-    -- Edit mode chrome
+    -- Edit mode chrome: pulsing border + resize handle
     if self.editMode then
-        local ebw = 0.002
+        local ebw = 0.002 * sc
         local C = SoilHarvesterPanel.C_EDIT_HDL
         setOverlayColor(self.fillOverlay, C[1], C[2], C[3], C[4] * (0.55 + 0.45 * pulse))
-        renderOverlay(self.fillOverlay, panelX,               panelBot, ebw,    panelH)
-        renderOverlay(self.fillOverlay, panelX + panelW - ebw, panelBot, ebw,    panelH)
-        renderOverlay(self.fillOverlay, panelX,               panelBot, panelW, ebw)
-        renderOverlay(self.fillOverlay, panelX,               panelTop - ebw, panelW, ebw)
+        renderOverlay(self.fillOverlay, panelX,                panelBot,          ebw,    panelH)
+        renderOverlay(self.fillOverlay, panelX + panelW - ebw,  panelBot,          ebw,    panelH)
+        renderOverlay(self.fillOverlay, panelX,                panelBot,          panelW, ebw)
+        renderOverlay(self.fillOverlay, panelX,                panelTop - ebw,    panelW, ebw)
+        -- Resize handle (bottom-right corner)
+        local hs = 0.015 * sc
+        self:drawRect(panelX + panelW - hs, panelBot, hs, hs, SoilHarvesterPanel.C_EDIT_HDL)
     end
 
     -- Title text
-    local titleFontSz = 0.0095
+    local titleFontSz = 0.0095 * sc
     local cropName    = (cropFT and (cropFT.title or cropFT.name))
                         or (self.editMode and "Harvester Panel" or "")
     local fieldStr    = ""
@@ -525,8 +567,8 @@ function SoilHarvesterPanel:draw()
 
     -- ── Content ─────────────────────────────────────────────
 
-    local lblSz = 0.0085
-    local valSz = 0.0085
+    local lblSz = 0.0085 * sc
+    local valSz = 0.0085 * sc
     local cy    = panelTop - titleH - pad  -- top of first content row
 
     if not isActive then
@@ -542,7 +584,7 @@ function SoilHarvesterPanel:draw()
         local barW      = panelW - pad * 2
         local barMidY   = (cy - rowH) + (rowH - segH) * 0.5
 
-        self:drawTankBar(barX, barMidY, barW, segH, ratio, isWarning, pulse)
+        self:drawTankBar(barX, barMidY, barW, segH, ratio, isWarning, pulse, SoilHarvesterPanel.SEG_GAP * sc)
         cy = cy - rowH
 
         -- ── Row 2: Fill text ──────────────────────────────
@@ -582,9 +624,9 @@ function SoilHarvesterPanel:draw()
 
         -- ── Dashed divider ─────────────────────────────────
         local divY = cy - rowH * 0.5
-        local dashW = 0.010
-        local dashH = 0.0012
-        local dashGap = 0.006
+        local dashW = 0.010 * sc
+        local dashH = 0.0012 * sc
+        local dashGap = 0.006 * sc
         local numDash = math.floor((panelW - pad * 2) / (dashW + dashGap))
         for i = 0, numDash - 1 do
             self:drawRect(panelX + pad + i * (dashW + dashGap), divY, dashW, dashH,
@@ -623,14 +665,14 @@ function SoilHarvesterPanel:draw()
         local sbW = panelW
 
         -- Dark separator line above stats bar
-        self:drawRect(panelX, sbY + sbH - 0.0015, panelW, 0.0015,
+        self:drawRect(panelX, sbY + sbH - 0.0015*sc, panelW, 0.0015*sc,
                       SoilHarvesterPanel.C_DIVIDER, 0.80)
 
         -- Faint cell dividers
         local cellW = sbW / 4
         for i = 1, 3 do
-            self:drawRect(panelX + cellW * i - 0.0008, sbY + pad,
-                          0.0008, sbH - pad * 2,
+            self:drawRect(panelX + cellW * i - 0.0008*sc, sbY + pad,
+                          0.0008*sc, sbH - pad * 2,
                           SoilHarvesterPanel.C_BORDER, 0.60)
         end
 
@@ -672,7 +714,7 @@ function SoilHarvesterPanel:draw()
         local thaStr = string.format("%.1f t/ha", estTha)
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(unpack(C.C_VALUE))
-        renderText(cell1X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, thaStr)
+        renderText(cell1X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075*sc) * 0.5, 0.0075*sc, thaStr)
 
         -- ── Cell 2: Coverage % + mini progress bar ─────────────
         local cell2X = panelX + cellW
@@ -684,11 +726,11 @@ function SoilHarvesterPanel:draw()
 
         -- Small mini-bar (3 segments) showing coverage
         local mbW  = cellW * 0.72
-        local mbH  = 0.0045
+        local mbH  = 0.0045 * sc
         local mbX  = cell2X + (cellW - mbW) * 0.5
         local mbY  = sbY + sbH * 0.60
         local mSeg = 4
-        local mGap = 0.0015
+        local mGap = 0.0015 * sc
         local mSW  = (mbW - (mSeg-1)*mGap) / mSeg
         local mFill = sessCov * mSeg
         for mi = 0, mSeg - 1 do
@@ -703,7 +745,7 @@ function SoilHarvesterPanel:draw()
         -- Coverage % text
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(covCol[1], covCol[2], covCol[3], covCol[4] or 1)
-        renderText(cell2X + cellW * 0.5, sbY + (sbH * 0.30 - 0.0075) * 0.5 + mbH + 0.003, 0.0080, covStr)
+        renderText(cell2X + cellW * 0.5, sbY + (sbH * 0.30 - 0.0075*sc) * 0.5 + mbH + 0.003*sc, 0.0080*sc, covStr)
 
         -- ── Cell 3: Field icon + session area (ha) ─────────────
         local cell3X = panelX + cellW * 2
@@ -724,7 +766,7 @@ function SoilHarvesterPanel:draw()
         local sessHaStr = string.format("%.1f ha", sessHa)
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(unpack(C.C_VALUE))
-        renderText(cell3X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, sessHaStr)
+        renderText(cell3X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075*sc) * 0.5, 0.0075*sc, sessHaStr)
 
         -- ── Cell 4: Sigma field icon + total field area (ha) ───
         local cell4X = panelX + cellW * 3
@@ -744,7 +786,7 @@ function SoilHarvesterPanel:draw()
         local totHaStr = string.format("%.1f ha", totHa)
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(C.C_DIM[1], C.C_DIM[2], C.C_DIM[3], 0.90)
-        renderText(cell4X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075) * 0.5, 0.0075, totHaStr)
+        renderText(cell4X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075*sc) * 0.5, 0.0075*sc, totHaStr)
     end
 
     -- Reset text state
