@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Vá até um campo" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Dirija para um campo" />
     <e k="sf_hud_fallow" v="Pousio" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Ervas Daninhas" eh="324181de" />
+    <e k="sf_hud_weeds" v="Ervas Daninhas Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Pragas" eh="2fed5101" />
     <e k="sf_hud_disease" v="Doença" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(protegido)" eh="8273211e" />

@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Masuk ke dalam lahan" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Kendarai ke ladang" />
     <e k="sf_hud_fallow" v="Bera" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Gulma" eh="324181de" />
+    <e k="sf_hud_weeds" v="Gulma Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Hama" eh="2fed5101" />
     <e k="sf_hud_disease" v="Penyakit" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(terlindungi)" eh="8273211e" />

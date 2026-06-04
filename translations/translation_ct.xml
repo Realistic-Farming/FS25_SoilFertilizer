@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Camineu sobre un camp" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="駕車到田地" />
     <e k="sf_hud_fallow" v="Guaret" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Males herbes" eh="324181de" />
+    <e k="sf_hud_weeds" v="Males herbes Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Plagues" eh="2fed5101" />
     <e k="sf_hud_disease" v="Malaltia" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(protegit)" eh="8273211e" />

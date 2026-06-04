@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Hãy đi vào cánh đồng" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Lái xe ra đồng" />
     <e k="sf_hud_fallow" v="Để hoang" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Cỏ dại" eh="324181de" />
+    <e k="sf_hud_weeds" v="Cỏ dại Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Sâu bệnh" eh="2fed5101" />
     <e k="sf_hud_disease" v="Bệnh hại" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(được bảo vệ)" eh="8273211e" />

@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Vstupte na pole" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Jeďte na pole" />
     <e k="sf_hud_fallow" v="Úhor" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Plevel" eh="324181de" />
+    <e k="sf_hud_weeds" v="Plevel Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Škůdci" eh="2fed5101" />
     <e k="sf_hud_disease" v="Choroby" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(chráněno)" eh="8273211e" />

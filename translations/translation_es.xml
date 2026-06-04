@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Camina por un campo" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Conduce hasta un campo" />
     <e k="sf_hud_fallow" v="Barbecho" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Malezas" eh="324181de" />
+    <e k="sf_hud_weeds" v="Malezas Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Plagas" eh="2fed5101" />
     <e k="sf_hud_disease" v="Enfermedad" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(protegido)" eh="8273211e" />

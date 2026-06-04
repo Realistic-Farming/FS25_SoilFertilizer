@@ -848,7 +848,7 @@ function SoilHUD:updateFieldInfoBox()
     if     info.potassium.status  == "Poor" then table.insert(needs, "K!")
     elseif info.potassium.status  == "Fair" then table.insert(needs, "K")  end
     if info.pH and (info.pH < phGoodLow or info.pH > phGoodHigh) then table.insert(needs, "pH") end
-    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or "Weeds")   end
+    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or "Weed Risk")   end
     if pestPct    >= pestMed    then table.insert(needs, g_i18n:getText("sf_hud_pests")   or "Pests")   end
     if diseasePct >= diseaseMed then table.insert(needs, g_i18n:getText("sf_hud_disease") or "Disease") end
     if compPct    > 10          then table.insert(needs, g_i18n:getText("sf_hud_compaction") or "Compaction") end
@@ -873,7 +873,7 @@ function SoilHUD:updateFieldInfoBox()
     box:addLine("K (ppm)", fmtNutrient(info.potassium.value,  "K", ppm.K))
     box:addLine("pH",      string.format("%.1f", info.pH))
     box:addLine("OM",      string.format("%.1f%%", info.organicMatter))
-    if weedPct    > 0 then box:addLine(g_i18n:getText("sf_hud_weeds")      or "Weeds",      pressureLine(weedPct,    info.herbicideActive))  end
+    if weedPct    > 0 then box:addLine(g_i18n:getText("sf_hud_weeds")      or "Weed Risk",  pressureLine(weedPct,    info.herbicideActive))  end
     if pestPct    > 0 then box:addLine(g_i18n:getText("sf_hud_pests")      or "Pests",      pressureLine(pestPct,    info.insecticideActive)) end
     if diseasePct > 0 then box:addLine(g_i18n:getText("sf_hud_disease")    or "Disease",    pressureLine(diseasePct, info.fungicideActive))   end
     if compPct    > 0 then
@@ -1183,6 +1183,43 @@ function SoilHUD:drawSprayTrail()
     end
 end
 
+--- Draws earth-brown (plow) or tan (cultivate) dots for each cell tilled today.
+--- Disappears automatically when full-field coverage is reached.
+function SoilHUD:drawTillageTrail()
+    if not self.fillOverlay then return end
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if not soilSys then return end
+    local fieldId = self.cachedFieldId
+    if not fieldId or fieldId <= 0 then return end
+    local field = soilSys.fieldData and soilSys.fieldData[fieldId]
+    if not field or not field.tillageTrailPts or #field.tillageTrailPts == 0 then return end
+
+    local px, pz = 0, 0
+    if g_localPlayer then
+        local ok, lx, _, lz = pcall(function() return g_localPlayer:getPosition() end)
+        if ok and lx then px, pz = lx, lz end
+    end
+
+    local maxDistSq = 200 * 200
+    local half = 0.0030
+
+    for _, pt in ipairs(field.tillageTrailPts) do
+        local dx = pt.wx - px
+        local dz = pt.wz - pz
+        if dx*dx + dz*dz <= maxDistSq then
+            local sx, sy, sz = project(pt.wx, pt.wy, pt.wz)
+            if sz <= 1 then
+                if pt.isPlow then
+                    setOverlayColor(self.fillOverlay, 0.55, 0.28, 0.05, 0.50)
+                else
+                    setOverlayColor(self.fillOverlay, 0.72, 0.52, 0.22, 0.45)
+                end
+                renderOverlay(self.fillOverlay, sx - half, sy - half, half*2, half*2)
+            end
+        end
+    end
+end
+
 -- ── Draw ─────────────────────────────────────────────────
 function SoilHUD:draw()
     if not self.initialized then return end
@@ -1201,6 +1238,7 @@ function SoilHUD:draw()
     if self.settings.showWorkTrail then
         self:drawSprayTrail()
         self:drawHarvestTrail()
+        self:drawTillageTrail()
     end
 
     self:drawPanel()

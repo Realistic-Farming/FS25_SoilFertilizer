@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="필드에 입장하세요" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="밭으로 운전하세요" />
     <e k="sf_hud_fallow" v="휴경지" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="잡초" eh="324181de" />
+    <e k="sf_hud_weeds" v="잡초 Risk" eh="324181de" />
     <e k="sf_hud_pests" v="해충" eh="2fed5101" />
     <e k="sf_hud_disease" v="병해" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(보호됨)" eh="8273211e" />

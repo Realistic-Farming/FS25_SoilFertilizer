@@ -2619,10 +2619,12 @@ function HookManager:installPlowingHook()
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
                         g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
                     else
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
                         g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
                     -- Compaction: check if subsoiler or heavy vehicle
@@ -2715,6 +2717,7 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem._lastTillageX = x
                     g_SoilFertilityManager.soilSystem._lastTillageZ = z
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa)
+                    g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
                     -- Dedicated plows are always heavy equipment
                     if g_SoilFertilityManager.settings.compactionEnabled then

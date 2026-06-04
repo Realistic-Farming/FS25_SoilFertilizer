@@ -3807,3 +3807,52 @@ function SoilFertilitySystem:recordHarvestTrailPoint(fieldId, wx, wz)
         field.harvestSessionDay = nil
     end
 end
+
+---@param fieldId number
+---@param wx      number  World X (implement rootNode)
+---@param wz      number  World Z (implement rootNode)
+---@param isPlow  boolean true = plow (dark brown), false = cultivate (tan)
+function SoilFertilitySystem:recordTillageTrailPoint(fieldId, wx, wz, isPlow)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if not field then return end
+
+    local zone = SoilConstants.ZONE
+    if not zone then return end
+
+    local currentDay = (g_currentMission and g_currentMission.environment and
+                        g_currentMission.environment.currentDay) or 0
+
+    if field.tillageSessionDay ~= currentDay then
+        field.tillageSessionDay = currentDay
+        field.tillageTrailPts   = nil
+        field.tillageCells      = nil
+    end
+
+    local cx = math.floor(wx / zone.CELL_SIZE)
+    local cz = math.floor(wz / zone.CELL_SIZE)
+    local cellKey = tostring(cx * 10000 + cz)
+
+    if not field.tillageCells then field.tillageCells = {} end
+    if field.tillageCells[cellKey] then return end
+    field.tillageCells[cellKey] = true
+
+    if not field.tillageTrailPts then field.tillageTrailPts = {} end
+    local twx = (cx + 0.5) * zone.CELL_SIZE
+    local twz = (cz + 0.5) * zone.CELL_SIZE
+    local twy = 0.3
+    if g_terrainNode then
+        local ok, h = pcall(getTerrainHeightAtWorldPos, g_terrainNode, twx, 0, twz)
+        if ok and h then twy = h + 0.3 end
+    end
+    table.insert(field.tillageTrailPts, {wx = twx, wy = twy, wz = twz, isPlow = isPlow})
+
+    local cellArea = zone.CELL_AREA_HA
+    local areaHa   = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
+    local count    = 0
+    for _ in pairs(field.tillageCells) do count = count + 1 end
+    if count * cellArea >= areaHa then
+        field.tillageTrailPts   = nil
+        field.tillageCells      = nil
+        field.tillageSessionDay = nil
+    end
+end

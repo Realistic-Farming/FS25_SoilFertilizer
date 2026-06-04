@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Gå ud på en mark" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Kør til en mark" />
     <e k="sf_hud_fallow" v="Brak" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Ukrudt" eh="324181de" />
+    <e k="sf_hud_weeds" v="Ukrudt Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Skadedyr" eh="2fed5101" />
     <e k="sf_hud_disease" v="Sygdom" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(beskyttet)" eh="8273211e" />

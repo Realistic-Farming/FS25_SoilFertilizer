@@ -224,7 +224,7 @@
     <e k="sf_hud_noField" v="Entrez dans un champ" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Conduisez sur un champ" />
     <e k="sf_hud_fallow" v="Jachère" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Mauvaises herbes" eh="324181de" />
+    <e k="sf_hud_weeds" v="Mauvaises herbes Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Ravageurs" eh="2fed5101" />
     <e k="sf_hud_disease" v="Maladie" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(protégé)" eh="8273211e" />

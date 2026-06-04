@@ -222,7 +222,7 @@
     <e k="sf_hud_noField" v="Bir tarlaya gidin" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Alana sürün" />
     <e k="sf_hud_fallow" v="Nadas" eh="eafe5913" />
-    <e k="sf_hud_weeds" v="Yabancı Otlar" eh="324181de" />
+    <e k="sf_hud_weeds" v="Yabancı Otlar Risk" eh="324181de" />
     <e k="sf_hud_pests" v="Zararlılar" eh="2fed5101" />
     <e k="sf_hud_disease" v="Hastalık" eh="e7067a8c" />
     <e k="sf_hud_protected" v="(korumalı)" eh="8273211e" />

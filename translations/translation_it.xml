@@ -222,7 +222,7 @@
 		<e k="sf_hud_noField" v="Cammina su un campo" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Guida su un campo" />
 		<e k="sf_hud_fallow" v="Maggese" eh="eafe5913" />
-		<e k="sf_hud_weeds" v="Infestanti" eh="324181de" />
+		<e k="sf_hud_weeds" v="Infestanti Risk" eh="324181de" />
 		<e k="sf_hud_pests" v="Parassiti" eh="2fed5101" />
 		<e k="sf_hud_disease" v="Malattie" eh="e7067a8c" />
 		<e k="sf_hud_protected" v="(protetto)" eh="8273211e" />
