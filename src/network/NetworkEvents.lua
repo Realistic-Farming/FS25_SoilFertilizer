@@ -71,7 +71,7 @@ function SoilSettingChangeEvent:run(connection)
 
     -- Validate player is admin (master user)
     if not connection:getIsServer() then
-        local user = g_currentMission.userManager:getUserByConnection(connection)
+        local user = g_currentMission.userManager and g_currentMission.userManager:getUserByConnection(connection)
         if not user or not user:getIsMasterUser() then
             SoilLogger.warning("Player %s (non-admin) tried to change settings - denied",
                 user and user:getNickname() or "Unknown")

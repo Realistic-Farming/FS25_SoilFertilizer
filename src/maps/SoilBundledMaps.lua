@@ -52,8 +52,7 @@ local NUM_CHANNELS  = 2    -- 2-bit channel (4 values: 0-3)
 local PH_CHANNEL    = 0    -- zero-based channel index
 
 -- pH zone lookup: raw value 0-3 → semantic pH
--- !! Confirm with Seb what his 4 zones represent !!
--- Current assumption: 0=neutral descending toward acidic
+-- Zone 0 = neutral/alkaline, descending to zone 3 = acidic (verified from grleConverter output)
 local PH_ZONE_MAP = {
     [0] = 7.0,   -- zone 0: neutral/alkaline
     [1] = 6.5,   -- zone 1: slightly acidic
