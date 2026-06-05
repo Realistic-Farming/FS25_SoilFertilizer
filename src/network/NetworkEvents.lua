@@ -61,13 +61,17 @@ function SoilSettingChangeEvent:run(connection)
     -- SERVER ONLY: Validate and apply setting change
     if g_server == nil then return end
 
-    -- Local-only settings should never be routed through the server; reject silently
+    -- Reject unknown settings and local-only settings — never apply to server state
     local def = SettingsSchema and SettingsSchema.byId and SettingsSchema.byId[self.settingName]
-    if def and def.localOnly then return end
+    if not def then
+        SoilLogger.warning("Server: Rejected unknown setting '%s' from network event", tostring(self.settingName))
+        return
+    end
+    if def.localOnly then return end
 
     -- Validate player is admin (master user)
     if not connection:getIsServer() then
-        local user = g_currentMission.userManager:getUserByConnection(connection)
+        local user = g_currentMission.userManager and g_currentMission.userManager:getUserByConnection(connection)
         if not user or not user:getIsMasterUser() then
             SoilLogger.warning("Player %s (non-admin) tried to change settings - denied",
                 user and user:getNickname() or "Unknown")
@@ -453,6 +457,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 burnDaysLeft = burnDays,
                 coverageFraction = math.max(0, math.min(1, coverageFrac or 0)),
                 compaction = math.max(0, math.min(100, compaction or 0)),
+                nutrientBuffer = buffer,
                 initialized = true
             }
             -- Clear empty strings

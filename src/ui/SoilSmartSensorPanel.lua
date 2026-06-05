@@ -16,7 +16,6 @@
 -- The panel is hidden when:
 --   • Player is not in a sprayer with VWW sections
 --   • Smart Sensor is globally disabled (admin toggle)
---   • PF compat mode is active (PF owns section control)
 --   • The SF mod is disabled
 --   • A GUI dialog / large map is visible (except in edit mode)
 -- =========================================================

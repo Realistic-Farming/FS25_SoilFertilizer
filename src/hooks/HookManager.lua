@@ -267,7 +267,6 @@ function HookManager:installAll(soilSystem)
 
     -- Smart Soil Sensor: per-section spray suppression based on SF soil data.
     -- Appended AFTER installDensityMapSprayHook so cleanup unwinds correctly.
-    -- No-ops when PF compat mode is on (PF owns section control in that mode).
     self:installSectionControlHook()
 
     -- System 2: See & Spray — per-cell spot-spray suppression (appended after Smart Sensor).
@@ -992,8 +991,6 @@ end
 -- (pest=0, disease=0, K≥target, or P≥target) the section is temporarily set
 -- to isActive=false. VWW resets it on the next tick — no persistent corruption.
 --
--- Guard: entire hook is a no-op when PF compat mode is on, because PF owns
--- section control in that mode and we must not fight its density-map logic.
 function HookManager:installSectionControlHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[SectionSensor] Sprayer.onStartWorkAreaProcessing not found — skipping")
@@ -1066,10 +1063,7 @@ function HookManager:installSectionControlHook()
                 end
             end
 
-            -- Gate 2: skip entirely in PF compat mode — PF manages section control
-
-
-            -- Gate 2b: skip if admin has disabled Smart Sensor globally
+            -- Gate 2: skip if admin has disabled Smart Sensor globally
             if sfm.settings and sfm.settings.smartSensorEnabled == false then return end
 
             local sensorMgr = sfm.sensorManager
@@ -1161,7 +1155,6 @@ end
 -- exact soil cell under each boom section.  Sections are suppressed when the
 -- cell's pest/disease/weed pressure is below the configured threshold.
 -- Falls back to field average when no cell entry exists (unvisited cell).
--- No-ops when PF compat mode is on or when admin has disabled See & Spray.
 function HookManager:installSeeAndSprayHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[SeeAndSpray] Sprayer.onStartWorkAreaProcessing not found — skipping")
@@ -4683,6 +4676,20 @@ function HookManager:installSprayerVisualEffectHook()
                 g_soundManager:playSamples(st.samples and st.samples.spray or {})
             end
         end
+        -- Start VWW wing-section effects (these are separate from spec.effects and
+        -- are never started by the vanilla system for custom fill types, causing only
+        -- the center to show mist while wing booms appear dry).
+        local vww = vehicle.spec_variableWorkWidth
+        if vww and vww.sections then
+            local suppressed = vehicle._sfOverlapSuppressedSections or {}
+            for i, section in ipairs(vww.sections) do
+                if section.isActive and not suppressed[i] and
+                   section.effects and #section.effects > 0 then
+                    g_effectManager:setEffectTypeInfo(section.effects, vanillaFillType)
+                    g_effectManager:startEffects(section.effects)
+                end
+            end
+        end
     end
 
     local function stopSprayerEffects(vehicle)
@@ -4693,6 +4700,15 @@ function HookManager:installSprayerVisualEffectHook()
             g_effectManager:stopEffects(st.effects)
             g_animationManager:stopAnimations(st.animationNodes)
             g_soundManager:stopSamples(st.samples and st.samples.spray or {})
+        end
+        -- Stop VWW wing-section effects.
+        local vww = vehicle.spec_variableWorkWidth
+        if vww and vww.sections then
+            for _, section in ipairs(vww.sections) do
+                if section.effects and #section.effects > 0 then
+                    g_effectManager:stopEffects(section.effects)
+                end
+            end
         end
     end
 
