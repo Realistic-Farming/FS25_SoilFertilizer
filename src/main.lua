@@ -36,7 +36,10 @@ source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
 
--- 2. Core systems
+-- 2. Specializations (must load before core systems so vehicleType registration fires)
+source(modDirectory .. "src/specializations/SFNozzleEffects.lua")
+
+-- 3. Core systems
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")

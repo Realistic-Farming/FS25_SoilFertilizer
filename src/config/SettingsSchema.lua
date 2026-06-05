@@ -278,6 +278,12 @@ SettingsSchema.definitions = {
         uiId = "sf_field_boundary",
     },
     {
+        id = "overlapPrevention",
+        type = "boolean",
+        default = true,
+        uiId = "sf_overlap_prev",
+    },
+    {
         id = "independentPanels",
         type = "boolean",
         default = false,

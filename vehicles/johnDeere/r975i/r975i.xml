@@ -1,0 +1,1174 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<vehicle type="sprayer" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../../bin/shared/xml/schema/vehicle.xsd">
+    <annotation>Copyright (C) GIANTS Software GmbH, All Rights Reserved.</annotation>
+
+    <storeData>
+        <name>R975i PowrSpray</name>
+        <specs>
+            <workingWidth>36</workingWidth>
+            <combination filterCategory="weights" filterSpec="weight" filterSpecMin="500" filterSpecMax="600"/>
+        </specs>
+        <functions>
+            <function>$l10n_function_sprayer</function>
+        </functions>
+        <image>vehicles/johnDeere/r975i/store_r975i.dds</image>
+        <price>103500</price>
+        <lifetime>600</lifetime>
+        <rotation>0</rotation>
+        <brand>JOHNDEERE</brand>
+        <category>sprayers</category>
+        <shopTranslationOffset>0 -0.047 0</shopTranslationOffset>
+        <shopRotationOffset>1.017 0 0</shopRotationOffset>
+        <vertexBufferMemoryUsage>4444160</vertexBufferMemoryUsage>
+        <indexBufferMemoryUsage>1767680</indexBufferMemoryUsage>
+        <textureMemoryUsage>2359296</textureMemoryUsage>
+        <instanceVertexBufferMemoryUsage>0</instanceVertexBufferMemoryUsage>
+        <instanceIndexBufferMemoryUsage>0</instanceIndexBufferMemoryUsage>
+        <audioMemoryUsage>0</audioMemoryUsage>
+    </storeData>
+
+    <base>
+        <typeDesc>$l10n_typeDesc_sprayer</typeDesc>
+        <filename>vehicles/johnDeere/r975i/r975i.i3d</filename>
+        <size width="3.1" length="7.7" height="3.7"/>
+        <speedLimit value="12"/>
+        <components maxMass="14000">
+            <component centerOfMass="0 0.95 0" solverIterationCount="10" mass="4375"/>
+        </components>
+        <schemaOverlay attacherJointPosition="0 0" name="IMPLEMENT"/>
+        <sounds volumeFactor="1.3"/>
+        <mapHotspot type="TOOL_TRAILED"/>
+    </base>
+
+    <wheels>
+        <wheelConfigurations>
+            <wheelConfiguration name="$l10n_configuration_valueDefault" price="0" saveId="DEFAULT" numDynamicConfigurations="1">
+                <wheels>
+                    <wheel dimensions="520_85R42" isLeft="true" rimOffset="0.044">
+                        <physics restLoad="2.0" repr="wheelLeftRepr" driveNode="wheelLeft"   forcePointRatio="0.4" initialCompression="20" suspTravel="0.13" spring="62" damper="50" yOffset="0.04"/>
+                        <steeringAxle scale="-1" rotMax="27" rotMin="-27"/>
+                        <steering node="steeringBarCenter" nodeMinTransX="0.30" nodeMaxTransX="-0.30"/>
+                        <wheelChock parkingNode="wheelChock01_01" isInverted="true"/>
+                        <wheelChock parkingNode="wheelChock01_02"/>
+                    </wheel>
+                    <wheel dimensions="520_85R42" isLeft="false" rimOffset="0.044">
+                        <physics restLoad="2.0" repr="wheelRightRepr" driveNode="wheelRight" forcePointRatio="0.4" initialCompression="20" suspTravel="0.13" spring="62" damper="50" yOffset="0.04"/>
+                        <steeringAxle scale="-1" rotMax="27" rotMin="-27"/>
+                    </wheel>
+                </wheels>
+            </wheelConfiguration>
+
+            <wheelConfiguration name="$l10n_configuration_valueWheelMedium" price="500" saveId="MEDIUM" numDynamicConfigurations="1">
+                <wheels baseConfig="DEFAULT">
+                    <wheel dimensions="620_70R42">
+                        <wheelChock/>
+                        <wheelChock/>
+                    </wheel>
+                    <wheel dimensions="620_70R42"/>
+                </wheels>
+            </wheelConfiguration>
+
+            <wheelConfiguration name="$l10n_configuration_valueWheelBroad" price="750" saveId="BROAD" numDynamicConfigurations="1">
+                <wheels baseConfig="DEFAULT">
+                    <wheel dimensions="710_70R38" rimOffset="-0.0185">
+                        <wheelChock/>
+                        <wheelChock/>
+                    </wheel>
+                    <wheel dimensions="710_70R38" rimOffset="-0.0185"/>
+                </wheels>
+            </wheelConfiguration>
+
+            <wheelConfiguration name="$l10n_configuration_valueWheelNarrow" price="500" saveId="NARROW" numDynamicConfigurations="1">
+                <wheels baseConfig="DEFAULT" isCareWheelConfiguration="true">
+                    <wheel dimensions="480_80R46">
+                        <wheelChock/>
+                        <wheelChock/>
+                    </wheel>
+                    <wheel dimensions="480_80R46"/>
+                </wheels>
+            </wheelConfiguration>
+        </wheelConfigurations>
+
+        <rimMaterial materialTemplateName="JOHNDEERE_YELLOW1"/>
+        <hubMaterial materialTemplateName="JOHNDEERE_GREEN1"/>
+
+        <hubs>
+            <hub linkNode="wheelLeft"  filename="$data/shared/wheels/hubs/hub_n10_5.xml" isLeft="true"  scale="0.25 0.38 0.38" offset="-0.002"/>
+            <hub linkNode="wheelRight" filename="$data/shared/wheels/hubs/hub_n10_5.xml" isLeft="false" scale="0.25 0.38 0.38" offset="-0.002"/>
+        </hubs>
+    </wheels>
+
+    <attachable>
+        <inputAttacherJoints>
+            <inputAttacherJoint node="attacherJoint" jointType="trailerLow" attacherHeight="0.68"/>
+        </inputAttacherJoints>
+        <support animationName="moveSupport"/>
+        <brakeForce force="2" maxForce="4.3" maxForceMass="12500"/>
+        <sounds>
+            <active file="$data/sounds/tools/sowing/generalRattle_02.wav" innerRadius="10" outerRadius="50" volumeScale="4.7" isLocalSound="true" pitchScale="1.0">
+                <volume indoor="0.7" outdoor="0.9" >
+                    <modifier type="WHEEL_SUSPENSION" value="-0.08" modifiedValue="0.2"/>
+                    <modifier type="WHEEL_SUSPENSION" value="-0.04" modifiedValue="0.15"/>
+                    <modifier type="WHEEL_SUSPENSION" value="-0.02" modifiedValue="0.1"/>
+                    <modifier type="WHEEL_SUSPENSION" value="-0.01" modifiedValue="0.05"/>
+                    <modifier type="WHEEL_SUSPENSION" value="-0.00" modifiedValue="0.0"/>
+                    <modifier type="WHEEL_SUSPENSION" value="0.01" modifiedValue="0.05"/>
+                    <modifier type="WHEEL_SUSPENSION" value="0.02" modifiedValue="0.1"/>
+                    <modifier type="WHEEL_SUSPENSION" value="0.04" modifiedValue="0.15"/>
+                    <modifier type="WHEEL_SUSPENSION" value="0.08" modifiedValue="0.20"/>
+
+                    <modifier type="SPEED" value="0.0" modifiedValue="0.0"/>
+                    <modifier type="SPEED" value="2.0" modifiedValue="1.0"/>
+                    <modifier type="SPEED" value="40.0" modifiedValue="1.0"/>
+                </volume>
+                <lowpassCutoffFrequency indoor="250" outdoor="20000" />
+                <lowpassGain indoor="0.5" outdoor="1" />
+            </active>
+        </sounds>
+    </attachable>
+
+    <licensePlates>
+        <licensePlate node="licensePlateBack" position="BACK" preferedType="SQUARISH" placementArea="0.09 0.15 0.075 0.15" />
+    </licensePlates>
+
+    <connectionHoses>
+        <hose inputAttacherJointIndices="1" type="hydraulicIn" node="hydraulicIn01"  length="1.3" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicIn01_connector">
+            <objectChange node="hydraulicIn01_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="hydraulicOut" node="hydraulicOut01" length="1.3" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicOut01_connector">
+            <objectChange node="hydraulicOut01_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="hydraulicIn" node="hydraulicIn02"  length="1.35" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicIn02_connector">
+            <objectChange node="hydraulicIn02_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="hydraulicOut" node="hydraulicOut02" length="1.35" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicOut02_connector">
+            <objectChange node="hydraulicOut02_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="hydraulicIn" node="hydraulicIn02"  length="1.6" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicIn03_connector">
+            <objectChange node="hydraulicIn03_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="hydraulicOut" node="hydraulicOut02" length="1.6" diameter="0.02" straighteningFactor="0.5" adapterNode="hydraulicOut03_connector">
+            <objectChange node="hydraulicOut03_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="airDoubleRed" node="airRed" length="1.5" diameter="0.015" straighteningFactor="0.5" adapterNode="airRed_connector">
+            <objectChange node="airRed_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="airDoubleYellow" node="airYellow" length="1.5" diameter="0.015" straighteningFactor="0.5" adapterNode="airYellow_connector">
+            <objectChange node="airYellow_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+        <hose inputAttacherJointIndices="1" type="electric" node="electric" length="1.5" diameter="0.015" straighteningFactor="0.5" adapterNode="electric_connector">
+            <objectChange node="electric_detached" visibilityActive="false" visibilityInactive="true"/>
+        </hose>
+    </connectionHoses>
+
+    <powerConsumer ptoRpm="400" neededMinPtoPower="15" neededMaxPtoPower="15"/>
+
+    <lights>
+        <sharedLight linkNode="rearLight33_left" filename="$data/shared/assets/lights/lizard/rearLight33_left.xml" />
+        <sharedLight linkNode="rearLight33_right" filename="$data/shared/assets/lights/lizard/rearLight33_right.xml" />
+        <sharedLight linkNode="sideMarker35_01" filename="$data/shared/assets/lights/lizard/sideMarker35.xml" />
+        <sharedLight linkNode="sideMarker35_02" filename="$data/shared/assets/lights/lizard/sideMarker35.xml" />
+
+        <sharedLight linkNode="workingLight45_01" filename="$data/shared/assets/lights/lizard/workingLight45.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight45_02" filename="$data/shared/assets/lights/lizard/workingLight45.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+
+        <sharedLight linkNode="workingLight36_01" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_02" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_03" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_04" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_05" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_06" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_07" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_08" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_09" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_10" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_11" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_12" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_13" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_14" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_15" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_16" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_17" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_18" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_19" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_20" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_21" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_22" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_23" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_24" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_25" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_26" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_27" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_28" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_29" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_30" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_31" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_32" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_33" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_34" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="-25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_35" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+        <sharedLight linkNode="workingLight36_36" filename="$data/shared/assets/lights/lizard/workingLight36.xml" lightTypes="1">
+            <rotationNode name="rotationNode1" rotation="25 0 0"/>
+        </sharedLight>
+
+        <realLights>
+            <high>
+                <light node="backLightsHigh" lightTypes="0"/>
+                <light node="licensePlateLightHigh" lightTypes="0"/>
+                <light node="workLightBackHighLeft" lightTypes="1"/>
+                <light node="workLightBackHighRight" lightTypes="1"/>
+                <turnLightLeft  node="turnLightLeftBack"/>
+                <turnLightRight node="turnLightRightBack"/>
+                <brakeLight     node="backLightsHigh"/>
+                <reverseLight   node="reverseLightHigh"/>
+            </high>
+        </realLights>
+
+        <staticLightCompounds>
+            <staticLightCompound>
+                <node node="r975iLights_static" intensity="5"/>
+                <node node="r975iLightsGlass_static" intensity="1"/>
+            </staticLightCompound>
+        </staticLightCompounds>
+
+        <beaconLights>
+            <beaconLight node="beaconLight16" filename="$data/shared/assets/beaconLights/lizard/beaconLight16.xml" variationName="BLINK"/>
+        </beaconLights>
+    </lights>
+
+    <workAreas>
+        <workArea type="sprayer" functionName="processSprayerArea" disableBackwards="false" requiresGroundContact="false" >
+            <area startNode="workAreaStart" widthNode="workAreaWidth" heightNode="workAreaHeight"/>
+            <onlyActiveWhenLowered value="false"/>
+        </workArea>
+    </workAreas>
+
+    <sprayer fillUnitIndex="1">
+        <usageScales workAreaIndex="1" scale="1"/>
+        <effects>
+            <effectNode effectNode="effect36_01" delay="0.35" materialType="sprayer"/>
+            <effectNode effectNode="effect36_02" delay="0.30" materialType="sprayer"/>
+            <effectNode effectNode="effect36_03" delay="0.25" materialType="sprayer"/>
+            <effectNode effectNode="effect36_04" delay="0.20" materialType="sprayer"/>
+            <effectNode effectNode="effect36_05" delay="0.15" materialType="sprayer"/>
+            <effectNode effectNode="effect36_06" delay="0.10" materialType="sprayer"/>
+
+            <effectNode effectNode="effectCenter" delay="0" materialType="sprayer"/>
+
+            <effectNode effectNode="effect36_08" delay="0.10" materialType="sprayer"/>
+            <effectNode effectNode="effect36_09" delay="0.15" materialType="sprayer"/>
+            <effectNode effectNode="effect36_10" delay="0.20" materialType="sprayer"/>
+            <effectNode effectNode="effect36_11" delay="0.25" materialType="sprayer"/>
+            <effectNode effectNode="effect36_12" delay="0.30" materialType="sprayer"/>
+            <effectNode effectNode="effect36_13" delay="0.35" materialType="sprayer"/>
+        </effects>
+
+        <nozzles foldingConfigurationIndex="1">
+            <nozzle node="nozzleNode36_01" />
+            <nozzle node="nozzleNode36_02" />
+            <nozzle node="nozzleNode36_03" />
+            <nozzle node="nozzleNode36_04" />
+            <nozzle node="nozzleNode36_05" />
+            <nozzle node="nozzleNode36_06" />
+            <nozzle node="nozzleNode36_07" />
+            <nozzle node="nozzleNode36_08" />
+            <nozzle node="nozzleNode36_09" />
+            <nozzle node="nozzleNode36_10" />
+            <nozzle node="nozzleNode36_11" />
+            <nozzle node="nozzleNode36_12" />
+
+            <nozzle node="nozzleNode36_13" />
+            <nozzle node="nozzleNode36_14" />
+            <nozzle node="nozzleNode36_15" />
+            <nozzle node="nozzleNode36_16" />
+            <nozzle node="nozzleNode36_17" />
+            <nozzle node="nozzleNode36_18" />
+            <nozzle node="nozzleNode36_19" />
+            <nozzle node="nozzleNode36_20" />
+            <nozzle node="nozzleNode36_21" />
+            <nozzle node="nozzleNode36_22" />
+            <nozzle node="nozzleNode36_23" />
+            <nozzle node="nozzleNode36_24" />
+
+            <nozzle node="nozzleNode36_25" />
+            <nozzle node="nozzleNode36_26" />
+            <nozzle node="nozzleNode36_27" />
+            <nozzle node="nozzleNode36_28" />
+            <nozzle node="nozzleNode36_29" />
+            <nozzle node="nozzleNode36_30" />
+            <nozzle node="nozzleNode36_31" />
+            <nozzle node="nozzleNode36_32" />
+            <nozzle node="nozzleNode36_33" />
+            <nozzle node="nozzleNode36_34" />
+
+            <nozzle node="nozzleNode36_35" />
+            <nozzle node="nozzleNode36_36" />
+            <nozzle node="nozzleNode36_37" />
+            <nozzle node="nozzleNode36_38" />
+
+            <nozzle node="nozzleNode36_39" />
+            <nozzle node="nozzleNode36_40" />
+            <nozzle node="nozzleNode36_41" />
+            <nozzle node="nozzleNode36_42" />
+            <nozzle node="nozzleNode36_43" />
+            <nozzle node="nozzleNode36_44" />
+            <nozzle node="nozzleNode36_45" />
+            <nozzle node="nozzleNode36_46" />
+            <nozzle node="nozzleNode36_47" />
+            <nozzle node="nozzleNode36_48" />
+
+            <nozzle node="nozzleNode36_49" />
+            <nozzle node="nozzleNode36_50" />
+            <nozzle node="nozzleNode36_51" />
+            <nozzle node="nozzleNode36_52" />
+            <nozzle node="nozzleNode36_53" />
+            <nozzle node="nozzleNode36_54" />
+            <nozzle node="nozzleNode36_55" />
+            <nozzle node="nozzleNode36_56" />
+            <nozzle node="nozzleNode36_57" />
+            <nozzle node="nozzleNode36_58" />
+            <nozzle node="nozzleNode36_59" />
+            <nozzle node="nozzleNode36_60" />
+
+            <nozzle node="nozzleNode36_61" />
+            <nozzle node="nozzleNode36_62" />
+            <nozzle node="nozzleNode36_63" />
+            <nozzle node="nozzleNode36_64" />
+            <nozzle node="nozzleNode36_65" />
+            <nozzle node="nozzleNode36_66" />
+            <nozzle node="nozzleNode36_67" />
+            <nozzle node="nozzleNode36_68" />
+            <nozzle node="nozzleNode36_69" />
+            <nozzle node="nozzleNode36_70" />
+            <nozzle node="nozzleNode36_71" />
+            <nozzle node="nozzleNode36_72" />
+        </nozzles>
+
+        <sounds>
+            <spray template="defaultSprayer" volumeScale="0.5"/>
+            <work template="slurry03" pitchScale="0.6" linkNode="r975i_main_component1"/>
+        </sounds>
+    </sprayer>
+
+    <variableWorkWidth>
+        <sections>
+            <section isLeft="true"  maxWidthNode="section36_01">
+                <effect node="effect36_01" />
+            </section>
+            <section isLeft="true"  maxWidthNode="section36_02">
+                <effect node="effect36_02" />
+            </section>
+            <section isLeft="true"  maxWidthNode="section36_03">
+                <effect node="effect36_03" />
+            </section>
+            <section isLeft="true"  maxWidthNode="section36_04">
+                <effect node="effect36_04" />
+            </section>
+            <section isLeft="true"  maxWidthNode="section36_05">
+                <effect node="effect36_05" />
+            </section>
+            <section isLeft="true"  maxWidthNode="section36_06">
+                <effect node="effect36_06" />
+            </section>
+
+            <section isCenter="true" />
+
+            <section isLeft="false" maxWidthNode="section36_08">
+                <effect node="effect36_08" />
+            </section>
+            <section isLeft="false" maxWidthNode="section36_09">
+                <effect node="effect36_09" />
+            </section>
+            <section isLeft="false" maxWidthNode="section36_10">
+                <effect node="effect36_10" />
+            </section>
+            <section isLeft="false" maxWidthNode="section36_11">
+                <effect node="effect36_11" />
+            </section>
+            <section isLeft="false" maxWidthNode="section36_12">
+                <effect node="effect36_12" />
+            </section>
+            <section isLeft="false" maxWidthNode="section36_13">
+                <effect node="effect36_13" />
+            </section>
+        </sections>
+
+        <sectionNodes>
+            <sectionNode node="workAreaStart"  isLeft="true"  minTransX="1.5"  maxTransX="18"/>
+            <sectionNode node="workAreaWidth"  isLeft="false" minTransX="-1.5" maxTransX="-18"/>
+            <sectionNode node="workAreaHeight" isLeft="true"  minTransX="1.5"  maxTransX="18"/>
+
+            <sectionNode node="aiMarkerLeft"  isLeft="true"  minTransX="1.5" maxTransX="18"/>
+            <sectionNode node="aiMarkerRight" isLeft="false" minTransX="-1.5" maxTransX="-18"/>
+        </sectionNodes>
+    </variableWorkWidth>
+
+    <groundAdjustedNodes>
+        <groundAdjustedNode node="boomLeftAdjust" yOffset="2" minY="-4" maxY="2" moveSpeed="2" moveSpeedStateChange="0.5" activationTime="3" resetIfNotActive="false">
+            <raycastNode node="boomLeftRaycast" distance="6"/>
+        </groundAdjustedNode>
+        <groundAdjustedNode node="boomRightAdjust" yOffset="2" minY="-4" maxY="2" moveSpeed="2" moveSpeedStateChange="0.5" activationTime="3" resetIfNotActive="false">
+            <raycastNode node="boomRightRaycast" distance="6"/>
+        </groundAdjustedNode>
+        <groundAdjustedNode node="boomCenterAdjust" yOffset="0" minY="-3" maxY="0" moveSpeed="2" moveSpeedStateChange="0.5" activationTime="3" resetIfNotActive="false">
+            <raycastNode node="boomCenterRaycast" distance="3"/>
+        </groundAdjustedNode>
+    </groundAdjustedNodes>
+
+    <foldable>
+        <foldingConfigurations>
+            <foldingConfiguration>
+                <foldingParts startMoveDirection="1" turnOnFoldMaxLimit="0.05" turnOnFoldMinLimit="0">
+                    <foldingPart animationName="folding" speedScale="1"/>
+                </foldingParts>
+            </foldingConfiguration>
+        </foldingConfigurations>
+    </foldable>
+
+    <animations>
+        <animation name="moveSupport">
+            <part node="armSupport01" startTime="0.0" endTime="0.5" startRot="68 0 0" endRot="18 0 0"/>
+            <part node="armSupport02" startTime="0.0" endTime="0.5" startRot="-68 0 0" endRot="-18 0 0"/>
+
+            <sound template="hydraulicOpen02" startTime="0.01" endTime="0.49" volumeScale="1"   pitchScale="1.5" linkNode="armSupport01" fadeIn="0.01" fadeOut="0.01"/>
+            <sound template="hingeImp"        startTime="0.1"  direction="-1" volumeScale="0.6" pitchScale="0.8"/>
+            <sound template="vibratingImp"    startTime="0.01" direction="-1" volumeScale="1.1" pitchScale="1.3"/>
+        </animation>
+
+        <animation name="folding">
+            <part node="boomLeftAdjust" startTime="0.0" endTime="1.0" startGroundAdjustScale="1" endGroundAdjustScale="0"/>
+            <part node="boomCenterAdjust" startTime="0.0" endTime="1.0" startGroundAdjustScale="1" endGroundAdjustScale="0"/>
+            <part node="boomRightAdjust" startTime="0.0" endTime="1.0" startGroundAdjustScale="1" endGroundAdjustScale="0"/>
+
+            <part node="boomFrameArm01" startTime="0.0" endTime="3.0" startRot="4 0 0" endRot="40 0 0" />
+            <part node="boomArmLeft03WindSensor" startTime="2.0" endTime="3.0" startRot="0 0 0" endRot="0 90 0" />
+            <part node="boomArmRight03WindSensor" startTime="2.0" endTime="3.0" startRot="0 0 0" endRot="0 -90 0" />
+            <part node="boomArmLeft03" startTime="3.0" endTime="9.0" startRot="0 0 0" endRot="0 -180.1 0" />
+            <part node="boomArmRight03" startTime="3.0" endTime="9.0" startRot="0 0 0" endRot="0 180.1 0" />
+            <part node="boomArmLeft02"  startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 180 0" />
+            <part node="boomArmRight02" startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 -180 0" />
+            <part node="boomArmYRotLeft"  startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 -90 0" />
+            <part node="boomArmYRotRight" startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 90 0"/>
+            <part node="boomArmLeft01XRot" startTime="9.6" endTime="13.0" startRot="0 0 0" endRot="-9 0 0" />
+            <part node="boomArmRight01XRot" startTime="9.6" endTime="13.0" startRot="0 0 0" endRot="-9 0 0" />
+            <part node="boomArmLeft01HoseArm"  startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 28 0"/>
+            <part node="boomArmRight01HoseArm" startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 -28 0"/>
+            <part node="boomLock" startTime="12.0" endTime="13.0" startRot="0 0 0" endRot="16.2 0 0" />
+            <part node="boomFrameArm01" startTime="13.0" endTime="15.0" startRot="40 0 0" endRot="24.4 0 0" />
+
+            <!-- joints -->
+            <part node="boomArmLeft02AnimJoint" startTime="3.0" endTime="9.0" startTrans="5.975 0.04 0.181" endTrans="5.837 0.04 0.174" startRot="0.0 0.0 0.0" endRot="0.0 -92.735 0.0" />
+            <part node="boomArmRight02AnimJoint" startTime="3.0" endTime="9.0" startTrans="-5.972 0.037 0.183" endTrans="-5.838 0.037 0.148" startRot="0.0 0.0 0.0" endRot="-79.149 82.039 -79.251" />
+            <part node="boomArmMiddleArm02AnimJointLeft" startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 -86.75 0" />
+            <part node="boomArmMiddleArm02AnimJointRight" startTime="6.0" endTime="13.0" startRot="0 0 0" endRot="0 86.75 0" />
+
+            <sound template="hydraulicOpen05"        startTime="13"   endTime="14.99" volumeScale="1.0" pitchScale="1.1" fadeIn="0.1" fadeOut="0.1"/>
+            <sound template="hydraulicOpen06"        startTime="6"    endTime="13"    volumeScale="0.3" direction="-1"   startPitchScale="0.4" endPitchScale="0.6" fadeIn="0.1" fadeOut="0.1"/>
+            <sound template="hydraulicOpen02"        startTime="6"    endTime="13"    volumeScale="1.2" direction="-1"   startPitchScale="1.4" endPitchScale="1.6" fadeIn="0.1" fadeOut="0.1"/>
+            <sound template="hydraulicAirySmallOpen" startTime="4"    endTime="9"     volumeScale="0.8" direction="0"    pitchScale="1.4"      fadeIn="0.1" fadeOut="0.1" linkNode="boomArmLeft03"/>
+            <sound template="hydraulicAirySmallOpen" startTime="4"    endTime="9"     volumeScale="0.8" direction="0"    pitchScale="1.2"      fadeIn="0.1" fadeOut="0.1" linkNode="boomArmRight03"/>
+            <sound template="hydraulicClose01"       startTime="6"    endTime="13"    volumeScale="1.8" direction="1"    pitchScale="0.7"      fadeIn="0.1" fadeOut="0.1"/>
+            <sound template="hydraulicOpen02"        startTime="6"    endTime="13"    volumeScale="1.2" direction="1"    pitchScale="1.5"      fadeIn="0.1" fadeOut="0.1"/>
+            <sound template="hingeImp"               startTime="14.8" direction="1"   volumeScale="1.2" pitchScale="0.8" />
+            <sound template="vibratingImp"           startTime="14.9" direction="1"   volumeScale="1.2" pitchScale="1.1" />
+            <sound template="vibratingImp"           startTime="13"   direction="1"   volumeScale="1.2" pitchScale="1.1" />
+            <sound template="trailerCloseImpact_01"  startTime="13"   direction="1"   volumeScale="0.6" pitchScale="1.6" />
+            <sound template="foldStartMed02"         startTime="13"   direction="1"   volumeScale="2.2" pitchScale="1.5" />
+            <sound template="vibratingImp"           startTime="13"   direction="1"   volumeScale="1.2" pitchScale="0.9" />
+            <sound template="cylinderPunch"          startTime="13"   direction="1"   volumeScale="0.7" pitchScale="1.4" />
+            <sound template="foldStartMed02"         startTime="6"    direction="-1"  volumeScale="2.2" pitchScale="1.2" />
+            <sound template="vibratingImp"           startTime="6"    direction="-1"  volumeScale="1.1" pitchScale="1.3" />
+            <sound template="metalImpLayer01"        startTime="6"    direction="-1"  volumeScale="1.2" pitchScale="1.1" />
+            <sound template="foldStartMed02"         startTime="4"    direction="-1"  volumeScale="1.8" pitchScale="1.5" linkNode="boomArmLeft03"/>
+            <sound template="metalImpLayer01"        startTime="4"    direction="-1"  volumeScale="0.8" pitchScale="1.1" linkNode="boomArmLeft03"/>
+            <sound template="vibratingImp"           startTime="4"    direction="-1"  volumeScale="0.9" pitchScale="1.3" linkNode="boomArmLeft03"/>
+            <sound template="foldStartMed02"         startTime="4"    direction="-1"  volumeScale="1.8" pitchScale="1.2" linkNode="boomArmRight03"/>
+            <sound template="metalImpLayer01"        startTime="4"    direction="-1"  volumeScale="0.8" pitchScale="1.4" linkNode="boomArmRight03"/>
+            <sound template="vibratingImp"           startTime="4"    direction="-1"  volumeScale="0.9" pitchScale="1.1" linkNode="boomArmRight03"/>
+            <sound template="foldStartMed02"         startTime="9"    direction="1"   volumeScale="1.3" pitchScale="1.5" linkNode="boomArmLeft03"/>
+            <sound template="metalImpLayer01"        startTime="9"    direction="1"   volumeScale="0.6" pitchScale="1.1" linkNode="boomArmLeft03"/>
+            <sound template="vibratingImp"           startTime="9"    direction="1"   volumeScale="0.7" pitchScale="1.3" linkNode="boomArmLeft03"/>
+            <sound template="foldStartMed02"         startTime="9"    direction="1"   volumeScale="1.3" pitchScale="1.2" linkNode="boomArmRight03"/>
+            <sound template="metalImpLayer01"        startTime="9"    direction="1"   volumeScale="0.6" pitchScale="1.4" linkNode="boomArmRight03"/>
+            <sound template="vibratingImp"           startTime="9"    direction="1"   volumeScale="0.7" pitchScale="1.1" linkNode="boomArmRight03"/>
+        </animation>
+    </animations>
+
+    <cylindered>
+        <movingTools>
+            <movingTool node="armSupport01">
+                <dependentPart node="armSupportHydraulic" />
+            </movingTool>
+
+            <movingTool node="boomFrameArm01" playSound="true" foldMinLimit="0" foldMaxLimit="0.01">
+                <controls axis="AXIS_SPRAYER_ARM" invertAxis="false" mouseSpeedFactor="0.3" iconName="SPRAYER_ARM_TRANSLATE_Y" />
+                <rotation rotSpeed="15" rotAcceleration="120" rotMin="-40" rotMax="40" startRot="0" rotationAxis="1"/>
+                <dependentPart node="boomFrameArm02" />
+                <dependentPart node="boomFrame" />
+            </movingTool>
+            <movingTool node="boomLock">
+                <dependentPart node="boomLockHydraulic" />
+            </movingTool>
+
+            <!-- boom alignment -->
+            <movingTool node="boomLeftAdjust">
+                <dependentPart node="boomAlignCenterArmReference" />
+                <dependentPart node="boomAlignLeftArmReference" />
+            </movingTool>
+            <movingTool node="boomRightAdjust">
+                <dependentPart node="boomAlignCenterArmReference" />
+                <dependentPart node="boomAlignRightArmReference" />
+            </movingTool>
+            <movingTool node="boomCenterAdjust">
+                <dependentPart node="boomAlignLeftArmReference" />
+                <dependentPart node="boomAlignRightArmReference" />
+            </movingTool>
+
+            <!-- boom left -->
+            <movingTool node="boomArmYRotLeft">
+                <dependentPart node="boomArmYRotLeftHydraulic" />
+                <dependentPart node="boomArmAlignBar" />
+            </movingTool>
+            <movingTool node="boomArmLeft01XRot">
+                <dependentPart node="boomArmLeft01XRotHydraulic" />
+            </movingTool>
+            <movingTool node="boomArmLeft02">
+                <dependentPart node="boomArmLeft02AlignArm" />
+            </movingTool>
+            <movingTool node="boomArmLeft03">
+                <dependentPart node="boomArmLeft03AlignArm" />
+            </movingTool>
+            <movingTool node="boomArmLeft03WindSensor">
+                <dependentPart node="boomArmLeft03WindSensorHydraulic" />
+            </movingTool>
+
+            <!-- boom right -->
+            <movingTool node="boomArmYRotRight">
+                <dependentPart node="boomArmYRotRightHydraulic" />
+            </movingTool>
+            <movingTool node="boomArmRight01XRot">
+                <dependentPart node="boomArmRight01XRotHydraulic" />
+            </movingTool>
+            <movingTool node="boomArmRight02">
+                <dependentPart node="boomArmRight02AlignArm" />
+            </movingTool>
+            <movingTool node="boomArmRight03">
+                <dependentPart node="boomArmRight03AlignArm" />
+            </movingTool>
+            <movingTool node="boomArmRight03WindSensor">
+                <dependentPart node="boomArmRight03WindSensorHydraulic" />
+            </movingTool>
+        </movingTools>
+
+        <movingParts>
+            <!-- support -->
+            <movingPart node="armSupportHydraulic" referencePoint="armSupportHydraulicRef" referenceFrame="armSupportHydraulicRef">
+                <translatingPart node="armSupportHydraulicPunch" />
+            </movingPart>
+
+            <!-- steering -->
+            <movingPart node="steeringBarLeft" referencePoint="steeringBarLeftRef" referenceFrame="steeringBarLeftRef" scaleZ="true" isActiveDirty="true" maxUpdateDistance="20"/>
+            <movingPart node="steeringBarRight" referencePoint="steeringBarRightRef" referenceFrame="steeringBarRightRef" scaleZ="true" isActiveDirty="true" maxUpdateDistance="20"/>
+
+            <!-- boomFrame -->
+            <movingPart node="boomFrameArm02" referenceFrame="boomFrameArm01" doDirectionAlignment="false" doRotationAlignment="true" rotMultiplier="1">
+                <dependentPart node="boomFrameArmHydraulicLeft" />
+                <dependentPart node="boomFrameArmHydraulicRight" />
+            </movingPart>
+            <movingPart node="boomFrame" referenceFrame="boomFrameArm01" doDirectionAlignment="false" doRotationAlignment="true" rotMultiplier="-1"/>
+            <movingPart node="boomFrameArmHydraulicLeft" referencePoint="boomFrameArmHydraulicLeftRef" referenceFrame="boomFrameArmHydraulicLeftRef">
+                <translatingPart node="boomFrameArmHydraulicLeftPunch" />
+            </movingPart>
+            <movingPart node="boomFrameArmHydraulicRight" referencePoint="boomFrameArmHydraulicRightRef" referenceFrame="boomFrameArmHydraulicRightRef">
+                <translatingPart node="boomFrameArmHydraulicRightPunch" />
+            </movingPart>
+            <movingPart node="boomLockHydraulic" referencePoint="boomLockHydraulicRef" referenceFrame="boomLockHydraulicRef">
+                <translatingPart node="boomLockHydraulicPunch" />
+            </movingPart>
+
+            <!-- boom alignment -->
+            <movingPart node="boomAlignCenterArmReference" referencePoint="boomRightAdjust" referenceFrame="boomAlignCenterArmReferenceRefFrame">
+                <dependentPart node="boomArmMiddleArm01" />
+                <dependentPart node="boomArmMiddleArm02" />
+                <dependentPart node="boomAlignLeftArmReference" />
+                <dependentPart node="boomAlignRightArmReference" />
+            </movingPart>
+            <movingPart node="boomAlignLeftArmReference" referencePoint="boomLeftAdjust" referenceFrame="boomAlignLeftArmReferenceRefFrame">
+                <dependentPart node="boomArmLeft01XRot" />
+            </movingPart>
+            <movingPart node="boomAlignRightArmReference" referencePoint="boomRightAdjust" referenceFrame="boomAlignRightArmReferenceRefFrame">
+                <dependentPart node="boomArmRight01XRot" />
+            </movingPart>
+
+            <!-- boom middle -->
+            <movingPart node="boomArmMiddleArm01" referenceFrame="boomAlignCenterArmReference" limitedAxis="1" minRot="-3" maxRot="3">
+                <dependentPart node="boomArmMiddleArm01HydraulicLeft01" />
+                <dependentPart node="boomArmMiddleArm01HydraulicLeft02" />
+                <dependentPart node="boomArmMiddleArm01HydraulicRight01" />
+                <dependentPart node="boomArmMiddleArm01HydraulicRight02" />
+                <dependentPart node="boomArmMiddleArm01SpringLeft" />
+                <dependentPart node="boomArmMiddleArm01SpringRight" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm01HydraulicLeft01" referencePoint="boomArmMiddleArm01HydraulicLeft01Ref" referenceFrame="boomArmMiddleArm01HydraulicLeft01Ref">
+                <translatingPart node="boomArmMiddleArm01HydraulicLeft01Punch" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm01HydraulicLeft02" referencePoint="boomArmMiddleArm01HydraulicLeft02Ref" referenceFrame="boomArmMiddleArm01HydraulicLeft02Ref">
+                <translatingPart node="boomArmMiddleArm01HydraulicLeft02Punch" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm01HydraulicRight01" referencePoint="boomArmMiddleArm01HydraulicRight01Ref" referenceFrame="boomArmMiddleArm01HydraulicRight01Ref">
+                <translatingPart node="boomArmMiddleArm01HydraulicRight01Punch" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm01HydraulicRight02" referencePoint="boomArmMiddleArm01HydraulicRight02Ref" referenceFrame="boomArmMiddleArm01HydraulicRight02Ref">
+                <translatingPart node="boomArmMiddleArm01HydraulicRight02Punch" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm01SpringLeft" referencePoint="boomArmMiddleArm01SpringLeftRef" referenceFrame="boomArmMiddleArm01SpringLeftRef" scaleZ="true"/>
+            <movingPart node="boomArmMiddleArm01SpringRight" referencePoint="boomArmMiddleArm01SpringRightRef" referenceFrame="boomArmMiddleArm01SpringRightRef" scaleZ="true"/>
+
+            <movingPart node="boomArmMiddleArm02" referenceFrame="boomAlignCenterArmReference" limitedAxis="1" minRot="-5" maxRot="5">
+                <dependentPart node="boomArmMiddleArm02Hydraulic" />
+            </movingPart>
+            <movingPart node="boomArmMiddleArm02Hydraulic" referencePoint="boomArmMiddleArm02HydraulicRef" referenceFrame="boomArmMiddleArm02HydraulicRef">
+                <translatingPart node="boomArmMiddleArm02HydraulicPunch" />
+            </movingPart>
+
+            <!-- boom left -->
+            <movingPart node="boomArmYRotLeftHydraulic" referencePoint="boomArmYRotLeftHydraulicRef" referenceFrame="boomArmYRotLeftHydraulicRef">
+                <translatingPart node="boomArmYRotLeftHydraulicPunch" />
+            </movingPart>
+            <movingPart node="boomArmLeft01XRot" referenceFrame="boomAlignLeftArmReference">
+                <dependentPart node="boomArmLeft01XRotHydraulic" />
+                <dependentPart node="boomArmLeft01SensorArm" />
+            </movingPart>
+            <movingPart node="boomArmLeft01XRotHydraulic" referencePoint="boomArmLeft01XRotHydraulicRef" referenceFrame="boomArmLeft01XRotHydraulicRef">
+                <translatingPart node="boomArmLeft01XRotHydraulicPunch" />
+            </movingPart>
+            <movingPart node="boomArmLeft01SensorArm" localReferencePoint="boomArmLeft01SensorArmPart" referencePoint="boomArmLeft01SensorArmRef" referenceFrame="boomArmLeft01SensorArmRefFrame">
+                <dependentPart node="boomArmLeft01SensorArmPart" />
+            </movingPart>
+            <movingPart node="boomArmLeft01SensorArmPart" referencePoint="boomArmLeft01SensorArmRef" referenceFrame="boomArmLeft01SensorArmRef"/>
+
+            <movingPart node="boomArmLeft02AlignArm" localReferencePoint="boomArmLeft02AlignArmPart" referencePoint="boomArmLeft02AlignArmRef" referenceFrame="boomArmLeft02AlignArmRefFrame">
+                <dependentPart node="boomArmLeft02AlignArmPart" />
+                <dependentPart node="boomArmLeft02AlignArmHydraulic" />
+            </movingPart>
+            <movingPart node="boomArmLeft02AlignArmPart" referencePoint="boomArmLeft02AlignArmRef" referenceFrame="boomArmLeft02AlignArmRef"/>
+            <movingPart node="boomArmLeft02AlignArmHydraulic" referencePoint="boomArmLeft02AlignArmHydraulicRef" referenceFrame="boomArmLeft02AlignArmHydraulicRef">
+                <translatingPart node="boomArmLeft02AlignArmHydraulicPunch"/>
+            </movingPart>
+
+            <movingPart node="boomArmLeft03AlignArm" localReferencePoint="boomArmLeft03AlignArmPart" referencePoint="boomArmLeft03AlignArmRef" referenceFrame="boomArmLeft03AlignArmRefFrame">
+                <dependentPart node="boomArmLeft03AlignArmPart" />
+                <dependentPart node="boomArmLeft03AlignArmHydraulic" />
+            </movingPart>
+            <movingPart node="boomArmLeft03AlignArmPart" referencePoint="boomArmLeft03AlignArmRef" referenceFrame="boomArmLeft03AlignArmRef"/>
+            <movingPart node="boomArmLeft03AlignArmHydraulic" referencePoint="boomArmLeft03AlignArmHydraulicRef" referenceFrame="boomArmLeft03AlignArmHydraulicRef">
+                <translatingPart node="boomArmLeft03AlignArmHydraulicPunch"/>
+            </movingPart>
+            <movingPart node="boomArmLeft03WindSensorHydraulic" referencePoint="boomArmLeft03WindSensorHydraulicRef" referenceFrame="boomArmLeft03WindSensorHydraulicRef">
+                <translatingPart node="boomArmLeft03WindSensorHydraulicPunch"/>
+            </movingPart>
+
+            <!-- boom right -->
+            <movingPart node="boomArmYRotRightHydraulic" referencePoint="boomArmYRotRightHydraulicRef" referenceFrame="boomArmYRotRightHydraulicRef">
+                <translatingPart node="boomArmYRotRightHydraulicPunch" />
+            </movingPart>
+            <movingPart node="boomArmAlignBar" referencePoint="boomArmAlignBarRef" referenceFrame="boomArmAlignBarRef" scaleZ="true"/>
+            <movingPart node="boomArmRight01XRot" referenceFrame="boomAlignRightArmReference">
+                <dependentPart node="boomArmRight01XRotHydraulic" />
+                <dependentPart node="boomArmRight01SensorArm" />
+            </movingPart>
+            <movingPart node="boomArmRight01XRotHydraulic" referencePoint="boomArmRight01XRotHydraulicRef" referenceFrame="boomArmRight01XRotHydraulicRef">
+                <translatingPart node="boomArmRight01XRotHydraulicPunch"/>
+            </movingPart>
+            <movingPart node="boomArmRight01SensorArm" localReferencePoint="boomArmRight01SensorArmPart" referencePoint="boomArmRight01SensorArmRef" referenceFrame="boomArmRight01SensorArmRefFrame">
+                <dependentPart node="boomArmRight01SensorArmPart" />
+            </movingPart>
+            <movingPart node="boomArmRight01SensorArmPart" referencePoint="boomArmRight01SensorArmRef" referenceFrame="boomArmRight01SensorArmRef"/>
+
+            <movingPart node="boomArmRight02AlignArm" localReferencePoint="boomArmRight02AlignArmPart" referencePoint="boomArmRight02AlignArmRef" referenceFrame="boomArmRight02AlignArmRefFrame">
+                <dependentPart node="boomArmRight02AlignArmPart" />
+                <dependentPart node="boomArmRight02AlignArmHydraulic" />
+            </movingPart>
+            <movingPart node="boomArmRight02AlignArmPart" referencePoint="boomArmRight02AlignArmRef" referenceFrame="boomArmRight02AlignArmRef"/>
+            <movingPart node="boomArmRight02AlignArmHydraulic" referencePoint="boomArmRight02AlignArmHydraulicRef" referenceFrame="boomArmRight02AlignArmHydraulicRef">
+                <translatingPart node="boomArmRight02AlignArmHydraulicPunch"/>
+            </movingPart>
+
+            <movingPart node="boomArmRight03AlignArm" localReferencePoint="boomArmRight03AlignArmPart" referencePoint="boomArmRight03AlignArmRef" referenceFrame="boomArmRight03AlignArmRefFrame">
+                <dependentPart node="boomArmRight03AlignArmPart" />
+                <dependentPart node="boomArmRight03AlignArmHydraulic" />
+            </movingPart>
+            <movingPart node="boomArmRight03AlignArmPart" referencePoint="boomArmRight03AlignArmRef" referenceFrame="boomArmRight03AlignArmRef"/>
+            <movingPart node="boomArmRight03AlignArmHydraulic" referencePoint="boomArmRight03AlignArmHydraulicRef" referenceFrame="boomArmRight03AlignArmHydraulicRef">
+                <translatingPart node="boomArmRight03AlignArmHydraulicPunch"/>
+            </movingPart>
+            <movingPart node="boomArmRight03WindSensorHydraulic" referencePoint="boomArmRight03WindSensorHydraulicRef" referenceFrame="boomArmRight03WindSensorHydraulicRef">
+                <translatingPart node="boomArmRight03WindSensorHydraulicPunch"/>
+            </movingPart>
+        </movingParts>
+        <sounds>
+            <actionSound template="hydraulicClose02" volumeScale="1.6" pitchScale="1.4" nodes="boomFrameArm01" actionNames="TOOL_MOVE_POS TOOL_MOVE_NEG"                     linkNode="boomFrameArm01" fadeIn="0.1" fadeOut="0.1"/>
+            <actionSound template="vibratingImp"     volumeScale="1"   pitchScale="1.0" nodes="boomFrameArm01" actionNames="TOOL_MOVE_END_NEG_LIMIT TOOL_MOVE_END_POS_LIMIT" linkNode="boomFrameArm01"/>
+            <actionSound template="clackVar6"        volumeScale="2.5" pitchScale="0.6" nodes="boomFrameArm01" actionNames="TOOL_MOVE_END_NEG_LIMIT TOOL_MOVE_END_POS_LIMIT" linkNode="boomFrameArm01"/>
+        </sounds>
+    </cylindered>
+
+    <fillUnit>
+        <fillUnitConfigurations>
+            <fillUnitConfiguration>
+                <fillUnits>
+                    <unloading width="8.2" offset="0 0 -4.8"/>
+                    <fillUnit unitTextOverride="$l10n_unit_literShort" fillTypeCategories="sprayer" capacity="7500">
+                        <dashboard displayType="TRANS" valueType="fillLevel" node="fillLevelIndicator01" minValueTrans="0" maxValueTrans="3000" minTrans="0 0 0" maxTrans="0 -0.87 0" />
+                        <dashboard displayType="TRANS" valueType="fillLevel" node="fillLevelIndicator02" minValueTrans="3000" maxValueTrans="7500" minTrans="0 0 0" maxTrans="0 -1.037 0" />
+                        <exactFillRootNode node="exactFillRootNode"/>
+                    </fillUnit>
+                </fillUnits>
+            </fillUnitConfiguration>
+        </fillUnitConfigurations>
+    </fillUnit>
+
+    <dischargeable requiresTipOcclusionArea="false">
+        <dischargeNode node="dischargeTrigger" emptySpeed="200" fillUnitIndex="1" allowAIDischarge="true">
+            <info width="1.0" length="0.5" zOffset="0.4"/>
+            <trigger node="dischargeTrigger"/>
+        </dischargeNode>
+    </dischargeable>
+
+    <ai>
+        <areaMarkers leftNode="aiMarkerLeft" rightNode="aiMarkerRight" backNode="aiMarkerBack" width="36"/>
+        <needsLowering value="false"/>
+        <collisionTrigger node="aiCollisionNode" width="36.5" height="3.7"/>
+        <toolReverserDirectionNode node="aiMarkerBack"/>
+        <allowTurnBackward value="false"/>
+        <agentAttachment jointNode="attacherJoint" rotCenterWheelIndices="1 2" width="3.1" length="6.9" height="3.75" lengthOffset="0.78"/>
+    </ai>
+
+    <foliageBending>
+        <bendingNode wheelIndices="1 2" minZ="-2.6" maxZ="2.3" yOffset="0.8"/>
+        <bendingNode minX="-0.25" maxX="0.25" minZ="2.3" maxZ="3.4" yOffset="0.7"/>
+        <bendingNode minX="-0.9" maxX="0.9" minZ="-1" maxZ="0.2" yOffset="-0.7" node="boomFrame"/>
+        <bendingNode minX="-0.05" maxX="0.45" minZ="-0.1" maxZ="4.9" yOffset="-0.1" node="boomArmLeft01XRot"/>
+        <bendingNode minX="-0.45" maxX="0.05" minZ="-0.1" maxZ="4.9" yOffset="-0.1" node="boomArmRight01XRot"/>
+        <bendingNode minX="-0.07" maxX="5.93" minZ="-0.09" maxZ="0.3" yOffset="-0.45" node="boomArmLeft02"/>
+        <bendingNode minX="-5.93" maxX="0.07" minZ="-0.09" maxZ="0.3" yOffset="-0.45" node="boomArmRight02"/>
+        <bendingNode minX="-0.05" maxX="6.3" minZ="-0.24" maxZ="0.1" yOffset="-0.32" node="boomArmLeft03"/>
+        <bendingNode minX="-6.3" maxX="0.05" minZ="-0.24" maxZ="0.1" yOffset="-0.32" node="boomArmRight03"/>
+    </foliageBending>
+
+    <wearable wearDuration="480" workMultiplier="5" fieldMultiplier="2"/>
+    <washable dirtDuration="90" washDuration="1" workMultiplier="2" fieldMultiplier="2"/>
+
+    <i3dMappings>
+        <i3dMapping id="r975i_main_component1" node="0>" />
+        <i3dMapping id="r975i_vis" node="0>0" />
+        <i3dMapping id="wheelLeftRepr" node="0>0|0|0" />
+        <i3dMapping id="wheelLeft" node="0>0|0|0|0" />
+        <i3dMapping id="steeringBarLeft" node="0>0|0|0|1" />
+        <i3dMapping id="wheelRightRepr" node="0>0|0|1" />
+        <i3dMapping id="wheelRight" node="0>0|0|1|0" />
+        <i3dMapping id="steeringBarRight" node="0>0|0|1|1" />
+        <i3dMapping id="steeringBarCenter" node="0>0|0|2" />
+        <i3dMapping id="steeringBarLeftRef" node="0>0|0|2|0" />
+        <i3dMapping id="steeringBarRightRef" node="0>0|0|2|1" />
+        <i3dMapping id="wheelChock01_01" node="0>0|0|3" />
+        <i3dMapping id="wheelChock01_02" node="0>0|0|4" />
+        <i3dMapping id="sideMarker35_01" node="0>0|1|0|4" />
+        <i3dMapping id="sideMarker35_02" node="0>0|1|0|5" />
+        <i3dMapping id="rearLight33_left" node="0>0|1|0|6" />
+        <i3dMapping id="rearLight33_right" node="0>0|1|0|7" />
+        <i3dMapping id="turnLightLeftBack" node="0>0|1|1|0" />
+        <i3dMapping id="turnLightRightBack" node="0>0|1|1|1" />
+        <i3dMapping id="backLightsHigh" node="0>0|1|2|0" />
+        <i3dMapping id="reverseLightHigh" node="0>0|1|3|0" />
+        <i3dMapping id="attacherJoint" node="0>0|2|0" />
+        <i3dMapping id="hydraulicIn01" node="0>0|2|1|0" />
+        <i3dMapping id="hydraulicIn01_detached" node="0>0|2|1|0|0" />
+        <i3dMapping id="hydraulicIn01_connector" node="0>0|2|1|0|0|0" />
+        <i3dMapping id="hydraulicOut01" node="0>0|2|1|1" />
+        <i3dMapping id="hydraulicOut01_detached" node="0>0|2|1|1|0" />
+        <i3dMapping id="hydraulicOut01_connector" node="0>0|2|1|1|0|0" />
+        <i3dMapping id="hydraulicIn02" node="0>0|2|1|2" />
+        <i3dMapping id="hydraulicIn02_detached" node="0>0|2|1|2|0" />
+        <i3dMapping id="hydraulicIn02_connector" node="0>0|2|1|2|0|0" />
+        <i3dMapping id="hydraulicOut02" node="0>0|2|1|3" />
+        <i3dMapping id="hydraulicOut02_detached" node="0>0|2|1|3|0" />
+        <i3dMapping id="hydraulicOut02_connector" node="0>0|2|1|3|0|0" />
+        <i3dMapping id="hydraulicIn03_detached" node="0>0|2|1|4|0" />
+        <i3dMapping id="hydraulicIn03_connector" node="0>0|2|1|4|0|0" />
+        <i3dMapping id="hydraulicOut03_detached" node="0>0|2|1|5|0" />
+        <i3dMapping id="hydraulicOut03_connector" node="0>0|2|1|5|0|0" />
+        <i3dMapping id="airYellow" node="0>0|2|1|6" />
+        <i3dMapping id="airYellow_detached" node="0>0|2|1|6|0" />
+        <i3dMapping id="airYellow_connector" node="0>0|2|1|6|0|0" />
+        <i3dMapping id="airRed" node="0>0|2|1|7" />
+        <i3dMapping id="airRed_detached" node="0>0|2|1|7|0" />
+        <i3dMapping id="airRed_connector" node="0>0|2|1|7|0|0" />
+        <i3dMapping id="electric" node="0>0|2|1|8" />
+        <i3dMapping id="electric_detached" node="0>0|2|1|9" />
+        <i3dMapping id="electric_connector" node="0>0|2|1|9|0" />
+        <i3dMapping id="armSupport01" node="0>0|2|2" />
+        <i3dMapping id="armSupport02" node="0>0|2|2|0" />
+        <i3dMapping id="armSupportHydraulicRef" node="0>0|2|2|1" />
+        <i3dMapping id="armSupportHydraulic" node="0>0|2|3" />
+        <i3dMapping id="armSupportHydraulicPunch" node="0>0|2|3|0" />
+        <i3dMapping id="boomFrameArm01" node="0>0|3|0" />
+        <i3dMapping id="boomFrame" node="0>0|3|0|0" />
+        <i3dMapping id="boomArmMiddleArm01" node="0>0|3|0|0|0|0|0" />
+        <i3dMapping id="boomArmMiddleArm02" node="0>0|3|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmYRotRightHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmYRotRightHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmYRotLeftHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmYRotLeftHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmYRotRight" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0" />
+        <i3dMapping id="boomArmRight01XRot" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0" />
+        <i3dMapping id="boomArmRight02" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0" />
+        <i3dMapping id="boomArmRight03" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmRight03WindSensor" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmRight03WindSensorHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmRight03WindSensorHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmRight03WindSensorHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmRight03SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2" />
+        <i3dMapping id="workingLight36_31" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|0" />
+        <i3dMapping id="workingLight36_32" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|1" />
+        <i3dMapping id="workingLight36_33" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|2" />
+        <i3dMapping id="workingLight36_34" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|3" />
+        <i3dMapping id="workingLight36_35" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|4" />
+        <i3dMapping id="workingLight36_36" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|2|5" />
+        <i3dMapping id="boomArmRight03AlignArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|3" />
+        <i3dMapping id="nozzleNode36_61" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|0" />
+        <i3dMapping id="nozzleNode36_62" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|1" />
+        <i3dMapping id="nozzleNode36_63" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|2" />
+        <i3dMapping id="nozzleNode36_64" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|3" />
+        <i3dMapping id="nozzleNode36_65" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|4" />
+        <i3dMapping id="nozzleNode36_66" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|5" />
+        <i3dMapping id="nozzleNode36_67" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|6" />
+        <i3dMapping id="nozzleNode36_68" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|7" />
+        <i3dMapping id="nozzleNode36_69" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|8" />
+        <i3dMapping id="nozzleNode36_70" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|9" />
+        <i3dMapping id="nozzleNode36_71" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|10" />
+        <i3dMapping id="nozzleNode36_72" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|4|11" />
+        <i3dMapping id="effect36_12" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|5" />
+        <i3dMapping id="effect36_13" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|0|0|6" />
+        <i3dMapping id="boomArmRight03AlignArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmRight03AlignArm" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmRight03AlignArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|1|0|0" />
+        <i3dMapping id="boomArmRight03AlignArmHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|1|0|1" />
+        <i3dMapping id="boomArmRight03AlignArmHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|2" />
+        <i3dMapping id="boomArmRight03AlignArmHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|2|0" />
+        <i3dMapping id="boomArmRight02SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3" />
+        <i3dMapping id="workingLight36_25" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|0" />
+        <i3dMapping id="workingLight36_26" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|1" />
+        <i3dMapping id="workingLight36_27" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|2" />
+        <i3dMapping id="workingLight36_28" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|3" />
+        <i3dMapping id="workingLight36_29" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|4" />
+        <i3dMapping id="workingLight36_30" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|3|5" />
+        <i3dMapping id="boomArmRight02AlignArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|4" />
+        <i3dMapping id="nozzleNode36_49" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|0" />
+        <i3dMapping id="nozzleNode36_50" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|1" />
+        <i3dMapping id="nozzleNode36_51" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|2" />
+        <i3dMapping id="nozzleNode36_52" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|3" />
+        <i3dMapping id="nozzleNode36_53" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|4" />
+        <i3dMapping id="nozzleNode36_54" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|5" />
+        <i3dMapping id="nozzleNode36_55" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|6" />
+        <i3dMapping id="nozzleNode36_56" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|7" />
+        <i3dMapping id="nozzleNode36_57" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|8" />
+        <i3dMapping id="nozzleNode36_58" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|9" />
+        <i3dMapping id="nozzleNode36_59" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|10" />
+        <i3dMapping id="nozzleNode36_60" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|5|11" />
+        <i3dMapping id="effect36_10" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|6" />
+        <i3dMapping id="effect36_11" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|7" />
+        <i3dMapping id="boomArmRight02AnimJoint" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|0|0|11" />
+        <i3dMapping id="boomArmRight02AlignArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|1" />
+        <i3dMapping id="boomArmRight02AlignArm" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|1|0" />
+        <i3dMapping id="boomArmRight02AlignArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|1|0|0" />
+        <i3dMapping id="boomArmRight02AlignArmHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|1|0|1" />
+        <i3dMapping id="boomArmRight02AlignArmHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|2" />
+        <i3dMapping id="boomArmRight02AlignArmHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|2|0" />
+        <i3dMapping id="boomArmRight01HoseArm" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|3|0" />
+        <i3dMapping id="boomArmRight01SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4" />
+        <i3dMapping id="workingLight36_20" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4|0" />
+        <i3dMapping id="workingLight36_21" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4|1" />
+        <i3dMapping id="workingLight36_22" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4|2" />
+        <i3dMapping id="workingLight36_23" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4|3" />
+        <i3dMapping id="workingLight36_24" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|4|4" />
+        <i3dMapping id="boomArmRight01XRotHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|5" />
+        <i3dMapping id="boomArmRight01SensorArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|6" />
+        <i3dMapping id="workingLight45_01" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|7" />
+        <i3dMapping id="workLightBackHighRight" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|8" />
+        <i3dMapping id="nozzleNode36_39" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|0" />
+        <i3dMapping id="nozzleNode36_40" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|1" />
+        <i3dMapping id="nozzleNode36_41" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|2" />
+        <i3dMapping id="nozzleNode36_42" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|3" />
+        <i3dMapping id="nozzleNode36_43" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|4" />
+        <i3dMapping id="nozzleNode36_44" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|5" />
+        <i3dMapping id="nozzleNode36_45" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|6" />
+        <i3dMapping id="nozzleNode36_46" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|7" />
+        <i3dMapping id="nozzleNode36_47" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|8" />
+        <i3dMapping id="nozzleNode36_48" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|9|9" />
+        <i3dMapping id="effect36_08" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|10" />
+        <i3dMapping id="effect36_09" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|0|0|11" />
+        <i3dMapping id="boomArmRight01XRotHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|1" />
+        <i3dMapping id="boomArmRight01XRotHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|1|0" />
+        <i3dMapping id="boomArmRight01SensorArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|2" />
+        <i3dMapping id="boomArmRight01SensorArm" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|2|0" />
+        <i3dMapping id="boomArmRight01SensorArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|2|0|0" />
+        <i3dMapping id="boomArmYRotRightHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|3" />
+        <i3dMapping id="boomArmAlignBarRef" node="0>0|3|0|0|0|0|0|0|0|0|0|2|0|4" />
+        <i3dMapping id="boomArmYRotLeft" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0" />
+        <i3dMapping id="boomArmLeft01XRot" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0" />
+        <i3dMapping id="boomArmLeft02" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0" />
+        <i3dMapping id="boomArmLeft03" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmLeft03WindSensor" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmLeft03WindSensorHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|0|0|0" />
+        <i3dMapping id="boomArmLeft03WindSensorHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmLeft03WindSensorHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmLeft03SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2" />
+        <i3dMapping id="workingLight36_01" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|0" />
+        <i3dMapping id="workingLight36_02" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|1" />
+        <i3dMapping id="workingLight36_03" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|2" />
+        <i3dMapping id="workingLight36_04" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|3" />
+        <i3dMapping id="workingLight36_05" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|4" />
+        <i3dMapping id="workingLight36_06" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|2|5" />
+        <i3dMapping id="boomArmLeft03AlignArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|3" />
+        <i3dMapping id="nozzleNode36_01" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|0" />
+        <i3dMapping id="nozzleNode36_02" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|1" />
+        <i3dMapping id="nozzleNode36_03" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|2" />
+        <i3dMapping id="nozzleNode36_04" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|3" />
+        <i3dMapping id="nozzleNode36_05" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|4" />
+        <i3dMapping id="nozzleNode36_06" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|5" />
+        <i3dMapping id="nozzleNode36_07" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|6" />
+        <i3dMapping id="nozzleNode36_08" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|7" />
+        <i3dMapping id="nozzleNode36_09" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|8" />
+        <i3dMapping id="nozzleNode36_10" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|9" />
+        <i3dMapping id="nozzleNode36_11" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|10" />
+        <i3dMapping id="nozzleNode36_12" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|4|11" />
+        <i3dMapping id="effect36_01" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|5" />
+        <i3dMapping id="effect36_02" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|0|0|6" />
+        <i3dMapping id="boomArmLeft03AlignArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmLeft03AlignArm" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmLeft03AlignArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|1|0|0" />
+        <i3dMapping id="boomArmLeft03AlignArmHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|1|0|1" />
+        <i3dMapping id="boomArmLeft03AlignArmHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|2" />
+        <i3dMapping id="boomArmLeft03AlignArmHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|2|0" />
+        <i3dMapping id="boomArmLeft02SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3" />
+        <i3dMapping id="workingLight36_07" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|0" />
+        <i3dMapping id="workingLight36_08" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|1" />
+        <i3dMapping id="workingLight36_09" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|2" />
+        <i3dMapping id="workingLight36_10" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|3" />
+        <i3dMapping id="workingLight36_11" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|4" />
+        <i3dMapping id="workingLight36_12" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|3|5" />
+        <i3dMapping id="boomArmLeft02AlignArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|4" />
+        <i3dMapping id="nozzleNode36_13" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|0" />
+        <i3dMapping id="nozzleNode36_14" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|1" />
+        <i3dMapping id="nozzleNode36_15" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|2" />
+        <i3dMapping id="nozzleNode36_16" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|3" />
+        <i3dMapping id="nozzleNode36_17" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|4" />
+        <i3dMapping id="nozzleNode36_18" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|5" />
+        <i3dMapping id="nozzleNode36_19" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|6" />
+        <i3dMapping id="nozzleNode36_20" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|7" />
+        <i3dMapping id="nozzleNode36_21" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|8" />
+        <i3dMapping id="nozzleNode36_22" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|9" />
+        <i3dMapping id="nozzleNode36_23" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|10" />
+        <i3dMapping id="nozzleNode36_24" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|5|11" />
+        <i3dMapping id="effect36_03" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|6" />
+        <i3dMapping id="effect36_04" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|7" />
+        <i3dMapping id="boomArmLeft02AnimJoint" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|0|0|11" />
+        <i3dMapping id="boomArmLeft02AlignArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|1" />
+        <i3dMapping id="boomArmLeft02AlignArm" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|1|0" />
+        <i3dMapping id="boomArmLeft02AlignArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|1|0|0" />
+        <i3dMapping id="boomArmLeft02AlignArmHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|1|0|1" />
+        <i3dMapping id="boomArmLeft02AlignArmHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|2" />
+        <i3dMapping id="boomArmLeft02AlignArmHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|2|0" />
+        <i3dMapping id="boomArmLeft01HoseArm" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|3|0" />
+        <i3dMapping id="boomArmLeft01SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4" />
+        <i3dMapping id="workingLight36_13" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4|0" />
+        <i3dMapping id="workingLight36_14" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4|1" />
+        <i3dMapping id="workingLight36_15" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4|2" />
+        <i3dMapping id="workingLight36_16" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4|3" />
+        <i3dMapping id="workingLight36_17" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|4|4" />
+        <i3dMapping id="boomArmLeft01XRotHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|5" />
+        <i3dMapping id="boomArmLeft01SensorArmRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|6" />
+        <i3dMapping id="workingLight45_02" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|7" />
+        <i3dMapping id="workLightBackHighLeft" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|8" />
+        <i3dMapping id="nozzleNode36_25" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|0" />
+        <i3dMapping id="nozzleNode36_26" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|1" />
+        <i3dMapping id="nozzleNode36_27" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|2" />
+        <i3dMapping id="nozzleNode36_28" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|3" />
+        <i3dMapping id="nozzleNode36_29" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|4" />
+        <i3dMapping id="nozzleNode36_30" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|5" />
+        <i3dMapping id="nozzleNode36_31" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|6" />
+        <i3dMapping id="nozzleNode36_32" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|7" />
+        <i3dMapping id="nozzleNode36_33" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|8" />
+        <i3dMapping id="nozzleNode36_34" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|9|9" />
+        <i3dMapping id="effect36_05" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|10" />
+        <i3dMapping id="effect36_06" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|0|0|11" />
+        <i3dMapping id="boomArmLeft01XRotHydraulic" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|1" />
+        <i3dMapping id="boomArmLeft01XRotHydraulicPunch" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|1|0" />
+        <i3dMapping id="boomArmLeft01SensorArmRefFrame" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|2" />
+        <i3dMapping id="boomArmLeft01SensorArm" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|2|0" />
+        <i3dMapping id="boomArmLeft01SensorArmPart" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|2|0|0" />
+        <i3dMapping id="boomArmYRotLeftHydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|3" />
+        <i3dMapping id="boomArmAlignBar" node="0>0|3|0|0|0|0|0|0|0|0|0|3|0|5" />
+        <i3dMapping id="r975iLights_static" node="0>0|3|0|0|0|0|0|0|0|0|1|0|0" />
+        <i3dMapping id="r975iLightsGlass_static" node="0>0|3|0|0|0|0|0|0|0|0|1|0|1" />
+        <i3dMapping id="licensePlateLightHigh" node="0>0|3|0|0|0|0|0|0|0|0|1|1" />
+        <i3dMapping id="boomArmMiddleArm02SeeSpray" node="0>0|3|0|0|0|0|0|0|0|0|2" />
+        <i3dMapping id="boomArmMiddleArm02HydraulicRef" node="0>0|3|0|0|0|0|0|0|0|0|3" />
+        <i3dMapping id="licensePlateBack" node="0>0|3|0|0|0|0|0|0|0|0|4" />
+        <i3dMapping id="nozzleNode36_35" node="0>0|3|0|0|0|0|0|0|0|0|5|0" />
+        <i3dMapping id="nozzleNode36_36" node="0>0|3|0|0|0|0|0|0|0|0|5|1" />
+        <i3dMapping id="nozzleNode36_37" node="0>0|3|0|0|0|0|0|0|0|0|5|2" />
+        <i3dMapping id="nozzleNode36_38" node="0>0|3|0|0|0|0|0|0|0|0|5|3" />
+        <i3dMapping id="effectCenter" node="0>0|3|0|0|0|0|0|0|0|0|6" />
+        <i3dMapping id="boomArmMiddleArm02AnimJointLeft" node="0>0|3|0|0|0|0|0|0|0|0|9" />
+        <i3dMapping id="boomArmMiddleArm02AnimJointRight" node="0>0|3|0|0|0|0|0|0|0|0|10" />
+        <i3dMapping id="boomArmMiddleArm02Hydraulic" node="0>0|3|0|0|0|0|0|0|1" />
+        <i3dMapping id="boomArmMiddleArm02HydraulicPunch" node="0>0|3|0|0|0|0|0|0|1|0" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft01" node="0>0|3|0|0|0|0|0|0|2" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft01Punch" node="0>0|3|0|0|0|0|0|0|2|0" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft02" node="0>0|3|0|0|0|0|0|0|3" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft02Punch" node="0>0|3|0|0|0|0|0|0|3|0" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight01" node="0>0|3|0|0|0|0|0|0|4" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight01Punch" node="0>0|3|0|0|0|0|0|0|4|0" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight02" node="0>0|3|0|0|0|0|0|0|5" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight02Punch" node="0>0|3|0|0|0|0|0|0|5|0" />
+        <i3dMapping id="boomArmMiddleArm01SpringLeft" node="0>0|3|0|0|0|0|0|0|6" />
+        <i3dMapping id="boomArmMiddleArm01SpringRight" node="0>0|3|0|0|0|0|0|0|7" />
+        <i3dMapping id="boomLockHydraulic" node="0>0|3|0|0|0|1" />
+        <i3dMapping id="boomLockHydraulicPunch" node="0>0|3|0|0|0|1|0" />
+        <i3dMapping id="boomLock" node="0>0|3|0|0|0|2" />
+        <i3dMapping id="boomLockHydraulicRef" node="0>0|3|0|0|0|2|0" />
+        <i3dMapping id="boomLeftRootXRot" node="0>0|3|0|0|1|0|0" />
+        <i3dMapping id="boomLeftRoot" node="0>0|3|0|0|1|0|0|0" />
+        <i3dMapping id="boomLeftRaycast" node="0>0|3|0|0|1|0|0|0|0" />
+        <i3dMapping id="boomLeftAdjust" node="0>0|3|0|0|1|0|0|0|1" />
+        <i3dMapping id="boomAlignCenterArmReferenceRefFrame" node="0>0|3|0|0|1|0|0|0|1|0" />
+        <i3dMapping id="boomAlignCenterArmReference" node="0>0|3|0|0|1|0|0|0|1|0|0" />
+        <i3dMapping id="boomCenterRaycast" node="0>0|3|0|0|1|1|0" />
+        <i3dMapping id="boomCenterAdjust" node="0>0|3|0|0|1|1|1" />
+        <i3dMapping id="boomAlignLeftArmReferenceRefFrame" node="0>0|3|0|0|1|1|1|0" />
+        <i3dMapping id="boomAlignLeftArmReference" node="0>0|3|0|0|1|1|1|0|0" />
+        <i3dMapping id="boomAlignRightArmReferenceRefFrame" node="0>0|3|0|0|1|1|1|1" />
+        <i3dMapping id="boomAlignRightArmReference" node="0>0|3|0|0|1|1|1|1|0" />
+        <i3dMapping id="boomRightRootXRot" node="0>0|3|0|0|1|2|0" />
+        <i3dMapping id="boomRightRoot" node="0>0|3|0|0|1|2|0|0" />
+        <i3dMapping id="boomRightRaycast" node="0>0|3|0|0|1|2|0|0|0" />
+        <i3dMapping id="boomRightAdjust" node="0>0|3|0|0|1|2|0|0|1" />
+        <i3dMapping id="boomArmMiddleArm01SpringLeftRef" node="0>0|3|0|0|2|0" />
+        <i3dMapping id="boomArmMiddleArm01SpringRightRef" node="0>0|3|0|0|2|1" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft01Ref" node="0>0|3|0|0|2|2" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicLeft02Ref" node="0>0|3|0|0|2|3" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight01Ref" node="0>0|3|0|0|2|4" />
+        <i3dMapping id="boomArmMiddleArm01HydraulicRight02Ref" node="0>0|3|0|0|2|5" />
+        <i3dMapping id="boomArmMiddleArm01SeeSpray" node="0>0|3|0|0|4" />
+        <i3dMapping id="workingLight36_18" node="0>0|3|0|0|4|0" />
+        <i3dMapping id="workingLight36_19" node="0>0|3|0|0|4|1" />
+        <i3dMapping id="beaconLight16" node="0>0|3|0|0|5" />
+        <i3dMapping id="boomFrameArm02" node="0>0|3|1" />
+        <i3dMapping id="boomFrameArmHydraulicLeft" node="0>0|3|1|0" />
+        <i3dMapping id="boomFrameArmHydraulicLeftPunch" node="0>0|3|1|0|0" />
+        <i3dMapping id="boomFrameArmHydraulicRight" node="0>0|3|1|1" />
+        <i3dMapping id="boomFrameArmHydraulicRightPunch" node="0>0|3|1|1|0" />
+        <i3dMapping id="boomFrameArmHydraulicLeftRef" node="0>0|3|2" />
+        <i3dMapping id="boomFrameArmHydraulicRightRef" node="0>0|3|3" />
+        <i3dMapping id="workAreaStart" node="0>0|4|0" />
+        <i3dMapping id="workAreaWidth" node="0>0|4|1" />
+        <i3dMapping id="workAreaHeight" node="0>0|4|2" />
+        <i3dMapping id="section36_01" node="0>0|4|3|0" />
+        <i3dMapping id="section36_02" node="0>0|4|3|1" />
+        <i3dMapping id="section36_03" node="0>0|4|3|2" />
+        <i3dMapping id="section36_04" node="0>0|4|3|3" />
+        <i3dMapping id="section36_05" node="0>0|4|3|4" />
+        <i3dMapping id="section36_06" node="0>0|4|3|5" />
+        <i3dMapping id="section36_08" node="0>0|4|3|6" />
+        <i3dMapping id="section36_09" node="0>0|4|3|7" />
+        <i3dMapping id="section36_10" node="0>0|4|3|8" />
+        <i3dMapping id="section36_11" node="0>0|4|3|9" />
+        <i3dMapping id="section36_12" node="0>0|4|3|10" />
+        <i3dMapping id="section36_13" node="0>0|4|3|11" />
+        <i3dMapping id="fillLevelIndicator01" node="0>0|5|0|0" />
+        <i3dMapping id="fillLevelIndicator02" node="0>0|5|1|0" />
+        <i3dMapping id="exactFillRootNode" node="0>0|5|2" />
+        <i3dMapping id="dischargeTrigger" node="0>0|5|3" />
+        <i3dMapping id="aiMarkerLeft" node="0>0|6|0" />
+        <i3dMapping id="aiMarkerRight" node="0>0|6|1" />
+        <i3dMapping id="aiMarkerBack" node="0>0|6|2" />
+        <i3dMapping id="aiCollisionNode" node="0>0|6|3" />
+        <i3dMapping id="hosesSeeSpray" node="0>1|2" />
+    </i3dMappings>
+</vehicle>

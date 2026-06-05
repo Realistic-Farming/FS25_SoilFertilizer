@@ -214,6 +214,7 @@ local SETTING_DESCS = {
     seeAndSprayEnabled    = "sf_desc_seeAndSprayEnabled",
     variableRateEnabled   = "sf_desc_variableRateEnabled",
     fieldBoundaryControl  = "sf_desc_fieldBoundaryControl",
+    overlapPrevention     = "sf_desc_overlapPrevention",
     independentPanels     = "sf_desc_independentPanels",
 }
 
@@ -313,6 +314,12 @@ local SMART_SYSTEMS_SECTIONS = {
         headerKey = "sf_panel_hdr_field_boundary",
         items     = {
             { stype = "setting", id = "fieldBoundaryControl" },
+        },
+    },
+    {
+        headerKey = "sf_panel_hdr_overlap_prev",
+        items     = {
+            { stype = "setting", id = "overlapPrevention" },
         },
     },
 }

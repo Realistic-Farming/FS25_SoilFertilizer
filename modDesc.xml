@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK</author>
-    <version>2.3.7.0</version>
+    <version>2.3.10.0</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -67,6 +67,17 @@
         <sourceFile filename="src/main.lua" />
     </extraSourceFiles>
 
+    <!-- Per-nozzle effects specialization (no PF dependency) -->
+    <specializations>
+        <specialization name="sfNozzleEffects" className="SFNozzleEffects" filename="src/specializations/SFNozzleEffects.lua"/>
+    </specializations>
+
+    <vehicleTypes>
+        <vehicleType name="sprayer">
+            <specialization name="FS25_SoilFertilizer.sfNozzleEffects"/>
+        </vehicleType>
+    </vehicleTypes>
+
     <actions>
         <action name="SF_TOGGLE_HUD"  category="ONFOOT" />
         <action name="SF_SOIL_REPORT" category="ONFOOT" />
@@ -123,6 +134,10 @@
         ══════════════════════════════════════════════════════════════════════
     -->
     <storeItems>
+        <!-- SF Mod Sprayer Vehicles -->
+        <storeItem xmlFilename="vehicles/johnDeere/r700i/r700i.xml"/>
+        <storeItem xmlFilename="vehicles/johnDeere/r975i/r975i.xml"/>
+
         <!-- IBC Liquid Tanks (multi-purchase) -->
         <storeItem xmlFilename="objects/liquidTank/uan32/multiPurchaseLiquidTank_uan32.xml"/>
         <storeItem xmlFilename="objects/liquidTank/uan28/multiPurchaseLiquidTank_uan28.xml"/>

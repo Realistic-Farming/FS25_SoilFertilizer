@@ -743,6 +743,11 @@
     <e k="sf_field_boundary_short"         v="Boundary Control" />
     <e k="sf_field_boundary_long"          v="Enable or disable automatic field boundary section control" />
     <e k="sf_desc_fieldBoundaryControl"    v="Automatically shuts off boom sections that extend outside field boundaries, preventing off-field product application." />
+    <e k="sf_panel_hdr_overlap_prev"      v="Overlap Prevention" />
+    <e k="sf_overlap_prev_short"           v="Overlap Prevention" />
+    <e k="sf_overlap_prev_long"            v="Enable or disable density-map-based overlap prevention" />
+    <e k="sf_desc_overlapPrevention"       v="Automatically shuts off boom sections over ground that is already fully fertilized, preventing wasteful re-application on overlapping swaths." />
+
     <!-- SMART SENSOR PANEL -->
     <e k="sf_sensor_pest"        v="Pest Sensor" />
     <e k="sf_sensor_disease"     v="Disease Sensor" />

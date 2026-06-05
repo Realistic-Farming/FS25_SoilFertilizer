@@ -770,6 +770,11 @@
     <e k="sf_field_boundary_short"         v="Contrôle des limites" />
     <e k="sf_field_boundary_long"          v="Activer ou désactiver le contrôle automatique des limites de champ" />
     <e k="sf_desc_fieldBoundaryControl"    v="Désactive automatiquement les sections de rampe en dehors des champs pour éviter toute application hors zone cultivée." />
+    <e k="sf_panel_hdr_overlap_prev"      v="Overlap Prevention" />
+    <e k="sf_overlap_prev_short"           v="Overlap Prevention" />
+    <e k="sf_overlap_prev_long"            v="Enable or disable density-map-based overlap prevention" />
+    <e k="sf_desc_overlapPrevention"       v="Automatically shuts off boom sections over ground that is already fully fertilized, preventing wasteful re-application on overlapping swaths." />
+
 
     <!-- ======================================================
          PANNEAU SMART SENSOR

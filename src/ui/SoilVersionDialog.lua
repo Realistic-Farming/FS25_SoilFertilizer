@@ -24,14 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: 'Weeds' bar renamed to 'Weed Risk' — it shows growth",
-    "  pressure/risk, not current weed presence",
-    "- New: work trail toggle in HUD & Display settings — show/hide",
-    "  spray and harvest trail dots (in-world and on minimap)",
-    "- New: harvest trail overlay — amber dots show combine pass in the",
-    "  game world and on the minimap; clears when full field is covered",
-    "- New: harvester panel stats bar — 4 cells showing estimated t/ha,",
-    "  field coverage %, session area harvested, and total field area",
+    "- Fixed: Spray visual effects no longer fire when boom is folded",
+    "  or vehicle is stationary — effects are now suppressed every tick",
+    "  when conditions are not met (was only suppressed on state change)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

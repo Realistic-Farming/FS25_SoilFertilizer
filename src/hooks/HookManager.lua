@@ -276,6 +276,10 @@ function HookManager:installAll(soilSystem)
     -- System 3: Variable Rate — per-section rate pre-computation (appended after See & Spray).
     self:installVariableRateHook()
 
+    -- System 4: Overlap Prevention — density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
+    -- Runs after VariableRate so the rate computation still sees the original isActive states.
+    self:installOverlapPreventionHook()
+
     -- Section state preserver: saves VWW section.isActive before suppression hooks run and
     -- restores it after work areas are processed. Installed LAST so the prepend executes FIRST,
     -- and cleanup unwinds FIRST in reverse order. Without this, SmartSensor/SeeAndSpray set
@@ -1456,8 +1460,9 @@ function HookManager:installVariableRateHook()
                     -- zone boundaries (#479). 40% blend toward target per tick gives ~0.5s lag.
                     local prevRate = sensorMgr:getSectionRate(vehicleId, section) or rate
                     rate = prevRate * 0.6 + rate * 0.4
-                    -- Never exceed the player's manual rate ceiling
-                    rate = math.min(rate, manualMult)
+                    -- VR rates are redistribution weights; do NOT cap at manualMult.
+                    -- The manual rate budget is already applied to wap.usage by
+                    -- installSprayerStartHook. Capping here caused double-reduction (#555).
                     sensorMgr:setSectionRate(vehicleId, section, rate)
                 end
             end
@@ -1467,6 +1472,252 @@ function HookManager:installVariableRateHook()
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF variable rate)")
     SoilLogger.info("[OK] SF Variable Rate hook installed — per-section NPK rate control active")
+    return true
+end
+
+-- =========================================================
+-- OVERLAP PREVENTION: density-map-based nozzle shutoff
+-- =========================================================
+-- Appended to onStartWorkAreaProcessing (after VariableRate, before StatePreserver).
+-- For each active VWW section, reads the FS25 SPRAY_LEVEL density map channel at
+-- the section midpoint. If the cell is already at maximum spray level (i.e. fully
+-- fertilized this season), that section is suppressed so the nozzle does not
+-- re-apply product on overlapping swaths.
+-- Lime uses SPRAY_TYPE detection instead (lime does not use a level counter).
+-- StatePreserver restores section.isActive after work areas process — no permanent lock.
+-- No-ops when the overlapPrevention setting is disabled.
+function HookManager:installOverlapPreventionHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[OverlapPrev] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        return false
+    end
+
+    -- Build fill-type lookup tables at install time.
+    -- We cannot rely on stDesc.isFertilizer for SF custom types — Lua-registered
+    -- spray types via addSprayType() do not inherit the isFertilizer flag from the
+    -- display type.  Use explicit name lists instead (same approach as SmartSensor).
+    local fertFillTypes = {}  -- fillTypeIndex → true (use SPRAY_LEVEL check)
+    local limeFillTypes = {}  -- fillTypeIndex → true (use SPRAY_TYPE check)
+
+    local function addFTByName(tbl, name)
+        local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByName(name)
+        if ft then tbl[ft.index] = true end
+    end
+
+    -- Vanilla fertilizer fill types (isFertilizer is reliable for these)
+    for _, name in ipairs({ "FERTILIZER", "LIQUIDFERTILIZER", "MANURE", "LIQUIDMANURE", "DIGESTATE" }) do
+        addFTByName(fertFillTypes, name)
+    end
+    -- SF custom liquid fertilizers (excludes INSECTICIDE/FUNGICIDE which are pest/disease products)
+    for _, name in ipairs({ "UAN32", "UAN28", "ANHYDROUS", "STARTER",
+                             "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }) do
+        addFTByName(fertFillTypes, name)
+    end
+    -- SF custom solid fertilizers
+    for _, name in ipairs({ "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
+                             "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }) do
+        addFTByName(fertFillTypes, name)
+    end
+    -- Lime fill types (SPRAY_TYPE check, not SPRAY_LEVEL)
+    for _, name in ipairs({ "LIME", "LIQUIDLIME" }) do
+        addFTByName(limeFillTypes, name)
+    end
+
+    -- Density map handles: lazy-initialised on first call after the mission loads.
+    local lvlMapId, lvlFirstCh, lvlNumCh = nil, nil, nil
+    local lvlMax                          = nil
+    local lvlModifier, lvlFilter          = nil, nil
+
+    local stMapId, stFirstCh, stNumCh    = nil, nil, nil
+    local stModifier, stFilter            = nil, nil
+
+    local limeGroundType                  = nil
+
+    local function initHandles()
+        if lvlMapId then return true end
+        local mission = g_currentMission
+        if not mission or not mission.fieldGroundSystem then return false end
+        local fgs = mission.fieldGroundSystem
+
+        local ok = pcall(function()
+            lvlMapId, lvlFirstCh, lvlNumCh = fgs:getDensityMapData(FieldDensityMap.SPRAY_LEVEL)
+            lvlMax = fgs:getMaxValue(FieldDensityMap.SPRAY_LEVEL)
+            stMapId, stFirstCh, stNumCh    = fgs:getDensityMapData(FieldDensityMap.SPRAY_TYPE)
+        end)
+        if not ok or not lvlMapId or not stMapId then return false end
+
+        lvlModifier = DensityMapModifier.new(lvlMapId, lvlFirstCh, lvlNumCh, g_terrainNode)
+        lvlFilter   = DensityMapFilter.new(lvlModifier)
+        stModifier  = DensityMapModifier.new(stMapId,  stFirstCh,  stNumCh,  g_terrainNode)
+        stFilter    = DensityMapFilter.new(stModifier)
+
+        local limeST = g_sprayTypeManager and g_sprayTypeManager:getSprayTypeByName("LIME")
+        limeGroundType = limeST and limeST.sprayGroundType
+        return true
+    end
+
+    -- Throttle for debug diagnostic logging: log once per ~2 s per sprayer
+    local dbgLogThrottle = {}
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    -- PREPEND so sections are suppressed before VWW's original processes work areas;
+    -- APPEND would let VWW activate visual effects before we can suppress them.
+    Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(
+        Sprayer.onStartWorkAreaProcessing,
+        function(sprayerSelf, dt)
+            local sfm = g_SoilFertilityManager
+            if not sfm then return end
+            if sfm.settings and sfm.settings.overlapPrevention == false then return end
+
+            local vww = sprayerSelf.spec_variableWorkWidth
+            if not vww or not vww.sections or #vww.sections == 0 then return end
+
+            local spec = sprayerSelf.spec_sprayer
+            local wap  = spec and spec.workAreaParameters
+            if not wap then return end
+
+            local fillTypeIndex = wap.sprayFillType
+            if not fillTypeIndex or fillTypeIndex == 0 then return end
+
+            local checkFert = fertFillTypes[fillTypeIndex] == true
+            local checkLime = limeFillTypes[fillTypeIndex] == true
+            if not checkFert and not checkLime then return end
+
+            if not initHandles() then return end
+
+            local rootX = sprayerSelf._sfRootX
+            local rootZ = sprayerSelf._sfRootZ
+            if not rootX then return end
+
+            local tips = sprayerSelf._sfSectionTip
+
+            -- Debug diagnostic: throttled to once per ~2s per sprayer instance
+            local debugEnabled = sfm.settings and sfm.settings.debugMode
+            local now = g_currentMission and g_currentMission.time or 0
+            local vid = tostring(sprayerSelf)
+            local doLog = debugEnabled and (not dbgLogThrottle[vid] or (now - dbgLogThrottle[vid]) > 2000)
+            if doLog then
+                dbgLogThrottle[vid] = now
+                SoilLogger.debug("[OverlapPrev] ft=%d checkFert=%s lvlMax=%s rootX=%.1f rootZ=%.1f",
+                    fillTypeIndex, tostring(checkFert), tostring(lvlMax), rootX, rootZ)
+            end
+
+            -- Transition-based effect management:
+            -- prevSuppressed = sections suppressed last frame (persists via _sfOverlapSuppressedSections)
+            -- currSuppressed = sections suppressed this frame (built below, stored at end)
+            -- Stop effects when newly suppressed; start effects when transitioning back to clear.
+            -- The APPEND re-stops currSuppressed after updateSprayerEffects may restart everything.
+            local prevSuppressed = sprayerSelf._sfOverlapSuppressedSections or {}
+            local currSuppressed = {}
+
+            local suppressCount = 0
+            for i, section in ipairs(vww.sections) do
+                if section.isActive and not section.isCenter then
+                    local tip = tips and tips[i]
+
+                    -- Sample at TIP position (outer edge of coverage area).
+                    -- Also check at midpoint as secondary — if EITHER is already sprayed,
+                    -- suppress the section.  Tip is more reliable than midpoint when the
+                    -- vehicle root is far from the boom (e.g., trailer-type sprayers).
+                    local hasTip = tip ~= nil
+                    local tx  = hasTip and tip[1] or nil
+                    local tz  = hasTip and tip[2] or nil
+                    local mx  = hasTip and ((rootX + tip[1]) * 0.5) or rootX
+                    local mz  = hasTip and ((rootZ + tip[2]) * 0.5) or rootZ
+
+                    local alreadySprayed = false
+
+                    local function checkPoint(px, pz)
+                        if not px then return false end
+                        if checkFert then
+                            lvlModifier:setParallelogramWorldCoords(
+                                px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
+                            local lvl = lvlModifier:executeGet(lvlFilter, nil)
+                            if doLog and i <= 4 then
+                                SoilLogger.debug("[OverlapPrev]   sec%d tip=%s px=%.1f pz=%.1f lvl=%s lvlMax=%s",
+                                    i, tostring(hasTip), px, pz, tostring(lvl), tostring(lvlMax))
+                            end
+                            return lvl ~= nil and lvl > 0
+                        elseif checkLime then
+                            stModifier:setParallelogramWorldCoords(
+                                px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
+                            local stype = stModifier:executeGet(stFilter, nil)
+                            return stype ~= nil and limeGroundType ~= nil and stype == limeGroundType
+                        end
+                        return false
+                    end
+
+                    alreadySprayed = checkPoint(tx, tz) or checkPoint(mx, mz)
+
+                    if alreadySprayed then
+                        section.isActive = false
+                        suppressCount = suppressCount + 1
+                        currSuppressed[i] = section
+
+                        -- Stop section effects (idempotent if already stopped).
+                        if section.effects and #section.effects > 0 then
+                            g_effectManager:stopEffects(section.effects)
+                        end
+
+                        -- ESE per-nozzle shader: force fadeProgress to off {1,-1}.
+                        local eseSpec = sprayerSelf.spec_extendedSprayerEffects
+                        if eseSpec and eseSpec.sprayerEffectsBySection then
+                            local sectionEffects = eseSpec.sprayerEffectsBySection[i]
+                            if sectionEffects then
+                                for _, ed in ipairs(sectionEffects) do
+                                    if ed.effectNode and ed.fadeCur then
+                                        setShaderParameter(ed.effectNode, "fadeProgress", 1, -1, 0, 0, false)
+                                    end
+                                end
+                            end
+                        end
+                    elseif prevSuppressed[i] then
+                        -- Transition: was suppressed last frame, now clear → restart effects.
+                        local prevSection = prevSuppressed[i]
+                        if prevSection.effects and #prevSection.effects > 0 then
+                            g_effectManager:startEffects(prevSection.effects)
+                        end
+                    end
+                end
+            end
+
+            sprayerSelf._sfOverlapSuppressedSections = currSuppressed
+
+            if doLog and suppressCount > 0 then
+                SoilLogger.debug("[OverlapPrev] suppressed %d sections", suppressCount)
+            end
+        end
+    )
+
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF overlap prevention)")
+    SoilLogger.info("[OK] SF Overlap Prevention hook installed — SPRAY_LEVEL density-map nozzle shutoff active")
+
+    -- Re-suppress section effects after the original onEndWorkAreaProcessing runs.
+    -- Sprayer:updateSprayerEffects() (called from onEndWorkAreaProcessing) may call
+    -- g_effectManager:startEffects(spec.effects) on a state-change tick (e.g. sprayer
+    -- just turned on after braking), restarting effects we suppressed in the PREPEND.
+    -- This APPEND re-stops them so the boom stays visually correct.
+    if type(Sprayer.onEndWorkAreaProcessing) == "function" then
+        local origEnd = Sprayer.onEndWorkAreaProcessing
+        Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
+            Sprayer.onEndWorkAreaProcessing,
+            function(sprayerSelf, dt, hasProcessed)
+                local suppressed = sprayerSelf._sfOverlapSuppressedSections
+                if suppressed then
+                    for _, section in pairs(suppressed) do
+                        if section.effects and #section.effects > 0 then
+                            g_effectManager:stopEffects(section.effects)
+                        end
+                    end
+                end
+            end
+        )
+        self:register(Sprayer, "onEndWorkAreaProcessing", origEnd,
+            "Sprayer.onEndWorkAreaProcessing (SF overlap section.effects re-suppress)")
+    end
+
+    SoilLogger.info("[OK] SF Overlap Prevention — transition-based visual suppression active (stopEffects/startEffects on section state change)")
     return true
 end
 
@@ -2270,8 +2521,7 @@ function HookManager:installSprayerAreaHook()
                     for i = scratchN + 1, #scratch do scratch[i] = nil end
 
                     if scratchN > 0 then
-                        local litersPerSection = effectiveLiters / scratchN
-                        -- Variable Rate (System 3): look up per-section multiplier if active
+                        -- Variable Rate (System 3): look up per-section weights if active
                         local vrSectionRates = nil
                         do
                             local sfmVR = g_SoilFertilityManager
@@ -2280,6 +2530,20 @@ function HookManager:installSprayerAreaHook()
                                 vrSectionRates = smVR.sectionRates[self.id]
                             end
                         end
+
+                        -- Normalize VR weights so total nutrient credit == effectiveLiters.
+                        -- VR redistribution does NOT change the total; it only shifts credit
+                        -- toward deficit sections. Without normalization, applySingle would
+                        -- receive (wap.usage * manualMult) * vrWeight — a double reduction
+                        -- when auto rate selects a sub-unity multiplier (#555/#538).
+                        local vrWeightSum = 0.0
+                        for i = 1, scratchN do
+                            local w = (vrSectionRates and vrSectionRates[scratch[i]]) or 1.0
+                            vrWeightSum = vrWeightSum + w
+                        end
+                        -- vrWeightSum == 0 only if all weights are 0 (degenerate); guard.
+                        if vrWeightSum <= 0 then vrWeightSum = scratchN end
+
                         for i = 1, scratchN do
                             local section = scratch[i]
                             local sx, sz = rootX, rootZ
@@ -2292,8 +2556,22 @@ function HookManager:installSprayerAreaHook()
                                 end
                             end
                             local sectionFieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                            local vrMult = (vrSectionRates and vrSectionRates[section]) or 1.0
-                            applySingle(sectionFieldId, litersPerSection * vrMult, sx, sz)
+                            -- Midpoint can fall outside field boundary when spraying edges.
+                            -- Fall back: try the boom tip position directly, then sprayer center.
+                            if (not sectionFieldId or sectionFieldId <= 0) and
+                               not section.isCenter and section.maxWidthNode ~= nil then
+                                local wx2, _, wz2 = getWorldTranslation(section.maxWidthNode)
+                                if wx2 then
+                                    sectionFieldId = hookMgrRef:getFieldIdAtWorldPosition(wx2, wz2)
+                                end
+                            end
+                            if not sectionFieldId or sectionFieldId <= 0 then
+                                sectionFieldId = fieldId  -- final fallback: credit the main field
+                            end
+                            local vrWeight = (vrSectionRates and vrSectionRates[section]) or 1.0
+                            -- Proportional share: preserves total = effectiveLiters
+                            local sectionLiters = effectiveLiters * (vrWeight / vrWeightSum)
+                            applySingle(sectionFieldId, sectionLiters, sx, sz)
                         end
                     else
                         applySingle(fieldId, effectiveLiters, rootX, rootZ)
@@ -4468,19 +4746,27 @@ function HookManager:installSprayerVisualEffectHook()
                 end
             end
 
-            -- Only act on state change to avoid per-tick overhead
-            if effectsVisible == spec._soilEffectsActive then return end
-
-            spec._soilEffectsActive   = effectsVisible
-            spec._soilManagedFillType = fillType
-
-            if effectsVisible then
-                startSprayerEffects(sprayerSelf, vanillaFillType)
-                SoilLogger.debug("SprayerVisual: started effects (fillType=%d → vanilla=%d)", fillType, vanillaFillType)
-            else
+            -- Stop path: suppress every tick (no state-change guard).
+            -- vanilla onUpdateTick runs before us (appendedFunction) and can
+            -- restart effects each tick, so we must cancel every tick — same
+            -- reason the vanilla fill type path at line ~4725 does the same.
+            if not effectsVisible then
                 stopSprayerEffects(sprayerSelf)
-                SoilLogger.debug("SprayerVisual: stopped effects (fillType=%d)", fillType)
+                if spec._soilEffectsActive ~= false then
+                    spec._soilEffectsActive   = false
+                    spec._soilManagedFillType = fillType
+                    SoilLogger.debug("SprayerVisual: stopped effects (fillType=%d)", fillType)
+                end
+                return
             end
+
+            -- Start path: only act on state change to avoid per-tick overhead
+            if spec._soilEffectsActive then return end
+
+            spec._soilEffectsActive   = true
+            spec._soilManagedFillType = fillType
+            startSprayerEffects(sprayerSelf, vanillaFillType)
+            SoilLogger.debug("SprayerVisual: started effects (fillType=%d → vanilla=%d)", fillType, vanillaFillType)
         end
     )
     self:register(Sprayer, "onUpdateTick", original, "Sprayer.onUpdateTick (sprayer visual effects)")

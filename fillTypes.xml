@@ -8,7 +8,7 @@
 
         <fillType name="UAN32" title="$l10n_sf_uan32_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.32" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.60"/>
+            <economy pricePerLiter="0.45"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/uan32/liquidTank_uan32.xml" />
@@ -16,7 +16,7 @@
 
         <fillType name="UAN28" title="$l10n_sf_uan28_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.28" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.50"/>
+            <economy pricePerLiter="0.40"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/uan28/liquidTank_uan28.xml" />
@@ -32,7 +32,7 @@
 
         <fillType name="STARTER" title="$l10n_sf_starter_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.70"/>
+            <economy pricePerLiter="0.90"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/starter/liquidTank_starter.xml" />
@@ -42,7 +42,7 @@
 
         <fillType name="UREA" title="$l10n_sf_urea_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.77" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.65"/>
+            <economy pricePerLiter="0.55"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" normal="$data/fillPlanes/fertilizer_normal.png" height="$data/fillPlanes/fertilizer_height.png" displacement="$data/fillPlanes/fertilizer_displacement.png" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="FERTILIZER"/>
@@ -51,7 +51,7 @@
 
         <fillType name="AN" title="$l10n_sf_an_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.92" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.55"/>
+            <economy pricePerLiter="0.50"/>
             <image hud="$moddir$textures/hud/fillTypes/hud_fill_AN.dds"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" unitSize="0.4" blendContrast="0.2" noiseScale="0.5" porosityAtZeroRoughness="0.9" porosityAtFullRoughness="1"
                       normal="$data/fillPlanes/fertilizer_normal.png"
@@ -64,7 +64,7 @@
 
         <fillType name="AMS" title="$l10n_sf_ams_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.87" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.40"/>
+            <economy pricePerLiter="0.45"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.png" unitSize="0.4" blendContrast="0.2" noiseScale="0.5" porosityAtZeroRoughness="0.9" porosityAtFullRoughness="1"
                       normal="$data/fillPlanes/fertilizer_normal.png"
@@ -77,7 +77,7 @@
 
         <fillType name="MAP" title="$l10n_sf_map_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.95"/>
+            <economy pricePerLiter="0.85"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="FERTILIZER"/>
@@ -86,7 +86,7 @@
 
         <fillType name="DAP" title="$l10n_sf_dap_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.75"/>
+            <economy pricePerLiter="0.78"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="FERTILIZER"/>
@@ -95,7 +95,7 @@
 
         <fillType name="POTASH" title="$l10n_sf_potash_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.95" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.80"/>
+            <economy pricePerLiter="0.55"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="FERTILIZER"/>
@@ -104,7 +104,7 @@
 
         <fillType name="POLIFOSKA" title="$l10n_sf_polifoska_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.92" maxPhysicalSurfaceAngle="15"/>
-            <economy pricePerLiter="1.90"/>
+            <economy pricePerLiter="0.60"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/fertilizer_diffuse.dds" normal="$data/fillPlanes/fertilizer_normal.dds" height="$data/fillPlanes/fertilizer_height.dds" displacement="$data/fillPlanes/fertilizer_displacement.dds" distance="$data/fillPlanes/distance/fertilizerDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="FERTILIZER"/>
@@ -115,7 +115,7 @@
 
         <fillType name="INSECTICIDE" title="$l10n_sf_insecticide_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.20"/>
+            <economy pricePerLiter="0.45"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="HERBICIDE"/>
             <pallet filename="objects/liquidTank/insecticide/liquidTank_insecticide.xml" />
@@ -123,7 +123,7 @@
 
         <fillType name="FUNGICIDE" title="$l10n_sf_fungicide_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.30"/>
+            <economy pricePerLiter="0.52"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="HERBICIDE"/>
             <pallet filename="objects/liquidTank/fungicide/liquidTank_fungicide.xml" />
@@ -131,7 +131,7 @@
 
         <fillType name="LIQUID_UREA" title="$l10n_sf_liquid_urea_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.70"/>
+            <economy pricePerLiter="0.60"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/liquid_urea/liquidTank_liquid_urea.xml" />
@@ -139,7 +139,7 @@
 
         <fillType name="LIQUID_AMS" title="$l10n_sf_liquid_ams_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.15" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.45"/>
+            <economy pricePerLiter="0.50"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/liquid_ams/liquidTank_liquid_ams.xml" />
@@ -147,7 +147,7 @@
 
         <fillType name="LIQUID_MAP" title="$l10n_sf_liquid_map_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.20" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="2.00"/>
+            <economy pricePerLiter="0.90"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/liquid_map/liquidTank_liquid_map.xml" />
@@ -155,7 +155,7 @@
 
         <fillType name="LIQUID_DAP" title="$l10n_sf_liquid_dap_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.20" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.80"/>
+            <economy pricePerLiter="0.82"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/liquid_dap/liquidTank_liquid_dap.xml" />
@@ -163,7 +163,7 @@
 
         <fillType name="LIQUID_POTASH" title="$l10n_sf_liquid_potash_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.25" maxPhysicalSurfaceAngle="0"/>
-            <economy pricePerLiter="1.85"/>
+            <economy pricePerLiter="0.60"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
             <sprayType sprayTypeStr="LIQUIDFERTILIZER"/>
             <pallet filename="objects/liquidTank/liquid_potash/liquidTank_liquid_potash.xml" />
@@ -177,7 +177,7 @@
 
         <fillType name="GYPSUM" title="$l10n_sf_gypsum_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="20"/>
-            <economy pricePerLiter="0.55"/>
+            <economy pricePerLiter="0.10"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/lime_diffuse.dds" normal="$data/fillPlanes/lime_normal.dds" height="$data/fillPlanes/lime_height.dds" displacement="$data/fillPlanes/lime_displacement.dds" distance="$data/fillPlanes/distance/limeDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="LIME"/>
@@ -186,7 +186,7 @@
 
         <fillType name="COMPOST" title="$l10n_sf_compost_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.60" maxPhysicalSurfaceAngle="20"/>
-            <economy pricePerLiter="0.35"/>
+            <economy pricePerLiter="0.03"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <!-- No <textures> override — maps that define their own COMPOST fill plane visual keep it -->
             <sprayType sprayTypeStr="MANURE"/>
@@ -195,7 +195,7 @@
 
         <fillType name="BIOSOLIDS" title="$l10n_sf_biosolids_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.90" maxPhysicalSurfaceAngle="20"/>
-            <economy pricePerLiter="0.50"/>
+            <economy pricePerLiter="0.03"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$modDir/textures/fillPlanes/biosolids_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$modDir/textures/fillPlanes/distance/biosolidsDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="MANURE"/>
@@ -204,7 +204,7 @@
 
         <fillType name="CHICKEN_MANURE" title="$l10n_sf_chicken_manure_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.65" maxPhysicalSurfaceAngle="20"/>
-            <economy pricePerLiter="0.45"/>
+            <economy pricePerLiter="0.06"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/manure_diffuse.dds" normal="$data/fillPlanes/manure_normal.dds" height="$data/fillPlanes/manure_height.dds" displacement="$data/fillPlanes/manure_displacement.dds" distance="$data/fillPlanes/distance/manureDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="MANURE"/>
@@ -213,7 +213,7 @@
 
         <fillType name="PELLETIZED_MANURE" title="$l10n_sf_pelletized_manure_title" showOnPriceTable="true" isBulkType="true" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="0.75" maxPhysicalSurfaceAngle="20"/>
-            <economy pricePerLiter="1.10"/>
+            <economy pricePerLiter="0.35"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="$data/fillPlanes/mineralFeed_diffuse.dds" normal="$data/fillPlanes/mineralFeed_normal.dds" height="$data/fillPlanes/mineralFeed_height.dds" displacement="$data/fillPlanes/mineralFeed_displacement.dds" distance="$data/fillPlanes/distance/mineralFeedDistance_diffuse.dds"/>
             <sprayType sprayTypeStr="MANURE"/>

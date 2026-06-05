@@ -212,6 +212,13 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     local field = self.fieldData[fieldId]
     if not field then return 1.0 end
 
+    -- Return the frozen modifier if this crop's harvest is already in progress (#556).
+    -- Without this, nutrient depletion from earlier passes drops the modifier for later
+    -- passes of the same harvest run, causing yield to fall as the combine crosses the field.
+    if field.frozenYieldModifier and field.frozenYieldFruitType == fruitTypeIndex then
+        return field.frozenYieldModifier
+    end
+
     local modifier = 1.0
 
     local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
@@ -296,6 +303,11 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         field._amendBurnNotified = nil
     end
 
+    -- Freeze for the duration of this harvest cycle. All subsequent modifier
+    -- calls for this field+fruitType will return this snapshot value.
+    field.frozenYieldModifier  = modifier
+    field.frozenYieldFruitType = fruitTypeIndex
+
     return modifier
 end
 
@@ -323,6 +335,13 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionLastProduct      = nil
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
         harvestField.sprayTrailPts           = nil
+
+        -- Clear frozen yield modifier when a NEW crop type is harvested. This indicates
+        -- the start of a new crop cycle; the old snapshot is stale (#556).
+        if harvestField.frozenYieldFruitType and harvestField.frozenYieldFruitType ~= fruitTypeIndex then
+            harvestField.frozenYieldModifier  = nil
+            harvestField.frozenYieldFruitType = nil
+        end
     end
 
     SoilLogger.debug("Harvest: Field %d, Crop %d, %.0fL (biological), area=%.1f", fieldId, fruitTypeIndex, liters, area or 0)

@@ -744,7 +744,7 @@ function SoilPDAScreen:_refreshSummaryStats()
         thresh and thresh.nitrogen   and thresh.nitrogen.fair   or 50)
     setNutrientStat(self.statsAvgP, avgP,
         thresh and thresh.phosphorus and thresh.phosphorus.poor or 25,
-        thresh and thresh.phosphorus and thresh.phosphorus.fair or 45)
+        thresh and thresh.phosphorus and thresh.phosphorus.fair or 40)
     setNutrientStat(self.statsAvgK, avgK,
         thresh and thresh.potassium  and thresh.potassium.poor  or 20,
         thresh and thresh.potassium  and thresh.potassium.fair  or 40)
