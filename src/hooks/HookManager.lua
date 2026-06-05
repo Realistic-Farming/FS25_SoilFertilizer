@@ -4683,6 +4683,20 @@ function HookManager:installSprayerVisualEffectHook()
                 g_soundManager:playSamples(st.samples and st.samples.spray or {})
             end
         end
+        -- Start VWW wing-section effects (these are separate from spec.effects and
+        -- are never started by the vanilla system for custom fill types, causing only
+        -- the center to show mist while wing booms appear dry).
+        local vww = vehicle.spec_variableWorkWidth
+        if vww and vww.sections then
+            local suppressed = vehicle._sfOverlapSuppressedSections or {}
+            for i, section in ipairs(vww.sections) do
+                if section.isActive and not suppressed[i] and
+                   section.effects and #section.effects > 0 then
+                    g_effectManager:setEffectTypeInfo(section.effects, vanillaFillType)
+                    g_effectManager:startEffects(section.effects)
+                end
+            end
+        end
     end
 
     local function stopSprayerEffects(vehicle)
@@ -4693,6 +4707,15 @@ function HookManager:installSprayerVisualEffectHook()
             g_effectManager:stopEffects(st.effects)
             g_animationManager:stopAnimations(st.animationNodes)
             g_soundManager:stopSamples(st.samples and st.samples.spray or {})
+        end
+        -- Stop VWW wing-section effects.
+        local vww = vehicle.spec_variableWorkWidth
+        if vww and vww.sections then
+            for _, section in ipairs(vww.sections) do
+                if section.effects and #section.effects > 0 then
+                    g_effectManager:stopEffects(section.effects)
+                end
+            end
         end
     end
 
