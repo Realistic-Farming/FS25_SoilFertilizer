@@ -702,7 +702,8 @@ function SoilFertilityManager:onMissionStarted()
             if self.hasPrecisionFarming then
                 SoilLogger.warning("Precision Farming detected! Soil & Fertilizer mod is NOT compatible and will be disabled.")
                 self.settings.enabled = false
-                
+                self._disabledByPF = true  -- track that WE disabled it, not the player
+
                 -- Queue incompatibility dialog with a delay to ensure GUI is stable
                 if not self.disableGUI then
                     SoilLogger.info("Incompatibility dialog queued (3.5s delay)")
@@ -711,14 +712,12 @@ function SoilFertilityManager:onMissionStarted()
                 end
                 return
             else
-                -- PF is absent. If the mod was previously disabled solely by the PF incompatibility 
-                -- gate, we should re-enable it. 
-                -- We track this via the fact that `self.settings.enabled` is currently false 
-                -- but PF is gone.
-                if not self.settings.enabled then
+                -- PF is absent. Re-enable only if we were the ones who disabled it
+                -- (i.e. the player didn't manually turn the mod off themselves).
+                if self._disabledByPF then
                     SoilLogger.info("Precision Farming not detected — re-enabling Soil & Fertilizer")
                     self.settings.enabled = true
-                    -- Save the re-enabled state
+                    self._disabledByPF = false
                     self.settings:save()
                 end
             end
@@ -885,7 +884,9 @@ function SoilFertilityManager:onToggleAutoInput()
     local rm = self.sprayerRateManager
     if rm then
         local newState = rm:toggleAutoMode(vehicle.id)
-        SoilNetworkEvents_SendSprayerAutoMode(vehicle, newState)
+        if SoilNetworkEvents_SendSprayerAutoMode then
+            SoilNetworkEvents_SendSprayerAutoMode(vehicle, newState)
+        end
     end
 end
 

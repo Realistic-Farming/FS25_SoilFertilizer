@@ -3,7 +3,7 @@
 -- =========================================================
 -- Per-field N/P/K/pH/OM tracking: depletion on harvest,
 -- restoration on fertilizer, rain leaching, seasonal effects,
--- fallow recovery, seasonal effects.
+-- and fallow recovery.
 -- =========================================================
 -- Author: TisonK
 -- =========================================================
