@@ -2556,6 +2556,18 @@ function HookManager:installSprayerAreaHook()
                                 end
                             end
                             local sectionFieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                            -- Midpoint can fall outside field boundary when spraying edges.
+                            -- Fall back: try the boom tip position directly, then sprayer center.
+                            if (not sectionFieldId or sectionFieldId <= 0) and
+                               not section.isCenter and section.maxWidthNode ~= nil then
+                                local wx2, _, wz2 = getWorldTranslation(section.maxWidthNode)
+                                if wx2 then
+                                    sectionFieldId = hookMgrRef:getFieldIdAtWorldPosition(wx2, wz2)
+                                end
+                            end
+                            if not sectionFieldId or sectionFieldId <= 0 then
+                                sectionFieldId = fieldId  -- final fallback: credit the main field
+                            end
                             local vrWeight = (vrSectionRates and vrSectionRates[section]) or 1.0
                             -- Proportional share: preserves total = effectiveLiters
                             local sectionLiters = effectiveLiters * (vrWeight / vrWeightSum)

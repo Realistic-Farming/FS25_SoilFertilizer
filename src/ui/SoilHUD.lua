@@ -904,7 +904,10 @@ function SoilHUD:refreshFieldData()
     self.cachedPlayerZ = z
 
     if fieldId then
-        self.cachedFieldInfo = soilSys:getFieldInfo(fieldId, x, z)
+        -- Always use field-average values in the HUD bars so the player can
+        -- track whole-field progress while spraying. Local cell values are
+        -- available in the map overlay cell tooltip. (#555 user feedback)
+        self.cachedFieldInfo = soilSys:getFieldInfo(fieldId)
 
         if fieldId ~= prevId and self.cachedFieldInfo then
             local info = self.cachedFieldInfo
@@ -936,8 +939,7 @@ function SoilHUD:refreshFieldData()
     -- Pre-format display strings so draw() at 60 FPS never calls string.format
     local info = self.cachedFieldInfo
     if info and fieldId then
-        local dataSuffix = info.fromZoneCell and " (Local)" or " (Avg)"
-        self._fmt_fieldText = string.format(g_i18n:getText("sf_hud_field"), fieldId) .. dataSuffix
+        self._fmt_fieldText = string.format(g_i18n:getText("sf_hud_field"), fieldId)
         local crop = info.lastCrop
         if crop and crop ~= "" then
             self._fmt_cropText = crop:sub(1,1):upper() .. crop:sub(2)

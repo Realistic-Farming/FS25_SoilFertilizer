@@ -24,17 +24,14 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Variable Rate double-reduction bug — VR now redistributes",
-    "  the already-rate-scaled budget rather than reducing it again;",
-    "  total nutrient credit is preserved across all boom sections",
-    "- Fixed: Ghost bar now accounts for replenishment rate setting;",
-    "  projection matches what the field actually receives",
-    "- Fixed: HUD soil bars — removed confusing yellow fair/good tick;",
-    "  only the orange-red minimum and cyan crop-optimal ticks remain",
-    "- Fixed: Yield modifier frozen at first harvest call per crop cycle;",
-    "  yield no longer drops as the combine crosses the field",
-    "- Fixed: Fertilizer pricing rebalanced — organics now dramatically",
-    "  cheaper; UAN32/UAN28 correctly priced as budget liquid nitrogen",
+    "- Fixed: Soil Monitor HUD now always shows field averages; local",
+    "  cell values no longer replace averages while you spray",
+    "- Fixed: Field edge/boundary cells now always receive nutrient",
+    "  credit — boom tip midpoint off-field fallback prevents Fair edges",
+    "- Fixed: Map cell tooltip bars now show numeric values with units",
+    "  (N/P/K as %, pH as decimal, OM as %) not just unlabeled bars",
+    "- Fixed: P fair/good threshold fallback corrected (45 to 40) in",
+    "  farm overview panel to match all other displays",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

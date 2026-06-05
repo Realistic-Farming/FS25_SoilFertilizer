@@ -1675,18 +1675,43 @@ function SoilMapOverlay:drawMiniReport(ingameMap)
     local subBarW = barW * 0.6
     local _, textSize = getNormalizedScreenValues(0, 10 * s)
 
+    -- Raw values for display (N/P/K as %, pH as decimal, OM as %)
+    local rawValues = {
+        math.floor((info.nitrogen   and info.nitrogen.value   or 0) + 0.5),
+        math.floor((info.phosphorus and info.phosphorus.value or 0) + 0.5),
+        math.floor((info.potassium  and info.potassium.value  or 0) + 0.5),
+        (info.pH or 6.0),
+        (info.organicMatter or 0),
+    }
+
     for i = 1, #labels do
         local cy = innerY + (i-1) * segH
-        local val = math.clamp(values[#labels - i + 1], 0, 1)
-        local accent = SoilMapOverlay.LAYER_ACCENT[#labels - i + 1]
-        
+        local idx = #labels - i + 1
+        local val = math.clamp(values[idx], 0, 1)
+        local accent = SoilMapOverlay.LAYER_ACCENT[idx]
+
         drawFilledRect(innerX, cy + 0.002*s, subBarW, segH - 0.004*s, 0.1, 0.1, 0.1, 0.8)
         drawFilledRect(innerX, cy + 0.002*s, subBarW * val, segH - 0.004*s, accent[1], accent[2], accent[3], 0.9)
-        
+
         setTextBold(true)
         setTextColor(0.9, 0.9, 0.9, 1)
         setTextAlignment(RenderText.ALIGN_LEFT)
-        renderText(innerX + subBarW + 0.002*s, cy + 0.005*s, textSize, labels[#labels - i + 1])
+
+        -- Label (e.g. "N")
+        renderText(innerX + subBarW + 0.002*s, cy + 0.005*s, textSize, labels[idx])
+
+        -- Numeric value with unit so bars are distinguishable from the HUD bars
+        local numStr
+        if labels[idx] == "pH" then
+            numStr = string.format("%.1f", rawValues[idx])
+        elseif labels[idx] == "OM" then
+            numStr = string.format("%.1f%%", rawValues[idx])
+        else
+            numStr = tostring(rawValues[idx]) .. "%"
+        end
+        setTextBold(false)
+        setTextColor(0.75, 0.75, 0.75, 1)
+        renderText(innerX + subBarW + 0.002*s, cy - 0.001*s, textSize * 0.8, numStr)
     end
 end
 
