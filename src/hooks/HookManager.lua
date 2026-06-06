@@ -677,6 +677,9 @@ function HookManager:installSprayTypeEffectsHook()
     -- Liquid custom types visually match LIQUIDFERTILIZER spraying
     -- HERBICIDE is included so it gets added to LIQUIDFERTILIZER slots (full-boom spray),
     -- but it is a vanilla fill type and must NOT be stripped from HERBICIDE-only slots in Pass 2.
+    -- NOTE: LIQUIDMANURE / MANURE / DIGESTATE are intentionally absent here. They spread via
+    -- the game's native slurry/manure systems, not the sprayer effect path — registerCustomSprayTypes
+    -- only calibrates their drain rate (issue #311). Do not add them to this effects list.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }

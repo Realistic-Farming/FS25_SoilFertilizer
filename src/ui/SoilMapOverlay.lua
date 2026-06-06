@@ -9,8 +9,10 @@ local function tr(key, fallback)
     local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
     local i18n   = (modEnv and modEnv.i18n) or g_i18n
     if i18n then
-        local text = i18n:getText(key)
-        if text and text ~= "" and text ~= ("$l10n_" .. key) then
+        -- pcall-wrap getText for parity with the other UI panels' tr() helpers —
+        -- a missing/malformed l10n entry should fall back, never crash the overlay.
+        local ok, text = pcall(function() return i18n:getText(key) end)
+        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
             return text
         end
     end
