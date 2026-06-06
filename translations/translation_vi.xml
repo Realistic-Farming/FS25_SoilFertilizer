@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Đơn giản" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Thực tế" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Đang đồng bộ dữ liệu đất..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Không thể tải quyền sở hữu cánh đồng. Vui lòng đóng và mở lại báo cáo." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Chi phí phân bón" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Bật/tắt chi phí mua phân bón thực tế" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Thông báo" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Bật/tắt thông báo về đất và phân bón" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Hiện HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Hiện/ẩn lớp phủ HUD thông tin đất (F8 để chuyển đổi tạm thời)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Hiện báo cáo ô" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Hiện/ẩn lớp phủ báo cáo ô trên bản đồ nhỏ" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="Vị trí HUD" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Báo cáo Đất &amp; Phân bón" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Cánh đồng theo dõi:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Cần bón phân:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Sức khỏe trang trại:" eh="a5330ade" />
-    <e k="sf_report_back" v="Quay lại" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Độ khó:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Cánh đồng" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Vụ trước" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Bón?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Không có dữ liệu đất. Hãy đi vào một cánh đồng để bắt đầu theo dõi." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Trước" eh="14230d11" />
-    <e k="sf_report_next" v="Sau" eh="10ac3d04" />
-    <e k="sf_report_yes" v="CÓ" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Không" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Cần Đạm (Nitơ)" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Đạm thấp" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Cần Lân (Photpho)" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Lân thấp" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Cần Kali" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Kali thấp" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Điều chỉnh pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Theo dõi pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Tăng chất hữu cơ" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Duy trì chất hữu cơ" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Nguy cơ sâu bệnh" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Nguy cơ bệnh hại" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Cần:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Sức khỏe đất: Tối ưu" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Tốt" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Trung bình" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Kém" eh="0e94d017" />
     <e k="sf_uan32_title" v="Phân bón UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Phân bón UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Amoniac khan (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Kali lỏng (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Thuốc trừ sâu" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Thuốc trừ nấm" eh="e8512698" />
-    <e k="sf_report_page_info" v="Cánh đồng %d-%d của %d  |  Trang %d của %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Sau thu hoạch · Bón phân" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Kéo: di chuyển   Góc: đổi cỡ   Chuột phải/Shift+H: xong" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: di chuyển/đổi cỡ" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Đạm: Tối ưu" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Lân: Tối ưu" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Kali: Tối ưu" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Theo dõi" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Điều chỉnh" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Duy trì" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Tăng cường" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Thấp" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Vừa" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Cao" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Dựa trên N/P/K so với ngưỡng tối ưu" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Sản lượng ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -359,9 +310,6 @@
 
     <e k="sf_crop_rotation_short" v="Luân canh cây trồng" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Bật/tắt thưởng luân canh và mệt mỏi do độc canh (trồng họ đậu giúp hồi đạm; trồng liên tiếp cùng một loại cây làm tăng sự cạn kiệt)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Thưởng luân canh" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Mệt mỏi: Trùng cây trồng" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Luân canh: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Thạch cao (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Phân hữu cơ (Hữu cơ)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Bùn thải (N+P)" eh="f0c901dc" />
@@ -614,7 +562,6 @@
     <e k="sf_desc_fertilizerCosts" v="Chi phí thực tế trong game cho phân bón" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Thông báo trạng thái đất trong game" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Hiển thị lớp phủ HUD đất" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Hiển thị lớp phủ báo cáo ô trên bản đồ nhỏ" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Vị trí neo HUD được thiết lập sẵn" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Bảng màu cho các thành phần HUD" eh="97271907" />

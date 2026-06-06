@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Egyszerű" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realisztikus" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Talajadatok szinkronizálása..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Nem sikerült betölteni a mezőtulajdonjogokat. Kérjük, zárja be és nyissa meg újra a jelentést." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Műtrágya Költségek" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Realisztikus műtrágya-vásárlási költségek engedélyezése/tiltása" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Értesítések" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Talaj és műtrágya értesítések engedélyezése/tiltása" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="HUD megjelenítése" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Talajinformáció HUD átfedés megjelenítése/elrejtése (F8 az ideiglenes váltáshoz)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Cella jelentés mutatása" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Minimap cella jelentés átfedés megjelenítése/elrejtése" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="HUD pozíció" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Talaj &amp; Műtrágya Jelentés" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Követett Mezők:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Műtrágya Szükséges:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Gazdaság állapota:" eh="a5330ade" />
-    <e k="sf_report_back" v="Vissza" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Nehézség:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Mező" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Utolsó Termény" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Műtr?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Nincsenek talajadatok. Sétáljon egy mezőre a követés elindításához." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Előző" eh="14230d11" />
-    <e k="sf_report_next" v="Köv" eh="10ac3d04" />
-    <e k="sf_report_yes" v="IGEN" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Nincs" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Nitrogén szükséges" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Alacsony nitrogén" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Foszfor szükséges" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Alacsony foszfor" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Kálium szükséges" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Alacsony kálium" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="pH beállítása" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="pH figyelése" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Szerves anyag növelése" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Szerves anyag fenntartása" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Kártevő kockázat" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Betegség kockázat" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Szükséges:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Talaj egészség: Optimális" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Jó" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Közepes" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Gyenge" eh="0e94d017" />
     <e k="sf_uan32_title" v="UAN 32 Nitrogén műtrágya (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="UAN 28 Nitrogén műtrágya (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Vízmentes ammónia (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Folyékony hamuzsír (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Rovarölő szer" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Gombaölő szer" eh="e8512698" />
-    <e k="sf_report_page_info" v="Mezők %d-%d / %d  |  Oldal %d / %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Betakarítás után · Műtrágyázás" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Húzás: mozgatás   Sarok: átméretezés   RMB/Shift+H: kész" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: mozgatás/átméretezés" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Nitrogén: Optimális" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Foszfor: Optimális" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Kálium: Optimális" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Megfigyelés" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Beállítás" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Fenntartás" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Növelés" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Alacsony" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Közepes" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Magas" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Az N/P/K arány alapján az optimális küszöbhöz képest" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Hozam ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -373,9 +324,6 @@
 
     <e k="sf_crop_rotation_short" v="Vetésforgó" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Vetésforgó bónusz és monokultúrás fáradtság engedélyezése/tiltása (pillangósok nitrogént pótolnak; azonos növény egymás után növeli a kimerülést)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Vetésforgó bónusz" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Fáradtság: Azonos növény" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Vetésforgó: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gipsz (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Komposzt (szerves)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Bioszilárd (N+P)" eh="f0c901dc" />
@@ -633,7 +581,6 @@
     <e k="sf_desc_fertilizerCosts" v="Reális műtrágya költségek" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Talajállapot értesítések játék közben" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Talaj HUD átfedés megjelenítése" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Minimap cella jelentés átfedés megjelenítése" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="HUD rögzítési pozíciója" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Színpaletta a HUD elemekhez" eh="97271907" />

@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Простий" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Реалістичний" eh="408c999f" />
     <e k="sf_diff_3" v="Хардкор" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Синхронізація даних ґрунту..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Не вдалося завантажити дані про власність поля. Будь ласка, закрийте та знову відкрийте звіт." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Вартість добрив" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Увімкнути/вимкнути реалістичну вартість купівлі добрив" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Сповіщення" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Увімкнути/вимкнути сповіщення ґрунту та добрив" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Показати HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Показати/сховати HUD інформації про ґрунт (F8 для тимчасового перемикання)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Звіт комірки" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Показати/сховати звіт комірки на міні-карті" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="Позиція HUD" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Звіт: Ґрунт та Добриво" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Відстежувані поля:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Потребують добрив:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Стан ферми:" eh="a5330ade" />
-    <e k="sf_report_back" v="Назад" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Складність:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Поле" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Ост. культура" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Добр?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Дані про ґрунт відсутні. Вийдіть на поле, щоб почати відстеження." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Попер." eh="14230d11" />
-    <e k="sf_report_next" v="Наст." eh="10ac3d04" />
-    <e k="sf_report_yes" v="ТАК" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Немає" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Потрібен азот" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Низький рівень азоту" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Потрібен фосфор" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Низький рівень фосфору" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Потрібен калій" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Низький рівень калію" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Корекція pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Контроль pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Підвищити ОР" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Підтримувати ОР" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Ризик шкідників" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Ризик хвороб" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Потребує:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Стан ґрунту: Оптимальний" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Добрий" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Задовільний" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Поганий" eh="0e94d017" />
     <e k="sf_uan32_title" v="Добриво КАС-32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Добриво КАС-28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Безводний аміак (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Рідкий поташ (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Інсектицид" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Фунгіцид" eh="e8512698" />
-    <e k="sf_report_page_info" v="Поля %d-%d з %d  |  Стор. %d з %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC КАС-32" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC КАС-28" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Після жнив · Удобрити" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Драг: рух  Кут: розмір  ПКМ/Shift+H: готово" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: рух/розмір" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Азот: Оптимально" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Фосфор: Оптимально" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Калій: Оптимально" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Контроль" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Корекція" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Підтримка" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Підвищення" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Низька" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Помірна" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Висока" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Базується на N/P/K відносно порогу" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Врожайність ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -359,9 +310,6 @@
 
     <e k="sf_crop_rotation_short" v="Сівозміна" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Увімкнути/вимкнути бонус сівозміни та втому ґрунту (бобові відновлюють азот; однакова культура поспіль виснажує ґрунт швидше)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Бонус сівозміни" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Втома: та сама культура" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Сівозміна: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Гіпс (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Компост (Органіка)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Біовідходи (N+P)" eh="f0c901dc" />
@@ -614,7 +562,6 @@
     <e k="sf_desc_fertilizerCosts" v="Реальна ігрова вартість добрив" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Сповіщення про стан ґрунту в грі" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Показувати HUD оверлей ґрунту" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Показувати звіт комірки на міні-карті" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Фіксована позиція HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Колірна палітра елементів HUD" eh="97271907" />

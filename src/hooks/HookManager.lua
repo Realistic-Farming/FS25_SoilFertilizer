@@ -1624,67 +1624,70 @@ function HookManager:installOverlapPreventionHook()
                 if section.isActive and not section.isCenter then
                     local tip = tips and tips[i]
 
-                    -- Sample at TIP position (outer edge of coverage area).
-                    -- Also check at midpoint as secondary — if EITHER is already sprayed,
-                    -- suppress the section.  Tip is more reliable than midpoint when the
-                    -- vehicle root is far from the boom (e.g., trailer-type sprayers).
-                    local hasTip = tip ~= nil
-                    local tx  = hasTip and tip[1] or nil
-                    local tz  = hasTip and tip[2] or nil
-                    local mx  = hasTip and ((rootX + tip[1]) * 0.5) or rootX
-                    local mz  = hasTip and ((rootZ + tip[2]) * 0.5) or rootZ
+                    -- Sections with no tip node (no maxWidthNode): skip overlap check.
+                    -- Falling back to the root/hitch point causes false positives — on any
+                    -- second pass, the tractor track is already sprayed and all tip-less
+                    -- wing sections would be suppressed, leaving only the center spraying.
+                    if tip then
+                        -- Sample ONLY at TIP (outermost edge of this section's coverage).
+                        -- If the outer edge is on already-sprayed ground, the section is fully
+                        -- covered → suppress.  If the outer edge is fresh, let it spray even if
+                        -- the midpoint overlaps a previous swath.  The old midpoint OR check
+                        -- caused false positives for sections straddling the swath boundary.
+                        local tx = tip[1]
+                        local tz = tip[2]
 
-                    local alreadySprayed = false
+                        local alreadySprayed = false
 
-                    local function checkPoint(px, pz)
-                        if not px then return false end
-                        if checkFert then
-                            lvlModifier:setParallelogramWorldCoords(
-                                px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
-                            local lvl = lvlModifier:executeGet(lvlFilter, nil)
-                            if doLog and i <= 4 then
-                                SoilLogger.debug("[OverlapPrev]   sec%d tip=%s px=%.1f pz=%.1f lvl=%s lvlMax=%s",
-                                    i, tostring(hasTip), px, pz, tostring(lvl), tostring(lvlMax))
+                        local function checkPoint(px, pz)
+                            if checkFert then
+                                lvlModifier:setParallelogramWorldCoords(
+                                    px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
+                                local lvl = lvlModifier:executeGet(lvlFilter, nil)
+                                if doLog and i <= 4 then
+                                    SoilLogger.debug("[OverlapPrev]   sec%d px=%.1f pz=%.1f lvl=%s lvlMax=%s",
+                                        i, px, pz, tostring(lvl), tostring(lvlMax))
+                                end
+                                return lvl ~= nil and lvl > 0
+                            elseif checkLime then
+                                stModifier:setParallelogramWorldCoords(
+                                    px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
+                                local stype = stModifier:executeGet(stFilter, nil)
+                                return stype ~= nil and limeGroundType ~= nil and stype == limeGroundType
                             end
-                            return lvl ~= nil and lvl > 0
-                        elseif checkLime then
-                            stModifier:setParallelogramWorldCoords(
-                                px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
-                            local stype = stModifier:executeGet(stFilter, nil)
-                            return stype ~= nil and limeGroundType ~= nil and stype == limeGroundType
-                        end
-                        return false
-                    end
-
-                    alreadySprayed = checkPoint(tx, tz) or checkPoint(mx, mz)
-
-                    if alreadySprayed then
-                        section.isActive = false
-                        suppressCount = suppressCount + 1
-                        currSuppressed[i] = section
-
-                        -- Stop section effects (idempotent if already stopped).
-                        if section.effects and #section.effects > 0 then
-                            g_effectManager:stopEffects(section.effects)
+                            return false
                         end
 
-                        -- ESE per-nozzle shader: force fadeProgress to off {1,-1}.
-                        local eseSpec = sprayerSelf.spec_extendedSprayerEffects
-                        if eseSpec and eseSpec.sprayerEffectsBySection then
-                            local sectionEffects = eseSpec.sprayerEffectsBySection[i]
-                            if sectionEffects then
-                                for _, ed in ipairs(sectionEffects) do
-                                    if ed.effectNode and ed.fadeCur then
-                                        setShaderParameter(ed.effectNode, "fadeProgress", 1, -1, 0, 0, false)
+                        alreadySprayed = checkPoint(tx, tz)
+
+                        if alreadySprayed then
+                            section.isActive = false
+                            suppressCount = suppressCount + 1
+                            currSuppressed[i] = section
+
+                            -- Stop section effects (idempotent if already stopped).
+                            if section.effects and #section.effects > 0 then
+                                g_effectManager:stopEffects(section.effects)
+                            end
+
+                            -- ESE per-nozzle shader: force fadeProgress to off {1,-1}.
+                            local eseSpec = sprayerSelf.spec_extendedSprayerEffects
+                            if eseSpec and eseSpec.sprayerEffectsBySection then
+                                local sectionEffects = eseSpec.sprayerEffectsBySection[i]
+                                if sectionEffects then
+                                    for _, ed in ipairs(sectionEffects) do
+                                        if ed.effectNode and ed.fadeCur then
+                                            setShaderParameter(ed.effectNode, "fadeProgress", 1, -1, 0, 0, false)
+                                        end
                                     end
                                 end
                             end
-                        end
-                    elseif prevSuppressed[i] then
-                        -- Transition: was suppressed last frame, now clear → restart effects.
-                        local prevSection = prevSuppressed[i]
-                        if prevSection.effects and #prevSection.effects > 0 then
-                            g_effectManager:startEffects(prevSection.effects)
+                        elseif prevSuppressed[i] then
+                            -- Transition: was suppressed last frame, now clear → restart effects.
+                            local prevSection = prevSuppressed[i]
+                            if prevSection.effects and #prevSection.effects > 0 then
+                                g_effectManager:startEffects(prevSection.effects)
+                            end
                         end
                     end
                 end

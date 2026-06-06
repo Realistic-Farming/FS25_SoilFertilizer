@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Sederhana" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realistis" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Sinkronisasi data tanah..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Tidak dapat memuat kepemilikan lahan. Silakan tutup dan buka kembali laporan." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Biaya Pupuk" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Aktifkan/nonaktifkan biaya pembelian pupuk yang realistis" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Notifikasi" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Aktifkan/nonaktifkan notifikasi tanah dan pupuk" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Tampilkan HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Tampilkan/sembunyikan overlay HUD info tanah (F8 untuk beralih sementara)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Tampilkan Laporan Sel" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Tampilkan/sembunyikan overlay laporan sel minimap" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="Posisi HUD" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Laporan Tanah &amp; Pupuk" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Lahan Dilacak:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Butuh Pupuk:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Kesehatan Pertanian:" eh="a5330ade" />
-    <e k="sf_report_back" v="Kembali" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Kesulitan:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Lahan" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Tanaman Terakhir" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Pupuk?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Tidak ada data tanah yang tersedia. Masuk ke lahan untuk mulai melacak." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Seb" eh="14230d11" />
-    <e k="sf_report_next" v="Ber" eh="10ac3d04" />
-    <e k="sf_report_yes" v="YA" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Tidak ada" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Butuh Nitrogen" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Nitrogen Rendah" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Butuh Fosfor" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Fosfor Rendah" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Butuh Kalium" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Kalium Rendah" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Sesuaikan pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Monitor pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Tingkatkan Bahan Organik" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Pertahankan Bahan Organik" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Risiko Hama" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Risko Penyakit" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Butuh:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Kesehatan Tanah: Optimal" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Baik" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Cukup" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Buruk" eh="0e94d017" />
     <e k="sf_uan32_title" v="Pupuk UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Pupuk UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Amonia Anhidrat (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Kalium Cair (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Insektisida" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Fungisida" eh="e8512698" />
-    <e k="sf_report_page_info" v="Lahan %d-%d dari %d  |  Halaman %d dari %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Pasca-panen · Pupuk" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Seret: pindah   Sudut: ubah ukuran   RMB/Shift+H: selesai" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: pindah/ubah ukuran" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Nitrogen: Optimal" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Fosfor: Optimal" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Kalium: Optimal" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Monitor" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Sesuaikan" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Pertahankan" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Tingkatkan" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Rendah" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Sedang" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Tinggi" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Berdasarkan N/P/K vs ambang batas optimal" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Hasil ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -372,9 +323,6 @@
 
     <e k="sf_crop_rotation_short" v="Rotasi Tanaman" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Aktifkan/nonaktifkan bonus rotasi tanaman dan kelelahan tanaman tunggal (urutan polong-polongan memulihkan nitrogen; tanaman yang sama di musim berturut-turut meningkatkan penipisan)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Bonus Rotasi" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Kelelahan: Tanaman Sama" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Rotasi: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gips (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompos (Organik)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Biosolid (N+P)" eh="f0c901dc" />
@@ -652,7 +600,6 @@
     <e k="sf_desc_fertilizerCosts" v="Biaya pupuk dalam game yang nyata" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Notifikasi status tanah dalam game" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Tampilkan overlay HUD tanah" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Tampilkan overlay laporan sel minimap" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Posisi jangkar preset HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Palet warna untuk elemen HUD" eh="97271907" />

@@ -80,7 +80,6 @@
 
     <actions>
         <action name="SF_TOGGLE_HUD"  category="ONFOOT" />
-        <action name="SF_SOIL_REPORT" category="ONFOOT" />
         <action name="SF_RATE_UP"     category="VEHICLE" />
         <action name="SF_RATE_DOWN"   category="VEHICLE" />
         <action name="SF_TOGGLE_AUTO" category="VEHICLE" />
@@ -101,7 +100,6 @@
 
     <inputBinding>
         <actionBinding action="SF_TOGGLE_HUD" />
-        <actionBinding action="SF_SOIL_REPORT" />
         <actionBinding action="SF_RATE_UP" />
         <actionBinding action="SF_RATE_DOWN" />
         <actionBinding action="SF_TOGGLE_AUTO" />

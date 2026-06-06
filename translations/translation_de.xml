@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Einfach" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realistisch" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Synchronisiere Bodendaten..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Konnte Feldbesitz nicht laden. Bitte schließen und öffnen Sie den Bericht erneut." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Düngerkosten" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Realistische Düngerkaufkosten ein-/ausschalten" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Benachrichtigungen" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Boden- und Düngerbenachrichtigungen ein-/ausschalten" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="HUD anzeigen" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Boden-Info-HUD ein-/ausblenden (F8 zum temporären Umschalten)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Cellerapport anzeigen" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Minimap-Zellenbericht-Overlay ein-/ausblenden" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="HUD-Position" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Boden- &amp; Düngerbericht" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Verfolgte Felder:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Brauchen Dünger:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Hof-Gesundheit:" eh="a5330ade" />
-    <e k="sf_report_back" v="Zurück" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Schwierigkeit:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Feld" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Letzte Ernte" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Düng?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Keine Bodendaten verfügbar. Gehen Sie auf ein Feld, um die Verfolgung zu starten." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Zurück" eh="14230d11" />
-    <e k="sf_report_next" v="Weiter" eh="10ac3d04" />
-    <e k="sf_report_yes" v="JA" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Keine" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Stickstoff nötig" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Niedriger Stickstoff" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Phosphor nötig" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Niedriger Phosphor" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Kalium nötig" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Niedriges Kalium" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="pH anpassen" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="pH beobachten" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Organik erhöhen" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Organik halten" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Schädlingsrisiko" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Krankheitsrisiko" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Bedarf:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Bodengesundheit: Optimal" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Gut" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Mittel" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Schlecht" eh="0e94d017" />
     <e k="sf_uan32_title" v="UAN 32 Stickstoffdünger (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="UAN 28 Stickstoffdünger (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Flüssigammoniak (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Flüssiges Kalium (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Insektizid" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Fungizid" eh="e8512698" />
-    <e k="sf_report_page_info" v="Felder %d-%d von %d  |  Seite %d von %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Nachernte · Düngen" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Ziehen: Bewegen   Ecke: Größe   RMT/Umschalt+H: Fertig" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Umschalt+H: Bewegen/Größe" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Stickstoff: Optimal" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Phosphor: Optimal" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Kalium: Optimal" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Überwachen" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Anpassen" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Halten" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Erhöhen" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Niedrig" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Mittel" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Hoch" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Basierend auf N/P/K vs. optimalem Schwellenwert" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Ertrag ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -359,9 +310,6 @@
 
     <e k="sf_crop_rotation_short" v="Fruchtfolge" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Fruchtfolgenbonus und Monokultur-Ermüdung aktivieren/deaktivieren (Leguminosensequenzen stellen Stickstoff wieder her; aufeinanderfolgende Saisons mit derselben Frucht erhöhen die Verarmung)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Fruchtfolgenbonus" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Ermüdung: Gleiche Frucht" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Fruchtfolge: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gips (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompost (Organisch)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Biosolids (N+P)" eh="f0c901dc" />
@@ -614,7 +562,6 @@
     <e k="sf_desc_fertilizerCosts" v="Reale In-Game-Kosten für Dünger" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="In-Game-Benachrichtigungen zum Bodenstatus" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Boden-HUD-Overlay anzeigen" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Minimap-Zellenbericht-Overlay anzeigen" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="HUD-Voreinstellungs-Ankerpunkt" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Farbpalette für HUD-Elemente" eh="97271907" />

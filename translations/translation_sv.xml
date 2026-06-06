@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Enkel" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realistisk" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Synkroniserar markdata..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Kunde inte ladda fältägande. Vänligen stäng och öppna rapporten igen." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Gödselkostnader" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Aktivera/inaktivera realistiska inköpskostnader för gödsel" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Aviseringar" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Aktivera/inaktivera aviseringar för mark och gödsel" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Visa HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Visa/dölj HUD-överlagring för markinfo (F8 för att växla tillfälligt)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Visa cellrapport" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Visa/dölj cellrapport för minimap" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="HUD-position" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Mark- &amp; Gödselrapport" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Spårade fält:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Behöver gödsel:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Gårdens hälsa:" eh="a5330ade" />
-    <e k="sf_report_back" v="Tillbaka" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Svårighetsgrad:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Fält" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Senaste gröda" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Gödsel?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Ingen markdata tillgänglig. Gå ut på ett fält för att börja spåra." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Föregående" eh="14230d11" />
-    <e k="sf_report_next" v="Nästa" eh="10ac3d04" />
-    <e k="sf_report_yes" v="JA" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Ingen" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Behöver kväve" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Lågt kväve" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Behöver fosfor" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Låg fosfor" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Behöver kalium" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Låg kalium" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Justera pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Övervaka pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Öka organiskt material" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Behåll organiskt material" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Skadedjursrisk" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Sjukdomsrisk" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Behöver:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Markhälsa: Optimal" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Bra" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Godtagbar" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Dålig" eh="0e94d017" />
     <e k="sf_uan32_title" v="UAN 32 Gödsel (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="UAN 28 Gödsel (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Vattenfritt ammoniak (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Flytande kalium (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Insektsmedel" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Svampmedel" eh="e8512698" />
-    <e k="sf_report_page_info" v="Fält %d-%d av %d  |  Sida %d av %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Efter skörd · Gödsla" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Dra: flytta   Hörn: ändra storlek   HMB/Skift+H: klar" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Skift+H: flytta/ändra storlek" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Kväve: Optimalt" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Fosfor: Optimalt" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Kalium: Optimalt" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Övervaka" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Justera" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Behåll" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Öka" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Låg" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Måttlig" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Hög" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Baserat på N/P/K mot optimalt tröskelvärde" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Skörd ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -359,9 +310,6 @@
 
     <e k="sf_crop_rotation_short" v="Växtföljd" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Aktivera/inaktivera växtföljdsbonus och monokulturutmattning (baljväxtsekvenser återställer kväve; samma gröda flera säsonger i rad ökar utarmning)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Rotationsbonus" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Utmattning: Samma gröda" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Rotation: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gips (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompost (Organisk)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Rötslam (N+P)" eh="f0c901dc" />
@@ -614,7 +562,6 @@
     <e k="sf_desc_fertilizerCosts" v="Verklig kostnad i spelet för gödselmedel" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Statusaviseringar för marken i spelet" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Visa HUD-överlagringen för marken" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Visa cellrapporten för minimap" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Förankringsposition för HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Färgpalett för HUD-element" eh="97271907" />
