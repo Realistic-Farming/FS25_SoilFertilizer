@@ -929,7 +929,6 @@ local function showSensorMsg(name, on)
 end
 
 function SoilFertilityManager:onSensorPestInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:togglePest(vehicle.id)
@@ -938,7 +937,6 @@ function SoilFertilityManager:onSensorPestInput()
 end
 
 function SoilFertilityManager:onSensorDiseaseInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleDisease(vehicle.id)
@@ -947,7 +945,6 @@ function SoilFertilityManager:onSensorDiseaseInput()
 end
 
 function SoilFertilityManager:onSensorNutrientInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleNutrient(vehicle.id)
@@ -958,7 +955,6 @@ end
 -- ── System 2: See & Spray input callbacks ─────────────────
 
 function SoilFertilityManager:onSeeSprayPestInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayPest(vehicle.id)
@@ -967,7 +963,6 @@ function SoilFertilityManager:onSeeSprayPestInput()
 end
 
 function SoilFertilityManager:onSeeSprayDiseaseInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayDisease(vehicle.id)
@@ -976,7 +971,6 @@ function SoilFertilityManager:onSeeSprayDiseaseInput()
 end
 
 function SoilFertilityManager:onSeeSprayWeedInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleSeeSprayWeed(vehicle.id)
@@ -987,7 +981,6 @@ end
 -- ── System 3: Variable Rate input callback ─────────────────
 
 function SoilFertilityManager:onVariableRateInput()
-
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleVariableRate(vehicle.id)
@@ -1620,6 +1613,15 @@ function SoilFertilityManager:delete()
         self.vehicleSettingsPanelEventId = nil
     end
 
+    if self.minimapZoomEventId and g_inputBinding then
+        g_inputBinding:removeActionEvent(self.minimapZoomEventId)
+        self.minimapZoomEventId = nil
+    end
+
+    if self.vehicleMinimapZoomEventId and g_inputBinding then
+        g_inputBinding:removeActionEvent(self.vehicleMinimapZoomEventId)
+        self.vehicleMinimapZoomEventId = nil
+    end
 
     if self.soilReportDialog then
         if g_gui then g_gui:closeDialogByName("SoilReportDialog") end

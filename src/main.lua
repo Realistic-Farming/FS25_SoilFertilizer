@@ -183,7 +183,7 @@ local function loadedMission(mission, node)
             if tmpl then
                 -- Our 11 solid fill types that need ground-tipping support.
                 local solidTypes = {
-                    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH",
+                    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
                     "GYPSUM", "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE",
                 }
                 local registered = 0
