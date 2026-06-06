@@ -818,6 +818,24 @@ function SoilFieldBatchSyncEvent:run(connection)
             g_SoilFertilityManager.soilMapOverlay:requestRefresh()
         end
 
+        -- Seed GRLE layers from the just-received fieldData so the DMV minimap
+        -- heatmap is correct on join. On pure dedi-server clients the startup seed
+        -- in SoilFertilityManager ran before fieldData arrived, so the GRLE was
+        -- blank. Skipped on listen-server hosts where the sprayer hook owns GRLE.
+        if g_server == nil then
+            local layerSys = soilSystem.layerSystem
+            if layerSys and layerSys.available then
+                for fieldId, field in pairs(soilSystem.fieldData) do
+                    local fsField = g_fieldManager and g_fieldManager.fields
+                                 and g_fieldManager.fields[fieldId]
+                    layerSys:writeFieldToLayers(fieldId, field, fsField)
+                end
+                local sfm = g_SoilFertilityManager
+                if sfm and sfm.soilMinimapLayer then sfm.soilMinimapLayer:markDirty() end
+                SoilLogger.info("Client: GRLE layers seeded from batch sync (%d fields)", total)
+            end
+        end
+
         -- Refresh any open UI panels
         if g_SoilFertilityManager.settingsUI then
             g_SoilFertilityManager.settingsUI:refreshUI()
@@ -1033,6 +1051,22 @@ function SoilFieldUpdateEvent:run(connection)
         end
 
         soilSys.fieldData[self.fieldId] = newField
+
+        -- On pure dedi-server clients the sprayer hook never runs locally, so the
+        -- GRLE layers (which power the DMV minimap heatmap) are never written.
+        -- Write the updated field now so the minimap stays in sync with the HUD.
+        -- Skipped on listen-server hosts (g_server ~= nil) where the hook writes
+        -- per-pixel data directly and writeFieldToLayers would smear the average.
+        if g_server == nil then
+            local layerSys = soilSys.layerSystem
+            if layerSys and layerSys.available then
+                local fsField = g_fieldManager and g_fieldManager.fields
+                             and g_fieldManager.fields[self.fieldId]
+                layerSys:writeFieldToLayers(self.fieldId, newField, fsField)
+                local sfm = g_SoilFertilityManager
+                if sfm and sfm.soilMinimapLayer then sfm.soilMinimapLayer:markDirty() end
+            end
+        end
 
         -- Refresh overlay so the map tile updates on the client without waiting for the timer
         local overlay = g_SoilFertilityManager.soilMapOverlay
