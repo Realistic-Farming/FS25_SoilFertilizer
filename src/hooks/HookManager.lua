@@ -1112,11 +1112,13 @@ function HookManager:installSectionControlHook()
             local tips = sprayerSelf._sfSectionTip
 
             for i, section in ipairs(vww.sections) do
-                -- Only suppress sections VWW has activated. isCenter sections are never
-                -- added to sectionsLeft/Right so VWW never touches them — leave them alone.
-                -- installSectionStatePreserver() restores isActive after work areas process.
-                if section.isActive and not section.isCenter then
-                    -- Midpoint between root and section outer edge (from preserver cache)
+                -- Center sections CAN be suppressed: getIsWorkAreaActive() checks workArea.sectionIndex
+                -- → section.isActive for all sections including center. Center has no tip node, so its
+                -- position check falls back to rootX/rootZ (vehicle center = center strip position).
+                -- installSectionStatePreserver() restores isActive for all sections after work areas process.
+                if section.isActive then
+                    -- Midpoint between root and section outer edge (from preserver cache).
+                    -- Center section has no tip node → tips[i] = nil → falls back to rootX/rootZ.
                     local tip = tips and tips[i]
                     local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
                     local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
