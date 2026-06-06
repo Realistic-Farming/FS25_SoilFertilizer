@@ -1003,6 +1003,7 @@ function HookManager:installSectionControlHook()
     local diseaseFillTypes = {}   -- ftName → true  (fungicides)
     local kOnlyFillTypes   = {}   -- ftName → true  (K dominant, P=0)
     local pDomFillTypes    = {}   -- ftName → true  (P dominant, K=0)
+    local nDomFillTypes    = {}   -- ftName → true  (N only, P=0 K=0)
 
     local pp = SoilConstants.PEST_PRESSURE
     if pp and pp.INSECTICIDE_TYPES then
@@ -1020,6 +1021,7 @@ function HookManager:installSectionControlHook()
             local k = prof.K or 0
             if k > 0 and p == 0 then kOnlyFillTypes[name] = true end
             if p > 0 and k == 0 then pDomFillTypes[name]  = true end
+            if n > 0 and p == 0 and k == 0 then nDomFillTypes[name] = true end
         end
     end
 
@@ -1090,13 +1092,14 @@ function HookManager:installSectionControlHook()
             local isDisease = diseaseFillTypes[ft.name] == true
             local isKOnly   = kOnlyFillTypes[ft.name]   == true
             local isPDom    = pDomFillTypes[ft.name]    == true
+            local isNDom    = nDomFillTypes[ft.name]    == true
 
-            if not isPest and not isDisease and not isKOnly and not isPDom then return end
+            if not isPest and not isDisease and not isKOnly and not isPDom and not isNDom then return end
 
             -- Check which sensors are active for this vehicle
-            local pestOn    = isPest                and sensorMgr:isPestEnabled(vehicleId)
-            local diseaseOn = isDisease             and sensorMgr:isDiseaseEnabled(vehicleId)
-            local nutrientOn = (isKOnly or isPDom)  and sensorMgr:isNutrientEnabled(vehicleId)
+            local pestOn     = isPest                          and sensorMgr:isPestEnabled(vehicleId)
+            local diseaseOn  = isDisease                       and sensorMgr:isDiseaseEnabled(vehicleId)
+            local nutrientOn = (isKOnly or isPDom or isNDom)  and sensorMgr:isNutrientEnabled(vehicleId)
 
             if not pestOn and not diseaseOn and not nutrientOn then return end
 
@@ -1125,6 +1128,9 @@ function HookManager:installSectionControlHook()
                             local skip = false
                             if pestOn    then skip = skip or ((fd.pestPressure    or 0) <= 0) end
                             if diseaseOn then skip = skip or ((fd.diseasePressure or 0) <= 0) end
+                            if nutrientOn and isNDom then
+                                skip = skip or ((fd.nitrogen   or 0) >= NUTRIENT_TARGET)
+                            end
                             if nutrientOn and isKOnly then
                                 skip = skip or ((fd.potassium  or 0) >= NUTRIENT_TARGET)
                             end
@@ -1144,7 +1150,7 @@ function HookManager:installSectionControlHook()
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF section sensor)")
 
-    SoilLogger.info("[OK] SF Smart Sensor hook installed — pest/disease/nutrient K+P section control active")
+    SoilLogger.info("[OK] SF Smart Sensor hook installed — pest/disease/nutrient N+K+P section control active")
     return true
 end
 
