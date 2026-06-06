@@ -79,15 +79,6 @@ function SoilHUD.new(soilSystem, settings)
     self.hoverCorner      = nil
     self.animTimer        = 0
 
-    -- Mini-Report state (persisted in settings, managed here)
-    self.reportX         = 0.18   -- Initial absolute default (near minimap)
-    self.reportY         = 0.015
-    self.reportScale     = 1.0
-    self.draggingReport  = false
-    self.reportDragOffsetX = 0
-    self.reportDragOffsetY = 0
-    self.miniReportRect  = { x=0, y=0, w=0, h=0 }
-
     -- Sub-panel free positioning (independent mode)
     self.freePos        = { smartSensor = {}, seeAndSpray = {}, varRate = {} }
     self.draggingSubKey = nil   -- key into freePos while dragging a sub-panel
@@ -148,11 +139,6 @@ function SoilHUD:initialize()
     if self.initialized then return true end
     self:updatePosition()
     self:loadLayout()   -- override preset with saved position/scale if available
-    
-    -- Sync initial report coordinates to settings if they were loaded
-    self.reportX     = self.settings.miniReportX or self.reportX
-    self.reportY     = self.settings.miniReportY or self.reportY
-    self.reportScale = self.settings.miniReportScale or self.reportScale
 
     if createImageOverlay ~= nil then
         self.fillOverlay = createImageOverlay("dataS/menu/base/graph_pixel.dds")
@@ -494,31 +480,7 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
             return true
         end
 
-        -- 2. Check Mini-Report Panel
-        if self.miniReportRect then
-            local r = self.miniReportRect
-            local cornerSize = 0.015
-            local inCorner = posX >= (r.x + r.w - cornerSize) and posX <= (r.x + r.w) and
-                             posY >= r.y and posY <= (r.y + cornerSize)
-
-            if inCorner then
-                self.resizingReport = true ; self.draggingReport = false
-                self.reportResizeStartX = posX ; self.reportResizeStartY = posY
-                self.reportResizeStartScale = self.settings.miniReportScale or 1.0
-                self.movedInEditMode = true
-                return true
-            end
-
-            if posX >= r.x and posX <= r.x + r.w and posY >= r.y and posY <= r.y + r.h then
-                self.draggingReport = true ; self.resizingReport = false
-                self.reportDragOffsetX = posX - (self.settings.miniReportX or 0.18)
-                self.reportDragOffsetY = posY - (self.settings.miniReportY or 0.015)
-                self.movedInEditMode = true
-                return true
-            end
-        end
-
-        -- 3. Check sub-panel collapse buttons (must be before drag so click doesn't start drag)
+        -- 2. Check sub-panel collapse buttons (must be before drag so click doesn't start drag)
         local sfm = g_SoilFertilityManager
         if sfm then
             local subPanels = {
@@ -559,9 +521,8 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
             self:saveLayout()
             return true
         end
-        if self.dragging or self.resizing or self.draggingReport or self.resizingReport then
+        if self.dragging or self.resizing then
             self.dragging = false ; self.resizing = false
-            self.draggingReport = false ; self.resizingReport = false
             self:clampPosition()
             return true
         end
@@ -581,24 +542,6 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         local pw = SoilHUD.BASE_W * self.scale
         self.panelX = math.max(0.0, math.min(1.0 - pw, posX - self.dragOffsetX))
         self.panelY = math.max(0.05, math.min(0.95, posY - self.dragOffsetY))
-        return true
-    end
-
-    if self.draggingReport then
-        self.settings.miniReportX = posX - self.reportDragOffsetX
-        self.settings.miniReportY = posY - self.reportDragOffsetY
-        return true
-    end
-
-    if self.resizingReport then
-        local px, py = self.settings.miniReportX or 0.18, self.settings.miniReportY or 0.015
-        local pw, ph = self.miniReportRect.w, self.miniReportRect.h
-        local cx, cy = px + pw * 0.5, py + ph * 0.5
-        local startDist = math.sqrt((self.reportResizeStartX-cx)^2 + (self.reportResizeStartY-cy)^2)
-        local currDist  = math.sqrt((posX-cx)^2 + (posY-cy)^2)
-        local delta = (currDist - startDist) * 2.5
-        self.settings.miniReportScale = math.max(0.5,
-            math.min(2.0, self.reportResizeStartScale + delta))
         return true
     end
 
@@ -1247,9 +1190,6 @@ function SoilHUD:draw()
 
     self:drawSprayerRatePanel()
 
-    if self.settings.showMiniReport then
-        self:drawMiniReport()
-    end
 end
 
 -- ── Main panel ───────────────────────────────────────────
@@ -1892,216 +1832,6 @@ function SoilHUD:_calcCropTargetRateIdx(fillType)
     return bestIdx
 end
 
--- ── Mini Report (near minimap) ────────────────────────────
-function SoilHUD:drawMiniReport()
-    -- ── Sizing ───────────────────────────────────────────
-    local s  = self.settings.miniReportScale or 1.0
-    local rx = self.settings.miniReportX     or 0.18
-    local ry = self.settings.miniReportY     or 0.015
-
-    -- Compact: ~60% of BASE_W, title + 5 slim rows
-    local SLIM_H = SoilHUD.BAR_H + 0.005   -- row height for mini bars
-    local rw = SoilHUD.BASE_W * s * 0.60
-    local rh = (SoilHUD.TITLE_H + SoilHUD.PAD + SLIM_H * 5 + SoilHUD.PAD * 0.75) * s
-
-    -- Update hit-test rect every frame (drag in edit mode)
-    self.miniReportRect = { x = rx, y = ry, w = rw, h = rh }
-
-    -- ── Sample internal cell data at player position ────────────
-    local wx = self.cachedPlayerX
-    local wz = self.cachedPlayerZ
-
-    local samples  = nil
-    local cellLabel = nil
-    local isCell   = false
-
-    -- 1. Try to get per-cell zoneData first; fall back to field-level averages.
-    if wx and wz and self.cachedFieldId and self.cachedFieldId > 0 then
-        local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
-        if soilSys then
-            local field = soilSys:getOrCreateField(self.cachedFieldId, false)
-            if field then
-                local cell = nil
-                if field.zoneData then
-                    local cs = SoilConstants.ZONE.CELL_SIZE
-                    local cx = math.floor(wx / cs)
-                    local cz = math.floor(wz / cs)
-                    local cellKey = tostring(cx * 10000 + cz)
-                    cell = field.zoneData[cellKey]
-                    if cell then
-                        cellLabel = string.format("C %d\xC2\xB7%d", cx, cz)
-                        isCell = true
-                    end
-                end
-
-                -- Cell uses N/P/K/OM; field uses nitrogen/phosphorus/potassium/organicMatter
-                local n, p, k, ph, om
-                if cell then
-                    n, p, k, ph, om = cell.N, cell.P, cell.K, cell.pH, cell.OM
-                elseif field.nitrogen ~= nil then
-                    n, p, k, ph, om = field.nitrogen, field.phosphorus, field.potassium, field.pH, field.organicMatter
-                    cellLabel = g_i18n:hasText("sf_field_avg") and g_i18n:getText("sf_field_avg") or "Field avg"
-                end
-                if n ~= nil then
-                    samples = {
-                        { label="N",  val=n,  min=0,   max=100, unit=""  },
-                        { label="P",  val=p,  min=0,   max=100, unit=""  },
-                        { label="K",  val=k,  min=0,   max=100, unit=""  },
-                        { label="pH", val=ph, min=5.0, max=7.5, unit=""  },
-                        { label="OM", val=om, min=0,   max=10,  unit="%" },
-                    }
-                end
-            end
-        end
-    end
-
-    -- Debounce (#531): only switch between cell and field-avg display after 2 seconds of stability.
-    -- As a sprayer drives over unsprayed cells the source would otherwise flip every few seconds.
-    if samples then
-        local DEBOUNCE_MS = 2000
-        if self._miniLastIsCell ~= isCell then
-            if not self._miniModePendingAt then
-                self._miniModePendingAt = self.animTimer
-            end
-            if (self.animTimer - self._miniModePendingAt) < DEBOUNCE_MS and self._miniStableSamples then
-                samples   = self._miniStableSamples
-                cellLabel = self._miniStableCellLabel
-            else
-                self._miniLastIsCell      = isCell
-                self._miniModePendingAt   = nil
-                self._miniStableSamples   = samples
-                self._miniStableCellLabel = cellLabel
-            end
-        else
-            self._miniModePendingAt   = nil
-            self._miniStableSamples   = samples
-            self._miniStableCellLabel = cellLabel
-        end
-    else
-        self._miniModePendingAt = nil
-        self._miniLastIsCell    = nil
-    end
-
-    -- 2. If still no data, samples remains nil (player off-field or system not ready).
-
-    -- ── Background ───────────────────────────────────────
-    local alpha = SoilConstants.HUD.TRANSPARENCY_LEVELS[self.settings.hudTransparency or 3]
-    self:drawRect(rx + 0.002*s, ry - 0.002*s, rw, rh, SoilHUD.C_SHADOW)
-    self:drawRect(rx, ry, rw, rh, SoilHUD.C_BG, alpha)
-
-    -- Title bar
-    local titleH = SoilHUD.TITLE_H * s
-    self:drawRect(rx, ry + rh - titleH, rw, titleH, SoilHUD.C_TITLE_BG)
-
-    -- Border
-    local bw = 0.001
-    self:drawRect(rx,          ry,           rw, bw, SoilHUD.C_BORDER)
-    self:drawRect(rx,          ry + rh - bw, rw, bw, SoilHUD.C_BORDER)
-    self:drawRect(rx,          ry,           bw, rh, SoilHUD.C_BORDER)
-    self:drawRect(rx + rw - bw, ry,          bw, rh, SoilHUD.C_BORDER)
-
-    -- Edit-mode pulse
-    if self.editMode then
-        local pulse = 0.55 + 0.45 * math.sin(self.animTimer * 0.004)
-        local ebw = 0.0015
-        self:drawRect(rx,             ry,             rw, ebw, {1.0, 0.55, 0.10, pulse})
-        self:drawRect(rx,             ry + rh - ebw,  rw, ebw, {1.0, 0.55, 0.10, pulse})
-        self:drawRect(rx,             ry,             ebw, rh, {1.0, 0.55, 0.10, pulse})
-        self:drawRect(rx + rw - ebw,  ry,             ebw, rh, {1.0, 0.55, 0.10, pulse})
-
-        -- Resize handle (bottom right)
-        local hs = 0.015
-        self:drawRect(rx + rw - hs, ry, hs, hs, SoilHUD.C_EDIT_HDL, 0.85)
-    end
-
-    -- ── Title text ───────────────────────────────────────
-    local fontMult = SoilConstants.HUD.FONT_SIZE_MULTIPLIERS[self.settings.hudFontSize or 2]
-    local titleY   = ry + rh - titleH + (titleH - 0.009*s) * 0.45
-    local titleStr = g_i18n:getText("sf_cell_report")
-    if cellLabel then titleStr = titleStr .. "  " .. cellLabel end
-
-    setTextBold(true)
-    setTextAlignment(RenderText.ALIGN_CENTER)
-    setTextColor(1, 1, 1, 0.90)
-    renderText(rx + rw * 0.5, titleY, 0.009 * fontMult * s, titleStr)
-    setTextBold(false)
-
-    -- ── Bars ─────────────────────────────────────────────
-    local pad    = SoilHUD.PAD * s
-    local barH   = SoilHUD.BAR_H * s
-    local slimH  = SLIM_H * s
-    local lblW   = 0.018 * s        -- label column width
-    local valW   = 0.022 * s        -- value column width (right side)
-    local barX   = rx + pad + lblW
-    local barW   = rw - pad*2 - lblW - valW
-    local cy     = ry + rh - titleH - pad - slimH  -- top of first row
-
-    if samples then
-        for _, row in ipairs(samples) do
-            local frac  = math.max(0, math.min(1, (row.val - row.min) / (row.max - row.min)))
-
-            -- Status color: thresholds at 33% / 66% of range
-            local col
-            local barPoor, barFair, barGood = self:palette()
-            if row.label == "pH" then
-                -- pH sweet-spot 6.0-7.0; outside is worse
-                local norm = (row.val - 5.0) / 2.5  -- 0=5.0, 1=7.5
-                if norm >= 0.40 and norm <= 0.80 then col = barGood
-                elseif norm >= 0.20 and norm <= 0.90 then col = barFair
-                else col = barPoor end
-            else
-                if frac >= 0.66 then col = barGood
-                elseif frac >= 0.33 then col = barFair
-                else col = barPoor end
-            end
-
-            -- Bar track
-            self:drawRect(barX, cy + (slimH - barH) * 0.5, barW, barH, SoilHUD.C_BAR_BG)
-            -- Bar fill
-            if frac > 0 then
-                self:drawRect(barX, cy + (slimH - barH) * 0.5, barW * frac, barH, col)
-            end
-
-            -- Label (left)
-            setTextAlignment(RenderText.ALIGN_LEFT)
-            setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], 1)
-            renderText(rx + pad, cy + (slimH - 0.007*s) * 0.35, 0.007 * fontMult * s, row.label)
-
-            -- Value (right)
-            local valStr
-            if row.label == "pH" then
-                valStr = string.format("%.1f", row.val)
-            elseif row.label == "OM" then
-                valStr = string.format("%.1f%%", row.val)
-            else
-                valStr = string.format("%d", math.floor(row.val + 0.5))
-            end
-            setTextAlignment(RenderText.ALIGN_RIGHT)
-            setTextColor(col[1], col[2], col[3], 1)
-            renderText(rx + rw - pad, cy + (slimH - 0.007*s) * 0.35, 0.007 * fontMult * s, valStr)
-
-            cy = cy - slimH
-        end
-    else
-        -- Fallback: no cell data or off-field
-        setTextAlignment(RenderText.ALIGN_CENTER)
-        
-        -- Title (Big Red)
-        local titleText = g_i18n:hasText("sf_cell_no_data_title") and g_i18n:getText("sf_cell_no_data_title") or "No cell data found"
-        setTextColor(SoilHUD.C_POOR[1], SoilHUD.C_POOR[2], SoilHUD.C_POOR[3], 1.0)
-        renderText(rx + rw * 0.5, ry + (rh - titleH) * 0.55, 0.010 * fontMult * s, titleText)
-
-        -- Description (Smaller, Dim)
-        local descText = (wx and wz) and g_i18n:getText("sf_cell_no_data") or g_i18n:getText("sf_no_field")
-        setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.8)
-        renderText(rx + rw * 0.5, ry + (rh - titleH) * 0.30, 0.0075 * fontMult * s, descText)
-    end
-
-    -- Reset
-    setTextBold(false)
-    setTextAlignment(RenderText.ALIGN_LEFT)
-    setTextColor(1, 1, 1, 1)
-end
 
 function SoilHUD:drawSprayerRatePanel()
     local sprayer = self:getCurrentSprayer()

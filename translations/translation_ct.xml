@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Simple" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realista" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Sincronitzant dades del sòl..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="No s'ha pogut carregar la propietat del camp. Tanqueu i torneu a obrir l'informe." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Costos de fertilitzant" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Activa/desactiva els costos realistes de compra de fertilitzants" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Notificacions" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Activa/desactiva les notificacions de sòl i fertilitzants" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Mostrar HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Mostra/amaga la superposició de l'HUD d'informació del sòl (F8 per alternar temporalment)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Mostrar informe de cel·la" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Mostra/amaga la superposició de l'informe de cel·la del minimapa" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="Posició de l'HUD" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Informe de sòl i fertilitzants" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Camps seguits:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Necessiten fertilitzant:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Salut de la granja:" eh="a5330ade" />
-    <e k="sf_report_back" v="Enrere" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Dificultat:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Camp" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Últim cultiu" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Fert?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="No hi ha dades del sòl disponibles. Camineu sobre un camp per començar el seguiment." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Anterior" eh="14230d11" />
-    <e k="sf_report_next" v="Següent" eh="10ac3d04" />
-    <e k="sf_report_yes" v="SÍ" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Cap" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Necessita nitrogen" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Nitrogen baix" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Necessita fòsfor" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Fòsfor baix" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Necessita potassi" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Potassi baix" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Ajustar pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Monitoritzar pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Augmentar la matèria orgànica" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Mantenir la matèria orgànica" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Risc de plagues" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Risc de malalties" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Necessita:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Salut del sòl: Òptima" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Bo" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Regular" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Pobre" eh="0e94d017" />
     <e k="sf_uan32_title" v="Fertilitzant UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Fertilitzant UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Amoníac anhidre (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Potassa líquida (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Insecticida" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Fungicida" eh="e8512698" />
-    <e k="sf_report_page_info" v="Camps %d-%d de %d  |  Pàgina %d de %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Post-collita · Fertilitzar" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Arrossegar: moure   Cantó: redimensionar   RMB/Shift+H: fet" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: moure/redimensionar" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Nitrogen: Òptim" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Fòsfor: Òptim" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Potassi: Òptim" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Monitoritzar" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Ajustar" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Mantenir" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Augmentar" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Baixa" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Moderada" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Alta" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Basat en N/P/K vs llindar òptim" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Pèrdua de rendiment ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -372,9 +323,6 @@
 
     <e k="sf_crop_rotation_short" v="Rotació de cultius" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Activa/desactiva el bonus de rotació de cultius i la fatiga del monocultiu (les seqüències de lleguminoses restauren el nitrogen; les temporades consecutives del mateix cultiu augmenten l'esgotament)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Bonus de rotació" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Fatiga: mateix cultiu" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Rotació: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Guix (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Compost (Orgànic)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Biosòlids (N+P)" eh="f0c901dc" />
@@ -652,7 +600,6 @@
     <e k="sf_desc_fertilizerCosts" v="Cost real al joc per als fertilitzants" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Notificacions de l'estat del sòl al joc" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Mostra la superposició de l'HUD del sòl" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Mostra la superposició de l'informe de cel·la del minimapa" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Posició d'ancoratge predeterminada de l'HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Paleta de colors per als elements de l'HUD" eh="97271907" />

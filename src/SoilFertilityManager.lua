@@ -87,12 +87,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil HUD created")
         end
 
-        -- Soil Report dialog (K key)
-        if SoilReportDialog and g_gui then
-            self.soilReportDialog = SoilReportDialog.getInstance(modDirectory)
-            SoilLogger.info("Soil Report dialog created")
-        end
-
         -- Field Detail dialog (opened from PDA Screen fields list)
         if SoilFieldDetailDialog and g_gui then
             SoilFieldDetailDialog.register(modDirectory)
@@ -213,19 +207,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     SoilLogger.warning("HUD toggle (J) PLAYER registration failed")
                 end
 
-                if g_SoilFertilityManager.soilReportDialog then
-                    local repOk, repId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_SOIL_REPORT, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onSoilReportInput,
-                        false, true, false, true
-                    )
-                    if repOk and repId then
-                        g_SoilFertilityManager.soilReportEventId = repId
-                        SoilLogger.info("Soil Report (K) registered in PLAYER context")
-                    end
-                end
-
-
                 -- Map layer cycle (Shift+M) — registered in PLAYER context only
                 -- (pause-menu map is accessible regardless of context, but the key
                 --  is intended for on-foot use; Shift+M avoids VEHICLE conflicts)
@@ -338,12 +319,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 local mgr = g_SoilFertilityManager
                 local staleIds = {
                     -- VEHICLE context IDs
-                    "vehicleHUDEventId", "vehicleReportEventId",
+                    "vehicleHUDEventId",
                     "rateUpEventId",     "rateDownEventId",
                     "toggleAutoEventId", "vehicleSettingsPanelEventId",
                     "vehicleHudDragEventId", "vehicleMinimapZoomEventId",
                     -- PLAYER context IDs (invalidated as a side-effect of the above removes)
-                    "toggleHUDEventId", "soilReportEventId",
+                    "toggleHUDEventId",
                     "cycleMapLayerEventId", "settingsPanelEventId", "hudDragEventId",
                     "minimapZoomEventId",
                 }
@@ -367,20 +348,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     g_SoilFertilityManager.vehicleHUDEventId = vHudId
                     SoilLogger.debug("HUD toggle (J) registered in VEHICLE context")
                 end
-
-                -- Soil Report (K) in vehicle
-                if g_SoilFertilityManager.soilReportDialog then
-                    local vRepOk, vRepId = binding:registerActionEvent(
-                        InputAction.SF_SOIL_REPORT, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onSoilReportInput,
-                        false, true, false, true
-                    )
-                    if vRepOk and vRepId then
-                        g_SoilFertilityManager.vehicleReportEventId = vRepId
-                        SoilLogger.debug("Soil Report (K) registered in VEHICLE context")
-                    end
-                end
-
 
                 -- Rate UP (])
                 local upOk, upId = binding:registerActionEvent(
@@ -524,18 +491,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 if pHudOk and pHudId then
                     g_SoilFertilityManager.toggleHUDEventId = pHudId
                     SoilLogger.debug("HUD toggle (J) re-registered in PLAYER context after vehicle exit")
-                end
-
-                if g_SoilFertilityManager.soilReportDialog then
-                    local pRepOk, pRepId = binding:registerActionEvent(
-                        InputAction.SF_SOIL_REPORT, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onSoilReportInput,
-                        false, true, false, true
-                    )
-                    if pRepOk and pRepId then
-                        g_SoilFertilityManager.soilReportEventId = pRepId
-                        SoilLogger.debug("Soil Report (K) re-registered in PLAYER context after vehicle exit")
-                    end
                 end
 
                 if g_SoilFertilityManager.soilMapOverlay then
@@ -792,14 +747,6 @@ function SoilFertilityManager:onHUDDragInput()
         self.soilHUD:enterEditMode()
         if self.sprayerInfoPanel then self.sprayerInfoPanel:enterEditMode() end
         if self.harvesterPanel   then self.harvesterPanel:enterEditMode()   end
-    end
-end
-
--- Input callback for Soil Report dialog (K)
-function SoilFertilityManager:onSoilReportInput()
-    if not (self.settings and self.settings.enabled) then return end
-    if self.soilReportDialog then
-        self.soilReportDialog:show()
     end
 end
 
@@ -1253,10 +1200,6 @@ function SoilFertilityManager:update(dt)
         self.soilMapOverlay:updateMinimapZoom(dt)
     end
 
-    if self.soilReportDialog then
-        self.soilReportDialog:update(dt)
-    end
-
     -- FIX: Only update HUD if it exists (client side only)
     if self.soilHUD then
         -- Add pcall to prevent crashes if HUD has issues
@@ -1528,11 +1471,6 @@ function SoilFertilityManager:delete()
         self.toggleHUDEventId = nil
     end
 
-    if self.soilReportEventId and g_inputBinding then
-        g_inputBinding:removeActionEvent(self.soilReportEventId)
-        self.soilReportEventId = nil
-    end
-
     -- Clean up VEHICLE context events
     if self.vehicleHUDEventId and g_inputBinding then
         g_inputBinding:removeActionEvent(self.vehicleHUDEventId)
@@ -1621,12 +1559,6 @@ function SoilFertilityManager:delete()
     if self.vehicleMinimapZoomEventId and g_inputBinding then
         g_inputBinding:removeActionEvent(self.vehicleMinimapZoomEventId)
         self.vehicleMinimapZoomEventId = nil
-    end
-
-    if self.soilReportDialog then
-        if g_gui then g_gui:closeDialogByName("SoilReportDialog") end
-        self.soilReportDialog = nil
-        SoilReportDialog.instance = nil
     end
 
     if self.soilMinimapLayer then

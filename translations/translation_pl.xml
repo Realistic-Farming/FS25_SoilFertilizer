@@ -31,16 +31,12 @@
     <e k="sf_diff_1" v="Prosty" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realistyczny" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_ui_soilReport_syncing" v="Synchronizowanie danych gleby..." eh="03f01c4d" />
-    <e k="sf_ui_soilReport_syncTimeout" v="Nie można załadować własności pola. Proszę zamknąć i ponownie otworzyć raport." eh="9f699982" />
     <e k="sf_fertilizer_cost_short" v="Koszty nawozów" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Włącz/wyłącz realistyczne koszty zakupu nawozów" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Powiadomienia" eh="a274f4d4" />
     <e k="sf_notifications_long" v="Włącz/wyłącz powiadomienia o glebie i nawozach" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Pokaż HUD" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Pokaż/ukryj nakładkę HUD z informacjami o glebie (F8, aby przełączyć tymczasowo)" eh="4e2e11b6" />
-    <e k="sf_show_mini_report_short" v="Pokaż raport komórki" eh="6b14e786" />
-    <e k="sf_show_mini_report_long" v="Pokaż/ukryj nakładkę raportu komórki na minimapie" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
     <e k="sf_hud_position_short" v="Pozycja HUD" eh="5ac371f2" />
@@ -114,38 +110,6 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_report_title" v="Raport Gleby i Nawożenia" eh="3b4e9448" />
-    <e k="sf_report_fields_tracked" v="Śledzone pola:" eh="7b1e59b8" />
-    <e k="sf_report_need_fert" v="Wymaga nawożenia:" eh="110b60f2" />
-    <e k="sf_report_farm_health" v="Zdrowie gospodarstwa:" eh="a5330ade" />
-    <e k="sf_report_back" v="Wstecz" eh="0557fa92" />
-    <e k="sf_report_difficulty" v="Trudność:" eh="3abaf54f" />
-    <e k="sf_report_col_field" v="Pole" eh="6f16a5f8" />
-    <e k="sf_report_col_last_crop" v="Ost. uprawa" eh="ff41e5eb" />
-    <e k="sf_report_col_fert" v="Nawóz?" eh="9e6d0eb4" />
-    <e k="sf_report_no_data" v="Brak dostępnych danych glebowych. Wejdź na pole, aby rozpocząć śledzenie." eh="1528a4cb" />
-    <e k="sf_report_prev" v="Poprz." eh="14230d11" />
-    <e k="sf_report_next" v="Nast." eh="10ac3d04" />
-    <e k="sf_report_yes" v="TAK" eh="7469a286" />
-    <e k="sf_report_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_report_none" v="Brak" eh="6adf97f8" />
-    <e k="sf_report_rec_n_poor" v="Potrzebny azot" eh="5dca0711" />
-    <e k="sf_report_rec_n_fair" v="Niski poziom azotu" eh="35ad072d" />
-    <e k="sf_report_rec_p_poor" v="Potrzebny fosfor" eh="e8fa326f" />
-    <e k="sf_report_rec_p_fair" v="Niski poziom fosforu" eh="077e12cf" />
-    <e k="sf_report_rec_k_poor" v="Potrzebny potas" eh="f23194e0" />
-    <e k="sf_report_rec_k_fair" v="Niski poziom potasu" eh="2006c0a2" />
-    <e k="sf_report_rec_ph_adjust" v="Dostosuj pH" eh="84f6bbbc" />
-    <e k="sf_report_rec_ph_monitor" v="Monitoruj pH" eh="6dfcded4" />
-    <e k="sf_report_rec_om_increase" v="Zwiększ materię organiczną" eh="c2a930af" />
-    <e k="sf_report_rec_om_maintain" v="Utrzymaj materię organiczną" eh="e7655847" />
-    <e k="sf_report_rec_pest" v="Ryzyko szkodników" eh="22e0f3bf" />
-    <e k="sf_report_rec_disease" v="Ryzyko chorób" eh="c342956b" />
-    <e k="sf_report_rec_needs" v="Potrzeby:" eh="3e6d95cf" />
-    <e k="sf_report_rec_optimal" v="Zdrowie gleby: Optymalne" eh="6ee9d19b" />
-    <e k="sf_report_rec_good" v="Dobre" eh="0c6ad70b" />
-    <e k="sf_report_rec_fair" v="Dostateczne" eh="f7f20cf0" />
-    <e k="sf_report_rec_poor" v="Słabe" eh="0e94d017" />
     <e k="sf_uan32_title" v="Nawóz UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Nawóz UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Amoniak bezwodny (N)" eh="3fc85c02" />
@@ -164,7 +128,6 @@
     <e k="sf_liquid_potash_title" v="Potas w płynie (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Insektycyd" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Fungicyd" eh="e8512698" />
-    <e k="sf_report_page_info" v="Pola %d-%d z %d  |  Strona %d z %d" eh="8db851d1" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
@@ -232,18 +195,6 @@
     <e k="sf_hud_post_harvest" v="Po zbiorach · Nawożenie" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Przeciągnij: przesuń   Róg: zmień rozmiar   PPM/Shift+H: gotowe" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: przesuń/zmień rozmiar" eh="f1d565b1" />
-    <e k="sf_report_detail_n_ok" v="Azot: Optymalny" eh="13782bd9" />
-    <e k="sf_report_detail_p_ok" v="Fosfor: Optymalny" eh="dbc90f11" />
-    <e k="sf_report_detail_k_ok" v="Potas: Optymalny" eh="0197b4ba" />
-    <e k="sf_report_status_monitor" v="Monitoruj" eh="d2986ac8" />
-    <e k="sf_report_status_adjust" v="Dostosuj" eh="51d7a685" />
-    <e k="sf_report_status_maintain" v="Utrzymaj" eh="ade01a5a" />
-    <e k="sf_report_status_increase" v="Zwiększ" eh="aac247ca" />
-    <e k="sf_report_pressure_low" v="Niska" eh="28d0edd0" />
-    <e k="sf_report_pressure_moderate" v="Umiarkowana" eh="1eb79d43" />
-    <e k="sf_report_pressure_high" v="Wysoka" eh="655d20c1" />
-    <e k="sf_report_yield_hint" v="Na podstawie N/P/K vs próg optymalny" eh="022663e0" />
-    <e k="sf_report_yield_loss" v="Strata plonu ~-%d%%" eh="d64d5d59" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together." eh="8c645296" />
 
@@ -372,9 +323,6 @@
 
     <e k="sf_crop_rotation_short" v="Płodozmian" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Włącz/wyłącz bonus za płodozmian i zmęczenie monokulturą (rośliny strączkowe przywracają azot; uprawa tej samej rośliny pod rząd zwiększa wyczerpywanie)" eh="958b4212" />
-    <e k="sf_report_rotation_bonus" v="Bonus za rotację" eh="2831a7ac" />
-    <e k="sf_report_rotation_fatigue" v="Zmęczenie: Ta sama uprawa" eh="46135880" />
-    <e k="sf_report_rotation_ok" v="Rotacja: OK" eh="df66b3be" />
     <e k="sf_gypsum_title" v="Gips (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompost (Organiczny)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Osady (N+P)" eh="f0c901dc" />
@@ -640,7 +588,6 @@
     <e k="sf_desc_fertilizerCosts" v="Realne koszty zakupu nawozów w grze" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="Powiadomienia o statusie gleby w grze" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Pokaż nakładkę HUD gleby" eh="fa8b9224" />
-    <e k="sf_desc_showMiniReport" v="Pokaż nakładkę raportu komórki na minimapie" eh="b847f98c" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
     <e k="sf_desc_hudPosition" v="Predefiniowana pozycja zakotwiczenia HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Paleta kolorów dla elementów HUD" eh="97271907" />

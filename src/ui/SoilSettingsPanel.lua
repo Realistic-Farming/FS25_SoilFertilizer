@@ -130,7 +130,7 @@ local CATEGORIES = {
         sections = {
             {
                 headerKey = "sf_panel_hdr_visibility",
-                items     = { "showHUD", "showMiniReport", "showWorkTrail", "showFieldInfoBox", "useImperialUnits", "colorblindMode" }
+                items     = { "showHUD", "showWorkTrail", "showFieldInfoBox", "useImperialUnits", "colorblindMode" }
             },
             {
                 headerKey = "sf_panel_hdr_hud_style",
@@ -196,7 +196,6 @@ local SETTING_DESCS = {
     diseaseMoisture   = "sf_desc_diseaseMoisture",
     compactionEnabled = "sf_desc_compactionEnabled",
     showHUD           = "sf_desc_showHUD",
-    showMiniReport    = "sf_desc_showMiniReport",
     showWorkTrail     = "sf_desc_showWorkTrail",
     useImperialUnits  = "sf_desc_useImperialUnits",
     hudColorTheme     = "sf_desc_hudColorTheme",
