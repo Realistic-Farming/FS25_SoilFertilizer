@@ -396,31 +396,71 @@ function SFNozzleEffects:updateExtendedSprayerNozzleEffectState(effectData, dt, 
         if section and not section.isActive then return false, 1 end
     end
 
-    -- Sub-meter field boundary: two-pass check per nozzle.
-    -- Pass 1 — GROUND_TYPE channel only: 0 = FieldGroundType.NONE (grass/road).
-    --           Uses bit32 extraction to isolate the ground-type channel from the
-    --           packed terrain detail map. Reading the full terrainDetailId gives
-    --           false non-zero results at grass because angle/spray channels have
-    --           stale data there. Pattern from ExtendedSprayer / WeedSpotSpray.
-    -- Pass 2 — farmland map: suppresses nozzles that cross onto an adjacent field
-    --           parcel where both sides are cultivated (inter-field boundary).
     local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
+
+    -- Resolve fill type once — shared by Pass 3 nutrient check and See & Spray below.
+    local sprayerSpec = self.spec_sprayer
+    local wap = sprayerSpec and sprayerSpec.workAreaParameters
+    local fillTypeIndex = wap and wap.sprayFillType
+    local ft
+    if fillTypeIndex and fillTypeIndex ~= 0 then
+        ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+    end
+
+    -- Probe nozzle world position once — reused for all three passes below.
+    local probeX, probeZ
     if effectData.probeNode then
         local ok, nx, _, nz = pcall(getWorldTranslation, effectData.probeNode)
-        if ok and nx then
-            if spec._groundTypeMapId then
-                local rawBits      = getDensityAtWorldPos(spec._groundTypeMapId, nx, 0, nz)
-                local groundTypeValue = bit32.band(
-                    bit32.rshift(rawBits, spec._groundTypeFirstCh),
-                    2 ^ spec._groundTypeNumCh - 1)
-                if groundTypeValue == 0 then return false, 1 end
+        if ok and nx then probeX, probeZ = nx, nz end
+    end
+
+    if probeX then
+        -- Pass 1: GROUND_TYPE channel — off-field (grass / road) → suppress.
+        -- Bit-extracted from the packed terrain detail map; reading the full raw value
+        -- gives false non-zero at headland grass because angle/spray bits stay stale.
+        if spec._groundTypeMapId then
+            local rawBits = getDensityAtWorldPos(spec._groundTypeMapId, probeX, 0, probeZ)
+            local groundTypeValue = bit32.band(
+                bit32.rshift(rawBits, spec._groundTypeFirstCh),
+                2 ^ spec._groundTypeNumCh - 1)
+            if groundTypeValue == 0 then return false, 1 end
+        end
+
+        -- Pass 2: farmland ID — crossing onto an adjacent parcel → suppress.
+        if g_farmlandManager then
+            local nFarmId = g_farmlandManager:getFarmlandIdAtWorldPosition(probeX, probeZ)
+            local vFarmId = spec._sfFieldId
+            if nFarmId == 0 or (vFarmId and vFarmId > 0 and nFarmId ~= vFarmId) then
+                return false, 1
             end
-            if g_farmlandManager then
-                local nFarmId = g_farmlandManager:getFarmlandIdAtWorldPosition(nx, nz)
-                local vFarmId = spec._sfFieldId
-                if nFarmId == 0 or (vFarmId and vFarmId > 0 and nFarmId ~= vFarmId) then
-                    return false, 1
-                end
+        end
+
+        -- Pass 3: nutrient adequacy — suppress visual when this cell already has enough
+        -- of every nutrient the current fill type contributes. No vehicle config needed.
+        -- Suppresses only when ALL contributing criteria are met: a DAP nozzle over a
+        -- high-N/low-P cell keeps spraying for the P benefit even if N is already full.
+        local sfm = g_SoilFertilityManager
+        local prof = ft and SoilConstants.FERTILIZER_PROFILES and SoilConstants.FERTILIZER_PROFILES[ft.name]
+        if sfm and sfm.soilSystem and prof then
+            local fieldId = spec._sfFieldId
+            local fd = fieldId and sfm.soilSystem.fieldData[fieldId]
+            if fd then
+                local cellKey = tostring(math.floor(probeX / CELL_SIZE) * 10000 + math.floor(probeZ / CELL_SIZE))
+                local cell    = fd.zoneData and fd.zoneData[cellKey]
+                local cellN   = (cell and cell.N)  or fd.nitrogen      or 0
+                local cellP   = (cell and cell.P)  or fd.phosphorus    or 0
+                local cellK   = (cell and cell.K)  or fd.potassium     or 0
+                local cellPH  = (cell and cell.pH) or fd.pH            or SoilConstants.NUTRIENT_LIMITS.PH_OPTIMAL
+                local cellOM  = (cell and cell.OM) or fd.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+                local tgt     = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
+                local adequate, anyCriteria = true, false
+                if (prof.N  or 0) > 0 then adequate = adequate and (cellN  >= tgt.N );  anyCriteria = true end
+                if (prof.P  or 0) > 0 then adequate = adequate and (cellP  >= tgt.P );  anyCriteria = true end
+                if (prof.K  or 0) > 0 then adequate = adequate and (cellK  >= tgt.K );  anyCriteria = true end
+                if (prof.pH or 0) > 0 then adequate = adequate and (cellPH >= tgt.pH);  anyCriteria = true end
+                local omProd = SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
+                if omProd and omProd[ft.name] then adequate = adequate and (cellOM >= tgt.OM); anyCriteria = true end
+                if anyCriteria and adequate then return false, 1 end
             end
         end
     end
@@ -429,12 +469,6 @@ function SFNozzleEffects:updateExtendedSprayerNozzleEffectState(effectData, dt, 
     local hasAny = spec.seeSprayWeed or spec.seeSprayPest or spec.seeSprayDisease
     if not hasAny then return isTurnedOn, 1 end
 
-    -- Determine which fill type is loaded; only apply See&Spray for targeted chemicals.
-    local sprayerSpec = self.spec_sprayer
-    local wap = sprayerSpec and sprayerSpec.workAreaParameters
-    local fillTypeIndex = wap and wap.sprayFillType
-    if not fillTypeIndex or fillTypeIndex == 0 then return isTurnedOn, 1 end
-    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
     if not ft then return isTurnedOn, 1 end
 
     local ssCfg = SoilConstants.SEE_AND_SPRAY
