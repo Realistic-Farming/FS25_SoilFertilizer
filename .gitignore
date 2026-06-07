@@ -14,6 +14,7 @@ Thumbs.db
 desktop.ini
 
 # Build artifacts
+*.zip
 *.zip.old
 *_temp/
 
