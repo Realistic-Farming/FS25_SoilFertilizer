@@ -447,11 +447,20 @@ function SFNozzleEffects:updateExtendedSprayerNozzleEffectState(effectData, dt, 
             if fd then
                 local cellKey = tostring(math.floor(probeX / CELL_SIZE) * 10000 + math.floor(probeZ / CELL_SIZE))
                 local cell    = fd.zoneData and fd.zoneData[cellKey]
-                local cellN   = (cell and cell.N)  or fd.nitrogen      or 0
-                local cellP   = (cell and cell.P)  or fd.phosphorus    or 0
-                local cellK   = (cell and cell.K)  or fd.potassium     or 0
-                local cellPH  = (cell and cell.pH) or fd.pH            or SoilConstants.NUTRIENT_LIMITS.PH_OPTIMAL
-                local cellOM  = (cell and cell.OM) or fd.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+                -- zoneData cells store a snapshot of field-average N/P/K at first-application
+                -- time. After further fertilizing, fd.nitrogen rises but cell.N stays stale.
+                -- math.max picks up the higher of the two so a freshly-fertilised field whose
+                -- cell snapshot is outdated still triggers suppression.
+                local fdN  = fd.nitrogen      or 0
+                local fdP  = fd.phosphorus    or 0
+                local fdK  = fd.potassium     or 0
+                local fdPH = fd.pH            or SoilConstants.NUTRIENT_LIMITS.PH_OPTIMAL
+                local fdOM = fd.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+                local cellN  = math.max((cell and cell.N)  or 0, fdN)
+                local cellP  = math.max((cell and cell.P)  or 0, fdP)
+                local cellK  = math.max((cell and cell.K)  or 0, fdK)
+                local cellPH = math.max((cell and cell.pH) or 0, fdPH)
+                local cellOM = math.max((cell and cell.OM) or 0, fdOM)
                 local tgt     = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
                 local adequate, anyCriteria = true, false
                 if (prof.N  or 0) > 0 then adequate = adequate and (cellN  >= tgt.N );  anyCriteria = true end
