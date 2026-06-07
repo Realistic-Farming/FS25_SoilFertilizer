@@ -686,9 +686,11 @@ function HookManager:installSprayTypeEffectsHook()
     -- Solid custom types visually match FERTILIZER spreading
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
-    -- Liquid custom types visually match LIQUIDFERTILIZER spraying
-    -- HERBICIDE is included so it gets added to LIQUIDFERTILIZER slots (full-boom spray),
-    -- but it is a vanilla fill type and must NOT be stripped from HERBICIDE-only slots in Pass 2.
+    -- Liquid custom types visually match LIQUIDFERTILIZER spraying.
+    -- HERBICIDE, INSECTICIDE, FUNGICIDE are included so they get injected into LIQUIDFERTILIZER
+    -- slots (Pass 1), giving full-boom coverage on fertilizer sprayers. They are preserved in
+    -- vanillaNames so Pass 2 does NOT strip them from their dedicated crop-protection slots.
+    -- Their visual effects are managed by vanilla updateSprayerEffects (not our custom path).
     -- NOTE: LIQUIDMANURE / MANURE / DIGESTATE are intentionally absent here. They spread via
     -- the game's native slurry/manure systems, not the sprayer effect path — registerCustomSprayTypes
     -- only calibrates their drain rate (issue #311). Do not add them to this effects list.
@@ -703,9 +705,10 @@ function HookManager:installSprayTypeEffectsHook()
     for _, n in ipairs(solidNames)  do solidNameSet[string.upper(n)]  = true end
 
     -- Pass 2 must NOT strip vanilla fill type names from their native slots.
-    -- HERBICIDE is a vanilla type that lives in HERBICIDE-only slots — removing it would
-    -- break herbicide application. Only strip our own custom types.
-    local vanillaNames = { HERBICIDE = true }  -- extend if more vanilla types added to liquidNames
+    -- HERBICIDE is a vanilla spray type; INSECTICIDE/FUNGICIDE have dedicated vehicle
+    -- slots with their own effects. Stripping them empties the slot → getActiveSprayType()
+    -- returns nil → vanilla starts no slot effects → no spray visual.
+    local vanillaNames = { HERBICIDE = true, INSECTICIDE = true, FUNGICIDE = true }
 
     -- Shared helper: walk a vehicle's sprayType entries and inject our names.
     --
@@ -1851,8 +1854,11 @@ function HookManager:installSectionStatePreserver()
                 if not saved then return end
                 local vww = sprayerSelf.spec_variableWorkWidth
                 if vww and vww.sections then
+                    -- Don't restore sections suppressed by overlap prevention —
+                    -- they must stay isActive=false so SFNozzleEffects fades them out.
+                    local overlapSup = sprayerSelf._sfOverlapSuppressedSections
                     for i, section in ipairs(vww.sections) do
-                        if saved[i] ~= nil then
+                        if saved[i] ~= nil and (not overlapSup or not overlapSup[i]) then
                             section.isActive = saved[i]
                         end
                     end
@@ -4702,18 +4708,19 @@ function HookManager:installSprayerVisualEffectHook()
     local fertIdx    = fm:getFillTypeIndexByName("FERTILIZER")
     local liqFertIdx = fm:getFillTypeIndexByName("LIQUIDFERTILIZER")
 
-    -- Build remap: custom fill type index → vanilla fill type index (cosmetic only)
+    -- Build remap: custom fill type index → vanilla fill type index (cosmetic only).
+    -- LIQUID types only — solid types are intentionally EXCLUDED.
+    -- Solid types (UREA, AMS, MAP, DAP, etc.) use the vanilla path (remap returns nil →
+    -- just return), which lets vanilla's onEndWorkAreaProcessing/updateSprayerEffects manage
+    -- effects. This matches how AN works (AN is absent from this remap and works correctly).
+    -- The custom path (Sprayer.onUpdateTick appended) fires BEFORE WorkArea.onUpdateTick,
+    -- so getAreEffectsVisible() is false when our code runs — the stop-path kills effects
+    -- every tick for solid types. The vanilla path fires from onEndWorkAreaProcessing, which
+    -- runs AFTER processSprayerArea sets lastSprayTime → effectsVisible = true → effects start.
     local remap = {}
-    if fertIdx then
-        for _, name in ipairs({ "UREA", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-                                 "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }) do
-            local idx = fm:getFillTypeIndexByName(name)
-            if idx then remap[idx] = fertIdx end
-        end
-    end
     if liqFertIdx then
         for _, name in ipairs({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-                                 "INSECTICIDE", "FUNGICIDE",
+                                 "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
                                  "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }) do
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = liqFertIdx end
@@ -4793,12 +4800,16 @@ function HookManager:installSprayerVisualEffectHook()
             local fillType = sprayerSelf:getFillUnitFillType(fillUnitIndex)
             local vanillaFillType = fillType and remap[fillType]
 
-            -- If fill type changed away from custom, stop our managed effects and reset
+            -- If fill type changed away from custom, stop our managed effects and reset.
+            -- Also reset lastEffectsState so vanilla re-evaluates its state machine next
+            -- tick — without this, vanilla thinks effects are still running after our stop
+            -- and won't restart them when switching to a vanilla fill type (HERBICIDE etc.).
             local lastFT = spec._soilManagedFillType
             if lastFT and lastFT ~= fillType then
                 stopSprayerEffects(sprayerSelf)
                 spec._soilManagedFillType = nil
                 spec._soilEffectsActive   = nil
+                spec.lastEffectsState     = nil
             end
 
             -- Fold detection — computed once, applied to both vanilla and custom paths below.
@@ -4820,19 +4831,13 @@ function HookManager:installSprayerVisualEffectHook()
             end
 
             if not vanillaFillType then
-                -- Vanilla fill type (e.g. HERBICIDE): stop effects when stationary OR folded.
-                -- We run AFTER vanilla onUpdateTick (appendedFunction), so we must suppress
-                -- every tick — state-change guards don't work here.
-                local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
-                if speed < 0.5 or isFolded then
-                    stopSprayerEffects(sprayerSelf)
-                end
                 return
             end
 
-            -- Gate on speed: no visual spray when standing still (matches our nutrient hook guard)
-            local speed = (sprayerSelf.getLastSpeed and sprayerSelf:getLastSpeed()) or 0
-            local effectsVisible = sprayerSelf:getAreEffectsVisible() and speed >= 0.5
+            -- getAreEffectsVisible() uses a 100ms window on lastSprayTime; if processSprayerArea
+            -- isn't running (vehicle stopped or empty) that window expires naturally — no speed
+            -- check needed. The speed check broke trailed spreaders whose getLastSpeed() returns 0.
+            local effectsVisible = sprayerSelf:getAreEffectsVisible()
 
             if isFolded then effectsVisible = false end
 
