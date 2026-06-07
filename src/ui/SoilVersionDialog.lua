@@ -30,6 +30,14 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed: See & Spray is now a vehicle shop config on JD R700i / R975i",
     "  (no longer a runtime toggle key)",
     "- Changed: Field Report dialog removed — detail is in PDA > Farm Overview",
+    "",
+    "v2.4.1.1 — Hotfix",
+    "- Fixed: Dry spreader types (UREA, AMS, MAP, DAP, POTASH, etc.) now show",
+    "  spreading visual correctly (was invisible before)",
+    "- Fixed: HERBICIDE, INSECTICIDE, FUNGICIDE sprayer visuals restored",
+    "- Fixed: Overlap prevention — outer boom nozzles now correctly fade out",
+    "  when their tip passes over already-sprayed ground on the final swath",
+    "- Fixed: Harvester panel and sprayer info panel now respect HUD toggle (/ key)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
