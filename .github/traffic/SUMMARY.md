@@ -1,7 +1,7 @@
 # Repository Traffic Dashboard
 
-**Last updated:** 2026-06-07T00:09:40Z
-**Days tracked:** 58 | **Download snapshots:** 726 (hourly)
+**Last updated:** 2026-06-07T18:08:58Z
+**Days tracked:** 58 | **Download snapshots:** 732 (hourly)
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Metric | 14-Day Total | Unique |
 |--------|-------------|--------|
-| Page Views | 10628 | 1316 |
-| Git Clones | 3190 | 866 |
+| Page Views | 12650 | 2349 |
+| Git Clones | 3307 | 896 |
 
-> **Engagement:** 8.0 pages per visitor (14-day avg)
+> **Engagement:** 5.3 pages per visitor (14-day avg)
 
 ---
 
@@ -30,9 +30,9 @@
 
 ![Conversion](charts/conversion.png)
 
-> **14-day conversion:** 3926 of 1316 visitors cloned or downloaded (**298.3%**)
+> **14-day conversion:** 3914 of 2349 visitors cloned or downloaded (**166.6%**)
 >
-> Unique cloners: 866 | Release downloads: 3060
+> Unique cloners: 896 | Release downloads: 3018
 
 ---
 
@@ -42,9 +42,9 @@
 
 | Channel | Count |
 |---------|-------|
-| Zip Downloads | 3060 |
-| Git Clones (14-day) | 3190 |
-| **Total Acquisitions** | **6250** |
+| Zip Downloads | 3018 |
+| Git Clones (14-day) | 3307 |
+| **Total Acquisitions** | **6325** |
 
 ---
 
@@ -54,16 +54,16 @@
 
 | Source | Views | Unique |
 |--------|-------|--------|
-| github.com | 2474 | 223 |
-| Google | 896 | 273 |
-| kingmods.net | 563 | 199 |
-| Bing | 323 | 60 |
-| youtube.com | 139 | 87 |
-| facebook.com | 74 | 71 |
-| lm.facebook.com | 29 | 28 |
-| reddit.com | 29 | 20 |
-| l.facebook.com | 27 | 14 |
-| DuckDuckGo | 24 | 5 |
+| github.com | 2617 | 243 |
+| Google | 1005 | 329 |
+| kingmods.net | 573 | 203 |
+| facebook.com | 495 | 414 |
+| lm.facebook.com | 398 | 348 |
+| l.facebook.com | 342 | 187 |
+| Bing | 334 | 71 |
+| youtube.com | 125 | 76 |
+| m.facebook.com | 118 | 101 |
+| DuckDuckGo | 34 | 5 |
 
 ---
 
@@ -75,7 +75,7 @@
 |--------|---------|
 | Stars | 75 |
 | Forks | 11 |
-| Watchers | 9 |
+| Watchers | 8 |
 
 ---
 
@@ -83,16 +83,16 @@
 
 | Page | Views | Unique |
 |------|-------|--------|
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer` | 4193 | 1039 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases` | 1028 | 270 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues` | 805 | 178 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer` | 5649 | 2079 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases` | 1076 | 313 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/issues` | 885 | 206 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.0.0` | 303 | 224 |
 | `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.3.3` | 241 | 158 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.5.0` | 205 | 125 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions` | 189 | 66 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.3.7.0` | 148 | 108 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.0.0` | 121 | 91 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.3.6` | 118 | 78 |
-| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.3.9` | 115 | 81 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.5.0` | 212 | 125 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions` | 211 | 76 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.3.7.0` | 154 | 108 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.3.6` | 119 | 79 |
+| `/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.2.3.9` | 116 | 81 |
 
 ---
 
