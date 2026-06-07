@@ -1083,8 +1083,8 @@ function SoilFertilitySystem:applyWeedMapState(fieldId, targetState)
             tostring(repOk and repData and repData.weed and repData.weed.replacements ~= nil))
 
         if repOk and repData and repData.weed and repData.weed.replacements then
-            local fieldState = fsField:getFieldState()
-            local posX, posZ = fsField:getIndicatorPosition()
+            local posX, posZ = fsField.posX, fsField.posZ
+            local fieldState = FieldState.new()
             fieldState:update(posX, posZ)
             local currentState = fieldState.weedState or 0
             local replacement = repData.weed.replacements[currentState]
@@ -2046,11 +2046,14 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     end
                 end
                 if fsField and fsField.posX and fsField.posZ then
-                    local ok, fs = pcall(function()
-                        local f = FieldState.new()
-                        f:update(fsField.posX, fsField.posZ)
-                        return f
-                    end)
+                    if not self._fieldStateCache then self._fieldStateCache = {} end
+                    if not self._fieldStateCache[fieldId] then
+                        local cok, cfs = pcall(FieldState.new)
+                        self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
+                    end
+                    local cachedFs = self._fieldStateCache[fieldId]
+                    local ok = cachedFs and pcall(function() cachedFs:update(fsField.posX, fsField.posZ) end)
+                    local fs = cachedFs
                     -- Only trust weedFactor when a managed (non-forage) crop is present.
                     -- Bare/plowed fields: fruitTypeIndex=UNKNOWN, weedFactor=0 → skip.
                     -- Grass/forage crops: FS25 returns weedFactor=0 regardless of actual
@@ -2273,7 +2276,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     end
 
     -- ── Broadcast to MP clients ──────────────────────────────────────────────
-    if SoilFieldUpdateEvent then
+    if g_server and SoilFieldUpdateEvent then
         g_server:broadcastEvent(SoilFieldUpdateEvent.new(fieldId, field))
     end
 end
@@ -2779,12 +2782,14 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     if not field then return end
 
     local dp = SoilConstants.DISEASE_PRESSURE
+    local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
+        or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
     local before = field.diseasePressure or 0
     field.diseasePressure = math.max(0, before - reduction)
     local daysPerMonth = (g_currentMission and g_currentMission.environment and g_currentMission.environment.daysPerPeriod) or 1
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = dp.FUNGICIDE_DURATION_DAYS * daysPerMonth
+        field.fungicideDaysLeft = math.floor(dp.FUNGICIDE_DURATION_DAYS * (cm.fungicideMult or 1) * daysPerMonth)
     end
 
     -- Update per-cell disease pressure for existing zoneData entries only.
@@ -2954,13 +2959,15 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
 
             -- ── Visual overlay (zoneData) ──────────────────────────────────────
             -- Enforce cell cap: only affects sub-field visual detail, not coverage accuracy.
+            -- Use a tracked counter (field.zoneDataSize) instead of iterating pairs every tick.
             local canWrite = true
             if field.zoneData[cellKey] == nil then
-                local count = 0
-                for _ in pairs(field.zoneData) do count = count + 1 end
-                if count >= MAX_ZONE_CELLS then canWrite = false end
+                if (field.zoneDataSize or 0) >= MAX_ZONE_CELLS then canWrite = false end
             end
             if canWrite then
+                if field.zoneData[cellKey] == nil then
+                    field.zoneDataSize = (field.zoneDataSize or 0) + 1
+                end
                 field.zoneData[cellKey] = {
                     N  = field.nitrogen       or SoilConstants.FIELD_DEFAULTS.nitrogen,
                     P  = field.phosphorus     or SoilConstants.FIELD_DEFAULTS.phosphorus,

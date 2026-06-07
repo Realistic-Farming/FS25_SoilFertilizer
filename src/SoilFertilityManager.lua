@@ -45,7 +45,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     if not SoilFertilitySystem then
         SoilLogger.error("CRITICAL: SoilFertilitySystem not loaded - mod cannot initialize")
         if g_gui then
-            InfoDialog.show("Soil & Fertilizer Mod failed to load.\n\nCritical module 'SoilFertilitySystem' is missing.\n\nPlease reinstall the mod or check for conflicts with other mods.", nil, nil, DialogElement.TYPE_ERROR)
+            InfoDialog.show("Soil & Fertilizer Mod failed to load.\n\nCritical module 'SoilFertilitySystem' is missing.\n\nPlease reinstall the mod or check for conflicts with other mods.", nil, nil)
         end
         return nil
     end

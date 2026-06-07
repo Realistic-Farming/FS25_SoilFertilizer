@@ -405,6 +405,12 @@ local function unload()
         getfenv(0)["g_SoilFertilityManager"] = nil
         if g_currentMission then g_currentMission.soilFertilityManager = nil end
     end
+    -- Restore InputHelpDisplay.draw if we hooked it, so a session reload doesn't accumulate appends.
+    if _inputHelpDisplayOrigDraw and InputHelpDisplay then
+        InputHelpDisplay.draw = _inputHelpDisplayOrigDraw
+    end
+    _inputHelpDisplayOrigDraw = nil
+    _sprayerF1HookInstalled = false
 end
 
 
@@ -465,6 +471,7 @@ Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, miss
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 
 local _sprayerF1HookInstalled = false
+local _inputHelpDisplayOrigDraw = nil
 
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
     if sfm then
@@ -478,6 +485,7 @@ FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mis
     end
     -- Cache F1 geometry whenever InputHelpDisplay draws (for auto-anchor positioning)
     if not _sprayerF1HookInstalled and InputHelpDisplay and InputHelpDisplay.draw then
+        _inputHelpDisplayOrigDraw = InputHelpDisplay.draw
         InputHelpDisplay.draw = Utils.appendedFunction(InputHelpDisplay.draw, function(displaySelf)
             local m = g_SoilFertilityManager
             if m and m.sprayerInfoPanel then

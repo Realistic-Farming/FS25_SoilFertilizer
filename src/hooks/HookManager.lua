@@ -412,10 +412,22 @@ function HookManager:registerCustomSprayTypes()
 
     for _, name in ipairs(liquidNames) do
         if g_fillTypeManager:getFillTypeByName(name) then
-            local customRate   = baseRates[name] and baseRates[name].value or liqBase
-            local customLPS    = customRate / 36000   -- exact: LPS = target_L_ha / 36000
-            local groundType   = (name == "LIQUIDLIME") and limeGroundType or liquidGroundType
-            local displayType  = (name == "LIQUIDLIME") and "LIME"        or "FERTILIZER"
+            local customRate  = baseRates[name] and baseRates[name].value or liqBase
+            local customLPS   = customRate / 36000   -- exact: LPS = target_L_ha / 36000
+            local displayType = (name == "LIQUIDLIME") and "LIME" or "FERTILIZER"
+            -- Preserve the native sprayGroundType for types that already have a vanilla entry
+            -- (e.g. HERBICIDE, INSECTICIDE, FUNGICIDE). Overriding with liquidGroundType would
+            -- replace the herbicide/insecticide ground state with the fertilizer ground state,
+            -- breaking vanilla field-state tracking for any system that reads ground type.
+            -- New custom types (UAN32, ANHYDROUS, etc.) have no existing entry → use liquidGroundType.
+            -- LIQUIDLIME always uses limeGroundType to write the correct lime density-map state.
+            local groundType
+            if name == "LIQUIDLIME" then
+                groundType = limeGroundType
+            else
+                local existingST = g_sprayTypeManager:getSprayTypeByName(name)
+                groundType = (existingST and existingST.sprayGroundType) or liquidGroundType
+            end
             SoilLogger.debug("SprayType [LIQ] %-20s  LPS=%.6f  rate=%.1f L/ha", name, customLPS, customRate)
 
             -- addSprayType is idempotent: if already registered it updates the entry
@@ -1196,25 +1208,30 @@ function HookManager:installSeeAndSprayHook()
 
     local hookMgrRef = self
 
-    -- Cache of fieldId → fieldState (or false if unavailable). Built lazily per session.
+    -- Cache of fieldId → reusable FieldState object (or false if unavailable).
+    -- Each call site calls fs:update(x, z) before reading fs.weedState.
     local weedFieldStates = {}
     local function getWeedFieldState(fieldId)
         if weedFieldStates[fieldId] == nil then
-            local weedSys = g_currentMission and g_currentMission.weedSystem
-            if not weedSys then weedFieldStates[fieldId] = false; return nil end
-            local ok, fields = pcall(function() return weedSys:getFields() end)
-            if not ok or not fields then weedFieldStates[fieldId] = false; return nil end
-            for _, fsField in ipairs(fields) do
-                local fid = fsField.fieldId or fsField.id
-                if fid == fieldId then
-                    local fsok, fs = pcall(function() return fsField:getFieldState() end)
-                    if fsok and fs then
-                        weedFieldStates[fieldId] = fs
-                        return fs
+            local fsField = nil
+            if g_fieldManager and g_fieldManager.fields then
+                for _, f in ipairs(g_fieldManager.fields) do
+                    if f and f.farmland and f.farmland.id == fieldId then
+                        fsField = f
+                        break
                     end
                 end
             end
-            weedFieldStates[fieldId] = false
+            if fsField and fsField.posX then
+                local fok, fs = pcall(function()
+                    local state = FieldState.new()
+                    state:update(fsField.posX, fsField.posZ)
+                    return state
+                end)
+                weedFieldStates[fieldId] = (fok and fs) and fs or false
+            else
+                weedFieldStates[fieldId] = false
+            end
         end
         return weedFieldStates[fieldId] or nil
     end
