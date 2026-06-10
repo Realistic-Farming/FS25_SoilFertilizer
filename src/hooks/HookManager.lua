@@ -1810,6 +1810,12 @@ function HookManager:installSectionStatePreserver()
             sprayerSelf._sfRootX = rx
             sprayerSelf._sfRootZ = rz
 
+            -- Overlap-suppressed sections have isActive=false from the previous frame.
+            -- Saving that false means the preserver would restore false when overlap clears,
+            -- permanently locking the section. Treat any overlap-suppressed section as
+            -- "would be active" so it can recover once its tip leaves sprayed ground.
+            local prevOverlapSup = sprayerSelf._sfOverlapSuppressedSections
+
             -- Cache each section's tip node world position so all hooks can
             -- reuse it without redundant pcall(getWorldTranslation) calls.
             if rx then
@@ -1819,7 +1825,7 @@ function HookManager:installSectionStatePreserver()
                     sprayerSelf._sfSectionTip = tips
                 end
                 for i, section in ipairs(vww.sections) do
-                    saved[i] = section.isActive
+                    saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
                     if section.maxWidthNode then
                         local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
                         if ok and wx then
@@ -1835,7 +1841,7 @@ function HookManager:installSectionStatePreserver()
                 end
             else
                 for i, section in ipairs(vww.sections) do
-                    saved[i] = section.isActive
+                    saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
                 end
             end
         end
