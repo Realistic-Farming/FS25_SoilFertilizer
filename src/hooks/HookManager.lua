@@ -1612,7 +1612,16 @@ function HookManager:installOverlapPreventionHook()
 
             local checkFert = fertFillTypes[fillTypeIndex] == true
             local checkLime = limeFillTypes[fillTypeIndex] == true
-            if not checkFert and not checkLime then return end
+            if not checkFert and not checkLime then
+                -- Clear any stale suppression left over from a prior fertilizer fill type.
+                -- Without this, switching from LIQUIDFERTILIZER to FUNGICIDE/HERBICIDE leaves
+                -- _sfOverlapSuppressedSections populated, which blocks section state restoration
+                -- and causes wing nozzles to show no visual effects.
+                if sprayerSelf._sfOverlapSuppressedSections then
+                    sprayerSelf._sfOverlapSuppressedSections = {}
+                end
+                return
+            end
 
             if not initHandles() then return end
 
@@ -1643,7 +1652,11 @@ function HookManager:installOverlapPreventionHook()
 
             local suppressCount = 0
             for i, section in ipairs(vww.sections) do
-                if section.isActive and not section.isCenter then
+                -- Check all non-center sections regardless of current isActive.
+                -- Gating on isActive caused a 2-frame flicker: suppressed (isActive=false)
+                -- → gate skips → not in currSuppressed → state restorer brings it back to
+                -- true → next frame active → overlap suppresses again → loop.
+                if not section.isCenter then
                     local tip = tips and tips[i]
 
                     -- Sections with no tip node (no maxWidthNode): skip overlap check.
@@ -1705,9 +1718,11 @@ function HookManager:installOverlapPreventionHook()
                                 end
                             end
                         elseif prevSuppressed[i] then
-                            -- Transition: was suppressed last frame, now clear → restart effects.
+                            -- Transition: was suppressed last frame, tip now clear.
+                            -- Only restart effects if the section is intended to be active
+                            -- (not player-deactivated via section width control).
                             local prevSection = prevSuppressed[i]
-                            if prevSection.effects and #prevSection.effects > 0 then
+                            if section.isActive and prevSection.effects and #prevSection.effects > 0 then
                                 g_effectManager:startEffects(prevSection.effects)
                             end
                         end
@@ -2533,11 +2548,12 @@ function HookManager:installSprayerAreaHook()
                 -- updateFractions=false: markBoomCells (called below) owns coverage for
                 -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
                 -- only records the product name for the HUD label.
-                -- Crop protection direct paths (herbicide/insecticide/fungicide) call
-                -- trackSprayerCoverage with default updateFractions=true since they have
-                -- no boomPoints.
+                -- Crop protection direct paths (herbicide/insecticide/fungicide) have no
+                -- boomPoints, so coverage must be tracked via the liter-based fallback
+                -- (updateFractions=true). Fertilizers use markBoomCells for spatial
+                -- deduplication and must pass false to avoid double-counting.
                 if g_SoilFertilityManager.soilSystem then
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, false)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, not isFertilizer)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
