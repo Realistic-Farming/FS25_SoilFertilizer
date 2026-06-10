@@ -1007,20 +1007,21 @@ function SoilFertilityManager:seedGRLEFromFieldData()
     local fieldData = soilSys.fieldData
     if not fieldData then return end
 
-    local count = 0
-    for fieldId, field in pairs(fieldData) do
-        local fsField = g_fieldManager and g_fieldManager.fields and g_fieldManager.fields[fieldId]
-        if not fsField or not fsField.farmland or fsField.farmland.id ~= fieldId then
-            fsField = nil
-            if g_fieldManager and g_fieldManager.fields then
-                for _, f in ipairs(g_fieldManager.fields) do
-                    if f and f.farmland and f.farmland.id == fieldId then
-                        fsField = f
-                        break
-                    end
-                end
+    -- Build a farmland-id → Field lookup once so the per-field loop is O(n), not O(n²).
+    -- On large maps (200+ fields) the old nested ipairs scan blocked the main thread
+    -- long enough to cause an apparent crash/freeze at ~40% map load (#583).
+    local farmlandToField = {}
+    if g_fieldManager and g_fieldManager.fields then
+        for _, f in ipairs(g_fieldManager.fields) do
+            if f and f.farmland then
+                farmlandToField[f.farmland.id] = f
             end
         end
+    end
+
+    local count = 0
+    for fieldId, field in pairs(fieldData) do
+        local fsField = farmlandToField[fieldId]
         if fsField then
             layerSys:writeFieldToLayers(fieldId, field, fsField)
             count = count + 1

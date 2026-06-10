@@ -1283,7 +1283,7 @@ function HookManager:installSeeAndSprayHook()
             local tips    = sprayerSelf._sfSectionTip
 
             for i, section in ipairs(vww.sections) do
-                if section.isActive and not section.isCenter then
+                if section.isActive then
                     local tip = tips and tips[i]
                     local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
                     local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
@@ -1612,7 +1612,16 @@ function HookManager:installOverlapPreventionHook()
 
             local checkFert = fertFillTypes[fillTypeIndex] == true
             local checkLime = limeFillTypes[fillTypeIndex] == true
-            if not checkFert and not checkLime then return end
+            if not checkFert and not checkLime then
+                -- Clear any stale suppression left over from a prior fertilizer fill type.
+                -- Without this, switching from LIQUIDFERTILIZER to FUNGICIDE/HERBICIDE leaves
+                -- _sfOverlapSuppressedSections populated, which blocks section state restoration
+                -- and causes wing nozzles to show no visual effects.
+                if sprayerSelf._sfOverlapSuppressedSections then
+                    sprayerSelf._sfOverlapSuppressedSections = {}
+                end
+                return
+            end
 
             if not initHandles() then return end
 
@@ -1643,7 +1652,11 @@ function HookManager:installOverlapPreventionHook()
 
             local suppressCount = 0
             for i, section in ipairs(vww.sections) do
-                if section.isActive and not section.isCenter then
+                -- Check all non-center sections regardless of current isActive.
+                -- Gating on isActive caused a 2-frame flicker: suppressed (isActive=false)
+                -- → gate skips → not in currSuppressed → state restorer brings it back to
+                -- true → next frame active → overlap suppresses again → loop.
+                if not section.isCenter then
                     local tip = tips and tips[i]
 
                     -- Sections with no tip node (no maxWidthNode): skip overlap check.
@@ -1705,9 +1718,11 @@ function HookManager:installOverlapPreventionHook()
                                 end
                             end
                         elseif prevSuppressed[i] then
-                            -- Transition: was suppressed last frame, now clear → restart effects.
+                            -- Transition: was suppressed last frame, tip now clear.
+                            -- Only restart effects if the section is intended to be active
+                            -- (not player-deactivated via section width control).
                             local prevSection = prevSuppressed[i]
-                            if prevSection.effects and #prevSection.effects > 0 then
+                            if section.isActive and prevSection.effects and #prevSection.effects > 0 then
                                 g_effectManager:startEffects(prevSection.effects)
                             end
                         end
@@ -1810,6 +1825,12 @@ function HookManager:installSectionStatePreserver()
             sprayerSelf._sfRootX = rx
             sprayerSelf._sfRootZ = rz
 
+            -- Overlap-suppressed sections have isActive=false from the previous frame.
+            -- Saving that false means the preserver would restore false when overlap clears,
+            -- permanently locking the section. Treat any overlap-suppressed section as
+            -- "would be active" so it can recover once its tip leaves sprayed ground.
+            local prevOverlapSup = sprayerSelf._sfOverlapSuppressedSections
+
             -- Cache each section's tip node world position so all hooks can
             -- reuse it without redundant pcall(getWorldTranslation) calls.
             if rx then
@@ -1819,7 +1840,7 @@ function HookManager:installSectionStatePreserver()
                     sprayerSelf._sfSectionTip = tips
                 end
                 for i, section in ipairs(vww.sections) do
-                    saved[i] = section.isActive
+                    saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
                     if section.maxWidthNode then
                         local ok, wx, _, wz = pcall(getWorldTranslation, section.maxWidthNode)
                         if ok and wx then
@@ -1835,7 +1856,7 @@ function HookManager:installSectionStatePreserver()
                 end
             else
                 for i, section in ipairs(vww.sections) do
-                    saved[i] = section.isActive
+                    saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
                 end
             end
         end
@@ -2527,11 +2548,12 @@ function HookManager:installSprayerAreaHook()
                 -- updateFractions=false: markBoomCells (called below) owns coverage for
                 -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
                 -- only records the product name for the HUD label.
-                -- Crop protection direct paths (herbicide/insecticide/fungicide) call
-                -- trackSprayerCoverage with default updateFractions=true since they have
-                -- no boomPoints.
+                -- Crop protection direct paths (herbicide/insecticide/fungicide) have no
+                -- boomPoints, so coverage must be tracked via the liter-based fallback
+                -- (updateFractions=true). Fertilizers use markBoomCells for spatial
+                -- deduplication and must pass false to avoid double-counting.
                 if g_SoilFertilityManager.soilSystem then
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, false)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, not isFertilizer)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────

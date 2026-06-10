@@ -76,6 +76,9 @@
         <type name="sfSprayer" parent="sprayer" filename="$dataS/scripts/vehicles/Vehicle.lua">
             <specialization name="sfNozzleEffects"/>
         </type>
+        <type name="sfSelfPropelledSprayer" parent="selfPropelledSprayer" filename="$dataS/scripts/vehicles/Vehicle.lua">
+            <specialization name="sfNozzleEffects"/>
+        </type>
     </vehicleTypes>
 
     <actions>
@@ -99,7 +102,9 @@
         <actionBinding action="SF_TOGGLE_AUTO" />
         <actionBinding action="SF_CYCLE_MAP_LAYER" />
         <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_HUD_DRAG" />
+        <actionBinding action="SF_HUD_DRAG">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
+        </actionBinding>
         <actionBinding action="SF_VARIABLE_RATE">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_lalt KEY_7" />
         </actionBinding>

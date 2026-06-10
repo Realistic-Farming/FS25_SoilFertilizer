@@ -308,6 +308,10 @@ function SoilMinimapLayer:draw(mapSelf)
     local layout = mapSelf.layout
     if not layout then return end
 
+    -- Circle minimap rotates with the vehicle heading; our terrain-space overlay doesn't
+    -- transform correctly in that coordinate frame and drifts. Skip until fixed (#578).
+    if layout:isa(IngameMapLayoutCircle) then return end
+
     local w, h   = layout:getMapSize()
     local x, y   = layout:getMapPosition()
     local px, py

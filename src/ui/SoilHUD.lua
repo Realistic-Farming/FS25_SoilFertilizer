@@ -1418,6 +1418,22 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     local tx    = px + pad
     local col   = self:statusColor(nutrient.status)
 
+    local cropTarget    = info and info.cropTargets and info.cropTargets[baseLabel]
+    local displayCol    = col
+    local displayStatus = nutrient.status
+    if cropTarget then
+        if nutrient.value >= cropTarget.opt then
+            displayCol    = self:statusColor("Good")
+            displayStatus = "Good"
+        elseif nutrient.value >= cropTarget.min then
+            displayCol    = self:statusColor("Fair")
+            displayStatus = "Fair"
+        else
+            displayCol    = self:statusColor("Poor")
+            displayStatus = "Poor"
+        end
+    end
+
     cy = cy - rowH
 
     -- Label (N / P / K)
@@ -1432,7 +1448,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     
     local fill = math.max(0, math.min(1, nutrient.value / 100))
     if fill > 0 then
-        self:drawRect(barX, barY, barW * fill, barH, col)
+        self:drawRect(barX, barY, barW * fill, barH, displayCol)
     end
 
     -- Projected "Ghost Bar" (V1.7 Realism Update)
@@ -1465,7 +1481,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
                     projectedDelta = profile[label] * (remaining / 1000) / (info.fieldArea or 1.0) * rrMult
                     local ghostFill = math.min(1.0 - fill, projectedDelta / 100)
                     if ghostFill > 0 then
-                        self:drawRect(barX + barW * fill, barY, barW * ghostFill, barH, col, 0.35)
+                        self:drawRect(barX + barW * fill, barY, barW * ghostFill, barH, displayCol, 0.35)
                     end
                 end
             end
@@ -1492,7 +1508,6 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     end
 
     -- Per-crop target tick at optimal level (bright cyan, taller than status ticks)
-    local cropTarget = info and info.cropTargets and info.cropTargets[baseLabel]
     if cropTarget then
         local tickW = 0.0008 * s
         local tickH = barH + 0.005 * s
@@ -1505,17 +1520,6 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[baseLabel] or 1.0
     local valX    = barX + barW + 0.006*s
 
-    -- Derive color from crop target if available, otherwise keep status color
-    local displayCol = col
-    if cropTarget then
-        if nutrient.value >= cropTarget.opt then
-            displayCol = self:statusColor("Good")
-        elseif nutrient.value >= cropTarget.min then
-            displayCol = self:statusColor("Fair")
-        else
-            displayCol = self:statusColor("Poor")
-        end
-    end
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)
 
     -- Base value string is pre-formatted in refreshFieldData (cachedValStr); only the
@@ -1537,7 +1541,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     -- Status label
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, nutrient.status)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, displayStatus)
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
