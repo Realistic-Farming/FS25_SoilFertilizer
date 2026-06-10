@@ -1283,7 +1283,7 @@ function HookManager:installSeeAndSprayHook()
             local tips    = sprayerSelf._sfSectionTip
 
             for i, section in ipairs(vww.sections) do
-                if section.isActive and not section.isCenter then
+                if section.isActive then
                     local tip = tips and tips[i]
                     local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
                     local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
