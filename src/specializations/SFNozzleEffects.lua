@@ -329,7 +329,7 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
 
     -- Update per-nozzle active state (also triggers fade direction transitions).
     local isTurnedOn = self:getIsTurnedOn()
-    local lastSpeed  = (self.getLastSpeed and self:getLastSpeed()) or 0
+    local lastSpeed  = tonumber(self.getLastSpeed and self:getLastSpeed()) or 0
     self:updateExtendedSprayerNozzleEffectsState(spec.sprayerEffects, dt, isTurnedOn, lastSpeed)
 
     -- Animate shader fade transitions for any nozzle with an effect node.

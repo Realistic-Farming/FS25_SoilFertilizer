@@ -24,12 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Dry spreader types (UREA, AMS, MAP, DAP, POTASH, etc.) now show",
-    "  spreading visual correctly (was invisible before)",
-    "- Fixed: HERBICIDE, INSECTICIDE, FUNGICIDE sprayer visuals restored",
-    "- Fixed: Overlap prevention — outer boom nozzles now correctly fade out",
-    "  when their tip passes over already-sprayed ground on the final swath",
-    "- Fixed: Harvester panel and sprayer info panel now respect HUD toggle (/ key)",
+    "- Fixed: Crash when turning on a sprayer — attempt to compare boolean < number",
+    "  (getLastSpeed returned non-numeric value on some vehicles)",
+    "- Fixed: Spray nozzle visuals no longer persist after sprayer stops",
+    "  (same root cause as the crash above)",
+    "- Fixed: Nutrient status 'Good' now aligns with the crop's blue-tick optimum",
+    "  (reaching the crop target no longer shows 'Fair')",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

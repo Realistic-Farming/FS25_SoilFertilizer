@@ -2452,7 +2452,8 @@ function HookManager:installSprayerAreaHook()
             -- Require minimum forward speed (matches WeedSpotSpray.onEndWorkAreaProcessing).
             -- A stationary sprayer drains the tank and consumes liters but covers no ground —
             -- without this guard coverage climbs to 100% without moving.
-            if (self.getLastSpeed and self:getLastSpeed() or 0) < 0.5 then return end
+            local _spd = tonumber(self.getLastSpeed and self:getLastSpeed()) or 0
+            if _spd < 0.5 then return end
 
             local success, errorMsg = pcall(function()
                 local fillType = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)

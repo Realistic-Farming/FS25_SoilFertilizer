@@ -3237,11 +3237,21 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local thresholds = SoilConstants.STATUS_THRESHOLDS
     local fertThresholds = SoilConstants.FERTILIZATION_THRESHOLDS
 
-    local function nutrientStatus(value, nutrient)
+    local function nutrientStatus(value, nutrient, ct)
         local t = thresholds[nutrient]
         if not t then return "Unknown" end
-        if value < t.poor then return "Poor"
-        elseif value < t.fair then return "Fair"
+        if value < t.poor then return "Poor" end
+        -- When a crop is growing, treat its opt target as the Good threshold if lower
+        -- than the global threshold — so reaching the crop's blue tick always shows Good.
+        local goodAt = t.fair
+        if ct then
+            local nutKey = nutrient == "nitrogen" and "N"
+                        or nutrient == "phosphorus" and "P"
+                        or "K"
+            local entry = ct[nutKey]
+            if entry and entry.opt and entry.opt < goodAt then goodAt = entry.opt end
+        end
+        if value < goodAt then return "Fair"
         else return "Good" end
     end
 
@@ -3364,9 +3374,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
-        nitrogen = { value = math.floor(n), status = nutrientStatus(n, "nitrogen") },
-        phosphorus = { value = math.floor(p), status = nutrientStatus(p, "phosphorus") },
-        potassium = { value = math.floor(k), status = nutrientStatus(k, "potassium") },
+        nitrogen = { value = math.floor(n), status = nutrientStatus(n, "nitrogen", cropTargets) },
+        phosphorus = { value = math.floor(p), status = nutrientStatus(p, "phosphorus", cropTargets) },
+        potassium = { value = math.floor(k), status = nutrientStatus(k, "potassium", cropTargets) },
         cropTargets = cropTargets,
         organicMatter = om,
         pH = ph,
