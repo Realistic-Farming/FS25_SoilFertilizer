@@ -264,8 +264,8 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         end
     end
 
-    -- Pest pressure modifier
-    if self.settings.pestPressure and SoilConstants.PEST_PRESSURE then
+    -- Pest pressure modifier (skip for grassland / non-crop fields, same as weed pressure)
+    if self.settings.pestPressure and SoilConstants.PEST_PRESSURE and not isGrass then
         local pp       = SoilConstants.PEST_PRESSURE
         local pressure = field.pestPressure or 0
         local penalty
@@ -2123,7 +2123,11 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     end
 
     -- ── Pest pressure daily growth ───────────────────────────────────────────
-    if self.settings.pestPressure and SoilConstants.PEST_PRESSURE then
+    -- Skip pest growth for grassland / non-crop fields (grass, drygrass, clover, etc.)
+    local _ys           = SoilConstants.YIELD_SENSITIVITY
+    local _isGrassField = _ys and _ys.NON_CROP_NAMES and
+        _ys.NON_CROP_NAMES[string.lower(field.lastCrop or "")]
+    if self.settings.pestPressure and SoilConstants.PEST_PRESSURE and not _isGrassField then
         local pp = SoilConstants.PEST_PRESSURE
 
         if (field.insecticideDaysLeft or 0) > 0 then

@@ -2083,6 +2083,22 @@ function HookManager:installHarvestHook()
                 end)
             end
 
+            -- Compaction: heavy harvesters compact the soil on each harvest pass
+            if detectedFieldId and detectedX and
+               g_SoilFertilityManager.settings.compactionEnabled and
+               SoilConstants.COMPACTION then
+                local cp = SoilConstants.COMPACTION
+                local rootVeh = combineSelf.rootVehicle or combineSelf
+                local okM, totalMass = pcall(function()
+                    return rootVeh:getTotalMass(false)
+                end)
+                if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
+                    pcall(function()
+                        g_SoilFertilityManager.soilSystem:onCompaction(detectedFieldId, detectedX, detectedZ)
+                    end)
+                end
+            end
+
             -- Forward original return values so Cutter.lua gets appliedDelta intact
             return r1, r2, r3, r4, r5
         end

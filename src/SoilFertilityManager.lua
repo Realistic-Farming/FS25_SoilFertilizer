@@ -1125,8 +1125,33 @@ function SoilFertilityManager:update(dt)
         self.tuningPanel:update()
     end
 
+    -- Compaction: periodic check for local player's heavy vehicle driving over fields
+    if g_currentMission and g_currentMission.isServer then
+        self._compactionTimer = (self._compactionTimer or 0) + dt
+        if self._compactionTimer >= 30000 then
+            self._compactionTimer = 0
+            self:_checkVehicleCompaction()
+        end
+    end
+
     -- Auto-rate control: adjust sprayer rate based on current field soil data
     self:updateAutoRates(dt)
+end
+
+function SoilFertilityManager:_checkVehicleCompaction()
+    if not (self.settings.compactionEnabled and SoilConstants.COMPACTION) then return end
+    if not (self.soilSystem and self.soilSystem.hookManager) then return end
+    local cp      = SoilConstants.COMPACTION
+    local vehicle = self:getCurrentVehicle()
+    if not vehicle or not vehicle.rootNode then return end
+    local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
+    if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
+    local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
+    if not (ok and x) then return end
+    local farmlandId = self.soilSystem.hookManager:getFieldIdAtWorldPosition(x, z, false)
+    if farmlandId and farmlandId > 0 then
+        pcall(function() self.soilSystem:onCompaction(farmlandId, x, z) end)
+    end
 end
 
 --- Auto-rate control update — throttled, client-side only.

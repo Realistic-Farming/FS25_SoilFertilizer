@@ -24,6 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Fixed: Pest pressure no longer builds up on grass / forage fields",
+    "  (grass, drygrass, clover, luzerne fields now skip pest growth and yield penalty)",
+    "- Fixed: Soil compaction now accumulates during harvest and heavy vehicle driving",
+    "  (compaction hook extended to harvest passes; periodic check added for driving)",
     "- Fixed: Crash when turning on a sprayer — attempt to compare boolean < number",
     "  (getLastSpeed returned non-numeric value on some vehicles)",
     "- Fixed: Spray nozzle visuals no longer persist after sprayer stops",
