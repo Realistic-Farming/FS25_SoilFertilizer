@@ -24,8 +24,8 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Field boundary control now works on sprayers without maxWidthNode",
-    "  (outer sections crossing field edges now suppressed using work area geometry)",
+    "- Fixed: Field boundary section control now works on sprayers without maxWidthNode",
+    "  and on JD R700i/R975i (work area geometry used as primary tip; maxWidthNode is fallback)",
     "- Fixed: See & Spray no longer drains tank when no target pressure is detected",
     "  (insecticide/herbicide/fungicide now fail-closed: suppressed until target confirmed)",
     "- Fixed: Pest pressure no longer builds up on grass / forage fields",

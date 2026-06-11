@@ -1852,20 +1852,23 @@ function HookManager:installSectionStatePreserver()
                 end
                 for i, section in ipairs(vww.sections) do
                     saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
-                    -- Prefer the dedicated maxWidthNode (outer edge of boom section).
-                    -- Fall back to workArea.width for sprayers that define sections via
-                    -- work area geometry instead of an explicit maxWidthNode.
-                    local tipNode = section.maxWidthNode
-                    if not tipNode then
-                        local waSpec = sprayerSelf.spec_workArea
-                        if waSpec and waSpec.workAreas then
-                            for _, wa in ipairs(waSpec.workAreas) do
-                                if wa.sectionIndex == i and wa.width then
-                                    tipNode = wa.width
-                                    break
-                                end
+                    -- Prefer workArea.width (the outer lateral edge of each work area)
+                    -- as the section tip — this is geometrically accurate for all sprayers.
+                    -- maxWidthNode is a per-section optional node that may mark inner section
+                    -- transition boundaries rather than the true boom tip (confirmed on JD R700i/R975i),
+                    -- so it is only used as a last resort when no work area geometry is available.
+                    local tipNode = nil
+                    local waSpec = sprayerSelf.spec_workArea
+                    if waSpec and waSpec.workAreas then
+                        for _, wa in ipairs(waSpec.workAreas) do
+                            if wa.sectionIndex == i and wa.width then
+                                tipNode = wa.width
+                                break
                             end
                         end
+                    end
+                    if not tipNode then
+                        tipNode = section.maxWidthNode
                     end
                     if tipNode then
                         local ok, wx, _, wz = pcall(getWorldTranslation, tipNode)
