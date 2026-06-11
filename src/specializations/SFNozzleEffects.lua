@@ -296,8 +296,8 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
     if not spec.hasCustomEffects then
         -- Non-custom-nozzle vehicles (e.g. Condor) still need the field ID cache when
-        -- See & Spray is purchased so that getAreEffectsVisible / getSprayerUsage can
-        -- suppress effects and consumption when there is no target pressure.
+        -- See & Spray is purchased so that getSprayerUsage can gate consumption
+        -- when there is no target pressure.
         local hasAny = spec.seeSprayWeed or spec.seeSprayPest or spec.seeSprayDisease
         if hasAny then
             spec._sfFieldTimer = spec._sfFieldTimer + dt
@@ -413,6 +413,8 @@ end
 -- Per-nozzle decision: returns (isActive, amountScale).
 -- Checks in order: sprayer state → section active → field boundary → See & Spray threshold.
 function SFNozzleEffects:updateExtendedSprayerNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
+    local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
+
     if not isTurnedOn                                      then return false, 1 end
     if (lastSpeed or 0) < 0.25                             then return false, 1 end
     if self.movingDirection and self.movingDirection < 0   then return false, 1 end
@@ -422,8 +424,6 @@ function SFNozzleEffects:updateExtendedSprayerNozzleEffectState(effectData, dt, 
         local section = spec_vww.sections[effectData.sectionIndex]
         if section and not section.isActive then return false, 1 end
     end
-
-    local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
 
     -- Passes 1-3 and See & Spray threshold checks only apply when at least one See & Spray
     -- feature is purchased.  Without it every active VWW section sprays normally, matching
@@ -583,19 +583,10 @@ local function sfCheckFieldSeeSpraysTarget(spec, ft)
 end
 
 -- Suppress vanilla spray particle effects — our shader planes handle the visual.
--- For non-custom-nozzle vehicles with See & Spray purchased, suppress when no target.
+-- Non-custom vehicles always delegate to vanilla; usage gating is in getSprayerUsage.
 function SFNozzleEffects:getAreEffectsVisible(superFunc)
     local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
     if spec.hasCustomEffects then return false end
-    local hasAny = spec.seeSprayWeed or spec.seeSprayPest or spec.seeSprayDisease
-    if hasAny then
-        local sprayerSpec = self.spec_sprayer
-        local wap = sprayerSpec and sprayerSpec.workAreaParameters
-        local fillTypeIndex = wap and wap.sprayFillType
-        local ft = (fillTypeIndex and fillTypeIndex ~= 0)
-            and g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
-        if not sfCheckFieldSeeSpraysTarget(spec, ft) then return false end
-    end
     return superFunc(self)
 end
 
@@ -619,7 +610,7 @@ function SFNozzleEffects:getSprayerUsage(superFunc, fillType, dt)
     local spec  = self[SFNozzleEffects.SPEC_TABLE_NAME]
     local hasAny = spec.seeSprayWeed or spec.seeSprayPest or spec.seeSprayDisease
     if spec.hasCustomEffects and hasAny then
-        local _, alpha = self:getNumExtendedSprayerNozzleEffectsActive()
+        local numActive, alpha = self:getNumExtendedSprayerNozzleEffectsActive()
         usage = usage * alpha
         if (self.getIsAIActive ~= nil and self:getIsAIActive()) and usage == 0 then
             usage = 0.0001
