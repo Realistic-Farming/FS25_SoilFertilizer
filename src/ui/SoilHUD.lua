@@ -80,13 +80,13 @@ function SoilHUD.new(soilSystem, settings)
     self.animTimer        = 0
 
     -- Sub-panel free positioning (independent mode)
-    self.freePos        = { varRate = {} }
+    self.freePos        = { varRate = {}, smartSensor = {} }
     self.draggingSubKey = nil   -- key into freePos while dragging a sub-panel
     self.subDragOffX    = 0
     self.subDragOffY    = 0
 
     -- Loaded-from-disk collapsed states applied on first panel draw
-    self.savedCollapsed = { varRate = false }
+    self.savedCollapsed = { varRate = false, smartSensor = false }
 
     -- Camera freeze (NPCFavor pattern)
     self.savedCamRotX = nil
@@ -283,11 +283,21 @@ function SoilHUD:saveLayout()
                 xml:setFloat("hudLayout.freePosY_varRate", fp.y)
             end
         end
+        do
+            local fp = self.freePos["smartSensor"]
+            if fp and fp.x ~= nil then
+                xml:setFloat("hudLayout.freePosX_smartSensor", fp.x)
+                xml:setFloat("hudLayout.freePosY_smartSensor", fp.y)
+            end
+        end
 
         -- Sub-panel collapsed states
         local sfm = g_SoilFertilityManager
         if sfm and sfm.variableRatePanel then
             xml:setBool("hudLayout.collapsed_varRate", sfm.variableRatePanel.collapsed)
+        end
+        if sfm and sfm.smartSensorPanel then
+            xml:setBool("hudLayout.collapsed_smartSensor", sfm.smartSensorPanel.collapsed)
         end
 
         xml:save()
@@ -311,10 +321,16 @@ function SoilHUD:loadLayout()
             local y = xml:getFloat("hudLayout.freePosY_varRate", nil)
             if x ~= nil and y ~= nil then self.freePos["varRate"] = { x = x, y = y } end
         end
+        do
+            local x = xml:getFloat("hudLayout.freePosX_smartSensor", nil)
+            local y = xml:getFloat("hudLayout.freePosY_smartSensor", nil)
+            if x ~= nil and y ~= nil then self.freePos["smartSensor"] = { x = x, y = y } end
+        end
 
         -- Sub-panel collapsed states (applied on first draw since panels may not exist yet)
         self.savedCollapsed = {
-            varRate = xml:getBool("hudLayout.collapsed_varRate", false),
+            varRate     = xml:getBool("hudLayout.collapsed_varRate",     false),
+            smartSensor = xml:getBool("hudLayout.collapsed_smartSensor", false),
         }
 
         xml:delete()
@@ -472,6 +488,7 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         if sfm then
             local subPanels = {
                 { panel = sfm.variableRatePanel, key = "varRate" },
+                { panel = sfm.smartSensorPanel,  key = "smartSensor" },
             }
             for _, sp in ipairs(subPanels) do
                 local p = sp.panel

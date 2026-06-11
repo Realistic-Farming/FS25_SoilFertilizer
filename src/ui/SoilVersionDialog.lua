@@ -47,6 +47,10 @@ SoilVersionDialog.CHANGELOG = {
     "  (effects and fluid usage now suppressed correctly when no target pressure in field)",
     "- Fixed: JD sprayer outer boom sections now spray fertilizer across the full width",
     "  (field-boundary check was incorrectly suppressing outer sections for fertilizers)",
+    "- Fixed: Spray visuals now show on Condor and other non-custom-nozzle sprayers",
+    "  (vanilla particles were incorrectly suppressed when See & Spray threshold not met)",
+    "- Restored: Smart Sensor panel back on the HUD",
+    "  (shows See & Spray purchase status + live weed/pest/disease pressure per field)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

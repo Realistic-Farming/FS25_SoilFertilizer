@@ -154,6 +154,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             self.variableRatePanel = SoilVariableRatePanel.new(self.soilSystem, self.settings)
             SoilLogger.info("Variable Rate panel created")
         end
+        -- Smart Sensor panel (See & Spray status)
+        if SoilSmartSensorPanel then
+            self.smartSensorPanel = SoilSmartSensorPanel.new(self.soilSystem, self.settings)
+            SoilLogger.info("Smart Sensor panel created")
+        end
         -- Sprayer Info panel (gap view)
         if SoilSprayerInfoPanel then
             self.sprayerInfoPanel = SoilSprayerInfoPanel.new(self.soilSystem, self.settings)
@@ -550,6 +555,9 @@ function SoilFertilityManager:onMissionLoaded()
 
         if self.variableRatePanel then
             self.variableRatePanel:initialize()
+        end
+        if self.smartSensorPanel then
+            self.smartSensorPanel:initialize()
         end
         if self.sprayerInfoPanel then
             self.sprayerInfoPanel:initialize()
@@ -1376,6 +1384,10 @@ function SoilFertilityManager:delete()
     if self.variableRatePanel then
         self.variableRatePanel:delete()
         self.variableRatePanel = nil
+    end
+    if self.smartSensorPanel then
+        self.smartSensorPanel:delete()
+        self.smartSensorPanel = nil
     end
     if self.sprayerInfoPanel then
         self.sprayerInfoPanel:delete()

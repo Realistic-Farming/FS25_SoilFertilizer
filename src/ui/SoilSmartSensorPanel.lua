@@ -199,7 +199,6 @@ function SoilSmartSensorPanel:draw()
 end
 
 function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
-    local sensorMgr  = sfm.sensorManager
     local indMode    = sfm.settings and sfm.settings.independentPanels
 
     local hud = sfm.soilHUD
@@ -319,44 +318,28 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
 
     -- Field data for status readout
     local _, fd = self:getFieldData(sprayer)
-    local vehicleId = sprayer.id
 
-    -- Key hints — empty fallback since SF_SENSOR_* actions are not registered
-    local keyPest    = getActionKey("SF_SENSOR_PEST",    "")
-    local keyDisease = getActionKey("SF_SENSOR_DISEASE", "")
-    local keyNut     = getActionKey("SF_SENSOR_NUTRIENT","")
+    -- See & Spray purchase state from SFNozzleEffects vehicle spec
+    local sfSpec    = SFNozzleEffects and sprayer[SFNozzleEffects.SPEC_TABLE_NAME]
+    local pestOn    = sfSpec and sfSpec.seeSprayPest    or false
+    local diseaseOn = sfSpec and sfSpec.seeSprayDisease or false
+    local weedOn    = sfSpec and sfSpec.seeSprayWeed    or false
 
-    local pestOn    = sensorMgr:isPestEnabled(vehicleId)
-    local diseaseOn = sensorMgr:isDiseaseEnabled(vehicleId)
-    local nutrientOn = sensorMgr:isNutrientEnabled(vehicleId)
-
-    -- Build value strings (fd is a getFieldInfo table, not raw fieldData)
-    local pestVal, diseaseVal, nutVal = "", "", ""
+    -- Pressure readings (shown whenever pressure > 0, regardless of purchased state)
+    local pestVal, diseaseVal, weedVal = "", "", ""
     if fd then
         local pest = fd.pestPressure    or 0
         local dis  = fd.diseasePressure or 0
-        local k    = fd.potassium  and fd.potassium.value  or 0
-        local p    = fd.phosphorus and fd.phosphorus.value or 0
-        local ppm  = SoilConstants.PPM_DISPLAY or { P = 1, K = 1 }
-        if pest <= 0 then
-            pestVal = g_i18n:getText("sf_sensor_no_pressure") or "No pressure"
-        else
-            pestVal = string.format("%.0f%%", pest)
-        end
-        if dis <= 0 then
-            diseaseVal = g_i18n:getText("sf_sensor_no_pressure") or "No pressure"
-        else
-            diseaseVal = string.format("%.0f%%", dis)
-        end
-        nutVal = string.format("K=%d  P=%d",
-            math.floor(k * (ppm.K or 1) + 0.5),
-            math.floor(p * (ppm.P or 1) + 0.5))
+        local weed = fd.weedPressure    or 0
+        pestVal    = pest > 0 and string.format("%.0f%%", pest) or ""
+        diseaseVal = dis  > 0 and string.format("%.0f%%", dis)  or ""
+        weedVal    = weed > 0 and string.format("%.0f%%", weed) or ""
     end
 
     local rows = {
-        { label = g_i18n:getText("sf_sensor_pest"),     on = pestOn,    key = keyPest,    val = pestVal    },
-        { label = g_i18n:getText("sf_sensor_disease"),  on = diseaseOn, key = keyDisease, val = diseaseVal },
-        { label = g_i18n:getText("sf_sensor_nutrient"), on = nutrientOn,key = keyNut,     val = nutVal     },
+        { label = g_i18n:getText("sf_sensor_pest"),    on = pestOn,    val = pestVal    },
+        { label = g_i18n:getText("sf_sensor_disease"), on = diseaseOn, val = diseaseVal },
+        { label = g_i18n:getText("sf_pda_weed_label"), on = weedOn,    val = weedVal    },
     }
 
     local fs     = 0.0075 * s
@@ -385,17 +368,8 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
         setTextColor(labelC[1], labelC[2], labelC[3], labelC[4] or 1.0)
         renderText(tx + 0.010*s, midY - fs * 0.45, fs, row.label)
 
-        -- Key hint (right-aligned, dim) — only shown when a binding exists
-        if row.key and row.key ~= "" then
-            setTextAlignment(RenderText.ALIGN_RIGHT)
-            setTextColor(SoilSmartSensorPanel.C_DIM[1], SoilSmartSensorPanel.C_DIM[2],
-                SoilSmartSensorPanel.C_DIM[3], 0.70)
-            renderText(valX, midY - fsDim * 0.45, fsDim, "[" .. row.key .. "]")
-            setTextAlignment(RenderText.ALIGN_LEFT)
-        end
-
-        -- Value readout when sensor is on
-        if row.on and row.val ~= "" then
+        -- Pressure readout (always shown when > 0)
+        if row.val ~= "" then
             setTextColor(SoilSmartSensorPanel.C_LABEL[1], SoilSmartSensorPanel.C_LABEL[2],
                 SoilSmartSensorPanel.C_LABEL[3], 1.0)
             renderText(tx + 0.010*s, midY - fsDim * 0.45 - fsDim * 1.1, fsDim, row.val)

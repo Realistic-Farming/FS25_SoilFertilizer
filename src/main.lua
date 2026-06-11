@@ -58,6 +58,7 @@ source(modDirectory .. "src/utils/UIHelper.lua")
 source(modDirectory .. "src/settings/SoilSettingsUI.lua")
 source(modDirectory .. "src/ui/SoilHUD.lua")
 source(modDirectory .. "src/ui/SoilVariableRatePanel.lua")
+source(modDirectory .. "src/ui/SoilSmartSensorPanel.lua")
 source(modDirectory .. "src/ui/SoilSprayerInfoPanel.lua")
 source(modDirectory .. "src/ui/SoilHarvesterPanel.lua")
 source(modDirectory .. "src/ui/SoilMapOverlay.lua")
@@ -509,6 +510,9 @@ FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission
     end
     if sfm and sfm.variableRatePanel then
         sfm.variableRatePanel:draw()
+    end
+    if sfm and sfm.smartSensorPanel then
+        sfm.smartSensorPanel:draw()
     end
     if sfm and sfm.sprayerInfoPanel then
         sfm.sprayerInfoPanel:draw()
