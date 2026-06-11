@@ -335,12 +335,9 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionLastProduct      = nil
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
         harvestField.sprayTrailPts           = nil
-
-        -- Clear the frozen yield modifier now that the harvest session is complete.
-        -- The freeze exists to prevent mid-pass modifier drops (#556); once onHarvest
-        -- fires the session is over and the snapshot must not carry into the next season.
-        harvestField.frozenYieldModifier  = nil
-        harvestField.frozenYieldFruitType = nil
+        -- frozenYieldModifier is NOT cleared here (#598): onHarvest fires per-cut, so
+        -- clearing here defeats the freeze and causes yield to drop with each combine pass.
+        -- The freeze is cleared once per game day in _processOneDailyField instead.
     end
 
     SoilLogger.debug("Harvest: Field %d, Crop %d, %.0fL (biological), area=%.1f", fieldId, fruitTypeIndex, liters, area or 0)
@@ -1940,6 +1937,12 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field._covLastX               = nil
     field._covLastZ               = nil
     field._farmlandAreaConfirmed  = nil
+
+    -- Clear the yield-modifier freeze from the previous harvest session (#598).
+    -- Frozen on the first cut of a harvest pass and held until the next game day so
+    -- that per-cut nutrient depletion does not cause yield to drop mid-harvest (#556).
+    field.frozenYieldModifier  = nil
+    field.frozenYieldFruitType = nil
 
     -- ── Compaction natural decay ─────────────────────────────────────────────
     if self.settings.compactionEnabled and SoilConstants.COMPACTION then

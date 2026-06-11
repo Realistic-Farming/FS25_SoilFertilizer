@@ -1678,12 +1678,19 @@ function HookManager:installOverlapPreventionHook()
                             if checkFert then
                                 lvlModifier:setParallelogramWorldCoords(
                                     px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
-                                local lvl = lvlModifier:executeGet(lvlFilter, nil)
+                                -- Check how many pixels in this area are AT max spray level.
+                                -- executeGet returns (sumPixels, numMatchingPixels, total) — use
+                                -- numMatchingPixels (2nd return) with an EQUAL filter so that
+                                -- multi-pixel areas on high-res maps (16x etc.) don't produce false
+                                -- positives via a sumPixels > 0 test (#600).  Only suppress when
+                                -- the area is FULLY fertilized (at lvlMax), not merely touched.
+                                lvlFilter:setValueCompareParams(DensityValueCompareType.EQUAL, lvlMax)
+                                local _, numAtMax, _ = lvlModifier:executeGet(lvlFilter, nil)
                                 if doLog and i <= 4 then
-                                    SoilLogger.debug("[OverlapPrev]   sec%d px=%.1f pz=%.1f lvl=%s lvlMax=%s",
-                                        i, px, pz, tostring(lvl), tostring(lvlMax))
+                                    SoilLogger.debug("[OverlapPrev]   sec%d px=%.1f pz=%.1f numAtMax=%s lvlMax=%s",
+                                        i, px, pz, tostring(numAtMax), tostring(lvlMax))
                                 end
-                                return lvl ~= nil and lvl > 0
+                                return numAtMax ~= nil and numAtMax > 0
                             elseif checkLime then
                                 stModifier:setParallelogramWorldCoords(
                                     px, pz, px + 0.1, pz, px, pz + 0.1, DensityCoordType.POINT_POINT_POINT)
