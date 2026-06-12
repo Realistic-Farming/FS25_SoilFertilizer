@@ -324,8 +324,8 @@ function SoilSettingsPanel.new(settings)
     self.settings     = settings
     self.fillOverlay  = nil
     self.isVisible    = false
-    local mod = g_modManager and g_modManager:getModByName(g_currentModName)
-    self.modVersion   = "v2.0.9.1"
+    local mod = g_modManager and g_modManager:getModByName(SF_MOD_NAME)
+    self.modVersion   = (mod and mod.version) and ("v" .. tostring(mod.version)) or ""
     self.page         = PAGE_LANDING
     self.activeCatIdx = nil
     self.adminMsg     = nil   -- last action result shown in admin page
@@ -1375,8 +1375,14 @@ end
 function SoilSettingsPanel:drawMultiControl(rightX, y, settingId, locked)
     local opts    = MULTI_OPTS[settingId]
     if not opts then return end
-    local val        = self:getValue(settingId) or 1
-    local currentKey = opts[val] or opts[1] or ""
+    -- Map the setting value to its option label via def.min, not a fixed base of 1.
+    -- activeMapLayer ranges 0-10 (0=Off → sf_layer_1); all other number settings
+    -- start at 1, where val - min + 1 == val and behaviour is unchanged.
+    local def        = SettingsSchema.byId[settingId]
+    local minVal     = (def and def.min) or 1
+    local val        = self:getValue(settingId)
+    if val == nil then val = (def and def.default) or minVal end
+    local currentKey = opts[val - minVal + 1] or opts[1] or ""
     local current    = (currentKey ~= "" and tr(currentKey)) or currentKey or "?"
 
     local arrowW = 0.022
@@ -1472,17 +1478,24 @@ function SoilSettingsPanel:handleClick(id, data)
 
     elseif id:sub(1, 10) == "multi_prev" then
         if data then
-            local cur = self:getValue(data.id) or 1
-            local nxt = cur - 1
-            if nxt < 1 then nxt = #data.opts end
+            -- Wrap within the schema's [min, max] range (activeMapLayer starts at 0)
+            local def  = SettingsSchema.byId[data.id]
+            local minV = (def and def.min) or 1
+            local maxV = (def and def.max) or #data.opts
+            local cur  = self:getValue(data.id) or minV
+            local nxt  = cur - 1
+            if nxt < minV then nxt = maxV end
             self:requestChange(data.id, nxt)
         end
 
     elseif id:sub(1, 10) == "multi_next" then
         if data then
-            local cur = self:getValue(data.id) or 1
-            local nxt = cur + 1
-            if nxt > #data.opts then nxt = 1 end
+            local def  = SettingsSchema.byId[data.id]
+            local minV = (def and def.min) or 1
+            local maxV = (def and def.max) or #data.opts
+            local cur  = self:getValue(data.id) or minV
+            local nxt  = cur + 1
+            if nxt > maxV then nxt = minV end
             self:requestChange(data.id, nxt)
         end
 
@@ -1521,6 +1534,10 @@ function SoilSettingsPanel:handleClick(id, data)
 
     elseif id:sub(1, 10) == "set_state_" then
         if id == "set_state_save" then
+            if not self:isAdmin() then
+                adminShowMsg(self, "Admin only: field state can only be changed by server admins.")
+                return
+            end
             if g_SoilFertilityManager and g_SoilFertilityManager.settingsGUI then
                 local sd = self.setStateData
                 local msg = g_SoilFertilityManager.settingsGUI:consoleCommandSetState(
@@ -1562,6 +1579,19 @@ function SoilSettingsPanel:handleClick(id, data)
                 self:close()
                 g_SoilFertilityManager.tuningPanel:open()
             end
+            return
+        end
+
+        -- Mutating actions are admin-only. Setting ROWS are already locked for
+        -- non-admins, but these buttons were not — a non-admin clicking Reset
+        -- mutated local state and desynced the client until the next full sync.
+        -- Read-only actions (field info / forecast / list) stay open to everyone.
+        local mutatingActions = {
+            admin_save = true, admin_reset = true, admin_drain = true,
+            admin_field_set_state = true, admin_field_recover = true,
+        }
+        if mutatingActions[actionId] and not self:isAdmin() then
+            adminShowMsg(self, "Admin only: this action is restricted to server admins.")
             return
         end
 

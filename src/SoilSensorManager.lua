@@ -25,8 +25,8 @@ function SoilSensorManager.new()
     local self = setmetatable({}, SoilSensorManager)
     -- System 1: Smart Sensor — vehicleId → { pest=bool, disease=bool, nutrient=bool }
     self.vehicleSensors = {}
-    -- System 2: See & Spray — vehicleId → { pest=bool, disease=bool, weed=bool }
     -- System 3: Variable Rate — vehicleId → bool
+    -- (System 2, See & Spray, is a vehicle purchase config owned by SFNozzleEffects)
     self.variableRate = {}
     -- System 3: per-section rate cache — vehicleId → { [sectionRef] = multiplier }
     self.sectionRates = {}

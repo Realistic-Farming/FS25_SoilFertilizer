@@ -10,33 +10,13 @@
 ---@class UIHelper
 UIHelper = {}
 
--- Capture mod name at load time — g_currentModName is only valid during loading.
-local SF_MOD_NAME = g_currentModName
-
-local function getTextSafe(key)
-    -- Use mod-scoped i18n so mod translation keys are resolved correctly.
-    -- g_i18n is the global (base-game) object and does not contain mod keys.
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if not i18n then
-        return key
-    end
-
-    local text = i18n:getText(key)
-    if text == nil or text == "" then
-        SoilLogger.warning("[SoilFertilizer] Missing translation for key: " .. tostring(key))
-        return key
-    end
-    return text
-end
-
 --- Create a section header element using FS25 profile
 ---@param layout table The gameSettingsLayout to add to
 ---@param text string The section header text
 ---@return table|nil The created text element
 function UIHelper.createSectionHeader(layout, text)
     if not layout then
-        SoilLogger.error("[SoilFertilizer] Invalid layout passed to createSectionHeader")
+        SoilLogger.error("Invalid layout passed to createSectionHeader")
         return nil
     end
 
@@ -60,7 +40,7 @@ end
 ---@return table|nil The created BinaryOptionElement
 function UIHelper.createBinaryOption(layout, callbackTarget, callbackName, title, tooltip)
     if not layout then
-        SoilLogger.error("[SoilFertilizer] Invalid layout passed to createBinaryOption")
+        SoilLogger.error("Invalid layout passed to createBinaryOption")
         return nil
     end
 
@@ -108,7 +88,7 @@ end
 ---@return table|nil The created MultiTextOptionElement
 function UIHelper.createMultiOption(layout, callbackTarget, callbackName, texts, title, tooltip)
     if not layout then
-        SoilLogger.error("[SoilFertilizer] Invalid layout passed to createMultiOption")
+        SoilLogger.error("Invalid layout passed to createMultiOption")
         return nil
     end
 

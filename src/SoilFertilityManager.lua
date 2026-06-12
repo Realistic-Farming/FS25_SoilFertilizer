@@ -1148,8 +1148,9 @@ function SoilFertilityManager:update(dt)
         self.tuningPanel:update()
     end
 
-    -- Compaction: periodic check for local player's heavy vehicle driving over fields
-    if g_currentMission and g_currentMission.isServer then
+    -- Compaction: periodic check for local player's heavy vehicle driving over fields.
+    -- getIsServer() is the documented API; the .isServer field is not guaranteed on FSBaseMission.
+    if g_currentMission and g_currentMission:getIsServer() then
         self._compactionTimer = (self._compactionTimer or 0) + dt
         if self._compactionTimer >= 30000 then
             self._compactionTimer = 0
@@ -1425,11 +1426,6 @@ function SoilFertilityManager:delete()
         self.vehicleHUDEventId = nil
     end
 
-    if self.vehicleReportEventId and g_inputBinding then
-        g_inputBinding:removeActionEvent(self.vehicleReportEventId)
-        self.vehicleReportEventId = nil
-    end
-
     if self.rateUpEventId and g_inputBinding then
         g_inputBinding:removeActionEvent(self.rateUpEventId)
         self.rateUpEventId = nil
@@ -1477,6 +1473,11 @@ function SoilFertilityManager:delete()
     if self.cycleMapLayerEventId and g_inputBinding then
         g_inputBinding:removeActionEvent(self.cycleMapLayerEventId)
         self.cycleMapLayerEventId = nil
+    end
+
+    if self.vehicleCycleMapLayerEventId and g_inputBinding then
+        g_inputBinding:removeActionEvent(self.vehicleCycleMapLayerEventId)
+        self.vehicleCycleMapLayerEventId = nil
     end
 
     if self.hudDragEventId and g_inputBinding then

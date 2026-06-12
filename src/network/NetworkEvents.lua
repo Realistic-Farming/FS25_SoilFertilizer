@@ -79,6 +79,12 @@ function SoilSettingChangeEvent:run(connection)
         end
     end
 
+    -- Validate the value against the schema before applying — without this an
+    -- out-of-range number from a buggy/modified client (e.g. difficulty=99)
+    -- would be stored in server state and broadcast to everyone.
+    self.settingValue = SettingsSchema.validate(self.settingName, self.settingValue)
+    if self.settingValue == nil then return end
+
     -- Apply setting on server
     if g_SoilFertilityManager and g_SoilFertilityManager.settings then
         local settings = g_SoilFertilityManager.settings

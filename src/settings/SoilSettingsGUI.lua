@@ -44,6 +44,8 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilDebug", "Toggle debug mode", "consoleCommandDebug", self)
     addConsoleCommand("SoilDrainVehicle", "Drain custom fertilizer from current vehicle/implements (50% refund)", "consoleCommandDrainVehicle", self)
     addConsoleCommand("SoilPFDump", "Dump Precision Farming bridge API for integration diagnostics", "consoleCommandPFDump", self)
+    addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
+    addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -419,7 +421,13 @@ end
 
 function SoilSettingsGUI:consoleCommandResetSettings()
     if g_SoilFertilityManager and g_SoilFertilityManager.settings then
-        g_SoilFertilityManager.settings:resetToDefaults()
+        -- Route every setting through the network layer (same path as the panel's
+        -- per-category reset). Calling settings:resetToDefaults() directly only
+        -- mutated local state on MP clients — the server never heard about it and
+        -- the client desynced until the next full sync.
+        for _, def in ipairs(SettingsSchema.definitions) do
+            requestSettingChange(def.id, def.default)
+        end
         if g_SoilFertilityManager.soilSystem then
             g_SoilFertilityManager.soilSystem:initialize()
         end
@@ -569,10 +577,12 @@ function SoilSettingsGUI:consoleCommandSetState(fieldId, n, p, k, ph, om)
     local fid = tonumber(fieldId)
     
     if not fid then
-        -- If no args, tell them to use the UI
-        if g_SoilFertilityManager.settingsUI and g_SoilFertilityManager.settingsUI.panel then
-            local panel = g_SoilFertilityManager.settingsUI.panel
-            if not panel.isVisible then
+        -- No args: open the custom settings panel on the admin page instead.
+        -- (The panel lives at manager.settingsPanel; settingsUI is the vanilla
+        -- settings-page injector and has no panel field.)
+        local panel = g_SoilFertilityManager.settingsPanel
+        if panel then
+            if not panel:isOpen() then
                 panel:open()
             end
             panel.page = "admin"

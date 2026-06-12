@@ -214,7 +214,8 @@ function SoilLayerSystem:initialize()
 
     -- ── Weed layer (game-native, read-only) ───────────────────────────────────
     -- FS25 tracks weed presence via WeedSystem which owns a foliage density map.
-    -- We sample it to derive per-field weed pressure rather than simulating it.
+    -- Exposed via getWeedMapData() for minimap/PDA overlay rendering; per-field
+    -- weed pressure itself comes from FieldState.weedFactor in the daily update.
     local weedSystem = g_currentMission and g_currentMission.weedSystem
     if weedSystem ~= nil then
         local ok, mapId, firstCh, numCh = pcall(function()
@@ -233,71 +234,6 @@ function SoilLayerSystem:initialize()
     else
         SoilLogger.debug("SoilLayerSystem: No WeedSystem — weed pressure uses simulation fallback")
     end
-end
-
--- ─────────────────────────────────────────────────────────
--- Sample the game's native weed density map across a farmland
--- bounding box and return the fraction of pixels that have any
--- weed present (non-zero state), as a value 0.0–1.0.
--- Returns nil if the weed layer is not available.
--- ─────────────────────────────────────────────────────────
-
----@param farmland table  FS25 farmland object
----@return number|nil  0.0–1.0 weed coverage fraction, or nil
-function SoilLayerSystem:readWeedCoverageForFarmland(farmland)
-    if not self.hasWeedLayer or not self.weedMapId then return nil end
-
-    local cx, cz, hw, hh
-    if farmland.x and farmland.z then
-        cx = farmland.x
-        cz = farmland.z
-        hw = (farmland.width  and farmland.width  / 2) or 50
-        hh = (farmland.height and farmland.height / 2) or 50
-    elseif farmland.polygon and #farmland.polygon >= 2 then
-        local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
-        for i = 1, #farmland.polygon, 2 do
-            local px = farmland.polygon[i]
-            local pz = farmland.polygon[i + 1]
-            if px and pz then
-                if px < minX then minX = px end
-                if px > maxX then maxX = px end
-                if pz < minZ then minZ = pz end
-                if pz > maxZ then maxZ = pz end
-            end
-        end
-        if minX == math.huge then return nil end
-        cx = (minX + maxX) / 2
-        cz = (minZ + maxZ) / 2
-        hw = (maxX - minX) / 2
-        hh = (maxZ - minZ) / 2
-    else
-        return nil
-    end
-
-    local ok, modifier = pcall(function()
-        return DensityMapModifier.new(self.weedMapId, self.weedFirstCh, self.weedNumCh, g_terrainNode)
-    end)
-    if not ok or not modifier then return nil end
-
-    local STEPS  = 8
-    local weedCount = 0
-    local total     = 0
-
-    for xi = 0, STEPS - 1 do
-        for zi = 0, STEPS - 1 do
-            local wx = (cx - hw) + (xi / (STEPS - 1)) * (hw * 2)
-            local wz = (cz - hh) + (zi / (STEPS - 1)) * (hh * 2)
-            modifier:setParallelogramWorldCoords(wx, wz, wx + 0.1, wz, wx, wz + 0.1, DensityCoordType.POINT_POINT_POINT)
-            local val, _, _ = modifier:executeGet(DensityMapFilter.new(modifier), nil)
-            if val ~= nil then
-                total = total + 1
-                if val > 0 then weedCount = weedCount + 1 end
-            end
-        end
-    end
-
-    if total == 0 then return 0 end
-    return weedCount / total
 end
 
 -- ─────────────────────────────────────────────────────────

@@ -395,10 +395,15 @@ function SettingsSchema.getBooleanSettings()
     return result
 end
 
---- Get the default value for a setting
+--- Get the default value for a setting (nil if the setting is unknown)
 function SettingsSchema.getDefault(id)
     local def = SettingsSchema.byId[id]
-    return def and def.default or nil
+    if def ~= nil then
+        -- Explicit return (not `def and def.default or nil`) so boolean
+        -- settings whose default is false return false, not nil.
+        return def.default
+    end
+    return nil
 end
 
 --- Get a table of all defaults

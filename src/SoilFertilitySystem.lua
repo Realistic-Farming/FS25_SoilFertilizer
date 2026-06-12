@@ -2295,19 +2295,13 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
     end
 
-    -- ── Sync weed pressure from game's native weed density map ──────────────
-    -- If the WeedSystem is present, derive weed pressure from actual terrain
-    -- weed coverage rather than our internal simulation value.
+    -- NOTE: weed pressure is NOT re-read from the weed density map here.
+    -- An older AABB-based sync (readWeedCoverageForFarmland) used to overwrite
+    -- field.weedPressure at this point, silently undoing the herbicide-protection
+    -- clamp and the MAX_DAILY_INCREASE spike cap applied above (#536) — withered
+    -- weeds still count as coverage in that sampler. The FieldState.weedFactor
+    -- read above is the single authoritative source.
     local layerSys = self.layerSystem
-    if layerSys and layerSys.hasWeedLayer then
-        local farmland = g_farmlandManager and g_farmlandManager:getFarmlandById(fieldId)
-        if farmland then
-            local coverage = layerSys:readWeedCoverageForFarmland(farmland)
-            if coverage ~= nil then
-                field.weedPressure = math.min(100, coverage * 100)
-            end
-        end
-    end
 
     -- ── Sync all nutrient/pressure layers to density maps ───────────────────
     -- Paint non-perPixel layers (pest/disease/compaction) with the daily average.

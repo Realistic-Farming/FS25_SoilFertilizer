@@ -121,6 +121,15 @@ end
 -- Globals
 local sfm = nil
 
+-- Declared before unload() so it captures these as upvalues (not globals).
+-- Previously these lived below unload(), so unload() resolved them as globals
+-- and the InputHelpDisplay.draw restore never ran.
+local _sprayerF1HookInstalled = false
+local _inputHelpDisplayOrigDraw = nil
+-- getCanTipToGround is hooked once per game session (see loadedMission);
+-- re-wrapping on every savegame load would chain stale closures.
+local _canTipHookInstalled = false
+
 -- Helper: check if mod is initialized
 local function isEnabled()
     return sfm ~= nil
@@ -239,17 +248,21 @@ local function loadedMission(mission, node)
 
                 -- Belt-and-suspenders: also hook getCanTipToGround at Lua level so the
                 -- discharge eligibility check passes even if C++ hasn't read our table.
-                if registered > 0 and DensityMapHeightUtil and
+                -- Installed once per game session and resolving the manager dynamically:
+                -- loadedMission re-runs on every savegame load, and re-wrapping here would
+                -- chain wrappers and capture the previous mission's (stale) manager.
+                if registered > 0 and not _canTipHookInstalled and DensityMapHeightUtil and
                    type(DensityMapHeightUtil.getCanTipToGround) == "function" then
-                    local _dmhm = dmhm
                     local _origGetCan = DensityMapHeightUtil.getCanTipToGround
                     DensityMapHeightUtil.getCanTipToGround = function(fillTypeIndex)
-                        if _dmhm and _dmhm.fillTypeIndexToHeightType and
-                           _dmhm.fillTypeIndexToHeightType[fillTypeIndex] then
+                        local mgr = g_densityMapHeightManager
+                        if mgr and mgr.fillTypeIndexToHeightType and
+                           mgr.fillTypeIndexToHeightType[fillTypeIndex] then
                             return true
                         end
                         return _origGetCan(fillTypeIndex)
                     end
+                    _canTipHookInstalled = true
                     SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround hooked")
                 end
             else
@@ -469,9 +482,6 @@ Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00
 Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, missionStarted)
 -- Prepend so our cleanup runs before FS25 tears down g_inputBinding/HUD (fixes black screen with AGS)
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
-
-local _sprayerF1HookInstalled = false
-local _inputHelpDisplayOrigDraw = nil
 
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
     if sfm then
