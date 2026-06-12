@@ -615,8 +615,8 @@ SoilConstants.ZONE = {
     CELL_SIZE        = 10,    -- meters per cell side
     CELL_AREA_HA     = 0.01,  -- hectares per cell (10×10 m = 0.01 ha)
     -- A cell stamped less than this many ms ago won't trigger overlap suppression.
-    -- At 3 km/h a sprayer spends ~12 s in one cell; 20 s gives headroom for very slow passes.
-    OVERLAP_GRACE_MS = 20000,
+    -- At 6 km/h a sprayer crosses a 10m cell in ~6 s; 10 s gives safe headroom.
+    OVERLAP_GRACE_MS = 10000,
 }
 
 -- ========================================

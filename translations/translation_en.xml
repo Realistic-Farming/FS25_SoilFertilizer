@@ -39,6 +39,10 @@
     <e k="sf_show_hud_long" v="Show/hide the soil info HUD overlay (F8 to toggle temporarily)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="Work Trail" />
     <e k="sf_show_work_trail_long" v="Show/hide spray and harvest trail dots in-world and on the minimap" />
+    <e k="sf_show_sprayer_panel_short" v="Sprayer Panel" />
+    <e k="sf_show_sprayer_panel_long" v="Show/hide the sprayer nutrient info panel when driving a sprayer" />
+    <e k="sf_show_harvester_panel_short" v="Harvester Panel" />
+    <e k="sf_show_harvester_panel_long" v="Show/hide the harvester grain tank status panel when harvesting" />
     <e k="sf_hud_position_short" v="HUD Position" eh="5ac371f2" />
     <e k="sf_hud_position_long" v="Choose where the soil info HUD appears on screen" eh="d7b9c109" />
     <e k="sf_hud_pos_1" v="Top Right" eh="5f9f6784" />
@@ -604,6 +608,8 @@
     <e k="sf_desc_showNotifications" v="In-game soil status notifications" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="Show the soil HUD overlay" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="Show spray and harvest pass trail overlays" />
+    <e k="sf_desc_showSprayerInfoPanel" v="Show the sprayer nutrient panel when driving a sprayer" />
+    <e k="sf_desc_showHarvesterPanel" v="Show the harvester grain tank status panel when harvesting" />
     <e k="sf_desc_hudPosition" v="HUD preset anchor position" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Color palette for HUD elements" eh="97271907" />
     <e k="sf_desc_hudFontSize" v="HUD text size" eh="48a6fc15" />

@@ -1694,68 +1694,61 @@ function HookManager:installOverlapPreventionHook()
             local prevSuppressed = sprayerSelf._sfOverlapSuppressedSections or {}
             local currSuppressed = {}
 
+            -- At >=99% field coverage every section is guaranteed to be on
+            -- already-sprayed ground — suppress everything without a grace period.
+            -- This handles the centre section whose coverage cells are always stamped
+            -- fresh (it's under the vehicle) and never age past graceMs on the current pass.
+            local coverage = fieldEntry and fieldEntry.sessionCoverageFraction or 0
+            local coverageComplete = coverage >= 0.99
+
             local suppressCount = 0
             for i, section in ipairs(vww.sections) do
-                -- Check all non-center sections regardless of current isActive.
-                -- Gating on isActive caused a 2-frame flicker: suppressed (isActive=false)
-                -- → gate skips → not in currSuppressed → state restorer brings it back to
-                -- true → next frame active → overlap suppresses again → loop.
-                if not section.isCenter then
-                    local tip = tips and tips[i]
+                local tip = tips and tips[i]
+                local alreadySprayed = coverageComplete  -- global gate at 99%+
 
-                    -- Sections with no tip node (no maxWidthNode): skip overlap check.
-                    -- Falling back to the root/hitch point causes false positives — on any
-                    -- second pass, the tractor track is already sprayed and all tip-less
-                    -- wing sections would be suppressed, leaving only the center spraying.
-                    if tip then
-                        -- Check ONLY the TIP cell (outermost edge of this section's coverage).
-                        -- If the outer edge's cell was stamped by us this session and the stamp
-                        -- is older than graceMs, the section is fully covered → suppress.
-                        local tx = tip[1]
-                        local tz = tip[2]
+                if not alreadySprayed and tip then
+                    -- Tip-based cell check for partial-overlap suppression (wings).
+                    -- Centre-section cells are stamped fresh (right under the vehicle),
+                    -- so they never age past graceMs on the current pass — skip them here;
+                    -- the coverageComplete gate above catches them at 99%+.
+                    local tx = tip[1]
+                    local tz = tip[2]
+                    local cx = math.floor(tx / zoneCell)
+                    local cz = math.floor(tz / zoneCell)
+                    local cellKey = tostring(cx * 10000 + cz)
+                    local stampMs = coveredCells[cellKey]
+                    alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
 
-                        local cx = math.floor(tx / zoneCell)
-                        local cz = math.floor(tz / zoneCell)
-                        local cellKey = tostring(cx * 10000 + cz)
-                        local stampMs = coveredCells[cellKey]
-                        local alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
+                    if doLog and i <= 4 then
+                        SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampMs=%s graceOk=%s",
+                            i, tx, tz, tostring(stampMs), tostring(alreadySprayed))
+                    end
+                end
 
-                        if doLog and i <= 4 then
-                            SoilLogger.debug("[OverlapPrev]   sec%d tx=%.1f tz=%.1f stampMs=%s graceOk=%s",
-                                i, tx, tz, tostring(stampMs), tostring(alreadySprayed))
-                        end
+                if alreadySprayed then
+                    section.isActive = false
+                    suppressCount = suppressCount + 1
+                    currSuppressed[i] = section
 
-                        if alreadySprayed then
-                            section.isActive = false
-                            suppressCount = suppressCount + 1
-                            currSuppressed[i] = section
+                    if section.effects and #section.effects > 0 then
+                        g_effectManager:stopEffects(section.effects)
+                    end
 
-                            -- Stop section effects (idempotent if already stopped).
-                            if section.effects and #section.effects > 0 then
-                                g_effectManager:stopEffects(section.effects)
-                            end
-
-                            -- ESE per-nozzle shader: force fadeProgress to off {1,-1}.
-                            local eseSpec = sprayerSelf.spec_extendedSprayerEffects
-                            if eseSpec and eseSpec.sprayerEffectsBySection then
-                                local sectionEffects = eseSpec.sprayerEffectsBySection[i]
-                                if sectionEffects then
-                                    for _, ed in ipairs(sectionEffects) do
-                                        if ed.effectNode and ed.fadeCur then
-                                            setShaderParameter(ed.effectNode, "fadeProgress", 1, -1, 0, 0, false)
-                                        end
-                                    end
+                    local eseSpec = sprayerSelf.spec_extendedSprayerEffects
+                    if eseSpec and eseSpec.sprayerEffectsBySection then
+                        local sectionEffects = eseSpec.sprayerEffectsBySection[i]
+                        if sectionEffects then
+                            for _, ed in ipairs(sectionEffects) do
+                                if ed.effectNode and ed.fadeCur then
+                                    setShaderParameter(ed.effectNode, "fadeProgress", 1, -1, 0, 0, false)
                                 end
                             end
-                        elseif prevSuppressed[i] then
-                            -- Transition: was suppressed last frame, tip now clear.
-                            -- Only restart effects if the section is intended to be active
-                            -- (not player-deactivated via section width control).
-                            local prevSection = prevSuppressed[i]
-                            if section.isActive and prevSection.effects and #prevSection.effects > 0 then
-                                g_effectManager:startEffects(prevSection.effects)
-                            end
                         end
+                    end
+                elseif prevSuppressed[i] then
+                    local prevSection = prevSuppressed[i]
+                    if section.isActive and prevSection.effects and #prevSection.effects > 0 then
+                        g_effectManager:startEffects(prevSection.effects)
                     end
                 end
             end

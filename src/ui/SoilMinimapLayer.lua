@@ -285,32 +285,42 @@ function SoilMinimapLayer:draw(mapSelf)
     if mapSelf.isFullscreen then return end
     if g_gui ~= nil and g_gui:getIsGuiVisible() then return end
 
+    local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
+
     if not self._usingDensityLayers then
         -- No GRLE density-map layers on this terrain — hand off to polygon centroid dots.
         local sfm = g_SoilFertilityManager
         if sfm and sfm.soilMapOverlay then
             sfm.soilMapOverlay:onDrawMinimap(mapSelf)
         end
+        -- Still show the layer indicator in the polygon fallback path
+        if layerIdx > 0 then
+            self:drawLayerIndicator(mapSelf:getPosition(), mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
+        end
         return
     end
 
-    local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
     if layerIdx <= 0 then return end
-
-    local ovEntry = self._overlays[layerIdx]
-    if not ovEntry or not ovEntry.hasShown then return end
-
-    local ov = ovEntry.ov
-    if not ov then return end
 
     -- Map terrain-space → screen rect using the same math the game uses for
     -- its built-in BMP overlay layers (proven in v2.2.5).
     local layout = mapSelf.layout
     if not layout then return end
 
+    -- Draw the layer indicator before any overlay-readiness or layout-type guards
+    -- that might return early. mapSelf inherits HUDElement — getPosition/getWidth/
+    -- getHeight return the minimap widget's screen-space bounds.
+    self:drawLayerIndicator(mapSelf:getPosition(), mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
+
     -- Circle minimap rotates with the vehicle heading; our terrain-space overlay doesn't
     -- transform correctly in that coordinate frame and drifts. Skip until fixed (#578).
     if layout:isa(IngameMapLayoutCircle) then return end
+
+    local ovEntry = self._overlays[layerIdx]
+    if not ovEntry or not ovEntry.hasShown then return end
+
+    local ov = ovEntry.ov
+    if not ov then return end
 
     local w, h   = layout:getMapSize()
     local x, y   = layout:getMapPosition()
@@ -380,6 +390,57 @@ function SoilMinimapLayer:draw(mapSelf)
         self:drawHarvestTrailDots(mapSelf)
         self:drawTillageTrailDots(mapSelf)
     end
+end
+
+-- Short labels for each layer index (displayed in minimap corner).
+local LAYER_LABEL = {
+    [1]  = "N",        [2]  = "P",      [3]  = "K",
+    [4]  = "pH",       [5]  = "OM",     [6]  = "!",
+    [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
+    [10] = "Compact",
+}
+-- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
+local LAYER_LABEL_COLOR = {
+    [1]  = {0.40, 0.90, 0.40},  [2]  = {0.40, 0.70, 1.00},
+    [3]  = {0.90, 0.70, 0.25},  [4]  = {0.80, 0.40, 1.00},
+    [5]  = {0.60, 0.35, 0.10},  [6]  = {0.95, 0.25, 0.25},
+    [7]  = {0.20, 0.70, 0.20},  [8]  = {0.85, 0.75, 0.10},
+    [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
+}
+
+-- Draws a small "N", "pH", etc. tag in the top-left corner of the minimap widget.
+-- mx/my = bottom-left of the (clipped) minimap rect; mw/mh = size.
+function SoilMinimapLayer:drawLayerIndicator(mx, my, mw, mh, layerIdx)
+    local label = LAYER_LABEL[layerIdx]
+    if not label then return end
+
+    local col = LAYER_LABEL_COLOR[layerIdx] or {1, 1, 1}
+    local sz  = 0.014   -- larger for readability
+    local pad = 0.005
+
+    -- Top-left corner: y goes up from bottom, so top = my + mh
+    local tx = mx + pad
+    local ty = my + mh - sz - pad
+
+    -- Dark semi-transparent pill background
+    if self._dotOverlay and self._dotOverlay ~= 0 then
+        local bgW = sz * (#label * 0.62 + 0.4)
+        local bgH = sz * 1.35
+        setOverlayColor(self._dotOverlay, 0, 0, 0, 0.52)
+        renderOverlay(self._dotOverlay, tx - pad * 0.5, ty - pad * 0.3, bgW, bgH)
+    end
+
+    -- Text with shadow
+    setTextBold(true)
+    setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(0, 0, 0, 0.70)
+    renderText(tx + 0.0008, ty - 0.0008, sz, label)
+    setTextColor(col[1], col[2], col[3], 0.95)
+    renderText(tx, ty, sz, label)
+
+    setTextBold(false)
+    setTextColor(1, 1, 1, 1)
+    setTextAlignment(RenderText.ALIGN_LEFT)
 end
 
 --- Draws earth-brown/tan pixel dots on the minimap for each tilled cell today.

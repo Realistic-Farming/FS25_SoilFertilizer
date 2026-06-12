@@ -3598,13 +3598,26 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             initialized = true,
             nutrientBuffer = {},
             zoneData = {},
-            coveredAreaHa = 0,
+            coveredAreaHa = 0,        -- restored below from coverageFraction × fieldArea
             dailyCoverageCells = {},
-            sessionCoverageHa = 0,
+            sessionCoverageHa = 0,    -- restored below
             sessionCoverageFraction = 0,
             sessionCoverageCells = {},
             sessionLastProduct = nil,
         }
+
+        -- Restore coverage tracking so pass% persists across reloads (#608).
+        -- sessionCoverageCells is intentionally left empty (timestamps are session-local),
+        -- but the ha/fraction values are seeded from the saved cumulative coverage so the
+        -- sprayer panel displays the correct % immediately on reload and markBoomCells
+        -- continues accumulating from the right baseline instead of resetting to 0.
+        do
+            local f    = self.fieldData[fieldId]
+            local ha   = f.coverageFraction * f.fieldArea
+            f.coveredAreaHa           = ha
+            f.sessionCoverageHa       = ha
+            f.sessionCoverageFraction = f.coverageFraction
+        end
 
         -- Load daily application throttles
         self.herbicideAppliedDay[fieldId] = getXMLInt(xmlFile, fieldKey .. "#herbicideAppliedDay") or 0

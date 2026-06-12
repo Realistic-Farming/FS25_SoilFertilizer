@@ -318,6 +318,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     "rateUpEventId",     "rateDownEventId",
                     "toggleAutoEventId", "vehicleSettingsPanelEventId",
                     "vehicleHudDragEventId", "vehicleMinimapZoomEventId",
+                    "vehicleCycleMapLayerEventId",
                     "sensorPestEventId", "sensorDiseaseEventId", "sensorNutrientEventId",
                     "seeSprayPestEventId", "seeSprayDiseaseEventId", "seeSprayWeedEventId",
                     "variableRateEventId",
@@ -425,6 +426,20 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                         g_SoilFertilityManager.vehicleMinimapZoomEventId = vZoomId
                         binding:setActionEventTextVisibility(vZoomId, false)
                         SoilLogger.debug("Minimap zoom registered in VEHICLE context")
+                    end
+                end
+
+                -- Map layer cycle — VEHICLE context (#609: minimap layers visible while driving)
+                if g_SoilFertilityManager.soilMapOverlay then
+                    local vMapOk, vMapId = binding:registerActionEvent(
+                        InputAction.SF_CYCLE_MAP_LAYER, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onCycleMapLayerInput,
+                        false, true, false, true
+                    )
+                    if vMapOk and vMapId then
+                        g_SoilFertilityManager.vehicleCycleMapLayerEventId = vMapId
+                        binding:setActionEventTextVisibility(vMapId, false)
+                        SoilLogger.debug("Map layer cycle registered in VEHICLE context")
                     end
                 end
 

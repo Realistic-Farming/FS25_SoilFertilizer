@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Půda &amp; Hnojivo" eh="f31197fb" />
@@ -43,6 +43,10 @@
     <e k="sf_show_mini_report_long" v="Zobrazit/skrýt překryv zprávy o buňce na minimapě" eh="9f57fb65" />
     <e k="sf_show_work_trail_short" v="Stopa práce" />
     <e k="sf_show_work_trail_long" v="Zobrazit/skrýt tečky stopy postřiku a sklizně ve světě a na minimapě" />
+    <e k="sf_show_sprayer_panel_short" v="Sprayer Panel" />
+    <e k="sf_show_sprayer_panel_long" v="Show/hide the sprayer nutrient info panel when driving a sprayer" />
+    <e k="sf_show_harvester_panel_short" v="Harvester Panel" />
+    <e k="sf_show_harvester_panel_long" v="Show/hide the harvester grain tank status panel when harvesting" />
     <e k="sf_hud_position_short" v="Pozice HUD" eh="5ac371f2" />
     <e k="sf_hud_position_long" v="Vyberte, kde se na obrazovce zobrazí HUD s informacemi o půdě" eh="d7b9c109" />
     <e k="sf_hud_pos_1" v="Vpravo nahoře" eh="5f9f6784" />

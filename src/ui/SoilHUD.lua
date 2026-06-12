@@ -1115,7 +1115,7 @@ function SoilHUD:drawSprayTrail()
     end
 
     local maxDistSq = 200 * 200
-    local half = 0.0025  -- half of 0.005 normalized quad size
+    local half = 0.004  -- slightly larger than original 0.0025
 
     setOverlayColor(self.fillOverlay, 0.25, 0.95, 0.55, 0.38)
     for _, pt in ipairs(field.sprayTrailPts) do
