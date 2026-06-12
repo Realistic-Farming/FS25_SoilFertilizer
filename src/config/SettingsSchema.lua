@@ -65,6 +65,20 @@ SettingsSchema.definitions = {
         localOnly = true,
     },
     {
+        id = "showSprayerInfoPanel",
+        type = "boolean",
+        default = true,
+        uiId = "sf_show_sprayer_panel",
+        localOnly = true,
+    },
+    {
+        id = "showHarvesterPanel",
+        type = "boolean",
+        default = true,
+        uiId = "sf_show_harvester_panel",
+        localOnly = true,
+    },
+    {
         id = "hudPosition",
         type = "number",
         default = 1,  -- 1=Top Right, 2=Top Left, 3=Bottom Right, 4=Bottom Left, 5=Center Right, 6=Custom

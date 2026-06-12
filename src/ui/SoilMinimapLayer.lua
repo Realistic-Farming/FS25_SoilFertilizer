@@ -380,6 +380,51 @@ function SoilMinimapLayer:draw(mapSelf)
         self:drawHarvestTrailDots(mapSelf)
         self:drawTillageTrailDots(mapSelf)
     end
+
+    self:drawLayerIndicator(mx, my, mw, mh, layerIdx)
+end
+
+-- Short labels for each layer index (displayed in minimap corner).
+local LAYER_LABEL = {
+    [1]  = "N",        [2]  = "P",      [3]  = "K",
+    [4]  = "pH",       [5]  = "OM",     [6]  = "!",
+    [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
+    [10] = "Compact",
+}
+-- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
+local LAYER_LABEL_COLOR = {
+    [1]  = {0.40, 0.90, 0.40},  [2]  = {0.40, 0.70, 1.00},
+    [3]  = {0.90, 0.70, 0.25},  [4]  = {0.80, 0.40, 1.00},
+    [5]  = {0.60, 0.35, 0.10},  [6]  = {0.95, 0.25, 0.25},
+    [7]  = {0.20, 0.70, 0.20},  [8]  = {0.85, 0.75, 0.10},
+    [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
+}
+
+-- Draws a small "N", "pH", etc. tag in the bottom-left corner of the minimap.
+function SoilMinimapLayer:drawLayerIndicator(mx, my, mw, mh, layerIdx)
+    local label = LAYER_LABEL[layerIdx]
+    if not label then return end
+
+    local col = LAYER_LABEL_COLOR[layerIdx] or {1, 1, 1}
+    local sz  = 0.010
+    local pad = 0.004
+    local tx  = mx + pad
+    local ty  = my + pad
+
+    -- Shadow for legibility
+    setTextBold(true)
+    setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(0, 0, 0, 0.65)
+    renderText(tx + 0.001, ty - 0.001, sz, label)
+
+    -- Coloured label
+    setTextColor(col[1], col[2], col[3], 0.92)
+    renderText(tx, ty, sz, label)
+
+    -- Reset
+    setTextBold(false)
+    setTextColor(1, 1, 1, 1)
+    setTextAlignment(RenderText.ALIGN_LEFT)
 end
 
 --- Draws earth-brown/tan pixel dots on the minimap for each tilled cell today.

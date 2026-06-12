@@ -429,6 +429,7 @@ function SoilSprayerInfoPanel:draw()
     if not self.settings or not self.settings.enabled then return end
     if not g_currentMission or not g_currentMission.isRunning then return end
     local sfm = g_SoilFertilityManager; if sfm and sfm.soilHUD and not sfm.soilHUD.visible then return end
+    if sfm and sfm.settings and sfm.settings.showSprayerInfoPanel == false then return end
     if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then
         if not self.editMode then return end
     end
