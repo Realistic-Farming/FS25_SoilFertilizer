@@ -295,7 +295,8 @@ function SoilMinimapLayer:draw(mapSelf)
         end
         -- Still show the layer indicator in the polygon fallback path
         if layerIdx > 0 then
-            self:drawLayerIndicator(mapSelf:getPosition(), mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
+            local wx, wy = mapSelf:getPosition()
+            self:drawLayerIndicator(wx, wy, mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
         end
         return
     end
@@ -310,7 +311,10 @@ function SoilMinimapLayer:draw(mapSelf)
     -- Draw the layer indicator before any overlay-readiness or layout-type guards
     -- that might return early. mapSelf inherits HUDElement — getPosition/getWidth/
     -- getHeight return the minimap widget's screen-space bounds.
-    self:drawLayerIndicator(mapSelf:getPosition(), mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
+    -- Note: getPosition() returns two values (x, y); capture into locals so both
+    -- are passed correctly — mid-list function calls drop extra return values in Lua.
+    local wx, wy = mapSelf:getPosition()
+    self:drawLayerIndicator(wx, wy, mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
 
     -- Circle minimap rotates with the vehicle heading; our terrain-space overlay doesn't
     -- transform correctly in that coordinate frame and drifts. Skip until fixed (#578).

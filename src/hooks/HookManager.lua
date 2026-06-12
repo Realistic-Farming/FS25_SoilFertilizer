@@ -1653,12 +1653,20 @@ function HookManager:installOverlapPreventionHook()
             -- Get this session's coverage cells for the current field.
             -- These are stamped by markBoomCells() inside onStartWorkAreaProcessing
             -- (the frame AFTER spray), so they represent ground sprayed in prior frames.
+            -- When the vehicle root is on the headland / just outside the field boundary,
+            -- fall back to the last known field ID so the 99% gate still fires.
             local vehicleFieldId = hookMgrRef:getFieldIdAtWorldPosition(rootX, rootZ)
+            if not vehicleFieldId or vehicleFieldId <= 0 then
+                vehicleFieldId = sprayerSelf._sfLastKnownFieldId
+            end
             if not vehicleFieldId or vehicleFieldId <= 0 then return end
 
             local soilSys   = sfm.soilSystem
             local fieldData = soilSys and soilSys.fieldData
             local fieldEntry = fieldData and fieldData[vehicleFieldId]
+
+            -- Keep the last known field ID fresh for headland fallback.
+            if fieldEntry then sprayerSelf._sfLastKnownFieldId = vehicleFieldId end
             local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells
             -- If no cells have been stamped yet this session, nothing to suppress.
             -- Clear any stale suppression so sections don't stay locked.
@@ -1706,18 +1714,35 @@ function HookManager:installOverlapPreventionHook()
                 local tip = tips and tips[i]
                 local alreadySprayed = coverageComplete  -- global gate at 99%+
 
-                if not alreadySprayed and tip then
-                    -- Tip-based cell check for partial-overlap suppression (wings).
-                    -- Centre-section cells are stamped fresh (right under the vehicle),
-                    -- so they never age past graceMs on the current pass — skip them here;
-                    -- the coverageComplete gate above catches them at 99%+.
-                    local tx = tip[1]
-                    local tz = tip[2]
+                if not alreadySprayed then
+                    -- Tip-based cell check. Wing sections use their outer tip node;
+                    -- sections with no tip node fall back to the vehicle root position.
+                    --
+                    -- Grace period rationale:
+                    --   Wings (tip in a different cell from root): graceMs required —
+                    --     the tip's cell may have been freshly stamped by an adjacent
+                    --     strip only seconds ago, and skipping grace would cause false
+                    --     suppression on the current forward pass.
+                    --   Centre (no tip, OR tip maps to the same cell as root): the
+                    --     cell under the root/tip is ALWAYS unstamped ahead of the
+                    --     vehicle on the current pass (markBoomCells runs AFTER this
+                    --     PREPEND), so any existing stamp means "visited in a prior
+                    --     pass." No grace needed — this also fixes JD R700i/R975i
+                    --     where the centre tip exists but falls in the root cell.
+                    local tx = tip and tip[1] or rootX
+                    local tz = tip and tip[2] or rootZ
                     local cx = math.floor(tx / zoneCell)
                     local cz = math.floor(tz / zoneCell)
                     local cellKey = tostring(cx * 10000 + cz)
                     local stampMs = coveredCells[cellKey]
-                    alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
+                    local rootCx = math.floor(rootX / zoneCell)
+                    local rootCz = math.floor(rootZ / zoneCell)
+                    local isCentreCell = (cx == rootCx and cz == rootCz)
+                    if tip and not isCentreCell then
+                        alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
+                    else
+                        alreadySprayed = stampMs ~= nil  -- no grace for centre cell
+                    end
 
                     if doLog and i <= 4 then
                         SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampMs=%s graceOk=%s",
@@ -1758,6 +1783,14 @@ function HookManager:installOverlapPreventionHook()
             if doLog and suppressCount > 0 then
                 SoilLogger.debug("[OverlapPrev] suppressed %d sections", suppressCount)
             end
+
+            -- When all sections are overlap-suppressed, also block processSprayerArea
+            -- at the instance level so the non-VWW centre work area cannot drain the
+            -- tank. Restored in onEndWorkAreaProcessing each frame.
+            if coverageComplete then
+                sprayerSelf._sfSprayAreaBlocked = true
+                sprayerSelf.processSprayerArea  = function() return 0 end
+            end
         end
     )
 
@@ -1775,11 +1808,35 @@ function HookManager:installOverlapPreventionHook()
         Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
             Sprayer.onEndWorkAreaProcessing,
             function(sprayerSelf, dt, hasProcessed)
+                -- Restore the processSprayerArea instance override we set in the PREPEND.
+                -- This runs AFTER the processing window, so any no-op blocking already took effect.
+                if sprayerSelf._sfSprayAreaBlocked then
+                    sprayerSelf.processSprayerArea = nil
+                    sprayerSelf._sfSprayAreaBlocked = nil
+                end
+
                 local suppressed = sprayerSelf._sfOverlapSuppressedSections
-                if suppressed then
+                if suppressed and next(suppressed) then
                     for _, section in pairs(suppressed) do
                         if section.effects and #section.effects > 0 then
                             g_effectManager:stopEffects(section.effects)
+                        end
+                    end
+                    -- If all VWW sections are suppressed, stop global effects too
+                    local vww = sprayerSelf.spec_variableWorkWidth
+                    if vww and vww.sections and #vww.sections > 0 then
+                        local allSuppressed = true
+                        for i = 1, #vww.sections do
+                            if not suppressed[i] then allSuppressed = false; break end
+                        end
+                        if allSuppressed then
+                            local spec = sprayerSelf.spec_sprayer
+                            if spec then
+                                g_effectManager:stopEffects(spec.effects)
+                                for _, st in ipairs(spec.sprayTypes or {}) do
+                                    g_effectManager:stopEffects(st.effects)
+                                end
+                            end
                         end
                     end
                 end
@@ -3049,15 +3106,19 @@ function HookManager:installPlowingHook()
                         isPlowingTool = true
                     end
 
+                    -- Combo implements (fertilizing cultivators / seeders) spray while
+                    -- tilling — they must not reset the session coverage they just laid.
+                    local isAlsoSprayer = cultivatorSelf.spec_sprayer ~= nil
+
                     if isPlowingTool then
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                        g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, isAlsoSprayer)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
                     else
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                        g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa, isAlsoSprayer)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
@@ -5015,6 +5076,31 @@ function HookManager:installSprayerVisualEffectHook()
                                 g_effectManager:startEffects(section.effects)
                             end
                             -- isActive=false + not suppressed: VWW-managed, do not interfere
+                        end
+                    end
+
+                    -- When ALL VWW sections are overlap-suppressed, also stop global effects.
+                    -- Self-propelled boom sprayers (e.g. Agri-Dino) have a non-VWW centre
+                    -- work area whose spray comes from spec.effects / sprayTypes — the
+                    -- per-section loop above never reaches those.
+                    local overlapSuppressed2 = sprayerSelf._sfOverlapSuppressedSections
+                    if overlapSuppressed2 and #vwwS.sections > 0 then
+                        local allSuppressed = true
+                        for i = 1, #vwwS.sections do
+                            if not overlapSuppressed2[i] then allSuppressed = false; break end
+                        end
+                        if allSuppressed then
+                            g_effectManager:stopEffects(spec.effects)
+                            for _, st in ipairs(spec.sprayTypes or {}) do
+                                g_effectManager:stopEffects(st.effects)
+                            end
+                            sprayerSelf._sfWasAllOverlapSuppressed = true
+                            SoilLogger.debug("[OverlapPrev] allSuppressed=%d → global effects stopped", #vwwS.sections)
+                            return  -- skip start path — nothing unsuppressed to start
+                        elseif sprayerSelf._sfWasAllOverlapSuppressed then
+                            -- Transitioning out of full suppression: force global effect restart
+                            sprayerSelf._sfWasAllOverlapSuppressed = nil
+                            spec._soilEffectsActive = nil
                         end
                     end
                 end
