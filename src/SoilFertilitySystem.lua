@@ -578,15 +578,42 @@ function SoilFertilitySystem:onSowing(fieldId, area)
     end
 end
 
+--- Resets session spray coverage (pass %) for a field.
+--- Called on harvest, tillage (plow/cultivate/weed) and game-day change so that
+--- stale coverage does not suppress the next legitimate spraying pass.
+---@param fieldId number
+---@param reason string|nil Debug label for the log line
+function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
+    local field = self.fieldData[fieldId]
+    if not field then return end
+    local hasCells = field.sessionCoverageCells and next(field.sessionCoverageCells) ~= nil
+    if not hasCells and (field.sessionCoverageHa or 0) == 0 then return end
+    field.sessionCoverageHa       = 0
+    field.sessionCoverageFraction = 0
+    field.sessionCoverageCells    = {}
+    field.sessionLastProduct      = nil
+    field._farmlandAreaConfirmed  = nil
+    field.sprayTrailPts           = nil
+    SoilLogger.debug("Session coverage reset: field %d (%s)", fieldId, reason or "?")
+end
+
 --- Hook delegate: called by HookManager when plowing occurs
 --- Increases organic matter and normalizes pH
 ---@param fieldId number The field being plowed
 ---@param area number Area processed in hectares (e.g. from lastStatsArea)
-function SoilFertilitySystem:onPlowing(fieldId, area)
+---@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) — skip coverage reset
+function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer)
     if not fieldId or fieldId <= 0 then return end
 
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- Tillage destroys the spray application context — reset pass % so the next
+    -- spraying run is not overlap-suppressed by stale coverage. Combo implements
+    -- that spray while tilling would wipe their own coverage every tick, so skip.
+    if not isAlsoSprayer then
+        self:resetSessionCoverage(fieldId, "plowing")
+    end
 
     local areaHa = area or 0.001
     local fieldAreaHa = field.fieldArea and field.fieldArea > 0 and field.fieldArea or 1.0
@@ -735,12 +762,18 @@ end
 --- Partially reduces weed, pest, and disease pressure.
 ---@param fieldId number
 ---@param area number Area processed in hectares (e.g. from lastStatsArea)
-function SoilFertilitySystem:onCultivation(fieldId, area)
+---@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) — skip coverage reset
+function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer)
     if not fieldId or fieldId <= 0 then return end
     if not SoilConstants.CULTIVATION then return end
 
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- Tillage destroys the spray application context — reset pass % (see onPlowing).
+    if not isAlsoSprayer then
+        self:resetSessionCoverage(fieldId, "cultivation")
+    end
 
     local areaHa = area or 0.001
     local fieldAreaHa = field.fieldArea and field.fieldArea > 0 and field.fieldArea or 1.0
@@ -1937,6 +1970,14 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field._covLastX               = nil
     field._covLastZ               = nil
     field._farmlandAreaConfirmed  = nil
+
+    -- Session spray coverage (pass %) also resets on day change — stale coverage
+    -- from a previous day must not suppress the next legitimate spraying run.
+    field.sessionCoverageHa       = 0
+    field.sessionCoverageFraction = 0
+    field.sessionCoverageCells    = {}
+    field.sessionLastProduct      = nil
+    field.sprayTrailPts           = nil
 
     -- Clear the yield-modifier freeze from the previous harvest session (#598).
     -- Frozen on the first cut of a harvest pass and held until the next game day so

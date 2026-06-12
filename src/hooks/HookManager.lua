@@ -3106,15 +3106,19 @@ function HookManager:installPlowingHook()
                         isPlowingTool = true
                     end
 
+                    -- Combo implements (fertilizing cultivators / seeders) spray while
+                    -- tilling — they must not reset the session coverage they just laid.
+                    local isAlsoSprayer = cultivatorSelf.spec_sprayer ~= nil
+
                     if isPlowingTool then
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                        g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, isAlsoSprayer)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
                     else
                         g_SoilFertilityManager.soilSystem._lastTillageX = x
                         g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                        g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa)
+                        g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa, isAlsoSprayer)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
