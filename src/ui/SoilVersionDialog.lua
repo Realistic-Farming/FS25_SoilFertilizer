@@ -27,7 +27,7 @@ SoilVersionDialog.CHANGELOG = {
     "- Fixed: Field boundary section control now works on sprayers without maxWidthNode",
     "  and on JD R700i/R975i (work area geometry used as primary tip; maxWidthNode is fallback)",
     "- Added: Overlap prevention — boom sections auto-shut-off over already-sprayed ground",
-    "  (uses session coverage cells; resets on harvest; controlled by Field Boundary Control setting)",
+    "  (20-second grace prevents self-suppression on current pass; center section included)",
     "- Fixed: See & Spray no longer drains tank when no target pressure is detected",
     "  (insecticide/herbicide/fungicide now fail-closed: suppressed until target confirmed)",
     "- Fixed: Pest pressure no longer builds up on grass / forage fields",

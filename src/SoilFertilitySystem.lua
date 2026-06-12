@@ -2965,8 +2965,10 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints)
             seen[cellKey] = true
 
             -- ── Coverage deduplication ─────────────────────────────────────────
+            -- Store stamp timestamp (ms) so the overlap check can apply a grace period
+            -- and avoid suppressing sections that are still on their current pass.
             if not field.sessionCoverageCells[cellKey] then
-                field.sessionCoverageCells[cellKey] = true
+                field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
                 field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                 -- ── Spray trail (in-view overlay) ──────────────────────────────
                 -- Cache world-center + terrain height for SoilHUD:drawSprayTrail().

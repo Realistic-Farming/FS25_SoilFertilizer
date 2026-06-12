@@ -612,8 +612,11 @@ SoilConstants.HUD = {
 -- CELL_AREA_HA must equal (CELL_SIZE^2 / 10000).
 -- These values must match SoilMapOverlay.POLYGON_STEP (10 m).
 SoilConstants.ZONE = {
-    CELL_SIZE    = 10,    -- meters per cell side
-    CELL_AREA_HA = 0.01,  -- hectares per cell (10×10 m = 0.01 ha)
+    CELL_SIZE        = 10,    -- meters per cell side
+    CELL_AREA_HA     = 0.01,  -- hectares per cell (10×10 m = 0.01 ha)
+    -- A cell stamped less than this many ms ago won't trigger overlap suppression.
+    -- At 3 km/h a sprayer spends ~12 s in one cell; 20 s gives headroom for very slow passes.
+    OVERLAP_GRACE_MS = 20000,
 }
 
 -- ========================================

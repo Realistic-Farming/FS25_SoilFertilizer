@@ -1056,8 +1056,10 @@ function HookManager:installSectionControlHook()
 
             -- Field Boundary Enforcement + Overlap Prevention:
             -- (1) Suppress boom sections whose outer tip extends outside the current field.
-            -- (2) Suppress boom sections whose outer tip is in a cell already sprayed this session.
-            -- Both checks share the same tip position cache and section loop.
+            -- (2) Suppress boom sections whose outer tip (or root for center) is in a cell
+            --     already sprayed this session AND stamped more than OVERLAP_GRACE_MS ago.
+            --     The grace period prevents self-suppression on the current forward pass:
+            --     a cell stamped < 20 s ago is still "fresh" and won't block its own section.
             -- Independent of Smart Sensor — applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
@@ -1069,38 +1071,53 @@ function HookManager:installSectionControlHook()
                         local vehicleFieldId = hookMgrRef:getFieldIdAtWorldPosition(rx, rz)
                         local tips = sprayerSelf._sfSectionTip
 
-                        -- Pre-fetch sessionCoverageCells for this field (nil if no data yet)
+                        -- Pre-fetch overlap state for this field
                         local soilSysRef   = sfm.soilSystem
                         local fieldDataRef = soilSysRef and soilSysRef.fieldData
                         local fieldEntry   = (fieldDataRef and vehicleFieldId and vehicleFieldId > 0)
                                             and fieldDataRef[vehicleFieldId] or nil
                         local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells or nil
                         local zoneCell     = SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE or 10
+                        local graceMs      = SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_MS or 20000
+                        local nowMs        = g_currentMission and g_currentMission.time or 0
 
                         for i, section in ipairs(vwwBE.sections) do
-                            if section.isActive and not section.isCenter then
-                                -- Boundary + overlap use the outer tip position.
-                                -- Skip when no tip available — root fallback gives false "in field".
-                                local tip = tips and tips[i]
-                                if tip then
-                                    local sx = tip[1]
-                                    local sz = tip[2]
+                            if section.isActive then
+                                -- Determine position to check:
+                                -- Non-center sections use the cached outer tip.
+                                -- Center section uses the vehicle root (no tip node).
+                                local sx, sz
+                                if section.isCenter then
+                                    sx = rx
+                                    sz = rz
+                                else
+                                    local tip = tips and tips[i]
+                                    if tip then
+                                        sx = tip[1]
+                                        sz = tip[2]
+                                    end
+                                end
 
-                                    -- (1) Boundary: tip must be in the same field as the vehicle
-                                    local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                                    if not fid or fid <= 0 or
-                                       (vehicleFieldId and vehicleFieldId > 0 and fid ~= vehicleFieldId) then
-                                        section.isActive = false
-                                        if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
-                                        sprayerSelf._sfSuppressedSections[i] = true
+                                if sx then
+                                    -- (1) Boundary: non-center tip must be in the same field.
+                                    --     Center section is always on the vehicle root — skip.
+                                    if not section.isCenter then
+                                        local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                                        if not fid or fid <= 0 or
+                                           (vehicleFieldId and vehicleFieldId > 0 and fid ~= vehicleFieldId) then
+                                            section.isActive = false
+                                            if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
+                                            sprayerSelf._sfSuppressedSections[i] = true
+                                        end
                                     end
 
-                                    -- (2) Overlap: tip cell already visited this session → re-spray suppressed
+                                    -- (2) Overlap: cell already visited AND older than grace period.
                                     if section.isActive and coveredCells then
                                         local cx      = math.floor(sx / zoneCell)
                                         local cz      = math.floor(sz / zoneCell)
                                         local cellKey = tostring(cx * 10000 + cz)
-                                        if coveredCells[cellKey] then
+                                        local stampMs = coveredCells[cellKey]
+                                        if stampMs and (nowMs - stampMs) > graceMs then
                                             section.isActive = false
                                             if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
                                             sprayerSelf._sfSuppressedSections[i] = true
@@ -5185,6 +5202,10 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
             z = z + cellSize
         end
     end
+
+    -- Always include the root cell so the center section has a stamp to check.
+    -- The sweep may skip it depending on alignment with the 10 m grid.
+    table.insert(pts, {x = rootX, z = rootZ})
 
     return (#pts > 1) and pts or nil
 end
