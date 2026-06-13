@@ -218,6 +218,12 @@ function HookManager:installAll(soilSystem)
     local clientJoinOk = self:installClientJoinHook()
     if clientJoinOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Bulk/silo storage support (#605): ensure the onLoad hook is installed (no-op if the
+    -- early install already ran) and retroactively patch any silos already in the world.
+    local siloOk = self:installSiloFillTypeHook()
+    if siloOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    self:patchExistingSilos()
+
     SoilLogger.info("Hook installation complete: %d/%d successful, %d failed",
         successCount, successCount + failCount, failCount)
 
@@ -3833,6 +3839,212 @@ function HookManager:reapplyFillUnitPatch()
 
     SoilLogger.info("[DeferredInit] Deferred fill unit re-patch complete: %d vehicles re-patched (%d types found)", patched, found)
     return true
+end
+
+-- =========================================================
+-- HOOK: Inject custom fill types into placeable silos / storage bins  (#605)
+-- =========================================================
+-- Placeable silos (PlaceableSilo spec) accept fill types via three independent
+-- gates, each resolved from XML as EITHER #fillTypeCategories OR #fillTypes (names):
+--   * Storage.fillTypes          — the capacity holder (one per spec.storages entry)
+--   * UnloadTrigger.fillTypes    — gate for discharging INTO the silo from a spreader/trailer
+--   * LoadTrigger.fillTypes      — gate for loading OUT of the silo into equipment
+-- Storage/triggers that list base types by NAME (e.g. fillTypes="FERTILIZER LIME")
+-- never see our fillTypeCategory extension, so SF types are rejected. This hook
+-- injects our custom indices into any storage/trigger that already accepts the
+-- corresponding base type (FERTILIZER / LIME / MANURE / LIQUIDFERTILIZER), so bulk
+-- bins from third-party mods accept SF products automatically — no manual config.
+--
+-- Injection runs appended to PlaceableSilo.onLoad, i.e. AFTER storages/triggers are
+-- parsed but BEFORE onFinalizePlacement aggregates storages into the station's
+-- supportedFillTypes. Augmenting Storage.fillTypes first means the game builds the
+-- station aggregate (the discharge-allow gate) with our types included — no need to
+-- poke redacted station internals on the normal path.
+
+-- SF custom fill types grouped by the vanilla base type a bin must already accept.
+HookManager.SILO_GROUPS = {
+    { base = "FERTILIZER",       names = { "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA" } },
+    { base = "LIME",             names = { "GYPSUM" } },
+    { base = "MANURE",           names = { "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE" } },
+    { base = "LIQUIDFERTILIZER", names = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
+                                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
+                                           "INSECTICIDE", "FUNGICIDE", "LIQUIDLIME" } },
+}
+
+-- Resolve SILO_GROUPS names → { baseIdx, idxList } once (cached; re-resolves while empty
+-- to cover dedicated-server timing where fill types aren't registered yet at first call).
+function HookManager:getResolvedSiloGroups()
+    if self._siloGroupsResolved then return self._siloGroupsResolved end
+    local fm = g_fillTypeManager
+    if not fm then return nil end
+    local resolved = {}
+    local total = 0
+    for _, group in ipairs(HookManager.SILO_GROUPS) do
+        local baseIdx = fm:getFillTypeIndexByName(group.base)
+        local idxList = {}
+        for _, name in ipairs(group.names) do
+            local idx = fm:getFillTypeIndexByName(name)
+            if idx then table.insert(idxList, idx); total = total + 1 end
+        end
+        if baseIdx and #idxList > 0 then
+            table.insert(resolved, { baseIdx = baseIdx, idxList = idxList })
+        end
+    end
+    if total == 0 then return nil end  -- types not registered yet; try again next call
+    self._siloGroupsResolved = resolved
+    return resolved
+end
+
+-- Add the custom indices of every group whose base type the storage already holds.
+-- Seeds fillLevels / sync / publish tables so getFreeCapacity() doesn't return 0
+-- (Storage:getFreeCapacity returns 0 for any fillType missing from fillLevels).
+function HookManager.injectStorage(storage, groups)
+    if not storage or not storage.fillTypes then return end
+    local changed = false
+    for _, group in ipairs(groups) do
+        if storage.fillTypes[group.baseIdx] then
+            for _, idx in ipairs(group.idxList) do
+                if not storage.fillTypes[idx] then
+                    storage.fillTypes[idx] = true
+                    if storage.fillLevels then storage.fillLevels[idx] = storage.fillLevels[idx] or 0 end
+                    if storage.fillLevelsLastSynced then storage.fillLevelsLastSynced[idx] = storage.fillLevelsLastSynced[idx] or 0 end
+                    if storage.fillLevelsLastPublished then storage.fillLevelsLastPublished[idx] = storage.fillLevelsLastPublished[idx] or 0 end
+                    if storage.sortedFillTypes then table.insert(storage.sortedFillTypes, idx) end
+                    changed = true
+                end
+            end
+        end
+    end
+    if changed and storage.sortedFillTypes then table.sort(storage.sortedFillTypes) end
+end
+
+-- Add custom indices to a trigger's fillTypes set when it already holds the base type.
+-- A nil fillTypes means "accepts everything" — nothing to do.
+function HookManager.injectTriggerFillTypes(triggerFillTypes, groups)
+    if not triggerFillTypes then return end
+    for _, group in ipairs(groups) do
+        if triggerFillTypes[group.baseIdx] then
+            for _, idx in ipairs(group.idxList) do
+                triggerFillTypes[idx] = true
+            end
+        end
+    end
+end
+
+-- Defensive station-aggregate patch (retroactive path only — silos already finalized).
+-- Copies the base type's existing value so we preserve whatever shape the table uses
+-- (boolean set vs. descriptor map). Membership is what the allow-checks read.
+function HookManager.injectStationAggregate(station, groups)
+    if not station then return end
+    for _, tableName in ipairs({ "supportedFillTypes", "acceptedFillTypes" }) do
+        local tbl = station[tableName]
+        if type(tbl) == "table" then
+            for _, group in ipairs(groups) do
+                local baseVal = tbl[group.baseIdx]
+                if baseVal ~= nil then
+                    for _, idx in ipairs(group.idxList) do
+                        if tbl[idx] == nil then tbl[idx] = baseVal end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Inject SF types into one silo placeable's storages and triggers (idempotent).
+function HookManager:injectSiloFillTypes(placeable)
+    if not placeable then return end
+    local spec = placeable.spec_silo
+    if not spec then return end
+    local groups = self:getResolvedSiloGroups()
+    if not groups then return end
+
+    if spec.storages then
+        for _, storage in ipairs(spec.storages) do
+            HookManager.injectStorage(storage, groups)
+        end
+    end
+
+    local us = spec.unloadingStation
+    if us then
+        if us.unloadTriggers then
+            for _, trigger in ipairs(us.unloadTriggers) do
+                HookManager.injectTriggerFillTypes(trigger.fillTypes, groups)
+            end
+        end
+        HookManager.injectStationAggregate(us, groups)
+    end
+
+    local ls = spec.loadingStation
+    if ls then
+        if ls.loadTriggers then
+            for _, trigger in ipairs(ls.loadTriggers) do
+                HookManager.injectTriggerFillTypes(trigger.fillTypes, groups)
+            end
+        end
+        HookManager.injectStationAggregate(ls, groups)
+    end
+end
+
+-- Install the appended PlaceableSilo hooks. Installed early (from SoilFertilitySystem.new)
+-- so they are in place before savegame silos load. Injection runs at two points, both
+-- idempotent:
+--   onLoad             — storage.fillTypes + trigger.fillTypes BEFORE savegame fill-level
+--                        restore and stream sync, so saved SF levels and sortedFillTypes
+--                        ordering stay consistent.
+--   onFinalizePlacement — re-runs after the station's supportedFillTypes aggregate is built
+--                        from storages, covering the discharge-allow gate for silos placed
+--                        mid-game (where no installAll sweep follows).
+---@return boolean success
+function HookManager:installSiloFillTypeHook()
+    if self._siloHooked then return true end
+    if not PlaceableSilo or type(PlaceableSilo.onLoad) ~= "function" then
+        SoilLogger.warning("Silo hook: PlaceableSilo.onLoad not available - skipping")
+        return false
+    end
+
+    local hm = self
+    local function safeInject(placeableSelf)
+        local ok, err = pcall(function() hm:injectSiloFillTypes(placeableSelf) end)
+        if not ok then
+            SoilLogger.warning("Silo fill type injection failed: %s", tostring(err))
+        end
+    end
+
+    local origOnLoad = PlaceableSilo.onLoad
+    PlaceableSilo.onLoad = Utils.appendedFunction(origOnLoad, safeInject)
+    self:register(PlaceableSilo, "onLoad", origOnLoad, "PlaceableSilo.onLoad")
+
+    if type(PlaceableSilo.onFinalizePlacement) == "function" then
+        local origFinalize = PlaceableSilo.onFinalizePlacement
+        PlaceableSilo.onFinalizePlacement = Utils.appendedFunction(origFinalize, safeInject)
+        self:register(PlaceableSilo, "onFinalizePlacement", origFinalize, "PlaceableSilo.onFinalizePlacement")
+    end
+
+    self._siloHooked = true
+    SoilLogger.info("[OK] Silo fill type hook installed - SF types injected into compatible bulk storage")
+    return true
+end
+
+-- Retroactively inject SF types into silos already loaded before the hook ran.
+-- Covers any timing edge where a silo's onLoad fired before installSiloFillTypeHook.
+-- Idempotent: re-running on an already-patched silo is a no-op.
+---@return integer patchedCount
+function HookManager:patchExistingSilos()
+    local placeableSystem = g_currentMission and g_currentMission.placeableSystem
+    local placeables = placeableSystem and placeableSystem.placeables
+    if not placeables then return 0 end
+    local patched = 0
+    for _, placeable in pairs(placeables) do
+        if placeable.spec_silo then
+            local ok = pcall(function() self:injectSiloFillTypes(placeable) end)
+            if ok then patched = patched + 1 end
+        end
+    end
+    if patched > 0 then
+        SoilLogger.info("Retroactively injected SF fill types into %d existing silo(s)", patched)
+    end
+    return patched
 end
 
 -- =========================================================

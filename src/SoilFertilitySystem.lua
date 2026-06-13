@@ -35,6 +35,10 @@ function SoilFertilitySystem.new(settings)
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
     self.hookManager:installFillUnitHookEarly()
+    -- Install early so the PlaceableSilo.onLoad append is in place before savegame silos
+    -- load — augments Storage.fillTypes before onFinalizePlacement builds the station
+    -- aggregate, so bulk fertilizer/lime bins accept SF fill types automatically (#605).
+    self.hookManager:installSiloFillTypeHook()
     self.layerSystem  = SoilLayerSystem  and SoilLayerSystem.new()  or nil
     self.bundledMaps  = SoilBundledMaps  and SoilBundledMaps.new()  or nil
 
