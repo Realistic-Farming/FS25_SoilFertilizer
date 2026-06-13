@@ -1150,9 +1150,12 @@ function SoilFertilityManager:update(dt)
 
     -- Compaction: periodic check for local player's heavy vehicle driving over fields.
     -- getIsServer() is the documented API; the .isServer field is not guaranteed on FSBaseMission.
+    -- Sampled on a short interval (CHECK_INTERVAL_MS) so the wheels lay a continuous
+    -- compaction trail along the driven path, not one cell every 30 seconds.
     if g_currentMission and g_currentMission:getIsServer() then
         self._compactionTimer = (self._compactionTimer or 0) + dt
-        if self._compactionTimer >= 30000 then
+        local interval = (SoilConstants.COMPACTION and SoilConstants.COMPACTION.CHECK_INTERVAL_MS) or 1000
+        if self._compactionTimer >= interval then
             self._compactionTimer = 0
             self:_checkVehicleCompaction()
         end
@@ -1166,15 +1169,52 @@ function SoilFertilityManager:_checkVehicleCompaction()
     if not (self.settings.compactionEnabled and SoilConstants.COMPACTION) then return end
     if not (self.soilSystem and self.soilSystem.hookManager) then return end
     local cp      = SoilConstants.COMPACTION
-    local vehicle = self:getCurrentVehicle()
+    local vehicle = getPlayerVehicle()
     if not vehicle or not vehicle.rootNode then return end
     local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
     if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
     local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
     if not (ok and x) then return end
-    local farmlandId = self.soilSystem.hookManager:getFieldIdAtWorldPosition(x, z, false)
-    if farmlandId and farmlandId > 0 then
-        pcall(function() self.soilSystem:onCompaction(farmlandId, x, z) end)
+
+    -- Compact a single world point if it sits on a field (onCompaction throttles
+    -- each cell to once/day, so repeated calls on the same cell are cheap no-ops).
+    local function compactAt(px, pz)
+        local fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(px, pz, false)
+        if fid and fid > 0 then
+            pcall(function() self.soilSystem:onCompaction(fid, px, pz) end)
+        end
+    end
+
+    local lx, lz = self._lastCompactionX, self._lastCompactionZ
+    self._lastCompactionX, self._lastCompactionZ = x, z
+
+    -- First sample (or after a discontinuity): just compact the current cell.
+    if not (lx and lz) then
+        compactAt(x, z)
+        return
+    end
+
+    local dx, dz = x - lx, z - lz
+    local dist   = math.sqrt(dx * dx + dz * dz)
+
+    -- Parked / barely moved: nothing new to lay this tick.
+    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return end
+
+    -- Discontinuity (teleport / fast-travel / re-entered a vehicle far away):
+    -- don't draw a compaction line across the gap — just compact where we are.
+    if dist > (cp.MAX_SEGMENT_M or 30.0) then
+        compactAt(x, z)
+        return
+    end
+
+    -- Walk the driven segment in ~half-cell steps so no cell is skipped at speed.
+    -- This is what keeps the trail continuous whether crawling or driving fast.
+    local cellSize = (SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE) or 10.0
+    local step     = cellSize * 0.5
+    local steps    = math.max(1, math.ceil(dist / step))
+    for i = 1, steps do
+        local t = i / steps
+        compactAt(lx + dx * t, lz + dz * t)
     end
 end
 

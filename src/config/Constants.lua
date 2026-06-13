@@ -962,11 +962,21 @@ SoilConstants.MAP_OVERLAY = {
 -- ========================================
 SoilConstants.COMPACTION = {
     HEAVY_VEHICLE_THRESHOLD_T = 8.0,   -- tonnes (Vehicle:getTotalMass returns tonnes)
-    COMPACTION_PER_PASS       = 2.0,   -- points added per heavy-vehicle work pass (once/day/field)
+    COMPACTION_PER_PASS       = 8.0,   -- points added per heavy-vehicle pass over a cell (once/day/cell).
+                                       -- Sized to clear the minimap heatmap's lowest visible bucket
+                                       -- (top-4-bit DMV → first colour at ~6.3%) so a single pass shows.
     NATURAL_DECAY_PER_DAY     = 0.5,   -- points removed per game day (natural recovery)
     SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass
     MAX_COMPACTION            = 100.0,
     NUTRIENT_PENALTY_MAX      = 0.20,  -- max 20% extra nutrient extraction at max compaction
+    -- Driving-based compaction: any heavy vehicle moving across a field compacts the
+    -- cell under it, whether or not it is working (spraying/harvesting/tilling have
+    -- their own hooks too). Sampled on a short timer so the wheels lay a continuous
+    -- trail instead of one tile every 30 s.
+    CHECK_INTERVAL_MS         = 1000,  -- how often the driving check samples vehicle position
+    MIN_MOVE_DISTANCE_M       = 2.0,   -- must move at least this far between samples (skip when parked)
+    MAX_SEGMENT_M             = 30.0,  -- if the vehicle jumped more than this between samples assume a
+                                       -- teleport/fast-travel and don't paint a compaction line across the gap
 }
 
 -- ========================================

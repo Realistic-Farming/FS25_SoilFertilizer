@@ -24,15 +24,14 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Centre boom section now suppressed at 100% field coverage",
-    "  (session-coverage >= 99% gate bypasses the grace period that kept centre cells fresh)",
-    "- Fixed: Overlap prevention grace period reduced to 10 s (was 20 s)",
-    "- Fixed: Minimap soil layer indicator now shows on all minimap sizes",
-    "  (used HUDElement screen-space coords; layout UV coords placed label off-screen)",
-    "- Fixed: Minimap pass% resets on save/reload (issue #608)",
-    "- Fixed: Minimap layer key now works inside vehicles (issue #609)",
-    "- Fixed: Overlap prevention no longer fires on pre-fertilized / previously-sprayed fields",
-    "  (density-map replaced with session-cell tracking — only current-session spray triggers)",
+    "- Fixed: Soil compaction layer never appeared on the map",
+    "  (heavy vehicles now compact every cell they drive over, spraying or not)",
+    "- Fixed: Compaction trail now paints continuously at any speed",
+    "  (driving faster no longer skips cells — the whole wheel path is sampled)",
+    "- Fixed: Compaction heatmap refreshes live while driving (no longer needs a spray to show)",
+    "- Fixed: Daily soil update no longer wipes the per-cell compaction trail",
+    "- Fixed: Removed 'getCurrentVehicle' error spam from the compaction check",
+    "- Changed: A single heavy pass is now clearly visible (stronger effect + steeper colour ramp)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

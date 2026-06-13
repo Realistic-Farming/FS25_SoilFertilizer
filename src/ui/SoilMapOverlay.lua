@@ -72,6 +72,10 @@ local function layerValueToT(layerIdx, val)
     elseif layerIdx == 4 then                                                    -- pH  5.0-7.5, bell around 6.75
         return math.max(0, math.min(1, 1 - math.abs(val - 6.75) / 1.75))
     elseif layerIdx == 5 then return math.max(0, math.min(1, val / 4.0))        -- OM  0-10, green at 4+
+    elseif layerIdx == 10 then                                                   -- Compaction: steep ramp so a
+        -- single heavy pass (~8%) already reads as a warning tint, not "good" green.
+        -- 0% = green, ~40%+ = full red (rather than the gentle 0-100 ramp below).
+        return math.max(0, math.min(1, 1 - val / 40))
     else   return math.max(0, math.min(1, 1 - val / 100)) end                   -- pressure/urgency layers: inverted
 end
 

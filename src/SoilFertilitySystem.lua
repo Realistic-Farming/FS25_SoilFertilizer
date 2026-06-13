@@ -3834,6 +3834,11 @@ function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ)
 
     -- 3. Write per-pixel to compaction density map layer
     if self.layerSystem and self.layerSystem.available then
+        -- Mark the minimap heatmap dirty so it regenerates and shows the new
+        -- compaction immediately. Without this the GRLE fills silently while
+        -- driving and only appears on the next spray/harvest/daily refresh.
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
         self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
     end
 
@@ -3879,6 +3884,8 @@ function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ)
 
     -- Write per-pixel to compaction density map layer
     if self.layerSystem and self.layerSystem.available then
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
         self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
     end
 

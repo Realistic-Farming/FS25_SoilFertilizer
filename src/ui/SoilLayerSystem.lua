@@ -88,7 +88,9 @@ local LAYER_DEFS = {
         perPixel    = true,
     },
     -- ── Biotic / physical pressure ───────────────────────────
-    -- perPixel=false (default): no spray hooks; daily update paints field AABB.
+    -- pest/disease: perPixel=false — field-level pressures, daily update paints
+    -- the field AABB uniformly. compaction: perPixel=true — written per-cell by
+    -- heavy-vehicle passes, so the daily write must skip it (see its entry below).
     {
         name        = "soilPest",
         field       = "pestPressure",
@@ -112,6 +114,11 @@ local LAYER_DEFS = {
         maxVal      = 100,
         numBits     = 8,
         numChannels = 8,
+        -- perPixel: compaction is written per-pixel by onCompaction/onSubsoil
+        -- (updatePixelForField). Mark it so the daily skipPerPixel write does NOT
+        -- repaint the whole field with the near-zero field average, which would
+        -- erase the per-cell compaction the vehicle just created (invisible layer).
+        perPixel    = true,
     },
     -- Note: weed is NOT in LAYER_DEFS — it is read from the game's
     -- native WeedSystem foliage density map (see weed* fields below).
