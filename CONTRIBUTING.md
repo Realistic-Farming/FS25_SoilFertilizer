@@ -106,7 +106,7 @@ Maintainers merge development → main on a release cycle, not per-PR.
 Good bug reports save everyone time. Please include:
 
 ```
-**Version**: [e.g. 2.4.2.5, check modDesc.xml or the mod menu]
+**Version**: [e.g. 2.4.2.4, check modDesc.xml or the mod menu]
 **Singleplayer or Multiplayer**: [SP / MP Host / MP Client]
 **Difficulty**: [Simple / Realistic / Hardcore]
 **Other mods**: [Paste the list or note if it's a clean mod set]

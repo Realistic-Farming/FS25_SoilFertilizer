@@ -412,30 +412,74 @@ local LAYER_LABEL_COLOR = {
     [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
 }
 
--- Draws a small "N", "pH", etc. tag in the top-left corner of the minimap widget.
+-- Short abbreviations worth showing in brackets after the full name. Only the
+-- nutrient layers, where "N"/"P"/"K"/etc. are meaningful shorthand; the
+-- pressure/compaction layers read better as the full localized name alone.
+local LAYER_ABBREV = {
+    [1] = "N", [2] = "P", [3] = "K", [4] = "pH", [5] = "OM",
+}
+
+-- Safe localized text lookup (never crashes the HUD on a missing key).
+local function sfTr(key, fallback)
+    if key and g_i18n then
+        local ok, text = pcall(function() return g_i18n:getText(key) end)
+        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
+            return text
+        end
+    end
+    return fallback
+end
+
+-- Builds the minimap corner label, e.g. "Nitrogen [N]" / "Stickstoff [N]" (#622).
+-- The full name comes from the SAME l10n keys as the big-map Overview
+-- (SoilMapOverlay.LAYER_KEYS), so there is a single set of strings to translate.
+-- The bracketed short code is only appended where it differs from the full name.
+function SoilMinimapLayer.buildLayerLabel(layerIdx)
+    local key = SoilMapOverlay and SoilMapOverlay.LAYER_KEYS and SoilMapOverlay.LAYER_KEYS[layerIdx]
+    local fullName = sfTr(key, LAYER_LABEL[layerIdx])
+    if not fullName then return nil end
+
+    local abbr = LAYER_ABBREV[layerIdx]
+    if abbr and abbr:lower() ~= fullName:lower() then
+        return fullName .. " [" .. abbr .. "]"
+    end
+    return fullName
+end
+
+-- Draws the active layer name tag in the top-left corner of the minimap widget.
 -- mx/my = bottom-left of the (clipped) minimap rect; mw/mh = size.
 function SoilMinimapLayer:drawLayerIndicator(mx, my, mw, mh, layerIdx)
-    local label = LAYER_LABEL[layerIdx]
+    local label = SoilMinimapLayer.buildLayerLabel(layerIdx)
     if not label then return end
 
     local col = LAYER_LABEL_COLOR[layerIdx] or {1, 1, 1}
-    local sz  = 0.014   -- larger for readability
     local pad = 0.005
+
+    -- Keep the full localized name but shrink it if needed so a long name
+    -- (e.g. "Organische Substanz [OM]") never runs past the minimap width.
+    -- Floor keeps it readable.
+    setTextBold(true)
+    local sz = 0.014
+    local maxW = math.max(mw - pad * 2, 0.0001)
+    local textW = getTextWidth(sz, label)
+    if textW > maxW and textW > 0 then
+        sz = math.max(sz * (maxW / textW), 0.0085)
+        textW = getTextWidth(sz, label)
+    end
 
     -- Top-left corner: y goes up from bottom, so top = my + mh
     local tx = mx + pad
     local ty = my + mh - sz - pad
 
-    -- Dark semi-transparent pill background
+    -- Dark semi-transparent pill background sized to the actual rendered text
     if self._dotOverlay and self._dotOverlay ~= 0 then
-        local bgW = sz * (#label * 0.62 + 0.4)
-        local bgH = sz * 1.35
+        local bgW = textW + pad * 1.2
+        local bgH = sz * 1.5
         setOverlayColor(self._dotOverlay, 0, 0, 0, 0.52)
         renderOverlay(self._dotOverlay, tx - pad * 0.5, ty - pad * 0.3, bgW, bgH)
     end
 
     -- Text with shadow
-    setTextBold(true)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(0, 0, 0, 0.70)
     renderText(tx + 0.0008, ty - 0.0008, sz, label)

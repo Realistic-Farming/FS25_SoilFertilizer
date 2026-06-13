@@ -24,6 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Fixed: Yield % in the soil monitor now matches the grain you actually harvest",
+    "  (the shown yield no longer slides down as the combine crosses the field -",
+    "   monitor and real harvest now use one field-average calculation)",
     "- Fixed: Major texture loss after 2.4.1.0",
     "  (fill plane textures are back to DDS, so the game's shared pile",
     "   texture array no longer breaks and piles render correctly again)",
@@ -31,6 +34,8 @@ SoilVersionDialog.CHANGELOG = {
     "  (any silo or storage bin that already takes base fertilizer, lime or",
     "   manure will now accept the matching SF products, including third-party bins)",
     "- Custom pile colours for each product are restored",
+    "- Improved: Minimap layer label now shows the full translated name plus its",
+    "  short code, e.g. Nitrogen [N] / Stickstoff [N] (thanks Drehverschluss)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

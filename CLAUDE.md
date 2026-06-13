@@ -114,7 +114,7 @@ At these stages, Claude and Samantha MUST have explicit dialog:
 
 ## Project Overview
 
-**FS25_SoilFertilizer** is a Farming Simulator 25 mod that adds realistic soil nutrient management. It tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH per field, with crop-specific depletion, fertilizer replenishment, weather effects, and seasonal cycles. Current version: **2.4.2.5**. Fully supports multiplayer with admin-only settings enforcement. 26-language localization via separate translation files in `translations/` (referenced from `modDesc.xml` via `filenamePrefix`).
+**FS25_SoilFertilizer** is a Farming Simulator 25 mod that adds realistic soil nutrient management. It tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH per field, with crop-specific depletion, fertilizer replenishment, weather effects, and seasonal cycles. Current version: **2.4.2.4**. Fully supports multiplayer with admin-only settings enforcement. 26-language localization via separate translation files in `translations/` (referenced from `modDesc.xml` via `filenamePrefix`).
 
 ---
 
