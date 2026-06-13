@@ -1073,6 +1073,7 @@ function SoilFertilityManager:update(dt)
             if hm._sprayTypesComplete then
                 hm:reapplyFillUnitPatch()
                 hm:reapplyEffectTypeRemap()
+                hm:patchExistingSilos()  -- #605: bulk bins loaded before fill types resolved
                 SoilLogger.info("[DeferredInit] Fill type registration succeeded on retry #%d", self._deferredRetryCount)
             end
         elseif self._deferredRetryCount == 91 then

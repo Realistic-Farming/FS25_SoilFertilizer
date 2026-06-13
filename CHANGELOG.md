@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.2.5]
+
+### Fixed
+- Fixed major texture loss introduced in 2.4.1.0. The fill plane textures were converted from DDS to PNG, which produced a mipmap count mismatch (7 vs 8) in the game's shared fill plane texture array and broke pile textures across the whole game. Reverted to DDS and removed the orphaned PNG files.
+- Fixed the AN and POLIFOSKA fill plane references that pointed at `$data/fillPlanes/fertilizer_*.png`, which do not exist (the base game ships these as `.dds`).
+
+### Added
+- SF fertilizers, lime and organics now work in bulk and silo storage (#605). A runtime hook injects the SF fill types into any placeable silo whose storage, unload trigger or load trigger already accepts the matching base type (FERTILIZER, LIME, MANURE or LIQUIDFERTILIZER). Works automatically with third-party storage bins, no manual configuration. Multiplayer safe: injection runs identically on server and client so storage sync ordering stays consistent.
+
+---
+
 ## [2.4.1.0]
 
 ### Fixed

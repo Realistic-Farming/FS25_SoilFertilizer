@@ -38,16 +38,25 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 ---
 
-## 🆕 What's New in v2.4.1.0
+## 🆕 What's New in v2.4.2.5
 
 **Fixes:**
-- Custom fertilizer piles (MAP, DAP, Urea, AMS, etc.) now load without texture warnings
-- Soil data tracked live per-nozzle section during application — no stale values at field edges
-- Nozzle sections at field boundaries no longer lose coverage credit
-- See & Spray is now a vehicle shop configuration on the JD R700i and R975i — not a runtime toggle key
+- Fixed the major texture loss introduced in 2.4.1.0. Fill plane textures are back to DDS, so the game's shared pile texture array no longer breaks and every pile renders correctly again
+- Restored the unique pile colours for each product
+
+**New:**
+- SF fertilizers, lime and organics now work in bulk and silo storage. Any silo or storage bin that already accepts base game fertilizer, lime or manure will now also accept the matching SF products, including bins from third-party storage mods
 
 <details>
 <summary>Previous releases</summary>
+
+### v2.4.1.0
+
+**Fixes:**
+- Custom fertilizer piles (MAP, DAP, Urea, AMS, etc.) now load without texture warnings
+- Soil data tracked live per-nozzle section during application, no stale values at field edges
+- Nozzle sections at field boundaries no longer lose coverage credit
+- See & Spray is now a vehicle shop configuration on the JD R700i and R975i, not a runtime toggle key
 
 ### v2.4.0.0
 
@@ -454,7 +463,7 @@ This mod is licensed under **[CC BY-NC-ND 4.0](https://creativecommons.org/licen
 
 You may share it in its original form with attribution. You may not sell it, modify and redistribute it, or reupload it under a different name or authorship. Contributions via pull request are explicitly permitted and encouraged.
 
-**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.4
+**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.5
 
 © 2026 TisonK — See [LICENSE](LICENSE) for full terms.
 
