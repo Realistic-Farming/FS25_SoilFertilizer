@@ -203,32 +203,28 @@ end
 ---@param fruitTypeIndex number FS25 fruit type index
 ---@param liters number Amount harvested in liters
 ---@param strawRatio number 0.0-1.0 fraction of straw that was chopped (0 = dropped/collected, 1 = fully chopped)
---- Computes the combined yield modifier for a harvest event.
---- All yield-reducing factors (nutrients, weeds, pests, disease) are multiplied together.
---- Returns a value in [1-MAX_PENALTY, 1.0] — applied to liters BEFORE the combine hopper
---- receives grain in HookManager, so the game engine actually sees fewer liters.
----@param fieldId number
----@param fruitTypeIndex number
----@return number modifier  Combined yield multiplier
-function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
-    if not self.settings.enabled then return 1.0 end
-
-    local field = self.fieldData[fieldId]
-    if not field then return 1.0 end
-
-    -- Return the frozen modifier if this crop's harvest is already in progress (#556).
-    -- Without this, nutrient depletion from earlier passes drops the modifier for later
-    -- passes of the same harvest run, causing yield to fall as the combine crosses the field.
-    if field.frozenYieldModifier and field.frozenYieldFruitType == fruitTypeIndex then
-        return field.frozenYieldModifier
-    end
-
+--- Pure yield-modifier calculation — the SINGLE source of truth for both the
+--- applied harvest reduction (computeYieldModifier) and the monitor's forecast
+--- (getFieldInfo.yieldEfficiency). Reads explicit N/P/K so callers control the
+--- nutrient source; BOTH call sites pass FIELD-AVERAGE values, so the number the
+--- monitor shows always equals the grain the combine actually receives.
+--- Read-only: never mutates field state. The amendment-burn one-shot is consumed
+--- by the real harvest path (computeYieldModifier), not here, so the display can
+--- evaluate it as often as it likes without clearing it.
+---@param field table       Field data record
+---@param cropName string   Fruit name (lowercased internally)
+---@param nVal number       Nitrogen value to evaluate
+---@param pVal number       Phosphorus value
+---@param kVal number       Potassium value
+---@param logFieldId number|nil  Field id for per-factor debug logging; nil = silent (display path)
+---@return number modifier  Combined yield multiplier in [1-MAX_PENALTY, 1.0]
+function SoilFertilitySystem:_yieldModifierFromNutrients(field, cropName, nVal, pVal, kVal, logFieldId)
     local modifier = 1.0
+    cropName = cropName and string.lower(cropName) or ""
+    local ys      = SoilConstants.YIELD_SENSITIVITY
+    local isGrass = ys and ys.NON_CROP_NAMES and ys.NON_CROP_NAMES[cropName]
 
-    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
-    local cropName  = fruitDesc and string.lower(fruitDesc.name or "") or ""
-    local ys        = SoilConstants.YIELD_SENSITIVITY
-    local isGrass   = ys and ys.NON_CROP_NAMES and ys.NON_CROP_NAMES[cropName]
+    local function plog(...) if logFieldId then self:log(...) end end
 
     -- Nutrient-based modifier (only when nutrientCycles enabled, skipped for grass/non-crop)
     if self.settings.nutrientCycles and ys and not isGrass then
@@ -236,17 +232,17 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         local tierData = ys.TIERS[tier]
         local thresh   = ys.OPTIMAL_THRESHOLD
 
-        local nDef = math.max(0, thresh - field.nitrogen)   / thresh
-        local pDef = math.max(0, thresh - field.phosphorus) / thresh
-        local kDef = math.max(0, thresh - field.potassium)  / thresh
+        local nDef = math.max(0, thresh - nVal) / thresh
+        local pDef = math.max(0, thresh - pVal) / thresh
+        local kDef = math.max(0, thresh - kVal) / thresh
 
         local avgDef = (nDef + pDef + kDef) / 3
 
         local nutrientPenalty = math.min(ys.MAX_PENALTY, avgDef * tierData.scale)
         if nutrientPenalty > 0 then
             modifier = modifier * (1.0 - nutrientPenalty)
-            self:log("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
-                fieldId, cropName, tier, field.nitrogen, field.phosphorus, field.potassium, nutrientPenalty * 100)
+            plog("Nutrient penalty field %d (%s/%s): N=%.0f P=%.0f K=%.0f → -%.0f%%",
+                logFieldId, cropName, tier, nVal, pVal, kVal, nutrientPenalty * 100)
         end
     end
 
@@ -263,7 +259,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
             else                              penalty = wp.YIELD_PENALTY_PEAK end
             if penalty > 0 then
                 modifier = modifier * (1.0 - penalty)
-                self:log("Weed penalty field %d: pressure=%.0f → -%.0f%%", fieldId, pressure, penalty * 100)
+                plog("Weed penalty field %d: pressure=%.0f → -%.0f%%", logFieldId, pressure, penalty * 100)
             end
         end
     end
@@ -279,7 +275,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         else                              penalty = pp.YIELD_PENALTY_PEAK end
         if penalty > 0 then
             modifier = modifier * (1.0 - penalty)
-            self:log("Pest penalty field %d: pressure=%.0f → -%.0f%%", fieldId, pressure, penalty * 100)
+            plog("Pest penalty field %d: pressure=%.0f → -%.0f%%", logFieldId, pressure, penalty * 100)
         end
     end
 
@@ -294,15 +290,53 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
         else                              penalty = dp.YIELD_PENALTY_PEAK end
         if penalty > 0 then
             modifier = modifier * (1.0 - penalty)
-            self:log("Disease penalty field %d: pressure=%.0f → -%.0f%%", fieldId, pressure, penalty * 100)
+            plog("Disease penalty field %d: pressure=%.0f → -%.0f%%", logFieldId, pressure, penalty * 100)
         end
     end
 
-    -- Amendment burn penalty: lime or OM applied to growing crop (issue #437)
+    -- Amendment burn penalty: lime or OM applied to growing crop (issue #437).
+    -- Evaluated read-only here; computeYieldModifier consumes the one-shot after applying it.
     if field.amendBurnPenalty and field.amendBurnPenalty > 0 then
-        local burnPct = field.amendBurnPenalty
-        modifier = modifier * (1.0 - burnPct)
-        self:log("Amendment burn penalty field %d: -%.0f%%", fieldId, burnPct * 100)
+        modifier = modifier * (1.0 - field.amendBurnPenalty)
+        plog("Amendment burn penalty field %d: -%.0f%%", logFieldId, field.amendBurnPenalty * 100)
+    end
+
+    return modifier
+end
+
+--- Computes the combined yield modifier actually applied at harvest. All yield-reducing
+--- factors are multiplied together and the result is applied to liters BEFORE the combine
+--- hopper receives grain in HookManager, so the engine sees fewer liters. Snapshotted
+--- (frozen) on the first cut so the value does not slide as the combine crosses the field.
+---@param fieldId number
+---@param fruitTypeIndex number
+---@return number modifier  Combined yield multiplier in [1-MAX_PENALTY, 1.0]
+function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
+    if not self.settings.enabled then return 1.0 end
+
+    local field = self.fieldData[fieldId]
+    if not field then return 1.0 end
+
+    -- Return the frozen modifier if this crop's harvest is already in progress (#556).
+    -- Without this, nutrient depletion from earlier passes drops the modifier for later
+    -- passes of the same harvest run, causing yield to fall as the combine crosses the field.
+    if field.frozenYieldModifier and field.frozenYieldFruitType == fruitTypeIndex then
+        return field.frozenYieldModifier
+    end
+
+    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    local cropName  = fruitDesc and (fruitDesc.name or "") or ""
+
+    -- Single source of truth: the applied reduction is driven by FIELD-AVERAGE
+    -- nutrients. getFieldInfo()'s monitor forecast calls this same helper with the
+    -- same field-average values, so the displayed "Yield eff." always equals the
+    -- grain the hopper actually receives.
+    local modifier = self:_yieldModifierFromNutrients(
+        field, cropName, field.nitrogen, field.phosphorus, field.potassium, fieldId)
+
+    -- Amendment burn is a one-shot: consume it now that it has been applied so the
+    -- next harvest is not penalised again (the display path never clears it).
+    if field.amendBurnPenalty and field.amendBurnPenalty > 0 then
         field.amendBurnPenalty   = nil
         field._amendBurnNotified = nil
     end
@@ -3388,6 +3422,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     -- returns the wrong field or nil depending on list position.
     -- Correct approach: iterate g_fieldManager.fields and match farmland.id.
     local cropName = nil
+    local liveFruitTypeIndex = nil  -- set when a live crop is detected; used to match the harvest freeze
     if g_fieldManager and g_fieldManager.fields then
         local fsField = nil
         for _, f in ipairs(g_fieldManager.fields) do
@@ -3411,6 +3446,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
                     return fs
                 end)
                 if ok and fieldState and fieldState.fruitTypeIndex ~= FruitType.UNKNOWN then
+                    liveFruitTypeIndex = fieldState.fruitTypeIndex
                     local fruitDesc = g_fruitTypeManager and
                         g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
                     if fruitDesc and fruitDesc.name then
@@ -3458,40 +3494,31 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local cropLowerInfo = cropName and string.lower(cropName) or ""
     local isNonCropField = nonCrops[cropLowerInfo]
 
-    -- Yield efficiency estimate: combines nutrient deficit + weed/pest/disease penalties.
+    -- Yield efficiency forecast — MUST equal the grain the combine actually receives.
+    -- The applied reduction (computeYieldModifier) is driven by FIELD-AVERAGE nutrients
+    -- and frozen for the duration of a harvest pass, so this forecast does the same:
+    --   * during an active harvest of this crop -> return the frozen applied value, so
+    --     the % does NOT slide downward as the combine depletes nutrients mid-field
+    --     (the "field was 100%, now it's 90%" report)
+    --   * otherwise -> call the shared helper with field-average N/P/K (NOT the local
+    --     zone-cell n/p/k used for the nutrient readouts above)
+    -- Gated on the same conditions as the hopper hook (enabled + nutrientCycles) so the
+    -- monitor reads "--" exactly when the game applies no reduction at all.
     -- nil when no managed crop is present (bare, grass, forage).
-    -- Mirrors computeYieldModifier but reads from local variables already resolved above.
     local yieldEfficiency = nil
-    if not isNonCropField and cropName and cropName ~= "" then
-        local ys = SoilConstants.YIELD_SENSITIVITY
-        if ys and ys.TIERS and ys.OPTIMAL_THRESHOLD then
-            local thresh = ys.OPTIMAL_THRESHOLD
-            local nDef = math.max(0, thresh - n) / thresh
-            local pDef = math.max(0, thresh - p) / thresh
-            local kDef = math.max(0, thresh - k) / thresh
-
-            local avgDef = (nDef + pDef + kDef) / 3
-
-            local tier     = ys.CROP_TIERS[cropLowerInfo] or ys.DEFAULT_TIER
-            local tierData = ys.TIERS[tier]
-            local mod = 1.0 - math.min(ys.MAX_PENALTY, avgDef * tierData.scale)
-
-            local function applyPressurePenalty(settingKey, pressureTable, pressureValue)
-                if not (self.settings[settingKey] and pressureTable) then return mod end
-                local pv = pressureValue or 0
-                local penalty = pv < pressureTable.LOW    and pressureTable.YIELD_PENALTY_LOW  or
-                                pv < pressureTable.MEDIUM and pressureTable.YIELD_PENALTY_MID  or
-                                pv < pressureTable.HIGH   and pressureTable.YIELD_PENALTY_HIGH or
-                                pressureTable.YIELD_PENALTY_PEAK
-                return mod * (1.0 - penalty)
-            end
-
-            mod = applyPressurePenalty("weedPressure",    SoilConstants.WEED_PRESSURE,    field.weedPressure)
-            mod = applyPressurePenalty("pestPressure",    SoilConstants.PEST_PRESSURE,    field.pestPressure)
-            mod = applyPressurePenalty("diseasePressure", SoilConstants.DISEASE_PRESSURE, field.diseasePressure)
-
-            yieldEfficiency = math.floor(mod * 100 + 0.5)
+    if self.settings.enabled and self.settings.nutrientCycles
+       and not isNonCropField and cropName and cropName ~= "" then
+        local mod
+        if field.frozenYieldModifier and liveFruitTypeIndex
+           and field.frozenYieldFruitType == liveFruitTypeIndex then
+            mod = field.frozenYieldModifier
+        else
+            local avgN = field.nitrogen   or SoilConstants.FIELD_DEFAULTS.nitrogen
+            local avgP = field.phosphorus or SoilConstants.FIELD_DEFAULTS.phosphorus
+            local avgK = field.potassium  or SoilConstants.FIELD_DEFAULTS.potassium
+            mod = self:_yieldModifierFromNutrients(field, cropName, avgN, avgP, avgK, nil)
         end
+        yieldEfficiency = math.floor(mod * 100 + 0.5)
     end
 
     return {

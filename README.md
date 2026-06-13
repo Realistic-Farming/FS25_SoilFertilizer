@@ -41,6 +41,7 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 ## 🆕 What's New in v2.4.2.4
 
 **Fixes:**
+- Fixed the yield reading. The yield % shown in the soil monitor now matches the grain you actually harvest. It no longer slides downward as the combine crosses the field. The monitor forecast and the real harvest now share a single field-average calculation, and the value is held steady for the duration of a harvest pass
 - Fixed the major texture loss introduced in 2.4.1.0. Fill plane textures are back to DDS, so the game's shared pile texture array no longer breaks and every pile renders correctly again
 - Restored the unique pile colours for each product
 
