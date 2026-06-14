@@ -5414,20 +5414,25 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     local cellSize = SoilConstants.ZONE.CELL_SIZE
     local xs, zs = {}, {}
 
+    local function addNode(node)
+        if not node then return end
+        local ok, x, _, z = pcall(getWorldTranslation, node)
+        if ok and x then table.insert(xs, x); table.insert(zs, z) end
+    end
+
     local function collectFromObj(obj)
         if not obj then return end
-        -- WorkArea start/end nodes
+        -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
+        -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
+        -- 'height' the forward edge. The old code read start and a non-existent 'end', so a
+        -- broadcast spreader without VariableWorkWidth collapsed to the single start node —
+        -- getBoomCellPositions then returned nil and dry fertilizer never painted boom-width
+        -- coverage cells (no tracking markers, map barely changed). Issue #626.
         if obj.spec_workArea and obj.spec_workArea.workAreas then
             for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                if wa.start then
-                    local ok, x, _, z = pcall(getWorldTranslation, wa.start)
-                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
-                end
-                local waEnd = wa["end"]  -- "end" is a Lua keyword; must use bracket access
-                if waEnd then
-                    local ok, x, _, z = pcall(getWorldTranslation, waEnd)
-                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
-                end
+                addNode(wa.start)
+                addNode(wa.width)
+                addNode(wa.height)
             end
         end
         -- VWW section maxWidthNodes capture the outer boom edge of each section —

@@ -333,6 +333,7 @@ Type `soilfertility` in the developer console (`~` key) for the full list. Key c
 | `SoilSetRainEffects true\|false` | Toggle rain effects |
 | `SoilSetPlowingBonus true\|false` | Toggle plowing bonus |
 | `SoilFieldInfo <fieldId>` | Show field soil info |
+| `SoilRerollFields` | Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632); server/SP only |
 | `SoilResetSettings` | Reset to defaults |
 | `SoilSaveData` | Force save soil data |
 | `SoilDebug` | Toggle debug mode |

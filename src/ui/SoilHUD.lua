@@ -365,6 +365,7 @@ function SoilHUD:calculateHeight()
             if self._cachedSprayer and (info.sessionCoverageFraction or info.coverageFraction or 0) > 0 then h = h + SoilHUD.LINE_H end
             if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then h = h + SoilHUD.LINE_H end
         end
+        if (info.amendBurnPenalty or 0) > 0 then h = h + SoilHUD.LINE_H end
         if info.yieldEfficiency then h = h + SoilHUD.LINE_H end
         
         h = h + SoilHUD.PAD * 1.3
@@ -670,6 +671,14 @@ function SoilHUD:update(dt)
         else
             self._fmt_compText = nil
         end
+        -- Amendment burn text (lime/OM applied to a growing crop → big yield burn, #437).
+        -- Surfaces the reason for a low yield once the burnDaysLeft warning has lapsed.
+        local burn = info.amendBurnPenalty or 0
+        if burn > 0 then
+            self._fmt_burnText = string.format(g_i18n:getText("sf_hud_amend_burn"), math.floor(burn * 100 + 0.5))
+        else
+            self._fmt_burnText = nil
+        end
         -- Yield efficiency text
         local yieldEff = info.yieldEfficiency
         if yieldEff then
@@ -680,6 +689,7 @@ function SoilHUD:update(dt)
     else
         self._fmt_covText   = nil
         self._fmt_compText  = nil
+        self._fmt_burnText  = nil
         self._fmt_yieldText = nil
     end
 end
@@ -1380,6 +1390,16 @@ function SoilHUD:drawPanel()
                 cy = cy - SoilHUD.LINE_H * s
                 renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText)
             end
+        end
+
+        -- Amendment burn row — explains a low yield caused by lime/OM on a growing crop (#437)
+        local burnText = self._fmt_burnText
+        if burnText then
+            local pad = SoilHUD.PAD * s
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            setTextColor(0.88, 0.25, 0.25, 1.0)  -- red: this is a penalty
+            cy = cy - SoilHUD.LINE_H * s
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText)
         end
 
         -- Yield efficiency summary (nil when no managed crop)

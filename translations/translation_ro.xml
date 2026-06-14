@@ -352,6 +352,7 @@
     <e k="sf_map_layer_pest" v="Presiune Dăunători" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Presiune Boli" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Compactare" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Randament" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Schimbă Stratul de Sol" eh="032fdac7" />
     <e k="sf_map_page_title" v="Straturi Sol" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Strat Hartă Sol" eh="81332549" />
@@ -523,6 +524,7 @@
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Compactare: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Arsură: -%d%%" />
 
     <!-- ======================================================
          SPRAYER RATE HUD

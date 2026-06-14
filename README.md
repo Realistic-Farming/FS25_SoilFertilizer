@@ -38,7 +38,10 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 ---
 
-## 🆕 What's New in v2.4.2.4
+## 🆕 What's New in v2.4.2.5
+
+**New:**
+- Added a **Yield** soil-map layer. The overlay and minimap can now show each field's yield potential (field-average, the same number the Soil Monitor shows and the grain you actually harvest), coloured red → amber → green. Requires the Soil Layer Installer to add the `soilYield` layer to your map
 
 **Fixes:**
 - Fixed the yield reading. The yield % shown in the soil monitor now matches the grain you actually harvest. It no longer slides downward as the combine crosses the field. The monitor forecast and the real harvest now share a single field-average calculation, and the value is held steady for the duration of a harvest pass
@@ -467,7 +470,7 @@ This mod is licensed under **[CC BY-NC-ND 4.0](https://creativecommons.org/licen
 
 You may share it in its original form with attribution. You may not sell it, modify and redistribute it, or reupload it under a different name or authorship. Contributions via pull request are explicitly permitted and encouraged.
 
-**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.4
+**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.6
 
 © 2026 TisonK — See [LICENSE](LICENSE) for full terms.
 

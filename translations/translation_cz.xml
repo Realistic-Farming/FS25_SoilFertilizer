@@ -403,6 +403,7 @@
     <e k="sf_map_layer_pest" v="Tlak škůdců" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Tlak chorob" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Zhutnění" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Výnos" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Přepnout vrstvu půdy" eh="032fdac7" />
     <e k="sf_map_page_title" v="Půdní vrstvy" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Vrstva půdní mapy" eh="81332549" />
@@ -574,6 +575,7 @@
     <e k="sf_hud_pass_coverage" v="Přejezd: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Zhutnění: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Výnos: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Popálení: -%d%%" />
 
     <!-- ======================================================
          SPRAYER RATE HUD

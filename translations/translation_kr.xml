@@ -350,6 +350,7 @@
     <e k="sf_map_layer_pest" v="해충 발생 정도" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="병해 발생 정도" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="압축도" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="수확량" />
     <e k="sf_map_overlay_cycle" v="Shift+M: 토양 레이어 전환" eh="032fdac7" />
     <e k="sf_map_page_title" v="토양 레이어" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="토양 지도 레이어" eh="81332549" />
@@ -519,6 +520,7 @@
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="압축도: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="작물 손상: -%d%%" />
 
     <!-- Sprayer rate HUD -->
     <e k="sf_sprayer_auto_on" v="살포량 ( 자동: 켬 )" eh="099b5dac" />

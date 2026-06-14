@@ -337,6 +337,7 @@
     <e k="sf_map_layer_pest" v="Skadedyrstryk" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Sygdomstryk" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Pakning" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Udbytte" />
     <e k="sf_map_overlay_cycle" v="Skift+M: Skift jordlag" eh="032fdac7" />
     <e k="sf_map_page_title" v="Jordlag" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Jordkortlag" eh="81332549" />
@@ -499,6 +500,7 @@
     <e k="sf_hud_pass_coverage" v="Passage: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Pakning: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Udbytte: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Brandskade: -%d%%" />
 
     <e k="sf_sprayer_auto_on" v="PÅFØRINGSRATE (AUTO: TIL)" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="PÅFØRINGSRATE (AUTO: FRA) [%s]" eh="848cc106" />

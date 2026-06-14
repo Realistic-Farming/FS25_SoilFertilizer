@@ -338,6 +338,7 @@
     <e k="sf_map_layer_pest" v="Zararlı Baskısı" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Hastalık Baskısı" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Sıkışma" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Verim" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Toprak Katmanını Değiştir" eh="032fdac7" />
     <e k="sf_map_page_title" v="Toprak Katmanları" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Toprak Harita Katmanı" eh="81332549" />
@@ -500,6 +501,7 @@
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Sıkışma: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Yanık: -%d%%" />
 
     <e k="sf_sprayer_auto_on" v="UYGULAMA ORANI ( OTO: AÇIK )" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="UYGULAMA ORANI  OTO: KAPALI [%s]" eh="848cc106" />

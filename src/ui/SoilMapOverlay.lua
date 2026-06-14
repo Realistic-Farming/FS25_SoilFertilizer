@@ -20,7 +20,7 @@ local function tr(key, fallback)
 end
 
 -- ── Constants ─────────────────────────────────────────────
-SoilMapOverlay.LAYER_COUNT    = 10
+SoilMapOverlay.LAYER_COUNT    = 11
 SoilMapOverlay.ALPHA          = 0.72
 
 -- Sampling constants
@@ -76,6 +76,7 @@ local function layerValueToT(layerIdx, val)
         -- single heavy pass (~8%) already reads as a warning tint, not "good" green.
         -- 0% = green, ~40%+ = full red (rather than the gentle 0-100 ramp below).
         return math.max(0, math.min(1, 1 - val / 40))
+    elseif layerIdx == 11 then return math.max(0, math.min(1, val / 100))       -- Yield 0-100, high = good (not inverted)
     else   return math.max(0, math.min(1, 1 - val / 100)) end                   -- pressure/urgency layers: inverted
 end
 
@@ -92,6 +93,7 @@ SoilMapOverlay.LAYER_ACCENT = {
     [8] = {0.85, 0.75, 0.10},  -- Pest:    amber
     [9] = {0.80, 0.10, 0.80},  -- Disease: magenta
     [10] = {0.55, 0.30, 0.10}, -- Compaction: dark brown/orange
+    [11] = {0.35, 0.85, 0.45}, -- Yield: green (high = good)
 }
 
 -- i18n key per layer index (0 = Off)
@@ -107,9 +109,11 @@ SoilMapOverlay.LAYER_KEYS = {
     [8] = "sf_map_layer_pest",
     [9] = "sf_map_layer_disease",
     [10] = "sf_map_layer_compaction",
+    [11] = "sf_map_layer_yield",
 }
 
--- Inverted layers: high value = bad (urgency / pressures)
+-- Inverted layers: high value = bad (urgency / pressures). Yield (11) is NOT here:
+-- high yield = good, so it uses the normal low→red / high→green ramp.
 SoilMapOverlay.INVERTED_LAYERS = {[6]=true,[7]=true,[8]=true,[9]=true,[10]=true}
 
 -- Minimap zoom: class-level so layout hooks (which have no self) can read it.
@@ -1008,6 +1012,19 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         end
         addRow("Compaction", string.format("%d%%", comp), cR, cG, cB)
         addRow("Treatment",  action, cR, cG, cB)
+
+    elseif layerIdx == 11 then
+        -- ── Yield potential (field-average) ──────────────────────
+        if info.yieldEfficiency == nil then
+            addRow("Yield", "n/a", NEU[1], NEU[2], NEU[3])
+        else
+            local y = math.floor(info.yieldEfficiency + 0.5)
+            local yR, yG, yB
+            if y >= 80 then     yR, yG, yB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
+            elseif y >= 55 then yR, yG, yB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
+            else                yR, yG, yB = ttPOOR[1], ttPOOR[2], ttPOOR[3] end
+            addRow("Yield", string.format("%d%%", y), yR, yG, yB)
+        end
     else
         return
     end
@@ -1447,6 +1464,11 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             if v > 60 then return POOR[1], POOR[2], POOR[3]
             elseif v > 20 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 11 then
+            local v = info.yieldEfficiency or 0
+            if v < 55 then return POOR[1], POOR[2], POOR[3]
+            elseif v < 80 then return FAIR[1], FAIR[2], FAIR[3]
+            else return GOOD[1], GOOD[2], GOOD[3] end
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end
@@ -1463,6 +1485,7 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     elseif layerIdx == 8 then val = info.pestPressure  or 0
     elseif layerIdx == 9 then val = info.diseasePressure or 0
     elseif layerIdx == 10 then val = info.compaction   or 0
+    elseif layerIdx == 11 then val = info.yieldEfficiency or 0
     else   val = 100 end
 
     return healthGradient(layerValueToT(layerIdx, val))

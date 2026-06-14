@@ -341,6 +341,7 @@
     <e k="sf_map_layer_pest" v="Pression des ravageurs" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Pression des maladies" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Compaction du sol" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Rendement" />
     <e k="sf_map_overlay_cycle" v="Shift+M : changer de couche de sol" eh="032fdac7" />
     <e k="sf_map_page_title" v="Couches du sol" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Couche de carte des sols" eh="81332549" />
@@ -512,6 +513,7 @@
     <e k="sf_hud_pass_coverage" v="Passage : %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Compaction : %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Rendement : %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Brûlure: -%d%%" />
 
     <!-- ======================================================
          HUD DU DÉBIT DU PULVÉRISATEUR

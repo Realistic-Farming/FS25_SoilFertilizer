@@ -59,6 +59,26 @@ SoilConstants.FIELD_DEFAULTS = {
 }
 
 -- ========================================
+-- FIELD VARIATION (initial soil diversity)
+-- ========================================
+-- Spread applied to a fresh field's starting nutrients so the map isn't uniform.
+-- Two components are summed (see SoilFertilitySystem:getOrCreateField):
+--   • REGIONAL — a smooth low-frequency gradient over the farmland centre, so
+--     neighbouring fields share a similar profile and the map forms believable
+--     good/poor regions (this is what answers "no variability", issue #632).
+--   • NOISE — per-field jitter that decorrelates individual fields within a region.
+-- N/P/K amounts are fractions of the base value; pH/OM are absolute units.
+SoilConstants.FIELD_VARIATION = {
+    NPK_REGIONAL = 0.22,    -- ±22% of base N/P/K from the regional gradient
+    NPK_NOISE    = 0.12,    -- ±12% of base N/P/K per-field noise
+    OM_REGIONAL  = 1.4,     -- ± organic-matter points from the regional gradient
+    OM_NOISE     = 0.6,     -- ± organic-matter points per-field noise
+    PH_REGIONAL  = 0.45,    -- ± pH units from the regional gradient
+    PH_NOISE     = 0.25,    -- ± pH units per-field noise
+    REGION_FREQ  = 0.0016,  -- spatial frequency of the gradient (~1 cycle per ~620 m)
+}
+
+-- ========================================
 -- PLOWING
 -- ========================================
 -- Thresholds for plowing operations
@@ -258,6 +278,42 @@ SoilConstants.CROP_EXTRACTION = {
     sorghum    = { N=2.30, P=0.90, K=1.80 },  -- Efficient nutrient user
     peas       = { N=2.90, P=1.10, K=2.00 },  -- Legume, moderate demand
     beans      = { N=3.00, P=1.20, K=2.10 },  -- Legume, similar to peas
+
+    -- Expanded coverage (issue #630, seeded from Arissani's crop NPK dataset).
+    -- Values stay on the existing unitless 0-100 depletion scale and are tuned
+    -- relative to the agronomically-similar crop above, NOT mapped 1:1 from the
+    -- CSV's kg/ha (those are uptake/demand figures, not our depletion units).
+    -- These retire the generic fallback for the common base + modded map crops.
+    rice          = { N=2.00, P=1.05, K=1.60 },  -- Paddy cereal, higher P than wheat
+    ricelonggrain = { N=2.10, P=1.10, K=1.70 },  -- Long-grain variant, slightly hungrier
+    cotton        = { N=2.40, P=1.10, K=2.00 },  -- Fibre crop, steady N/K draw
+    sugarcane     = { N=2.80, P=1.30, K=3.50 },  -- High biomass, heavy K feeder
+    carrot        = { N=2.60, P=1.20, K=3.80 },  -- Root crop, high K demand
+    parsnip       = { N=2.40, P=1.20, K=3.50 },  -- Root crop, similar to carrot
+    beetroot      = { N=2.80, P=1.30, K=4.00 },  -- Root crop, very high K
+    onion         = { N=2.50, P=1.20, K=2.50 },  -- Bulb crop, moderate-high demand
+    spinach       = { N=2.20, P=0.90, K=1.60 },  -- Leafy green, N-driven
+    spelt         = { N=1.90, P=0.80, K=1.60 },  -- Ancient wheat, light cereal
+    rye_mf        = { N=2.00, P=0.80, K=1.80 },  -- Multifruit rye alias (= rye)
+    greenbean     = { N=3.00, P=1.20, K=2.10 },  -- Legume, as field beans
+    green_beans   = { N=3.00, P=1.20, K=2.10 },  -- Legume name variant
+    mustard       = { N=2.20, P=0.90, K=1.60 },  -- Brassica oilseed/catch crop
+}
+
+-- Perennial forage crops (mowable, regrow after a cut without re-seeding).
+-- Used by issue #629: organic fertilizer (slurry/manure/digestate) spread on these
+-- while the sward is short (growthState below minHarvestingGrowthState) does NOT
+-- trigger the OM amendment-burn penalty, matching real meadow/pasture management.
+-- Keys are lowercase FS25 fruit-type names.
+SoilConstants.PERENNIAL_FORAGE_NAMES = {
+    grass      = true,
+    meadow     = true,
+    drygrass   = true,
+    fieldgrass = true,
+    ryegrass   = true,
+    alfalfa    = true,
+    luzerne    = true,
+    clover     = true,
 }
 
 -- Default extraction for unknown crops (average cereal)

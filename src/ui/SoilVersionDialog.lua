@@ -24,18 +24,23 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Yield % in the soil monitor now matches the grain you actually harvest",
-    "  (the shown yield no longer slides down as the combine crosses the field -",
-    "   monitor and real harvest now use one field-average calculation)",
-    "- Fixed: Major texture loss after 2.4.1.0",
-    "  (fill plane textures are back to DDS, so the game's shared pile",
-    "   texture array no longer breaks and piles render correctly again)",
-    "- New: SF fertilizers, lime and organics now work in bulk and silo storage",
-    "  (any silo or storage bin that already takes base fertilizer, lime or",
-    "   manure will now accept the matching SF products, including third-party bins)",
-    "- Custom pile colours for each product are restored",
-    "- Improved: Minimap layer label now shows the full translated name plus its",
-    "  short code, e.g. Nitrogen [N] / Stickstoff [N] (thanks Drehverschluss)",
+    "- Fixed: Dry fertilizer spreaders now paint coverage markers and update the soil",
+    "  maps across the full spread width, just like liquid sprayers (#626)",
+    "- Fixed: Big FPS drop while harvesting on dedicated servers - the per-field soil",
+    "  update is now throttled during harvest instead of firing every cutter tick (#631)",
+    "- Fixed: The admin / console field report now shows N, P and K in ppm, so it",
+    "  matches the Soil Monitor instead of disagreeing with it (#628)",
+    "- New: Slurry, manure and digestate on freshly cut grass or meadow no longer",
+    "  triggers the burn penalty - only tall, harvest-ready grass still does (#629)",
+    "- New: More crops have their own nutrient profiles (rice, cotton, sugarcane,",
+    "  carrots, beetroot, onions, spinach and more) instead of a generic fallback",
+    "  (#630, thanks Arissani for the crop data)",
+    "- Fixed: New fields no longer start with near-identical soil. The starting",
+    "  N/P/K/pH/OM now vary by region across the map, with per-field variation on",
+    "  top, instead of every field sharing the same profile (#632)",
+    "- New: console command SoilRerollFields re-rolls the starting soil of every",
+    "  field with the new regional variation, so existing saves can get it without",
+    "  starting a new game (#632)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

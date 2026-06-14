@@ -120,6 +120,20 @@ local LAYER_DEFS = {
         -- erase the per-cell compaction the vehicle just created (invisible layer).
         perPixel    = true,
     },
+    -- ── Derived yield ────────────────────────────────────────
+    -- Field-uniform yield potential (0-100%). perPixel=false so the daily write
+    -- paints the whole field AABB with the single field-average value computed by
+    -- SoilFertilitySystem:updateYieldEfficiency (via _yieldModifierFromNutrients).
+    -- This keeps the yield layer in lockstep with the Soil Monitor and the grain
+    -- the combine actually delivers (field-average, not per-cell).
+    {
+        name        = "soilYield",
+        field       = "yieldEfficiency",
+        minVal      = 0,
+        maxVal      = 100,
+        numBits     = 8,
+        numChannels = 8,
+    },
     -- Note: weed is NOT in LAYER_DEFS — it is read from the game's
     -- native WeedSystem foliage density map (see weed* fields below).
 }

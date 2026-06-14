@@ -352,6 +352,7 @@
     <e k="sf_map_layer_pest" v="Kártevőnyomás" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Betegségnyomás" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Tömörödés" eh="19cf3ee7" />
+    <e k="sf_map_layer_yield" v="Hozam" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Talajréteg váltása" eh="032fdac7" />
     <e k="sf_map_page_title" v="Talajrétegek" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Talajtérkép réteg" eh="81332549" />
@@ -518,6 +519,7 @@
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Tömörödés: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="Égési kár: -%d%%" />
     <!-- Sprayer rate HUD -->
     <e k="sf_sprayer_auto_on" v="KIJUTT. ARÁNY  ( AUTO: BE )" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="KIJUTT. ARÁNY  AUTO: KI [%s]" eh="848cc106" />

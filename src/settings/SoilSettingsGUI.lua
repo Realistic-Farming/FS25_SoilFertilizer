@@ -46,6 +46,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilPFDump", "Dump Precision Farming bridge API for integration diagnostics", "consoleCommandPFDump", self)
     addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
+    addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -74,6 +75,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilPFDump - Dump Precision Farming API for integration diagnostics")
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
+    print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
     print("==============================================")
     return "Type 'soilfertility' for more info"
 end
@@ -276,17 +278,22 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
     if g_SoilFertilityManager and g_SoilFertilityManager.soilSystem then
         local info = g_SoilFertilityManager.soilSystem:getFieldInfo(fid)
         if info then
+            -- Issue #628: report N/P/K in soil-test ppm, the same unit the Soil Monitor
+            -- HUD shows. getFieldInfo returns the internal 0-100 scale; the HUD multiplies
+            -- by PPM_DISPLAY (N×3, P×0.6, K×4) and this report previously did not, so the
+            -- two surfaces disagreed on every field. pH and OM are already in real units.
+            local ppm = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
             local fInfo = string.format(
                 "=== Field %d Soil Information ===\n" ..
-                "Nitrogen: %d (%s)\nPhosphorus: %d (%s)\nPotassium: %d (%s)\n" ..
+                "Nitrogen: %d ppm (%s)\nPhosphorus: %d ppm (%s)\nPotassium: %d ppm (%s)\n" ..
                 "Organic Matter: %.1f%%\npH: %.1f\n" ..
                 "Last Crop: %s\nDays Since Harvest: %d\nFertilizer Applied: %.0fL\n" ..
                 "Needs Fertilization: %s\n" ..
                 "================================",
                 fid,
-                info.nitrogen.value, info.nitrogen.status,
-                info.phosphorus.value, info.phosphorus.status,
-                info.potassium.value, info.potassium.status,
+                math.floor(info.nitrogen.value   * ppm.N + 0.5), info.nitrogen.status,
+                math.floor(info.phosphorus.value * ppm.P + 0.5), info.phosphorus.status,
+                math.floor(info.potassium.value  * ppm.K + 0.5), info.potassium.status,
                 info.organicMatter,
                 info.pH,
                 info.lastCrop or "None",
@@ -311,13 +318,15 @@ function SoilSettingsGUI.writeFieldDump(fid, info)
     local xml = XMLFile.create("sf_fieldDump", base .. "/Debug/field_dump.xml", "fieldDump")
     if not xml then return end
     local day = g_currentMission and g_currentMission.environment and g_currentMission.environment.currentDay or 0
+    -- Issue #628: write N/P/K in ppm to match the HUD (PPM_DISPLAY: N×3, P×0.6, K×4).
+    local ppm = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
     xml:setInt("fieldDump#fieldId", fid)
     xml:setInt("fieldDump#day",     day)
-    xml:setInt  ("fieldDump.nutrients#nitrogen",      info.nitrogen.value)
+    xml:setInt  ("fieldDump.nutrients#nitrogen",      math.floor(info.nitrogen.value   * ppm.N + 0.5))
     xml:setString("fieldDump.nutrients#nitrogenStatus", info.nitrogen.status)
-    xml:setInt  ("fieldDump.nutrients#phosphorus",    info.phosphorus.value)
+    xml:setInt  ("fieldDump.nutrients#phosphorus",    math.floor(info.phosphorus.value * ppm.P + 0.5))
     xml:setString("fieldDump.nutrients#phosphorusStatus", info.phosphorus.status)
-    xml:setInt  ("fieldDump.nutrients#potassium",     info.potassium.value)
+    xml:setInt  ("fieldDump.nutrients#potassium",     math.floor(info.potassium.value  * ppm.K + 0.5))
     xml:setString("fieldDump.nutrients#potassiumStatus", info.potassium.status)
     xml:setFloat("fieldDump.nutrients#organicMatter", info.organicMatter)
     xml:setFloat("fieldDump.nutrients#pH",            info.pH)
@@ -689,6 +698,28 @@ function SoilSettingsGUI:consoleCommandRecoverField(fieldId)
     local msg = string.format("Field %d recovered to defaults.", fid)
     if not isServer then msg = msg .. " (Client only! Run on server to persist)" end
     return msg
+end
+
+--- Re-roll the starting soil profile (N/P/K/pH/OM) of every field using the current
+--- regional-variation logic. Lets existing saves pick up the 2.4.2.6 variation without
+--- starting a new game (issue #632). Crop history, money and progression are untouched.
+function SoilSettingsGUI:consoleCommandRerollFields()
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then
+        return "Error: Soil Mod not initialized"
+    end
+
+    -- Multiplayer: only the server owns field data; a client re-roll would desync.
+    local isServer = g_currentMission and g_currentMission:getIsServer()
+    if not isServer then
+        return "Re-roll must be run on the server/host (it owns the field data)."
+    end
+
+    local count = g_SoilFertilityManager.soilSystem:rerollAllFields()
+    g_SoilFertilityManager:saveSoilData()
+
+    return string.format(
+        "Re-rolled starting soil (N, P, K, pH, OM) for %d fields and saved. " ..
+        "Fields now vary by region; reopen the soil map if it looks stale.", count)
 end
 
 function SoilSettingsGUI:consoleCommandPFDump()

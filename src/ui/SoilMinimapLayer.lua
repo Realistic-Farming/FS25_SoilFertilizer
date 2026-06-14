@@ -170,6 +170,7 @@ local LAYER_FIELD_KEYS = {
     [8]  = "pestPressure",
     [9]  = "diseasePressure",
     [10] = "compaction",
+    [11] = "yieldEfficiency",  -- field-uniform yield % (soilYield GRLE)
 }
 
 -- Engine limit: 16 state colour entries per DMV overlay configuration.
@@ -401,7 +402,7 @@ local LAYER_LABEL = {
     [1]  = "N",        [2]  = "P",      [3]  = "K",
     [4]  = "pH",       [5]  = "OM",     [6]  = "!",
     [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
-    [10] = "Compact",
+    [10] = "Compact",  [11] = "Yield",
 }
 -- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
 local LAYER_LABEL_COLOR = {
@@ -410,13 +411,14 @@ local LAYER_LABEL_COLOR = {
     [5]  = {0.60, 0.35, 0.10},  [6]  = {0.95, 0.25, 0.25},
     [7]  = {0.20, 0.70, 0.20},  [8]  = {0.85, 0.75, 0.10},
     [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
+    [11] = {0.35, 0.85, 0.45},
 }
 
 -- Short abbreviations worth showing in brackets after the full name. Only the
--- nutrient layers, where "N"/"P"/"K"/etc. are meaningful shorthand; the
--- pressure/compaction layers read better as the full localized name alone.
+-- nutrient layers, where "N"/"P"/"K"/etc. are meaningful shorthand, plus yield
+-- ("Y"); the pressure/compaction layers read better as the full localized name.
 local LAYER_ABBREV = {
-    [1] = "N", [2] = "P", [3] = "K", [4] = "pH", [5] = "OM",
+    [1] = "N", [2] = "P", [3] = "K", [4] = "pH", [5] = "OM", [11] = "Y",
 }
 
 -- Safe localized text lookup (never crashes the HUD on a missing key).
