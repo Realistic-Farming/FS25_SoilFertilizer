@@ -35,6 +35,9 @@ SoilVersionDialog.CHANGELOG = {
     "- New: More crops have their own nutrient profiles (rice, cotton, sugarcane,",
     "  carrots, beetroot, onions, spinach and more) instead of a generic fallback",
     "  (#630, thanks Arissani for the crop data)",
+    "- Fixed: New fields no longer start with near-identical soil. The starting",
+    "  N/P/K/pH/OM now vary by region across the map, with per-field variation on",
+    "  top, instead of every field sharing the same profile (#632)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

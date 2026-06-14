@@ -59,6 +59,26 @@ SoilConstants.FIELD_DEFAULTS = {
 }
 
 -- ========================================
+-- FIELD VARIATION (initial soil diversity)
+-- ========================================
+-- Spread applied to a fresh field's starting nutrients so the map isn't uniform.
+-- Two components are summed (see SoilFertilitySystem:getOrCreateField):
+--   • REGIONAL — a smooth low-frequency gradient over the farmland centre, so
+--     neighbouring fields share a similar profile and the map forms believable
+--     good/poor regions (this is what answers "no variability", issue #632).
+--   • NOISE — per-field jitter that decorrelates individual fields within a region.
+-- N/P/K amounts are fractions of the base value; pH/OM are absolute units.
+SoilConstants.FIELD_VARIATION = {
+    NPK_REGIONAL = 0.22,    -- ±22% of base N/P/K from the regional gradient
+    NPK_NOISE    = 0.12,    -- ±12% of base N/P/K per-field noise
+    OM_REGIONAL  = 1.4,     -- ± organic-matter points from the regional gradient
+    OM_NOISE     = 0.6,     -- ± organic-matter points per-field noise
+    PH_REGIONAL  = 0.45,    -- ± pH units from the regional gradient
+    PH_NOISE     = 0.25,    -- ± pH units per-field noise
+    REGION_FREQ  = 0.0016,  -- spatial frequency of the gradient (~1 cycle per ~620 m)
+}
+
+-- ========================================
 -- PLOWING
 -- ========================================
 -- Thresholds for plowing operations

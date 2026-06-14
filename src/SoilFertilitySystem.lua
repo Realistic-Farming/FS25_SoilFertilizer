@@ -1675,47 +1675,67 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     end
 
     -- Allow lazy creation (HUD-safe, server-only in multiplayer)
-    -- Add natural soil variation: ±10% for nutrients, ±0.5 for pH, ±0.5% for OM
-    -- This reflects real-world soil diversity across a map.
+    -- Give each fresh field a believable starting soil profile. Two parts are summed:
+    --   • a smooth REGIONAL gradient over the farmland centre, so neighbouring fields
+    --     share a similar profile and the map forms coherent good/poor regions, and
+    --   • per-field NOISE that decorrelates individual fields within a region.
+    -- Amounts live in SoilConstants.FIELD_VARIATION.
     --
-    -- Use a deterministic hash instead of math.randomseed() to avoid polluting
-    -- the global Lua random state (math.randomseed resets the shared PRNG, which
-    -- disrupts any other code using math.random() in the same frame — e.g. during
-    -- the initial bulk field scan where many fields are created simultaneously).
-    local function hash(n)
-        -- Lua 5.1-compatible deterministic hash (LCG-style, no bitwise ops).
-        -- Produces a float in [0.0, 1.0) that is stable for the same (fieldId, slot) pair
-        -- across save/load cycles. Avoids touching math.randomseed (global state).
-        -- 1664525 / 1013904223 are the standard Numerical Recipes LCG constants;
-        -- 4294967296 = 2^32 is the modulus (the LCG period).
-        n = (n * 1664525 + 1013904223) % 4294967296
-        n = (n * 1664525 + 1013904223) % 4294967296
-        return n / 4294967296
+    -- NOTE (issue #632): the previous "deterministic hash" was an affine LCG
+    -- (a*n+b mod m) with no nonlinear step. Evaluated on the arithmetic input
+    -- fieldId*67890+slot it returned an ARITHMETIC sequence — every field stepped
+    -- in lockstep along one ramp and all five nutrients shared the same step, so the
+    -- whole map looked uniform. fract(sin(x)) supplies the nonlinearity (math.sin is
+    -- the only Lua 5.1 primitive that breaks the progression) so values are genuinely
+    -- independent per (field, nutrient), while staying stable across save/load and
+    -- avoiding math.randomseed (which would pollute the shared global PRNG).
+    local fieldCX, fieldCZ  -- farmland centre (world XZ), assigned during the area lookup below
+
+    local function hash01(a, b)
+        -- Nonlinear 2-input hash → [0.0, 1.0). Classic fract(sin(dot)) mix.
+        local s = math.sin(a * 12.9898 + b * 78.233) * 43758.5453
+        return s - math.floor(s)
     end
-    local function randField(slot)
-        -- Each nutrient gets its own deterministic slot so values are independent.
-        -- 67890 is an arbitrary large stride that spreads adjacent fieldIds far apart
-        -- in the hash input, so neighbouring fields don't get correlated variation.
-        local r = hash(fieldId * 67890 + slot)
-        return r * 2.0 - 1.0  -- range [-1.0, 1.0]
+    local function noiseField(slot)
+        -- Per-field jitter in [-1.0, 1.0]; each nutrient uses its own slot.
+        return hash01(fieldId, slot) * 2.0 - 1.0
+    end
+    local function regionalField(slot)
+        -- Smooth low-frequency gradient sampled at the farmland centre, in [-1.0, 1.0].
+        -- When the centre is unknown, fall back to a hash-derived pseudo-position so
+        -- fields still spread out (just without true spatial correlation).
+        local cx, cz = fieldCX, fieldCZ
+        if cx == nil then
+            cx = hash01(fieldId, 91) * 4096.0 - 2048.0
+            cz = hash01(fieldId, 92) * 4096.0 - 2048.0
+        end
+        local f  = SoilConstants.FIELD_VARIATION.REGION_FREQ
+        local ph = slot * 1.7  -- per-nutrient phase so N-rich regions ≠ P-rich regions
+        local a  = math.sin(cx * f + ph) * math.cos(cz * f * 1.3 + ph * 0.6)
+        local b  = math.sin((cx + cz) * f * 0.5 + ph * 2.1)
+        return math.max(-1.0, math.min(1.0, a * 0.7 + b * 0.3))
+    end
+    local function randomize(baseValue, regionalAmt, noiseAmt, slot)
+        return baseValue + regionalField(slot) * regionalAmt + noiseField(slot) * noiseAmt
     end
 
-    local function randomize(baseValue, variation, slot)
-        return baseValue + randField(slot) * variation
-    end
-
-    -- Attempt farmland area lookup at creation time so the correct area is used
-    -- for nutrient/herbicide calculations from the very first plow or spray pass.
+    -- Attempt farmland area + centre lookup at creation time so the correct area is
+    -- used for nutrient/herbicide calculations from the very first plow or spray pass,
+    -- and so the regional gradient can be sampled at the field's location.
     -- Without this, area defaults to 1.0 ha and only corrects on first fertilizer spray.
     local confirmedArea = false
     local initialArea = area or 1.0
-    if not area and g_farmlandManager then
-        local farmlandObj = g_farmlandManager:getFarmlandById(fieldId)
-        if farmlandObj and farmlandObj.areaInHa and farmlandObj.areaInHa > 0 then
+    local farmlandObj = g_farmlandManager and g_farmlandManager:getFarmlandById(fieldId) or nil
+    if farmlandObj then
+        if not area and farmlandObj.areaInHa and farmlandObj.areaInHa > 0 then
             initialArea = farmlandObj.areaInHa
             confirmedArea = true
         end
-    elseif area and area > 0 then
+        if self.bundledMaps then
+            fieldCX, fieldCZ = self.bundledMaps:getFarmlandCenter(farmlandObj)
+        end
+    end
+    if area and area > 0 then
         confirmedArea = true
     end
 
@@ -1724,19 +1744,20 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     local tunK  = getTuningMult(self.settings, "tuningDefaultK",  "DEFAULT_K")
     local tunPH = getTuningMult(self.settings, "tuningDefaultPH", "DEFAULT_PH")
     local tunOM = getTuningMult(self.settings, "tuningDefaultOM", "DEFAULT_OM")
+    local V     = SoilConstants.FIELD_VARIATION
 
     self.fieldData[fieldId] = {
         fieldArea = initialArea,
         _farmlandAreaConfirmed = confirmedArea,
         -- Clamp to [0,100] to match the load path (:3518-3520). At tuning index 5
-        -- DEFAULT_N/DEFAULT_K = 100, and the ±10% variation can floor to ~110, so an
-        -- unclamped fresh field would read N>100 until the first save/reload snapped
-        -- it back down. Clamping here keeps init and reload values consistent.
-        nitrogen   = math.max(0, math.min(100, math.floor(randomize(tunN,  tunN  * 0.10, 1)))),
-        phosphorus = math.max(0, math.min(100, math.floor(randomize(tunP,  tunP  * 0.10, 2)))),
-        potassium  = math.max(0, math.min(100, math.floor(randomize(tunK,  tunK  * 0.10, 3)))),
-        organicMatter = math.max(1.0, math.min(10.0, randomize(tunOM, 0.5, 4))),
-        pH            = math.max(5.0, math.min(8.5,  randomize(tunPH, 0.5, 5))),
+        -- DEFAULT_N/DEFAULT_K = 100, and the regional+noise spread can push a fresh
+        -- field above 100, so an unclamped value would read >100 until the first
+        -- save/reload snapped it back down. Clamping here keeps init and reload consistent.
+        nitrogen   = math.max(0, math.min(100, math.floor(randomize(tunN, tunN * V.NPK_REGIONAL, tunN * V.NPK_NOISE, 1)))),
+        phosphorus = math.max(0, math.min(100, math.floor(randomize(tunP, tunP * V.NPK_REGIONAL, tunP * V.NPK_NOISE, 2)))),
+        potassium  = math.max(0, math.min(100, math.floor(randomize(tunK, tunK * V.NPK_REGIONAL, tunK * V.NPK_NOISE, 3)))),
+        organicMatter = math.max(1.0, math.min(10.0, randomize(tunOM, V.OM_REGIONAL, V.OM_NOISE, 4))),
+        pH            = math.max(5.0, math.min(8.5,  randomize(tunPH, V.PH_REGIONAL, V.PH_NOISE, 5))),
         lastCrop = nil,
         lastCrop2 = nil,
         lastCrop3 = nil,
