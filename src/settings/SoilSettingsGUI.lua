@@ -47,6 +47,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
+    addConsoleCommand("SoilRerollUnownedFields", "Re-roll starting soil only for fields you don't own (keeps your own farm's soil) (#632)", "consoleCommandRerollUnownedFields", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -76,6 +77,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
     print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
+    print("SoilRerollUnownedFields - Re-roll starting soil for fields you don't own (keeps your own)")
     print("==============================================")
     return "Type 'soilfertility' for more info"
 end
@@ -720,6 +722,26 @@ function SoilSettingsGUI:consoleCommandRerollFields()
     return string.format(
         "Re-rolled starting soil (N, P, K, pH, OM) for %d fields and saved. " ..
         "Fields now vary by region; reopen the soil map if it looks stale.", count)
+end
+
+function SoilSettingsGUI:consoleCommandRerollUnownedFields()
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then
+        return "Error: Soil Mod not initialized"
+    end
+
+    -- Multiplayer: only the server owns field data; a client re-roll would desync.
+    local isServer = g_currentMission and g_currentMission:getIsServer()
+    if not isServer then
+        return "Re-roll must be run on the server/host (it owns the field data)."
+    end
+
+    local rerolled, skipped = g_SoilFertilityManager.soilSystem:rerollUnownedFields()
+    g_SoilFertilityManager:saveSoilData()
+
+    return string.format(
+        "Re-rolled starting soil for %d field(s) you don't own and saved; " ..
+        "left your %d owned field(s) untouched. Reopen the soil map if it looks stale.",
+        rerolled, skipped)
 end
 
 function SoilSettingsGUI:consoleCommandPFDump()

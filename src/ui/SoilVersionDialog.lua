@@ -41,6 +41,12 @@ SoilVersionDialog.CHANGELOG = {
     "- New: console command SoilRerollFields re-rolls the starting soil of every",
     "  field with the new regional variation, so existing saves can get it without",
     "  starting a new game (#632)",
+    "- Changed: starting soil now varies much more from field to field - some land is",
+    "  genuinely poor and some rich, so it pays to check a field before buying it. OM",
+    "  also starts lower on average instead of sitting high everywhere (#632)",
+    "- New: console command SoilRerollUnownedFields re-rolls only the fields you don't",
+    "  own, so you can shake up the rest of the map without touching the soil you've",
+    "  built up on your own farm (#632)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

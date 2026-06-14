@@ -68,13 +68,16 @@ SoilConstants.FIELD_DEFAULTS = {
 --     good/poor regions (this is what answers "no variability", issue #632).
 --   • NOISE — per-field jitter that decorrelates individual fields within a region.
 -- N/P/K amounts are fractions of the base value; pH/OM are absolute units.
+-- "Dramatic" spread (#632 follow-up): widened so fields differ enough that you
+-- should inspect a field before buying it. Some land is genuinely poor, some rich.
+-- Regional gives believable good/poor REGIONS; noise decorrelates fields within them.
 SoilConstants.FIELD_VARIATION = {
-    NPK_REGIONAL = 0.22,    -- ±22% of base N/P/K from the regional gradient
-    NPK_NOISE    = 0.12,    -- ±12% of base N/P/K per-field noise
-    OM_REGIONAL  = 1.4,     -- ± organic-matter points from the regional gradient
-    OM_NOISE     = 0.6,     -- ± organic-matter points per-field noise
-    PH_REGIONAL  = 0.45,    -- ± pH units from the regional gradient
-    PH_NOISE     = 0.25,    -- ± pH units per-field noise
+    NPK_REGIONAL = 0.40,    -- ±40% of base N/P/K from the regional gradient
+    NPK_NOISE    = 0.30,    -- ±30% of base N/P/K per-field noise
+    OM_REGIONAL  = 2.5,     -- ± organic-matter points from the regional gradient
+    OM_NOISE     = 2.5,     -- ± organic-matter points per-field noise
+    PH_REGIONAL  = 0.7,     -- ± pH units from the regional gradient
+    PH_NOISE     = 0.5,     -- ± pH units per-field noise
     REGION_FREQ  = 0.0016,  -- spatial frequency of the gradient (~1 cycle per ~620 m)
 }
 
@@ -1068,7 +1071,7 @@ SoilConstants.TUNING = {
     DEFAULT_P  = {15, 25,  35,  50,  70},        -- Starting phosphorus (points)
     DEFAULT_K  = {10, 20,  40,  65, 100},        -- Starting potassium  (points); idx 3 = fair (~FIELD_DEFAULTS)
     DEFAULT_PH = {5.5, 6.0, 6.5, 7.0, 7.5},     -- Starting pH
-    DEFAULT_OM = {2.0, 4.0, 6.0, 8.0, 10.0},    -- Starting organic matter (%)
+    DEFAULT_OM = {2.0, 3.0, 4.5, 6.5, 9.0},     -- Starting organic matter (%); idx 3 lowered 6.0→4.5 (#632) so fields aren't uniformly rich
     RATE_MULT  = {0.25, 0.50, 1.0, 1.50, 2.0},  -- Depletion / efficiency multiplier
     ZERO_MULT  = {0.0,  0.50, 1.0, 1.50, 2.0},  -- Stress/effect multiplier (0 = disabled)
 }

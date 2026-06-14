@@ -1866,6 +1866,47 @@ function SoilFertilitySystem:rerollAllFields()
     return count
 end
 
+-- Re-roll the starting soil profile of every field the local player's farm does NOT
+-- own, leaving owned fields (and all the fertilisation work done on them) untouched.
+-- Companion to rerollAllFields for players who want to vary the rest of the map after
+-- the 2.4.2.6 spread change without wiping the soil they built up themselves (#632).
+-- Ownership is read via g_farmlandManager:getFarmlandOwner, the same idiom the spray
+-- hook uses. If the player's farm can't be resolved we abort rather than risk wiping
+-- owned fields. Returns: rerolled count, skipped (owned) count.
+function SoilFertilitySystem:rerollUnownedFields()
+    local playerFarmId = g_currentMission and g_currentMission:getFarmId()
+    if not playerFarmId or playerFarmId == 0 then
+        SoilLogger.warning("rerollUnownedFields: no valid player farm id — aborting to protect owned fields")
+        return 0, 0
+    end
+
+    local rerolled, skipped = 0, 0
+    for fieldId, field in pairs(self.fieldData) do
+        if type(fieldId) == "number" and type(field) == "table" then
+            local owner = g_farmlandManager and g_farmlandManager:getFarmlandOwner(fieldId)
+            if owner == playerFarmId then
+                -- Player's own field — leave its soil and progress alone.
+                skipped = skipped + 1
+            else
+                local soil = self:_computeInitialSoil(fieldId)
+                field.nitrogen          = soil.nitrogen
+                field.phosphorus        = soil.phosphorus
+                field.potassium         = soil.potassium
+                field.organicMatter     = soil.organicMatter
+                field.pH                = soil.pH
+                field.fertilizerApplied = 0
+                -- Drop cached per-zone values so the overlay/minimap repaint from the
+                -- new field average immediately (mirrors rerollAllFields).
+                field.zoneData = {}
+                self:_prePopulateZoneData(fieldId)
+                rerolled = rerolled + 1
+            end
+        end
+    end
+    SoilLogger.info("rerollUnownedFields: re-rolled %d unowned field(s), kept %d owned", rerolled, skipped)
+    return rerolled, skipped
+end
+
 -- ── Zone Data Pre-Population ──────────────────────────────────────────────────
 
 -- Maximum zone cells stored per field. Prevents unbounded memory growth and network
