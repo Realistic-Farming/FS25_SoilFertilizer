@@ -738,5 +738,10 @@
     "published_at": "2026-06-13T12:04:50Z",
     "tag": "v2.4.2.4",
     "peak_downloads": 100
+  },
+  "v2.4.2.6": {
+    "published_at": "2026-06-14T07:35:52Z",
+    "tag": "v2.4.2.6",
+    "peak_downloads": 1
   }
 }
