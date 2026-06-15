@@ -24,16 +24,14 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- Fixed: Settings such as Difficulty and Replenishment Rate no longer reset to",
-    "  default after you save and reload - they are now written with the game save (#637)",
-    "- Fixed: Crop names in the Soil Monitor, map overlay and field panel now show in",
-    "  your own language instead of always in English (#635)",
-    "- Fixed: Weed and disease protection now clears correctly. It lasts the intended",
-    "  number of in-game days and is also cleared when you harvest the field (#639)",
-    "- Fixed: A single harvest no longer fills all three crop-history slots with the",
-    "  same crop, which was triggering a false same-crop rotation penalty (#638)",
-    "- Fixed: Crash and on-screen error spam (SFNozzleEffects) that could happen in some",
-    "  mod setups - our sprayer functions no longer collide with another mod's (#636)",
+    "- Fixed: Fertilizing a field could do nothing after reloading a save. The field was",
+    "  wrongly treated as already fully covered, which switched the spreader sections off",
+    "  so nothing was applied and the soil never changed. Reloading now starts a fresh",
+    "  spraying session, so previously fertilized fields accept fertilizer again (#640)",
+    "- Fixed: Spreading slurry, manure or digestate on freshly cut grass no longer",
+    "  triggers the organic-matter burn penalty (#645)",
+    "- Fixed: Removed duplicate translation entries that were spamming warnings in the",
+    "  log on startup (#642)",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

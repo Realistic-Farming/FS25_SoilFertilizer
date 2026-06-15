@@ -470,7 +470,7 @@ This mod is licensed under **[CC BY-NC-ND 4.0](https://creativecommons.org/licen
 
 You may share it in its original form with attribution. You may not sell it, modify and redistribute it, or reupload it under a different name or authorship. Contributions via pull request are explicitly permitted and encouraged.
 
-**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.7
+**Author:** TisonK &nbsp;·&nbsp; **Version:** 2.4.2.8
 
 © 2026 TisonK — See [LICENSE](LICENSE) for full terms.
 

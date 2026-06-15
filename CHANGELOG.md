@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.2.8]
+
+### Fixed
+- Fertilizing a field could do nothing after reloading a save (#640). On load the session coverage was being restored from the savegame (a side effect of the #608 pass-percent persistence), so any field that had been fertilized before saving came back marked as fully covered. The overlap-prevention gate then suppressed every boom section and forced `processSprayerArea` to return 0, so the spreader applied nothing and the soil never changed, on every crop, until a harvest/plow/cultivate/day-change reset it. A reload now restores only the daily coverage and starts a fresh spray session.
+- Spreading slurry, manure or digestate on freshly cut grass no longer triggers the -20% organic-matter burn penalty (#645). The exemption only checked the lower growth bound, but a perennial forage's post-mow "cut" state has a higher index than its harvest window, so cut grass read as fully grown. The penalty now only applies inside `[minHarvestingGrowthState, maxHarvestingGrowthState]` and exempts young regrowth, cut and withered states.
+- Removed duplicate l10n entries from 23 of the 26 translation files (#642). The smart-systems, smart-sensor and hud-layout keys were defined twice, which the engine logged as "Duplicate l10n entry ... Ignoring this definition" on load. 322 duplicate entries removed; no displayed text changed.
+
+### Changed
+- Release notes, changelog and the in-game version dialog now describe the #636 sprayer-crash fix generically instead of naming a specific other mod.
+
 ## [2.4.2.7]
 
 ### Fixed
