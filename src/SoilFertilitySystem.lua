@@ -2762,8 +2762,21 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                         local fruitName = fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)
                         local perennialSet = SoilConstants.PERENNIAL_FORAGE_NAMES
                         if fruitName and perennialSet and perennialSet[fruitName] then
-                            local minHarvest = fruitDesc and fruitDesc.minHarvestingGrowthState
-                            if not minHarvest or minHarvest <= 0 or (cropGrowthState or 0) < minHarvest then
+                            -- Only penalise while the forage is actually TALL, i.e. inside its
+                            -- harvest window [minHarvestingGrowthState, maxHarvestingGrowthState].
+                            -- Growth states are NOT linearly ordered: the post-mow "cut" state has
+                            -- a HIGHER index than the harvest-ready states, so the old lower-bound
+                            -- check (gs < minHarvest) let freshly-cut grass through and wrongly
+                            -- burned it (#645). Exempt anything below the window (young regrowth),
+                            -- above it (cut/withered), or flagged as a cut state.
+                            local minH = fruitDesc.minHarvestingGrowthState
+                            local maxH = fruitDesc.maxHarvestingGrowthState
+                            local gs   = cropGrowthState or 0
+                            local cutStates = fruitDesc.cutStates
+                            local inHarvestWindow = minH and minH > 0 and gs >= minH
+                                and (not maxH or maxH <= 0 or gs <= maxH)
+                                and not (cutStates and cutStates[gs])
+                            if not inHarvestWindow then
                                 exempt = true
                             end
                         end
@@ -3919,17 +3932,20 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             sessionLastProduct = nil,
         }
 
-        -- Restore coverage tracking so pass% persists across reloads (#608).
-        -- sessionCoverageCells is intentionally left empty (timestamps are session-local),
-        -- but the ha/fraction values are seeded from the saved cumulative coverage so the
-        -- sprayer panel displays the correct % immediately on reload and markBoomCells
-        -- continues accumulating from the right baseline instead of resetting to 0.
+        -- Restore only the DAILY coverage so the daily pass% and protection thresholds
+        -- carry across reloads (#608). Do NOT restore the SESSION coverage: it is
+        -- session-local and a reload starts a fresh spray session.
+        --
+        -- Seeding sessionCoverageFraction from the save was the #640 bug: the overlap
+        -- prevention gate treats sessionCoverageFraction >= 0.99 as "field fully covered",
+        -- suppresses every boom section and forces processSprayerArea to return 0. So any
+        -- field that had been fertilized before saving loaded back as already-covered and
+        -- silently refused ALL further fertilizer on every crop (the "fields don't update
+        -- after spreading" / "N not going up" reports), until a harvest/plow/cultivate/
+        -- day-change happened to reset the session fraction. sessionCoverage* stay 0/empty.
         do
-            local f    = self.fieldData[fieldId]
-            local ha   = f.coverageFraction * f.fieldArea
-            f.coveredAreaHa           = ha
-            f.sessionCoverageHa       = ha
-            f.sessionCoverageFraction = f.coverageFraction
+            local f = self.fieldData[fieldId]
+            f.coveredAreaHa = f.coverageFraction * f.fieldArea
         end
 
         -- Load daily application throttles
