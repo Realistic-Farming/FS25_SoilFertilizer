@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# FS25_SoilFertilizer pre-commit hook.
+# Runs the Lua 5.1 syntax check + FS25 footgun lint whenever a .lua file is staged,
+# so a parse error or sandbox footgun can't land in a commit. Fast (sub-second);
+# the heavier logic tests are left for `bash tools/test/run.sh` / CI.
+#
+# Install:  bash tools/test/install-hooks.sh
+# Skip once: git commit --no-verify
+set -e
+
+staged_lua="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.lua$' || true)"
+[ -z "$staged_lua" ] && exit 0
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root/tools/test"
+[ -d node_modules ] || npm install --silent
+
+echo "pre-commit: Lua 5.1 syntax + lint…"
+npm run --silent check

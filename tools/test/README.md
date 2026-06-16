@@ -17,6 +17,11 @@ npm test                          # logic tests only
 
 Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 
+## Wire it into your workflow
+
+- **Validation suite:** `tools/run_all_checks.bat` runs the PowerShell static analysis *and* this suite, then summarises both.
+- **Git pre-commit hook (opt-in):** `bash tools/test/install-hooks.sh` installs a hook that runs `npm run check` (syntax + lint) whenever a `.lua` file is staged. Skip once with `git commit --no-verify`; remove with `rm "$(git rev-parse --git-path hooks)/pre-commit"`.
+
 ## What it covers
 
 | Layer | Tool | Catches |
