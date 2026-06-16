@@ -21,4 +21,7 @@ desktop.ini
 # Tool outputs
 GLOBAL_LEAK_AUDIT.md
 
+# Test harness deps (tools/test/ — installed via `npm install`, never shipped)
+node_modules/
+
 translations/translations/
