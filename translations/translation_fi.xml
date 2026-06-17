@@ -949,6 +949,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
+    	<e k="sf_fieldsentry_asleep" v="sim. lepää" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="manuaalinen" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPC-sopimus" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="koristeellinen" eh="8a817367" />
     </elements>
 
 

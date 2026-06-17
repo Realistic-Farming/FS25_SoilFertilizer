@@ -948,6 +948,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
+    	<e k="sf_fieldsentry_asleep" v="mô phỏng ngủ" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="thủ công" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="hợp đồng NPC" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="trang trí" eh="8a817367" />
     </elements>
 
 

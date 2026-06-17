@@ -949,6 +949,10 @@
     <e k="sf_report_rec_good"         v="Gut" />
     <e k="sf_report_rec_fair"         v="Mittel" />
     <e k="sf_report_rec_poor"         v="Schlecht" />
+    	<e k="sf_fieldsentry_asleep" v="Sim. schläft" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="manuell" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPC-Auftrag" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="dekorativ" eh="8a817367" />
     </elements>
 
 

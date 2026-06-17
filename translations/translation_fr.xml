@@ -1003,5 +1003,9 @@
         <e k="sf_show_sprayer_panel_long" v="Show/hide the sprayer nutrient info panel when driving a sprayer" />
     <e k="sf_show_harvester_panel_long" v="Show/hide the harvester grain tank status panel when harvesting" />
     <e k="sf_hud_amend_burn" v="Brûlure: -%d%%" />
-</elements>
+	<e k="sf_fieldsentry_asleep" v="sim. en veille" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="manuel" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="contrat PNJ" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="décoratif" eh="8a817367" />
+    </elements>
 </l10n>

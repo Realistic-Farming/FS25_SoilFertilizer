@@ -212,8 +212,12 @@ function SoilFieldDetailDialog:_populateData()
         -- here so a static field doesn't read as a bug. tr() falls back to English when
         -- the l10n key is absent, so this works before the 26-language keys are added.
         if info.simDisabled then
+            -- Localize the reason via its l10n key when one exists, else the English reason.
+            local reasonText = info.simDisabledReasonKey
+                and tr(info.simDisabledReasonKey, info.simDisabledReason)
+                or tostring(info.simDisabledReason)
             label = label .. "  (" .. tr("sf_fieldsentry_asleep", "sim asleep") ..
-                    ": " .. tostring(info.simDisabledReason) .. ")"
+                    ": " .. reasonText .. ")"
         end
         self.detailFieldId:setText(label)
     end

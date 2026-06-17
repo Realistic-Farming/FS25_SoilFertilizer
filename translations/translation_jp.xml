@@ -975,6 +975,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
+    	<e k="sf_fieldsentry_asleep" v="シム休止" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="手動" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPC契約" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="装飾用" eh="8a817367" />
     </elements>
 
 

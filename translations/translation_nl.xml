@@ -979,6 +979,10 @@
     <e k="sf_report_rec_good"         v="Goed" />
     <e k="sf_report_rec_fair"         v="Redelijk" />
     <e k="sf_report_rec_poor"         v="Slecht" />
+    	<e k="sf_fieldsentry_asleep" v="sim. slaapt" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="handmatig" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPC-contract" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="decoratief" eh="8a817367" />
     </elements>
 
 

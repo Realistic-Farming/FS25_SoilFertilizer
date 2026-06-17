@@ -54,6 +54,22 @@ function FieldSentry_Core.reasonName(reason)
     return REASON_NAMES[reason] or "unknown"
 end
 
+-- l10n keys for the reasons that can actually surface in the UI (the sim-asleep states).
+-- Console output and logs keep using reasonName (English); the field-detail dialog
+-- localizes through these keys, with the English reasonName as the fallback.
+local REASON_L10N = {
+    [BL.MANUAL] = "sf_fs_reason_manual",
+    [BL.NPC]    = "sf_fs_reason_npc",
+    [BL.DECO]   = "sf_fs_reason_deco",
+}
+
+--- l10n key for a reason enum, or nil if it has no localized string (caller falls back).
+---@param reason number
+---@return string|nil
+function FieldSentry_Core.reasonL10nKey(reason)
+    return REASON_L10N[reason]
+end
+
 -- Self-contained logger so FieldSentry never hard-depends on Logger load order and the
 -- offline test harness (no SoilLogger) stays clean. No-ops if SoilLogger is absent.
 local function fsLog(level, fmt, ...)

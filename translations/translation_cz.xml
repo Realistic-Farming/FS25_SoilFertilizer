@@ -1040,6 +1040,10 @@
     <e k="sf_guide_tab_3" v="PRACOVNÍ POSTUP" eh="7337e059" />
     <e k="sf_guide_tab_4" v="PRODUKTY" eh="d71bd8a0" />
     <e k="sf_guide_tab_5" v="ČASTÉ DOTAZY" eh="a922ea47" />
+    	<e k="sf_fieldsentry_asleep" v="simulace spí" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="ručně" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="zakázka NPC" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="dekorativní" eh="8a817367" />
     </elements>
 
 
