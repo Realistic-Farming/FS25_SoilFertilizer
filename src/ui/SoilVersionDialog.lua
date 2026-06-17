@@ -24,6 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Fixed: Texture array warnings from the fill-plane normal and displacement maps. The",
+    "  mip levels did not line up with the shared pile texture array, which spams the log",
+    "  and can disturb fill-plane rendering. Corrected dds files contributed by Sabo-7 (#657)",
     "- Fixed: Soil compaction no longer resets to 0% after you save and reload. The",
     "  per-cell compaction was being saved, but on load the field average was rebuilt",
     "  from the wrong table, so it always came back as zero (#656)",
