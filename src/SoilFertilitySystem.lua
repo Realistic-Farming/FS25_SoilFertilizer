@@ -3775,9 +3775,21 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         yieldEfficiency = math.floor(mod * 100 + 0.5)
     end
 
+    -- FieldSentry (#651) status, surfaced so any readout (field detail dialog, HUD,
+    -- map overlay) can show that a slept field's soil is frozen by intent, not broken.
+    -- isFieldSimDisabled is allocation-free, so this stays cheap for per-frame callers.
+    local fsDisabled, fsReason = false, "active"
+    if FieldSentry_API then
+        local d, r = FieldSentry_API.isFieldSimDisabled(fieldId)
+        fsDisabled = d
+        fsReason   = FieldSentry_Core.reasonName(r)
+    end
+
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
+        simDisabled       = fsDisabled,
+        simDisabledReason = fsReason,
         nitrogen = { value = math.floor(n), status = nutrientStatus(n, "nitrogen", cropTargets) },
         phosphorus = { value = math.floor(p), status = nutrientStatus(p, "phosphorus", cropTargets) },
         potassium = { value = math.floor(k), status = nutrientStatus(k, "potassium", cropTargets) },
