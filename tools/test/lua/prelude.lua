@@ -28,6 +28,15 @@ g_currentMission = {
 g_i18n = { getText = function(_self, key) return key end }
 g_messageCenter = { subscribe = function() end, unsubscribe = function() end, publish = function() end }
 
+-- Minimal in-memory XML mock: the file handle is a plain table keyed by the XML path
+-- string, enough for save/load round-trip tests. Extend if a test needs more types.
+function setXMLInt(handle, key, value) if handle then handle[key] = value end end
+function getXMLInt(handle, key) if handle then return handle[key] end end
+function setXMLFloat(handle, key, value) if handle then handle[key] = value end end
+function getXMLFloat(handle, key) if handle then return handle[key] end end
+function setXMLString(handle, key, value) if handle then handle[key] = value end end
+function getXMLString(handle, key) if handle then return handle[key] end end
+
 -- Class tables some modules reference at load; harmless empty stubs.
 HookManager = HookManager or { new = function() return {} end }
 

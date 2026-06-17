@@ -30,6 +30,16 @@ Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 | **Lint** | `lint.mjs` | FS25-sandbox footguns that *parse* fine but break at runtime — `os.time` / `os.date` / `os.clock`, etc. (see CLAUDE.md "What DOESN'T Work"). |
 | **Logic** | `run-tests.mjs` (`fengari` Lua VM) | Behavioural regressions in pure logic — coverage math, fertilizer profiles, nutrient/burn formulas — by loading the real `src` modules against a mocked FS25 environment and asserting. |
 
+The FieldSentry backend ships two of these logic suites, both against pure Lua mocks:
+
+- `fieldsentry_test.lua` — Phase 1: the status/reason API, the manual blacklist, the
+  persistence round-trip, and the freeze gate inside `_processOneDailyField`.
+- `fieldsentry_phase2_test.lua` — Phase 2 (#654): the contract provider registry and
+  unified gate, fail-closed handling of malformed/crashing providers, the favor-tier
+  exemption + hinting engine, retroactive nutrient reconciliation (idempotent per
+  contract sequence), persistence with schema versioning + v1→v2 migration, and the
+  multiplayer FIFO mask sync.
+
 ## Writing a logic test
 
 Add `tools/test/lua/<name>_test.lua`. Declare which real source files to load with a

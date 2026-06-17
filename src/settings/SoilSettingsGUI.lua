@@ -48,6 +48,8 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
     addConsoleCommand("SoilRerollUnownedFields", "Re-roll starting soil only for fields you don't own (keeps your own farm's soil) (#632)", "consoleCommandRerollUnownedFields", self)
+    addConsoleCommand("SoilBlacklistField", "FieldSentry: sleep/wake a field's soil sim: SoilBlacklistField <fieldId> [true|false] (#651)", "consoleCommandBlacklistField", self)
+    addConsoleCommand("SoilFieldSentry", "FieldSentry: show a field's sim status, or list all slept fields: SoilFieldSentry [fieldId] (#651)", "consoleCommandFieldSentry", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -78,8 +80,69 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("soilRecoverField [fieldId] - Recover field to default values")
     print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
     print("SoilRerollUnownedFields - Re-roll starting soil for fields you don't own (keeps your own)")
+    print("SoilBlacklistField <fieldId> [true|false] - FieldSentry: sleep/wake a field's soil sim (#651)")
+    print("SoilFieldSentry [fieldId] - FieldSentry: show a field's sim status, or list slept fields (#651)")
     print("==============================================")
     return "Type 'soilfertility' for more info"
+end
+
+-- =========================================================
+-- FieldSentry (#651) console commands
+-- =========================================================
+
+--- SoilBlacklistField <fieldId> [true|false]
+--- Manually puts a field's soil simulation to sleep (or wakes it). A slept field
+--- keeps its current soil values frozen and is skipped by the daily sim.
+function SoilSettingsGUI:consoleCommandBlacklistField(fieldId, state)
+    if not FieldSentry_API then return "Error: FieldSentry not initialized" end
+
+    local fid = tonumber(fieldId)
+    if not fid then return "Usage: SoilBlacklistField <fieldId> [true|false]" end
+
+    -- Field data lives on the server; toggling on a client would desync until MP sync
+    -- lands (Phase 1 is server/SP only — see issue #651 rollout).
+    local isServer = g_currentMission and g_currentMission:getIsServer()
+    if not isServer then
+        return "FieldSentry toggles must be run on the server/host (it owns the field data)."
+    end
+
+    -- Determine the target value, then apply+broadcast through the MP-aware wrapper
+    -- so clients mirror it (the wrapper applies directly on the host).
+    local newVal
+    if state == nil then
+        newVal = not FieldSentry_API.isFieldManual(fid)
+    else
+        local s = tostring(state):lower()
+        newVal = (s == "true" or s == "1" or s == "on")
+    end
+    SoilNetworkEvents_SendFieldSentryToggle(fid, newVal)
+
+    return string.format("Field %d soil sim is now %s.", fid,
+        newVal and "ASLEEP (manual blacklist) - values frozen" or "ACTIVE")
+end
+
+--- SoilFieldSentry [fieldId]
+--- With a fieldId: print that field's FieldSentry status + reason.
+--- Without one: list every manually slept field.
+function SoilSettingsGUI:consoleCommandFieldSentry(fieldId)
+    if not FieldSentry_API then return "Error: FieldSentry not initialized" end
+
+    local fid = tonumber(fieldId)
+    if fid then
+        local s = FieldSentry_API.getUIStatus(fid)
+        print(string.format(
+            "=== FieldSentry: Field %d ===\nSim disabled: %s\nReason: %s\nMeadow: %s\n============================",
+            fid,
+            s.isSimulationDisabled and "yes" or "no",
+            s.reasonName,
+            s.isMeadow and "yes" or "no"))
+        return string.format("Field %d: %s (%s)", fid,
+            s.isSimulationDisabled and "asleep" or "active", s.reasonName)
+    end
+
+    local list = FieldSentry_API.getManualBlacklist()
+    if #list == 0 then return "FieldSentry: no fields are manually slept." end
+    return "FieldSentry: slept fields -> " .. table.concat(list, ", ")
 end
 
 function SoilSettingsGUI:consoleCommandSetDifficulty(difficulty)

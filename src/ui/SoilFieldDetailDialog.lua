@@ -207,7 +207,15 @@ function SoilFieldDetailDialog:_populateData()
 
     -- Field ID in title
     if self.detailFieldId then
-        self.detailFieldId:setText(tr("sf_detail_field_label", "Field #") .. tostring(fieldId))
+        local label = tr("sf_detail_field_label", "Field #") .. tostring(fieldId)
+        -- FieldSentry (#651): a slept field's soil is frozen by player intent. Flag it
+        -- here so a static field doesn't read as a bug. tr() falls back to English when
+        -- the l10n key is absent, so this works before the 26-language keys are added.
+        if info.simDisabled then
+            label = label .. "  (" .. tr("sf_fieldsentry_asleep", "sim asleep") ..
+                    ": " .. tostring(info.simDisabledReason) .. ")"
+        end
+        self.detailFieldId:setText(label)
     end
 
     -- Urgency

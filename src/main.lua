@@ -46,6 +46,9 @@ source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
 source(modDirectory .. "src/SprayerRateManager.lua")
 source(modDirectory .. "src/SoilSensorManager.lua")
+-- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its
+-- daily loop can consult FieldSentry_API. Backend only — no UI, no equation changes.
+source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 
 -- 3. Settings

@@ -2118,6 +2118,20 @@ end
 ---@param fieldId number
 ---@param field table  fieldData entry (pre-validated non-nil by caller)
 function SoilFertilitySystem:_processOneDailyField(fieldId, field)
+    -- FieldSentry gate (#651): a field the player has put to sleep (manual blacklist)
+    -- — or that a later phase disables (deco/NPC/farmland) — skips the daily
+    -- depletion/recovery/leaching/seasonal pass entirely, so its soil values freeze
+    -- at whatever they were. Single O(1) check; no equation code below is touched.
+    if FieldSentry_API then
+        -- Phase 2 (#654): re-evaluate contract status on this same daily-batch seam so
+        -- masking tracks active vanilla/NPC contracts without a parallel scheduler. Then
+        -- gate. refreshContract is server-authoritative and a no-op on older builds.
+        if FieldSentry_API.refreshContract then
+            FieldSentry_API.refreshContract(fieldId)
+        end
+        if FieldSentry_API.isFieldSimDisabled(fieldId) then return end
+    end
+
     local limits   = SoilConstants.NUTRIENT_LIMITS
     local recovery = SoilConstants.FALLOW_RECOVERY
     local seasonal = SoilConstants.SEASONAL_EFFECTS
@@ -3769,9 +3783,21 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         yieldEfficiency = math.floor(mod * 100 + 0.5)
     end
 
+    -- FieldSentry (#651) status, surfaced so any readout (field detail dialog, HUD,
+    -- map overlay) can show that a slept field's soil is frozen by intent, not broken.
+    -- isFieldSimDisabled is allocation-free, so this stays cheap for per-frame callers.
+    local fsDisabled, fsReason = false, "active"
+    if FieldSentry_API then
+        local d, r = FieldSentry_API.isFieldSimDisabled(fieldId)
+        fsDisabled = d
+        fsReason   = FieldSentry_Core.reasonName(r)
+    end
+
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
+        simDisabled       = fsDisabled,
+        simDisabledReason = fsReason,
         nitrogen = { value = math.floor(n), status = nutrientStatus(n, "nitrogen", cropTargets) },
         phosphorus = { value = math.floor(p), status = nutrientStatus(p, "phosphorus", cropTargets) },
         potassium = { value = math.floor(k), status = nutrientStatus(k, "potassium", cropTargets) },
@@ -4239,6 +4265,37 @@ function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ)
 
     SoilLogger.debug("Subsoiler: field=%d cell=%s  %.0f→%.0f%%  avg=%.1f%%",
         farmlandId, cellKey, prev, newVal, field.compaction)
+end
+
+--- FieldSentry FR3 (#654): apply a one-shot, lightweight nutrient catch-up to a field's
+--- average N/P/K. Used to reconcile a contract that harvested the field while FieldSentry
+--- had it masked, so it does not sit frozen in stasis. Deliberately cheap — it only
+--- touches the field-average scalars (no zone writes, no extraction model, no per-cell
+--- work), so it never kicks off the heavy daily sim. FieldSentry computes the amounts
+--- from its own static crop coefficients; this just applies and (in MP) broadcasts them.
+---@param fieldId number
+---@param dN number  nitrogen points to remove
+---@param dP number  phosphorus points to remove
+---@param dK number  potassium points to remove
+---@return boolean applied
+function SoilFertilitySystem:applyRetroactiveDrain(fieldId, dN, dP, dK)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if not field then return false end
+
+    local limits = SoilConstants.NUTRIENT_LIMITS
+    local minV = (limits and limits.MIN) or 0
+    field.nitrogen   = math.max(minV, (field.nitrogen   or 0) - (dN or 0))
+    field.phosphorus = math.max(minV, (field.phosphorus or 0) - (dP or 0))
+    field.potassium  = math.max(minV, (field.potassium  or 0) - (dK or 0))
+
+    -- Mirror the harvest/fertilize sync path so clients see the reconciled values.
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer and SoilFieldUpdateEvent then
+        g_server:broadcastEvent(SoilFieldUpdateEvent.new(fieldId, field))
+    end
+
+    SoilLogger.debug("FieldSentry retro drain: field=%d  -N %.1f -P %.1f -K %.1f", fieldId, dN or 0, dP or 0, dK or 0)
+    return true
 end
 
 --- Records one combine-pass cell for the harvest trail overlay.
