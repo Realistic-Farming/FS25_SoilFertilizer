@@ -376,35 +376,93 @@ function FieldSentry_API.refreshContract(fieldId)
 end
 
 -- =========================================================
--- Persistence (Phase 1: manual blacklist only)
+-- Persistence + schema versioning (FR4)
 -- =========================================================
--- Only the player's persistent intent is saved; the dynamic mask is recomputed on
--- load. SoilFertilityManager folds these into soilData.xml, which is already
--- savegame/map-scoped, so a map swap drops stale config naturally. Uses only
--- setXMLInt/getXMLInt (the XML API this codebase already relies on) — a stored
--- entry implies manualBlacklist=true, so no boolean attribute is needed.
+-- Saved: the player's persistent intent (manual blacklist) and the FR3 reconciliation
+-- tokens (lastContractSeq, any pendingRetro). NOT saved: the live contract mask, which is
+-- recomputed from providers on the next refresh. SoilFertilityManager folds this into
+-- soilData.xml, which is already savegame/map-scoped, so a map swap drops stale config
+-- naturally (that is the proposal's map-signature requirement, satisfied by scoping).
+--
+-- Schema: v1 = Phase 1 (no #version attr; every stored entry implied manualBlacklist).
+--         v2 = Phase 2 (#version=2; explicit #manual plus the contract tokens).
+-- Forward-compatible: all v2 attributes are optional on read, and a v1 save migrates in
+-- place via migrateLegacyEntry.
 
---- Write the manual blacklist into the given XML node.
+--- v1 -> v2 migration for a single field entry: a bare id meant "manually blacklisted".
+---@param id number
+local function migrateLegacyEntry(id)
+    FieldSentry_API.setFieldManual(id, true)
+end
+
+--- Write the manual blacklist + contract tokens into the given XML node.
 ---@param xmlFile any  XML file handle
 ---@param key string   base node, e.g. "soilData.fieldSentry"
 function FieldSentry_API.saveToXMLFile(xmlFile, key)
-    local list = FieldSentry_API.getManualBlacklist()
-    setXMLInt(xmlFile, key .. "#count", #list)
-    for i = 1, #list do
-        local entryKey = string.format("%s.field(%d)", key, i - 1)
-        setXMLInt(xmlFile, entryKey .. "#id", list[i])
+    setXMLInt(xmlFile, key .. "#version", FieldSentry_Core.SCHEMA_VERSION)
+
+    local idx = 0
+    for id, f in pairs(FieldSentry_Core.FieldState) do
+        local hasPending = f.pendingRetro ~= nil
+        -- Only persist a field that carries durable state worth restoring.
+        if f.manualBlacklist or (f.lastContractSeq or 0) > 0 or hasPending then
+            local entryKey = string.format("%s.field(%d)", key, idx)
+            setXMLInt(xmlFile, entryKey .. "#id", id)
+            setXMLInt(xmlFile, entryKey .. "#manual", f.manualBlacklist and 1 or 0)
+            setXMLInt(xmlFile, entryKey .. "#lastContractSeq", f.lastContractSeq or 0)
+            if hasPending then
+                local p = f.pendingRetro
+                setXMLInt(xmlFile, entryKey .. "#retroSeq", p.seq or 0)
+                setXMLFloat(xmlFile, entryKey .. "#retroLiters", p.liters or 0)
+                setXMLString(xmlFile, entryKey .. "#retroFruit", p.fruitType or "")
+            end
+            idx = idx + 1
+        end
     end
+    setXMLInt(xmlFile, key .. "#count", idx)
 end
 
---- Restore the manual blacklist from the given XML node (replaces current state).
+--- Restore the manual blacklist + contract tokens (replaces current state). Applies any
+--- pending retroactive catch-up immediately on load (FR4 consistency constraint) once the
+--- FR3 helper is present.
 ---@param xmlFile any
 ---@param key string
 function FieldSentry_API.loadFromXMLFile(xmlFile, key)
     FieldSentry_API.reset()
-    local count = getXMLInt(xmlFile, key .. "#count") or 0
+    local version = getXMLInt(xmlFile, key .. "#version") or 1
+    local count   = getXMLInt(xmlFile, key .. "#count") or 0
+
     for i = 0, count - 1 do
         local entryKey = string.format("%s.field(%d)", key, i)
         local id = getXMLInt(xmlFile, entryKey .. "#id")
-        if id then FieldSentry_API.setFieldManual(id, true) end
+        if id then
+            if version < 2 then
+                migrateLegacyEntry(id)
+            else
+                local manual   = (getXMLInt(xmlFile, entryKey .. "#manual") or 0) == 1
+                local lastSeq  = getXMLInt(xmlFile, entryKey .. "#lastContractSeq") or 0
+                local retroSeq = getXMLInt(xmlFile, entryKey .. "#retroSeq")
+                if manual or lastSeq > 0 or retroSeq then
+                    local f = getOrCreate(id)
+                    f.manualBlacklist = manual
+                    f.lastContractSeq = lastSeq
+                    if retroSeq then
+                        local fruit = getXMLString(xmlFile, entryKey .. "#retroFruit")
+                        if fruit == "" then fruit = nil end
+                        f.pendingRetro = {
+                            seq       = retroSeq,
+                            liters    = getXMLFloat(xmlFile, entryKey .. "#retroLiters") or 0,
+                            fruitType = fruit,
+                        }
+                    end
+                    evaluate(f)
+                end
+            end
+        end
+    end
+
+    -- Pending catch-up is applied as soon as the sim API is available (FR3 owns the flush).
+    if FieldSentry_API.flushPendingRetro then
+        FieldSentry_API.flushPendingRetro()
     end
 end

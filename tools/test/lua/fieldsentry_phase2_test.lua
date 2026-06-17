@@ -184,3 +184,48 @@ do
   T.ok("no FieldState allocated for a free field",
        FieldSentry_Core.FieldState[500] == nil)
 end
+
+-- ── FR4: persistence + schema versioning ───────────────────
+do
+  asHost()
+  FieldSentry_API.reset()
+  FieldSentry_Core.contractProviders = {}
+  FieldSentry_API.setFieldManual(4, true)
+  FieldSentry_API.setFieldManual(11, true)
+  local f11 = FieldSentry_Core.FieldState[11]
+  f11.lastContractSeq = 7
+  f11.pendingRetro = { seq = 8, liters = 1500, fruitType = "wheat" }
+
+  local xml = {}
+  FieldSentry_API.saveToXMLFile(xml, "soilData.fieldSentry")
+  T.eq("save writes schema version",
+       xml["soilData.fieldSentry#version"], FieldSentry_Core.SCHEMA_VERSION)
+
+  FieldSentry_API.reset()
+  FieldSentry_API.loadFromXMLFile(xml, "soilData.fieldSentry")
+  local list = FieldSentry_API.getManualBlacklist()
+  T.eq("v2 round-trip restores manual count", #list, 2)
+  T.ok("v2 round-trip restores ids", list[1] == 4 and list[2] == 11)
+  local r = FieldSentry_Core.FieldState[11]
+  T.eq("v2 restores lastContractSeq", r.lastContractSeq, 7)
+  T.ok("v2 restores pendingRetro", r.pendingRetro ~= nil)
+  T.eq("v2 restores pendingRetro.liters", r.pendingRetro.liters, 1500)
+  T.eq("v2 restores pendingRetro.fruitType", r.pendingRetro.fruitType, "wheat")
+end
+
+-- legacy v1 save (bare ids imply manual) migrates in place
+do
+  asHost()
+  FieldSentry_API.reset()
+  local xml = {
+    ["soilData.fieldSentry#count"]       = 2,
+    ["soilData.fieldSentry.field(0)#id"] = 3,
+    ["soilData.fieldSentry.field(1)#id"] = 9,
+    -- no #version attribute -> treated as v1
+  }
+  FieldSentry_API.loadFromXMLFile(xml, "soilData.fieldSentry")
+  local list = FieldSentry_API.getManualBlacklist()
+  T.eq("v1 legacy save migrates manual count", #list, 2)
+  T.ok("v1 legacy fields are blacklisted",
+       FieldSentry_API.isFieldManual(3) and FieldSentry_API.isFieldManual(9))
+end

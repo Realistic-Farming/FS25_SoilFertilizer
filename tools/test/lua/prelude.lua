@@ -32,6 +32,8 @@ g_messageCenter = { subscribe = function() end, unsubscribe = function() end, pu
 -- string, enough for save/load round-trip tests. Extend if a test needs more types.
 function setXMLInt(handle, key, value) if handle then handle[key] = value end end
 function getXMLInt(handle, key) if handle then return handle[key] end end
+function setXMLFloat(handle, key, value) if handle then handle[key] = value end end
+function getXMLFloat(handle, key) if handle then return handle[key] end end
 function setXMLString(handle, key, value) if handle then handle[key] = value end end
 function getXMLString(handle, key) if handle then return handle[key] end end
 
