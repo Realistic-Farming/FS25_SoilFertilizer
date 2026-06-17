@@ -161,3 +161,37 @@ end
 function FieldSentry_API.reset()
     FieldSentry_Core.FieldState = {}
 end
+
+-- =========================================================
+-- Persistence (Phase 1: manual blacklist only)
+-- =========================================================
+-- Only the player's persistent intent is saved; the dynamic mask is recomputed on
+-- load. SoilFertilityManager folds these into soilData.xml, which is already
+-- savegame/map-scoped, so a map swap drops stale config naturally. Uses only
+-- setXMLInt/getXMLInt (the XML API this codebase already relies on) — a stored
+-- entry implies manualBlacklist=true, so no boolean attribute is needed.
+
+--- Write the manual blacklist into the given XML node.
+---@param xmlFile any  XML file handle
+---@param key string   base node, e.g. "soilData.fieldSentry"
+function FieldSentry_API.saveToXMLFile(xmlFile, key)
+    local list = FieldSentry_API.getManualBlacklist()
+    setXMLInt(xmlFile, key .. "#count", #list)
+    for i = 1, #list do
+        local entryKey = string.format("%s.field(%d)", key, i - 1)
+        setXMLInt(xmlFile, entryKey .. "#id", list[i])
+    end
+end
+
+--- Restore the manual blacklist from the given XML node (replaces current state).
+---@param xmlFile any
+---@param key string
+function FieldSentry_API.loadFromXMLFile(xmlFile, key)
+    FieldSentry_API.reset()
+    local count = getXMLInt(xmlFile, key .. "#count") or 0
+    for i = 0, count - 1 do
+        local entryKey = string.format("%s.field(%d)", key, i)
+        local id = getXMLInt(xmlFile, entryKey .. "#id")
+        if id then FieldSentry_API.setFieldManual(id, true) end
+    end
+end

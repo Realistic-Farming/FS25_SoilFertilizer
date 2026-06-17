@@ -964,6 +964,8 @@ function SoilFertilityManager:saveSoilData()
 
     if xmlFile then
         self.soilSystem:saveToXMLFile(xmlFile, "soilData")
+        -- FieldSentry (#651): persist the player's manual blacklist alongside soil data.
+        if FieldSentry_API then FieldSentry_API.saveToXMLFile(xmlFile, "soilData.fieldSentry") end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
         saveXMLFile(xmlFile)
         delete(xmlFile)
@@ -997,6 +999,8 @@ function SoilFertilityManager:loadSoilData()
         local xmlFile = loadXMLFile("soilData", xmlPath)
         if xmlFile then
             self.soilSystem:loadFromXMLFile(xmlFile, "soilData")
+            -- FieldSentry (#651): restore the manual blacklist (no-op if none saved).
+            if FieldSentry_API then FieldSentry_API.loadFromXMLFile(xmlFile, "soilData.fieldSentry") end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
             delete(xmlFile)
             local fieldCount = 0

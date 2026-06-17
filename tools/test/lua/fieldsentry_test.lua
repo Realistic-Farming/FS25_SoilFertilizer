@@ -59,6 +59,26 @@ do
   T.ok("hot path returns a hints table (shared empty in Phase 1)", type(hints) == "table")
 end
 
+-- ── persistence round-trip (save → reset → load) ───────────
+do
+  FieldSentry_API.reset()
+  FieldSentry_API.setFieldManual(4, true)
+  FieldSentry_API.setFieldManual(11, true)
+
+  local xml = {}  -- in-memory XML handle (see prelude mock)
+  FieldSentry_API.saveToXMLFile(xml, "soilData.fieldSentry")
+
+  FieldSentry_API.reset()
+  T.eq("persistence: state cleared before load", #FieldSentry_API.getManualBlacklist(), 0)
+
+  FieldSentry_API.loadFromXMLFile(xml, "soilData.fieldSentry")
+  local list = FieldSentry_API.getManualBlacklist()
+  T.eq("persistence: round-trip restores count", #list, 2)
+  T.ok("persistence: round-trip restores the right ids", list[1] == 4 and list[2] == 11)
+  T.ok("persistence: restored field reports disabled",
+       FieldSentry_API.isFieldSimDisabled(11) == true)
+end
+
 -- ── freeze gate: blacklisted field is skipped by the daily sim ──
 do
   FieldSentry_API.reset()
