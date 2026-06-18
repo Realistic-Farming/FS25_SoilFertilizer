@@ -168,6 +168,14 @@ end
 
 -- ── Dynamic changelog builder ─────────────────────────────
 
+-- The changelog box (sfVer_changelogBox) is a fixed 260px-tall BoxLayout. A
+-- BoxLayout stacks its children WITHOUT clipping, so more lines than fit render
+-- past the box and over the footer/buttons (#666). At ~23px per line (18px text +
+-- 5px spacing) about 11 lines fit; cap there. If CHANGELOG is longer we stop on a
+-- bullet boundary (never mid-bullet) and add a "full changelog on GitHub" note.
+-- Keep this in sync with the sfVer_changelogBox height in the XML.
+SoilVersionDialog.MAX_VISIBLE_LINES = 11
+
 function SoilVersionDialog:_buildChangelogLines()
     if not self._elChangelogBox then return end
 
@@ -179,20 +187,18 @@ function SoilVersionDialog:_buildChangelogLines()
         return
     end
 
-    for _, lineText in ipairs(SoilVersionDialog.CHANGELOG) do
-        -- Detect line type: version header, bullet, or indented continuation
-        local profile
+    -- Render one CHANGELOG entry as a styled TextElement (version / bullet / indent).
+    local function addLine(lineText)
+        local profile = profileLine
         local displayText = lineText
         if lineText:match("^v%d") then
             profile = profileVersion or profileLine
         elseif lineText:match("^%s%s") then
-            -- Indented continuation — strip leading spaces, add em-dash indent
+            -- Indented continuation — strip leading spaces, re-indent.
             displayText = "    " .. lineText:match("^%s*(.+)$")
             profile = profileIndent or profileLine
         elseif lineText:match("^%- ") then
             displayText = "  >  " .. lineText:sub(3)
-            profile = profileLine
-        else
             profile = profileLine
         end
 
@@ -202,6 +208,37 @@ function SoilVersionDialog:_buildChangelogLines()
         self._elChangelogBox:addElement(el)
         el:onGuiSetupFinished()
         table.insert(self._changelogLineEls, el)
+    end
+
+    -- Group lines into bullets (a "- "/version line plus its indented continuations)
+    -- so truncation never cuts a bullet in half.
+    local lines  = SoilVersionDialog.CHANGELOG
+    local groups = {}
+    local i = 1
+    while i <= #lines do
+        local group = { lines[i] }
+        local j = i + 1
+        while j <= #lines and lines[j]:match("^%s%s") do
+            group[#group + 1] = lines[j]
+            j = j + 1
+        end
+        groups[#groups + 1] = group
+        i = j
+    end
+
+    local maxLines = SoilVersionDialog.MAX_VISIBLE_LINES
+    local rendered = 0
+    for idx, group in ipairs(groups) do
+        -- Reserve one line for the "...and more" note while groups still remain.
+        local budget = maxLines - ((idx < #groups) and 1 or 0)
+        if rendered + #group > budget then
+            addLine("- ...and more. Full changelog on GitHub.")
+            break
+        end
+        for _, gl in ipairs(group) do
+            addLine(gl)
+            rendered = rendered + 1
+        end
     end
 
     self._elChangelogBox:invalidateLayout()
