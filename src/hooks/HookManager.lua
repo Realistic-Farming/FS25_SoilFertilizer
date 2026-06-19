@@ -2538,6 +2538,22 @@ function HookManager:installSprayerAreaHook()
             local liters        = spec.workAreaParameters.usage
             local sprayFillLevel = spec.workAreaParameters.sprayFillLevel
 
+            -- wap.isActive is vanilla's own "I painted terrain and drained product this
+            -- frame" flag: reset to false at the end of every onStartWorkAreaProcessing and
+            -- set true only inside processSprayerArea, which runs only for genuinely active
+            -- (lowered + on) work areas. Vanilla onEndWorkAreaProcessing removes fill ONLY
+            -- when isActive is true, so isActive==true is hard proof the implement is
+            -- applying to the ground right now — regardless of what getIsTurnedOn()/fold
+            -- state report. Some modded spreaders (Agromet N250, JD34, T088 — issue #671)
+            -- spread product while reporting getIsTurnedOn()==false and/or a fold state our
+            -- guard reads as "folded", so the turnedOff/folded guards below would drop them
+            -- every frame even though product is leaving the tank. We use isActive as a
+            -- positive override: when the engine confirms active application, we trust it
+            -- over those flags. We do NOT gate ON isActive (never skip merely because it is
+            -- false) — the saturated-field path where isActive can be false still flows
+            -- through via the turnedOn check and the usage/fillLevel/speed guards below.
+            local wapActive = spec.workAreaParameters.isActive == true
+
             -- Issue #668 diagnostics: several spreaders (modded + some modhub manure
             -- spreaders, e.g. Agromet N250 / JD34) are recognized by the SprayUsage hook
             -- but never reach the nutrient apply below — a silent early-return drops them.
@@ -2550,12 +2566,17 @@ function HookManager:installSprayerAreaHook()
                     local ftName = "?"
                     local ft = fillTypeIndex and g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
                     if ft then ftName = ft.name end
-                    SoilLogger.debug("SprayerHook SKIP [%s]: veh=%s type=%s usage=%s fillLevel=%s — nutrient apply skipped",
-                        reason, tostring(self.id), ftName, tostring(liters), tostring(sprayFillLevel))
+                    SoilLogger.debug("SprayerHook SKIP [%s]: veh=%s type=%s usage=%s fillLevel=%s isActive=%s — nutrient apply skipped",
+                        reason, tostring(self.id), ftName, tostring(liters), tostring(sprayFillLevel), tostring(wapActive))
                 end
             end
 
-            if self.getIsTurnedOn ~= nil and not self:getIsTurnedOn() then
+            -- turnedOff guard (issue b16e5df: driving with the implement turned off must
+            -- not apply). Skipped when wapActive — a working spreader that mis-reports
+            -- getIsTurnedOn()==false (issue #671) still applies because the engine confirmed
+            -- ground application this frame. A genuinely-off implement never processes a work
+            -- area, so wapActive is false and this guard still catches it.
+            if not wapActive and self.getIsTurnedOn ~= nil and not self:getIsTurnedOn() then
                 _sfApplySkipLog("turnedOff")
                 return
             end
@@ -2564,7 +2585,11 @@ function HookManager:installSprayerAreaHook()
             -- Mirror vanilla Foldable line 1286: working position is dir==-1,fa==0 OR dir==1,fa==1.
             -- turnOnFoldDirection is always 1 or -1 after Foldable init; nil falls back to
             -- animation-only detection (0 < fa < 1).
-            if self.spec_foldable then
+            -- Skipped when wapActive: a folded implement in transport raises its work areas,
+            -- so the engine never processes them and wapActive stays false — the guard still
+            -- fires. But a working spreader whose foldable spec our heuristic misreads as
+            -- "folded" (issue #671) has wapActive true and is correctly let through.
+            if not wapActive and self.spec_foldable then
                 local foldSpec = self.spec_foldable
                 local fa  = foldSpec.foldAnimTime
                 local dir = foldSpec.turnOnFoldDirection
