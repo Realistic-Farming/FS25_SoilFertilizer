@@ -34,6 +34,14 @@ SoilMapOverlay.MINIMAP_DOT_SIZE     = 4   -- screen pixels per fill point (overl
 -- same visual coverage density without hitting the cap mid-field-list.
 SoilMapOverlay.DENSITY_POINTS   = {8000, 20000, 40000}
 
+-- Field-expansion sampling: Field.polygonPoints is static and never grows when a
+-- player plows to enlarge a field, so the polygon alone misses the new area (#672).
+-- The fill scan widens the polygon bounding box by this many cells on every side,
+-- unions in the farmland bounding box when available, and accepts off-polygon cells
+-- that the engine reports as live field ground belonging to the same farmland.
+SoilMapOverlay.EXPANSION_MARGIN_CELLS = 8     -- widen polygon AABB by N cells/side
+SoilMapOverlay.MAX_SCAN_CELLS         = 12000 -- per-farmland guard against a bogus bbox
+
 -- Status colors kept for colorblind fallback and any legacy uses
 SoilMapOverlay.C_POOR = {0.88, 0.25, 0.25}
 SoilMapOverlay.C_FAIR = {0.90, 0.82, 0.18}
@@ -139,7 +147,7 @@ function SoilMapOverlay.new(soilSystem, settings)
     self.isReady = false
 
     -- Cache of polygon fill points per field: fieldId → array of {x, z} world coords.
-    -- Populated lazily in getFieldFillPoints; cleared on requestRefresh.
+    -- Populated lazily in getFarmlandFillPoints; cleared on requestRefresh.
     self.fieldPolyCache = {}
 
     -- Minimap overlay: one centroid dot per field (updated on same cadence as samplePoints)
@@ -400,76 +408,144 @@ local function isPointInPoly(px, pz, verts)
     return inside
 end
 
---- Return an array of world {x, z} sample points that fill the field polygon.
---- Results are cached in self.fieldPolyCache keyed by fsField.fieldId + step.
---- Points outside the polygon are rejected.
----@param fsField table FS25 Field object with polygonPoints and fieldId
----@param step    number  World-unit grid spacing in meters (caller-computed)
+--- Return an array of world {x, z} sample points that fill every field on a
+--- farmland — including player-plowed expansion that lies outside the static
+--- field polygons (#672). Cells inside any predefined polygon are always kept;
+--- cells outside are kept only when the engine reports live field ground that
+--- belongs to this farmland, which is exactly what a plowed extension is.
+--- Results are cached in self.fieldPolyCache keyed by farmlandId + step.
+---
+--- Keyed and scanned per farmland (not per field) so that a multi-field farmland
+--- is filled once: a single call gathers all sibling polygons and the shared
+--- expansion area. Callers must dedupe by farmlandId to avoid re-scanning.
+---@param farmlandId number  The farmland id (the key fieldData uses)
+---@param step       number  World-unit grid spacing in meters (caller-computed)
 ---@return table Array of {x, z}
-function SoilMapOverlay:getFieldFillPoints(fsField, step)
+function SoilMapOverlay:getFarmlandFillPoints(farmlandId, step)
     step = step or SoilMapOverlay.POLYGON_STEP
-    local cacheKey = (fsField.fieldId or tostring(fsField)) .. "@" .. step
+    local cacheKey = tostring(farmlandId) .. "@" .. step
     if self.fieldPolyCache[cacheKey] then
         return self.fieldPolyCache[cacheKey]
     end
 
     local pts = {}
 
-    -- Collect polygon vertices from the i3d node array
-    local polyNodes = fsField.polygonPoints
-    local verts = {}
-    if polyNodes and #polyNodes > 0 then
-        for i = 1, #polyNodes do
-            local nodeId = polyNodes[i]
-            if nodeId and nodeId ~= 0 then
-                local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
-                if ok and wx then
-                    table.insert(verts, {x = wx, z = wz})
+    -- 1. Gather every predefined field polygon on this farmland and the tight
+    --    union bounding box of their vertices.
+    local polys = {}             -- array of vert arrays ({x=, z=})
+    local fallbackX, fallbackZ   -- a field centroid for the data-less fallback
+    local pMinX, pMaxX, pMinZ, pMaxZ
+    local fields = g_fieldManager and g_fieldManager.fields
+    if fields then
+        for _, f in ipairs(fields) do
+            if f and f.farmland and f.farmland.id == farmlandId then
+                local polyNodes = f.polygonPoints
+                local verts = {}
+                if polyNodes and #polyNodes > 0 then
+                    for i = 1, #polyNodes do
+                        local nodeId = polyNodes[i]
+                        if nodeId and nodeId ~= 0 then
+                            local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
+                            if ok and wx then
+                                verts[#verts + 1] = {x = wx, z = wz}
+                                if not pMinX or wx < pMinX then pMinX = wx end
+                                if not pMaxX or wx > pMaxX then pMaxX = wx end
+                                if not pMinZ or wz < pMinZ then pMinZ = wz end
+                                if not pMaxZ or wz > pMaxZ then pMaxZ = wz end
+                            end
+                        end
+                    end
                 end
+                if #verts >= 3 then polys[#polys + 1] = verts end
+                if not fallbackX and f.posX then fallbackX, fallbackZ = f.posX, f.posZ end
             end
         end
     end
 
-    -- Fallback: if polygon data unavailable, return the single centroid point
-    if #verts < 3 then
-        if fsField.posX and fsField.posZ then
-            table.insert(pts, {x = fsField.posX, z = fsField.posZ})
-        end
+    -- 2. Build the scan window: the polygon AABB widened by a margin, unioned
+    --    with the farmland bounding box when the engine exposes one. The widened
+    --    window is what lets us reach plowed expansion that the static polygon
+    --    can never describe.
+    local minX, maxX, minZ, maxZ = pMinX, pMaxX, pMinZ, pMaxZ
+    if minX then
+        local margin = SoilMapOverlay.EXPANSION_MARGIN_CELLS * step
+        minX, maxX = minX - margin, maxX + margin
+        minZ, maxZ = minZ - margin, maxZ + margin
+    end
+
+    local farmland = g_farmlandManager and g_farmlandManager.getFarmlandById
+        and g_farmlandManager:getFarmlandById(farmlandId)
+    local bb = farmland and farmland.boundingBox
+    if type(bb) == "table" and type(bb.minX) == "number" and type(bb.maxX) == "number"
+       and type(bb.minZ) == "number" and type(bb.maxZ) == "number"
+       and bb.maxX > bb.minX and bb.maxZ > bb.minZ then
+        minX = minX and math.min(minX, bb.minX) or bb.minX
+        maxX = maxX and math.max(maxX, bb.maxX) or bb.maxX
+        minZ = minZ and math.min(minZ, bb.minZ) or bb.minZ
+        maxZ = maxZ and math.max(maxZ, bb.maxZ) or bb.maxZ
+    end
+
+    -- No geometry resolved at all → single centroid fallback.
+    if not minX then
+        if fallbackX then pts[1] = {x = fallbackX, z = fallbackZ} end
         self.fieldPolyCache[cacheKey] = pts
         return pts
     end
 
-    -- Compute bounding box
-    local minX, maxX = verts[1].x, verts[1].x
-    local minZ, maxZ = verts[1].z, verts[1].z
-    for i = 2, #verts do
-        if verts[i].x < minX then minX = verts[i].x end
-        if verts[i].x > maxX then maxX = verts[i].x end
-        if verts[i].z < minZ then minZ = verts[i].z end
-        if verts[i].z > maxZ then maxZ = verts[i].z end
+    -- Clamp to terrain bounds so a bogus bounding box can't trigger a giant scan.
+    local half = ((g_currentMission and g_currentMission.terrainSize) or 2048) * 0.5
+    minX = math.max(minX, -half); maxX = math.min(maxX, half)
+    minZ = math.max(minZ, -half); maxZ = math.min(maxZ, half)
+
+    -- Final guard: if the window is still pathologically large, drop back to the
+    -- tight polygon AABB (old polygon-only behaviour) rather than risk a hitch.
+    -- With no polygon to bound the scan, fall back to the centroid instead.
+    local nx = math.floor((maxX - minX) / step) + 1
+    local nz = math.floor((maxZ - minZ) / step) + 1
+    if nx * nz > SoilMapOverlay.MAX_SCAN_CELLS then
+        if pMinX then
+            minX, maxX, minZ, maxZ = pMinX, pMaxX, pMinZ, pMaxZ
+        else
+            if fallbackX then pts[1] = {x = fallbackX, z = fallbackZ} end
+            self.fieldPolyCache[cacheKey] = pts
+            return pts
+        end
     end
 
-    -- Grid-sample the bounding box, keep points inside the polygon
-    -- (step is the caller-supplied world-unit spacing, already terrain-scaled)
-    -- Offset start by half-step so points land near field centre, not edges
+    -- 3. Grid-sample. Inside any polygon → always fill (predefined field, no
+    --    density read). Outside → fill only when the engine reports field ground
+    --    on this farmland (the plowed expansion). y is ignored by the field-ground
+    --    lookup, so pass 0 (matches Giants' own PF code).
+    local hasFieldGroundApi = (FSDensityMapUtil ~= nil
+        and FSDensityMapUtil.getFieldDataAtWorldPosition ~= nil)
     local startX = minX + step * 0.5
     local startZ = minZ + step * 0.5
     local x = startX
     while x <= maxX do
         local z = startZ
         while z <= maxZ do
-            if isPointInPoly(x, z, verts) then
-                table.insert(pts, {x = x, z = z})
+            local inField = false
+            for pi = 1, #polys do
+                if isPointInPoly(x, z, polys[pi]) then inField = true; break end
             end
+            if not inField and hasFieldGroundApi then
+                local ok, onField = pcall(FSDensityMapUtil.getFieldDataAtWorldPosition, x, 0, z)
+                if ok and onField then
+                    local fid = g_farmlandManager and g_farmlandManager:getFarmlandIdAtWorldPosition(x, z)
+                    if type(fid) == "table" then fid = fid.id end
+                    if fid == farmlandId then inField = true end
+                end
+            end
+            if inField then pts[#pts + 1] = {x = x, z = z} end
             z = z + step
         end
         x = x + step
     end
 
     -- Ensure at least the centroid if the grid produced nothing
-    -- (can happen for very small or narrow fields)
-    if #pts == 0 and fsField.posX and fsField.posZ then
-        table.insert(pts, {x = fsField.posX, z = fsField.posZ})
+    -- (can happen for very small or narrow fields).
+    if #pts == 0 and fallbackX then
+        pts[1] = {x = fallbackX, z = fallbackZ}
     end
 
     self.fieldPolyCache[cacheKey] = pts
@@ -533,10 +609,11 @@ function SoilMapOverlay:updateSamplePoints(force)
         return
     end
 
-    -- Fill each field polygon with a grid of coloured sample points.
-    -- We match fields to our soil data via farmland.id (the key fieldData uses).
-    -- getFieldFillPoints() handles the grid sampling and caching; it falls back to
-    -- a single centroid point for very small fields or when polygon data is absent.
+    -- Fill each owned farmland with a grid of coloured sample points.
+    -- We match cells to our soil data via farmland.id (the key fieldData uses).
+    -- getFarmlandFillPoints() handles the grid sampling and caching; it covers the
+    -- predefined field polygons plus any plowed expansion (live field ground), and
+    -- falls back to a single centroid point when polygon data is absent.
     -- Only owned fields are sampled — activeFieldIds is maintained by the ownership
     -- hook and already represents the correct set for both SP and MP.
     local fields = g_fieldManager.fields
@@ -562,13 +639,16 @@ function SoilMapOverlay:updateSamplePoints(force)
     local maxPoints    = math.floor(basePoints * mapScale * mapScale)
 
     local totalPoints = 0
+    local seenFarmland = {}  -- fill points are gathered per farmland, so visit each once
     for _, fsField in ipairs(fields) do
         if fsField and fsField.farmland then
             local farmlandId = fsField.farmland.id
-            if farmlandId and farmlandId > 0 and activeFieldIds[farmlandId] then
+            if farmlandId and farmlandId > 0 and activeFieldIds[farmlandId]
+               and not seenFarmland[farmlandId] then
+                seenFarmland[farmlandId] = true
                 local info = self.soilSystem:getFieldInfo(farmlandId)
                 if info then
-                    local polyPts = self:getFieldFillPoints(fsField, scaledStep)
+                    local polyPts = self:getFarmlandFillPoints(farmlandId, scaledStep)
                     -- Per-pixel path: when GRLE density map layers are available (layers 1-5),
                     -- read the soil value at each sample point directly from the layer so that
                     -- sprayed sub-areas show different colours from unsprayed areas.
@@ -1515,10 +1595,13 @@ function SoilMapOverlay:updateMinimapCentroids(force)
     local zone = SoilConstants.ZONE
     local mmStep = zone.CELL_SIZE  -- match zone data resolution exactly
 
+    local seenFarmland = {}  -- fill points are gathered per farmland, so visit each once
     for _, fsField in ipairs(fields) do
         if fsField and fsField.farmland then
             local farmlandId = fsField.farmland.id
-            if farmlandId and farmlandId > 0 and activeFieldIds[farmlandId] then
+            if farmlandId and farmlandId > 0 and activeFieldIds[farmlandId]
+               and not seenFarmland[farmlandId] then
+                seenFarmland[farmlandId] = true
                 local info = self.soilSystem:getFieldInfo(farmlandId)
                 if info then
                     -- Field-average color: fallback for polygon points with no zone data
@@ -1534,7 +1617,7 @@ function SoilMapOverlay:updateMinimapCentroids(force)
                     -- back to the field average. Eliminates the old two-pass approach
                     -- (polygon fill + separate zone overlay) which suffered from a 10m
                     -- vs 12m grid mismatch and 3px vs 4px dot-size bleed-through.
-                    local fillPoints = self:getFieldFillPoints(fsField, mmStep)
+                    local fillPoints = self:getFarmlandFillPoints(farmlandId, mmStep)
                     if #fillPoints > 0 then
                         for _, pt in ipairs(fillPoints) do
                             local pr, pg, pb = avgR, avgG, avgB
