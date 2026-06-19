@@ -1977,17 +1977,18 @@ function SoilHUD:drawSprayerRatePanel()
                     pH = defaults.pH,
                     OM = defaults.OM,
                 } or defaults
-                local isOMPrimary = SoilConstants.OM_PRIMARY_PRODUCTS and SoilConstants.OM_PRIMARY_PRODUCTS[fillType.name]
+                local omPrimarySet = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
+                local isOMPrimary = omPrimarySet and omPrimarySet[fillType.name]
+                local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
+                -- Organic products are sized by whichever need is bigger (OM or N/P/K), so show
+                -- the OM target as well as the nutrients — the readout then matches the rate.
                 if isOMPrimary then
-                    -- OM-primary products target organic matter, not N/P/K
-                    targetText = targetText .. string.format("%.1f", targets.OM) .. "% OM"
-                else
-                    local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
-                    if profile.N and profile.N > 0 then targetText = targetText .. math.floor(targets.N * (ppm.N or 1) + 0.5) .. "N " end
-                    if profile.P and profile.P > 0 then targetText = targetText .. math.floor(targets.P * (ppm.P or 1) + 0.5) .. "P " end
-                    if profile.K and profile.K > 0 then targetText = targetText .. math.floor(targets.K * (ppm.K or 1) + 0.5) .. "K " end
-                    if profile.pH and profile.pH > 0 then targetText = targetText .. targets.pH .. "pH " end
+                    targetText = targetText .. string.format("%.1f", targets.OM) .. "% OM "
                 end
+                if profile.N and profile.N > 0 then targetText = targetText .. math.floor(targets.N * (ppm.N or 1) + 0.5) .. "N " end
+                if profile.P and profile.P > 0 then targetText = targetText .. math.floor(targets.P * (ppm.P or 1) + 0.5) .. "P " end
+                if profile.K and profile.K > 0 then targetText = targetText .. math.floor(targets.K * (ppm.K or 1) + 0.5) .. "K " end
+                if profile.pH and profile.pH > 0 then targetText = targetText .. targets.pH .. "pH " end
                 setTextColor(0.7, 0.9, 0.7, 0.8)
                 renderText(cx, scrollY - self:py(6)*s, 0.008 * fontMult * s, targetText)
             end

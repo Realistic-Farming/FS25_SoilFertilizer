@@ -1332,17 +1332,11 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
             multiplier = 1.0
 
         else
-            -- Check if this is an OM-primary product (manure, compost, digestate, etc.)
-            local omPrimary = SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
-            if omPrimary and omPrimary[fillType.name] and profile.OM and profile.OM > 0 then
-                -- Drive rate from OM deficit only — NPK is secondary for organics
-                local omDeficit = math.max(0, targets.OM - fieldData.organicMatter) / math.max(0.01, targets.OM)
-                multiplier = MULT_MIN + omDeficit * (MULT_MAX - MULT_MIN)
-                SoilLogger.debug(
-                    "Auto-rate calc (OM-primary): %s | omDeficit=%.3f | target multiplier=%.3f",
-                    fillType.name, omDeficit, multiplier)
-            else
-                -- Nutrient fertilizer: weighted deficit across profile nutrients
+            -- Weighted nutrient deficit across the profile's N/P/K/pH (and optionally OM).
+            -- Each nutrient's deficit is weighted by its coefficient in the product profile,
+            -- so a product is sized by the nutrients it actually carries. Returns nil when the
+            -- profile contributes no weighted nutrients.
+            local function weightedNutrientDeficit(includeOM)
                 local totalWeight     = 0
                 local weightedDeficit = 0
 
@@ -1362,7 +1356,7 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                     totalWeight     = totalWeight     + profile.K
                 end
                 if profile.pH and profile.pH > 0 then
-                    -- pH: how far below target (7.0) normalised to the possible range [5.0, 7.0]
+                    -- pH: how far below target normalised to the possible range [PH_MIN, target]
                     local phRange = targets.pH - phMin
                     if phRange > 0 then
                         local deficit = math.max(0, targets.pH - fieldData.pH) / phRange
@@ -1370,15 +1364,37 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                         totalWeight     = totalWeight     + profile.pH
                     end
                 end
-                if profile.OM and profile.OM > 0 then
+                if includeOM and profile.OM and profile.OM > 0 then
                     local deficit = math.max(0, targets.OM - fieldData.organicMatter) / targets.OM
                     weightedDeficit = weightedDeficit + deficit * profile.OM
                     totalWeight     = totalWeight     + profile.OM
                 end
 
                 if totalWeight > 0 then
+                    return weightedDeficit / totalWeight
+                end
+                return nil
+            end
+
+            -- Check if this is an OM-primary product (manure, compost, digestate, etc.)
+            local omPrimary = SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
+            if omPrimary and omPrimary[fillType.name] and profile.OM and profile.OM > 0 then
+                -- Organic product. Size the pass by whichever need is bigger: organic matter
+                -- OR the N/P/K it carries. Driving off OM deficit alone starved a nutrient-rich
+                -- organic (chicken / pelletized manure) on a field that was already high in OM
+                -- but low in N/P/K — the exact situation a player reaches for it (#668).
+                local omDeficit  = math.max(0, targets.OM - fieldData.organicMatter) / math.max(0.01, targets.OM)
+                local npkDeficit = weightedNutrientDeficit(false) or 0
+                local effective  = math.max(omDeficit, npkDeficit)
+                multiplier = MULT_MIN + effective * (MULT_MAX - MULT_MIN)
+                SoilLogger.debug(
+                    "Auto-rate calc (organic): %s | omDeficit=%.3f | npkDeficit=%.3f | using=%.3f | target multiplier=%.3f",
+                    fillType.name, omDeficit, npkDeficit, effective, multiplier)
+            else
+                -- Nutrient fertilizer: weighted deficit across all profile nutrients (incl. OM).
+                local deficitFraction = weightedNutrientDeficit(true)
+                if deficitFraction then
                     -- Map [0, 1] deficit fraction → [0.20, 1.20] multiplier
-                    local deficitFraction = weightedDeficit / totalWeight
                     multiplier = MULT_MIN + deficitFraction * (MULT_MAX - MULT_MIN)
                     SoilLogger.debug(
                         "Auto-rate calc: %s | deficit=%.3f | target multiplier=%.3f",

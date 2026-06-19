@@ -24,6 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Fixed: Auto-rate no longer starves manure and other organic fertilizers on a field",
+    "  that is already rich in organic matter. The rate now follows whichever need is",
+    "  bigger, organic matter or N/P/K, so a nutrient-heavy organic like chicken or",
+    "  pelletized manure still goes down when the field is short on nutrients (#668)",
     "- Fixed: Some towed manure spreaders applied product in-game but SF recorded no",
     "  nutrient or organic-matter change. SF now reads the tractor's speed for towed",
     "  spreaders so the pass is counted, with extra logging to catch any remaining",
