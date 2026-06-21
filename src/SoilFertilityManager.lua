@@ -1174,47 +1174,80 @@ function SoilFertilityManager:update(dt)
     self:updateAutoRates(dt)
 end
 
+--- Advance the decaying soil-wetness value (0..1) that feeds the compaction moisture
+--- multiplier. Pinned to 1 while raining, fades to 0 over MOISTURE.DECAY_HOURS of game
+--- time afterwards. Uses a monotonic game-hours clock from currentDay + dayTime.
+function SoilFertilityManager:_updateSoilWetness()
+    local env = g_currentMission and g_currentMission.environment
+    if not env then return end
+
+    local gameH = ((env.currentDay or 0) * 24) + ((env.dayTime or 0) / 3600000.0)
+    local lastH = self._wetnessLastGameH
+    local dtH = 0
+    if lastH then
+        dtH = gameH - lastH
+        if dtH < 0 then dtH = 0 end     -- clock moved backwards (load): treat as no time
+        if dtH > 24 then dtH = 24 end   -- clamp big jumps (sleep / fast-forward)
+    end
+    self._wetnessLastGameH = gameH
+
+    local isRaining = false
+    if env.weather and env.weather.getRainFallScale then
+        local okR, rs = pcall(function() return env.weather:getRainFallScale() end)
+        local thr = (SoilConstants.RAIN and SoilConstants.RAIN.MIN_RAIN_THRESHOLD) or 0.1
+        isRaining = okR and rs ~= nil and rs > thr
+    end
+
+    self._soilWetness01 = SoilCompactionModel.advanceWetness(self._soilWetness01, dtH, isRaining)
+end
+
 function SoilFertilityManager:_checkVehicleCompaction()
     if not (self.settings.compactionEnabled and SoilConstants.COMPACTION) then return end
     if not (self.soilSystem and self.soilSystem.hookManager) then return end
-    local cp      = SoilConstants.COMPACTION
+    local cp = SoilConstants.COMPACTION
+
+    -- Keep the moisture term current even when no heavy vehicle is around.
+    self:_updateSoilWetness()
+
     local vehicle = getPlayerVehicle()
     if not vehicle or not vehicle.rootNode then return end
     local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
+    -- Cheap relevance gate: skip light vehicles (cars/quads) entirely. This is a perf
+    -- floor only — actual compaction is decided by ground pressure, not this threshold.
     if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
     local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
     if not (ok and x) then return end
 
-    -- Compact a single world point if it sits on a field (onCompaction throttles
-    -- each cell to once/day, so repeated calls on the same cell are cheap no-ops).
+    -- Ground-pressure points for this vehicle this pass (identical for every sub-step of
+    -- the driven segment). Reads Variable Tire Pressure live when installed, else wheel
+    -- geometry. Big flotation tyres / aired-down / dry soil → ~0 → nothing is laid.
+    local points, source = SoilCompactionModel.pointsForVehicle(vehicle, self._soilWetness01 or 0)
+    if not points or points <= 0 then
+        self._lastCompactionX, self._lastCompactionZ = x, z  -- keep continuity, lay nothing
+        return
+    end
+
+    -- Compact a single world point if it sits on a field (onCompaction gates each cell to
+    -- once/day and to real field ground, so repeated calls are cheap no-ops).
     local function compactAt(px, pz)
         local fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(px, pz, false)
         if fid and fid > 0 then
-            pcall(function() self.soilSystem:onCompaction(fid, px, pz) end)
+            pcall(function() self.soilSystem:onCompaction(fid, px, pz, points) end)
         end
     end
 
     local lx, lz = self._lastCompactionX, self._lastCompactionZ
     self._lastCompactionX, self._lastCompactionZ = x, z
 
-    -- First sample (or after a discontinuity): just compact the current cell.
-    if not (lx and lz) then
-        compactAt(x, z)
-        return
-    end
+    -- First sample, or a teleport/fast-travel jump: record position but lay NOTHING.
+    -- Compaction only accrues along ground actually driven over, so sitting still or
+    -- spawning on a field never raises it (Talia: "equipment just sitting raises it").
+    if not (lx and lz) then return end
 
     local dx, dz = x - lx, z - lz
     local dist   = math.sqrt(dx * dx + dz * dz)
-
-    -- Parked / barely moved: nothing new to lay this tick.
-    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return end
-
-    -- Discontinuity (teleport / fast-travel / re-entered a vehicle far away):
-    -- don't draw a compaction line across the gap — just compact where we are.
-    if dist > (cp.MAX_SEGMENT_M or 30.0) then
-        compactAt(x, z)
-        return
-    end
+    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return end   -- parked / barely moved
+    if dist > (cp.MAX_SEGMENT_M or 30.0) then return end        -- discontinuity: no line across the gap
 
     -- Walk the driven segment in ~half-cell steps so no cell is skipped at speed.
     -- This is what keeps the trail continuous whether crawling or driving fast.
@@ -1225,6 +1258,9 @@ function SoilFertilityManager:_checkVehicleCompaction()
         local t = i / steps
         compactAt(lx + dx * t, lz + dz * t)
     end
+
+    SoilLogger.debug("Compaction: %s pass +%.2f raw pts/cell  wet=%.2f  steps=%d",
+        tostring(source), points, self._soilWetness01 or 0, steps)
 end
 
 --- Auto-rate control update — throttled, client-side only.

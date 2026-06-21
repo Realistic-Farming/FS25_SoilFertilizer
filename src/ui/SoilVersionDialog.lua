@@ -24,6 +24,23 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Changed: Soil compaction is now based on ground pressure, not vehicle weight. A heavy",
+    "  machine on wide or flotation tyres spreads its load and barely compacts, while the",
+    "  same weight on narrow tyres packs the soil hard, just like real life. Very heavy",
+    "  machines still cause some deep compaction on any tyre because of axle load. The old",
+    "  fixed weight limit is gone",
+    "- New: Variable Tire Pressure support. If you run the Variable Tire Pressure mod, airing",
+    "  your tyres down to field mode genuinely reduces how much you compact the soil, and",
+    "  pumping back up to road mode increases it. Nothing to set up, it just works when the",
+    "  mod is installed",
+    "- New: Wet soil compacts more. Driving heavy equipment over a field while it rains, or",
+    "  in the hours after, packs the soil harder than working it when dry. Let a field dry",
+    "  out before bringing the heavy kit on",
+    "- Fixed: Parking pads, gravel and other painted ground on a field no longer build up",
+    "  compaction. It is now only applied where there is real field ground, so a parking",
+    "  area inside a field stops dragging the whole field's compaction up",
+    "- Fixed: Equipment just sitting on a field no longer raises compaction. It only builds",
+    "  up along ground you actually drive over, never from a parked or idling machine",
     "- New: Plowing, cultivating or mulching a standing or dead crop now gives a real",
     "  organic matter boost. Working in a cover crop, a failed or burned crop, or tall",
     "  stubble returns its biomass to the soil, so tilling a crop in is finally worth it",

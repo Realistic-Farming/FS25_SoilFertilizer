@@ -2211,19 +2211,25 @@ function HookManager:installHarvestHook()
                 end)
             end
 
-            -- Compaction: heavy harvesters compact the soil on each harvest pass
+            -- Compaction: harvesters pack soil by ground pressure, not raw mass. A combine
+            -- on wide flotation tyres in dry soil adds little; a heavy one on narrow tyres
+            -- in wet soil adds a lot. Same model as the driving check, incl. VTP/moisture.
             if detectedFieldId and detectedX and
                g_SoilFertilityManager.settings.compactionEnabled and
-               SoilConstants.COMPACTION then
+               SoilConstants.COMPACTION and SoilCompactionModel then
                 local cp = SoilConstants.COMPACTION
                 local rootVeh = combineSelf.rootVehicle or combineSelf
                 local okM, totalMass = pcall(function()
                     return rootVeh:getTotalMass(false)
                 end)
                 if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
-                    pcall(function()
-                        g_SoilFertilityManager.soilSystem:onCompaction(detectedFieldId, detectedX, detectedZ)
-                    end)
+                    local wet = g_SoilFertilityManager._soilWetness01 or 0
+                    local points = SoilCompactionModel.pointsForVehicle(rootVeh, wet)
+                    if points and points > 0 then
+                        pcall(function()
+                            g_SoilFertilityManager.soilSystem:onCompaction(detectedFieldId, detectedX, detectedZ, points)
+                        end)
+                    end
                 end
             end
 

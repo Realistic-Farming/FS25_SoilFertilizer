@@ -4432,17 +4432,36 @@ end
 ---@param farmlandId number
 ---@param worldX number  world X of the implement's work area centre
 ---@param worldZ number  world Z of the implement's work area centre
-function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ)
+--- Apply compaction at a world position.
+---@param farmlandId number
+---@param worldX number
+---@param worldZ number
+---@param points number|nil Raw ground-pressure points for this pass (surface+subsoil×
+---       moisture, NOT yet rate-scaled). When nil, the legacy flat per-pass amount is
+---       used. Either way the tuningCompactionRate multiplier is applied here, in one place.
+function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ, points)
     if not self.settings.compactionEnabled then return end
     local cp = SoilConstants.COMPACTION
     if not cp then return end
 
-    -- Build-up rate is independently tunable (#674 Discord / Talia): the
-    -- tuningCompactionRate slider scales how much compaction each heavy pass adds.
-    -- ZERO_MULT LUT: idx 1 = 0x (no build-up), 3 = 1x (default), 5 = 2x. At 0x we
-    -- skip everything so no stray cells are created.
+    -- Field-ground gate (Talia, Discord): compaction is keyed on the *farmland* parcel,
+    -- which also covers painted gravel / parking / decoration ground inside that parcel.
+    -- Only pack soil where the engine reports real field ground at this point so a
+    -- parking pad on a field no longer compacts (the #672 overlay uses the same check).
+    -- y is ignored by the lookup; pass 0 like Giants' own code. If the API is missing
+    -- (older build) we proceed rather than silently disabling compaction.
+    if FSDensityMapUtil and FSDensityMapUtil.getFieldDataAtWorldPosition then
+        local ok, isOnField = pcall(FSDensityMapUtil.getFieldDataAtWorldPosition, worldX, 0, worldZ)
+        if ok and isOnField == false then return end
+    end
+
+    -- Build-up amount. The pressure model (driving + harvest hooks) passes raw points;
+    -- legacy callers (none currently) get the flat per-pass amount. The user-facing
+    -- tuningCompactionRate multiplier is applied here so it governs every path equally.
+    -- ZERO_MULT LUT: idx 1 = 0x (no build-up), 3 = 1x, 5 = 2x.
     local rateMult = getTuningMult(self.settings, "tuningCompactionRate", "ZERO_MULT")
-    local added = cp.COMPACTION_PER_PASS * rateMult
+    local base = (points ~= nil) and points or cp.COMPACTION_PER_PASS
+    local added = base * rateMult
     if added <= 0 then return end
 
     local field = self:getOrCreateField(farmlandId, false)

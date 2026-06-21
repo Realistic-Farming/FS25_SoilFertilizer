@@ -35,6 +35,7 @@ source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
+source(modDirectory .. "src/SoilCompactionModel.lua")
 
 -- 2. Specializations (must load before core systems so vehicleType registration fires)
 source(modDirectory .. "src/specializations/SFNozzleEffects.lua")
