@@ -24,6 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Any number of lines.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- New: Legume crops like soybeans, peas and beans now slowly add nitrogen to the soil",
+    "  while they grow, from the nitrogen fixing bacteria in their roots. It is a gentle",
+    "  trickle on purpose, the bigger payoff still comes the season after you grow them and",
+    "  rotate to a different crop. Runs under the crop rotation setting you already have on",
     "- Changed: Soil compaction is now based on ground pressure, not vehicle weight. A heavy",
     "  machine on wide or flotation tyres spreads its load and barely compacts, while the",
     "  same weight on narrow tyres packs the soil hard, just like real life. Very heavy",

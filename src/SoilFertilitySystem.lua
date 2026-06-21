@@ -2444,6 +2444,23 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
     end
 
+    -- ── Legume live nitrogen fixation while standing (#674) ──────────────────
+    -- A growing legume fixes atmospheric nitrogen through its root nodules. Most of
+    -- that nitrogen is consumed by the plant itself, so this live trickle is kept
+    -- deliberately small; the real soil payoff still arrives as the post-crop rotation
+    -- bonus above, when roots and residue break down. sownCrop is the currently-drilled
+    -- crop (set on seeding, cleared on harvest) so the trickle runs only while the legume
+    -- is actually in the ground, and pauses over winter dormancy. Reuses the cropRotation
+    -- setting — nothing new to switch on. Meadow legumes (clover/luzerne) are handled by
+    -- the meadow profile's sward fixation and returned earlier, so no double-counting.
+    if self.settings.cropRotation and season ~= seasonal.WINTER_SEASON then
+        local cr = SoilConstants.CROP_ROTATION
+        local sown = field.sownCrop and string.lower(field.sownCrop) or nil
+        if sown and cr.LEGUMES[sown] then
+            field.nitrogen = math.min(limits.MAX, field.nitrogen + cr.LEGUME_GROWTH_N_PER_DAY * timeFactor)
+        end
+    end
+
     -- ── pH slow drift toward neutral ─────────────────────────────────────────
     if field.pH < limits.PH_NEUTRAL_LOW then
         field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
@@ -4145,6 +4162,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#lastCrop", field.lastCrop or "")
             setXMLString(xmlFile, fieldKey .. "#lastCrop2", field.lastCrop2 or "")
             setXMLString(xmlFile, fieldKey .. "#lastCrop3", field.lastCrop3 or "")
+            setXMLString(xmlFile, fieldKey .. "#sownCrop", field.sownCrop or "")
             setXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft", field.rotationBonusDaysLeft or 0)
             setXMLInt(xmlFile, fieldKey .. "#lastHarvest", field.lastHarvest or 0)
             setXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied", field.fertilizerApplied or 0)
@@ -4248,6 +4266,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             lastCrop = getXMLString(xmlFile, fieldKey .. "#lastCrop"),
             lastCrop2 = getXMLString(xmlFile, fieldKey .. "#lastCrop2"),
             lastCrop3 = getXMLString(xmlFile, fieldKey .. "#lastCrop3"),
+            sownCrop = getXMLString(xmlFile, fieldKey .. "#sownCrop"),
             rotationBonusDaysLeft = getXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft") or 0,
             lastHarvest = getXMLInt(xmlFile, fieldKey .. "#lastHarvest") or 0,
             fertilizerApplied = getXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied") or 0,
@@ -4333,6 +4352,11 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         end
         if self.fieldData[fieldId].lastCrop3 == "" then
             self.fieldData[fieldId].lastCrop3 = nil
+        end
+        -- Empty sownCrop must be nil, not "", or getFieldInfo's `sownCrop or lastCrop`
+        -- fallback would resolve to "" and hide the real crop just after a reload.
+        if self.fieldData[fieldId].sownCrop == "" then
+            self.fieldData[fieldId].sownCrop = nil
         end
 
         -- Load per-area zone cells
