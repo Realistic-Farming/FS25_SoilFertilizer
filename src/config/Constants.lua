@@ -1119,6 +1119,12 @@ SoilConstants.COMPACTION = {
     -- path that calls onCompaction without a points value still does something sane).
     COMPACTION_PER_PASS       = 6.0,
     NATURAL_DECAY_PER_DAY     = 0.5,   -- points removed per game day (natural recovery)
+    -- Taproot bio-drilling (#687, long-term): deep-rooting crops drive roots through
+    -- compacted layers and ease compaction as they grow. A small daily reduction while
+    -- the crop stands, on top of natural decay — a slow passive helper, never a subsoiler
+    -- replacement. Scaled per crop: oilseed radish is the classic bio-driller; canola less so.
+    TAPROOT_DECOMPACT_PER_DAY = 0.4,   -- base points/day at full strength while standing
+    TAPROOT_CROPS             = { oilseedradish = 1.0, canola = 0.5 },
     SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass (clears the deep pan)
     PLOW_RELIEF               = 3.0,   -- points removed per plow pass — a plough only loosens the
                                        -- topsoil it inverts; the deep pan stays, so it relieves far

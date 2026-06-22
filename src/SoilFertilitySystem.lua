@@ -2489,6 +2489,24 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
     end
 
+    -- ── Taproot bio-drilling decompaction while standing (#687) ──────────────
+    -- Deep-rooting crops (oilseed radish, and to a lesser extent canola) drive roots
+    -- through compacted layers, easing compaction biologically as they grow. A slow,
+    -- passive helper on top of natural decay — never a subsoiler replacement. Mirrors the
+    -- daily natural-decay reduction (field-average), respects the same decay tuning, and
+    -- pauses over winter dormancy. sownCrop keeps it running only while the crop stands.
+    if self.settings.compactionEnabled and SoilConstants.COMPACTION
+       and (field.compaction or 0) > 0 and season ~= seasonal.WINTER_SEASON then
+        local cp   = SoilConstants.COMPACTION
+        local sown = field.sownCrop and string.lower(field.sownCrop) or nil
+        local taprootMult = sown and cp.TAPROOT_CROPS and cp.TAPROOT_CROPS[sown] or nil
+        if taprootMult then
+            local tunComp = getTuningMult(self.settings, "tuningCompactionDecay", "ZERO_MULT")
+            field.compaction = math.max(0,
+                field.compaction - cp.TAPROOT_DECOMPACT_PER_DAY * taprootMult * timeFactor * tunComp)
+        end
+    end
+
     -- ── pH slow drift toward neutral ─────────────────────────────────────────
     if field.pH < limits.PH_NEUTRAL_LOW then
         field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)

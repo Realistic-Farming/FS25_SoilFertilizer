@@ -35,6 +35,7 @@ SoilVersionDialog.CHANGELOG = {
     "- Auto-rate follows the bigger need, organic or N/P/K",
     "- Compaction now based on ground pressure, not weight",
     "- Ploughing relieves only a little compaction; subsoiler clears it",
+    "- Radish & canola slowly ease compaction as they grow",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
