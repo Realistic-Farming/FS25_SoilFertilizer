@@ -632,22 +632,37 @@ function SoilLayerSystem:readFieldFromLayers(fieldId, fieldData, fsField)
     end
     if not fsField then return false end
 
+    -- Read every layer average first so the whole set can be sanity-checked before applying.
+    local reads = {}
     local anyRead = false
     for _, def in ipairs(LAYER_DEFS) do
         local entry = self.layerHandles[def.name]
         if entry then
             local avg = self:readAverageForFarmland(def.name, fsField)
             if avg ~= nil then
-                fieldData[def.field] = avg
+                reads[def.field] = avg
                 anyRead = true
             end
         end
     end
 
-    if anyRead then
-        SoilLogger.debug("SoilLayerSystem: seeded field %d from density layers", fieldId)
+    if not anyRead then return false end
+
+    -- #685: on a mid-save install the density layers were never seeded, so every layer
+    -- reads 0. A real field never has pH 0 — it is physically impossible — so a zero-pH read
+    -- means "uninitialised layer". Applying it would clobber the field's freshly rolled
+    -- starting defaults to 0/0/0/0 and force a manual admin recovery. Bail out and keep the
+    -- defaults; scanFields() seeds the layers from them so the overlay still matches.
+    if (reads.pH or 0) <= 0 then
+        SoilLogger.debug("SoilLayerSystem: field %d layers uninitialised (pH=0) — keeping rolled defaults", fieldId)
+        return false
     end
-    return anyRead
+
+    for key, value in pairs(reads) do
+        fieldData[key] = value
+    end
+    SoilLogger.debug("SoilLayerSystem: seeded field %d from density layers", fieldId)
+    return true
 end
 
 -- ─────────────────────────────────────────────────────────

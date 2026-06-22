@@ -394,6 +394,20 @@ SoilConstants.HARVEST_HA_FACTOR = 8.0
 -- UPDATED V1.7: Coefficients are now volume-normalized relative to baseRates
 -- to produce realistic soil-test responses (Mehlich-3 ppm) in one pass.
 -- Formula: coeff = (target_ppm / display_mult) / (baseRate * 0.9 / 1000)
+-- Amendment burn (#437) tuning. A freshly-sown / seedling annual has no leaf canopy to
+-- scorch, so applying starter fertilizer or a pre-plant amendment at/just after seeding
+-- must NOT burn it (#681). The burn only applies once the crop has established past this
+-- fraction of the way to its harvest-ready growth state.
+SoilConstants.AMEND_BURN = {
+    ANNUAL_SEEDLING_FRACTION = 0.33,
+    -- Gradual build-up (#688): the burn ramps toward these caps over the same metered
+    -- application time as the over-application burn (SPRAYER_RATE.BURN_FULL_DAMAGE_MS),
+    -- instead of jumping to the cap on first contact. An accidental brush or a slide onto
+    -- the field costs only a small slice, so you have time to shut the sprayer off.
+    LIME_MAX = 0.80,   -- lime/LIQUIDLIME on an established crop, fully built up
+    OM_MAX   = 0.20,   -- organic amendment (slurry/manure/digestate) fully built up
+}
+
 SoilConstants.FERTILIZER_PROFILES = {
     -- Base game (NPK balanced)
     LIQUIDFERTILIZER  = { N=79.2, P=198.0, K=44.5 },          -- 93.5 L/ha: ~20N, ~10P, ~15K ppm
@@ -1119,7 +1133,17 @@ SoilConstants.COMPACTION = {
     -- path that calls onCompaction without a points value still does something sane).
     COMPACTION_PER_PASS       = 6.0,
     NATURAL_DECAY_PER_DAY     = 0.5,   -- points removed per game day (natural recovery)
-    SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass
+    -- Taproot bio-drilling (#687, long-term): deep-rooting crops drive roots through
+    -- compacted layers and ease compaction as they grow. A small daily reduction while
+    -- the crop stands, on top of natural decay — a slow passive helper, never a subsoiler
+    -- replacement. Scaled per crop: oilseed radish is the classic bio-driller; canola less so.
+    TAPROOT_DECOMPACT_PER_DAY = 0.4,   -- base points/day at full strength while standing
+    TAPROOT_CROPS             = { oilseedradish = 1.0, canola = 0.5 },
+    SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass (clears the deep pan)
+    PLOW_RELIEF               = 3.0,   -- points removed per plow pass — a plough only loosens the
+                                       -- topsoil it inverts; the deep pan stays, so it relieves far
+                                       -- less than a subsoiler. Keeps the subsoiler meaningful and
+                                       -- stops routine ploughing from erasing compaction (#687).
     MAX_COMPACTION            = 100.0,
     NUTRIENT_PENALTY_MAX      = 0.20,  -- max 20% extra nutrient extraction at max compaction
     -- Driving-based compaction: any heavy vehicle moving across a field compacts the

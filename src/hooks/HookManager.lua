@@ -3286,22 +3286,23 @@ function HookManager:installPlowingHook()
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
-                    -- Compaction: tillage LOOSENS soil — it never packs it. Deep tillage
-                    -- (a subsoiler, OR a plow-action cultivator running deep enough to
-                    -- qualify as plowing) relieves compaction; shallow cultivation is
-                    -- neutral. Only harvest traffic (the combine hook) adds compaction.
-                    -- This fixes #672-adjacent reports where a deep-tillage tool built on
-                    -- the Cultivator spec (e.g. a Bourgault SPS configured as a subsoiler)
-                    -- was treated as a heavy vehicle and ADDED compaction every pass.
+                    -- Compaction: tillage LOOSENS soil — it never packs it. A subsoiler clears
+                    -- the deep pan (full relief); a plow-action tool only loosens the topsoil it
+                    -- inverts, so it relieves far less (PLOW_RELIEF) and the pan stays — keeping
+                    -- the subsoiler the real fix (#687). Shallow cultivation is neutral. Only
+                    -- harvest traffic (the combine hook) adds compaction. This still avoids the
+                    -- #672-adjacent bug where a deep-tillage tool built on the Cultivator spec
+                    -- (e.g. a Bourgault SPS configured as a subsoiler) ADDED compaction per pass.
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
                         local isSubsoiler = (cultivatorSelf.spec_cultivator and
                                             cultivatorSelf.spec_cultivator.isSubsoiler) or false
                         if isSubsoiler or isPlowingTool then
+                            local relief = isSubsoiler and nil or SoilConstants.COMPACTION.PLOW_RELIEF
                             SoilLogger.debug(
-                                "Compaction: deep-tillage relief on farmland=%d veh=%d pos=(%.1f,%.1f) subsoiler=%s plow=%s",
+                                "Compaction: deep-tillage relief on farmland=%d veh=%d pos=(%.1f,%.1f) subsoiler=%s plow=%s relief=%s",
                                 farmlandId, cultivatorSelf.id or 0, x, z,
-                                tostring(isSubsoiler), tostring(isPlowingTool))
-                            g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z)
+                                tostring(isSubsoiler), tostring(isPlowingTool), tostring(relief or "full"))
+                            g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, relief)
                         end
                         -- shallow cultivator: neutral, no compaction change
                     end
@@ -3373,16 +3374,16 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
-                    -- Plowing is deep inversion tillage: it breaks up compacted layers
-                    -- rather than packing them. Relieve compaction on the worked area
-                    -- (no-op if the cell isn't compacted). Previously this ADDED
-                    -- compaction for heavy plows, which made a subsoiler built on the
-                    -- Plow spec climb instead of reset — DeltaFive's "one field keeps
-                    -- climbing" report.
+                    -- Plowing inverts and loosens the topsoil, so it relieves a little
+                    -- compaction (no-op if the cell isn't compacted) — but only the small
+                    -- PLOW_RELIEF, not the full subsoiler amount: a plough leaves the deep
+                    -- pan, so routine ploughing can't erase compaction the way a subsoiler
+                    -- does (#687). It still never ADDS compaction, which keeps DeltaFive's
+                    -- "one field keeps climbing" plow-spec report fixed.
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
-                        SoilLogger.debug("Compaction: plow relief on farmland=%d veh=%d pos=(%.1f,%.1f)",
+                        SoilLogger.debug("Compaction: plow relief (PLOW_RELIEF) on farmland=%d veh=%d pos=(%.1f,%.1f)",
                             farmlandId, plowSelf.id or 0, x, z)
-                        g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z)
+                        g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, SoilConstants.COMPACTION.PLOW_RELIEF)
                     end
                 end
             end)

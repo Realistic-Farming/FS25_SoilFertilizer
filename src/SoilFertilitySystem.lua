@@ -339,6 +339,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     if field.amendBurnPenalty and field.amendBurnPenalty > 0 then
         field.amendBurnPenalty   = nil
         field._amendBurnNotified = nil
+        field._amendBurnTickTime = nil
     end
 
     -- Freeze for the duration of this harvest cycle. All subsequent modifier
@@ -561,6 +562,7 @@ function SoilFertilitySystem:clearAmendmentBurn(field, fieldId, reason)
     if not field or (field.amendBurnPenalty or 0) <= 0 then return false end
     field.amendBurnPenalty   = nil
     field._amendBurnNotified = nil
+    field._amendBurnTickTime = nil
     SoilLogger.debug("Amendment burn cleared on %s for field %s", tostring(reason), tostring(fieldId))
     return true
 end
@@ -1634,11 +1636,17 @@ function SoilFertilitySystem:scanFields()
                 local isNew = self.fieldData[actualFieldId] == nil
                 self:getOrCreateField(actualFieldId, true, area)
 
-                -- If this is a newly created field and density layers are available,
-                -- read existing layer values (pre-seeded GRLE) instead of using defaults.
+                -- If this is a newly created field and density layers are available, read
+                -- existing layer values (pre-seeded GRLE) instead of using defaults. On a
+                -- mid-save install the layers are empty (pH 0); readFieldFromLayers now keeps
+                -- the rolled defaults in that case (#685) and returns false, so we paint those
+                -- defaults into the layers here instead of leaving the field at 0/0/0/0.
                 if isNew and self.layerSystem and self.layerSystem.available then
                     -- Pass the Field object (not field.farmland) — Field has polygonPoints for AABB
-                    self.layerSystem:readFieldFromLayers(actualFieldId, self.fieldData[actualFieldId], field)
+                    local seeded = self.layerSystem:readFieldFromLayers(actualFieldId, self.fieldData[actualFieldId], field)
+                    if not seeded then
+                        self.layerSystem:writeFieldToLayers(actualFieldId, self.fieldData[actualFieldId], field, false)
+                    end
                 end
 
                 -- PHASE 1: only owned farmlands enter the active simulation set.
@@ -2489,6 +2497,24 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
     end
 
+    -- ── Taproot bio-drilling decompaction while standing (#687) ──────────────
+    -- Deep-rooting crops (oilseed radish, and to a lesser extent canola) drive roots
+    -- through compacted layers, easing compaction biologically as they grow. A slow,
+    -- passive helper on top of natural decay — never a subsoiler replacement. Mirrors the
+    -- daily natural-decay reduction (field-average), respects the same decay tuning, and
+    -- pauses over winter dormancy. sownCrop keeps it running only while the crop stands.
+    if self.settings.compactionEnabled and SoilConstants.COMPACTION
+       and (field.compaction or 0) > 0 and season ~= seasonal.WINTER_SEASON then
+        local cp   = SoilConstants.COMPACTION
+        local sown = field.sownCrop and string.lower(field.sownCrop) or nil
+        local taprootMult = sown and cp.TAPROOT_CROPS and cp.TAPROOT_CROPS[sown] or nil
+        if taprootMult then
+            local tunComp = getTuningMult(self.settings, "tuningCompactionDecay", "ZERO_MULT")
+            field.compaction = math.max(0,
+                field.compaction - cp.TAPROOT_DECOMPACT_PER_DAY * taprootMult * timeFactor * tunComp)
+        end
+    end
+
     -- ── pH slow drift toward neutral ─────────────────────────────────────────
     if field.pH < limits.PH_NEUTRAL_LOW then
         field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
@@ -2972,6 +2998,65 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     )
 end
 
+--- Would applying a lime or organic amendment to this crop right now scorch it? (#437/#684)
+--- True only once the crop has leaf area to burn: for perennial forage that means inside the
+--- harvest window (tall sward); for annuals, past the early seedling stage (#681). Shared by
+--- the actual burn gate (applyFertilizer) and the monitor's pre-emptive "burn risk" warning.
+---@param fruitTypeIndex number|nil
+---@param growthState number|nil
+---@return boolean
+function SoilFertilitySystem:isAmendmentBurnRisk(fruitTypeIndex, growthState)
+    if not fruitTypeIndex then return false end
+    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    if not fruitDesc then return false end
+    local fruitName    = fruitDesc.name and string.lower(fruitDesc.name)
+    local perennialSet = SoilConstants.PERENNIAL_FORAGE_NAMES
+    local gs = growthState or 0
+    if fruitName and perennialSet and perennialSet[fruitName] then
+        -- Perennial forage: burnable only inside the harvest window (tall sward).
+        local minH = fruitDesc.minHarvestingGrowthState
+        local maxH = fruitDesc.maxHarvestingGrowthState
+        local cutStates = fruitDesc.cutStates
+        return (minH and minH > 0 and gs >= minH
+            and (not maxH or maxH <= 0 or gs <= maxH)
+            and not (cutStates and cutStates[gs])) or false
+    end
+    -- Annual: burnable once established past the early seedling stage.
+    local minH = fruitDesc.minHarvestingGrowthState or 6
+    local frac = (SoilConstants.AMEND_BURN and SoilConstants.AMEND_BURN.ANNUAL_SEEDLING_FRACTION) or 0.33
+    local establishedState = math.max(2, math.ceil(minH * frac))
+    return gs >= establishedState
+end
+
+--- Gradually build up the amendment burn instead of jumping to the cap (#688). Metered by
+--- application time exactly like the over-application burn: each tick adds a slice of the cap
+--- proportional to the elapsed time since the last application tick, so a brief brush or a
+--- slide onto the field costs only a small fraction and you have time to shut the sprayer off.
+--- Sibling boom sections in the same tick contribute dt == 0 (no double-count). A gap longer
+--- than BURN_PASS_GAP_MS (boom lifted, headland turn) opens a fresh pass. The penalty never
+--- decreases (an OM application won't lower an existing lime burn), and is cleared on harvest
+--- (consumed) or on sow/tillage (#681).
+---@param field table   Field data record
+---@param maxPen number Cap this burn type builds up to (LIME_MAX / OM_MAX)
+---@return number penalty  The current accumulated amendment-burn penalty (0-1)
+function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen)
+    local burnCfg = SoilConstants.SPRAYER_RATE
+    local gapMs   = (burnCfg and burnCfg.BURN_PASS_GAP_MS) or 1500
+    local fullMs  = (burnCfg and burnCfg.BURN_FULL_DAMAGE_MS) or 8000
+    local now     = (g_currentMission and g_currentMission.time) or 0
+
+    local last = field._amendBurnTickTime
+    field._amendBurnTickTime = now
+    local dt = (last and (now - last) <= gapMs) and (now - last) or 0
+
+    if dt > 0 and fullMs > 0 then
+        local inc    = maxPen * (dt / fullMs)
+        local ramped = math.min(maxPen, (field.amendBurnPenalty or 0) + inc)
+        field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, ramped)
+    end
+    return field.amendBurnPenalty or 0
+end
+
 -- Apply fertilizer
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     if not self.settings.enabled then return end
@@ -3027,48 +3112,37 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                 -- risk), so only penalise once it has regrown into its harvest window (tall).
                 -- Annual crops are never exempt. Shared by lime (#646) and organic matter
                 -- (#629/#645).
-                local perennialExempt = false
-                if cropFruitIndex then
-                    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(cropFruitIndex)
-                    local fruitName = fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)
-                    local perennialSet = SoilConstants.PERENNIAL_FORAGE_NAMES
-                    if fruitDesc and fruitName and perennialSet and perennialSet[fruitName] then
-                        -- Growth states are NOT linearly ordered: the post-mow "cut" state has a
-                        -- HIGHER index than the harvest-ready states, so a lower-bound-only check
-                        -- let cut grass through as "fully grown" (#645). Penalise ONLY inside the
-                        -- harvest window [minHarvestingGrowthState, maxHarvestingGrowthState];
-                        -- exempt young regrowth, cut and withered states.
-                        local minH = fruitDesc.minHarvestingGrowthState
-                        local maxH = fruitDesc.maxHarvestingGrowthState
-                        local gs   = cropGrowthState or 0
-                        local cutStates = fruitDesc.cutStates
-                        local inHarvestWindow = minH and minH > 0 and gs >= minH
-                            and (not maxH or maxH <= 0 or gs <= maxH)
-                            and not (cutStates and cutStates[gs])
-                        perennialExempt = not inHarvestWindow
-                    end
-                end
+                -- A short/early crop must not take the amendment burn: a seedling annual or a
+                -- short/cut perennial sward has no leaf canopy to scorch (#645/#646/#681). The
+                -- shared helper decides whether the crop is established enough to actually burn.
+                local burnExempt = not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
 
+                local ab = SoilConstants.AMEND_BURN
                 if isLimeAmendment then
-                    -- #646: liming early-stage / cut perennial forage is realistic pasture
-                    -- management, so skip the -80% burn there. Tall forage and every annual
-                    -- crop still take it.
-                    if not perennialExempt then
-                        field.amendBurnPenalty = 0.80
-                        field._amendBurnNotified = true
-                        self:showNotification(
-                            g_i18n:getText("sf_notify_lime_crop_title"),
-                            string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
+                    -- #646/#681: liming cut/early perennial forage or a freshly-sown annual is
+                    -- realistic, so skip the burn there. Established crops still take it, but it
+                    -- now builds up over application time (#688) instead of instant -80%.
+                    if not burnExempt then
+                        self:applyAmendmentBurnSlice(field, (ab and ab.LIME_MAX) or 0.80)
+                        if not field._amendBurnNotified then
+                            field._amendBurnNotified = true
+                            self:showNotification(
+                                g_i18n:getText("sf_notify_lime_crop_title"),
+                                string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
+                        end
                     end
                 else
-                    -- #629/#645: organic fertilizer (slurry/manure/digestate) on short/cut
-                    -- perennial forage is standard practice, so skip the -20% burn there.
-                    if not perennialExempt then
-                        field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, 0.20)
-                        field._amendBurnNotified = true
-                        self:showNotification(
-                            g_i18n:getText("sf_notify_om_crop_title"),
-                            string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
+                    -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on short/cut
+                    -- perennial forage or a freshly-sown annual is standard practice, so skip it.
+                    -- On an established crop it builds up over application time toward OM_MAX (#688).
+                    if not burnExempt then
+                        self:applyAmendmentBurnSlice(field, (ab and ab.OM_MAX) or 0.20)
+                        if not field._amendBurnNotified then
+                            field._amendBurnNotified = true
+                            self:showNotification(
+                                g_i18n:getText("sf_notify_om_crop_title"),
+                                string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
+                        end
                     end
                 end
             end
@@ -3964,6 +4038,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     -- Correct approach: iterate g_fieldManager.fields and match farmland.id.
     local cropName = nil
     local liveFruitTypeIndex = nil  -- set when a live crop is detected; used to match the harvest freeze
+    local liveGrowthState = nil     -- growth state of the live crop, for the amendment-burn-risk check (#684)
     if g_fieldManager and g_fieldManager.fields then
         local fsField = nil
         for _, f in ipairs(g_fieldManager.fields) do
@@ -3988,6 +4063,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
                 end)
                 if ok and fieldState and fieldState.fruitTypeIndex ~= FruitType.UNKNOWN then
                     liveFruitTypeIndex = fieldState.fruitTypeIndex
+                    liveGrowthState    = fieldState.growthState
                     local fruitDesc = g_fruitTypeManager and
                         g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
                     if fruitDesc and fruitDesc.name then
@@ -4101,6 +4177,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
+        amendBurnRisk = self:isAmendmentBurnRisk(liveFruitTypeIndex, liveGrowthState),  -- (#684) true → liming/manuring NOW would scorch the crop
         nutrientBuffer          = field.nutrientBuffer or {},
         coverageFraction        = field.coverageFraction or 0,
         sessionCoverageFraction = field.sessionCoverageFraction or 0,
@@ -4568,11 +4645,13 @@ function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ, points)
         farmlandId, cellKey, prev, newVal, field.compaction)
 end
 
---- Apply subsoiler compaction reduction at a specific world position.
+--- Apply a deep-tillage compaction reduction at a specific world position.
 ---@param farmlandId number
 ---@param worldX number
 ---@param worldZ number
-function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ)
+---@param reliefPoints number|nil  Points to remove from the cell. Defaults to the full
+---                                SUBSOILER_REDUCTION; plows pass the smaller PLOW_RELIEF (#687).
+function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ, reliefPoints)
     if not self.settings.compactionEnabled then return end
     local cp = SoilConstants.COMPACTION
     if not cp then return end
@@ -4597,7 +4676,8 @@ function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ)
     local prev = cell.compaction or 0
     if prev <= 0 then return end
 
-    local newVal = math.max(0, prev - cp.SUBSOILER_REDUCTION)
+    local relief = reliefPoints or cp.SUBSOILER_REDUCTION
+    local newVal = math.max(0, prev - relief)
     cell.compaction = newVal
 
     field.compactionSum = math.max(0, (field.compactionSum or 0) - (prev - newVal))
