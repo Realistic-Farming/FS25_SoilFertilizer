@@ -546,6 +546,25 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     end
 end
 
+--- Clears any pending amendment-burn one-shot (lime or OM applied over the previous
+--- growing crop, #437). That penalty belongs to the crop that was growing when the
+--- amendment landed; sowing a NEW crop (including direct drilling over the old one) or
+--- tilling the field voids it. The one-shot is otherwise only consumed at harvest, so
+--- replanting without harvesting left it stuck on the field and it wrongly docked the
+--- next crop's yield by up to 80% — the persistent-burn-after-replant bug reported by
+--- multiple players (direct seeding over a burned field never reset it).
+---@param field table        Field data record
+---@param fieldId number     Field id (logging only)
+---@param reason string      What cleared it ("sowing"/"cultivation"/"plowing"), for logs
+---@return boolean cleared   true if a pending burn was present and removed
+function SoilFertilitySystem:clearAmendmentBurn(field, fieldId, reason)
+    if not field or (field.amendBurnPenalty or 0) <= 0 then return false end
+    field.amendBurnPenalty   = nil
+    field._amendBurnNotified = nil
+    SoilLogger.debug("Amendment burn cleared on %s for field %s", tostring(reason), tostring(fieldId))
+    return true
+end
+
 --- Hook delegate: called by HookManager when sowing/planting occurs on a field.
 --- Called when a field is sown. Reserved for future sowing-time logic.
 --- NOTE: We previously cleared lastCrop here to force live HUD detection (#123),
@@ -579,6 +598,9 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
     local factor = areaHa / fieldAreaHa
 
     local changed = false
+
+    -- Planting a new crop voids any pending amendment burn from the previous crop.
+    if self:clearAmendmentBurn(field, fieldId, "sowing") then changed = true end
 
     -- Seeding disrupts weed seedlings via seed opener soil disturbance.
     -- Partially resets weed pressure based on area processed.
@@ -762,6 +784,9 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
 
     local changed = false
 
+    -- Tilling mixes the soil and ends the crop — void any pending amendment burn.
+    if self:clearAmendmentBurn(field, fieldId, "plowing") then changed = true end
+
     -- Plowing benefits 1 & 2: OM increase and pH normalization (only if plowingBonus enabled)
     if self.settings.plowingBonus then
         local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
@@ -933,6 +958,9 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
 
     local changed = false
     local c = SoilConstants.CULTIVATION
+
+    -- Tilling mixes the soil and ends the crop — void any pending amendment burn.
+    if self:clearAmendmentBurn(field, fieldId, "cultivation") then changed = true end
 
     if self.settings.weedPressure and c.WEED_PRESSURE_REDUCTION and (field.weedPressure or 0) > 0 then
         local before = field.weedPressure

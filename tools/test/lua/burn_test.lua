@@ -74,3 +74,23 @@ do
   T.eq("burn: a gap > BURN_PASS_GAP_MS opens a fresh pass (no dock that tick)",
        field.pH, afterPass1)
 end
+
+-- ── Amendment burn one-shot is voided by replanting / tillage ──────────────────
+-- The lime/OM-on-crop penalty (#437) is otherwise only consumed at harvest; replanting
+-- without harvesting (especially direct seeding) left it stuck and it docked the next
+-- crop's yield. clearAmendmentBurn() is the shared reset called by sow/cultivate/plow.
+do
+  local sys = newSys({})
+  local field = { amendBurnPenalty = 0.80, _amendBurnNotified = true }
+  local cleared = sys:clearAmendmentBurn(field, 1, "sowing")
+  T.ok("amend burn: clear reports it removed a pending penalty", cleared == true)
+  T.eq("amend burn: penalty value removed", field.amendBurnPenalty, nil)
+  T.eq("amend burn: notify flag cleared so a fresh burn can re-notify", field._amendBurnNotified, nil)
+end
+
+-- No pending burn → no-op, returns false (so callers don't mark the field changed).
+do
+  local sys = newSys({})
+  T.ok("amend burn: clear is a no-op with no pending penalty", sys:clearAmendmentBurn({}, 1, "sowing") == false)
+  T.ok("amend burn: clear is a no-op at exactly 0", sys:clearAmendmentBurn({ amendBurnPenalty = 0 }, 1, "plowing") == false)
+end
