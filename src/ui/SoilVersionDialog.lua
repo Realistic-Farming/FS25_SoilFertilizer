@@ -26,6 +26,7 @@ SoilVersionDialog.INSTANCE = nil
 SoilVersionDialog.CHANGELOG = {
     "- Fresh mid-save installs no longer start fields at 0/0/0/0",
     "- Seeding with starter fertilizer no longer burns young crops",
+    "- Monitor warns before lime/manure would scorch your crop",
     "- Fixed burn penalty sticking after replanting (clears on sow/till)",
     "- Ploughing relieves only a little compaction; subsoiler clears it",
     "- Radish & canola slowly ease compaction as they grow",

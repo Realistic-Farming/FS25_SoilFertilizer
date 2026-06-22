@@ -366,6 +366,8 @@ function SoilHUD:calculateHeight()
             if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then h = h + SoilHUD.LINE_H end
         end
         if (info.amendBurnPenalty or 0) > 0 then h = h + SoilHUD.LINE_H end
+        -- Burn-risk row (#684) is mutually exclusive with the burn row above.
+        if (info.amendBurnPenalty or 0) <= 0 and info.amendBurnRisk == true then h = h + SoilHUD.LINE_H end
         if info.yieldEfficiency then h = h + SoilHUD.LINE_H end
         
         h = h + SoilHUD.PAD * 1.3
@@ -679,6 +681,14 @@ function SoilHUD:update(dt)
         else
             self._fmt_burnText = nil
         end
+        -- Pre-emptive amendment-burn-risk warning (#684): the crop is established enough that
+        -- liming or manuring it NOW would scorch it. Only shown before any burn has hit (the
+        -- burn row above already explains it after the fact).
+        if info.amendBurnRisk == true and burn <= 0 then
+            self._fmt_burnRiskText = g_i18n:getText("sf_hud_burn_risk")
+        else
+            self._fmt_burnRiskText = nil
+        end
         -- Yield efficiency text
         local yieldEff = info.yieldEfficiency
         if yieldEff then
@@ -690,6 +700,7 @@ function SoilHUD:update(dt)
         self._fmt_covText   = nil
         self._fmt_compText  = nil
         self._fmt_burnText  = nil
+        self._fmt_burnRiskText = nil
         self._fmt_yieldText = nil
     end
 end
@@ -1402,6 +1413,17 @@ function SoilHUD:drawPanel()
             setTextColor(0.88, 0.25, 0.25, 1.0)  -- red: this is a penalty
             cy = cy - SoilHUD.LINE_H * s
             renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText)
+        end
+
+        -- Amendment burn-risk row (#684) — heads-up that liming/manuring NOW would scorch the
+        -- crop. Mutually exclusive with the burn row above (only shown before any burn hits).
+        local burnRiskText = self._fmt_burnRiskText
+        if burnRiskText then
+            local pad = SoilHUD.PAD * s
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            setTextColor(0.95, 0.62, 0.15, 1.0)  -- amber: a warning, not yet a penalty
+            cy = cy - SoilHUD.LINE_H * s
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnRiskText)
         end
 
         -- Yield efficiency summary (nil when no managed crop)
