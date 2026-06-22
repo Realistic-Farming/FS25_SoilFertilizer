@@ -94,3 +94,61 @@ do
   T.ok("amend burn: clear is a no-op with no pending penalty", sys:clearAmendmentBurn({}, 1, "sowing") == false)
   T.ok("amend burn: clear is a no-op at exactly 0", sys:clearAmendmentBurn({ amendBurnPenalty = 0 }, 1, "plowing") == false)
 end
+
+-- ── Gradual amendment burn build-up (#688) ─────────────────────────────────────
+-- The lime/OM-on-crop burn now ramps over application time (like the over-spray burn)
+-- instead of jumping to the cap, so an accidental brush or a slide onto the field costs
+-- only a small slice and you have time to shut the sprayer off.
+local LIME_MAX = SoilConstants.AMEND_BURN.LIME_MAX
+local OM_MAX   = SoilConstants.AMEND_BURN.OM_MAX
+
+-- First tick of a pass opens it but docks nothing (dt == 0).
+do
+  local field = {}
+  local sys = newSys(field)
+  at(0); sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  T.eq("amend burn: first tick of a pass docks nothing", field.amendBurnPenalty or 0, 0)
+end
+
+-- A 1000ms slice ramps a small proportional fraction of the cap.
+do
+  local field = {}
+  local sys = newSys(field)
+  at(0);    sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  at(1000); sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  T.near("amend burn: 1000ms slice ramps proportionally", field.amendBurnPenalty, LIME_MAX * (1000 / FULL_MS), 1e-6)
+end
+
+-- A sibling boom section in the same tick (dt == 0) adds nothing extra.
+do
+  local field = {}
+  local sys = newSys(field)
+  at(0);    sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  at(1000); sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  local afterFirst = field.amendBurnPenalty
+  sys:applyAmendmentBurnSlice(field, LIME_MAX)  -- same time=1000 → dt==0
+  T.eq("amend burn: sibling section (dt==0) adds nothing", field.amendBurnPenalty, afterFirst)
+end
+
+-- Sustained application ramps to — and caps at — the full magnitude.
+do
+  local field = {}
+  local sys = newSys(field)
+  at(0); sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  local t = 0
+  while t < FULL_MS * 2 do
+    t = t + 1000
+    at(t); sys:applyAmendmentBurnSlice(field, LIME_MAX)
+  end
+  T.near("amend burn: sustained application caps at the max", field.amendBurnPenalty, LIME_MAX, 1e-6)
+  T.ok("amend burn: capped build-up never exceeds the max", field.amendBurnPenalty <= LIME_MAX + 1e-9)
+end
+
+-- The penalty never decreases: a smaller OM build-up can't lower an existing lime burn.
+do
+  local field = { amendBurnPenalty = LIME_MAX }
+  local sys = newSys(field)
+  at(0);    sys:applyAmendmentBurnSlice(field, OM_MAX)
+  at(1000); sys:applyAmendmentBurnSlice(field, OM_MAX)
+  T.eq("amend burn: OM build-up never lowers an existing lime burn", field.amendBurnPenalty, LIME_MAX)
+end

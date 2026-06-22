@@ -339,6 +339,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     if field.amendBurnPenalty and field.amendBurnPenalty > 0 then
         field.amendBurnPenalty   = nil
         field._amendBurnNotified = nil
+        field._amendBurnTickTime = nil
     end
 
     -- Freeze for the duration of this harvest cycle. All subsequent modifier
@@ -561,6 +562,7 @@ function SoilFertilitySystem:clearAmendmentBurn(field, fieldId, reason)
     if not field or (field.amendBurnPenalty or 0) <= 0 then return false end
     field.amendBurnPenalty   = nil
     field._amendBurnNotified = nil
+    field._amendBurnTickTime = nil
     SoilLogger.debug("Amendment burn cleared on %s for field %s", tostring(reason), tostring(fieldId))
     return true
 end
@@ -3026,6 +3028,35 @@ function SoilFertilitySystem:isAmendmentBurnRisk(fruitTypeIndex, growthState)
     return gs >= establishedState
 end
 
+--- Gradually build up the amendment burn instead of jumping to the cap (#688). Metered by
+--- application time exactly like the over-application burn: each tick adds a slice of the cap
+--- proportional to the elapsed time since the last application tick, so a brief brush or a
+--- slide onto the field costs only a small fraction and you have time to shut the sprayer off.
+--- Sibling boom sections in the same tick contribute dt == 0 (no double-count). A gap longer
+--- than BURN_PASS_GAP_MS (boom lifted, headland turn) opens a fresh pass. The penalty never
+--- decreases (an OM application won't lower an existing lime burn), and is cleared on harvest
+--- (consumed) or on sow/tillage (#681).
+---@param field table   Field data record
+---@param maxPen number Cap this burn type builds up to (LIME_MAX / OM_MAX)
+---@return number penalty  The current accumulated amendment-burn penalty (0-1)
+function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen)
+    local burnCfg = SoilConstants.SPRAYER_RATE
+    local gapMs   = (burnCfg and burnCfg.BURN_PASS_GAP_MS) or 1500
+    local fullMs  = (burnCfg and burnCfg.BURN_FULL_DAMAGE_MS) or 8000
+    local now     = (g_currentMission and g_currentMission.time) or 0
+
+    local last = field._amendBurnTickTime
+    field._amendBurnTickTime = now
+    local dt = (last and (now - last) <= gapMs) and (now - last) or 0
+
+    if dt > 0 and fullMs > 0 then
+        local inc    = maxPen * (dt / fullMs)
+        local ramped = math.min(maxPen, (field.amendBurnPenalty or 0) + inc)
+        field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, ramped)
+    end
+    return field.amendBurnPenalty or 0
+end
+
 -- Apply fertilizer
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     if not self.settings.enabled then return end
@@ -3086,25 +3117,32 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                 -- shared helper decides whether the crop is established enough to actually burn.
                 local burnExempt = not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
 
+                local ab = SoilConstants.AMEND_BURN
                 if isLimeAmendment then
                     -- #646/#681: liming cut/early perennial forage or a freshly-sown annual is
-                    -- realistic, so skip the -80% burn there. Established crops still take it.
+                    -- realistic, so skip the burn there. Established crops still take it, but it
+                    -- now builds up over application time (#688) instead of instant -80%.
                     if not burnExempt then
-                        field.amendBurnPenalty = 0.80
-                        field._amendBurnNotified = true
-                        self:showNotification(
-                            g_i18n:getText("sf_notify_lime_crop_title"),
-                            string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
+                        self:applyAmendmentBurnSlice(field, (ab and ab.LIME_MAX) or 0.80)
+                        if not field._amendBurnNotified then
+                            field._amendBurnNotified = true
+                            self:showNotification(
+                                g_i18n:getText("sf_notify_lime_crop_title"),
+                                string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
+                        end
                     end
                 else
                     -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on short/cut
-                    -- perennial forage or a freshly-sown annual is standard practice, so skip the -20%.
+                    -- perennial forage or a freshly-sown annual is standard practice, so skip it.
+                    -- On an established crop it builds up over application time toward OM_MAX (#688).
                     if not burnExempt then
-                        field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, 0.20)
-                        field._amendBurnNotified = true
-                        self:showNotification(
-                            g_i18n:getText("sf_notify_om_crop_title"),
-                            string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
+                        self:applyAmendmentBurnSlice(field, (ab and ab.OM_MAX) or 0.20)
+                        if not field._amendBurnNotified then
+                            field._amendBurnNotified = true
+                            self:showNotification(
+                                g_i18n:getText("sf_notify_om_crop_title"),
+                                string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
+                        end
                     end
                 end
             end

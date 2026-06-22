@@ -400,6 +400,12 @@ SoilConstants.HARVEST_HA_FACTOR = 8.0
 -- fraction of the way to its harvest-ready growth state.
 SoilConstants.AMEND_BURN = {
     ANNUAL_SEEDLING_FRACTION = 0.33,
+    -- Gradual build-up (#688): the burn ramps toward these caps over the same metered
+    -- application time as the over-application burn (SPRAYER_RATE.BURN_FULL_DAMAGE_MS),
+    -- instead of jumping to the cap on first contact. An accidental brush or a slide onto
+    -- the field costs only a small slice, so you have time to shut the sprayer off.
+    LIME_MAX = 0.80,   -- lime/LIQUIDLIME on an established crop, fully built up
+    OM_MAX   = 0.20,   -- organic amendment (slurry/manure/digestate) fully built up
 }
 
 SoilConstants.FERTILIZER_PROFILES = {

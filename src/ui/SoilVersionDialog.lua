@@ -24,6 +24,7 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Crop burn now builds up as you spray, no more instant -80%",
     "- Fresh mid-save installs no longer start fields at 0/0/0/0",
     "- Seeding with starter fertilizer no longer burns young crops",
     "- Monitor warns before lime/manure would scorch your crop",
