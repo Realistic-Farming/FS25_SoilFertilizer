@@ -3637,53 +3637,53 @@
   "2026-06-23": [
     {
       "referrer": "github.com",
-      "count": 2215,
-      "uniques": 315
+      "count": 2163,
+      "uniques": 317
     },
     {
       "referrer": "Google",
-      "count": 1167,
-      "uniques": 354
+      "count": 1175,
+      "uniques": 359
     },
     {
       "referrer": "Bing",
-      "count": 316,
-      "uniques": 93
+      "count": 314,
+      "uniques": 94
     },
     {
       "referrer": "l.facebook.com",
-      "count": 283,
-      "uniques": 124
+      "count": 257,
+      "uniques": 106
     },
     {
       "referrer": "kingmods.net",
-      "count": 248,
-      "uniques": 105
+      "count": 235,
+      "uniques": 97
     },
     {
       "referrer": "youtube.com",
-      "count": 131,
-      "uniques": 73
+      "count": 138,
+      "uniques": 77
     },
     {
       "referrer": "facebook.com",
-      "count": 89,
-      "uniques": 63
+      "count": 55,
+      "uniques": 40
     },
     {
-      "referrer": "lm.facebook.com",
-      "count": 52,
-      "uniques": 43
-    },
-    {
-      "referrer": "DuckDuckGo",
+      "referrer": "Yahoo",
       "count": 43,
       "uniques": 12
     },
     {
-      "referrer": "Yahoo",
-      "count": 42,
-      "uniques": 12
+      "referrer": "lm.facebook.com",
+      "count": 40,
+      "uniques": 32
+    },
+    {
+      "referrer": "search.brave.com",
+      "count": 36,
+      "uniques": 10
     }
   ]
 }

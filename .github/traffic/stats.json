@@ -27394,92 +27394,92 @@
     "watchers": 11
   },
   {
-    "timestamp": "2026-06-23T00:12:40Z",
+    "timestamp": "2026-06-23T12:37:51Z",
     "date": "2026-06-23",
     "views": {
-      "count": 11370,
-      "uniques": 1474
+      "count": 11121,
+      "uniques": 1410
     },
     "clones": {
-      "count": 3294,
-      "uniques": 918
+      "count": 3706,
+      "uniques": 1003
     },
     "referrers": [
       {
         "referrer": "github.com",
-        "count": 2215,
-        "uniques": 315
+        "count": 2163,
+        "uniques": 317
       },
       {
         "referrer": "Google",
-        "count": 1167,
-        "uniques": 354
+        "count": 1175,
+        "uniques": 359
       },
       {
         "referrer": "Bing",
-        "count": 316,
-        "uniques": 93
+        "count": 314,
+        "uniques": 94
       },
       {
         "referrer": "l.facebook.com",
-        "count": 283,
-        "uniques": 124
+        "count": 257,
+        "uniques": 106
       },
       {
         "referrer": "kingmods.net",
-        "count": 248,
-        "uniques": 105
+        "count": 235,
+        "uniques": 97
       },
       {
         "referrer": "youtube.com",
-        "count": 131,
-        "uniques": 73
+        "count": 138,
+        "uniques": 77
       },
       {
         "referrer": "facebook.com",
-        "count": 89,
-        "uniques": 63
+        "count": 55,
+        "uniques": 40
       },
       {
-        "referrer": "lm.facebook.com",
-        "count": 52,
-        "uniques": 43
-      },
-      {
-        "referrer": "DuckDuckGo",
+        "referrer": "Yahoo",
         "count": 43,
         "uniques": 12
       },
       {
-        "referrer": "Yahoo",
-        "count": 42,
-        "uniques": 12
+        "referrer": "lm.facebook.com",
+        "count": 40,
+        "uniques": 32
+      },
+      {
+        "referrer": "search.brave.com",
+        "count": 36,
+        "uniques": 10
       }
     ],
     "popular_paths": [
       {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer",
         "title": "Overview",
-        "count": 4302,
-        "uniques": 1168
+        "count": 3853,
+        "uniques": 1016
       },
       {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases",
         "title": "/releases",
-        "count": 950,
-        "uniques": 295
+        "count": 889,
+        "uniques": 281
       },
       {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/issues",
         "title": "/issues",
-        "count": 895,
-        "uniques": 219
+        "count": 836,
+        "uniques": 202
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer",
         "title": "Overview",
-        "count": 460,
-        "uniques": 227
+        "count": 720,
+        "uniques": 342
       },
       {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.2.4",
@@ -27488,41 +27488,41 @@
         "uniques": 182
       },
       {
-        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.1.1",
-        "title": "/releases/tag/v2.4.1.1",
-        "count": 254,
-        "uniques": 174
-      },
-      {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.2.9",
         "title": "/releases/tag/v2.4.2.9",
         "count": 198,
         "uniques": 134
       },
       {
+        "path": "/Realistic-Farming/FS25_SoilFertilizer/releases",
+        "title": "/releases",
+        "count": 180,
+        "uniques": 82
+      },
+      {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions",
         "title": "/discussions",
-        "count": 186,
-        "uniques": 74
+        "count": 170,
+        "uniques": 65
+      },
+      {
+        "path": "/Realistic-Farming/FS25_SoilFertilizer/issues",
+        "title": "/issues",
+        "count": 170,
+        "uniques": 62
       },
       {
         "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.2.8",
         "title": "/releases/tag/v2.4.2.8",
         "count": 151,
         "uniques": 101
-      },
-      {
-        "path": "/TheCodingDad-TisonK/FS25_SoilFertilizer/releases/tag/v2.4.1.7",
-        "title": "/releases/tag/v2.4.1.7",
-        "count": 145,
-        "uniques": 106
       }
     ],
     "releases": [
       {
         "assets": [
           {
-            "downloads": 97,
+            "downloads": 123,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
@@ -27531,7 +27531,7 @@
       {
         "assets": [
           {
-            "downloads": 1,
+            "downloads": 5,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
