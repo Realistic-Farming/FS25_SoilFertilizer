@@ -189,6 +189,8 @@
     <e k="sf_hud_noField" v="Gå ut på et felt" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
     <e k="sf_hud_fallow" v="Brakklagt" eh="eafe5913" />
+		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
+		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
     <e k="sf_hud_pests" v="Skadedyr" eh="2fed5101" />
     <e k="sf_hud_disease" v="Sykdom" eh="e7067a8c" />

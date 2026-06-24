@@ -230,6 +230,20 @@ SoilConstants.FALLOW_RECOVERY = {
 }
 
 -- ========================================
+-- ORGANIC MATTER DYNAMICS (#695)
+-- ========================================
+-- Humus oxidizes continuously. Without organic returns, a field under active cropping
+-- slowly loses OM; an idle (fallow) field still nets positive because FALLOW_RECOVERY
+-- adds organicMatter on top of this decay (0.01 recovery − 0.005 decay = +0.005/day).
+-- Deep tillage (plowing) accelerates the loss by exposing buried humus to air.
+-- All on the 0-10 OM scale; per-day rates are month-normalised by the caller.
+SoilConstants.OM_DYNAMICS = {
+    DAILY_DECAY         = 0.005, -- passive humus oxidation, OM pts/day
+    DECAY_FLOOR         = 1.0,   -- passive decay never pushes OM below this (degraded mineral soil)
+    PLOW_OXIDATION_LOSS = 0.10,  -- OM lost per full plow pass (deep inversion aerates buried humus)
+}
+
+-- ========================================
 -- MEADOW PROFILE (FieldSentry Phase 3, #651)
 -- ========================================
 -- Daily grassland rates used when a field is flagged as a meadow in FieldSentry. Opt-in
@@ -258,7 +272,8 @@ SoilConstants.MEADOW = {
 -- regardless of field size. Partial passes add a proportional fraction.
 -- Example: full 5ha field, strawRatio=0.5 → 0.5 × 0.20 = 0.10 OM
 SoilConstants.CHOPPED_STRAW = {
-    OM_RATE = 0.20,   -- OM gain per full-field harvest at strawRatio=1.0
+    OM_RATE = 0.06,   -- OM gain per full-field harvest at strawRatio=1.0 (lowered from 0.20:
+                      -- straw is fresh carbon that takes months to stabilise into humus, #695)
 }
 
 -- ========================================
@@ -281,7 +296,10 @@ SoilConstants.CROP_ROTATION = {
     LEGUME_BONUS_DAYS       = 3,     -- spring bonus lasts this many days
     LEGUME_GROWTH_N_PER_DAY = 0.15,  -- small live N trickle while a legume is standing (nodule fixation surplus, #674) — deliberately well below the post-crop bonus so we don't double-count
     FATIGUE_MULTIPLIER      = 1.15,  -- nutrient extraction ×1.15 for same-crop consecutive seasons
-    LEGUMES = { soybean = true, peas = true, beans = true, luzerne = true, clover = true },
+    -- alfalfa == luzerne (NA vs EU name); greenbean/green_beans match field beans.
+    -- All fix nitrogen, so rotating away from them earns the spring N bonus (#694).
+    LEGUMES = { soybean = true, peas = true, beans = true, luzerne = true, clover = true,
+                alfalfa = true, greenbean = true, green_beans = true },
 }
 
 -- ========================================
@@ -430,7 +448,7 @@ SoilConstants.FERTILIZER_PROFILES = {
     STARTER           = { N=63.5, P=595.0, K=0.00 }, -- 46.8 L/ha: ~8N, ~15P ppm
 
     -- Gypsum: mild pH lowering + OM/structure boost
-    GYPSUM            = { pH=-0.10, OM=0.22 }, -- 1500 kg/ha: -0.25 pH shift, OM boost
+    GYPSUM            = { pH=-0.10, OM=0.03 }, -- 1500 kg/ha: -0.25 pH shift; gypsum is Ca/S, not a humus source — minimal OM (#695)
 
     -- Phosphorus & potassium sources (Dry bulk)
     MAP               = { N=11.1, P=411.5, K=0.00 }, -- 225 kg/ha: ~45P ppm
@@ -446,10 +464,12 @@ SoilConstants.FERTILIZER_PROFILES = {
     LIQUID_POTASH     = { N=0.00, P=0.00, K=100.0 },
 
     -- Organic / slow-release
-    COMPOST           = { N=0.74, P=0.55, K=0.55, OM=0.60 }, -- 5000 kg/ha
-    BIOSOLIDS         = { N=2.05, P=1.20, K=1.23, OM=0.45 }, -- 4500 kg/ha: ~+9N, +5P, +5K pts/pass
-    CHICKEN_MANURE    = { N=3.70, P=2.80, K=2.78, OM=0.55 }, -- 2000 kg/ha: ~+7N, +5P, +5K pts/pass
-    PELLETIZED_MANURE = { N=16.4, P=8.20, K=18.5, OM=0.40 }, -- 450 kg/ha:  ~+7N, +3P, +8K pts/pass
+    -- OM gains lowered to realistic first-season humus conversion (~10-15% of applied
+    -- carbon stabilises in year one). N/P/K unchanged — only the humus build rate (#695).
+    COMPOST           = { N=0.74, P=0.55, K=0.55, OM=0.12 }, -- 5000 kg/ha
+    BIOSOLIDS         = { N=2.05, P=1.20, K=1.23, OM=0.10 }, -- 4500 kg/ha: ~+9N, +5P, +5K pts/pass
+    CHICKEN_MANURE    = { N=3.70, P=2.80, K=2.78, OM=0.10 }, -- 2000 kg/ha: ~+7N, +5P, +5K pts/pass
+    PELLETIZED_MANURE = { N=16.4, P=8.20, K=18.5, OM=0.08 }, -- 450 kg/ha:  ~+7N, +3P, +8K pts/pass
 
     -- Crop protection products (Handled via effectiveness calculation)
     INSECTICIDE = { pestReduction = 1.0 },
@@ -628,6 +648,7 @@ SoilConstants.YIELD_SENSITIVITY = {
         rye        = "tolerant",
         sorghum    = "tolerant",
         luzerne    = "tolerant",   -- legume forage — fixes own N
+        alfalfa    = "tolerant",   -- == luzerne (NA name); fixes own N (#694)
         clover     = "tolerant",   -- legume forage — fixes own N
         -- Moderate: standard response to nutrient levels
         wheat      = "moderate",
@@ -644,10 +665,24 @@ SoilConstants.YIELD_SENSITIVITY = {
 
     DEFAULT_TIER = "moderate",
 
+    -- Organic matter yield influence (#695). OM is a long-term soil-health investment:
+    -- rich humus gives a small bonus, depleted soil a penalty. Bands on the 0-10 OM scale.
+    -- The healthy band starts at the default field OM (3.5) so a fresh/average field sits
+    -- exactly at no-penalty, and only neglected (declining) or invested (rising) soils move.
+    OM_YIELD = {
+        BONUS_THRESHOLD = 5.0,   -- OM at/above this earns the full bonus
+        BONUS_MAX       = 0.05,  -- +5% yield at/above BONUS_THRESHOLD
+        HEALTHY_LOW     = 3.5,   -- 3.5–5.0 = healthy baseline, no penalty (matches default OM)
+        PENALTY_MID     = 2.0,   -- 2.0–3.5 ramps 0 → PENALTY_MID_MAX
+        PENALTY_MID_MAX = 0.10,  -- -10% at PENALTY_MID
+        PENALTY_MAX     = 0.25,  -- -25% as OM approaches 0
+    },
+
     -- Crops that are not row-crop harvests; skip yield forecast for these
     NON_CROP_NAMES = {
-        grass = true, drygrass = true, poplar = true, oilseedradish = true,
-        luzerne = true, clover = true,
+        grass = true, meadow = true, drygrass = true, fieldgrass = true, ryegrass = true,
+        poplar = true, oilseedradish = true,
+        luzerne = true, clover = true, alfalfa = true,
     },
 }
 

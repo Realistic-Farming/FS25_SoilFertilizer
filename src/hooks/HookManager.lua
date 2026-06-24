@@ -138,6 +138,10 @@ function HookManager:installAll(soilSystem)
     local mowerOk = self:installMowerHook()
     if mowerOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Mower yield hook (#696): windrow output scales with soil nutrients via conversionFactor
+    local mowerYieldOk = self:installMowerYieldHook()
+    if mowerYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -2556,6 +2560,100 @@ function HookManager:installMowerHook()
 end
 
 -- =========================================================
+-- HOOK 1d: Mower yield scaling (#696)
+-- =========================================================
+-- Windrow-drop mowers (disc/drum mowers, swathers) bypass the combine hopper yield hook —
+-- they never call addFillUnitFillLevel with spec_combine set. Inside processMowerArea the
+-- windrow volume is:  litersToDrop = areaLiters × harvestMultiplier × converterData.conversionFactor
+-- (verified against the Mower LUADOC). pickupFillScale is loaded but NEVER read on that path,
+-- so the only lever that scales windrow output is conversionFactor on each fruitTypeConverter.
+--
+-- Approach: in onStartWorkAreaProcessing (before processMowerArea runs) multiply each
+-- converter's conversionFactor by the field's forage nutrient modifier; restore it in
+-- onEndWorkAreaProcessing. A pristine base (_sfBaseCF) is captured once per converter so
+-- repeated passes never compound, even if an onEnd is somehow skipped. Nutrient DEPLETION
+-- is untouched (area-based via the onEnd depletion hook) — only the bale output scales,
+-- mirroring the combine path where the soil gives up nutrients regardless of yield.
+---@return boolean success
+function HookManager:installMowerYieldHook()
+    if not Mower
+       or type(Mower.onStartWorkAreaProcessing) ~= "function"
+       or type(Mower.onEndWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[MowerYield] Mower work-area functions not available — forage yield scaling skipped")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    -- Return every converter on this mower to its pristine conversionFactor.
+    local function restoreConverters(spec)
+        if not spec or not spec.fruitTypeConverters then return end
+        for _, converterData in pairs(spec.fruitTypeConverters) do
+            if converterData._sfBaseCF ~= nil then
+                converterData.conversionFactor = converterData._sfBaseCF
+            end
+        end
+    end
+
+    local origStart = Mower.onStartWorkAreaProcessing
+    Mower.onStartWorkAreaProcessing = Utils.appendedFunction(
+        origStart,
+        function(mowerSelf, dt)
+            if not mowerSelf.isServer then return end
+            local spec = mowerSelf.spec_mower
+            if not spec or not spec.fruitTypeConverters then return end
+            if not g_SoilFertilityManager
+               or not g_SoilFertilityManager.soilSystem
+               or not g_SoilFertilityManager.settings.enabled
+               or not g_SoilFertilityManager.settings.nutrientCycles then
+                restoreConverters(spec)   -- never leave stale scaling when the system is off
+                return
+            end
+
+            local ok, errMsg = pcall(function()
+                local x, _, z = getWorldTranslation(mowerSelf.rootNode)
+                if not x then return end
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z)
+                if not fieldId or fieldId <= 0 then
+                    restoreConverters(spec)
+                    return
+                end
+
+                local modifier = g_SoilFertilityManager.soilSystem:computeMowerYieldModifier(fieldId)
+                for _, converterData in pairs(spec.fruitTypeConverters) do
+                    -- Capture the pristine factor once; always scale from it so passes never compound.
+                    if converterData._sfBaseCF == nil then
+                        converterData._sfBaseCF = converterData.conversionFactor
+                    end
+                    converterData.conversionFactor = converterData._sfBaseCF * modifier
+                end
+                if modifier ~= 1.0 then
+                    SoilLogger.debug("[MowerYield] Field %d forage modifier=%.3f", fieldId, modifier)
+                end
+            end)
+            if not ok then
+                SoilLogger.error("[MowerYield] start hook failed: %s", tostring(errMsg))
+                restoreConverters(spec)
+            end
+        end
+    )
+    self:register(Mower, "onStartWorkAreaProcessing", origStart, "Mower.onStartWorkAreaProcessing (forage yield scale)")
+
+    local origEnd = Mower.onEndWorkAreaProcessing
+    Mower.onEndWorkAreaProcessing = Utils.appendedFunction(
+        origEnd,
+        function(mowerSelf, dt, hasProcessed)
+            if not mowerSelf.isServer then return end
+            restoreConverters(mowerSelf.spec_mower)
+        end
+    )
+    self:register(Mower, "onEndWorkAreaProcessing", origEnd, "Mower.onEndWorkAreaProcessing (forage yield restore)")
+
+    SoilLogger.info("[OK] Mower yield hook installed — windrow forage output now scales with soil nutrients")
+    return true
+end
+
+-- =========================================================
 -- HOOK 2: All fertilizer application (Sprayer + Spreader)
 -- =========================================================
 --- Hooks Sprayer.onEndWorkAreaProcessing, which covers ALL fertilizer vehicles:
@@ -3245,13 +3343,26 @@ function HookManager:installPlowingHook()
 
             local isPlowSpec = cultivatorSelf.spec_plow ~= nil or cultivatorSelf.spec_subsoiler ~= nil
 
+            -- Subsoiler area fix (#693): a subsoiler does its real work DEEP — its surface
+            -- "changed" area (lastChangedArea) barely moves, so incorporation scaled by it
+            -- rounds to ~nothing even though the tines worked a full strip. (Compaction relief
+            -- is position-based, so it looked fine and masked the gap.) Use the total processed
+            -- footprint (lastTotalArea) for the incorporation magnitude instead. lastChangedArea
+            -- > 0 above already proved this is genuine work, not a lifted headland pass, so this
+            -- can't reintroduce the turn-time cap drain the lastChangedArea guard was added for.
+            local areaPixels = statsArea
+            if spec.isSubsoiler then
+                local total = spec.workAreaParameters.lastTotalArea
+                if total and total > areaPixels then areaPixels = total end
+            end
+
             -- Convert density-map pixels → hectares (same as mower hook).
             if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
-            local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
+            local areaHa = MathUtil.areaToHa(areaPixels, g_currentMission:getFruitPixelsToSqm())
             if areaHa <= 0 then return end
 
-            SoilLogger.debug("[PlowHook] onEndWorkAreaProcessing fired — isPlow=%s area=%.1f px (%.5f ha)",
-                tostring(isPlowSpec), statsArea, areaHa)
+            SoilLogger.debug("[PlowHook] onEndWorkAreaProcessing fired — isPlow=%s subsoiler=%s area=%.1f px (%.5f ha)",
+                tostring(isPlowSpec), tostring(spec.isSubsoiler), areaPixels, areaHa)
 
             local x, _, z = getWorldTranslation(cultivatorSelf.rootNode)
             local success, errorMsg = pcall(function()

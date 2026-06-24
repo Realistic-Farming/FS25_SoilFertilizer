@@ -345,10 +345,16 @@ function SoilHUD:calculateHeight()
     local info = self.cachedFieldInfo
     local ys = SoilConstants and SoilConstants.YIELD_SENSITIVITY
     
-    if info then
+    if info and info.simDisabled then
+        -- Compact "field asleep" layout (#692): field/crop row + one message line, no metrics.
+        h = h + SoilHUD.LINE_H        -- field / crop row
+        h = h + SoilHUD.PAD * 1.6     -- divider gap before the message
+        h = h + SoilHUD.LINE_H        -- asleep message line
+        h = h + SoilHUD.PAD * 1.6     -- divider gap after the message
+    elseif info then
         h = h + SoilHUD.LINE_H
         h = h + SoilHUD.PAD * 1.6
-        
+
         h = h + SoilHUD.ROW_H * 3
         h = h + SoilHUD.PAD * 1.3
 
@@ -911,6 +917,9 @@ function SoilHUD:refreshFieldData()
         local cropText = SoilUtils.getCropDisplayName(info.lastCrop)
         if cropText then
             self._fmt_cropText = cropText
+        elseif info.isMeadow then
+            -- Field Sentry meadow: a managed sward, not idle ground — say so (#697)
+            self._fmt_cropText = g_i18n:getText("sf_hud_meadow")
         else
             self._fmt_cropText = g_i18n:getText("sf_hud_fallow")
         end
@@ -1276,13 +1285,16 @@ function SoilHUD:drawPanel()
     local ty   = py + ph - titleH * 0.5  -- vertical center of title bar
 
     local info = self.cachedFieldInfo
+    -- Field put to sleep / disabled by Field Sentry: soil is frozen by intent, so the
+    -- monitor shows that state instead of stale frozen metrics (#692).
+    local asleep = info ~= nil and info.simDisabled == true
 
     -- Title + overall status badge
     setTextBold(true)
     setTextColor(1, 1, 1, 1)
     renderText(tx, ty - 0.006*s, 0.012 * fontMult * s, g_i18n:getText("sf_hud_title"))
 
-    if info then
+    if info and not asleep then
         local statusLabel, statusCol = self:overallStatus(info)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(statusCol[1], statusCol[2], statusCol[3], 1.0)
@@ -1308,17 +1320,36 @@ function SoilHUD:drawPanel()
         setTextAlignment(RenderText.ALIGN_LEFT)
     end
 
+    if asleep then
+        -- Asleep / disabled field (#692): one explanatory line in place of the soil metrics,
+        -- bracketed by dividers so the compact panel still reads as a deliberate state.
+        cy = cy - pad * 0.8
+        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        cy = cy - pad * 0.8
+        cy = cy - SoilHUD.LINE_H * s
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
+        renderText(px + pw * 0.5, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
+            g_i18n:getText("sf_hud_asleep"))
+        setTextAlignment(RenderText.ALIGN_LEFT)
+        cy = cy - pad * 0.8
+        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        cy = cy - pad * 0.8
+    end
+
     -- Divider above N/P/K block; "(ppm)" unit label right-aligned on the same line
     -- so the user sees the unit context once, not repeated on every row.
-    cy = cy - pad * 0.8
-    self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
-    setTextAlignment(RenderText.ALIGN_RIGHT)
-    setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
-    renderText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"))
-    setTextAlignment(RenderText.ALIGN_LEFT)
-    cy = cy - pad * 0.8
+    if not asleep then
+        cy = cy - pad * 0.8
+        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        setTextAlignment(RenderText.ALIGN_RIGHT)
+        setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
+        renderText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"))
+        setTextAlignment(RenderText.ALIGN_LEFT)
+        cy = cy - pad * 0.8
+    end
 
-    if info then
+    if info and not asleep then
         -- Use cached sprayer state (populated in update() to keep draw() free of game-object traversal)
         local sprayer        = self._cachedSprayer
         local fillType       = self._cachedFillType
@@ -1448,8 +1479,8 @@ function SoilHUD:drawPanel()
         cy = cy - pad * 0.5
         self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
-    else
-        cy = cy - SoilHUD.LINE_H * s * 4  -- skip nutrient rows space
+    elseif not info then
+        cy = cy - SoilHUD.LINE_H * s * 4  -- skip nutrient rows space (no field; asleep draws its own line)
     end
 
     -- Hint row

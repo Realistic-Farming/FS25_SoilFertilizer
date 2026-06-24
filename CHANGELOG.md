@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.4.0]
+
+### Added
+- **Organic matter now affects yield** (#695). OM was tracked and displayed but never read by the yield model. It now applies a smooth multiplier on the 0–10 scale: OM ≥ 5.0 gives a +5% bonus, 3.5–5.0 is the neutral healthy band (the default field OM of 3.5 sits exactly at no-penalty), 2.0–3.5 ramps to −10%, and below 2.0 ramps to −25%. Shared with the new mower path via one helper so hay and grain respond to soil health identically.
+- **Passive organic-matter dynamics** (#695). Humus now oxidises ~0.005 OM/day under active cropping (floored at 1.0 so it never grinds to nothing). An idle/fallow field still nets positive because fallow recovery (+0.01/day) outpaces the decay. Ploughing now *costs* ~0.10 OM per full pass (deep inversion aerates buried humus) instead of the old +0.5 bonus — residue incorporation can still offset this when straw/green matter is worked in. Single-pass OM gains from compost, chicken manure, biosolids, pelletized manure, gypsum and chopped straw were lowered to realistic first-season humus conversion.
+- **Mower yield scales with soil nutrients** (#696). Windrow-drop mowers (disc/drum mowers, swathers) bypassed the combine hopper yield hook, so hay tonnage ignored soil fertility. A new hook scales each mower's `fruitTypeConverter.conversionFactor` by a forage nutrient modifier (tolerant tier + OM), restored after each pass. `pickupFillScale` is loaded by the engine but never read on the windrow path, so `conversionFactor` is the correct lever. Nutrient depletion is unchanged (area-based) — only the bale output scales.
+
+### Fixed
+- **Perennial forages no longer trigger false monoculture fatigue** (#694). Alfalfa, meadow, fieldgrass, ryegrass, grass and clover are cut several times per season and legitimately stay on a field for years; the rotation-fatigue check (depletion ×1.15 and the Field Detail "Fatigue" status) now exempts `PERENNIAL_FORAGE_NAMES`, so a 3rd cut is peak management, not a tired field. Also: `alfalfa` (== `luzerne`) added to `LEGUMES`, `CROP_TIERS` (tolerant) and `NON_CROP_NAMES`; `greenbean`/`green_beans` added to `LEGUMES` — so rotating away from them now earns the spring nitrogen bonus and they no longer show a misleading yield % score.
+- **Subsoiler incorporation no longer rounds to nothing** (#693). A subsoiler does its real work deep, so its surface "changed" area (`lastChangedArea`) barely moves and the OM/nitrogen release scaled by it rounded to ~0 (while position-based compaction relief still worked, masking the gap). Subsoilers now scale incorporation by the total processed footprint (`lastTotalArea`); the `lastChangedArea > 0` guard is retained so this can't reintroduce the headland-turn cap drain.
+- **Phantom burnt-weed coverage on clean fields after reload** (#698). When herbicide protection was granted, the weed-map browning painted the withered state across the *entire* field polygon — and when the field had no live weeds, it fell back to painting state 7 anyway. That fabricated "burnt weed" textures on clean fields, baked into the weed density map, and reappeared on every save/reload at 0% pressure. SF now skips the cosmetic browning entirely when there are no live weeds to wither (or the herbicide replacement table is unavailable). Existing baked-in patches clear by cultivating/ploughing the field once.
+
+### Changed
+- **Soil Monitor reflects Field Sentry state** (#692, #697). A field put to sleep in Field Sentry now shows a compact "Field asleep" line in the Soil Monitor instead of stale frozen N/P/K/pH/OM readouts. A field flagged as a meadow now reads "Meadow" instead of "Fallow". `getFieldInfo` surfaces the meadow flag for any consumer.
+
 ## [2.4.2.8]
 
 ### Fixed

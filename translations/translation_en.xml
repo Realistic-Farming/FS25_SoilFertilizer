@@ -189,6 +189,8 @@
     <e k="sf_hud_noField" v="Walk onto a field" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="Drive onto a field" eh="f238e4b8" />
     <e k="sf_hud_fallow" v="Fallow" eh="eafe5913" />
+    <e k="sf_hud_meadow" v="Meadow" eh="f34c07d8" />
+    <e k="sf_hud_asleep" v="Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="Weed Risk" eh="0ec7e90d" />
     <e k="sf_hud_pests" v="Pests" eh="2fed5101" />
     <e k="sf_hud_disease" v="Disease" eh="e7067a8c" />
