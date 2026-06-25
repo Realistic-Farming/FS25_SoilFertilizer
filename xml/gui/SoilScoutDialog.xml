@@ -35,11 +35,11 @@
 
       <!-- Fungicide selector (driven by Cycle/Apply) -->
       <Text profile="sfScout_select" id="scoutSelChem"
-            text="" position="0px -260px" size="660px 26px"/>
+            text="" position="0px -250px" size="660px 26px"/>
 
       <!-- Result / hint line -->
       <Text profile="sfScout_hint" id="scoutHint"
-            text="$l10n_sf_scout_hint" position="0px -300px" size="660px 50px" wrapText="true"/>
+            text="$l10n_sf_scout_hint" position="0px -284px" size="660px 50px" wrapText="true"/>
 
     </GuiElement>
 
@@ -54,14 +54,14 @@
   <GUIProfiles>
 
     <Profile name="sfScout_bg" extends="fs25_dialogBg">
-      <size value="720px 500px"/>
+      <size value="720px 410px"/>
     </Profile>
 
     <Profile name="sfScout_section" extends="emptyPanel" with="anchorTopCenter">
-      <size value="680px 150px"/>
+      <size value="680px 132px"/>
     </Profile>
     <Profile name="sfScout_sectionBg" extends="baseReference" with="anchorTopCenter">
-      <size value="680px 150px"/>
+      <size value="680px 132px"/>
       <imageColor value="0.10 0.07 0.06 0.9"/>
     </Profile>
 
