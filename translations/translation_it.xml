@@ -1023,6 +1023,7 @@
     <e k="sf_scout_title" v="Field Scout" />
     <e k="sf_scout_hint" v="Cycle to a fungicide, then Apply." />
     <e k="input_SF_TREATMENT" v="Open Soil Treatment Panel" />
+    <e k="sf_admin_field_set_disease_label" v="Set Field Disease" />
     </elements>
 
 

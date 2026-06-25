@@ -225,6 +225,7 @@ local PAGE_LANDING  = "landing"
 local PAGE_CATEGORY = "category"
 local PAGE_ADMIN    = "admin"
 local PAGE_SET_STATE = "set_state"
+local PAGE_SET_DISEASE = "set_disease"
 local PAGE_FIELD_TOOLS = "field_tools"
 local PAGE_VEHICLE_TOOLS = "vehicle_tools"
 local PAGE_SMART_SYSTEMS = "smart_systems"
@@ -279,6 +280,7 @@ local FIELD_TOOLS_SECTIONS = {
             { stype = "action", id = "admin_field_forecast" },
             { stype = "action", id = "admin_list_fields" },
             { stype = "action", id = "admin_field_set_state" },
+            { stype = "action", id = "admin_field_set_disease" },
             { stype = "danger", id = "admin_field_recover" },
         },
     },
@@ -338,6 +340,10 @@ function SoilSettingsPanel.new(settings)
     self.pageScrollPx = 0    -- index for scrolling settings lists
     self.setStateFieldId = nil
     self.setStateData = {N=50, P=50, K=50, pH=6.5, OM=5.0}
+    self.setDiseaseFieldId = nil
+    self.setDiseasePressure = 0
+    self.setDiseaseList = { "" }  -- index 1 = "" (auto-pick by weather), then crop candidates
+    self.setDiseaseIdx = 1
     self.mouseX       = 0
     self.mouseY       = 0
     self.initialized  = false
@@ -521,6 +527,8 @@ function SoilSettingsPanel:draw()
             self:drawAdminPage()
         elseif self.page == PAGE_SET_STATE then
             if self.drawSetStatePage then self:drawSetStatePage() end
+        elseif self.page == PAGE_SET_DISEASE then
+            if self.drawSetDiseasePage then self:drawSetDiseasePage() end
         end
     end
 
@@ -551,6 +559,8 @@ function SoilSettingsPanel:drawTitleBar()
     local title = "SOIL & FERTILIZER SETTINGS"
     if self.page == PAGE_SMART_SYSTEMS then
         title = title .. "  /  ADMIN PANEL  /  SMART SYSTEMS"
+    elseif self.page == PAGE_SET_DISEASE then
+        title = title .. "  /  ADMIN PANEL  /  SET DISEASE"
     elseif self.page == PAGE_FIELD_TOOLS then
         title = title .. "  /  ADMIN PANEL  /  FIELD TOOLS"
     elseif self.page == PAGE_VEHICLE_TOOLS then
@@ -599,6 +609,7 @@ function SoilSettingsPanel:drawInfoBar()
     self:drawText(PX + PAD + 0.10, textY, TS_SMALL, "·  " .. modeText, C.info_mode, RenderText.ALIGN_LEFT, false)
 
     if self.page == PAGE_CATEGORY or self.page == PAGE_ADMIN or self.page == PAGE_SET_STATE
+       or self.page == PAGE_SET_DISEASE
        or self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS
        or self.page == PAGE_SMART_SYSTEMS then
         -- Back button
@@ -982,6 +993,120 @@ function SoilSettingsPanel:drawSetStatePage()
         ">  APPLY TO FIELD",
         saveHov and C.white or C.green, RenderText.ALIGN_CENTER, true)
     self:registerClick("set_state_save", saveBtnX, saveBtnY, saveBtnW, saveBtnH)
+
+    self:drawRect(CX, CY_TOP, CW, 0.001, C.divider)
+end
+
+-- ── Set Disease page ──────────────────────────────────────
+function SoilSettingsPanel:drawSetDiseasePage()
+    local fid = self.setDiseaseFieldId
+
+    -- Title
+    local titleY = CY_TOP - 0.040
+    self:drawText(CX + CW * 0.5, titleY, TS_BODY,
+        string.format("SET FIELD DISEASE  —  Field #%s", tostring(fid or "?")),
+        C.white, RenderText.ALIGN_CENTER, true)
+    self:drawRect(CX, titleY - 0.006, CW, 0.001, C.divider)
+
+    local rowH  = 0.040
+    local ctrlW = 0.030
+    local curY  = titleY - 0.016
+
+    -- Row 1: Disease selector (Auto + crop candidates) ───────────────────────
+    curY = curY - rowH
+    do
+        self:drawRect(CX, curY, CW, rowH - 0.003, C.row_alt)
+        self:drawRect(CX, curY, 0.003, rowH - 0.003, C.green_dim)
+        self:drawText(CX + 0.012, curY + (rowH - 0.003) * 0.52, TS_BODY,
+            "Disease", C.white, RenderText.ALIGN_LEFT, false)
+
+        local list = self.setDiseaseList or { "" }
+        local id   = list[self.setDiseaseIdx or 1] or ""
+        local disp
+        if id == "" then
+            disp = "Auto (by weather)"
+        elseif g_i18n and g_i18n:hasText("sf_dis_" .. id) then
+            disp = g_i18n:getText("sf_dis_" .. id)
+        else
+            disp = (id:gsub("_", " "))
+        end
+
+        local valW   = 0.150
+        local rightEdge = CX + CW - 0.012
+        local plusX  = rightEdge - ctrlW
+        local labelX = plusX - valW
+        local minusX = labelX - ctrlW
+
+        local mHov = self:hitTest(minusX, curY + 0.005, ctrlW, rowH - 0.012, self.mouseX, self.mouseY)
+        self:drawRect(minusX, curY + 0.005, ctrlW, rowH - 0.012, mHov and C.back_hover or C.off_bg)
+        self:drawText(minusX + ctrlW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_BODY,
+            "<", C.white, RenderText.ALIGN_CENTER, true)
+
+        self:drawRect(labelX, curY + 0.005, valW, rowH - 0.012, {0.10, 0.11, 0.15, 0.90})
+        self:drawText(labelX + valW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_SMALL,
+            disp, C.green, RenderText.ALIGN_CENTER, true)
+
+        local pHov = self:hitTest(plusX, curY + 0.005, ctrlW, rowH - 0.012, self.mouseX, self.mouseY)
+        self:drawRect(plusX, curY + 0.005, ctrlW, rowH - 0.012, pHov and C.back_hover or C.off_bg)
+        self:drawText(plusX + ctrlW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_BODY,
+            ">", C.white, RenderText.ALIGN_CENTER, true)
+
+        self:registerClick("set_disease_dis-1", minusX, curY + 0.005, ctrlW, rowH - 0.012, { step = -1 })
+        self:registerClick("set_disease_dis+1", plusX,  curY + 0.005, ctrlW, rowH - 0.012, { step = 1 })
+    end
+
+    -- Row 2: Disease pressure (0-100, step 5) ────────────────────────────────
+    curY = curY - rowH
+    do
+        local val = self.setDiseasePressure or 0
+        self:drawRect(CX, curY, CW, rowH - 0.003, C.row_alt)
+        self:drawRect(CX, curY, 0.003, rowH - 0.003, C.green_dim)
+        self:drawText(CX + 0.012, curY + (rowH - 0.003) * 0.52, TS_BODY,
+            "Disease pressure (%)", C.white, RenderText.ALIGN_LEFT, false)
+
+        local valW   = 0.065
+        local rightEdge = CX + CW - 0.012
+        local plusX  = rightEdge - ctrlW
+        local labelX = plusX - valW
+        local minusX = labelX - ctrlW
+
+        local mHov = self:hitTest(minusX, curY + 0.005, ctrlW, rowH - 0.012, self.mouseX, self.mouseY)
+        self:drawRect(minusX, curY + 0.005, ctrlW, rowH - 0.012, mHov and C.back_hover or C.off_bg)
+        self:drawText(minusX + ctrlW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_BODY,
+            "-", C.white, RenderText.ALIGN_CENTER, true)
+
+        self:drawRect(labelX, curY + 0.005, valW, rowH - 0.012, {0.10, 0.11, 0.15, 0.90})
+        self:drawText(labelX + valW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_BODY,
+            string.format("%.0f", val), C.green, RenderText.ALIGN_CENTER, true)
+
+        local pHov = self:hitTest(plusX, curY + 0.005, ctrlW, rowH - 0.012, self.mouseX, self.mouseY)
+        self:drawRect(plusX, curY + 0.005, ctrlW, rowH - 0.012, pHov and C.back_hover or C.off_bg)
+        self:drawText(plusX + ctrlW * 0.5, curY + (rowH - 0.012) * 0.5 - 0.006, TS_BODY,
+            "+", C.white, RenderText.ALIGN_CENTER, true)
+
+        self:registerClick("set_disease_p-5", minusX, curY + 0.005, ctrlW, rowH - 0.012, { step = -5 })
+        self:registerClick("set_disease_p+5", plusX,  curY + 0.005, ctrlW, rowH - 0.012, { step = 5 })
+    end
+
+    -- Hint
+    curY = curY - rowH
+    self:drawText(CX + 0.012, curY + (rowH - 0.003) * 0.52, TS_SMALL,
+        "Auto picks a crop-appropriate disease once pressure is high enough.",
+        C.label_dim or {0.65, 0.65, 0.65, 1}, RenderText.ALIGN_LEFT, false)
+
+    -- Apply button
+    local saveBtnW = 0.120
+    local saveBtnH = 0.032
+    local saveBtnX = CX + (CW - saveBtnW) * 0.5
+    local saveBtnY = CY_BOT + 0.014
+    local saveHov  = self:hitTest(saveBtnX, saveBtnY, saveBtnW, saveBtnH, self.mouseX, self.mouseY)
+    self:drawRect(saveBtnX, saveBtnY, saveBtnW, saveBtnH,
+        saveHov and {0.10, 0.45, 0.18, 0.95} or {0.07, 0.25, 0.12, 0.90})
+    self:drawRect(saveBtnX, saveBtnY, 0.003, saveBtnH, C.green)
+    self:drawText(saveBtnX + saveBtnW * 0.5, saveBtnY + saveBtnH * 0.22, TS_SMALL,
+        ">  APPLY TO FIELD",
+        saveHov and C.white or C.green, RenderText.ALIGN_CENTER, true)
+    self:registerClick("set_disease_save", saveBtnX, saveBtnY, saveBtnW, saveBtnH)
 
     self:drawRect(CX, CY_TOP, CW, 0.001, C.divider)
 end
@@ -1453,7 +1578,8 @@ function SoilSettingsPanel:handleClick(id, data)
 
     elseif id == "back" then
         if self.page == PAGE_FIELD_TOOLS or self.page == PAGE_VEHICLE_TOOLS
-           or self.page == PAGE_SET_STATE or self.page == PAGE_SMART_SYSTEMS then
+           or self.page == PAGE_SET_STATE or self.page == PAGE_SET_DISEASE
+           or self.page == PAGE_SMART_SYSTEMS then
             self.page = PAGE_ADMIN
         else
             self.page = PAGE_LANDING
@@ -1557,6 +1683,40 @@ function SoilSettingsPanel:handleClick(id, data)
             end
         end
 
+    elseif id:sub(1, 12) == "set_disease_" then
+        if id == "set_disease_save" then
+            if not self:isAdmin() then
+                adminShowMsg(self, "Admin only: field state can only be changed by server admins.")
+                return
+            end
+            local sfm = g_SoilFertilityManager
+            if sfm and sfm.soilSystem and sfm.soilSystem.debugSetDisease and self.setDiseaseFieldId then
+                local list = self.setDiseaseList or { "" }
+                local did  = list[self.setDiseaseIdx or 1]
+                if did == "" then did = nil end
+                local ok, infoD = sfm.soilSystem:debugSetDisease(
+                    self.setDiseaseFieldId, self.setDiseasePressure or 0, did)
+                self.page = PAGE_ADMIN
+                if ok then
+                    adminShowMsg(self, string.format("Field %d: disease pressure set to %d%% (%s).",
+                        self.setDiseaseFieldId, math.floor((self.setDiseasePressure or 0) + 0.5),
+                        (infoD and infoD.disease) or "auto"))
+                else
+                    adminShowMsg(self, "Could not set disease on this field.")
+                end
+            end
+        elseif data then
+            if id:sub(1, 15) == "set_disease_dis" then
+                local n = #(self.setDiseaseList or { "" })
+                self.setDiseaseIdx = ((self.setDiseaseIdx or 1) - 1 + data.step) % n + 1
+            else
+                local v = (self.setDiseasePressure or 0) + data.step
+                if v < 0 then v = 0 end
+                if v > 100 then v = 100 end
+                self.setDiseasePressure = v
+            end
+        end
+
     elseif id:sub(1, 13) == "admin_action_" then
         local gui = g_SoilFertilityManager and g_SoilFertilityManager.settingsGUI
         local actionId = data and data.actionId
@@ -1590,7 +1750,7 @@ function SoilSettingsPanel:handleClick(id, data)
         -- Read-only actions (field info / forecast / list) stay open to everyone.
         local mutatingActions = {
             admin_save = true, admin_reset = true, admin_drain = true,
-            admin_field_set_state = true, admin_field_recover = true,
+            admin_field_set_state = true, admin_field_set_disease = true, admin_field_recover = true,
         }
         if mutatingActions[actionId] and not self:isAdmin() then
             adminShowMsg(self, "Admin only: this action is restricted to server admins.")
@@ -1637,6 +1797,32 @@ function SoilSettingsPanel:handleClick(id, data)
                             }
                         else
                             self.setStateData = {N=50, P=50, K=50, pH=6.5, OM=5.0}
+                        end
+                    end
+                    return -- Do not show msg
+                else
+                    msg = "No field at your current position."
+                end
+            elseif actionId == "admin_field_set_disease" then
+                local fid = getPlayerFieldId()
+                if fid then
+                    self.page = PAGE_SET_DISEASE
+                    self.setDiseaseFieldId = fid
+                    self.setDiseasePressure = 0
+                    self.setDiseaseList = { "" }  -- index 1 = auto-pick by weather
+                    self.setDiseaseIdx = 1
+                    if g_SoilFertilityManager.soilSystem then
+                        local info = g_SoilFertilityManager.soilSystem.fieldData[fid]
+                        if info then
+                            self.setDiseasePressure = math.floor((info.diseasePressure or 0) + 0.5)
+                            if SoilDiseaseSystem then
+                                local cands = SoilDiseaseSystem.cropDiseases(info.lastCrop)
+                                if cands then
+                                    for _, cid in ipairs(cands) do
+                                        self.setDiseaseList[#self.setDiseaseList + 1] = cid
+                                    end
+                                end
+                            end
                         end
                     end
                     return -- Do not show msg

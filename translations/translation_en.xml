@@ -1111,5 +1111,7 @@
     <e k="sf_scout_clean_title" v="No active disease" />
     <e k="sf_scout_clean_hint" v="Field looks healthy. You can still apply a preventative." />
     <e k="sf_scout_disabled" v="Disease system disabled" />
+    <e k="sf_admin_field_set_disease_label" v="Set Field Disease" />
+    <e k="sf_admin_field_set_disease_desc" v="Manually set the disease pressure (and disease type) for the current field" />
     </elements>
 </l10n>
