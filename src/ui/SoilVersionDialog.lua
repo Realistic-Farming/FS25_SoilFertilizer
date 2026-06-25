@@ -32,6 +32,7 @@ SoilVersionDialog.CHANGELOG = {
     "- New Disease Difficulty setting: Easy / Normal / Hard",
     "- Console: SoilScout, SoilTreat, SoilFungicides, SoilSetDiseaseDifficulty",
     "- FIX: Field compaction can no longer read above 100% — the average is now capped",
+    "- FIX: Precision Farming is now detected only when it's actually enabled for your save, not just installed in the mods folder",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

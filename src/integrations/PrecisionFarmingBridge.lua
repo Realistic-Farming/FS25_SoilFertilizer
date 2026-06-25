@@ -3,9 +3,9 @@
 -- =========================================================
 -- Safe cross-mod wrapper around Precision Farming.
 --
--- PF's Lua source is compiled/obfuscated. This bridge uses the
--- g_modManager channel (shared C++ object) for detection and wraps
--- every API call in pcall() so any PF update silently falls back to
+-- PF's Lua source is compiled/obfuscated. This bridge detects PF via the
+-- engine's own active-mod signals (g_modIsLoaded / missionDynamicInfo.mods)
+-- and wraps every API call in pcall() so any PF update silently falls back to
 -- SF standalone mode rather than crashing.
 --
 -- OPERATING MODES
@@ -31,12 +31,17 @@ PrecisionFarmingBridge.PF_N_MAX_KG_HA = 220
 -- PF pH map range (from PrecisionFarming.xml: 32 states, 4.5-8.25)
 PrecisionFarmingBridge.PF_PH_MIN = 4.5
 PrecisionFarmingBridge.PF_PH_MAX = 8.25
+-- PF's mod directory name. Confirmed against ThundR's PF Configurator
+-- (THCore.lua: getActiveMod("FS25_precisionFarming")) and the base-game DLC.
+-- Both g_modIsLoaded and missionDynamicInfo.mods key on this exact name.
+PrecisionFarmingBridge.PF_MOD_NAME = "FS25_precisionFarming"
 
 --- Create a new (uninitialised) bridge instance.
 ---@return PrecisionFarmingBridge
 function PrecisionFarmingBridge:new()
     local o = setmetatable({}, PrecisionFarmingBridge_mt)
     o.isActive    = false
+    o.detectedVia = nil     -- which signal proved PF active ("g_modIsLoaded" / "missionDynamicInfo.mods")
     o.apiVerified = false
     o.thpfActive  = false   -- true when FS25_0_THPFConfigurator is also loaded
     o.nitrogenMap = nil
@@ -46,35 +51,70 @@ function PrecisionFarmingBridge:new()
     return o
 end
 
---- Detect PF via g_modManager (the only reliable cross-mod channel in FS25).
---- Each mod runs in its own Lua env, so getfenv(0) globals are NOT visible
---- cross-mod. g_modManager is a shared C++ object visible to all mods.
---- Must be called after mission is fully ready (deferred init phase).
+--- Detect whether Precision Farming is ACTIVE in the current savegame.
+---
+--- Root-cause fix for the long-standing "false PF detected" frustration:
+--- the old check used g_modManager:getModByName(), which only confirms a mod is
+--- PRESENT in the mods folder (it is a registry/metadata lookup — see how the
+--- base game's StoreManager uses it purely for .title/.isDLC). It returns a
+--- descriptor even for a mod the player did NOT enable for this savegame, so SF
+--- would disable itself for anyone who merely had the PF DLC installed.
+---
+--- We now use the same signals the BASE GAME and other nutrient mods use, both of
+--- which mean "loaded into THIS running save" (so installed-but-disabled no longer
+--- trips detection):
+---   Tier 1: g_modIsLoaded[name] — engine table, true only for loaded mods
+---           (used by TypeManager, StoreManager, VehicleCamera, and our own
+---            FS25_SeasonalCropStress for FS25_MoistureSystem).
+---   Tier 2: missionDynamicInfo.mods — the active-mods list for this session
+---           (the exact channel ThundR's PF Configurator reads to find PF).
+--- getModByName is kept ONLY for diagnostics (SoilPFDump), never as the trigger.
+--- Must be called after the mission is ready (deferred init phase).
 ---@return boolean isActive
 function PrecisionFarmingBridge:initialize()
-    -- Detection: check g_modManager for the PF mod entry.
-    -- getModByName returns non-nil only when the mod is present and loaded.
-    local pfMod = nil
-    if g_modManager then
-        local ok, result = pcall(function()
-            return g_modManager:getModByName("FS25_precisionFarming")
+    local PF_MOD_NAME = PrecisionFarmingBridge.PF_MOD_NAME
+    self.isActive    = false
+    self.detectedVia = nil
+
+    -- Tier 1 (authoritative): engine-maintained "is this mod loaded right now" table.
+    pcall(function()
+        if g_modIsLoaded ~= nil and g_modIsLoaded[PF_MOD_NAME] then
+            self.isActive    = true
+            self.detectedVia = "g_modIsLoaded"
+        end
+    end)
+
+    -- Tier 2 (fallback / cross-check): the active-mods list for this session.
+    -- Covers the rare case where g_modIsLoaded is not yet populated at our init
+    -- time. Each entry's .modName is the mod directory name.
+    if not self.isActive then
+        pcall(function()
+            local dynInfo = (g_currentMission and g_currentMission.missionDynamicInfo)
+                         or (g_mpLoadingScreen and g_mpLoadingScreen.missionDynamicInfo)
+            local mods = dynInfo and dynInfo.mods
+            if mods then
+                for _, modInfo in ipairs(mods) do
+                    if modInfo.modName == PF_MOD_NAME then
+                        self.isActive    = true
+                        self.detectedVia = "missionDynamicInfo.mods"
+                        break
+                    end
+                end
+            end
         end)
-        if ok then pfMod = result end
     end
 
-    if pfMod == nil then
-        SoilLogger.info("[PFBridge] Precision Farming not detected — standalone mode")
+    if not self.isActive then
+        SoilLogger.info("[PFBridge] Precision Farming not active in this savegame — standalone mode")
         return false
     end
 
-    SoilLogger.info("[PFBridge] Precision Farming detected: %s v%s",
-        tostring(pfMod.modName or pfMod.name or "?"),
-        tostring(pfMod.version or "?"))
+    SoilLogger.info("[PFBridge] Precision Farming active (detected via %s) — SF defers N/pH to PF",
+        tostring(self.detectedVia))
 
-    -- PF is confirmed active. Map API is not cross-mod accessible (PF uses its
-    -- own env). We set isActive for simulation gating; canReadMaps stays false
-    -- unless a future PF version exposes maps on g_currentMission.
-    self.isActive    = true
+    -- Map API is not cross-mod accessible (PF uses its own env). isActive gates
+    -- the simulation; canReadMaps stays false unless a future PF version exposes
+    -- maps on g_currentMission.
     self.apiVerified = false  -- no map API access in this version
     self.canReadMaps = false
 
@@ -100,14 +140,25 @@ function PrecisionFarmingBridge:initialize()
     -- Detect [TH] Precision Farming Configurator (FS25_0_THPFConfigurator).
     -- When present, it reads our <thPFConfig> block from modDesc.xml and injects
     -- our fill types into PF's nitrogen/pH maps directly — no relay needed.
-    if g_modManager then
-        local ok, thpfMod = pcall(function()
-            return g_modManager:getModByName("FS25_0_THPFConfigurator")
-        end)
-        if ok and thpfMod ~= nil then
+    -- Same "loaded in this save" rule as PF itself: g_modIsLoaded first, with the
+    -- active-mods list as a fallback (never getModByName, which sees installed-only).
+    pcall(function()
+        if g_modIsLoaded ~= nil and g_modIsLoaded["FS25_0_THPFConfigurator"] then
             self.thpfActive = true
+            return
         end
-    end
+        local dynInfo = (g_currentMission and g_currentMission.missionDynamicInfo)
+                     or (g_mpLoadingScreen and g_mpLoadingScreen.missionDynamicInfo)
+        local mods = dynInfo and dynInfo.mods
+        if mods then
+            for _, modInfo in ipairs(mods) do
+                if modInfo.modName == "FS25_0_THPFConfigurator" then
+                    self.thpfActive = true
+                    break
+                end
+            end
+        end
+    end)
 
     if self.thpfActive then
         SoilLogger.info("[PFBridge] Mode: PF + THPF Configurator — fill type integration via modDesc.xml declarations")
@@ -300,34 +351,58 @@ end
 -- =========================================================
 
 --- Dump Precision Farming detection state and API discovery to the game log.
---- Uses g_modManager and g_specializationManager (shared C++ objects, cross-mod visible).
+--- Shows the authoritative "loaded in this save" signals (g_modIsLoaded /
+--- missionDynamicInfo.mods) alongside the installed-only g_modManager view, so a
+--- player can see at a glance whether PF is merely installed vs actually active.
 --- Run via SoilPFDump console command.
 function PrecisionFarmingBridge:dumpApi()
+    local PF_MOD_NAME = PrecisionFarmingBridge.PF_MOD_NAME
     print("[SoilPFDump] ===== Precision Farming API discovery =====")
-    print(string.format("[SoilPFDump] Bridge status: isActive=%s  apiVerified=%s",
-        tostring(self.isActive), tostring(self.apiVerified)))
+    print(string.format("[SoilPFDump] Bridge status: isActive=%s  detectedVia=%s  apiVerified=%s",
+        tostring(self.isActive), tostring(self.detectedVia), tostring(self.apiVerified)))
 
-    -- 1. g_modManager detection (primary cross-mod channel)
-    print("[SoilPFDump] ----- g_modManager check -----")
+    -- 0. AUTHORITATIVE detection — the two "loaded in THIS save" signals SF trusts.
+    print("[SoilPFDump] ----- active-mod detection (authoritative) -----")
+    local t1 = nil
+    pcall(function() t1 = (g_modIsLoaded ~= nil) and g_modIsLoaded[PF_MOD_NAME] or nil end)
+    print(string.format("[SoilPFDump]   Tier1 g_modIsLoaded['%s'] = %s", PF_MOD_NAME, tostring(t1)))
+    local t2 = false
+    pcall(function()
+        local dynInfo = (g_currentMission and g_currentMission.missionDynamicInfo)
+                     or (g_mpLoadingScreen and g_mpLoadingScreen.missionDynamicInfo)
+        local mods = dynInfo and dynInfo.mods
+        if mods then
+            for _, modInfo in ipairs(mods) do
+                if modInfo.modName == PF_MOD_NAME then t2 = true break end
+            end
+        end
+    end)
+    print(string.format("[SoilPFDump]   Tier2 missionDynamicInfo.mods contains '%s' = %s", PF_MOD_NAME, tostring(t2)))
+
+    -- 1. g_modManager — INSTALLED check only (diagnostic). A non-nil result here
+    --    while Tier1/Tier2 are false means PF is in the mods folder but NOT enabled
+    --    for this savegame — the exact case the old detector wrongly treated as active.
+    print("[SoilPFDump] ----- g_modManager check (installed only, NOT used to trigger) -----")
     if g_modManager then
         local ok, pfMod = pcall(function()
-            return g_modManager:getModByName("FS25_precisionFarming")
+            return g_modManager:getModByName(PF_MOD_NAME)
         end)
         if ok and pfMod then
-            print(string.format("[SoilPFDump]   FOUND: FS25_precisionFarming  name=%s  version=%s  isLoaded=%s",
+            print(string.format("[SoilPFDump]   INSTALLED: %s  name=%s  version=%s  isLoaded=%s",
+                PF_MOD_NAME,
                 tostring(pfMod.modName or pfMod.name or "?"),
                 tostring(pfMod.version or "?"),
                 tostring(pfMod.isLoaded or "?")))
         elseif ok then
-            print("[SoilPFDump]   getModByName('FS25_precisionFarming') = nil")
+            print(string.format("[SoilPFDump]   getModByName('%s') = nil (not installed)", PF_MOD_NAME))
         else
             print("[SoilPFDump]   getModByName error: " .. tostring(pfMod))
         end
 
-        -- List all loaded mod names for reference
+        -- List all INSTALLED mod names matching precis/farm for reference
         local ok2, mods = pcall(function() return g_modManager.mods end)
         if ok2 and mods then
-            print("[SoilPFDump]   Loaded mods:")
+            print("[SoilPFDump]   Installed mods (precis/farm):")
             for _, m in ipairs(mods) do
                 local n = m.modName or m.name or "?"
                 if tostring(n):lower():find("precis") or tostring(n):lower():find("farm") then
