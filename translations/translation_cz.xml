@@ -202,7 +202,7 @@
     <e k="sf_hud_hint_edit" v="Táhnout: přesunout   Roh: změnit velikost   Pravé tlačítko/Shift+H: hotovo" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: přesunout/změnit velikost" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="Zjištěna nekompatibilita" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer Mod has been disabled because Precision Farming was detected. These two mods are not compatible and cannot be used together. Please remove the folder out of the mods folder." eh="9fb59f75" />
+    <e k="sf_incompatibility_pf_text" v="[EN] Soil &amp; Fertilizer has been turned off for this savegame because Precision Farming is active. The two mods both manage soil nutrients and cannot run at the same time. You do not need to delete this mod. To use Soil &amp; Fertilizer instead, just disable Precision Farming for this savegame in the mod selection screen." eh="91dbcf1b" />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)

@@ -33,7 +33,7 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 > Want to be part of our community? Share tips, report issues, and chat with other farmers on the **[FS25 Modding Community Discord](https://discord.gg/Th2pnq36)**!
 
 > [!CAUTION]
-> **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active and disables itself to prevent conflicts and data corruption. You must choose one or the other — they cannot run at the same time.
+> **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active for your savegame and disables itself to prevent conflicts and data corruption. Detection only triggers when Precision Farming is actually enabled for the save, not when it is merely installed in the mods folder, so you do not need to delete anything. To use Soil & Fertilizer instead, just disable Precision Farming for that savegame.
 
 
 ---

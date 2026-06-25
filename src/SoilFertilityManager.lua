@@ -655,7 +655,7 @@ function SoilFertilityManager:onMissionStarted()
         if self.pfBridge then
             self.hasPrecisionFarming = self.pfBridge:initialize()
             if self.hasPrecisionFarming then
-                SoilLogger.warning("Precision Farming detected! Soil & Fertilizer mod is NOT compatible and will be disabled.")
+                SoilLogger.warning("Precision Farming is active for this savegame. Soil & Fertilizer is not compatible with it and will disable itself.")
                 self.settings.enabled = false
                 self._disabledByPF = true  -- track that WE disabled it, not the player
 
