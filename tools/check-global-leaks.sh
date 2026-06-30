@@ -20,5 +20,5 @@ if [ -n "$LEAKS" ]; then
     echo ""
 fi
 
-echo "check-global-leaks done (exit 0 — scope-unaware; review above if any)"
+echo "check-global-leaks done (exit 0 - scope-unaware; review above if any)"
 exit 0

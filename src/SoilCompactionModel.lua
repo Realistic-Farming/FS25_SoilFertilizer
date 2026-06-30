@@ -15,7 +15,7 @@
 --   When VTP is installed it exposes a live, transition-interpolated effective pressure
 --   in bar via vehicle:vtpGetDashboardPressureBar(). Surface contact pressure ≈ tyre
 --   inflation pressure (PSU), so we read that bar value DIRECTLY as our surface pressure
---   — airing down to FIELD mode automatically lowers compaction. With VTP absent we
+--   - airing down to FIELD mode automatically lowers compaction. With VTP absent we
 --   approximate contact pressure from live wheel geometry instead.
 --
 -- The vehicle/VTP reads live here; the scoring math (scorePoints / advanceWetness) is

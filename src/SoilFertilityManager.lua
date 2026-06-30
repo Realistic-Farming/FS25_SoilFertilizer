@@ -31,11 +31,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
 
     -- Settings
     if not Settings then
-        SoilLogger.error("CRITICAL: Settings not loaded — check source order in main.lua")
+        SoilLogger.error("CRITICAL: Settings not loaded - check source order in main.lua")
         return nil
     end
     if not SettingsManager then
-        SoilLogger.error("CRITICAL: SettingsManager not loaded — check source order in main.lua")
+        SoilLogger.error("CRITICAL: SettingsManager not loaded - check source order in main.lua")
         return nil
     end
     self.settingsManager = SettingsManager.new()
@@ -51,11 +51,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     end
     self.soilSystem = SoilFertilitySystem.new(self.settings)
 
-    -- Sprayer rate manager (always active — not GUI-dependent)
+    -- Sprayer rate manager (always active - not GUI-dependent)
     self.sprayerRateManager = SprayerRateManager.new()
     self._autoRateTimer = 0  -- throttle timer for auto-rate updates
 
-    -- Smart Sensor manager (always active — tracks per-vehicle sensor states)
+    -- Smart Sensor manager (always active - tracks per-vehicle sensor states)
     self.sensorManager = SoilSensorManager and SoilSensorManager.new() or nil
 
     -- GUI initialization (client only)
@@ -111,7 +111,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Version dialog registered")
         end
 
-        -- PDA help dialog (legacy — kept for backward compat)
+        -- PDA help dialog (legacy - kept for backward compat)
         if SoilHelpDialog and g_gui then
             SoilHelpDialog.register(modDirectory)
             SoilLogger.info("Soil Help dialog registered")
@@ -208,7 +208,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     SoilLogger.warning("HUD toggle (J) PLAYER registration failed")
                 end
 
-                -- Map layer cycle (Shift+M) — registered in PLAYER context only
+                -- Map layer cycle (Shift+M) - registered in PLAYER context only
                 -- (pause-menu map is accessible regardless of context, but the key
                 --  is intended for on-foot use; Shift+M avoids VEHICLE conflicts)
                 if g_SoilFertilityManager.soilMapOverlay then
@@ -224,7 +224,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Settings panel (Shift+O) — registered in PLAYER context
+                -- Settings panel (Shift+O) - registered in PLAYER context
                 if g_SoilFertilityManager.settingsPanel then
                     local spOk, spId = g_inputBinding:registerActionEvent(
                         InputAction.SF_OPEN_SETTINGS, g_SoilFertilityManager,
@@ -238,7 +238,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) — PLAYER context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - PLAYER context
                 if g_SoilFertilityManager.soilHUD then
                     local dragOk, dragId = g_inputBinding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -252,7 +252,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Minimap zoom cycle — PLAYER context
+                -- Minimap zoom cycle - PLAYER context
                 if g_SoilFertilityManager.soilMapOverlay then
                     local zoomOk, zoomId = g_inputBinding:registerActionEvent(
                         InputAction.SF_MINIMAP_ZOOM, g_SoilFertilityManager,
@@ -266,7 +266,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Field scout (SF_SCOUT, default Shift+K) — PLAYER context.
+                -- Field scout (SF_SCOUT, default Shift+K) - PLAYER context.
                 -- Opens the Scout panel for the field you're standing on.
                 if InputAction.SF_SCOUT then
                     local scoutOk, scoutId = g_inputBinding:registerActionEvent(
@@ -281,7 +281,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Treatment panel (SF_TREATMENT, default Shift+T) — PLAYER context.
+                -- Treatment panel (SF_TREATMENT, default Shift+T) - PLAYER context.
                 if InputAction.SF_TREATMENT then
                     local trOk, trId = g_inputBinding:registerActionEvent(
                         InputAction.SF_TREATMENT, g_SoilFertilityManager,
@@ -337,7 +337,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 -- Purge any stale event IDs from a previous registration pass.
                 -- endActionEventsModification fires on every vehicle mount/seat change
                 -- (including Courseplay seat cycling). Without cleanup, duplicate
-                -- registrations accumulate — callbacks fire 2-3× per keypress and
+                -- registrations accumulate - callbacks fire 2-3× per keypress and
                 -- SF_HUD_DRAG (Shift+H) toggles edit mode.
                 --
                 -- IMPORTANT: Also purge PLAYER context event IDs here. FS25's
@@ -436,7 +436,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) — VEHICLE context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - VEHICLE context
                 if g_SoilFertilityManager.soilHUD then
                     local vDragOk, vDragId = binding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -450,7 +450,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Minimap zoom cycle — VEHICLE context (minimap is visible while driving)
+                -- Minimap zoom cycle - VEHICLE context (minimap is visible while driving)
                 if g_SoilFertilityManager.soilMapOverlay then
                     local vZoomOk, vZoomId = binding:registerActionEvent(
                         InputAction.SF_MINIMAP_ZOOM, g_SoilFertilityManager,
@@ -464,7 +464,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- Map layer cycle — VEHICLE context (#609: minimap layers visible while driving)
+                -- Map layer cycle - VEHICLE context (#609: minimap layers visible while driving)
                 if g_SoilFertilityManager.soilMapOverlay then
                     local vMapOk, vMapId = binding:registerActionEvent(
                         InputAction.SF_CYCLE_MAP_LAYER, g_SoilFertilityManager,
@@ -571,13 +571,13 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         for modName, _ in pairs(g_modIsLoaded) do
             local lowerName = string.lower(tostring(modName))
             if lowerName:find("realisticharvesting") or lowerName:find("realistic_harvesting") then
-                SoilLogger.info("RealisticHarvesting detected — harvest hooks appended safely; soil updates fire if FruitUtil still present")
+                SoilLogger.info("RealisticHarvesting detected - harvest hooks appended safely; soil updates fire if FruitUtil still present")
             elseif lowerName:find("croprotation") or lowerName:find("crop_rotation") then
-                SoilLogger.info("CropRotation detected — no conflict; separate crop tracking data")
+                SoilLogger.info("CropRotation detected - no conflict; separate crop tracking data")
             elseif lowerName:find("bettercontracts") then
-                SoilLogger.info("BetterContracts detected — profile-based UI creation ensures no settings page corruption")
+                SoilLogger.info("BetterContracts detected - profile-based UI creation ensures no settings page corruption")
             elseif lowerName:find("mudsystem") or lowerName:find("mud_system") or lowerName:find("mudphysic") then
-                SoilLogger.info("MudSystem/terrain mod detected — no conflict with soil nutrients")
+                SoilLogger.info("MudSystem/terrain mod detected - no conflict with soil nutrients")
             end
         end
     end
@@ -586,7 +586,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
 end
 
 --- Called after mission is loaded (loadMission00Finished).
---- Initializes HUD and settings panel — fields not yet guaranteed populated at this point.
+--- Initializes HUD and settings panel - fields not yet guaranteed populated at this point.
 function SoilFertilityManager:onMissionLoaded()
     if not self.settings.enabled then return end
 
@@ -626,7 +626,7 @@ end
 
 --- Called when mission actually starts (Mission00.onStartMission).
 --- At this point the loading screen is gone, the player is in the world, and
---- g_fieldManager.fields is fully populated — safe to initialize the soil system.
+--- g_fieldManager.fields is fully populated - safe to initialize the soil system.
 function SoilFertilityManager:onMissionStarted()
     if not self.soilSystem then return end
 
@@ -637,7 +637,7 @@ function SoilFertilityManager:onMissionStarted()
 
     -- Auto-detect game colorblind mode (issue #539): if the player has enabled
     -- colorblind mode in game settings, mirror that into SF's colorblind setting.
-    -- Only activate — never force-disable if the user has explicitly turned it on.
+    -- Only activate - never force-disable if the user has explicitly turned it on.
     if not self.settings.colorblindMode and g_gameSettings then
         local ok, gameColorblind = pcall(function()
             return g_gameSettings:getValue("useColorblindMode")
@@ -648,7 +648,7 @@ function SoilFertilityManager:onMissionStarted()
         end
     end
 
-    SoilLogger.info("Mission started — checking for Precision Farming compatibility...")
+    SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
 
     local ok, err = pcall(function()
         -- Incompatibility check: if Precision Farming is present, disable our mod immediately.
@@ -670,7 +670,7 @@ function SoilFertilityManager:onMissionStarted()
                 -- PF is absent. Re-enable only if we were the ones who disabled it
                 -- (i.e. the player didn't manually turn the mod off themselves).
                 if self._disabledByPF then
-                    SoilLogger.info("Precision Farming not detected — re-enabling Soil & Fertilizer")
+                    SoilLogger.info("Precision Farming not detected - re-enabling Soil & Fertilizer")
                     self.settings.enabled = true
                     self._disabledByPF = false
                     self.settings:save()
@@ -679,21 +679,21 @@ function SoilFertilityManager:onMissionStarted()
         end
 
         if not self.settings.enabled then
-            SoilLogger.info("Mod disabled in settings — skipping soil system init")
+            SoilLogger.info("Mod disabled in settings - skipping soil system init")
             return
         end
 
         SoilLogger.info("Initializing soil system (fields guaranteed populated)...")
         self.soilSystem:initialize()
 
-        -- DMV minimap heatmap — must init AFTER soilSystem so layerSystem is ready
+        -- DMV minimap heatmap - must init AFTER soilSystem so layerSystem is ready
         if self.soilMinimapLayer then
             self.soilMinimapLayer:initialize()
         end
 
         self:loadSoilData()
 
-        -- Version "What's new" dialog — queued AFTER loadSoilData so the comparison uses the
+        -- Version "What's new" dialog - queued AFTER loadSoilData so the comparison uses the
         -- SAVED lastSeenVersion. It used to be queued before the load, which always compared
         -- against the "" default, so the dialog reappeared on every load and the
         -- "Don't show again" button never stuck (#665).
@@ -702,7 +702,7 @@ function SoilFertilityManager:onMissionStarted()
             local version = (modInfo and modInfo.version) or "?"
             SoilLogger.info("Version check: save=%s mod=%s", tostring(self.lastSeenVersion), tostring(version))
             if self.lastSeenVersion ~= version then
-                SoilLogger.info("New version detected — dialog queued (3s delay)")
+                SoilLogger.info("New version detected - dialog queued (3s delay)")
                 self._pendingVersionDialog      = version
                 self._pendingVersionDialogDelay = 3000
             end
@@ -719,7 +719,7 @@ function SoilFertilityManager:onMissionStarted()
     -- #677: schedule a one-shot re-assert of PLAYER-context input events ~2s after
     -- load. A load-order race can leave on-foot hotkeys (notably the settings panel,
     -- SF_OPEN_SETTINGS) unregistered in the active context until the player remaps the
-    -- key or cycles a vehicle — which matches the intermittent "shows in Controls but
+    -- key or cycles a vehicle - which matches the intermittent "shows in Controls but
     -- won't fire until I remap" report. Re-asserting after the mission has fully loaded
     -- (saved bindings applied) registers any event the first pass missed. Idempotent.
     if self.soilHUD then
@@ -728,7 +728,7 @@ function SoilFertilityManager:onMissionStarted()
     end
 end
 
---- #677: (re)register all PLAYER-context input events. Idempotent — each event is
+--- #677: (re)register all PLAYER-context input events. Idempotent - each event is
 --- only registered when its id field is nil, so this is safe to call repeatedly.
 --- Driven by the deferred post-load safety net (see onMissionStarted + update).
 --- Registers only in the PLAYER context and never removes anything, so it cannot
@@ -942,7 +942,7 @@ function SoilFertilityManager:onScoutInput()
 
     -- Detect the field underfoot. detectCurrentFieldId() actively probes the player's
     -- world position (works even with the HUD hidden); cachedFieldId is the last frame's
-    -- value as a fallback. (getCurrentFieldId never existed — that was the no-op bug.)
+    -- value as a fallback. (getCurrentFieldId never existed - that was the no-op bug.)
     local fieldId = nil
     if self.soilHUD.detectCurrentFieldId then
         local ok, cur = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
@@ -1197,7 +1197,7 @@ function SoilFertilityManager:loadSoilData()
 
     local savegamePath = g_currentMission.missionInfo.savegameDirectory
     if not savegamePath then
-        SoilLogger.warning("loadSoilData: savegameDirectory not set yet (new career or early load) — starting with defaults")
+        SoilLogger.warning("loadSoilData: savegameDirectory not set yet (new career or early load) - starting with defaults")
         return
     end
 
@@ -1224,7 +1224,7 @@ function SoilFertilityManager:loadSoilData()
         -- Push that data to the density map layers now so the PDA DMV overlay and minimap
         -- heatmap show real values immediately rather than after the first fertilizer event.
         -- GRLE minimap heatmap fills in per-pixel from sprayer events.
-        -- No bulk AABB seed here — see SoilFertilitySystem.lua loadFromXMLFile note.
+        -- No bulk AABB seed here - see SoilFertilitySystem.lua loadFromXMLFile note.
     end
 end
 
@@ -1288,7 +1288,7 @@ function SoilFertilityManager:update(dt)
                 SoilLogger.info("[DeferredInit] Fill type registration succeeded on retry #%d", self._deferredRetryCount)
             end
         elseif self._deferredRetryCount == 91 then
-            SoilLogger.warning("[DeferredInit] Fill types still unavailable after 90 retries — dedicated server may have incomplete fill type loading")
+            SoilLogger.warning("[DeferredInit] Fill types still unavailable after 90 retries - dedicated server may have incomplete fill type loading")
             self.soilSystem.hookManager._sprayTypesComplete = true  -- stop retrying
         end
     end
@@ -1306,7 +1306,7 @@ function SoilFertilityManager:update(dt)
         end
     end
 
-    -- Deferred version dialog — fired 3s after mission start so the GUI is stable.
+    -- Deferred version dialog - fired 3s after mission start so the GUI is stable.
     -- Must run BEFORE the settings.enabled guard so it shows even when mod is disabled.
     if self._pendingVersionDialog then
         self._pendingVersionDialogDelay = (self._pendingVersionDialogDelay or 0) - dt
@@ -1428,7 +1428,7 @@ function SoilFertilityManager:_checkVehicleCompaction()
     if not vehicle or not vehicle.rootNode then return end
     local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
     -- Cheap relevance gate: skip light vehicles (cars/quads) entirely. This is a perf
-    -- floor only — actual compaction is decided by ground pressure, not this threshold.
+    -- floor only - actual compaction is decided by ground pressure, not this threshold.
     if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
     local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
     if not (ok and x) then return end
@@ -1478,7 +1478,7 @@ function SoilFertilityManager:_checkVehicleCompaction()
         tostring(source), points, self._soilWetness01 or 0, steps)
 end
 
---- Auto-rate control update — throttled, client-side only.
+--- Auto-rate control update - throttled, client-side only.
 --- Reads the current field soil data and the loaded fill type, then computes the
 --- optimal sprayer rate index via calculateAutoRateIndex.  Sends a network rate
 --- event only when the index actually changes to avoid unnecessary traffic.
@@ -1565,7 +1565,7 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
     local limits  = SoilConstants.NUTRIENT_LIMITS
     local phMin   = limits and limits.PH_MIN or 5.0
 
-    -- Safe multiplier bounds — never exceed BURN_RISK_THRESHOLD
+    -- Safe multiplier bounds - never exceed BURN_RISK_THRESHOLD
     local MULT_MIN = 0.20
     local MULT_MAX = 1.20
 
@@ -1575,11 +1575,11 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
 
     if profile then
         if profile.pestReduction then
-            -- Insecticide: always apply at full rate (preventive/curative — not pressure-scaled)
+            -- Insecticide: always apply at full rate (preventive/curative - not pressure-scaled)
             multiplier = 1.0
 
         elseif profile.diseaseReduction then
-            -- Fungicide: always apply at full rate (preventive/curative — not pressure-scaled)
+            -- Fungicide: always apply at full rate (preventive/curative - not pressure-scaled)
             multiplier = 1.0
 
         else
@@ -1633,7 +1633,7 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                 -- Organic product. Size the pass by whichever need is bigger: organic matter
                 -- OR the N/P/K it carries. Driving off OM deficit alone starved a nutrient-rich
                 -- organic (chicken / pelletized manure) on a field that was already high in OM
-                -- but low in N/P/K — the exact situation a player reaches for it (#668).
+                -- but low in N/P/K - the exact situation a player reaches for it (#668).
                 local omDeficit  = math.max(0, targets.OM - fieldData.organicMatter) / math.max(0.01, targets.OM)
                 local npkDeficit = weightedNutrientDeficit(false) or 0
                 local effective  = math.max(omDeficit, npkDeficit)
@@ -1655,10 +1655,10 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
         end
 
     else
-        -- Not in FERTILIZER_PROFILES — check if it is a herbicide type
+        -- Not in FERTILIZER_PROFILES - check if it is a herbicide type
         local herbTypes = SoilConstants.WEED_PRESSURE and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES
         if herbTypes and herbTypes[fillType.name] then
-            -- Herbicide: always apply at full rate (preventive/knockdown — not weed-pressure-scaled)
+            -- Herbicide: always apply at full rate (preventive/knockdown - not weed-pressure-scaled)
             multiplier = 1.0
         end
         -- Unknown product type: leave at 1.0 (no adjustment)

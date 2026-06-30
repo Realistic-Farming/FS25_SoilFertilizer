@@ -1,11 +1,11 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Version / Changelog Dialog
+-- FS25 Soil & Fertilizer - Version / Changelog Dialog
 -- =========================================================
 -- Shown once per mod version on first savegame load.
 -- Changelog lines are intentionally hardcoded here and will
 -- NOT be translated (version notes are always in English).
 --
--- Add as many lines as needed to CHANGELOG — the BoxLayout
+-- Add as many lines as needed to CHANGELOG - the BoxLayout
 -- in the XML stacks them automatically, no fixed slots.
 -- =========================================================
 -- Author: TisonK
@@ -20,7 +20,7 @@ local SF_VER_MOD_DIR  = g_currentModDirectory
 
 SoilVersionDialog.INSTANCE = nil
 
--- Hardcoded changelog for this release — update each version bump.
+-- Hardcoded changelog for this release - update each version bump.
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
@@ -174,7 +174,7 @@ function SoilVersionDialog:_buildChangelogLines()
         if lineText:match("^v%d") then
             profile = profileVersion or profileLine
         elseif lineText:match("^%s%s") then
-            -- Indented continuation — strip leading spaces, re-indent.
+            -- Indented continuation - strip leading spaces, re-indent.
             displayText = "    " .. lineText:match("^%s*(.+)$")
             profile = profileIndent or profileLine
         elseif lineText:match("^%- ") then

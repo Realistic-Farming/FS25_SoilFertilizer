@@ -2,7 +2,7 @@
 -- FS25 Realistic Soil & Fertilizer - Variable Rate Panel
 -- =========================================================
 -- In-vehicle overlay for System 3 (Variable Rate Application).
--- Shows a row of colored bars — one per active boom section —
+-- Shows a row of colored bars - one per active boom section -
 -- visualising the computed rate multiplier for each section.
 --   Red   bar = deep deficit, high rate (>1.0x)
 --   Yellow bar = moderate deficit, near-normal rate (~1.0x)
@@ -302,7 +302,7 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     setTextColor(statusC[1], statusC[2], statusC[3], 1.0)
     renderText(tx, infoY + infoH * 0.25, fsDim, g_i18n:getText("sf_var_rate_label") .. "  " .. statusStr)
 
-    -- Key hint — only shown when SF_VARIABLE_RATE is actually bound
+    -- Key hint - only shown when SF_VARIABLE_RATE is actually bound
     if keyVR and keyVR ~= "" then
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilVariableRatePanel.C_DIM[1], SoilVariableRatePanel.C_DIM[2],

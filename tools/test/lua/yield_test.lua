@@ -1,7 +1,7 @@
--- yield_test.lua — the shared field-average yield helper _yieldModifierFromNutrients.
+-- yield_test.lua - the shared field-average yield helper _yieldModifierFromNutrients.
 -- Guards the one formula that the harvest path and the soil monitor both read (see the
 -- "yield is field-average, monitor mirrors it" project note). Expected values are derived
--- from the constants so tuning changes don't false-fail the test — it checks the formula.
+-- from the constants so tuning changes don't false-fail the test - it checks the formula.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
 
 local ys     = SoilConstants.YIELD_SENSITIVITY

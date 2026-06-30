@@ -49,7 +49,7 @@ source(modDirectory .. "src/maps/SoilBundledMaps.lua")
 source(modDirectory .. "src/SprayerRateManager.lua")
 source(modDirectory .. "src/SoilSensorManager.lua")
 -- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its
--- daily loop can consult FieldSentry_API. Backend only — no UI, no equation changes.
+-- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 
@@ -105,7 +105,7 @@ do
         table.insert(dmhm.modDensityHeightMapTypeFilenames, xmlPath)
         SoilLogger.info("[HEIGHT] Registered xml/densityMapHeightTypes.xml with DMHM mod file list")
     else
-        SoilLogger.warning("[HEIGHT] g_densityMapHeightManager not available at load time — height types will rely on Lua fallback")
+        SoilLogger.warning("[HEIGHT] g_densityMapHeightManager not available at load time - height types will rely on Lua fallback")
     end
 end
 
@@ -121,7 +121,7 @@ if g_overlayManager then
     _helplineAtlasRegistered = true
     SoilLogger.info("Helpline icon atlas registered (early)")
 else
-    SoilLogger.warning("g_overlayManager not available at load time — will retry in loadedMission")
+    SoilLogger.warning("g_overlayManager not available at load time - will retry in loadedMission")
 end
 
 -- Globals
@@ -152,7 +152,7 @@ end
 local function loadedMission(mission, node)
     if mission.cancelLoading then return end
     if sfm == nil then
-        SoilLogger.error("loadedMission: sfm is nil — SoilFertilityManager.new() failed during load(), mod will not function")
+        SoilLogger.error("loadedMission: sfm is nil - SoilFertilityManager.new() failed during load(), mod will not function")
         return
     end
     sfm:onMissionLoaded()
@@ -272,10 +272,10 @@ local function loadedMission(mission, node)
                     SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround hooked")
                 end
             else
-                SoilLogger.warning("[TIP FIX] FERTILIZER template not found in DMHM — tip injection skipped")
+                SoilLogger.warning("[TIP FIX] FERTILIZER template not found in DMHM - tip injection skipped")
             end
         else
-            SoilLogger.warning("[TIP FIX] g_densityMapHeightManager not available at loadedMission — tip injection skipped")
+            SoilLogger.warning("[TIP FIX] g_densityMapHeightManager not available at loadedMission - tip injection skipped")
         end
     end
 
@@ -289,7 +289,7 @@ local function loadedMission(mission, node)
             _helplineAtlasRegistered = true
             SoilLogger.info("Helpline icon atlas registered (fallback at loadedMission)")
         else
-            SoilLogger.warning("g_overlayManager still nil at loadedMission — helpline icons will be missing")
+            SoilLogger.warning("g_overlayManager still nil at loadedMission - helpline icons will be missing")
         end
     end
 
@@ -364,7 +364,7 @@ local function loadedMission(mission, node)
             end
         end
         if failed > 0 then
-            SoilLogger.warning("HUD icon patch: createImageOverlay unavailable — %d icons not updated (filename only)", failed)
+            SoilLogger.warning("HUD icon patch: createImageOverlay unavailable - %d icons not updated (filename only)", failed)
         else
             SoilLogger.info("Custom HUD icons patched for %d mod fill types (overlay + filename)", patched)
         end
@@ -404,7 +404,7 @@ local function load(mission)
 
         sfm = SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         if sfm == nil then
-            SoilLogger.error("CRITICAL: SoilFertilityManager.new() returned nil — check that all source files loaded correctly and that Settings/SettingsManager are available")
+            SoilLogger.error("CRITICAL: SoilFertilityManager.new() returned nil - check that all source files loaded correctly and that Settings/SettingsManager are available")
             return
         end
         getfenv(0)["g_SoilFertilityManager"] = sfm
@@ -452,7 +452,7 @@ local function hookSaveLoadEvents()
     --           → missionInfo:setSavegameDirectory(savegameDirectory)   ← sets tempsavegame path
     --           → missionInfo:saveToXMLFile()                           ← THIS is what we hook
     --
-    -- The old Mission00.saveToXMLFile hook was a ghost — that method does not exist on
+    -- The old Mission00.saveToXMLFile hook was a ghost - that method does not exist on
     -- Mission00 and was never called by FS25 1.17, so soilData.xml was never written.
     --
     -- At the time our appended function fires, missionInfo.savegameDirectory already
@@ -484,13 +484,13 @@ local function hookSaveLoadEvents()
                         g_SoilFertilityManager.soilHUD:saveLayout()
                     end
                 else
-                    SoilLogger.warning("g_SoilFertilityManager is NIL — soil data NOT saved!")
+                    SoilLogger.warning("g_SoilFertilityManager is NIL - soil data NOT saved!")
                 end
             end
         )
         SoilLogger.info("Save hook installed on FSCareerMissionInfo:saveToXMLFile")
     else
-        SoilLogger.warning("FSCareerMissionInfo.saveToXMLFile not found — soil data will NOT be saved")
+        SoilLogger.warning("FSCareerMissionInfo.saveToXMLFile not found - soil data will NOT be saved")
     end
 
     -- Load is handled in SoilFertilityManager:onMissionStarted() after soilSystem:initialize().
@@ -596,7 +596,7 @@ end
 --
 -- Root cause (documented after three failed hook attempts):
 --   DensityMapHeightManager.loadMapData runs before fill types are available.
---   FillTypeManager.loadMapData appended hook also fires too early — the engine
+--   FillTypeManager.loadMapData appended hook also fires too early - the engine
 --   processes <fillTypes> from modDesc.xml in a separate pass AFTER loadMapData
 --   returns, so our fill types are nil at every earlier hook point.
 --   The only guaranteed-safe window is Mission00.loadMission00Finished, where
@@ -604,13 +604,13 @@ end
 --   patching working in the same callback).
 
 -- Route mouse events to SoilHUD (for drag/resize edit mode).
--- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) — not via RMB.
+-- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) - not via RMB.
 -- RMB only exits edit mode (and only when this mod is already in edit mode).
 -- This guarantees RMB is never consumed during normal play, preserving
 -- CoursePlay, AutoDrive, and other mods that rely on RMB.
 local soilMouseHandler = {}
 function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed)
-    -- Tuning panel eats input when open (checked before settings panel — both can't be open simultaneously)
+    -- Tuning panel eats input when open (checked before settings panel - both can't be open simultaneously)
     if sfm and sfm.tuningPanel and sfm.tuningPanel:isOpen() then
         local consumed = sfm.tuningPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         eventUsed = consumed or eventUsed
@@ -762,8 +762,8 @@ function SoilPFDump()
         return "PF dump written to log (check console output)"
     end
     -- Bridge created in SoilFertilityManager.new() so this only happens before mission load.
-    print("[SoilPFDump] SF bridge not yet initialised — load a savegame first, then run SoilPFDump")
-    return "Bridge not ready — load savegame first"
+    print("[SoilPFDump] SF bridge not yet initialised - load a savegame first, then run SoilPFDump")
+    return "Bridge not ready - load savegame first"
 end
 
 -- Expose global console functions

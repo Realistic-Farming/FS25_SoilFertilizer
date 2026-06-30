@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <!--
     Soil PDA Screen
-    InGameMenu page — Controller: SoilPDAScreen (src/ui/SoilPDAScreen.lua)
+    InGameMenu page - Controller: SoilPDAScreen (src/ui/SoilPDAScreen.lua)
 
     Layout:
-      LEFT  (460px) — context-sensitive sidebar:
+      LEFT  (460px) - context-sensitive sidebar:
           Overview tab  → Full field list (N/P/K/pH/OM/Status), clickable → field detail
           Map tab       → Simple jump list (Field# + Status chip), clickable → centers mini-map
           Treatment tab → Summary stats + hint text
-      RIGHT (1000px) — tab content panels (3 tabs: Overview, Soil Map, Treatment)
+      RIGHT (1000px) - tab content panels (3 tabs: Overview, Soil Map, Treatment)
 -->
 <GUI name="menuSoilFertilizer">
   <GuiElement profile="fs25_menuContainer">
@@ -22,7 +22,7 @@
 </GuiElement>
 
     <!-- ══════════════════════════════════════════════════════════════
-         LEFT COLUMN — 460px wide, 700px tall, context-sensitive
+         LEFT COLUMN - 460px wide, 700px tall, context-sensitive
          ══════════════════════════════════════════════════════════════ -->
     <ThreePartBitmap width="460px" height="700px" position="0px 100px">
       <GuiElement profile="fs25_subCategoryContainer" width="420px">
@@ -83,7 +83,7 @@
     </ThreePartBitmap>
 
     <!-- ══════════════════════════════════════════════════════════════
-         RIGHT COLUMN — 1000px wide, 700px tall, tabbed content
+         RIGHT COLUMN - 1000px wide, 700px tall, tabbed content
          ══════════════════════════════════════════════════════════════ -->
     <GuiElement id="rightPanel" position="500px 100px" width="1000px" height="700px">
 
@@ -151,7 +151,7 @@
               position="0px 350px" size="1000px 40px" visible="false"/>
       </GuiElement>
 
-      <!-- Tab bar — 2 tabs, evenly spaced -->
+      <!-- Tab bar - 2 tabs, evenly spaced -->
       <GuiElement id="tabBar" profile="emptyPanel" position="0px 668px" width="1000px" height="58px">
         <Text   profile="sf_tabLabel"     id="tabLabelOverview"      text="$l10n_sf_pda_section_farm_overview" onClick="onClickTabOverview"   position="0px 30px" size="500px 28px"/>
         <Bitmap profile="sf_tabUnderline" id="tabUnderlineOverview"                                                                            position="0px 28px" size="500px 2px"/>

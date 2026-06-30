@@ -1,4 +1,4 @@
-name: Issue — Welcome & Label
+name: Issue - Welcome & Label
 
 on:
   issues:
@@ -40,7 +40,7 @@ jobs:
               `- [ ] You are running the latest version of ${modName} (visible in the mod manager)`,
               `- [ ] Your issue includes relevant lines from \`log.txt\``,
               `  - Log location: \`Documents/My Games/FarmingSimulator2025/log.txt\``,
-              `  - Search for \`[${modName}]\` — paste the relevant section in your issue`,
+              `  - Search for \`[${modName}]\` - paste the relevant section in your issue`,
               `- [ ] You have searched [existing issues](https://github.com/${context.repo.owner}/${repoName}/issues) for a similar report`,
               ``,
               `> **Important:** If this issue is missing a log snippet, it may be closed without investigation. A log is almost always required to reproduce bugs.`,

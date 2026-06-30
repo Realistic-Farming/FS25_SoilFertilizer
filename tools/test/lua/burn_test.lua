@@ -1,4 +1,4 @@
--- burn_test.lua — over-application burn metering (#649 / 0bc748c).
+-- burn_test.lua - over-application burn metering (#649 / 0bc748c).
 -- Verifies applyBurnEffect docks a slice proportional to elapsed over-spray time,
 -- caps the total per pass, ignores sibling sections (dt==0), and does nothing on the
 -- first tick of a pass.
@@ -48,7 +48,7 @@ do
   T.eq("burn: sibling section (dt==0) adds no extra dock", field.pH, afterFirst)
 end
 
--- Sustained over-spray ramps to — and caps at — the full per-pass magnitude.
+-- Sustained over-spray ramps to - and caps at - the full per-pass magnitude.
 do
   local field = { pH = 7.0, nitrogen = 60 }
   local sys = newSys(field)
@@ -130,7 +130,7 @@ do
   T.eq("amend burn: sibling section (dt==0) adds nothing", field.amendBurnPenalty, afterFirst)
 end
 
--- Sustained application ramps to — and caps at — the full magnitude.
+-- Sustained application ramps to - and caps at - the full magnitude.
 do
   local field = {}
   local sys = newSys(field)

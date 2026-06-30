@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — PDA Screen
+-- FS25 Soil & Fertilizer - PDA Screen
 -- =========================================================
 -- Registers a dedicated page in the InGameMenu (PDA) with
 -- two tabs: Farm Overview and Treatment Plan.
@@ -589,7 +589,7 @@ function SoilPDAScreen:_buildFieldData()
         
         -- Check filter.
         -- fieldId in soilSystem is the FARMLAND ID (set from field.farmland.id in the
-        -- sprayer hook), so we query getFarmlandOwner directly — no field lookup needed.
+        -- sprayer hook), so we query getFarmlandOwner directly - no field lookup needed.
         if self.filterOwnedOnly and farmId and farmId > 0 and g_farmlandManager then
             local owner = g_farmlandManager:getFarmlandOwner(fieldId)
             if owner ~= farmId then
@@ -971,7 +971,7 @@ local function _onUpdate(mission, dt)
 end
 
 local function _onDelete(mission)
-    -- Nothing to clean up — g_inGameMenu owns the page reference
+    -- Nothing to clean up - g_inGameMenu owns the page reference
 end
 
 -- Register a keyboard shortcut (SF_SOIL_PDA → Shift+P) for quick PDA toggle

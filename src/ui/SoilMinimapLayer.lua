@@ -8,16 +8,16 @@
 --   • One DMV overlay per layer, created lazily on first switch.
 --     The engine allows max 8 unique GRLE handles per overlay;
 --     using separate overlays means each overlay only ever sees
---     its own single handle — no accumulation, no engine limit hit.
+--     its own single handle - no accumulation, no engine limit hit.
 --   • State colours are configured once per overlay and never
 --     change at runtime, so re-generation after field data changes
 --     is just generateDensityMapVisualizationOverlay(ov) with no
 --     colour reconfiguration needed.
---   • generateDensityMapVisualizationOverlay is called in-place —
+--   • generateDensityMapVisualizationOverlay is called in-place -
 --     the engine keeps the previous result visible while the new
 --     generation runs async, so there is no flicker.
 --   • Only regenerates when data has changed (_dirty flag) or the
---     active layer changes — idle play costs nothing.
+--     active layer changes - idle play costs nothing.
 --   • getIsDensityMapVisualizationOverlayReady is polled every
 --     200 ms, not every frame, to avoid per-frame overhead.
 --
@@ -57,7 +57,7 @@ end
 function SoilMinimapLayer:initialize()
     if g_dedicatedServer then return false end
     if createDensityMapVisualizationOverlay == nil then
-        SoilLogger.warning("SoilMinimapLayer: createDensityMapVisualizationOverlay not available — using polygon-fill fallback")
+        SoilLogger.warning("SoilMinimapLayer: createDensityMapVisualizationOverlay not available - using polygon-fill fallback")
         return false
     end
     if not g_farmlandManager then return false end
@@ -122,7 +122,7 @@ function SoilMinimapLayer:update(dt, soilMapOverlay)
 
     local now = (g_currentMission and g_currentMission.time) or 0
 
-    -- Poll async build (throttled — not every frame)
+    -- Poll async build (throttled - not every frame)
     if now >= self._nextPollMs then
         self._nextPollMs = now + SoilMinimapLayer.POLL_INTERVAL_MS
         self:_pollBuildFinished()
@@ -165,7 +165,7 @@ local LAYER_FIELD_KEYS = {
     [3]  = "potassium",
     [4]  = "pH",
     [5]  = "organicMatter",
-    -- [6] = urgency: computed from N/P/K — no density map layer
+    -- [6] = urgency: computed from N/P/K - no density map layer
     [7]  = "weed",
     [8]  = "pestPressure",
     [9]  = "diseasePressure",
@@ -240,7 +240,7 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
 
     -- ── Per-pixel GRLE path (nutrients + pest/disease/compaction) ─────────────
     -- Each layer gets its own dedicated overlay so each overlay only ever has
-    -- one GRLE handle registered — avoids the engine's 8-handle-per-overlay limit.
+    -- one GRLE handle registered - avoids the engine's 8-handle-per-overlay limit.
     if layerSystem and layerSystem.available and fieldKey and fieldKey ~= "weed" then
         local grleEntry = layerSystem:getLayerEntryForField(fieldKey)
         if grleEntry then
@@ -276,7 +276,7 @@ end
 -- ── Rendering ─────────────────────────────────────────────
 
 -- Called from IngameMap.drawFields with the actual IngameMap instance being drawn.
--- Fires for both the HUD minimap and the PDA fullscreen map — guards handle each.
+-- Fires for both the HUD minimap and the PDA fullscreen map - guards handle each.
 function SoilMinimapLayer:draw(mapSelf)
     if not self._initialized then return end
     if not mapSelf then return end
@@ -289,7 +289,7 @@ function SoilMinimapLayer:draw(mapSelf)
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
 
     if not self._usingDensityLayers then
-        -- No GRLE density-map layers on this terrain — hand off to polygon centroid dots.
+        -- No GRLE density-map layers on this terrain - hand off to polygon centroid dots.
         local sfm = g_SoilFertilityManager
         if sfm and sfm.soilMapOverlay then
             sfm.soilMapOverlay:onDrawMinimap(mapSelf)
@@ -310,10 +310,10 @@ function SoilMinimapLayer:draw(mapSelf)
     if not layout then return end
 
     -- Draw the layer indicator before any overlay-readiness or layout-type guards
-    -- that might return early. mapSelf inherits HUDElement — getPosition/getWidth/
+    -- that might return early. mapSelf inherits HUDElement - getPosition/getWidth/
     -- getHeight return the minimap widget's screen-space bounds.
     -- Note: getPosition() returns two values (x, y); capture into locals so both
-    -- are passed correctly — mid-list function calls drop extra return values in Lua.
+    -- are passed correctly - mid-list function calls drop extra return values in Lua.
     local wx, wy = mapSelf:getPosition()
     self:drawLayerIndicator(wx, wy, mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
 

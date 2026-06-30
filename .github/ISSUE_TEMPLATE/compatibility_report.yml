@@ -78,8 +78,8 @@ body:
     id: isolation
     attributes:
       label: Isolation Test
-      description: Did you confirm the issue disappears when the conflicting mod is removed? This is important — without this step we cannot tell which mod is the source.
-      placeholder: "Yes — removing FS25_SeasonalCropStress makes fertility persist correctly."
+      description: Did you confirm the issue disappears when the conflicting mod is removed? This is important - without this step we cannot tell which mod is the source.
+      placeholder: "Yes - removing FS25_SeasonalCropStress makes fertility persist correctly."
     validations:
       required: true
 

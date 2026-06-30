@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Treatment Prescription Dialog
+-- FS25 Soil & Fertilizer - Treatment Prescription Dialog
 -- =========================================================
 -- Provides actionable advice on which products to apply
 -- to a field based on its current nutrient and pressure status.

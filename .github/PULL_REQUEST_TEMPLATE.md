@@ -16,8 +16,8 @@
 
 ## How Was This Tested?
 
-- [ ] Singleplayer — loaded a savegame, no errors in log.txt
-- [ ] Multiplayer — tested as host and/or client
+- [ ] Singleplayer - loaded a savegame, no errors in log.txt
+- [ ] Multiplayer - tested as host and/or client
 
 - [ ] Relevant console commands ran (`SoilFieldInfo`, `SoilShowSettings`, etc.)
 
@@ -27,11 +27,11 @@
 
 - [ ] I read `DEVELOPMENT.md` before writing code
 - [ ] I targeted the `development` branch (not `main`)
-- [ ] My change touches only what it needs to — no unrelated edits
+- [ ] My change touches only what it needs to - no unrelated edits
 - [ ] If I added a setting: one entry in `SettingsSchema.lua` + `_short`/`_long` translations in `modDesc.xml` for all 10 languages
 - [ ] If I changed crop/fertilizer values: they're in `Constants.lua`, not hardcoded
 - [ ] If I changed behaviour: `CHANGELOG.md` has an entry under the correct version
-- [ ] No `assert()` calls — errors are handled gracefully with `pcall()`
+- [ ] No `assert()` calls - errors are handled gracefully with `pcall()`
 - [ ] No Lua 5.2+ syntax (`goto`, `continue`, `os.time()`, etc.)
 
 ## Screenshots / Log Output (if relevant)

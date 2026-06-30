@@ -1,4 +1,4 @@
--- coverage_test.lua — spray-coverage accounting, incl. the #650 dry-spreader fix.
+-- coverage_test.lua - spray-coverage accounting, incl. the #650 dry-spreader fix.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
 
 -- Build a `self` that resolves SoilFertilitySystem methods (so self:method() works)

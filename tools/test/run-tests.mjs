@@ -1,4 +1,4 @@
-// run-tests.mjs — offline logic tests for FS25_SoilFertilizer.
+// run-tests.mjs - offline logic tests for FS25_SoilFertilizer.
 //
 // For each tools/test/lua/*_test.lua, builds a single Lua program of:
 //   prelude.lua  +  the src modules it declares  +  the test file  +  T.summary()
@@ -74,7 +74,7 @@ for (const tf of testFiles) {
 
   if (rc !== 0) {
     hadError = true;
-    console.log(c.red(`✗ ${c.bold(tf)} — Lua error while loading/running:`));
+    console.log(c.red(`✗ ${c.bold(tf)} - Lua error while loading/running:`));
     console.log(`  ${c.red(errMsg || "(no message)")}`);
     continue;
   }
@@ -92,6 +92,6 @@ for (const tf of testFiles) {
 console.log(
   "\n" +
     (totalFail === 0 && !hadError ? c.green("PASS") : c.red("FAIL")) +
-    ` — ${totalPass} assertion${totalPass === 1 ? "" : "s"} passed, ${totalFail} failed across ${testFiles.length} file${testFiles.length === 1 ? "" : "s"}.`
+    ` - ${totalPass} assertion${totalPass === 1 ? "" : "s"} passed, ${totalFail} failed across ${testFiles.length} file${testFiles.length === 1 ? "" : "s"}.`
 );
 process.exit(totalFail === 0 && !hadError ? 0 : 1);

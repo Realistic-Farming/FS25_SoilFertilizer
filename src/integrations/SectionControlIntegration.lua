@@ -35,7 +35,7 @@ function SoilUtils.getSectionCoverageFraction(vehicle)
     local total  = #vww.sections
     for _, section in ipairs(vww.sections) do
         -- isCenter sections are never added to sectionsLeft/sectionsRight so
-        -- updateSectionStates never touches their isActive flag — guard explicitly.
+        -- updateSectionStates never touches their isActive flag - guard explicitly.
         if section.isActive or section.isCenter then
             active = active + 1
         end
@@ -45,7 +45,7 @@ function SoilUtils.getSectionCoverageFraction(vehicle)
 end
 
 if VariableWorkWidth ~= nil then
-    SoilLogger.info("[SectionControl] VariableWorkWidth found — section coverage fraction helper active")
+    SoilLogger.info("[SectionControl] VariableWorkWidth found - section coverage fraction helper active")
 else
-    SoilLogger.info("[SectionControl] VariableWorkWidth not found — coverage helper returns 1.0 (no-op)")
+    SoilLogger.info("[SectionControl] VariableWorkWidth not found - coverage helper returns 1.0 (no-op)")
 end

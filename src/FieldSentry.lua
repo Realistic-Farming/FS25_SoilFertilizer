@@ -77,7 +77,7 @@ local function fsLog(level, fmt, ...)
 end
 
 -- =========================================================
--- Phase 2 — contract provider registry (#654)
+-- Phase 2 - contract provider registry (#654)
 -- =========================================================
 -- External mods (e.g. NPCFavor) register a callback reporting whether a field is under
 -- one of their contracts. The soil sim stays fully decoupled: it never references
@@ -177,7 +177,7 @@ local function evaluate(f)
         if f.hints then f.hints.contractExempt = nil; f.hints.favorTier = nil end
     end
 
-    -- Classification: deco / fake field (Phase 4, #651). Deterministic signals only — an
+    -- Classification: deco / fake field (Phase 4, #651). Deterministic signals only - an
     -- author/player hint (decoHint) or an injected foliage/no-fruit detector result
     -- (decoDetected). Field size and crop history are deliberately ignored.
     if f.decoHint or f.decoDetected then
@@ -236,13 +236,13 @@ function FieldSentry_API.getUIStatus(fieldId)
 end
 
 -- =========================================================
--- Cross-mod bridge (#83 — FarmTablet FieldSentry app)
+-- Cross-mod bridge (#83 - FarmTablet FieldSentry app)
 -- =========================================================
 -- FS25 scopes mod globals per-mod, so FieldSentry_API is invisible to other mods.
 -- Publish a small read + control surface on g_currentMission (a shared C++ object)
 -- so the FarmTablet app can show per-field status and request toggles. Reads are
 -- safe on any peer (synced state); toggles route through the existing admin-gated,
--- server-validated network events — NOT direct FieldSentry_API mutation, which
+-- server-validated network events - NOT direct FieldSentry_API mutation, which
 -- would not sync in multiplayer.
 ---@param mission table  g_currentMission
 function FieldSentry_API.attachBridge(mission)
@@ -260,7 +260,7 @@ function FieldSentry_API.attachBridge(mission)
         toggleSleep        = SoilNetworkEvents_SendFieldSentryToggle,
         toggleMeadow       = SoilNetworkEvents_SendFieldMeadowToggle,
         isPlayerAdmin      = SoilNetworkEvents_IsPlayerAdmin,
-        -- Contract providers (#654/#56) — server-authoritative. Lets another mod (NPCFavor)
+        -- Contract providers (#654/#56) - server-authoritative. Lets another mod (NPCFavor)
         -- register an eligibility callback so its contract fields are masked from the sim.
         registerContractProvider   = FieldSentry_API.registerContractProvider,
         unregisterContractProvider = FieldSentry_API.unregisterContractProvider,
@@ -312,8 +312,8 @@ end
 -- =========================================================
 -- Persistent player intent that a field is permanent grassland. FieldSentry only stores
 -- the toggle (and exposes it on the hot path); the meadow simulation profile itself lives
--- in S&F (locked decision). A meadow field is NOT sim-disabled — it still runs, just on
--- grassland rules — so meadowToggle is independent of the blacklist mask.
+-- in S&F (locked decision). A meadow field is NOT sim-disabled - it still runs, just on
+-- grassland rules - so meadowToggle is independent of the blacklist mask.
 
 --- Set the meadow toggle for a field.
 ---@param fieldId number
@@ -358,7 +358,7 @@ function FieldSentry_API.reset()
 end
 
 -- =========================================================
--- Contract providers (FR1 / FR5) — server-authoritative
+-- Contract providers (FR1 / FR5) - server-authoritative
 -- =========================================================
 
 -- One-shot error de-dupe so a crashing provider cannot spam the log every refresh.
@@ -381,7 +381,7 @@ FieldSentry_Core.isSimAuthority = isSimAuthority
 --- Register an external contract provider. Decoupled by design: FieldSentry has no
 --- compile-time knowledge of the caller. The callback takes a fieldId and must return a
 --- normalized table { active=boolean, favorTier=number, allowSAndF=boolean }.
---- Server/host only — a pure client never evaluates providers (FR1/FR5).
+--- Server/host only - a pure client never evaluates providers (FR1/FR5).
 ---@param name string     unique provider id, e.g. "NPCFavor"
 ---@param fn function      function(fieldId) -> { active, favorTier, allowSAndF }
 ---@return boolean registered
@@ -441,7 +441,7 @@ end
 --- Unified O(1)-per-provider contract gate. Checks vanilla base-game field missions
 --- first, then each registered provider; the first active source wins and its metadata
 --- is returned so the rule engine (FR2) can read favorTier / allowSAndF.
---- Pure clients short-circuit to "not under contract" — they receive the mask via sync.
+--- Pure clients short-circuit to "not under contract" - they receive the mask via sync.
 ---@param fieldId number
 ---@return boolean underContract
 ---@return table info   { active, favorTier, allowSAndF, source }

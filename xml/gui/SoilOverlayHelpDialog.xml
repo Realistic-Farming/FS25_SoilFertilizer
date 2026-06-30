@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <!--
-    Soil & Fertilizer — Soil Map Overlay Help Dialog
+    Soil & Fertilizer - Soil Map Overlay Help Dialog
     Opened from the Help button in the overlay sidebar.
     Content lines are built dynamically in Lua.
     Controller: SoilOverlayHelpDialog (src/ui/SoilOverlayHelpDialog.lua)
@@ -19,7 +19,7 @@
 
       <!-- Title -->
       <Text profile="fs25_dialogTitle" id="sfOvHelp_title"
-            text="Soil Map Overlay — Help" position="0px -30px"/>
+            text="Soil Map Overlay - Help" position="0px -30px"/>
 
       <!-- Left column panel -->
       <GuiElement profile="sfOvHelp_columnPanel" position="-231px -68px">
@@ -60,7 +60,7 @@
       <imageColor value="0.06 0.10 0.14 0.9"/>
     </Profile>
 
-    <!-- Vertical column — Lua adds TextElements at runtime -->
+    <!-- Vertical column - Lua adds TextElements at runtime -->
     <Profile name="sfOvHelp_col" extends="emptyPanel" with="anchorTopCenter">
       <size value="430px 580px"/>
       <flowDirection value="vertical"/>

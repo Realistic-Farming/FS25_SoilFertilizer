@@ -36,9 +36,9 @@ SoilHUD.C_BORDER     = {0.20, 0.20, 0.20, 0.40}   -- neutral dark border
 SoilHUD.C_DIVIDER    = {0.25, 0.25, 0.25, 0.45}   -- neutral divider
 SoilHUD.C_SHADOW     = {0.00, 0.00, 0.00, 0.30}
 SoilHUD.C_BAR_BG     = {0.18, 0.18, 0.18, 0.90}   -- neutral bar track
-SoilHUD.C_GOOD       = {0.25, 0.85, 0.25, 1.00}   -- green  — data color, keep
-SoilHUD.C_FAIR       = {0.90, 0.82, 0.18, 1.00}   -- yellow — data color, keep
-SoilHUD.C_POOR       = {0.88, 0.25, 0.25, 1.00}   -- red    — data color, keep
+SoilHUD.C_GOOD       = {0.25, 0.85, 0.25, 1.00}   -- green  - data color, keep
+SoilHUD.C_FAIR       = {0.90, 0.82, 0.18, 1.00}   -- yellow - data color, keep
+SoilHUD.C_POOR       = {0.88, 0.25, 0.25, 1.00}   -- red    - data color, keep
 -- Okabe-Ito colorblind-safe palette (orange / yellow / blue)
 SoilHUD.CB_GOOD      = {0.00, 0.45, 0.70, 1.00}   -- blue
 SoilHUD.CB_FAIR      = {0.94, 0.86, 0.00, 1.00}   -- yellow
@@ -150,7 +150,7 @@ function SoilHUD:initialize()
     -- (g_currentMission.hud.infoDisplay:createBox(...)) as a sibling panel next to the
     -- base game's FIELD INFO box. That never matched the feature description ("Show soil
     -- nutrients in the native Field Info panel") and produced a duplicate floating panel.
-    -- Soil data is now injected directly into the base game's own box — see
+    -- Soil data is now injected directly into the base game's own box - see
     -- HookManager:installNativeFieldInfoHook(), which appends to
     -- PlayerHUDUpdater.fieldAddFarmland. self.fieldInfoBox is kept nil/unused so the old
     -- delete()/destroyBox() guards remain harmless no-ops.
@@ -244,7 +244,7 @@ function SoilHUD:exitEditMode()
             g_SoilFertilityManager.settingsUI:refreshUI()
         end
     end
-    SoilLogger.debug("[SoilHUD] Edit mode OFF — pos=(%.3f,%.3f) scale=%.2f",
+    SoilLogger.debug("[SoilHUD] Edit mode OFF - pos=(%.3f,%.3f) scale=%.2f",
         self.panelX, self.panelY, self.scale)
 end
 
@@ -592,7 +592,7 @@ function SoilHUD:update(dt)
 
 
     if self.editMode then
-        -- Re-apply cursor lock every frame — the game resets cursor state each tick
+        -- Re-apply cursor lock every frame - the game resets cursor state each tick
         if g_inputBinding and g_inputBinding.setShowMouseCursor then
             g_inputBinding:setShowMouseCursor(true, true)
         end
@@ -603,7 +603,7 @@ function SoilHUD:update(dt)
             end
         end
         -- Vehicle camera freeze: restore rotX/rotY and push to the scene node each frame.
-        -- Setting ac.rotX/Y alone isn't enough — VehicleCamera calls setRotation(rotateNode)
+        -- Setting ac.rotX/Y alone isn't enough - VehicleCamera calls setRotation(rotateNode)
         -- BEFORE our update runs (APPEND hook), so we must re-apply to the actual scene node.
         if self.savedVehicleCamRotX ~= nil then
             local cv = g_currentMission and g_currentMission.controlledVehicle
@@ -643,7 +643,7 @@ function SoilHUD:update(dt)
     local rm             = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
     self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
 
-    -- updateFieldInfoBox() no longer runs here — soil data is injected directly into the
+    -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
     -- instead of a separate panel. The function is kept below (now building line data via
     -- buildFieldInfoLines) in case it's needed for debugging or a future standalone mode.
@@ -714,7 +714,7 @@ end
 -- {label, value} rows. Used by both updateFieldInfoBox() (legacy standalone panel, kept
 -- for compatibility) and HookManager:installNativeFieldInfoHook() (injects the same rows
 -- into the base game's own FIELD INFO box). Keeping this box-agnostic means both call
--- sites stay in sync automatically — no more drifting copies of the grade/yield/needs math.
+-- sites stay in sync automatically - no more drifting copies of the grade/yield/needs math.
 ---@param info table Result of soilSystem:getFieldInfo(fieldId)
 ---@return table lines Ordered array of { label = string, value = string }
 function SoilHUD:buildFieldInfoLines(info)
@@ -890,7 +890,7 @@ function SoilHUD:buildFieldInfoLines(info)
 end
 
 -- ── Native FIELD INFO box (legacy standalone panel) ──────
--- Kept for compatibility / debugging only. Not called during normal play anymore —
+-- Kept for compatibility / debugging only. Not called during normal play anymore -
 -- see buildFieldInfoLines() above and HookManager:installNativeFieldInfoHook(), which
 -- injects the same rows directly into the base game's own FIELD INFO box instead of a
 -- separate panel.
@@ -978,7 +978,7 @@ function SoilHUD:refreshFieldData()
         if cropText then
             self._fmt_cropText = cropText
         elseif info.isMeadow then
-            -- Field Sentry meadow: a managed sward, not idle ground — say so (#697)
+            -- Field Sentry meadow: a managed sward, not idle ground - say so (#697)
             self._fmt_cropText = g_i18n:getText("sf_hud_meadow")
         else
             self._fmt_cropText = g_i18n:getText("sf_hud_fallow")
@@ -1036,7 +1036,7 @@ function SoilHUD:detectCurrentFieldId()
     if not x then return nil end
 
     -- Tier 1: direct field lookup via position
-    -- NOTE: do NOT guard with g_fieldManager.getFieldAtWorldPosition — in FS25's OOP
+    -- NOTE: do NOT guard with g_fieldManager.getFieldAtWorldPosition - in FS25's OOP
     -- system methods live on the metatable, not the instance, so that check returns nil
     -- even when the method is callable. Always use pcall directly.
     -- NOTE: field.fieldId / field.id / field.index all return nil in FS25.
@@ -1496,7 +1496,7 @@ function SoilHUD:drawPanel()
             end
         end
 
-        -- Amendment burn row — explains a low yield caused by lime/OM on a growing crop (#437)
+        -- Amendment burn row - explains a low yield caused by lime/OM on a growing crop (#437)
         local burnText = self._fmt_burnText
         if burnText then
             local pad = SoilHUD.PAD * s
@@ -1506,7 +1506,7 @@ function SoilHUD:drawPanel()
             renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText)
         end
 
-        -- Amendment burn-risk row (#684) — heads-up that liming/manuring NOW would scorch the
+        -- Amendment burn-risk row (#684) - heads-up that liming/manuring NOW would scorch the
         -- crop. Mutually exclusive with the burn row above (only shown before any burn hits).
         local burnRiskText = self._fmt_burnRiskText
         if burnRiskText then
@@ -1640,7 +1640,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
         end
     end
 
-    -- Threshold tick marks — only the poor/fair (minimum) boundary.
+    -- Threshold tick marks - only the poor/fair (minimum) boundary.
     -- The fair/good yellow tick was removed (#554): with per-crop optimal ticks
     -- already shown in cyan, having fair above the orange minimum caused the cyan
     -- target to appear "outside" the high/low range on well-stocked crops.
@@ -1790,7 +1790,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     local textSize = 0.010 * fontMult * s
     local tx       = px + pad
 
-    -- Pre-decrement so the row occupies [cy, cy+rowH] — same pattern as drawNutrientRow,
+    -- Pre-decrement so the row occupies [cy, cy+rowH] - same pattern as drawNutrientRow,
     -- which ensures bars are centred within their own row and not in the row above (#HUD).
     cy = cy - rowH
 
@@ -1801,11 +1801,11 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     elseif pressure < wp.MEDIUM then col = SoilHUD.C_FAIR
     else                             col = SoilHUD.C_POOR end
 
-    -- Label — vertically centred in row
+    -- Label - vertically centred in row
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
     renderText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey))
 
-    -- Bar — centred in row, horizontally aligned with nutrient bars
+    -- Bar - centred in row, horizontally aligned with nutrient bars
     local barX = tx + 0.038*s
     local barY = cy + (rowH - barH) * 0.5
     self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
@@ -1814,7 +1814,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
         self:drawRect(barX, barY, barW * fill, barH, col)
     end
 
-    -- Value + protection tag — left-aligned right after bar (matches N/P/K value position)
+    -- Value + protection tag - left-aligned right after bar (matches N/P/K value position)
     local label = string.format("%.0f%%", pressure)
     if isProtected then label = label .. " " .. g_i18n:getText("sf_hud_protected") end
     setTextAlignment(RenderText.ALIGN_LEFT)
@@ -2099,7 +2099,7 @@ function SoilHUD:drawSprayerRatePanel()
                 local isOMPrimary = omPrimarySet and omPrimarySet[fillType.name]
                 local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
                 -- Organic products are sized by whichever need is bigger (OM or N/P/K), so show
-                -- the OM target as well as the nutrients — the readout then matches the rate.
+                -- the OM target as well as the nutrients - the readout then matches the rate.
                 if isOMPrimary then
                     targetText = targetText .. string.format("%.1f", targets.OM) .. "% OM "
                 end
@@ -2208,7 +2208,7 @@ function SoilHUD:getCurrentSprayer()
         -- State change: was in sprayer, now not
         if self._lastSprayerDetected ~= false then
             self._lastSprayerDetected = false
-            SoilLogger.debug("getCurrentSprayer: player NOT in vehicle — rate panel hidden")
+            SoilLogger.debug("getCurrentSprayer: player NOT in vehicle - rate panel hidden")
         end
         return nil
     end
@@ -2240,7 +2240,7 @@ function SoilHUD:getCurrentSprayer()
             SoilLogger.debug("getCurrentSprayer: APPLICATOR %s id=%s cfg=%s",
                 isImpl, tostring(result.id), tostring(result.configFileName))
         else
-            SoilLogger.debug("getCurrentSprayer: no applicator on vehicle cfg=%s — rate panel hidden",
+            SoilLogger.debug("getCurrentSprayer: no applicator on vehicle cfg=%s - rate panel hidden",
                 tostring(vehicle.configFileName))
         end
     end

@@ -62,7 +62,7 @@
     <e k="sf_rr_short" v="Wiederauffüllrate" eh="b363b336" />
     <e k="sf_rr_long" v="Wie schnell Dünger Feldnährstoffe wiederherstellt (0,25x sehr langsam bis 2,0x sehr schnell)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" eh="86eac820" />
-    <e k="sf_dm_long" v="[EN] Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
+    <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
     <e k="sf_dm_1" v="[EN] Arid" eh="cf9aa4a8" />
     <e k="sf_dm_2" v="[EN] Temperate" eh="e8328062" />
     <e k="sf_dm_3" v="[EN] Humid" eh="ccb2fc34" />

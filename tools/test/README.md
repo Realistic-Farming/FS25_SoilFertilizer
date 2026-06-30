@@ -27,22 +27,22 @@ Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 | Layer | Tool | Catches |
 |-------|------|---------|
 | **Syntax** | `syntax-check.mjs` (`luaparse`, pinned to Lua 5.1) | Parse errors and 5.2+-only constructs (`goto`, `::labels::`) that make the mod fail to load in-game with no message. Runs over every `src/**/*.lua`. |
-| **Lint** | `lint.mjs` | FS25-sandbox footguns that *parse* fine but break at runtime — `os.time` / `os.date` / `os.clock`, etc. (see CLAUDE.md "What DOESN'T Work"). |
-| **Logic** | `run-tests.mjs` (`fengari` Lua VM) | Behavioural regressions in pure logic — coverage math, fertilizer profiles, nutrient/burn formulas — by loading the real `src` modules against a mocked FS25 environment and asserting. |
+| **Lint** | `lint.mjs` | FS25-sandbox footguns that *parse* fine but break at runtime - `os.time` / `os.date` / `os.clock`, etc. (see CLAUDE.md "What DOESN'T Work"). |
+| **Logic** | `run-tests.mjs` (`fengari` Lua VM) | Behavioural regressions in pure logic - coverage math, fertilizer profiles, nutrient/burn formulas - by loading the real `src` modules against a mocked FS25 environment and asserting. |
 
 The FieldSentry backend ships two of these logic suites, both against pure Lua mocks:
 
-- `fieldsentry_test.lua` — Phase 1: the status/reason API, the manual blacklist, the
+- `fieldsentry_test.lua` - Phase 1: the status/reason API, the manual blacklist, the
   persistence round-trip, and the freeze gate inside `_processOneDailyField`.
-- `fieldsentry_phase2_test.lua` — Phase 2 (#654): the contract provider registry and
+- `fieldsentry_phase2_test.lua` - Phase 2 (#654): the contract provider registry and
   unified gate, fail-closed handling of malformed/crashing providers, the favor-tier
   exemption + hinting engine, retroactive nutrient reconciliation (idempotent per
   contract sequence), persistence with schema versioning + v1→v2 migration, and the
   multiplayer FIFO mask sync.
-- `fieldsentry_phase3_test.lua` — Phase 3 (#651): the meadow toggle API + persistence and
+- `fieldsentry_phase3_test.lua` - Phase 3 (#651): the meadow toggle API + persistence and
   the grassland daily profile (regrowth, slow pH drift, pressure shedding) plus the
   daily-loop routing that sends a flagged field down the meadow path.
-- `fieldsentry_phase4_test.lua` — Phase 4 (#651): deco / fake-field classification — the
+- `fieldsentry_phase4_test.lua` - Phase 4 (#651): deco / fake-field classification - the
   author/player hint, the injected detector hook (fail-safe), rule order (structural
   before classification), persistence, and reuse of the FR5 mask broadcast.
 
@@ -62,8 +62,8 @@ T.ok("coverage advanced", sys.fieldData[1].sessionCoverageFraction > 0)
 
 `T.ok(name, cond)`, `T.eq(name, got, want)`, `T.near(name, got, want, tol)`.
 
-The runner builds one Lua program — `prelude.lua` (engine mock + `T` framework) + the
-declared `src` files + your test — and runs it in a fresh fengari state. Load order
+The runner builds one Lua program - `prelude.lua` (engine mock + `T` framework) + the
+declared `src` files + your test - and runs it in a fresh fengari state. Load order
 matters: declare deps in the same order `src/main.lua` loads them (Logger → Constants →
 systems). Construct `self` with `setmetatable({…}, { __index = SoilFertilitySystem })`
 and call methods directly so you skip `.new()` (which pulls in the live game). Extend
@@ -72,6 +72,6 @@ and call methods directly so you skip `.new()` (which pulls in the live game). E
 ## Limits (the "1/10" that still needs a human)
 
 Rendering/HUD layout, real density-map C++ calls, multiplayer-over-the-wire sync, and
-GIANTS-engine behaviour can't run here — those still need an in-game test. fengari is
+GIANTS-engine behaviour can't run here - those still need an in-game test. fengari is
 Lua 5.3, so the *syntax* gate is the authoritative 5.1 check; logic tests target
 dialect-agnostic math.

@@ -2,7 +2,7 @@
 -- FS25 Realistic Soil & Fertilizer - Bundled Soil Maps
 -- =========================================================
 -- Loads pre-baked GRLE files bundled inside the mod to provide
--- spatially-aware initial soil values on vanilla FS25 maps —
+-- spatially-aware initial soil values on vanilla FS25 maps -
 -- no map preparation required (same strategy as Precision Farming).
 --
 -- USAGE:
@@ -19,7 +19,7 @@
 -- Author: TisonK
 -- =========================================================
 
--- Capture mod directory at source() time — g_currentModDirectory is nil after mission load
+-- Capture mod directory at source() time - g_currentModDirectory is nil after mission load
 local MOD_DIRECTORY = g_currentModDirectory
 
 ---@class SoilBundledMaps
@@ -86,7 +86,7 @@ function SoilBundledMaps.new()
 end
 
 -- ─────────────────────────────────────────────────────────
--- Map detection — returns GRLE filename for current map
+-- Map detection - returns GRLE filename for current map
 -- ─────────────────────────────────────────────────────────
 
 local function detectMapFile()
@@ -109,7 +109,7 @@ local function detectMapFile()
 end
 
 -- ─────────────────────────────────────────────────────────
--- Initialization — call after terrain is loaded
+-- Initialization - call after terrain is loaded
 -- (SoilFertilitySystem:initialize() is the right place)
 -- ─────────────────────────────────────────────────────────
 
@@ -118,13 +118,13 @@ function SoilBundledMaps:initialize()
     self.initialized = true
 
     if not g_terrainNode or g_terrainNode == 0 then
-        SoilLogger.warning("SoilBundledMaps: g_terrainNode not available — bundled maps disabled")
+        SoilLogger.warning("SoilBundledMaps: g_terrainNode not available - bundled maps disabled")
         return
     end
 
     self.terrainSize = getTerrainSize(g_terrainNode) or 0
     if self.terrainSize <= 0 then
-        SoilLogger.warning("SoilBundledMaps: getTerrainSize returned 0 — bundled maps disabled")
+        SoilLogger.warning("SoilBundledMaps: getTerrainSize returned 0 - bundled maps disabled")
         return
     end
 
@@ -152,7 +152,7 @@ function SoilBundledMaps:initialize()
     self.mapW, self.mapH = getBitVectorMapSize(self.mapBVM)
     SoilLogger.info("SoilBundledMaps: loaded %s (%dx%d px, %d ch)", mapFile, self.mapW, self.mapH, NUM_CHANNELS)
 
-    -- Load noise GRLE (optional — graceful if missing)
+    -- Load noise GRLE (optional - graceful if missing)
     local noisePath = mapsDir .. NOISE_FILE
     self.noiseBVM   = createBitVectorMap("SoilNoiseMap")
     if self.noiseBVM and self.noiseBVM ~= 0 then
@@ -161,7 +161,7 @@ function SoilBundledMaps:initialize()
             self.noiseW, self.noiseH = getBitVectorMapSize(self.noiseBVM)
             SoilLogger.info("SoilBundledMaps: loaded %s (%dx%d px)", NOISE_FILE, self.noiseW, self.noiseH)
         else
-            SoilLogger.warning("SoilBundledMaps: failed to load %s — noise overlay disabled", noisePath)
+            SoilLogger.warning("SoilBundledMaps: failed to load %s - noise overlay disabled", noisePath)
             delete(self.noiseBVM)
             self.noiseBVM = nil
         end

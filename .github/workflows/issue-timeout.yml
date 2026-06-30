@@ -1,4 +1,4 @@
-name: Issue — Auto-close on No Response
+name: Issue - Auto-close on No Response
 
 on:
   schedule:
@@ -60,7 +60,7 @@ jobs:
               if (userRepliedAfter) continue;
 
               const closeBody = [
-                `Hey @${author} — this issue has been automatically closed because there was no follow-up within **24 hours** of the last response.`,
+                `Hey @${author} - this issue has been automatically closed because there was no follow-up within **24 hours** of the last response.`,
                 ``,
                 `This is not a rejection. If you still have the problem, please **reopen this issue** and include:`,
                 ``,
@@ -87,5 +87,5 @@ jobs:
                 state_reason: 'not_planned'
               });
 
-              core.info(`Closed issue #${issue.number} — no user follow-up after owner replied`);
+              core.info(`Closed issue #${issue.number} - no user follow-up after owner replied`);
             }

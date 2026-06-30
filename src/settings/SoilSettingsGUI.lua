@@ -109,7 +109,7 @@ function SoilSettingsGUI:consoleCommandBlacklistField(fieldId, state)
     if not fid then return "Usage: SoilBlacklistField <fieldId> [true|false]" end
 
     -- Field data lives on the server; toggling on a client would desync until MP sync
-    -- lands (Phase 1 is server/SP only — see issue #651 rollout).
+    -- lands (Phase 1 is server/SP only - see issue #651 rollout).
     local isServer = g_currentMission and g_currentMission:getIsServer()
     if not isServer then
         return "FieldSentry toggles must be run on the server/host (it owns the field data)."
@@ -273,7 +273,7 @@ function SoilSettingsGUI:consoleCommandSetDisease(pressure, diseaseId)
     local sfm = g_SoilFertilityManager
     if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
     if not sfm.settings.diseasePressure then
-        return "Disease Pressure is disabled in settings — enable it first."
+        return "Disease Pressure is disabled in settings - enable it first."
     end
     local p = tonumber(pressure)
     if not p then return "Usage: SoilSetDisease <pressure 0-100> [diseaseId]  (acts on the field you're standing on)" end
@@ -352,7 +352,7 @@ function SoilSettingsGUI:consoleCommandFungicides(diseaseId)
     if diseaseId and SoilConstants.DISEASE_DEFS[diseaseId] then
         local rec = SoilDiseaseSystem.recommend(diseaseId)
         local def = SoilConstants.DISEASE_DEFS[diseaseId]
-        return string.format("%s (%s) — Best: %s | 2nd: %s | Budget: %s",
+        return string.format("%s (%s) - Best: %s | 2nd: %s | Budget: %s",
             diseaseDisplayName(diseaseId), def.sci or "?",
             chemDisplayName(rec.best), chemDisplayName(rec.second), chemDisplayName(rec.budget))
     end
@@ -706,7 +706,7 @@ function SoilSettingsGUI:consoleCommandResetSettings()
     if g_SoilFertilityManager and g_SoilFertilityManager.settings then
         -- Route every setting through the network layer (same path as the panel's
         -- per-category reset). Calling settings:resetToDefaults() directly only
-        -- mutated local state on MP clients — the server never heard about it and
+        -- mutated local state on MP clients - the server never heard about it and
         -- the client desynced until the next full sync.
         for _, def in ipairs(SettingsSchema.definitions) do
             requestSettingChange(def.id, def.default)
@@ -726,7 +726,7 @@ end
 -- SoilDrainVehicle: empty custom fill types from the current
 -- vehicle and all attached implements, with a 50% refund.
 -- =========================================================
--- Liquid sprayers have no Dischargeable spec — vanilla FS25
+-- Liquid sprayers have no Dischargeable spec - vanilla FS25
 -- offers no way to drain them. This command is the escape
 -- hatch so players can switch products without wasting them.
 function SoilSettingsGUI:consoleCommandDrainVehicle()
@@ -840,7 +840,7 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
 
     if not isServer then
-        table.insert(report, "(Note: not host — drain logged only; run on the host for full effect)")
+        table.insert(report, "(Note: not host - drain logged only; run on the host for full effect)")
     end
 
     local summary = string.format(
@@ -1027,8 +1027,8 @@ end
 function SoilSettingsGUI:consoleCommandPFDump()
     if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
         g_SoilFertilityManager.pfBridge:dumpApi()
-        return "PF dump written — check the console output above"
+        return "PF dump written - check the console output above"
     end
-    print("[SoilPFDump] SF bridge not yet initialised — load a savegame first, then run SoilPFDump")
-    return "Bridge not ready — load savegame first"
+    print("[SoilPFDump] SF bridge not yet initialised - load a savegame first, then run SoilPFDump")
+    return "Bridge not ready - load savegame first"
 end

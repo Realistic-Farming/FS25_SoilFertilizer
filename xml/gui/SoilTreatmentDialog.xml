@@ -107,7 +107,7 @@
       <imageColor value="0.06 0.10 0.14 0.9"/>
     </Profile>
 
-    <!-- 3-row section (crop protection — slight warm tint) -->
+    <!-- 3-row section (crop protection - slight warm tint) -->
     <Profile name="sfTreat_section3prot" extends="emptyPanel" with="anchorTopCenter">
       <size value="700px 116px"/>
     </Profile>

@@ -13,14 +13,14 @@
 --
 -- WHY THIS IS NEEDED:
 --   Without density map layers the mod stores one value per farmland ID.
---   That means every pixel of "Field 3" shares one N value — no per-pixel
+--   That means every pixel of "Field 3" shares one N value - no per-pixel
 --   variation, no real heatmap, no integration with FSDensityMapUtil or the
 --   native MapOverlayGenerator. This file provides:
 --     1.  Layer registration (getInfoLayerFromTerrain per nutrient).
 --     2.  DensityMapModifier wrappers so other code can read/write pixels.
 --     3.  Two-way sync: fieldData ↔ density map (per-farmland polygon average
 --         on read; per-pixel write on fertilizer/harvest events).
---     4.  Graceful fallback — if a layer cannot be found on the terrain (map
+--     4.  Graceful fallback - if a layer cannot be found on the terrain (map
 --         doesn't ship the GRLE) the system falls back silently to the
 --         fieldData-only path that was already working.
 -- =========================================================
@@ -88,8 +88,8 @@ local LAYER_DEFS = {
         perPixel    = true,
     },
     -- ── Biotic / physical pressure ───────────────────────────
-    -- pest/disease: perPixel=false — field-level pressures, daily update paints
-    -- the field AABB uniformly. compaction: perPixel=true — written per-cell by
+    -- pest/disease: perPixel=false - field-level pressures, daily update paints
+    -- the field AABB uniformly. compaction: perPixel=true - written per-cell by
     -- heavy-vehicle passes, so the daily write must skip it (see its entry below).
     {
         name        = "soilPest",
@@ -134,7 +134,7 @@ local LAYER_DEFS = {
         numBits     = 8,
         numChannels = 8,
     },
-    -- Note: weed is NOT in LAYER_DEFS — it is read from the game's
+    -- Note: weed is NOT in LAYER_DEFS - it is read from the game's
     -- native WeedSystem foliage density map (see weed* fields below).
 }
 
@@ -150,7 +150,7 @@ function SoilLayerSystem.new()
     self.layerHandles    = {}
     self.initialized     = false
     self.available       = false   -- true when ≥1 layer successfully registered
-    -- Weed layer (game-native foliage density map — read-only)
+    -- Weed layer (game-native foliage density map - read-only)
     self.hasWeedLayer    = false
     self.weedMapId       = nil     -- raw density map id from weedSystem:getDensityMapData()
     self.weedFirstCh     = nil
@@ -180,7 +180,7 @@ local function decode(raw, def)
 end
 
 -- ─────────────────────────────────────────────────────────
--- Initialization — call after g_terrainNode is valid
+-- Initialization - call after g_terrainNode is valid
 -- (inside SoilFertilitySystem:initialize or later)
 -- ─────────────────────────────────────────────────────────
 
@@ -188,7 +188,7 @@ function SoilLayerSystem:initialize()
     if self.initialized then return end
 
     if not g_terrainNode or g_terrainNode == 0 then
-        SoilLogger.warning("SoilLayerSystem: g_terrainNode not available — layer integration disabled")
+        SoilLogger.warning("SoilLayerSystem: g_terrainNode not available - layer integration disabled")
         self.initialized = true
         return
     end
@@ -226,11 +226,11 @@ function SoilLayerSystem:initialize()
 
     if self.available then
         SoilLogger.info(
-            "SoilLayerSystem: %d/%d layers registered (%d missing — falling back to fieldData for those)",
+            "SoilLayerSystem: %d/%d layers registered (%d missing - falling back to fieldData for those)",
             registered, #LAYER_DEFS, missing
         )
     else
-        SoilLogger.info("SoilLayerSystem: No terrain layers — using fieldData storage (normal for most maps)")
+        SoilLogger.info("SoilLayerSystem: No terrain layers - using fieldData storage (normal for most maps)")
     end
 
     -- ── Weed layer (game-native, read-only) ───────────────────────────────────
@@ -250,10 +250,10 @@ function SoilLayerSystem:initialize()
             SoilLogger.info("[OK] Weed density map found (mapId=%s, ch=%d+%d)",
                 tostring(mapId), self.weedFirstCh, self.weedNumCh)
         else
-            SoilLogger.debug("SoilLayerSystem: WeedSystem present but getDensityMapData failed — weed pressure uses simulation")
+            SoilLogger.debug("SoilLayerSystem: WeedSystem present but getDensityMapData failed - weed pressure uses simulation")
         end
     else
-        SoilLogger.debug("SoilLayerSystem: No WeedSystem — weed pressure uses simulation fallback")
+        SoilLogger.debug("SoilLayerSystem: No WeedSystem - weed pressure uses simulation fallback")
     end
 end
 
@@ -290,7 +290,7 @@ function SoilLayerSystem:writeValueAtWorld(layerName, worldX, worldZ, value, rad
     -- Modifier: set a circular area to the encoded integer
     local modifier  = entry.modifier
     local filter    = DensityMapFilter.new(modifier)
-    -- No filter — write unconditionally to all pixels in radius
+    -- No filter - write unconditionally to all pixels in radius
     modifier:setParallelogramWorldCoords(worldX - r, worldZ - r, worldX + r, worldZ - r, worldX - r, worldZ + r, DensityCoordType.POINT_POINT_POINT)
     modifier:executeSet(encoded, filter, nil)
 end
@@ -430,7 +430,7 @@ end
 -- ─────────────────────────────────────────────────────────
 -- Write ALL nutrients for a field to their layers.
 -- Call this after loading XML save data (fieldData already
--- has the values — push them to the density maps so the
+-- has the values - push them to the density maps so the
 -- visual heatmap matches what's stored).
 -- ─────────────────────────────────────────────────────────
 
@@ -649,12 +649,12 @@ function SoilLayerSystem:readFieldFromLayers(fieldId, fieldData, fsField)
     if not anyRead then return false end
 
     -- #685: on a mid-save install the density layers were never seeded, so every layer
-    -- reads 0. A real field never has pH 0 — it is physically impossible — so a zero-pH read
+    -- reads 0. A real field never has pH 0 - it is physically impossible - so a zero-pH read
     -- means "uninitialised layer". Applying it would clobber the field's freshly rolled
     -- starting defaults to 0/0/0/0 and force a manual admin recovery. Bail out and keep the
     -- defaults; scanFields() seeds the layers from them so the overlay still matches.
     if (reads.pH or 0) <= 0 then
-        SoilLogger.debug("SoilLayerSystem: field %d layers uninitialised (pH=0) — keeping rolled defaults", fieldId)
+        SoilLogger.debug("SoilLayerSystem: field %d layers uninitialised (pH=0) - keeping rolled defaults", fieldId)
         return false
     end
 

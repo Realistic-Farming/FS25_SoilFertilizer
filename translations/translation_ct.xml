@@ -62,7 +62,7 @@
     <e k="sf_rr_short" v="[EN] Replenishment Rate" eh="b363b336" />
     <e k="sf_rr_long" v="[EN] How quickly fertilizer restores field nutrients (0.25x Very Slow to 2.0x Very Fast)" eh="afe78a6d" />
     <e k="sf_dm_short" v="Disease Climate" eh="86eac820" />
-    <e k="sf_dm_long" v="Climate moisture level — controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
+    <e k="sf_dm_long" v="Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="9948c967" />
     <e k="sf_dm_1" v="Arid" eh="cf9aa4a8" />
     <e k="sf_dm_2" v="Temperate" eh="e8328062" />
     <e k="sf_dm_3" v="Humid" eh="ccb2fc34" />
@@ -133,57 +133,57 @@
     <e k="sf_insecticide_title" v="殺蟲劑" eh="5650eeef" />
     <e k="sf_fungicide_title" v="殺菌劑" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="[EN] IBC UAN 32-0-0" eh="574747ce" />
-    <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) — +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
+    <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="[EN] IBC UAN 28-0-0" eh="7eeec815" />
-    <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) — +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
+    <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
     <e k="sf_bigBag_anhydrous_name" v="[EN] IBC Anhydrous Ammonia 82-0-0" eh="fb09e6ce" />
-    <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) — +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
+    <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
     <e k="sf_bigBag_urea_name" v="大袋尿素 46-0-0" eh="8e8cbaae" />
-    <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) — +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
+    <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
-    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry) — +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
+    <e k="sf_bigBag_an_function" v="Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
     <e k="sf_bigBag_ams_name" v="大袋 AMS 21-0-0-24S" eh="7f71ee68" />
-    <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) — +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
+    <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) - +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
     <e k="sf_bigBag_map_name" v="大袋 MAP 11-52-0" eh="8a5a059b" />
-    <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) — +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
+    <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) - +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
     <e k="sf_bigBag_dap_name" v="大袋 DAP 18-46-0" eh="fb4e9987" />
-    <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) — +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
+    <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) - +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
     <e k="sf_bigBag_potash_name" v="大袋氯化鉀 0-0-60" eh="eb771556" />
-    <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) — +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
+    <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="Big Bag Polifoska 6-20-30" eh="33366162" />
-    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (dry) — +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
+    <e k="sf_bigBag_polifoska_function" v="NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
     <e k="sf_bigBag_liquid_urea_name" v="[EN] IBC Liquid Urea" eh="c40b906f" />
-    <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) — +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
+    <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
     <e k="sf_bigBag_liquid_ams_name" v="[EN] IBC Liquid AMS" eh="32e6c8bb" />
-    <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) — +33N ppm/ha @ 168 L/ha" eh="73a75155" />
+    <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
     <e k="sf_bigBag_liquid_map_name" v="[EN] IBC Liquid MAP" eh="4628addb" />
-    <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) — +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
+    <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
     <e k="sf_bigBag_liquid_dap_name" v="[EN] IBC Liquid DAP" eh="82fb3c06" />
-    <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) — +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
+    <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
     <e k="sf_bigBag_liquid_potash_name" v="[EN] IBC Liquid Potash" eh="7176856d" />
-    <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) — +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
+    <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
     <e k="sf_bigBag_starter_name" v="[EN] IBC Starter 10-34-0" eh="62b13bd1" />
     <e k="sf_bigBag_insecticide_name" v="[EN] IBC Insecticide" eh="c8f0aabb" />
     <e k="sf_bigBag_insecticide_function" v="殺蟲劑（液態）" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="[EN] IBC Fungicide" eh="2a1c78d4" />
     <e k="sf_bigBag_fungicide_function" v="殺菌劑（液態）" eh="745c34cb" />
-    <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) — +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
+    <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
     <e k="sf_bigBag_gypsum_name" v="[EN] Big Bag Gypsum" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry)" eh="51503c54" />
     <e k="sf_bigBag_compost_name" v="Big Bag Compost" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" eh="760ccc30" />
-    <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) — +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
+    <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
     <e k="sf_bigBag_biosolids_name" v="Big Bag Biosolids" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Biosolids (10,000L)" eh="53b60563" />
-    <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) — +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
+    <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Chicken Manure" eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Chicken Manure (10,000L)" eh="dd621023" />
-    <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) — +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
+    <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
     <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Pelletized Manure" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletized Manure (10,000L)" eh="261ca096" />
-    <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) — +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
+    <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
     <e k="sf_bigBag_liquidlime_name" v="Liquid Lime Tank" eh="4f8caca1" />
-    <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) — pH +0.40/pass @ 374 L/ha" eh="23f18783" />
+    <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
     <e k="sf_hud_title" v="土壤監測" eh="f8cda642" />
     <e k="sf_hud_field" v="田地 %d" eh="08988997" />
     <e k="sf_hud_noField" v="請走入田地" eh="62c55e9e" />
@@ -222,7 +222,7 @@
     <e k="helpLine_sf_ov_p1_intro_title" v="田地土壤追蹤" eh="8fe3248d" />
     <e k="helpLine_sf_ov_p1_intro_text" v="每塊田地獨立追蹤五種屬性：氮 (N)、磷 (P)、鉀 (K)、有機質 (OM) 和 pH 值。數值會隨存檔保存，並在不同會話間持久存在。" eh="c30216e6" />
     <e k="helpLine_sf_ov_p1_flow_title" v="養分循環" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="作物在收穫時會移除養分。肥料、廄肥、泥漿和石灰可恢復養分。本模組追蹤真實的養分收支——作物帶走多少，你就必須補充多少。" eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="作物在收穫時會移除養分。肥料、廄肥、泥漿和石灰可恢復養分。本模組追蹤真實的養分收支--作物帶走多少，你就必須補充多少。" eh="418041f0" />
 
     <e k="helpLine_sf_ov_p2_title" v="環境影響" eh="e139e84f" />
     <e k="helpLine_sf_ov_p2_rain_title" v="降雨與流失" eh="33e0d8ea" />
@@ -239,7 +239,7 @@
 
     <e k="helpLine_sf_gs_p2_title" v="施肥與收穫" eh="1a52ac04" />
     <e k="helpLine_sf_gs_p2_fert_title" v="為田地施肥" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="使用任何標準噴霧器或撒布機施肥。本模組可識別所有原版肥料以及 9 種自定義類型（UAN-32、MAP、鉀肥等）。每種類型恢復不同的養分——詳見肥料類別查看完整簡介。" eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="使用任何標準噴霧器或撒布機施肥。本模組可識別所有原版肥料以及 9 種自定義類型（UAN-32、MAP、鉀肥等）。每種類型恢復不同的養分--詳見肥料類別查看完整簡介。" eh="fe906e29" />
     <e k="helpLine_sf_gs_p2_harvest_title" v="收穫耗損" eh="a67b6cb5" />
     <e k="helpLine_sf_gs_p2_harvest_text" v="每次收穫都會從田中移除養分。高需求作物（馬鈴薯、甜菜、大豆）的耗損明顯高於低需求作物（大麥、燕麥）。每次收穫週期後請重新檢查 HUD 或土壤報告。" eh="63f90ed4" />
 
@@ -251,16 +251,16 @@
 
     <!-- Category 3: Soil Nutrients -->
     <e k="helpLine_sf_nu_p1_title" v="氮和磷" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="氮 (N) — 範圍：0 到 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="移動性最強的養分——耗損最快且在雨中流失嚴重。差：低於 30。良好：高於 50。可通過以下方式提升：液態肥料、UAN-32、UAN-28、無水氨、尿素、AMS、廄肥或泥漿。" eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="磷 (P) — 範圍：0 到 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_n_title" v="氮 (N) - 範圍：0 到 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="移動性最強的養分--耗損最快且在雨中流失嚴重。差：低於 30。良好：高於 50。可通過以下方式提升：液態肥料、UAN-32、UAN-28、無水氨、尿素、AMS、廄肥或泥漿。" eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="磷 (P) - 範圍：0 到 100" eh="979bba64" />
     <e k="helpLine_sf_nu_p1_p_text" v="與土壤結合緊密且流失非常緩慢。主要通過收穫耗損。油菜對磷的需求最高。差：低於 25。良好：高於 45。可通過以下方式提升：MAP、DAP、啟動肥或液態肥料。" eh="92c5ac66" />
 
     <e k="helpLine_sf_nu_p2_title" v="鉀和 pH 值" eh="6bd92f25" />
     <e k="helpLine_sf_nu_p2_k_title" v="鉀 (K) - 範圍 0 到 100" eh="2a16e8bc" />
     <e k="helpLine_sf_nu_p2_k_text" v="對根莖類和塊莖作物至關重要。馬鈴薯和甜菜每次收穫都會大量耗損鉀。在雨中流失中等。差：低於 20。良好：高於 40。可通過以下方式提升：鉀肥 (0-0-60)、泥漿、沼渣或液態肥料。" eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH 值 — 範圍：5.0 到 7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="大多數作物在 pH 6.5 到 7.0 時生長良好。隨時間推移，降雨會緩慢使土壤酸化。pH 值不會自行恢復——只有石灰或液態石灰能提升它。差：低於 5.5。如果下次播種前 pH 值下降，請施用石灰。" eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH 值 - 範圍：5.0 到 7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="大多數作物在 pH 6.5 到 7.0 時生長良好。隨時間推移，降雨會緩慢使土壤酸化。pH 值不會自行恢復--只有石灰或液態石灰能提升它。差：低於 5.5。如果下次播種前 pH 值下降，請施用石灰。" eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="有機質" eh="6305f4bb" />
     <e k="helpLine_sf_nu_p3_om_title" v="有機質 (OM) - 範圍 0 到 10" eh="58f490f3" />
@@ -273,11 +273,11 @@
     <e k="helpLine_sf_fe_p1_base_title" v="液態、固態、廄肥和泥漿" eh="4668dca7" />
     <e k="helpLine_sf_fe_p1_base_text" v="液態肥料添加平衡的 N+P+K。固態肥料含氮磷較高。廄肥和泥漿添加 N、P、K 和有機質。沼渣（生物氣副產品）含鉀量高且同樣添加有機質。均使用標準設備施用。" eh="64069a56" />
     <e k="helpLine_sf_fe_p1_lime_title" v="石灰與 pH 值修正" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="石灰是原版遊戲中唯一的 pH 修正方式——它不添加養分。自定義類型液態石灰和石膏也能提升 pH 值（石膏還會添加少量有機質）。當 pH 值降至 6.0 以下時施用，使作物保持在最佳範圍。" eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="石灰是原版遊戲中唯一的 pH 修正方式--它不添加養分。自定義類型液態石灰和石膏也能提升 pH 值（石膏還會添加少量有機質）。當 pH 值降至 6.0 以下時施用，使作物保持在最佳範圍。" eh="833a967f" />
 
     <e k="helpLine_sf_fe_p2_title" v="自定義氮磷鉀來源" eh="1021f8c9" />
     <e k="helpLine_sf_fe_p2_n_title" v="氮源（自定義大袋）" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) 和 UAN-28 (28-0-0) 是液態氮溶液。無水氨 (82-0-0) 是每升含氮量最高的產品。尿素 (46-0-0) 和 AMS (21-0-0-24S) 為乾顆粒。所有這些僅含氮——對磷、鉀或 pH 值無影響。" eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) 和 UAN-28 (28-0-0) 是液態氮溶液。無水氨 (82-0-0) 是每升含氮量最高的產品。尿素 (46-0-0) 和 AMS (21-0-0-24S) 為乾顆粒。所有這些僅含氮--對磷、鉀或 pH 值無影響。" eh="6a100c25" />
     <e k="helpLine_sf_fe_p2_pk_title" v="磷鉀源" eh="a2d4091b" />
     <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0)：每升含磷量最高。DAP (18-46-0)：高磷含少量氮。鉀肥 (0-0-60)：純鉀。啟動肥 (10-34-0)：高磷入溝產品，含平衡的氮鉀。均可在商店中購買大袋裝。" eh="75a86964" />
 
@@ -292,17 +292,17 @@
     <e k="helpLine_sf_hu_p1_toggle_title" v="切換 HUD（J 鍵）" eh="402283ba" />
     <e k="helpLine_sf_hu_p1_toggle_text" v="按 J 鍵顯示或隱藏實時土壤疊層。它檢測你所在的田地並顯示 N、P、K、pH 和 OM。當啟用雜草、害蟲或疾病設置時，相關行會出現在面板底部。" eh="3dcb9bfe" />
     <e k="helpLine_sf_hu_p1_status_title" v="閱讀狀態" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="每種養分顯示良好（無需操作）、一般（考慮近期處理）或差（需要操作——影響產量）。標題欄中的總體徽章反映了所有監測維度（包括雜草、害蟲和疾病）中的最差值。" eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_status_text" v="每種養分顯示良好（無需操作）、一般（考慮近期處理）或差（需要操作--影響產量）。標題欄中的總體徽章反映了所有監測維度（包括雜草、害蟲和疾病）中的最差值。" eh="3b8c2c6e" />
 
     <e k="helpLine_sf_hu_p2_title" v="田地健康壓力" eh="b4d35b30" />
     <e k="helpLine_sf_hu_p2_press_title" v="雜草、害蟲和疾病" eh="0a3fae00" />
     <e k="helpLine_sf_hu_p2_press_text" v="田地的生物威脅由三種壓力分數（0 到 100）追蹤。若不加處理，收穫時會降低產量：雜草最高 -30%%，害蟲 -20%%，疾病 -25%%。HUD 行 W、I 和 D 顯示顏色標註的嚴重程度：綠色（低）、黃色（中等）、紅色（高）。" eh="3fc3c400" />
     <e k="helpLine_sf_hu_p2_treat_title" v="處理壓力" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="除草劑減少雜草壓力——任何耕作也會將其重置為零。殺蟲劑減少 25 點害蟲壓力並抑制再生長 10 天。殺菌劑減少 20 點疾病並抑制 12 天。每套系統均可在設置中關閉。" eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="除草劑減少雜草壓力--任何耕作也會將其重置為零。殺蟲劑減少 25 點害蟲壓力並抑制再生長 10 天。殺菌劑減少 20 點疾病並抑制 12 天。每套系統均可在設置中關閉。" eh="4d65bdec" />
 
     <e k="helpLine_sf_hu_p3_title" v="土壤報告" eh="35fcce6c" />
     <e k="helpLine_sf_hu_p3_open_title" v="打開報告（K 鍵）" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="按 K 鍵打開完整的農場土壤報告。摘要欄顯示追蹤的田地總數、有多少需要施肥，以及權重的農場健康百分比。田地按緊迫性排序——狀況最差的優先。" eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_open_text" v="按 K 鍵打開完整的農場土壤報告。摘要欄顯示追蹤的田地總數、有多少需要施肥，以及權重的農場健康百分比。田地按緊迫性排序--狀況最差的優先。" eh="38a5bd2e" />
     <e k="helpLine_sf_hu_p3_detail_title" v="田地詳情與建議" eh="c99d2b89" />
     <e k="helpLine_sf_hu_p3_detail_text" v="點擊任何行上的箭頭以打開該田地的詳細視圖：養分值、壓力等級、產量損失預測，以及列出具體施用建議的清單。按返回或 Escape 鍵回到表格。" eh="38dd2c6d" />
 
@@ -315,7 +315,7 @@
 
     <e k="helpLine_sf_se_p2_title" v="HUD 與施用量控制" eh="399f4910" />
     <e k="helpLine_sf_se_p2_hud_title" v="每位玩家 HUD 選項" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="每位玩家控制自己的 HUD——不與服務器同步。選項：顯示 HUD（開/關）、位置（5 個預設 + 拖動）、顏色主題（綠 / 藍 / 琥珀 / 單色）、字體大小（小 / 中 / 大）、透明度（25%% 到 100%%）、英制單位（開/關）。" eh="f3934884" />
+    <e k="helpLine_sf_se_p2_hud_text" v="每位玩家控制自己的 HUD--不與服務器同步。選項：顯示 HUD（開/關）、位置（5 個預設 + 拖動）、顏色主題（綠 / 藍 / 琥珀 / 單色）、字體大小（小 / 中 / 大）、透明度（25%% 到 100%%）、英制單位（開/關）。" eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="噴霧機施用量控制" eh="5ecdfa23" />
     <e k="helpLine_sf_se_p2_rate_text" v="在噴霧器或撒布機中，使用 SF 施用量增加 (]) 和 SF 施用量減少 ([) 來將施用量從 0.10x 調整到 2.00x。切換自動施用量控制 (Shift+L) 以讓模組自動瞄準最佳養分水平並避免燒傷風險。" eh="dd385e39" />
 
@@ -324,7 +324,7 @@
     <e k="helpLine_sf_mp_p1_auth_title" v="服務器授權模擬" eh="8d324792" />
     <e k="helpLine_sf_mp_p1_auth_text" v="所有土壤模擬均在服務器上運行。客戶端在加入時接收完整的田地數據和設置，如果服務器仍在加載中則會自動重試。HUD 顯示設置（位置、主題、大小）是每位玩家獨立的，絕不會同步到服務器。" eh="db72a3f9" />
     <e k="helpLine_sf_mp_p1_ded_title" v="專用服務器" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="專用服務器運行完整的模擬，沒有任何 HUD 或 GUI 開銷——這是預期且正常的。使用控制台命令（soilStatus、SoilSetDifficulty、SoilShowSettings 等）在專用服務器上管理和驗證設置。" eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="專用服務器運行完整的模擬，沒有任何 HUD 或 GUI 開銷--這是預期且正常的。使用控制台命令（soilStatus、SoilSetDifficulty、SoilShowSettings 等）在專用服務器上管理和驗證設置。" eh="3df784d6" />
 
 
     <e k="sf_crop_rotation_short" v="作物輪作" eh="def2c162" />
@@ -556,12 +556,12 @@
     <e k="sf_notify_burn_body" v="Field %d: over-application damage (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Data sync issue detected. Please report if this persists." eh="1a307946" />
     <e k="sf_notify_lime_crop_title" v="Amendment Warning" eh="33228c86" />
-    <e k="sf_notify_lime_crop_body" v="Field %d: Lime on growing crop — yield -80%% at harvest!" eh="75217c5a" />
+    <e k="sf_notify_lime_crop_body" v="Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
     <e k="sf_notify_om_crop_title" v="Amendment Warning" eh="33228c86" />
-    <e k="sf_notify_om_crop_body" v="Field %d: Organic matter on growing crop — yield -20%% at harvest." eh="5f47bb88" />
+    <e k="sf_notify_om_crop_body" v="Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
 
     <!-- ======================================================
-         SETTINGS PANEL — CATEGORIES & SECTION HEADERS
+         SETTINGS PANEL - CATEGORIES & SECTION HEADERS
          ====================================================== -->
     <e k="sf_panel_cat_sim" v="Simulation" eh="4f502b57" />
     <e k="sf_panel_cat_sim_desc" v="Farm mechanics, difficulty and nutrient cycles" eh="3c584cdb" />
@@ -583,13 +583,13 @@
     <e k="sf_panel_hdr_actions" v="Actions &amp; Field Tools" eh="f64ba1c9" />
     <e k="sf_panel_hdr_hud_layout" v="HUD Layout" eh="54e1930b" />
     <e k="sf_hud_enter_drag_label" v="Move &amp; Resize Panels" eh="be34d24d" />
-    <e k="sf_hud_enter_drag_desc" v="Drag HUD to reposition — drag corner to resize — RMB or Esc to finish" eh="13230ef7" />
+    <e k="sf_hud_enter_drag_desc" v="Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
     <e k="sf_independent_panels_short" v="Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
     <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />
 
     <!-- ======================================================
-         SETTINGS PANEL — CHROME
+         SETTINGS PANEL - CHROME
          ====================================================== -->
     <e k="sf_panel_admin_yes" v="Admin: YES" eh="4628842a" />
     <e k="sf_panel_admin_no" v="Admin: NO" eh="a9394f7b" />
@@ -603,7 +603,7 @@
     <e k="sf_panel_btn_open" v="Open >>" eh="6624d17c" />
 
     <!-- ======================================================
-         SETTINGS PANEL — SETTING DESCRIPTIONS
+         SETTINGS PANEL - SETTING DESCRIPTIONS
          ====================================================== -->
     <e k="sf_desc_enabled" v="Activate / deactivate the entire mod" eh="895364cb" />
     <e k="sf_desc_debugMode" v="Extra logging for troubleshooting" eh="de508edb" />
@@ -639,7 +639,7 @@
     <e k="sf_desc_showFieldInfoBox" v="Show soil data in the Field Info panel" eh="815e419e" />
 
     <!-- ======================================================
-         SETTINGS PANEL — MULTI-OPTION VALUES
+         SETTINGS PANEL - MULTI-OPTION VALUES
          ====================================================== -->
     <e k="sf_rr_1" v="Very Slow (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Slow (0.5x)" eh="db69874d" />
@@ -662,7 +662,7 @@
     <e k="sf_density_3" v="High" eh="655d20c1" />
 
     <!-- ======================================================
-         SETTINGS PANEL — ADMIN ACTION ITEMS
+         SETTINGS PANEL - ADMIN ACTION ITEMS
          ====================================================== -->
     <e k="sf_admin_save_label" v="Save Soil Data" eh="d4e9a279" />
     <e k="sf_admin_save_desc" v="Force-save all soil data now" eh="f365613a" />
@@ -784,11 +784,11 @@
     <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Toggle See &amp; Spray Disease" eh="205a3668" />
     <e k="action_SF_SEE_SPRAY_WEED"   v="SF: Toggle See &amp; Spray Weed" />
     <e k="action_SF_VARIABLE_RATE"    v="SF: Toggle Variable Rate" />
-    <e k="sf_guide_sub_1" v="Overview — What this mod tracks and why it matters" eh="83e88693" />
-    <e k="sf_guide_sub_2" v="HUD Guide — Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
-    <e k="sf_guide_sub_3" v="Workflow — Your daily and seasonal soil management routine" eh="75d263dd" />
-    <e k="sf_guide_sub_4" v="Products — What each fertilizer affects and when to use it" eh="2a127c60" />
-    <e k="sf_guide_sub_5" v="F.A.Q. — Common questions answered" eh="4384cacf" />
+    <e k="sf_guide_sub_1" v="Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_guide_sub_2" v="HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
+    <e k="sf_guide_sub_3" v="Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
+    <e k="sf_guide_sub_4" v="Products - What each fertilizer affects and when to use it" eh="2a127c60" />
+    <e k="sf_guide_sub_5" v="F.A.Q. - Common questions answered" eh="4384cacf" />
     <e k="sf_guide_p1_01" v="WHAT IS THIS MOD" eh="fe4d3283" />
     <e k="sf_guide_p1_02" v="Tracks 5 soil nutrients per field across your" eh="93e6595b" />
     <e k="sf_guide_p1_03" v="farm. Crops deplete nutrients on harvest." eh="5e6dc5a8" />
@@ -806,13 +806,13 @@
     <e k="sf_guide_p1_15" v="FAIR (yellow) Below optimal." eh="0d30dbe4" />
     <e k="sf_guide_p1_16" v="Plan a top-up. Yield slightly reduced." eh="0363160b" />
     <e k="sf_guide_p1_17" v="POOR (red)    Below minimum threshold." eh="96f2a246" />
-    <e k="sf_guide_p1_18" v="Act now — yield impact is severe." eh="64e9e4f9" />
+    <e k="sf_guide_p1_18" v="Act now - yield impact is severe." eh="64e9e4f9" />
     <e k="sf_guide_p1_19" v="QUICK START (5 STEPS)" eh="f1bcfcdb" />
     <e k="sf_guide_p1_20" v="1. Open PDA (game menu) &gt; Soil &amp; Fertilizer." eh="22539c14" />
     <e k="sf_guide_p1_21" v="2. Check Farm Overview for red-flagged fields." eh="d4e823e8" />
     <e k="sf_guide_p1_22" v="3. Use Treatment Plan to see what's needed." eh="1a0c7961" />
     <e k="sf_guide_p1_23" v="4. Apply the right fertilizer product." eh="b44bcac2" />
-    <e k="sf_guide_p1_24" v="5. Harvest normally — nutrients auto-deduct." eh="ba4b5846" />
+    <e k="sf_guide_p1_24" v="5. Harvest normally - nutrients auto-deduct." eh="ba4b5846" />
     <e k="sf_guide_p1_25" v="TOOLS AT A GLANCE" eh="103ce1b5" />
     <e k="sf_guide_p1_26" v="HUD Bars     Soil levels for your current field." eh="4d0661d7" />
     <e k="sf_guide_p1_27" v="Key: SF Toggle HUD (Controls &gt; Mods)" eh="fde6e9c0" />
@@ -839,15 +839,15 @@
     <e k="sf_guide_p2_04" v="Bar colour tells you status at a glance." eh="e07e4240" />
     <e k="sf_guide_p2_05" v="THE THREE TICK MARKS" eh="70556f5d" />
     <e k="sf_guide_p2_06" v="Every bar has three small vertical tick marks." eh="65bb2211" />
-    <e k="sf_guide_p2_07" v="ORANGE tick — Poor/Fair boundary." eh="3eafb9fd" />
+    <e k="sf_guide_p2_07" v="ORANGE tick - Poor/Fair boundary." eh="3eafb9fd" />
     <e k="sf_guide_p2_08" v="Bar is RED below this line." eh="4cebe452" />
     <e k="sf_guide_p2_09" v="Your soil is in POOR condition." eh="7a3175e4" />
     <e k="sf_guide_p2_10" v="Action: apply fertilizer immediately." eh="209e2635" />
-    <e k="sf_guide_p2_11" v="YELLOW tick — Fair/Good boundary." eh="9f1b02a2" />
+    <e k="sf_guide_p2_11" v="YELLOW tick - Fair/Good boundary." eh="9f1b02a2" />
     <e k="sf_guide_p2_12" v="Bar is YELLOW between orange and yellow ticks." eh="cac82a8d" />
-    <e k="sf_guide_p2_13" v="Your soil is FAIR — below the crop's optimum." eh="1ae66c9c" />
+    <e k="sf_guide_p2_13" v="Your soil is FAIR - below the crop's optimum." eh="1ae66c9c" />
     <e k="sf_guide_p2_14" v="Action: plan a top-up this season." eh="3cf7dfa3" />
-    <e k="sf_guide_p2_15" v="CYAN tick — Your planted crop's optimal target." eh="20b6c223" />
+    <e k="sf_guide_p2_15" v="CYAN tick - Your planted crop's optimal target." eh="20b6c223" />
     <e k="sf_guide_p2_16" v="Reach this point for maximum yield." eh="cc7c263f" />
     <e k="sf_guide_p2_17" v="Bar is GREEN when you reach it." eh="b5e669ea" />
     <e k="sf_guide_p2_18" v="Each crop has different N/P/K targets." eh="d25b96a5" />
@@ -892,21 +892,21 @@
     <e k="sf_guide_p3_12" v="WEEKLY ROUTINE" eh="a303bfde" />
     <e k="sf_guide_p3_13" v="Open PDA &gt; Treatment Plan tab." eh="2e03b237" />
     <e k="sf_guide_p3_14" v="Fields are sorted by urgency (worst first)." eh="dece938b" />
-    <e k="sf_guide_p3_15" v="Work top-down — treat highest-priority fields first." eh="3fa2f44c" />
+    <e k="sf_guide_p3_15" v="Work top-down - treat highest-priority fields first." eh="3fa2f44c" />
     <e k="sf_guide_p3_16" v="Click a row to open detailed field view." eh="147b8267" />
     <e k="sf_guide_p3_17" v="READING THE TREATMENT PLAN" eh="ff6ee8e4" />
     <e k="sf_guide_p3_18" v="Priority scores weigh how far below target each" eh="39d2360b" />
     <e k="sf_guide_p3_19" v="nutrient is. A field in the red on two nutrients" eh="dc519211" />
     <e k="sf_guide_p3_20" v="ranks higher than one with a single fair level." eh="41d157db" />
     <e k="sf_guide_p3_21" v="PRE-PLANTING CHECKLIST" eh="14b36869" />
-    <e k="sf_guide_p3_22" v="1. Check N level — depletes every harvest." eh="3c4a5b54" />
+    <e k="sf_guide_p3_22" v="1. Check N level - depletes every harvest." eh="3c4a5b54" />
     <e k="sf_guide_p3_23" v="Apply nitrogen if FAIR or POOR." eh="4c69f9f8" />
-    <e k="sf_guide_p3_24" v="2. Check P and K — change more slowly." eh="fa732940" />
+    <e k="sf_guide_p3_24" v="2. Check P and K - change more slowly." eh="fa732940" />
     <e k="sf_guide_p3_25" v="Top up if below the fair threshold." eh="81a25810" />
-    <e k="sf_guide_p3_26" v="3. Check pH — lime if acidic, gypsum if alkaline." eh="fa766780" />
-    <e k="sf_guide_p3_27" v="4. Check OM — add manure or compost if low." eh="08abc4f1" />
+    <e k="sf_guide_p3_26" v="3. Check pH - lime if acidic, gypsum if alkaline." eh="fa766780" />
+    <e k="sf_guide_p3_27" v="4. Check OM - add manure or compost if low." eh="08abc4f1" />
     <e k="sf_guide_p3_28" v="POST-HARVEST ACTIONS" eh="eb52e29f" />
-    <e k="sf_guide_p3_29" v="1. Nitrogen is depleted — apply fertilizer soon." eh="b2c1db96" />
+    <e k="sf_guide_p3_29" v="1. Nitrogen is depleted - apply fertilizer soon." eh="b2c1db96" />
     <e k="sf_guide_p3_30" v="2. Legume crops (soy, clover) add free N" eh="75f466af" />
     <e k="sf_guide_p3_31" v="bonus for the NEXT season automatically." eh="80169436" />
     <e k="sf_guide_p3_32" v="3. Add manure or compost to build OM long-term." eh="dc25a4c7" />
@@ -937,9 +937,9 @@
     <e k="sf_guide_p4_18" v="Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="" eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
-    <e k="sf_guide_p4_21" v="Apply LIME — raises pH toward neutral." eh="4df3e7fa" />
+    <e k="sf_guide_p4_21" v="Apply LIME - raises pH toward neutral." eh="4df3e7fa" />
     <e k="sf_guide_p4_22" v="pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
-    <e k="sf_guide_p4_23" v="Apply GYPSUM — lowers pH toward neutral." eh="e71fa617" />
+    <e k="sf_guide_p4_23" v="Apply GYPSUM - lowers pH toward neutral." eh="e71fa617" />
     <e k="sf_guide_p4_24" v="Allow 1–2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="Manure         Best OM builder. Also adds N." eh="99834812" />
@@ -951,16 +951,16 @@
     <e k="sf_guide_p4_32" v="* Load fertilizer and check the ghost bar first." eh="2126b07c" />
     <e k="sf_guide_p4_33" v="It shows your projected result before you apply." eh="7ee23768" />
     <e k="sf_guide_p4_34" v="* Liquid products generally work faster than solid." eh="a5b6f4a7" />
-    <e k="sf_guide_p4_35" v="* Manure improves OM AND adds N — very efficient." eh="707c5fe6" />
+    <e k="sf_guide_p4_35" v="* Manure improves OM AND adds N - very efficient." eh="707c5fe6" />
     <e k="sf_guide_p4_36" v="* Apply liquid N before rain if possible" eh="50d601b0" />
     <e k="sf_guide_p4_37" v="(rain leaches some nitrogen after application)." eh="c10189dd" />
     <e k="sf_guide_p4_38" v="* Check crop targets for what you're planting" eh="a3ccec1e" />
-    <e k="sf_guide_p4_39" v="— different crops need different NPK ratios." eh="10bc6a29" />
-    <e k="sf_guide_p5_01" v="MY BARS ARE ALWAYS EMPTY — IS IT BROKEN?" eh="8772a2e4" />
+    <e k="sf_guide_p4_39" v="- different crops need different NPK ratios." eh="10bc6a29" />
+    <e k="sf_guide_p5_01" v="MY BARS ARE ALWAYS EMPTY - IS IT BROKEN?" eh="8772a2e4" />
     <e k="sf_guide_p5_02" v="No. Soil starts at low base levels on a new save." eh="459b03bb" />
     <e k="sf_guide_p5_03" v="A field that was never fertilized shows real values." eh="0d7762f2" />
     <e k="sf_guide_p5_04" v="Apply fertilizer to build levels over time." eh="4419bc2a" />
-    <e k="sf_guide_p5_05" v="This is intentional — it reflects real soil depletion." eh="50618796" />
+    <e k="sf_guide_p5_05" v="This is intentional - it reflects real soil depletion." eh="50618796" />
     <e k="sf_guide_p5_06" v="WHERE DO I ASSIGN KEYBOARD SHORTCUTS?" eh="0717d029" />
     <e k="sf_guide_p5_07" v="Options &gt; Controls &gt; Mods" eh="7cf00a23" />
     <e k="sf_guide_p5_08" v="All SF_ keys ship unbound to avoid conflicts" eh="f6ca8742" />
@@ -996,11 +996,11 @@
     <e k="sf_guide_p5_38" v="Clients sync on join. Settings changes require" eh="1d2473fd" />
     <e k="sf_guide_p5_39" v="admin permissions in multiplayer sessions." eh="a48c5146" />
     <e k="sf_guide_p5_40" v="HOW DOES SOIL AFFECT YIELD?" eh="456d3c9f" />
-    <e k="sf_guide_p5_41" v="GOOD soil: full yield — no penalty." eh="7fd13553" />
+    <e k="sf_guide_p5_41" v="GOOD soil: full yield - no penalty." eh="7fd13553" />
     <e k="sf_guide_p5_42" v="FAIR soil: ~5-15% yield penalty per nutrient." eh="bced6a1c" />
     <e k="sf_guide_p5_43" v="POOR soil: up to 40% penalty. Correct it fast." eh="244d5bf2" />
     <e k="sf_guide_p5_44" v="Penalties stack: POOR N + FAIR P = severe loss." eh="8afb61f9" />
-    <e k="sf_guide_title" v="Soil &amp; Fertilizer — Field Guide" eh="bb56610f" />
+    <e k="sf_guide_title" v="Soil &amp; Fertilizer - Field Guide" eh="bb56610f" />
     <e k="sf_guide_tab_1" v="OVERVIEW" eh="3b9ae4ee" />
     <e k="sf_guide_tab_2" v="HUD GUIDE" eh="843ca8c2" />
     <e k="sf_guide_tab_3" v="WORKFLOW" eh="7337e059" />

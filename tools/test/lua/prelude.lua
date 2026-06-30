@@ -1,4 +1,4 @@
--- prelude.lua — minimal FS25 engine mock + tiny test framework.
+-- prelude.lua - minimal FS25 engine mock + tiny test framework.
 -- Loaded first by run-tests.mjs, before any src module and the test file itself.
 -- Only stubs what module load + the functions under test actually touch; extend as
 -- new tests need more of the engine surface.

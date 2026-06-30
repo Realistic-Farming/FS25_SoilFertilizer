@@ -18,7 +18,7 @@
       <Text profile="sfDetail_urgencyLabel" id="detailUrgencyLabel"  text="$l10n_sf_detail_urgency_label" position="150px -63px"/>
       <Text profile="sfDetail_urgencyValue" id="detailUrgency"       text="--"                          position="290px -63px"/>
 
-      <!-- ─── SOIL NUTRIENTS — background + rows at absolute dialog Y ─── -->
+      <!-- ─── SOIL NUTRIENTS - background + rows at absolute dialog Y ─── -->
       <Bitmap profile="sfDetail_sectionBg5"     position="0px -95px"/>
       <Text   profile="sfDetail_sectionHeader"  text="$l10n_sf_detail_section_nutrients" position="0px -100px"/>
 
@@ -101,7 +101,7 @@
       <textAlignment value="center"/>
     </Profile>
 
-    <!-- Row label — gray, left-aligned -->
+    <!-- Row label - gray, left-aligned -->
     <Profile name="sfDetail_label" extends="fs25_textDefault" with="anchorTopCenter">
       <size value="180px 22px"/>
       <textSize value="12px"/>
@@ -109,7 +109,7 @@
       <textAlignment value="left"/>
     </Profile>
 
-    <!-- Row value — white, bold, left-aligned -->
+    <!-- Row value - white, bold, left-aligned -->
     <Profile name="sfDetail_value" extends="fs25_textDefault" with="anchorTopCenter">
       <size value="110px 22px"/>
       <textSize value="13px"/>

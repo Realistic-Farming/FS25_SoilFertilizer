@@ -3,7 +3,7 @@
 -- =========================================================
 -- All tunable values: timing, difficulty, nutrient limits,
 -- crop extraction rates, fertilizer profiles, HUD config.
--- Single source of truth — modify here, not in system code.
+-- Single source of truth - modify here, not in system code.
 -- =========================================================
 -- Author: TisonK
 -- =========================================================
@@ -63,10 +63,10 @@ SoilConstants.FIELD_DEFAULTS = {
 -- ========================================
 -- Spread applied to a fresh field's starting nutrients so the map isn't uniform.
 -- Two components are summed (see SoilFertilitySystem:getOrCreateField):
---   • REGIONAL — a smooth low-frequency gradient over the farmland centre, so
+--   • REGIONAL - a smooth low-frequency gradient over the farmland centre, so
 --     neighbouring fields share a similar profile and the map forms believable
 --     good/poor regions (this is what answers "no variability", issue #632).
---   • NOISE — per-field jitter that decorrelates individual fields within a region.
+--   • NOISE - per-field jitter that decorrelates individual fields within a region.
 -- N/P/K amounts are fractions of the base value; pH/OM are absolute units.
 -- "Dramatic" spread (#632 follow-up): widened so fields differ enough that you
 -- should inspect a field before buying it. Some land is genuinely poor, some rich.
@@ -92,14 +92,14 @@ SoilConstants.PLOWING = {
 }
 
 -- ========================================
--- CULTIVATION (shallow tillage — non-plowing passes)
+-- CULTIVATION (shallow tillage - non-plowing passes)
 -- ========================================
 -- WEED_PRESSURE_REDUCTION set to 100 so a single full cultivation pass fully clears
 -- weed pressure (the hook fires per-area tick, clamped to 0 by math.max).
 -- Agronomically correct: shallow tillage disrupts annual weed seedlings entirely;
 -- only perennial roots survive, which the game does not distinguish.
 SoilConstants.CULTIVATION = {
-    WEED_PRESSURE_REDUCTION    = 100, -- Full reset (was 20 — insufficient for clearing all weeds)
+    WEED_PRESSURE_REDUCTION    = 100, -- Full reset (was 20 - insufficient for clearing all weeds)
     PEST_PRESSURE_REDUCTION    = 10,
     DISEASE_PRESSURE_REDUCTION = 15,
 }
@@ -122,7 +122,7 @@ SoilConstants.STRIP_TILL = {
     PEST_PRESSURE_REDUCTION    = 12,  -- pts; more than cultivator (deep knife action)
     DISEASE_PRESSURE_REDUCTION = 10,  -- pts; less than cultivator (residue left in place)
     OM_BOOST                   = 0.10, -- % OM increase per pass (tilled-strip incorporation)
-    -- No pH normalization — strip-till does not invert soil horizons
+    -- No pH normalization - strip-till does not invert soil horizons
 }
 
 -- ========================================
@@ -132,13 +132,13 @@ SoilConstants.STRIP_TILL = {
 -- the soil, it decomposes and releases a small amount of organic matter
 -- and nutrients (especially N and K from cereal straw, P is minimal).
 -- Each tillage type has its own incorporation efficiency:
---   Plow      : deepest incorporation — highest OM and N release
---   Cultivator: shallow mixing — moderate OM release, small NPK
---   Strip-till: partial surface coverage — lowest incorporation
+--   Plow      : deepest incorporation - highest OM and N release
+--   Cultivator: shallow mixing - moderate OM release, small NPK
+--   Strip-till: partial surface coverage - lowest incorporation
 --   Sowing    : direct-drill openers disturb minimal residue
 --
 -- All values are per-pass additive boosts (on the 0-100 scale for N/P/K,
--- and on the 0-10 OM scale). They are small by design — straw residue
+-- and on the 0-10 OM scale). They are small by design - straw residue
 -- decomposes over weeks/months, so a single tillage pass incorporates
 -- only a fraction. The plowingBonus setting gates the plow path; all
 -- other paths are gated by the new residueIncorporation setting.
@@ -150,8 +150,8 @@ SoilConstants.STRIP_TILL = {
 --   At 4-6 t/ha straw (wheat/maize at game scale), that translates to:
 --   Plow:      OM+0.12, N+0.8, P+0.1, K+0.6  (60% incorporation efficiency)
 --   Cultivator:OM+0.06, N+0.4, P+0.05,K+0.3  (30% incorporation)
---   Strip-till: OM+0.03, N+0.2, P+0.02,K+0.15 (15% — only tilled strips)
---   Direct-drill: OM+0.02, N+0.1, P+0.01,K+0.08 (10% — opener disturbance only)
+--   Strip-till: OM+0.03, N+0.2, P+0.02,K+0.15 (15% - only tilled strips)
+--   Direct-drill: OM+0.02, N+0.1, P+0.01,K+0.08 (10% - opener disturbance only)
 SoilConstants.RESIDUE_INCORPORATION = {
     PLOW = {
         OM = 0.15,   -- increased from 0.12
@@ -180,10 +180,10 @@ SoilConstants.RESIDUE_INCORPORATION = {
 }
 
 -- ========================================
--- CROP INCORPORATION (Issue #674 — green manure / cover-crop / failed-crop tillage)
+-- CROP INCORPORATION (Issue #674 - green manure / cover-crop / failed-crop tillage)
 -- ========================================
--- Working a STANDING or dead crop into the soil — green manure, an over-wintered
--- cover crop, a failed/burned crop, or a tall stubble — releases far more organic
+-- Working a STANDING or dead crop into the soil - green manure, an over-wintered
+-- cover crop, a failed/burned crop, or a tall stubble - releases far more organic
 -- matter and nitrogen than tilling bare soil. This is applied ON TOP of residue
 -- incorporation, and ONLY when a crop is actually detected at the work position
 -- (via a FieldState query in the onStartWorkAreaProcessing probe, before the tool
@@ -192,10 +192,10 @@ SoilConstants.RESIDUE_INCORPORATION = {
 -- and the processed area fraction. Gated by the existing residueIncorporation setting.
 --
 -- Agronomic basis: incorporating a green-manure / cover crop (e.g. oilseed radish,
--- mustard, clover) returns the whole standing biomass to the soil — typically several
--- tonnes/ha of fresh matter — versus only surface straw for stubble residue.
+-- mustard, clover) returns the whole standing biomass to the soil - typically several
+-- tonnes/ha of fresh matter - versus only surface straw for stubble residue.
 SoilConstants.CROP_INCORPORATION = {
-    PLOW       = { OM = 1.2,  N = 6.0, P = 1.2, K = 4.0 },  -- deep inversion — fullest burial
+    PLOW       = { OM = 1.2,  N = 6.0, P = 1.2, K = 4.0 },  -- deep inversion - fullest burial
     CULTIVATOR = { OM = 0.7,  N = 3.5, P = 0.7, K = 2.2 },  -- shallow mixing
     MULCHER    = { OM = 0.6,  N = 2.5, P = 0.5, K = 1.5 },  -- surface chop, no soil inversion
     MIN_BIOMASS = 0.30,   -- floor biomass factor once an established crop (past seedling) is detected
@@ -251,7 +251,7 @@ SoilConstants.OM_DYNAMICS = {
 -- instead of crop-rotation rules: gentle nutrient regrowth (root turnover + clover/legume
 -- fixation in the sward), a slow creep in organic matter, slow pH drift, and no rotation
 -- or seasonal-harvest penalties. Slightly more generous than bare fallow because an
--- established sward cycles nutrients better than open ground. All TUNABLE — these want
+-- established sward cycles nutrients better than open ground. All TUNABLE - these want
 -- in-game balancing against real pasture behaviour.
 SoilConstants.MEADOW = {
     REGROW_N        = 0.10,   -- N points/day regrown
@@ -267,7 +267,7 @@ SoilConstants.MEADOW = {
 -- ========================================
 -- When a combine chops straw instead of dropping it, the material decomposes
 -- into the soil and adds organic matter (realistic agricultural behaviour).
--- OM is a concentration — gain uses (areaHa / fieldAreaHa) * strawRatio * OM_RATE.
+-- OM is a concentration - gain uses (areaHa / fieldAreaHa) * strawRatio * OM_RATE.
 -- A complete field harvest at strawRatio=1.0 adds exactly OM_RATE to the field,
 -- regardless of field size. Partial passes add a proportional fraction.
 -- Example: full 5ha field, strawRatio=0.5 → 0.5 × 0.20 = 0.10 OM
@@ -294,7 +294,7 @@ SoilConstants.SEASONAL_EFFECTS = {
 SoilConstants.CROP_ROTATION = {
     LEGUME_BONUS_N_PER_DAY  = 0.5,   -- N added per day during the post-crop spring bonus window
     LEGUME_BONUS_DAYS       = 3,     -- spring bonus lasts this many days
-    LEGUME_GROWTH_N_PER_DAY = 0.15,  -- small live N trickle while a legume is standing (nodule fixation surplus, #674) — deliberately well below the post-crop bonus so we don't double-count
+    LEGUME_GROWTH_N_PER_DAY = 0.15,  -- small live N trickle while a legume is standing (nodule fixation surplus, #674) - deliberately well below the post-crop bonus so we don't double-count
     FATIGUE_MULTIPLIER      = 1.15,  -- nutrient extraction ×1.15 for same-crop consecutive seasons
     -- alfalfa == luzerne (NA vs EU name); greenbean/green_beans match field beans.
     -- All fix nitrogen, so rotating away from them earns the spring N bonus (#694).
@@ -431,8 +431,8 @@ SoilConstants.FERTILIZER_PROFILES = {
     LIQUIDFERTILIZER  = { N=79.2, P=198.0, K=44.5 },          -- 93.5 L/ha: ~20N, ~10P, ~15K ppm
     FERTILIZER        = { N=41.1, P=164.6, K=24.7 },          -- 225 kg/ha: ~25N, ~20P, ~20K ppm
     MANURE            = { N=0.53, P=0.25,  K=0.45, OM=0.04 }, -- 14000 L/ha: ~7N, ~3.5P, ~6K pts/pass (UNL beef N:P:K ratio)
-    LIQUIDMANURE      = { N=0.50, P=0.35,  K=0.65, OM=0.03 }, -- Slurry — dairy N:P:K 1:0.70:1.33 (UNL g1335)
-    DIGESTATE         = { N=1.32, P=0.80,  K=0.80, OM=0.04 }, -- Digestate — 12,600 L/ha → ~50N/6P/40K ppm per pass (calibrated with real farmer input)
+    LIQUIDMANURE      = { N=0.50, P=0.35,  K=0.65, OM=0.03 }, -- Slurry - dairy N:P:K 1:0.70:1.33 (UNL g1335)
+    DIGESTATE         = { N=1.32, P=0.80,  K=0.80, OM=0.04 }, -- Digestate - 12,600 L/ha → ~50N/6P/40K ppm per pass (calibrated with real farmer input)
     LIME              = { pH=0.16 },                          -- 2500 kg/ha: +0.40 pH shift per pass (~3 passes to correct pH 5.5→6.5)
     LIQUIDLIME        = { pH=1.07 },                          -- 374  L/ha: +0.40 pH shift per pass (rate corrected from 2800→374 L/ha)
 
@@ -448,7 +448,7 @@ SoilConstants.FERTILIZER_PROFILES = {
     STARTER           = { N=63.5, P=595.0, K=0.00 }, -- 46.8 L/ha: ~8N, ~15P ppm
 
     -- Gypsum: mild pH lowering + OM/structure boost
-    GYPSUM            = { pH=-0.10, OM=0.03 }, -- 1500 kg/ha: -0.25 pH shift; gypsum is Ca/S, not a humus source — minimal OM (#695)
+    GYPSUM            = { pH=-0.10, OM=0.03 }, -- 1500 kg/ha: -0.25 pH shift; gypsum is Ca/S, not a humus source - minimal OM (#695)
 
     -- Phosphorus & potassium sources (Dry bulk)
     MAP               = { N=11.1, P=411.5, K=0.00 }, -- 225 kg/ha: ~45P ppm
@@ -465,7 +465,7 @@ SoilConstants.FERTILIZER_PROFILES = {
 
     -- Organic / slow-release
     -- OM gains lowered to realistic first-season humus conversion (~10-15% of applied
-    -- carbon stabilises in year one). N/P/K unchanged — only the humus build rate (#695).
+    -- carbon stabilises in year one). N/P/K unchanged - only the humus build rate (#695).
     COMPOST           = { N=0.74, P=0.55, K=0.55, OM=0.12 }, -- 5000 kg/ha
     BIOSOLIDS         = { N=2.05, P=1.20, K=1.23, OM=0.10 }, -- 4500 kg/ha: ~+9N, +5P, +5K pts/pass
     CHICKEN_MANURE    = { N=3.70, P=2.80, K=2.78, OM=0.10 }, -- 2000 kg/ha: ~+7N, +5P, +5K pts/pass
@@ -557,8 +557,8 @@ SoilConstants.STATUS_THRESHOLDS = {
 -- ========================================
 -- min = minimum for acceptable growth (below = crop-specific deficiency)
 -- opt = optimal level for full yield (at/above = no yield penalty)
--- Legumes (soybean, peas, beans) have low N targets — they fix atmospheric N.
--- Root crops (potato, sugarbeet) have very high K targets — they partition K into tubers.
+-- Legumes (soybean, peas, beans) have low N targets - they fix atmospheric N.
+-- Root crops (potato, sugarbeet) have very high K targets - they partition K into tubers.
 -- Fallback "default" is used for unrecognised crops.
 SoilConstants.CROP_NUTRIENT_TARGETS = {
     wheat      = { N = { min = 35, opt = 55 }, P = { min = 25, opt = 40 }, K = { min = 25, opt = 40 } },
@@ -592,7 +592,7 @@ SoilConstants.CROP_NUTRIENT_TARGETS = {
 --   K: Good >160 ppm  (Mehlich-3 potassium; lab "Good" ~150 ppm)
 -- The bar in the HUD still runs 0-100 % (internal), where 100 % represents
 -- the luxury-level ceiling (300 ppm N, 60 ppm P, 400 ppm K).
--- Nothing in the simulation changes — these multipliers are display-only.
+-- Nothing in the simulation changes - these multipliers are display-only.
 SoilConstants.PPM_DISPLAY = {
     N = 3.0,   -- internal 50 (fair→good boundary) = 150 ppm
     P = 0.6,   -- internal 45 (fair→good boundary) = 27 ppm
@@ -647,9 +647,9 @@ SoilConstants.YIELD_SENSITIVITY = {
         sunflower  = "tolerant",
         rye        = "tolerant",
         sorghum    = "tolerant",
-        luzerne    = "tolerant",   -- legume forage — fixes own N
+        luzerne    = "tolerant",   -- legume forage - fixes own N
         alfalfa    = "tolerant",   -- == luzerne (NA name); fixes own N (#694)
-        clover     = "tolerant",   -- legume forage — fixes own N
+        clover     = "tolerant",   -- legume forage - fixes own N
         -- Moderate: standard response to nutrient levels
         wheat      = "moderate",
         canola     = "moderate",
@@ -727,7 +727,7 @@ SoilConstants.HUD = {
     -- Clear was previously 0.25 but {0.05,0.05,0.05} @ 0.25 alpha is nearly
     -- invisible on most in-game backgrounds, making the HUD appear to vanish.
     TRANSPARENCY_LEVELS = {
-        [1] = 0.42,  -- Clear  (was 0.25 — raised so panel stays visible)
+        [1] = 0.42,  -- Clear  (was 0.25 - raised so panel stays visible)
         [2] = 0.58,  -- Light  (was 0.50)
         [3] = 0.70,  -- Medium (default, unchanged)
         [4] = 0.85,  -- Dark   (unchanged)
@@ -873,7 +873,7 @@ SoilConstants.SPRAYER_RATE = {
         BIOSOLIDS         = { value =  4500.0, unit = "dry"    },
         CHICKEN_MANURE    = { value =  2000.0, unit = "dry"    },
         GYPSUM            = { value =  1500.0, unit = "dry"    },
-        -- Crop protection — 100 L/ha = realistic water+product carrier mixture
+        -- Crop protection - 100 L/ha = realistic water+product carrier mixture
         -- (1.5 L/ha was pure active ingredient dose; 100-150 L/ha is field-realistic)
         INSECTICIDE = { value = 100.0, unit = "liquid" },
         FUNGICIDE   = { value = 100.0, unit = "liquid" },
@@ -886,7 +886,7 @@ SoilConstants.SPRAYER_RATE = {
     -- Used when SF_TOGGLE_AUTO is active on a sprayer
     AUTO_RATE_TARGETS = {
         N  = 80,
-        P  = 50,   -- was 70 (42 ppm); lowered to 50 (30 ppm) — above most crop P optima without over-shooting
+        P  = 50,   -- was 70 (42 ppm); lowered to 50 (30 ppm) - above most crop P optima without over-shooting
         K  = 75,
         -- Aligned to PH_OPTIMAL (6.5) so auto-lime stops at the agronomic optimum.
         pH = 6.5,
@@ -955,7 +955,7 @@ SoilConstants.WEED_PRESSURE = {
     -- FS25 density-map weed state integers (matches EasyDevControls / LUADOC)
     -- 0 = no weeds, 1-6 = living stages, 7-9 = withered (dying/brown visual)
     WEED_STATE_CLEAR     = 0,
-    WEED_STATE_WITHERED  = 7,   -- small withered — visible brown weeds
+    WEED_STATE_WITHERED  = 7,   -- small withered - visible brown weeds
 
     -- Maximum weed pressure increase per daily update.
     -- Prevents the snap-to-game-weedFactor spike on reload/time-skip (issue #536).
@@ -1118,7 +1118,7 @@ SoilConstants.DISEASE_CLIMATE_MOISTURE = {
 --   • scales the yield bite by the named disease's severity
 --   • gates which fungicide clears it well (effectiveness matrix)
 -- Treatment is MENU / console driven (select chemical → pay → apply). It is NOT a
--- set of physical fill types — the generic FUNGICIDE fill type above still works
+-- set of physical fill types - the generic FUNGICIDE fill type above still works
 -- for vanilla spraying. Pure data here; logic lives in DiseaseSystem.lua.
 
 -- Canonical disease categories. Every named disease maps to exactly one. Fungicide
@@ -1131,7 +1131,7 @@ SoilConstants.DISEASE_CATEGORIES = {
 
 -- Per-disease definitions (flat id → traits). Referenced by DISEASE_REGISTRY.
 --   cat    : effectiveness category (see above)
---   sci    : scientific name (international — not localized)
+--   sci    : scientific name (international - not localized)
 --   nameKey: l10n key suffix → "sf_dis_<id>" for the common display name
 --   cool   : true = favored by cool temps, false = favored by warm temps, nil = any
 --   wet    : true = favored by wet/humid weather (rain pushes it harder)
@@ -1409,7 +1409,7 @@ SoilConstants.MAP_OVERLAY = {
 -- references in those sources (e.g. a 1360 kg car on tiny patches ≈ 827 kPa).
 SoilConstants.COMPACTION = {
     -- Relevance gate: skip the whole calculation for light vehicles (cars, quads, UTVs).
-    -- This is a perf/gameplay floor only — it is NOT the old "≥8 t = compact" rule.
+    -- This is a perf/gameplay floor only - it is NOT the old "≥8 t = compact" rule.
     HEAVY_VEHICLE_THRESHOLD_T = 3.0,   -- tonnes (Vehicle:getTotalMass returns tonnes)
 
     -- Surface term: ground contact pressure → points. When Variable Tire Pressure is
@@ -1446,21 +1446,21 @@ SoilConstants.COMPACTION = {
     NATURAL_DECAY_PER_DAY     = 0.5,   -- points removed per game day (natural recovery)
     -- Taproot bio-drilling (#687, long-term): deep-rooting crops drive roots through
     -- compacted layers and ease compaction as they grow. A small daily reduction while
-    -- the crop stands, on top of natural decay — a slow passive helper, never a subsoiler
+    -- the crop stands, on top of natural decay - a slow passive helper, never a subsoiler
     -- replacement. Scaled per crop: oilseed radish is the classic bio-driller; canola less so.
     TAPROOT_DECOMPACT_PER_DAY = 0.4,   -- base points/day at full strength while standing
     TAPROOT_CROPS             = { oilseedradish = 1.0, canola = 0.5 },
     SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass (clears the deep pan)
-    PLOW_RELIEF               = 3.0,   -- points removed per plow pass — a plough only loosens the
+    PLOW_RELIEF               = 3.0,   -- points removed per plow pass - a plough only loosens the
                                        -- topsoil it inverts; the deep pan stays, so it relieves far
                                        -- less than a subsoiler. Keeps the subsoiler meaningful and
                                        -- stops routine ploughing from erasing compaction (#687).
     -- Grassland compaction relief (#680). A grassland weeder (isGrasslandWeeder: aerators,
     -- sward renovators) works the sward WITHOUT destroying it, so it can ease pasture
-    -- compaction without a reseed — but only a partial amount (it is not a deep subsoiler).
+    -- compaction without a reseed - but only a partial amount (it is not a deep subsoiler).
     GRASSLAND_RELIEF          = 3.0,   -- points removed per generic grassland-weeder pass
     -- Deep grassland sward-lifters (e.g. Latapia 5P1H) ARE built as Cultivator+isSubsoiler,
-    -- so they already get the full SUBSOILER_REDUCTION — but as cultivators they destroy the
+    -- so they already get the full SUBSOILER_REDUCTION - but as cultivators they destroy the
     -- grass. Tools whose configFileName matches one of these lowercase substrings are treated
     -- as grass-preserving: SF snapshots the sward before the pass and restores it after, so the
     -- deep tool decompacts without forcing a reseed. Extend freely as more mods are confirmed.
@@ -1500,7 +1500,7 @@ SoilConstants.SEE_AND_SPRAY = {
 -- Per-section rate multiplier derived from the nutrient deficit at each section's soil cell.
 -- The manual rate setting acts as a ceiling; variable rate cannot exceed it.
 SoilConstants.VARIABLE_RATE = {
-    NUTRIENT_TARGET = 70,     -- "well stocked" level — same as Smart Sensor NUTRIENT_TARGET
+    NUTRIENT_TARGET = 70,     -- "well stocked" level - same as Smart Sensor NUTRIENT_TARGET
     MIN_RATE        = 0.30,   -- minimum multiplier (field at or above target → light top-up pass)
     MAX_RATE        = 1.50,   -- maximum multiplier (completely depleted cell)
 }

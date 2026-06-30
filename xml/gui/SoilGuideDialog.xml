@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <!--
-    Soil & Fertilizer — Multi-Page Field Guide
+    Soil & Fertilizer - Multi-Page Field Guide
     5 tabs: Overview | HUD Guide | Workflow | Products | F.A.Q.
     Content is built dynamically in Lua (single column pair, swapped per tab).
     Controller: SoilGuideDialog (src/ui/SoilGuideDialog.lua)
@@ -21,7 +21,7 @@
       <Text profile="fs25_dialogTitle" id="sfGuide_title"
             text="$l10n_sf_guide_title" position="0px -28px"/>
 
-      <!-- Tab row — 5 tab buttons, horizontal -->
+      <!-- Tab row - 5 tab buttons, horizontal -->
       <BoxLayout profile="sfGuide_tabRow" position="0px -66px">
         <Button profile="sfGuide_tab" id="sfGuide_tab1" text="$l10n_sf_guide_tab_1" onClick="onClickTab1"/>
         <Button profile="sfGuide_tab" id="sfGuide_tab2" text="$l10n_sf_guide_tab_2" onClick="onClickTab2"/>
@@ -30,7 +30,7 @@
         <Button profile="sfGuide_tab" id="sfGuide_tab5" text="$l10n_sf_guide_tab_5" onClick="onClickTab5"/>
       </BoxLayout>
 
-      <!-- Subtitle — updated per tab to show current page description -->
+      <!-- Subtitle - updated per tab to show current page description -->
       <Text profile="sfGuide_subtitle" id="sfGuide_subtitle" text="" position="0px -110px"/>
 
       <!-- Left content column -->
@@ -96,7 +96,7 @@
       <imageColor value="0.06 0.10 0.14 0.90"/>
     </Profile>
 
-    <!-- Vertical content BoxLayout — Lua adds TextElements at runtime -->
+    <!-- Vertical content BoxLayout - Lua adds TextElements at runtime -->
     <Profile name="sfGuide_col" extends="emptyPanel" with="anchorTopCenter">
       <size value="494px 614px"/>
       <flowDirection value="vertical"/>
@@ -105,7 +105,7 @@
       <elementSpacing value="3px"/>
     </Profile>
 
-    <!-- Guide-specific text profiles — explicit 472px width prevents clipping in wider columns -->
+    <!-- Guide-specific text profiles - explicit 472px width prevents clipping in wider columns -->
     <Profile name="sfGuide_colHeader" extends="fs25_textDefault" with="anchorTopLeft">
       <size value="472px 22px"/>
       <textSize value="15px"/>

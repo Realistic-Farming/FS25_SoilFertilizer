@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — PDA Help Dialog
+-- FS25 Soil & Fertilizer - PDA Help Dialog
 -- =========================================================
 -- Opened from the PDA screen X/help button.
 -- Two-column layout: nutrients/chemistry/targets | status/pressure/tips
@@ -20,7 +20,7 @@ SoilHelpDialog.INSTANCE = nil
 -- H   = section header (bold, green, uppercase)
 -- B   = body line (white, normal)
 -- S   = spacer (blank gap)
--- COL = column break — switch from col1 to col2
+-- COL = column break - switch from col1 to col2
 SoilHelpDialog.CONTENT = {
     -- ── LEFT COLUMN ──────────────────────────────────────
     { t="H", v="NUTRIENTS" },
@@ -63,7 +63,7 @@ SoilHelpDialog.CONTENT = {
     { t="B", v="Disease > 20% \226\128\148 Apply Fungicide." },
     { t="S", v=" " },
     { t="H", v="TIPS" },
-    { t="B", v="* Open Treatment Plan tab — fields sorted" },
+    { t="B", v="* Open Treatment Plan tab - fields sorted" },
     { t="B", v="  by urgency so you treat the worst first." },
     { t="B", v="* Soil overlay (M key, Soil Layers tab)" },
     { t="B", v="  shows per-cell colour-coded data." },

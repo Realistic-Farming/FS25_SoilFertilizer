@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Field Detail Dialog
+-- FS25 Soil & Fertilizer - Field Detail Dialog
 -- =========================================================
 -- Full per-field nutrient + pressure detail popup.
 -- Opened by clicking a row in the Fields or Treatment tab
@@ -165,7 +165,7 @@ end
 
 -- ── Button callbacks ──────────────────────────────────────
 
--- ⚠ Must NOT be named onClose — that conflicts with GUI lifecycle
+-- ⚠ Must NOT be named onClose - that conflicts with GUI lifecycle
 function SoilFieldDetailDialog:onClickClose()
     self:close()
 end
@@ -293,7 +293,7 @@ function SoilFieldDetailDialog:_populateData()
 
     -- History
     if self.detailLastCrop then
-        -- Localized crop name (#635) — info.lastCrop is the raw uppercase identifier.
+        -- Localized crop name (#635) - info.lastCrop is the raw uppercase identifier.
         local cropName = SoilUtils.getCropDisplayName(info.lastCrop)
         if cropName == nil then
             cropName = tr("sf_detail_no_crop", "None recorded")

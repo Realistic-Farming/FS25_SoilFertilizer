@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Field Scout Dialog
+-- FS25 Soil & Fertilizer - Field Scout Dialog
 -- =========================================================
 -- Names the active crop disease on a field and lets the player
 -- pick a fungicide (Cycle) and apply it (Apply). Reuses the same

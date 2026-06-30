@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         **Before opening this request:**
-        - Check the roadmap in the README — your idea may already be planned.
+        - Check the roadmap in the README - your idea may already be planned.
         - Check open issues to avoid duplicates.
         - Keep requests scoped and specific. "Improve fertilizer" will be closed. "Show the current nitrogen level as a number in the HUD instead of a color bar" is actionable.
 

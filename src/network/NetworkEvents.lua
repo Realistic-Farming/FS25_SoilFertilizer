@@ -61,7 +61,7 @@ function SoilSettingChangeEvent:run(connection)
     -- SERVER ONLY: Validate and apply setting change
     if g_server == nil then return end
 
-    -- Reject unknown settings and local-only settings — never apply to server state
+    -- Reject unknown settings and local-only settings - never apply to server state
     local def = SettingsSchema and SettingsSchema.byId and SettingsSchema.byId[self.settingName]
     if not def then
         SoilLogger.warning("Server: Rejected unknown setting '%s' from network event", tostring(self.settingName))
@@ -79,7 +79,7 @@ function SoilSettingChangeEvent:run(connection)
         end
     end
 
-    -- Validate the value against the schema before applying — without this an
+    -- Validate the value against the schema before applying - without this an
     -- out-of-range number from a buggy/modified client (e.g. difficulty=99)
     -- would be stored in server state and broadcast to everyone.
     self.settingValue = SettingsSchema.validate(self.settingName, self.settingValue)
@@ -108,7 +108,7 @@ function SoilSettingChangeEvent:run(connection)
         end
 
         -- Broadcast to ALL clients including the original sender.
-        -- On dedicated servers the admin is a client — excluding them (old behaviour)
+        -- On dedicated servers the admin is a client - excluding them (old behaviour)
         -- meant their own panel never reflected the confirmed value (issue #208).
         if g_server then
             g_server:broadcastEvent(
@@ -267,7 +267,7 @@ function SoilRequestFullSyncEvent:run(connection)
 
     if isDedicatedServer then
         -- Dedicated server path: send all batches immediately in a loop.
-        SoilLogger.info("Server: Dedicated server detected — sending %d fields in synchronous batches", fieldCount)
+        SoilLogger.info("Server: Dedicated server detected - sending %d fields in synchronous batches", fieldCount)
         for batchIndex = 1, totalBatches do
             local startIdx = (batchIndex - 1) * batchSize + 1
             local endIdx   = math.min(batchIndex * batchSize, #fieldIds)
@@ -330,7 +330,7 @@ function SoilRequestFullSyncEvent:run(connection)
         SoilLogger.info("Server: Batch dispatcher registered (%d batches of %d fields)", totalBatches, batchSize)
     else
         -- Fallback for edge cases: send everything at once (old blocking behaviour)
-        SoilLogger.warning("Server: addUpdateable unavailable — sending all %d fields synchronously", fieldCount)
+        SoilLogger.warning("Server: addUpdateable unavailable - sending all %d fields synchronously", fieldCount)
         local allBatch = {}
         for _, id in ipairs(fieldIds) do
             allBatch[id] = fieldData[id]
@@ -1045,7 +1045,7 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
 
     -- Zone cell data: send 0 cells in per-update broadcasts.
     -- All zone cells are already synced to the field aggregate after each apply, so
-    -- sending them here is redundant — and on large fields with wide-boom spreaders
+    -- sending them here is redundant - and on large fields with wide-boom spreaders
     -- the cell count can reach thousands, overflowing the FS25 packet size limit and
     -- crashing the dedicated server. Clients fall back to getLayerColor() (aggregate)
     -- for any cells not in their local zoneData, so the overlay is still correct.
@@ -1066,7 +1066,7 @@ function SoilFieldUpdateEvent:run(connection)
         -- Preserve the client's local zoneData and sync all existing cells to the
         -- new aggregate values. The broadcast no longer ships zone cells (packet
         -- overflow risk on wide-boom spreaders), so we reconstruct per-cell display
-        -- from the field aggregate — same as what applyFertilizer does server-side.
+        -- from the field aggregate - same as what applyFertilizer does server-side.
         local existing = soilSys.fieldData[self.fieldId]
         if existing and existing.zoneData then
             newField.zoneData = existing.zoneData
@@ -1179,7 +1179,7 @@ end
 
 -- Send setting change request
 function SoilNetworkEvents_RequestSettingChange(settingName, value)
-    -- Local-only settings are applied on this client only — never sent to server
+    -- Local-only settings are applied on this client only - never sent to server
     local def = SettingsSchema and SettingsSchema.byId and SettingsSchema.byId[settingName]
     if def and def.localOnly then
         if g_SoilFertilityManager and g_SoilFertilityManager.settings then

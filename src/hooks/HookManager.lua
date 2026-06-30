@@ -27,7 +27,7 @@ function HookManager:getFieldIdAtWorldPosition(x, z, skipNegativeCache)
     if not self.fieldIdCache then
         local mapSize = g_currentMission and g_currentMission.terrainSize or 2048
         -- PHASE 5: Scale block size with map size.
-        -- A fixed 2m block on a 16x map (16384m) creates a 8192×8192 grid — 64M cells.
+        -- A fixed 2m block on a 16x map (16384m) creates a 8192×8192 grid - 64M cells.
         -- Doubling block size per doubling of map keeps the cell count constant (~4M).
         --   4x  (4096m):  blockSize=2m  → 2048×2048 grid
         --   8x  (8192m):  blockSize=4m  → 2048×2048 grid
@@ -40,7 +40,7 @@ function HookManager:getFieldIdAtWorldPosition(x, z, skipNegativeCache)
         if ok and result then
             self.fieldIdCache = result
         else
-            SoilLogger.warning("[PERF-P5] MapDataGrid.createFromBlockSize failed (%s) — cache disabled", tostring(result))
+            SoilLogger.warning("[PERF-P5] MapDataGrid.createFromBlockSize failed (%s) - cache disabled", tostring(result))
             self.fieldIdCache = false  -- false = permanently disabled, avoids retry spam
         end
     end
@@ -79,7 +79,7 @@ function HookManager:getFieldIdAtWorldPosition(x, z, skipNegativeCache)
     end
 
     if not fieldId then
-        SoilLogger.debug("[FieldResolve] Miss at (%.1f,%.1f) — fieldMgr=%s/%s farmMgr=%s/%s",
+        SoilLogger.debug("[FieldResolve] Miss at (%.1f,%.1f) - fieldMgr=%s/%s farmMgr=%s/%s",
             x, z,
             tostring(g_fieldManager ~= nil),
             tostring(g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function"),
@@ -130,7 +130,7 @@ function HookManager:installAll(soilSystem)
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Yield modifier hook: applies soil-fertility yield reduction via the combine hopper
-    -- (separate from addCutterArea for RealisticHarvesting compatibility — see issue #284)
+    -- (separate from addCutterArea for RealisticHarvesting compatibility - see issue #284)
     local yieldModOk = self:installYieldModifierHook()
     if yieldModOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
@@ -169,22 +169,22 @@ function HookManager:installAll(soilSystem)
     local dedicatedPlowOk = self:installDedicatedPlowHook()
     if dedicatedPlowOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- #674: crop-biomass probe — samples the standing crop at the work position in
+    -- #674: crop-biomass probe - samples the standing crop at the work position in
     -- onStartWorkAreaProcessing (BEFORE the tool clears the fruit) and stashes a 0..1
     -- biomass factor on the vehicle, which the plow/cultivator end hooks consume to award
     -- a green-manure OM boost. Installed for both Cultivator and Plow specs.
     if self:installCropBiomassProbe(Cultivator, "Cultivator") then successCount = successCount + 1 else failCount = failCount + 1 end
     if self:installCropBiomassProbe(Plow, "Plow") then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- #674: mulcher hook — chopping crop/stubble returns surface biomass to the soil as OM
+    -- #674: mulcher hook - chopping crop/stubble returns surface biomass to the soil as OM
     local mulcherOk = self:installMulcherHook()
     if mulcherOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- Mechanical weed removal (Weeder.onEndWorkAreaProcessing — weeders, inter-row hoes)
+    -- Mechanical weed removal (Weeder.onEndWorkAreaProcessing - weeders, inter-row hoes)
     local weedControlOk = self:installWeederHook()
     if weedControlOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- Strip-till / ridge tiller (RidgeTiller.processRidgeTillerArea — Orthman-style implements)
+    -- Strip-till / ridge tiller (RidgeTiller.processRidgeTillerArea - Orthman-style implements)
     local ridgeTillerOk = self:installRidgeTillerHook()
     if ridgeTillerOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
@@ -224,7 +224,7 @@ function HookManager:installAll(soilSystem)
     -- This is the canonical BUY-mode fix (issue #205): by telling the base engine that
     -- our tank is externally filled when BUY mode is active, Sprayer:onStartWorkAreaProcessing
     -- clears sprayVehicle/sprayFillUnit to nil and onEndWorkAreaProcessing NEVER calls
-    -- addFillUnitFillLevel — no tank drain, no race, no refill, no FillUnit hook needed.
+    -- addFillUnitFillLevel - no tank drain, no race, no refill, no FillUnit hook needed.
     local buyOptInOk = self:installExternalFillOptInHook()
     if buyOptInOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
@@ -297,13 +297,13 @@ function HookManager:installAll(soilSystem)
     -- Appended AFTER installDensityMapSprayHook so cleanup unwinds correctly.
     self:installSectionControlHook()
 
-    -- System 2: See & Spray — per-cell spot-spray suppression (appended after Smart Sensor).
+    -- System 2: See & Spray - per-cell spot-spray suppression (appended after Smart Sensor).
     self:installSeeAndSprayHook()
 
-    -- System 3: Variable Rate — per-section rate pre-computation (appended after See & Spray).
+    -- System 3: Variable Rate - per-section rate pre-computation (appended after See & Spray).
     self:installVariableRateHook()
 
-    -- System 4: Overlap Prevention — density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
+    -- System 4: Overlap Prevention - density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
     -- Runs after VariableRate so the rate computation still sees the original isActive states.
     self:installOverlapPreventionHook()
 
@@ -364,7 +364,7 @@ end
 -- nozzle particles) from g_sprayTypeManager entries. Base-game types
 -- (FERTILIZER, LIQUIDFERTILIZER, MANURE, LIME, etc.) are registered by the
 -- map XML. Our custom types are NOT in any map XML, so FS25 falls back to
--- litersPerSecond=1 — ~300-400x higher than vanilla. This empties tanks
+-- litersPerSecond=1 - ~300-400x higher than vanilla. This empties tanks
 -- instantly and suppresses all spray visuals (FSDensityMapUtil.updateSprayArea
 -- is a no-op with a nil spray type).
 --
@@ -382,7 +382,7 @@ function HookManager:registerCustomSprayTypes()
     end
 
     -- Borrow sprayGroundType from the vanilla base types (purely for visual ground marking).
-    -- litersPerSecond is NOT borrowed from vanilla — we compute it directly from BASE_RATES.
+    -- litersPerSecond is NOT borrowed from vanilla - we compute it directly from BASE_RATES.
     local liqType  = g_sprayTypeManager:getSprayTypeByName("LIQUIDFERTILIZER")
     local dryType  = g_sprayTypeManager:getSprayTypeByName("FERTILIZER")
     local limeType = g_sprayTypeManager:getSprayTypeByName("LIME")
@@ -412,7 +412,7 @@ function HookManager:registerCustomSprayTypes()
     -- Old:   customLPS = liquidLPS × (customRate / liqBase)   where liqBase = 93.5 L/ha
     -- Bug:   vanilla liquidLPS=0.0081 actually drains at 0.0081×36000 = 291.6 L/ha,
     --        NOT 93.5 L/ha (that was a UI display number, not the real drain rate).
-    -- Error: 291.6 / 93.5 = 3.12× — all custom types were consuming 3.12× too fast.
+    -- Error: 291.6 / 93.5 = 3.12× - all custom types were consuming 3.12× too fast.
     -- Fix:   bypass vanilla's ratio entirely; compute LPS straight from the target rate.
     local baseRates = SoilConstants.SPRAYER_RATE.BASE_RATES
     local liqBase   = baseRates.LIQUIDFERTILIZER.value  -- used as fallback default only
@@ -423,7 +423,7 @@ function HookManager:registerCustomSprayTypes()
     -- used (~291 L/ha effective rate vs the intended 100 L/ha), causing weed pressure
     -- to drain far too fast even with the daily cap in onHerbicideAppliedDirect (the
     -- cap drains its full budget in the very first metre of a pass, then repeats on
-    -- subsequent game-day passes — issue #276 follow-up bug).
+    -- subsequent game-day passes - issue #276 follow-up bug).
     -- LIQUIDMANURE, MANURE, DIGESTATE were previously omitted from this list, causing them to fall
     -- through to whatever vanilla spray type LPS the game uses (often very low or undefined).
     -- The result: wap.usage was tiny → nutrient gain and coverage nearly zero (issue #311).
@@ -502,7 +502,7 @@ function HookManager:registerCustomSprayTypes()
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0)
     if not self._sprayTypesComplete then
-        SoilLogger.warning("[DeferredInit] %d fill types were nil — scheduling retry for dedi server timing", skipped)
+        SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
     end
 end
 
@@ -518,13 +518,13 @@ end
 -- Root cause for sprayers: g_effectManager:setEffectTypeInfo stores the
 -- custom fill type index on each effect object. Downstream lookups
 -- (getSharedMotionPathEffect, shader parameter tables, etc.) find no entry
--- for the custom type and fail silently — effects never start.
+-- for the custom type and fail silently - effects never start.
 --
 -- Fix (two-layer):
 --   PRIMARY: Wrap g_effectManager:setEffectTypeInfo to substitute custom
 --   fill type indices with their vanilla visual equivalents before the index
 --   is stored on any effect object. Every downstream system then sees only
---   vanilla types and works normally. Purely cosmetic — nutrient tracking
+--   vanilla types and works normally. Purely cosmetic - nutrient tracking
 --   uses the real fill type index from the sprayer hook, not the effect.
 --
 --   BACKUP: Wrap g_motionPathEffectManager:getSharedMotionPathEffect so
@@ -552,7 +552,7 @@ function HookManager:installEffectTypeHook()
 
     -- Build remap: customFillTypeIndex → vanillaFillTypeIndex
     -- Stored on self so reapplyEffectTypeRemap() can add entries to the same table
-    -- that the closures below capture — no hook reinstall needed.
+    -- that the closures below capture - no hook reinstall needed.
     local remap = {}
     self._effectTypeRemap = remap
     if fertIdx then
@@ -569,7 +569,7 @@ function HookManager:installEffectTypeHook()
     end
 
     if not next(remap) then
-        SoilLogger.warning("Effect type hook: no custom fill types found — skipping")
+        SoilLogger.warning("Effect type hook: no custom fill types found - skipping")
         return false
     end
 
@@ -695,7 +695,7 @@ end
 -- Sprayer:getIsSprayTypeActive(sprayType) checks whether the vehicle's current
 -- fill type matches any name in sprayType.fillTypes (the list from the vehicle XML,
 -- e.g. {"FERTILIZER"} or {"LIQUIDFERTILIZER"}). Only when it matches does FS25 call
--- g_effectManager:setEffectTypeInfo(sprayType.effects, fillType) and startEffects —
+-- g_effectManager:setEffectTypeInfo(sprayType.effects, fillType) and startEffects -
 -- giving the spreading/spraying visual for that sprayType slot.
 --
 -- Because no vanilla or mod vehicle XML lists our custom fill type names (UREA, UAN32,
@@ -720,7 +720,7 @@ function HookManager:installSprayTypeEffectsHook()
     -- vanillaNames so Pass 2 does NOT strip them from their dedicated crop-protection slots.
     -- Their visual effects are managed by vanilla updateSprayerEffects (not our custom path).
     -- NOTE: LIQUIDMANURE / MANURE / DIGESTATE are intentionally absent here. They spread via
-    -- the game's native slurry/manure systems, not the sprayer effect path — registerCustomSprayTypes
+    -- the game's native slurry/manure systems, not the sprayer effect path - registerCustomSprayTypes
     -- only calibrates their drain rate (issue #311). Do not add them to this effects list.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
@@ -747,8 +747,8 @@ function HookManager:installSprayTypeEffectsHook()
     -- only center nozzle sprays.
     --
     -- Fix (two passes):
-    --   Pass 1 — add custom names to LIQUIDFERTILIZER / FERTILIZER slots (existing logic).
-    --   Pass 2 — remove those same names from any slot that does NOT have LIQUIDFERTILIZER
+    --   Pass 1 - add custom names to LIQUIDFERTILIZER / FERTILIZER slots (existing logic).
+    --   Pass 2 - remove those same names from any slot that does NOT have LIQUIDFERTILIZER
     --            or FERTILIZER as its base. This leaves only the full-boom slot as a
     --            valid match, so getActiveSprayType finds the correct slot first.
     local function patchVehicleSprayTypes(vehicle)
@@ -808,7 +808,7 @@ function HookManager:installSprayTypeEffectsHook()
                 if not hasFert and not hasLiqFert then
                     for i = #st.fillTypes, 1, -1 do
                         local upper = string.upper(st.fillTypes[i])
-                        -- Don't strip vanilla fill type names — only strip our custom injected names
+                        -- Don't strip vanilla fill type names - only strip our custom injected names
                         if not vanillaNames[upper] and (liquidNameSet[upper] or solidNameSet[upper]) then
                             table.remove(st.fillTypes, i)
                         end
@@ -906,14 +906,14 @@ end
 -- internal spray type table loaded at map init from maps_sprayTypes.xml and
 -- only recognises the vanilla indices (FERTILIZER=1, HERBICIDE=2, LIME=3,
 -- etc.). When wap.sprayType is one of our custom Lua-registered indices
--- (8, 9, 10 ...) the C++ call silently writes nothing to the density map —
+-- (8, 9, 10 ...) the C++ call silently writes nothing to the density map -
 -- no ground colour change after application (fertilizer/herbicide visual).
 --
 -- Root cause: Sprayer.processSprayerArea is registered via
 -- SpecializationUtil.registerFunction, which COPIES the function reference
 -- into each vehicle type at registration time. Class-level replacement of
 -- Sprayer.processSprayerArea after vehicles are loaded never reaches existing
--- vehicle instances — they already have the old reference baked in.
+-- vehicle instances - they already have the old reference baked in.
 --
 -- Fix: hook Sprayer.onStartWorkAreaProcessing instead. This is registered via
 -- SpecializationUtil.registerEventListener, which looks up the function on the
@@ -948,9 +948,9 @@ function HookManager:installDensityMapSprayHook()
     local limeIdx = limeST and limeST.index
 
     -- Build remap: customSprayTypeIndex → vanillaSprayTypeIndex
-    -- LIQUIDLIME is excluded from liquidNames here — it must remap to LIME (not LIQUIDFERTILIZER)
+    -- LIQUIDLIME is excluded from liquidNames here - it must remap to LIME (not LIQUIDFERTILIZER)
     -- so FSDensityMapUtil.updateSprayArea writes the lime ground state, not the fertilizer state.
-    -- HERBICIDE is excluded — it must keep its native HERBICIDE spray type for weed density map.
+    -- HERBICIDE is excluded - it must keep its native HERBICIDE spray type for weed density map.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
                           "INSECTICIDE", "FUNGICIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
@@ -987,7 +987,7 @@ function HookManager:installDensityMapSprayHook()
     local count = 0
     for _ in pairs(remap) do count = count + 1 end
 
-    -- MUST use appendedFunction (not prependedFunction) — fix for issue #415 (section control).
+    -- MUST use appendedFunction (not prependedFunction) - fix for issue #415 (section control).
     --
     -- WHY APPEND:
     --   onStartWorkAreaProcessing (original) sets wap.sprayType = getSprayTypeIndexByFillTypeIndex(fillType).
@@ -1024,7 +1024,7 @@ function HookManager:installDensityMapSprayHook()
     self:register(Sprayer, "onStartWorkAreaProcessing", original,
         "Sprayer.onStartWorkAreaProcessing (density map sprayType remap)")
 
-    SoilLogger.info("[OK] DensityMap spray hook installed on onStartWorkAreaProcessing (APPEND) — %d custom spray types remapped to vanilla for C++ density map call; section control overlap fix active", count)
+    SoilLogger.info("[OK] DensityMap spray hook installed on onStartWorkAreaProcessing (APPEND) - %d custom spray types remapped to vanilla for C++ density map call; section control overlap fix active", count)
     return true
 end
 
@@ -1035,11 +1035,11 @@ end
 -- For each VWW section that VWW marked active, checks SF soil data at that
 -- section's world position. If the product loaded is not needed at that spot
 -- (pest=0, disease=0, K≥target, or P≥target) the section is temporarily set
--- to isActive=false. VWW resets it on the next tick — no persistent corruption.
+-- to isActive=false. VWW resets it on the next tick - no persistent corruption.
 --
 function HookManager:installSectionControlHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[SectionSensor] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        SoilLogger.warning("[SectionSensor] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
 
@@ -1088,7 +1088,7 @@ function HookManager:installSectionControlHook()
             --     already sprayed this session AND stamped more than OVERLAP_GRACE_MS ago.
             --     The grace period prevents self-suppression on the current forward pass:
             --     a cell stamped < 20 s ago is still "fresh" and won't block its own section.
-            -- Independent of Smart Sensor — applies to every fill type when enabled.
+            -- Independent of Smart Sensor - applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
                 if vwwBE and vwwBE.sections and #vwwBE.sections > 0 then
@@ -1128,7 +1128,7 @@ function HookManager:installSectionControlHook()
 
                                 if sx then
                                     -- (1) Boundary: non-center tip must be in the same field.
-                                    --     Center section is always on the vehicle root — skip.
+                                    --     Center section is always on the vehicle root - skip.
                                     if not section.isCenter then
                                         local fid = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                                         if not fid or fid <= 0 or
@@ -1247,7 +1247,7 @@ function HookManager:installSectionControlHook()
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF section sensor)")
 
-    SoilLogger.info("[OK] SF Smart Sensor hook installed — pest/disease/nutrient N+K+P section control active")
+    SoilLogger.info("[OK] SF Smart Sensor hook installed - pest/disease/nutrient N+K+P section control active")
     return true
 end
 
@@ -1260,7 +1260,7 @@ end
 -- Falls back to field average when no cell entry exists (unvisited cell).
 function HookManager:installSeeAndSprayHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[SeeAndSpray] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        SoilLogger.warning("[SeeAndSpray] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
 
@@ -1319,7 +1319,7 @@ function HookManager:installSeeAndSprayHook()
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.soilSystem then return end
 
-            -- See & Spray is a purchased vehicle feature — read from SFNozzleEffects spec.
+            -- See & Spray is a purchased vehicle feature - read from SFNozzleEffects spec.
             local sfSpec = SFNozzleEffects and sprayerSelf[SFNozzleEffects.SPEC_TABLE_NAME]
             if not sfSpec then return end
 
@@ -1355,7 +1355,7 @@ function HookManager:installSeeAndSprayHook()
             local zone    = SoilConstants.ZONE
             local tips    = sprayerSelf._sfSectionTip
 
-            -- #678: when per-vehicle Variable Rate is on, See & Spray runs graduated —
+            -- #678: when per-vehicle Variable Rate is on, See & Spray runs graduated -
             -- each non-skipped section gets a rate from its cell's pest/disease/weed
             -- pressure instead of hard on/off. The Variable Rate hook (which runs next)
             -- is taught to leave these rates alone for See & Spray products. When Variable
@@ -1447,7 +1447,7 @@ function HookManager:installSeeAndSprayHook()
 
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF see-and-spray)")
-    SoilLogger.info("[OK] SF See & Spray hook installed — per-cell pest/disease/weed section control active")
+    SoilLogger.info("[OK] SF See & Spray hook installed - per-cell pest/disease/weed section control active")
     return true
 end
 
@@ -1462,7 +1462,7 @@ end
 -- Only active for NPK fertilizers; no-ops for pest/disease/weed products.
 function HookManager:installVariableRateHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[VariableRate] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        SoilLogger.warning("[VariableRate] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
 
@@ -1471,7 +1471,7 @@ function HookManager:installVariableRateHook()
     local pFerts   = {}   -- P-dominant (MAP, DAP, etc.)
     local kFerts   = {}   -- K-only (POTASH, etc.)
     local npkFerts = {}   -- multi-nutrient (all N/P/K fertilizers)
-    local omFerts  = {}   -- OM-primary (compost, manure, digestate — target organic matter)
+    local omFerts  = {}   -- OM-primary (compost, manure, digestate - target organic matter)
 
     local profs = SoilConstants.FERTILIZER_PROFILES
     local omPrimarySet = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
@@ -1535,7 +1535,7 @@ function HookManager:installVariableRateHook()
                 return
             end
             local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
-            -- #678: leave See & Spray rates intact — the See & Spray hook already set them
+            -- #678: leave See & Spray rates intact - the See & Spray hook already set them
             -- this tick from pest/disease/weed pressure. Clearing here would wipe them.
             if ft and ssNames[ft.name] then
                 return
@@ -1626,7 +1626,7 @@ function HookManager:installVariableRateHook()
 
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF variable rate)")
-    SoilLogger.info("[OK] SF Variable Rate hook installed — per-section NPK rate control active")
+    SoilLogger.info("[OK] SF Variable Rate hook installed - per-section NPK rate control active")
     return true
 end
 
@@ -1643,25 +1643,25 @@ end
 -- Uses session coverage cells rather than the SPRAY_LEVEL density map.
 -- The density-map approach (EQUAL lvlMax) was unreliable because:
 --   • getMaxValue() returns the maximum that CAN be stored (e.g. 2 for a 2-bit
---     field), which equals the game's "fully fertilised" state — so any field
+--     field), which equals the game's "fully fertilised" state - so any field
 --     that was fertilised to completion in a previous season or earlier in the
 --     same game-day reads as "already done" and suppresses all wing sections
 --     the moment the sprayer enters, regardless of whether the player has
 --     sprayed anything this pass (#600 persisted after the EQUAL fix).
 -- Session cells are reset on harvest, product change, and game load, so they
 -- only ever reflect what this sprayer session has actually applied.
--- StatePreserver restores section.isActive after work areas process — no permanent lock.
+-- StatePreserver restores section.isActive after work areas process - no permanent lock.
 -- No-ops when the overlapPrevention setting is disabled.
 function HookManager:installOverlapPreventionHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[OverlapPrev] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        SoilLogger.warning("[OverlapPrev] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
 
     local hookMgrRef = self
 
     -- Build fill-type lookup table at install time.
-    -- We cannot rely on stDesc.isFertilizer for SF custom types — Lua-registered
+    -- We cannot rely on stDesc.isFertilizer for SF custom types - Lua-registered
     -- spray types via addSprayType() do not inherit the isFertilizer flag from the
     -- display type.  Use explicit name lists instead (same approach as SmartSensor).
     -- Lime is included: we track lime application via session cells the same way.
@@ -1782,7 +1782,7 @@ function HookManager:installOverlapPreventionHook()
             local currSuppressed = {}
 
             -- At >=99% field coverage every section is guaranteed to be on
-            -- already-sprayed ground — suppress everything without a grace period.
+            -- already-sprayed ground - suppress everything without a grace period.
             -- This handles the centre section whose coverage cells are always stamped
             -- fresh (it's under the vehicle) and never age past graceMs on the current pass.
             local coverage = fieldEntry and fieldEntry.sessionCoverageFraction or 0
@@ -1798,7 +1798,7 @@ function HookManager:installOverlapPreventionHook()
                     -- sections with no tip node fall back to the vehicle root position.
                     --
                     -- Grace period rationale:
-                    --   Wings (tip in a different cell from root): graceMs required —
+                    --   Wings (tip in a different cell from root): graceMs required -
                     --     the tip's cell may have been freshly stamped by an adjacent
                     --     strip only seconds ago, and skipping grace would cause false
                     --     suppression on the current forward pass.
@@ -1806,7 +1806,7 @@ function HookManager:installOverlapPreventionHook()
                     --     cell under the root/tip is ALWAYS unstamped ahead of the
                     --     vehicle on the current pass (markBoomCells runs AFTER this
                     --     PREPEND), so any existing stamp means "visited in a prior
-                    --     pass." No grace needed — this also fixes JD R700i/R975i
+                    --     pass." No grace needed - this also fixes JD R700i/R975i
                     --     where the centre tip exists but falls in the root cell.
                     local tx = tip and tip[1] or rootX
                     local tz = tip and tip[2] or rootZ
@@ -1875,7 +1875,7 @@ function HookManager:installOverlapPreventionHook()
 
     self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
         "Sprayer.onStartWorkAreaProcessing (SF overlap prevention)")
-    SoilLogger.info("[OK] SF Overlap Prevention hook installed — session-cell overlap detection active")
+    SoilLogger.info("[OK] SF Overlap Prevention hook installed - session-cell overlap detection active")
 
     -- Re-suppress section effects after the original onEndWorkAreaProcessing runs.
     -- Sprayer:updateSprayerEffects() (called from onEndWorkAreaProcessing) may call
@@ -1925,7 +1925,7 @@ function HookManager:installOverlapPreventionHook()
             "Sprayer.onEndWorkAreaProcessing (SF overlap section.effects re-suppress)")
     end
 
-    SoilLogger.info("[OK] SF Overlap Prevention — transition-based visual suppression active (stopEffects/startEffects on section state change)")
+    SoilLogger.info("[OK] SF Overlap Prevention - transition-based visual suppression active (stopEffects/startEffects on section state change)")
     return true
 end
 
@@ -1939,14 +1939,14 @@ end
 -- cycled width.
 --
 -- This function:
---   PREPENDS to onStartWorkAreaProcessing — saves VWW section states
+--   PREPENDS to onStartWorkAreaProcessing - saves VWW section states
 --     before any suppression hook runs (prependedFunction executes first
 --     even though this hook is installed last).
---   APPENDS to onEndWorkAreaProcessing — restores saved states after
+--   APPENDS to onEndWorkAreaProcessing - restores saved states after
 --     work areas are processed, so VWW width control is unaffected.
 function HookManager:installSectionStatePreserver()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[SectionPreserver] Sprayer.onStartWorkAreaProcessing not found — skipping")
+        SoilLogger.warning("[SectionPreserver] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
 
@@ -1964,7 +1964,7 @@ function HookManager:installSectionStatePreserver()
             -- Each appended hook writes to _sfSuppressedSections directly when it
             -- suppresses a section. Clearing here (before the original + our hooks run)
             -- ensures only THIS tick's suppression is visible to the visual effects hook.
-            -- Do NOT infer suppression by comparing before/after states — that would
+            -- Do NOT infer suppression by comparing before/after states - that would
             -- falsely capture VWW's own section management as "suppressed by us".
             local sfSup = sprayerSelf._sfSuppressedSections
             if sfSup then
@@ -2065,7 +2065,7 @@ function HookManager:installSectionStatePreserver()
                 if not saved then return end
                 local vww = sprayerSelf.spec_variableWorkWidth
                 if vww and vww.sections then
-                    -- Don't restore sections suppressed by overlap prevention —
+                    -- Don't restore sections suppressed by overlap prevention -
                     -- they must stay isActive=false so SFNozzleEffects fades them out.
                     local overlapSup = sprayerSelf._sfOverlapSuppressedSections
                     for i, section in ipairs(vww.sections) do
@@ -2080,10 +2080,10 @@ function HookManager:installSectionStatePreserver()
         self:register(Sprayer, "onEndWorkAreaProcessing", origEnd,
             "Sprayer.onEndWorkAreaProcessing (SF section state restorer)")
     else
-        SoilLogger.warning("[SectionPreserver] Sprayer.onEndWorkAreaProcessing not found — restore hook skipped")
+        SoilLogger.warning("[SectionPreserver] Sprayer.onEndWorkAreaProcessing not found - restore hook skipped")
     end
 
-    SoilLogger.info("[OK] SF section state preserver installed — VWW width control (CTRL+Z) protected from suppression hooks")
+    SoilLogger.info("[OK] SF section state preserver installed - VWW width control (CTRL+Z) protected from suppression hooks")
     return true
 end
 
@@ -2101,7 +2101,7 @@ end
 -- HOOK 1: Harvest events (Cutter.onEndWorkAreaProcessing)
 -- =========================================================
 -- Combine.addCutterArea is registered via SpecializationUtil.registerFunction,
--- then WorkArea captures it as a direct closure reference at vehicle load —
+-- then WorkArea captures it as a direct closure reference at vehicle load -
 -- class-level hook is bypassed completely.
 -- Cutter.onEndWorkAreaProcessing IS an event listener (dynamic dispatch).
 -- It runs AFTER processCutterArea accumulates workAreaParameters this tick,
@@ -2114,7 +2114,7 @@ end
 -- at the class level AFTER RHM registers, SF's wrapper becomes RHM's superFunc.
 -- RHM calls superFunc(self, area, realArea, inputFruitType, ...) where the 3rd
 -- argument is realArea (pixel count, e.g. ~1500), NOT liters.  The old SF code
--- read arg 3 as "liters", multiplied by yieldModifier, and returned the result —
+-- read arg 3 as "liters", multiplied by yieldModifier, and returned the result -
 -- so RHM received a garbage retLiters value and its HUD showed 0 for yield,
 -- crop loss, and engine load.
 --
@@ -2140,7 +2140,7 @@ function HookManager:installHarvestHook()
     -- which causes "attempt to compare number < nil". We use a manual wrapper
     -- that captures and forwards the original's return value instead.
     --
-    -- The wrapper no longer modifies the liters argument — yield reduction is
+    -- The wrapper no longer modifies the liters argument - yield reduction is
     -- handled by installYieldModifierHook (addFillUnitFillLevel on the hopper).
     -- This makes the hook argument-order-agnostic and safe regardless of what
     -- other mods pass as the 3rd positional argument.
@@ -2154,7 +2154,7 @@ function HookManager:installHarvestHook()
                 tostring(combineSelf.isServer), area or 0, liters or 0, tostring(inputFruitType))
 
             -- Detect field for nutrient depletion tracking (onHarvest).
-            -- Yield modifier is NO LONGER applied here — see installYieldModifierHook.
+            -- Yield modifier is NO LONGER applied here - see installYieldModifierHook.
             local detectedFieldId = nil
             local detectedX, detectedZ = nil, nil
 
@@ -2252,10 +2252,10 @@ function HookManager:installHarvestHook()
                     tostring(inputFruitType), tostring(area))
             end
 
-            -- Pass arguments completely untouched — we no longer modify liters here.
+            -- Pass arguments completely untouched - we no longer modify liters here.
             local r1, r2, r3, r4, r5 = chainFn(combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad)
 
-            -- Nutrient depletion uses original (biological) liters — the soil depleted what
+            -- Nutrient depletion uses original (biological) liters - the soil depleted what
             -- the crop grew regardless of the yield modifier applied to the hopper.
             if detectedFieldId then
                 local ok, errMsg = pcall(function()
@@ -2322,8 +2322,8 @@ function HookManager:installHarvestHook()
     -- FS25's specialization system captures the Combine.addCutterArea reference at
     -- vehicle-type registration time (before our hook). New vehicles of combine types
     -- use that captured original as their instance method, bypassing the class-level
-    -- replacement. Hooking VehicleSystem:addVehicle ensures every combine — including
-    -- mod vehicles bought from the shop mid-session — gets the wrapper on first spawn.
+    -- replacement. Hooking VehicleSystem:addVehicle ensures every combine - including
+    -- mod vehicles bought from the shop mid-session - gets the wrapper on first spawn.
     if type(VehicleSystem) == "table" and type(VehicleSystem.addVehicle) == "function" then
         local origAddVehicle = VehicleSystem.addVehicle
         VehicleSystem.addVehicle = function(vsSelf, vehicle)
@@ -2340,7 +2340,7 @@ function HookManager:installHarvestHook()
         self:register(VehicleSystem, "addVehicle", origAddVehicle, "VehicleSystem.addVehicle (harvest late-patch)")
     end
 
-    SoilLogger.info("[OK] Harvest hook installed (Combine.addCutterArea) — %d existing combines patched", patched)
+    SoilLogger.info("[OK] Harvest hook installed (Combine.addCutterArea) - %d existing combines patched", patched)
     return true
 end
 
@@ -2353,7 +2353,7 @@ end
 -- RHM uses registerOverwrittenFunction for addCutterArea and calls
 --   superFunc(self, area, realArea, inputFruitType, ...)
 -- where the 3rd argument is realArea (pixel count), NOT liters.  The old
--- code read arg 3 as "liters" and returned liters*yieldModifier — RHM got
+-- code read arg 3 as "liters" and returned liters*yieldModifier - RHM got
 -- a garbage retLiters and its HUD went blank (issue #284).
 --
 -- By moving modifier logic here (where the value is always actual hopper
@@ -2495,12 +2495,12 @@ end
 -- that are CUT but not direct-threshed: grass, alfalfa, clover, mowed triticale, etc.
 --
 -- Why not the Cutter hook?
---   Cutter.processCutterArea only reads the STANDING-CROP density map — it returns
+--   Cutter.processCutterArea only reads the STANDING-CROP density map - it returns
 --   0 area for windrow-pickup passes, so Cutter.onEndWorkAreaProcessing never fires
 --   for mowed-crop scenarios.
 --
 -- Area source:
---   spec_mower.workAreaParameters.lastStatsArea  — density-map pixels cut this tick
+--   spec_mower.workAreaParameters.lastStatsArea  - density-map pixels cut this tick
 --   MathUtil.areaToHa(pixels, g_currentMission:getFruitPixelsToSqm()) converts to hectares.
 --
 -- Depletion is area-based (not liter-based) via SoilFertilitySystem:onMow().
@@ -2508,7 +2508,7 @@ end
 ---@return boolean success True if hook installed successfully
 function HookManager:installMowerHook()
     if not Mower or type(Mower.onEndWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[MowerHook] Mower.onEndWorkAreaProcessing not available — forage crop tracking skipped")
+        SoilLogger.warning("[MowerHook] Mower.onEndWorkAreaProcessing not available - forage crop tracking skipped")
         return false
     end
 
@@ -2562,14 +2562,14 @@ function HookManager:installMowerHook()
     )
 
     self:register(Mower, "onEndWorkAreaProcessing", original, "Mower.onEndWorkAreaProcessing")
-    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) — forage crop nutrient tracking active")
+    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) - forage crop nutrient tracking active")
     return true
 end
 
 -- =========================================================
 -- HOOK 1d: Mower yield scaling (#696)
 -- =========================================================
--- Windrow-drop mowers (disc/drum mowers, swathers) bypass the combine hopper yield hook —
+-- Windrow-drop mowers (disc/drum mowers, swathers) bypass the combine hopper yield hook -
 -- they never call addFillUnitFillLevel with spec_combine set. Inside processMowerArea the
 -- windrow volume is:  litersToDrop = areaLiters × harvestMultiplier × converterData.conversionFactor
 -- (verified against the Mower LUADOC). pickupFillScale is loaded but NEVER read on that path,
@@ -2579,14 +2579,14 @@ end
 -- converter's conversionFactor by the field's forage nutrient modifier; restore it in
 -- onEndWorkAreaProcessing. A pristine base (_sfBaseCF) is captured once per converter so
 -- repeated passes never compound, even if an onEnd is somehow skipped. Nutrient DEPLETION
--- is untouched (area-based via the onEnd depletion hook) — only the bale output scales,
+-- is untouched (area-based via the onEnd depletion hook) - only the bale output scales,
 -- mirroring the combine path where the soil gives up nutrients regardless of yield.
 ---@return boolean success
 function HookManager:installMowerYieldHook()
     if not Mower
        or type(Mower.onStartWorkAreaProcessing) ~= "function"
        or type(Mower.onEndWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("[MowerYield] Mower work-area functions not available — forage yield scaling skipped")
+        SoilLogger.warning("[MowerYield] Mower work-area functions not available - forage yield scaling skipped")
         return false
     end
 
@@ -2656,7 +2656,7 @@ function HookManager:installMowerYieldHook()
     )
     self:register(Mower, "onEndWorkAreaProcessing", origEnd, "Mower.onEndWorkAreaProcessing (forage yield restore)")
 
-    SoilLogger.info("[OK] Mower yield hook installed — windrow forage output now scales with soil nutrients")
+    SoilLogger.info("[OK] Mower yield hook installed - windrow forage output now scales with soil nutrients")
     return true
 end
 
@@ -2665,7 +2665,7 @@ end
 -- =========================================================
 --- Hooks Sprayer.onEndWorkAreaProcessing, which covers ALL fertilizer vehicles:
 --- liquid sprayers, manure spreaders, dry fertilizer spreaders, slurry tankers, etc.
---- All of these use the Sprayer specialization in FS25 — there is no separate Spreader class.
+--- All of these use the Sprayer specialization in FS25 - there is no separate Spreader class.
 --- onEndWorkAreaProcessing is called via dynamic event dispatch (SpecializationUtil.registerEventListener),
 --- so replacing Sprayer.onEndWorkAreaProcessing works at any time, including post-load.
 ---@return boolean success True if hook installed successfully
@@ -2677,7 +2677,7 @@ function HookManager:installSprayerAreaHook()
 
     -- Capture the HookManager instance as an upvalue. g_SoilFertilityManager is the
     -- SoilFertilityManager (not HookManager) and the HookManager lives at
-    -- g_SoilFertilityManager.soilSystem.hookManager — easy to get wrong, so we just
+    -- g_SoilFertilityManager.soilSystem.hookManager - easy to get wrong, so we just
     -- capture `self` here and reference it directly in the closure.
     local hookMgrRef = self
 
@@ -2700,7 +2700,7 @@ function HookManager:installSprayerAreaHook()
             -- Guard: sprayer must have a valid fill type and consumed product this frame.
             -- NOTE: We deliberately do NOT gate on spec.workAreaParameters.isActive here.
             -- isActive is only set true inside processSprayerArea when FSDensityMapUtil.updateSprayArea
-            -- returns changedArea > 0 — i.e., when it actually paints terrain pixels.
+            -- returns changedArea > 0 - i.e., when it actually paints terrain pixels.
             -- On fields that are already fully fertilized in the vanilla FS25 density map,
             -- updateSprayArea returns changedArea=0, isActive stays false, and our hook would
             -- silently skip every application even though the sprayer IS running and product IS
@@ -2726,20 +2726,20 @@ function HookManager:installSprayerAreaHook()
             -- set true only inside processSprayerArea, which runs only for genuinely active
             -- (lowered + on) work areas. Vanilla onEndWorkAreaProcessing removes fill ONLY
             -- when isActive is true, so isActive==true is hard proof the implement is
-            -- applying to the ground right now — regardless of what getIsTurnedOn()/fold
-            -- state report. Some modded spreaders (Agromet N250, JD34, T088 — issue #671)
+            -- applying to the ground right now - regardless of what getIsTurnedOn()/fold
+            -- state report. Some modded spreaders (Agromet N250, JD34, T088 - issue #671)
             -- spread product while reporting getIsTurnedOn()==false and/or a fold state our
             -- guard reads as "folded", so the turnedOff/folded guards below would drop them
             -- every frame even though product is leaving the tank. We use isActive as a
             -- positive override: when the engine confirms active application, we trust it
             -- over those flags. We do NOT gate ON isActive (never skip merely because it is
-            -- false) — the saturated-field path where isActive can be false still flows
+            -- false) - the saturated-field path where isActive can be false still flows
             -- through via the turnedOn check and the usage/fillLevel/speed guards below.
             local wapActive = spec.workAreaParameters.isActive == true
 
             -- Issue #668 diagnostics: several spreaders (modded + some modhub manure
             -- spreaders, e.g. Agromet N250 / JD34) are recognized by the SprayUsage hook
-            -- but never reach the nutrient apply below — a silent early-return drops them.
+            -- but never reach the nutrient apply below - a silent early-return drops them.
             -- Log which guard fired (throttled once / 3 s per vehicle, debug-mode only) so a
             -- single user log pinpoints the exact cause instead of us guessing.
             local function _sfApplySkipLog(reason)
@@ -2749,13 +2749,13 @@ function HookManager:installSprayerAreaHook()
                     local ftName = "?"
                     local ft = fillTypeIndex and g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
                     if ft then ftName = ft.name end
-                    SoilLogger.debug("SprayerHook SKIP [%s]: veh=%s type=%s usage=%s fillLevel=%s isActive=%s — nutrient apply skipped",
+                    SoilLogger.debug("SprayerHook SKIP [%s]: veh=%s type=%s usage=%s fillLevel=%s isActive=%s - nutrient apply skipped",
                         reason, tostring(self.id), ftName, tostring(liters), tostring(sprayFillLevel), tostring(wapActive))
                 end
             end
 
             -- turnedOff guard (issue b16e5df: driving with the implement turned off must
-            -- not apply). Skipped when wapActive — a working spreader that mis-reports
+            -- not apply). Skipped when wapActive - a working spreader that mis-reports
             -- getIsTurnedOn()==false (issue #671) still applies because the engine confirmed
             -- ground application this frame. A genuinely-off implement never processes a work
             -- area, so wapActive is false and this guard still catches it.
@@ -2769,7 +2769,7 @@ function HookManager:installSprayerAreaHook()
             -- turnOnFoldDirection is always 1 or -1 after Foldable init; nil falls back to
             -- animation-only detection (0 < fa < 1).
             -- Skipped when wapActive: a folded implement in transport raises its work areas,
-            -- so the engine never processes them and wapActive stays false — the guard still
+            -- so the engine never processes them and wapActive stays false - the guard still
             -- fires. But a working spreader whose foldable spec our heuristic misreads as
             -- "folded" (issue #671) has wapActive true and is correctly let through.
             if not wapActive and self.spec_foldable then
@@ -2792,7 +2792,7 @@ function HookManager:installSprayerAreaHook()
             -- When AI uses external-fill BUY mode, wap.usage is always 0 (no tank depletion),
             -- so the guards below would exit early every frame and _soilLastCustomFillType
             -- would never be set. getExternalFill (Hook 9) relies on this field to identify
-            -- the intended product when fillType arrives as UNKNOWN — without it, Hook 9
+            -- the intended product when fillType arrives as UNKNOWN - without it, Hook 9
             -- falls through to original and no money is ever charged (issue #205).
             do
                 local _hm = hookMgrRef
@@ -2806,7 +2806,7 @@ function HookManager:installSprayerAreaHook()
                 local _now = g_currentMission and g_currentMission.time or 0
                 if not self._sfZeroUsageLogAt or (_now - self._sfZeroUsageLogAt) > 3000 then
                     self._sfZeroUsageLogAt = _now
-                    SoilLogger.debug("SprayerHook: usage=0 for fillType=%d fillLevel=%.1f — no product consumed (multi-boom or section-control gate?)",
+                    SoilLogger.debug("SprayerHook: usage=0 for fillType=%d fillLevel=%.1f - no product consumed (multi-boom or section-control gate?)",
                         fillTypeIndex or -1, sprayFillLevel or 0)
                 end
                 return
@@ -2817,13 +2817,13 @@ function HookManager:installSprayerAreaHook()
             end
 
             -- Require minimum forward speed (matches WeedSpotSpray.onEndWorkAreaProcessing).
-            -- A stationary sprayer drains the tank and consumes liters but covers no ground —
+            -- A stationary sprayer drains the tank and consumes liters but covers no ground -
             -- without this guard coverage climbs to 100% without moving.
             local _spd = tonumber(self.getLastSpeed and self:getLastSpeed()) or 0
             -- Towed spreaders/sprayers have no independent physics body, so their own
             -- getLastSpeed() can report ~0 even while the tractor is moving. Borrow the
             -- rootVehicle (tractor) speed the same way installSprayerUsageHook does
-            -- (issue #668) — without this a moving towed manure spreader is silently
+            -- (issue #668) - without this a moving towed manure spreader is silently
             -- dropped here even though SprayUsage shows it consuming product.
             if _spd < 0.5 then
                 local root = self.rootVehicle
@@ -2909,7 +2909,7 @@ function HookManager:installSprayerAreaHook()
                 end
 
                 if not fieldId or fieldId <= 0 then
-                    SoilLogger.debug("SprayerHook: no field at rootNode (%.1f,%.1f) — skipping %s apply",
+                    SoilLogger.debug("SprayerHook: no field at rootNode (%.1f,%.1f) - skipping %s apply",
                         x, z, fillType and fillType.name or "?")
                     return
                 end
@@ -2976,7 +2976,7 @@ function HookManager:installSprayerAreaHook()
                 end
 
                 if vww and vww.sections and #vww.sections > 0 then
-                    SoilLogger.debug("SprayerHook: VWW path — %d total sections for %s", #vww.sections, fillType.name)
+                    SoilLogger.debug("SprayerHook: VWW path - %d total sections for %s", #vww.sections, fillType.name)
                     -- Collect active sections into pre-allocated scratch table (avoids per-tick allocation)
                     local scratch = hookMgrRef._sectionScratch
                     local scratchN = 0
@@ -3002,7 +3002,7 @@ function HookManager:installSprayerAreaHook()
                         -- Normalize VR weights so total nutrient credit == effectiveLiters.
                         -- VR redistribution does NOT change the total; it only shifts credit
                         -- toward deficit sections. Without normalization, applySingle would
-                        -- receive (wap.usage * manualMult) * vrWeight — a double reduction
+                        -- receive (wap.usage * manualMult) * vrWeight - a double reduction
                         -- when auto rate selects a sub-unity multiplier (#555/#538).
                         local vrWeightSum = 0.0
                         for i = 1, scratchN do
@@ -3058,12 +3058,12 @@ function HookManager:installSprayerAreaHook()
                 -- markBoomCells only stamps display entries for unvisited lateral cells.
                 --
                 -- Pass% / session-ha accounting depends on the implement type:
-                --   • VWW sprayers/spreaders: markBoomCells owns the counter — its per-section
+                --   • VWW sprayers/spreaders: markBoomCells owns the counter - its per-section
                 --     cell dedup is accurate and matches the overlap-prevention grace logic.
                 --   • Broadcast / dry spreaders (no VWW): markBoomCells routes every boom cell
                 --     through a per-field polygon test that credits the FIRST field on the
                 --     farmland, so on multi-field farmlands (and other geometry edge cases) the
-                --     cells are rejected and the counter freezes — dry spreaders "paint but the
+                --     cells are rejected and the counter freezes - dry spreaders "paint but the
                 --     pass% / ha never move" while liquid sprayers work (#650). #626 rerouted
                 --     solids onto this path; the reliable liter-based estimate (#454) has no
                 --     polygon dependency, so we use it for the counter and let markBoomCells
@@ -3103,7 +3103,7 @@ function HookManager:installSprayerAreaHook()
                 do
                     local wap = spec.workAreaParameters
                     if wap and wap.sprayVehicle == nil then
-                        -- External fill path active — tank untouched, getExternalFill already
+                        -- External fill path active - tank untouched, getExternalFill already
                         -- charged the farm. Skip backup refill entirely.
                         SoilLogger.debug("BUY SKIP backup refill: external fill path active (sprayVehicle=nil) veh=%d", self.id or 0)
                         return  -- exit pcall closure, backup refill block below is skipped
@@ -3135,7 +3135,7 @@ function HookManager:installSprayerAreaHook()
                         isAI = true
                     end
                     -- Check if a human player is currently driving this vehicle (or its root vehicle).
-                    -- For towed implements (spreaders, trailing sprayers), self has no cab —
+                    -- For towed implements (spreaders, trailing sprayers), self has no cab -
                     -- getIsEntered() returns false even when the player is in the pulling tractor.
                     -- We must check the rootVehicle too.
                     local isEntered = false
@@ -3174,7 +3174,7 @@ function HookManager:installSprayerAreaHook()
                                 -- self:addFillUnitFillLevel() goes through the game's network-sync
                                 -- and farm-permission pipeline, which silently rejects writes on
                                 -- AI-controlled vehicles (no active player session).
-                                -- Writing the spec field directly is safe here — we are server-side
+                                -- Writing the spec field directly is safe here - we are server-side
                                 -- inside an appendedFunction that runs after the drain already happened.
                                 local spec = self.spec_fillUnit
                                 local fu = spec and spec.fillUnits and spec.fillUnits[fillUnitIndex]
@@ -3190,7 +3190,7 @@ function HookManager:installSprayerAreaHook()
                                     end
                                 end
 
-                                -- Resolve farmId — try every path in order of reliability for AI vehicles.
+                                -- Resolve farmId - try every path in order of reliability for AI vehicles.
                                 -- getActiveFarm() is on Sprayer spec; ownerFarmId is a plain table field
                                 -- always present on every vehicle; getOwnerFarmId() returns 0 when no
                                 -- player session is active (i.e. always 0 for AI-only vehicles).
@@ -3208,7 +3208,7 @@ function HookManager:installSprayerAreaHook()
                                 local cost = liters * pricePerLiter
                                 if farmId and farmId > 0 then
                                     pcall(function()
-                                        -- Match Hook 9 (getExternalFill) signature — no extra bool args.
+                                        -- Match Hook 9 (getExternalFill) signature - no extra bool args.
                                         g_currentMission:addMoney(-cost, farmId, MoneyType.PURCHASE_FERTILIZER)
                                     end)
                                 end
@@ -3285,7 +3285,7 @@ end
 -- farmland. `box` is the live InfoDisplayKeyValueBox the base game is already drawing this
 -- frame. Utils.appendedFunction runs our callback AFTER the base game's own logic, with the
 -- same arguments, so we can call box:addLine(...) again to tack our rows onto the SAME box.
--- We never call box:clear()/box:setTitle() — that would wipe the base game's own rows.
+-- We never call box:clear()/box:setTitle() - that would wipe the base game's own rows.
 ---@return boolean success True if hook installed successfully
 function HookManager:installNativeFieldInfoHook()
     if PlayerHUDUpdater == nil or PlayerHUDUpdater.fieldAddFarmland == nil then
@@ -3296,7 +3296,7 @@ function HookManager:installNativeFieldInfoHook()
     local hookManagerSelf = self -- captured upvalue for getFieldIdAtWorldPosition's cache
 
     --- Resolves a vehicle's world (x, z). Tries rootNode first, then falls back to
-    --- components[1].node — some vehicle types (notably certain implements/trailers) don't
+    --- components[1].node - some vehicle types (notably certain implements/trailers) don't
     --- expose rootNode directly. This gap (no components[1] fallback) in an earlier version
     --- of this hook was the most likely cause of silent fieldId-resolution failures.
     local function getVehiclePositionXZ(vehicle)
@@ -3317,7 +3317,7 @@ function HookManager:installNativeFieldInfoHook()
         return nil, nil
     end
 
-    --- Resolves the world (x, z) the player is currently associated with — controlled
+    --- Resolves the world (x, z) the player is currently associated with - controlled
     --- vehicle first (covers driving/standing-in), then the on-foot player root node.
     --- Mirrors the proven SoilWorkYieldBonus:getPlayerPositionXZ() priority order exactly.
     local function getPlayerOrVehiclePositionXZ()
@@ -3400,7 +3400,7 @@ function HookManager:installNativeFieldInfoHook()
         return farmlandId
     end
 
-    --- Pulls a fieldId directly out of the `data` argument fieldAddFarmland is called with —
+    --- Pulls a fieldId directly out of the `data` argument fieldAddFarmland is called with -
     --- i.e. the exact subject the FIELD INFO box is about to display, regardless of what world
     --- position we could or couldn't resolve. This is the fallback that matters most: position
     --- lookups can miss (elevated cabs, odd vehicle node hierarchies, MapDataGrid cache misses),
@@ -3470,7 +3470,7 @@ function HookManager:installNativeFieldInfoHook()
                 sourceFnName, select("#", hudUpdater, data, box, ...))
         end
 
-        -- Prefer the documented (hudUpdater, data, box) order — that's what the proven
+        -- Prefer the documented (hudUpdater, data, box) order - that's what the proven
         -- SoilWorkYieldBonus mod relies on. Only fall back to scanning if it doesn't hold,
         -- as a safety net against a base-game signature change.
         if not (type(box) == "table" and type(box.addLine) == "function") then
@@ -3487,7 +3487,7 @@ function HookManager:installNativeFieldInfoHook()
                 for i, arg in ipairs({hudUpdater, data, box, ...}) do
                     table.insert(argTypes, string.format("arg%d=%s", i, type(arg)))
                 end
-                SoilLogger.warning("Native field info hook: fieldAddFarmland fired but no addLine-capable arg found (%s) — base game signature may not match; injection skipped",
+                SoilLogger.warning("Native field info hook: fieldAddFarmland fired but no addLine-capable arg found (%s) - base game signature may not match; injection skipped",
                     table.concat(argTypes, ", "))
             end
             return
@@ -3502,7 +3502,7 @@ function HookManager:installNativeFieldInfoHook()
         end
 
         -- fieldId resolution: position first (matches what's actually under the player/
-        -- vehicle), then fall back to pulling it straight out of `data` — the exact subject
+        -- vehicle), then fall back to pulling it straight out of `data` - the exact subject
         -- the box is already displaying. Order ported from the proven SoilWorkYieldBonus mod.
         local fieldId = nil
         local x, z = getPlayerOrVehiclePositionXZ()
@@ -3734,7 +3734,7 @@ function HookManager:installNativeFieldInfoHook()
     end
 
     -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddFruit owns the
-    -- crop/yield-state rows (Crop type/Growth/Yield-bonus/Weed/Needs lime) — the
+    -- crop/yield-state rows (Crop type/Growth/Yield-bonus/Weed/Needs lime) - the
     -- ones our soil data is actually relevant alongside. A confirmed working reference
     -- (FS22_CropRotation, github.com/bodzio528/FS22_CropRotation) hooks fieldAddFruit
     -- specifically for this kind of row, with the identical (updater, data, box) signature.
@@ -3824,7 +3824,7 @@ end
 -- vehicleType registration time (game startup), then WorkArea.lua copies it
 -- directly to workArea.processingFunction = self[funcName] at vehicle load.
 -- A class-level Utils.appendedFunction hook applied at mod load (Mission00)
--- is completely bypassed — the workArea closure already holds the original.
+-- is completely bypassed - the workArea closure already holds the original.
 -- onEndWorkAreaProcessing is an event: SpecializationUtil.raiseEvent does a
 -- DYNAMIC table lookup (v10_[eventName](vehicle,...)) each tick, so our
 -- class-level hook is visible and fires correctly.
@@ -3861,7 +3861,7 @@ function HookManager:installPlowingHook()
 
             local isPlowSpec = cultivatorSelf.spec_plow ~= nil or cultivatorSelf.spec_subsoiler ~= nil
 
-            -- Subsoiler area fix (#693): a subsoiler does its real work DEEP — its surface
+            -- Subsoiler area fix (#693): a subsoiler does its real work DEEP - its surface
             -- "changed" area (lastChangedArea) barely moves, so incorporation scaled by it
             -- rounds to ~nothing even though the tines worked a full strip. (Compaction relief
             -- is position-based, so it looked fine and masked the gap.) Use the total processed
@@ -3879,7 +3879,7 @@ function HookManager:installPlowingHook()
             local areaHa = MathUtil.areaToHa(areaPixels, g_currentMission:getFruitPixelsToSqm())
             if areaHa <= 0 then return end
 
-            SoilLogger.debug("[PlowHook] onEndWorkAreaProcessing fired — isPlow=%s subsoiler=%s area=%.1f px (%.5f ha)",
+            SoilLogger.debug("[PlowHook] onEndWorkAreaProcessing fired - isPlow=%s subsoiler=%s area=%.1f px (%.5f ha)",
                 tostring(isPlowSpec), tostring(spec.isSubsoiler), areaPixels, areaHa)
 
             local x, _, z = getWorldTranslation(cultivatorSelf.rootNode)
@@ -3897,7 +3897,7 @@ function HookManager:installPlowingHook()
                     end
 
                     -- Combo implements (fertilizing cultivators / seeders) spray while
-                    -- tilling — they must not reset the session coverage they just laid.
+                    -- tilling - they must not reset the session coverage they just laid.
                     local isAlsoSprayer = cultivatorSelf.spec_sprayer ~= nil
 
                     -- #674: green-manure biomass sampled (pre-clear) by the crop-biomass probe.
@@ -3915,9 +3915,9 @@ function HookManager:installPlowingHook()
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
-                    -- Compaction: tillage LOOSENS soil — it never packs it. A subsoiler clears
+                    -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler clears
                     -- the deep pan (full relief); a plow-action tool only loosens the topsoil it
-                    -- inverts, so it relieves far less (PLOW_RELIEF) and the pan stays — keeping
+                    -- inverts, so it relieves far less (PLOW_RELIEF) and the pan stays - keeping
                     -- the subsoiler the real fix (#687). Shallow cultivation is neutral. Only
                     -- harvest traffic (the combine hook) adds compaction. This still avoids the
                     -- #672-adjacent bug where a deep-tillage tool built on the Cultivator spec
@@ -3968,7 +3968,7 @@ end
 -- HOOK 5b: Dedicated plow implements (Plow.onEndWorkAreaProcessing)
 -- =========================================================
 --- Hooks dedicated plow implements (belt plows, disc plows, etc.) which use
---- the Plow specialization. processingFunction closure bypass applies here too —
+--- the Plow specialization. processingFunction closure bypass applies here too -
 --- same fix: hook the event listener instead of the processing function.
 ---@return boolean success
 function HookManager:installDedicatedPlowHook()
@@ -4003,7 +4003,7 @@ function HookManager:installDedicatedPlowHook()
             local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
             if areaHa <= 0 then return end
 
-            SoilLogger.debug("[DedicatedPlowHook] onEndWorkAreaProcessing fired — area=%.1f px (%.5f ha)", statsArea, areaHa)
+            SoilLogger.debug("[DedicatedPlowHook] onEndWorkAreaProcessing fired - area=%.1f px (%.5f ha)", statsArea, areaHa)
 
             local x, _, z = getWorldTranslation(plowSelf.rootNode)
             local success, errorMsg = pcall(function()
@@ -4020,7 +4020,7 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
                     -- Plowing inverts and loosens the topsoil, so it relieves a little
-                    -- compaction (no-op if the cell isn't compacted) — but only the small
+                    -- compaction (no-op if the cell isn't compacted) - but only the small
                     -- PLOW_RELIEF, not the full subsoiler amount: a plough leaves the deep
                     -- pan, so routine ploughing can't erase compaction the way a subsoiler
                     -- does (#687). It still never ADDS compaction, which keeps DeltaFive's
@@ -4244,7 +4244,7 @@ function HookManager:installMulcherHook()
         end
     )
     self:register(Mulcher, "onEndWorkAreaProcessing", original, "Mulcher.onEndWorkAreaProcessing")
-    SoilLogger.info("[OK] Mulcher hook installed (#674) — crop/stubble OM incorporation active")
+    SoilLogger.info("[OK] Mulcher hook installed (#674) - crop/stubble OM incorporation active")
     return true
 end
 
@@ -4258,7 +4258,7 @@ end
 --- listener uses dynamic dispatch, so hooking onEndWorkAreaProcessing works.
 ---@return boolean success
 function HookManager:installWeederHook()
-    -- Same processingFunction closure bypass as Plow/Cultivator — hook the event instead
+    -- Same processingFunction closure bypass as Plow/Cultivator - hook the event instead
     if not Weeder or type(Weeder.onEndWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("Could not install Weeder hook - Weeder.onEndWorkAreaProcessing not available")
         return false
@@ -4282,7 +4282,7 @@ function HookManager:installWeederHook()
             --   weedPressure                              -> mechanical weed removal (existing)
             --   compactionEnabled + isGrasslandWeeder     -> grassland compaction relief (#680).
             -- A grassland weeder/aerator works the sward WITHOUT destroying it, so it can ease
-            -- pasture compaction without a reseed — the gap regular subsoilers can't fill (they
+            -- pasture compaction without a reseed - the gap regular subsoilers can't fill (they
             -- kill the grass). Deep flagged sward-lifters get full relief; generic ones partial.
             local doWeed   = mgr.settings.weedPressure
             local doRelief = mgr.settings.compactionEnabled and SoilConstants.COMPACTION
@@ -4362,7 +4362,7 @@ end
 -- crop name from the previous harvest (fix for issue #123).
 ---@return boolean success True if hook installed successfully
 function HookManager:installSowingHook()
-    -- processSowingMachineArea has the same processingFunction closure bypass —
+    -- processSowingMachineArea has the same processingFunction closure bypass -
     -- hook onEndWorkAreaProcessing for dynamic dispatch instead.
     if not SowingMachine or type(SowingMachine.onEndWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("Could not install sowing hook - SowingMachine.onEndWorkAreaProcessing not available")
@@ -4535,7 +4535,7 @@ end
 --
 -- Additionally, after the hook is installed, all vehicles already in memory are patched
 -- retroactively. This covers the save/load scenario where FillUnit.onPostLoad fires during
--- Mission00.load — well before our deferred hook installation — leaving saved sprayers
+-- Mission00.load - well before our deferred hook installation - leaving saved sprayers
 -- unable to accept custom fill types until a new one is bought from the shop.
 ---@return boolean success
 function HookManager:installFillUnitHook()
@@ -4862,19 +4862,19 @@ end
 -- =========================================================
 -- Placeable silos (PlaceableSilo spec) accept fill types via three independent
 -- gates, each resolved from XML as EITHER #fillTypeCategories OR #fillTypes (names):
---   * Storage.fillTypes          — the capacity holder (one per spec.storages entry)
---   * UnloadTrigger.fillTypes    — gate for discharging INTO the silo from a spreader/trailer
---   * LoadTrigger.fillTypes      — gate for loading OUT of the silo into equipment
+--   * Storage.fillTypes          - the capacity holder (one per spec.storages entry)
+--   * UnloadTrigger.fillTypes    - gate for discharging INTO the silo from a spreader/trailer
+--   * LoadTrigger.fillTypes      - gate for loading OUT of the silo into equipment
 -- Storage/triggers that list base types by NAME (e.g. fillTypes="FERTILIZER LIME")
 -- never see our fillTypeCategory extension, so SF types are rejected. This hook
 -- injects our custom indices into any storage/trigger that already accepts the
 -- corresponding base type (FERTILIZER / LIME / MANURE / LIQUIDFERTILIZER), so bulk
--- bins from third-party mods accept SF products automatically — no manual config.
+-- bins from third-party mods accept SF products automatically - no manual config.
 --
 -- Injection runs appended to PlaceableSilo.onLoad, i.e. AFTER storages/triggers are
 -- parsed but BEFORE onFinalizePlacement aggregates storages into the station's
 -- supportedFillTypes. Augmenting Storage.fillTypes first means the game builds the
--- station aggregate (the discharge-allow gate) with our types included — no need to
+-- station aggregate (the discharge-allow gate) with our types included - no need to
 -- poke redacted station internals on the normal path.
 
 -- SF custom fill types grouped by the vanilla base type a bin must already accept.
@@ -4935,7 +4935,7 @@ function HookManager.injectStorage(storage, groups)
 end
 
 -- Add custom indices to a trigger's fillTypes set when it already holds the base type.
--- A nil fillTypes means "accepts everything" — nothing to do.
+-- A nil fillTypes means "accepts everything" - nothing to do.
 function HookManager.injectTriggerFillTypes(triggerFillTypes, groups)
     if not triggerFillTypes then return end
     for _, group in ipairs(groups) do
@@ -4947,7 +4947,7 @@ function HookManager.injectTriggerFillTypes(triggerFillTypes, groups)
     end
 end
 
--- Defensive station-aggregate patch (retroactive path only — silos already finalized).
+-- Defensive station-aggregate patch (retroactive path only - silos already finalized).
 -- Copies the base type's existing value so we preserve whatever shape the table uses
 -- (boolean set vs. descriptor map). Membership is what the allow-checks read.
 function HookManager.injectStationAggregate(station, groups)
@@ -5005,10 +5005,10 @@ end
 -- Install the appended PlaceableSilo hooks. Installed early (from SoilFertilitySystem.new)
 -- so they are in place before savegame silos load. Injection runs at two points, both
 -- idempotent:
---   onLoad             — storage.fillTypes + trigger.fillTypes BEFORE savegame fill-level
+--   onLoad             - storage.fillTypes + trigger.fillTypes BEFORE savegame fill-level
 --                        restore and stream sync, so saved SF levels and sortedFillTypes
 --                        ordering stay consistent.
---   onFinalizePlacement — re-runs after the station's supportedFillTypes aggregate is built
+--   onFinalizePlacement - re-runs after the station's supportedFillTypes aggregate is built
 --                        from storages, covering the discharge-allow gate for silos placed
 --                        mid-game (where no installAll sweep follows).
 ---@return boolean success
@@ -5069,7 +5069,7 @@ end
 -- The effect type hook captures its remap table by reference in a closure.
 -- If fill types weren't in g_fillTypeManager at install time (dedi server),
 -- the remap table is sparsely populated. Since it's a Lua table reference,
--- we can add missing entries directly — the closures automatically see them.
+-- we can add missing entries directly - the closures automatically see them.
 -- Called by SoilFertilityManager:update() alongside reapplyFillUnitPatch().
 function HookManager:reapplyEffectTypeRemap()
     local remap = self._effectTypeRemap
@@ -5125,7 +5125,7 @@ end
 --   FillUnit:addFillUnitFillLevel(fillUnitIndex, -delta, fillTypeIndex)
 -- On vanilla types, FillUnit internally intercepts the negative delta when
 -- purchase mode is active and handles the money transaction instead. For our
--- types, no such interception exists — the fill level just depletes as normal.
+-- types, no such interception exists - the fill level just depletes as normal.
 --
 -- Fix: hook FillUnit.addFillUnitFillLevel. When:
 --   1. The delta is negative (consumption, not filling)
@@ -5137,7 +5137,7 @@ end
 -- Detection: per LUADOC Sprayer:getIsSprayerExternallyFilled, BUY mode is an
 -- AI-only feature controlled by g_currentMission.missionInfo.helperBuyFertilizer
 -- (and the slurry/manure equivalents). There are no per-vehicle spec fields for
--- this — checking spec_sprayer or fillUnit reloadState is incorrect.
+-- this - checking spec_sprayer or fillUnit reloadState is incorrect.
 ---@return boolean success
 function HookManager:installPurchaseRefillHook()
     if not FillUnit or type(FillUnit.addFillUnitFillLevel) ~= "function" then
@@ -5206,7 +5206,7 @@ function HookManager:installPurchaseRefillHook()
     -- Helper: check if a fill unit on a vehicle is in "BUY/auto-purchase" mode.
     --
     -- Per LUADOC (Sprayer:getIsSprayerExternallyFilled), BUY mode is exclusively
-    -- an AI/helper feature — it only activates when the vehicle is AI-controlled
+    -- an AI/helper feature - it only activates when the vehicle is AI-controlled
     -- AND the player has opted in via the helper settings panel. For a human player
     -- driving manually, the tank always depletes normally (no BUY mode exists).
     --
@@ -5251,7 +5251,7 @@ function HookManager:installPurchaseRefillHook()
             return false
         end
 
-        -- 2. AI is active — check the mission settings for buy mode
+        -- 2. AI is active - check the mission settings for buy mode
         if g_currentMission and g_currentMission.missionInfo then
             local mi = g_currentMission.missionInfo
             
@@ -5308,7 +5308,7 @@ function HookManager:installPurchaseRefillHook()
         local litersConsumed = -fillLevelDelta
         local cost = litersConsumed * pricePerLiter
 
-        -- Charge the owning farm (use the farmId arg — it is the authoritative owner)
+        -- Charge the owning farm (use the farmId arg - it is the authoritative owner)
         local chargeFarmId = (farmId and farmId > 0) and farmId
             or vehicle.ownerFarmId
             or (vehicle.spec_enterable and vehicle.spec_enterable.activeFarmId)
@@ -5349,7 +5349,7 @@ end
 --   (fillType == UNKNOWN and (allowLiquidFertilizer or allowFertilizer or allowHerbicide))
 -- Because we patched the fill unit to also accept vanilla FERTILIZER/LIQUIDFERTILIZER
 -- (via installFillUnitHook), allowFertilizer == true even on a spreader loaded with UREA.
--- getExternalFill then returns vanilla FERTILIZER with buy-mode charging — silently
+-- getExternalFill then returns vanilla FERTILIZER with buy-mode charging - silently
 -- applying the wrong product to the terrain density map.
 --
 -- Fix: wrap getExternalFill. When fillType is one of our custom types (direct match),
@@ -5538,7 +5538,7 @@ end
 ---@return boolean success
 function HookManager:installSprayerStartHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
-        SoilLogger.warning("SprayerStart hook: Sprayer.onStartWorkAreaProcessing not available — skipping")
+        SoilLogger.warning("SprayerStart hook: Sprayer.onStartWorkAreaProcessing not available - skipping")
         return false
     end
 
@@ -5565,7 +5565,7 @@ function HookManager:installSprayerStartHook()
     )
 
     self:register(Sprayer, "onStartWorkAreaProcessing", original, "Sprayer.onStartWorkAreaProcessing (rate multiplier)")
-    SoilLogger.info("[OK] SprayerStart hook installed — rate multiplier applied to wap.usage/usagePerMin")
+    SoilLogger.info("[OK] SprayerStart hook installed - rate multiplier applied to wap.usage/usagePerMin")
     return true
 end
 
@@ -5581,7 +5581,7 @@ end
 -- compatibility). The rest of the vanilla formula is identical:
 --   scale × litersPerSecond × actualSpeed_km/h × workWidth_m × dt_ms × 0.001
 -- When the vehicle stops (headland pivot), lastSpeed ≈ 0 → usage = 0 → boom shuts off.
--- This is correct — no area is being covered.
+-- This is correct - no area is being covered.
 --
 -- Three-layer patch required: SpecializationUtil.registerFunction (line 91 of Sprayer.lua)
 -- + copyTypeFunctionsInto means class-table patches never reach live vehicle instances.
@@ -5605,7 +5605,7 @@ function HookManager:installSprayerUsageHook()
 
             -- For towed implements (spreaders, trailing sprayers) lastSpeed may be nil
             -- because the implement has no independent physics body.
-            -- If fillType is a custom type, we MUST NOT fall back to vanilla originalFn —
+            -- If fillType is a custom type, we MUST NOT fall back to vanilla originalFn -
             -- vanilla getSprayerUsage only knows vanilla spray types and returns 0 for
             -- custom fill types (lps=nil), so the tank never depletes for towed spreaders.
             -- Instead, borrow speed from the rootVehicle (tractor pulling the implement).
@@ -5727,7 +5727,7 @@ function HookManager:installSprayerUsageHook()
     end
 
     self:register(Sprayer, "getSprayerUsage", originalClassFn, "Sprayer.getSprayerUsage (class only)")
-    SoilLogger.info("[OK] SprayerUsage hook installed — actual-speed consumption (%d types, %d vehicles patched)",
+    SoilLogger.info("[OK] SprayerUsage hook installed - actual-speed consumption (%d types, %d vehicles patched)",
         typesPatched, vehPatched)
     return true
 end
@@ -5742,12 +5742,12 @@ end
 -- ManureSpreaders (helperManureSource==2) it always returns false, so vanilla
 -- drains the tank normally. With custom slurry/manure fill types loaded, that
 -- drain writes directly to the tank and then our getExternalFill hook refills
--- it — a race that flickers and double-charges.
+-- it - a race that flickers and double-charges.
 --
 -- Canonical fix: override getIsSprayerExternallyFilled so it ALSO returns true
 -- when the tank holds one of our custom fill types AND the corresponding BUY
 -- mode is active. This tells vanilla's onStartWorkAreaProcessing to clear
--- sprayVehicle/sprayVehicleFillUnitIndex to nil — which means
+-- sprayVehicle/sprayVehicleFillUnitIndex to nil - which means
 -- onEndWorkAreaProcessing's `if sprayVehicle ~= nil` check is false and
 -- addFillUnitFillLevel is NEVER called. No tank drain. No race. No refill hook
 -- needed. Money is still charged inside getExternalFill.
@@ -5764,7 +5764,7 @@ end
 -- `SpecializationUtil.copyTypeFunctionsInto` COPIES each reference directly onto
 -- the vehicle instance (vehicle[name] = func).  Replacing only
 -- `Sprayer.getIsSprayerExternallyFilled` on the class table has ZERO effect on
--- vehicles that were loaded before our hook ran — hence the fix must patch:
+-- vehicles that were loaded before our hook ran - hence the fix must patch:
 --   (1) the Sprayer class table (future loads)
 --   (2) every vehicleType.functions["getIsSprayerExternallyFilled"] that has
 --       Sprayer in its specialization list (new instances of known types)
@@ -5785,7 +5785,7 @@ function HookManager:installExternalFillOptInHook()
     -- to vanilla inside the wrapper).
     local function makeReplacement(originalFn)
         return function(sprayerSelf)
-            -- Delegate to vanilla first — if vanilla already handles this vehicle
+            -- Delegate to vanilla first - if vanilla already handles this vehicle
             -- (e.g. it's a recognised slurry tanker with helperSlurrySource==2),
             -- there's nothing extra to do.
             local okVanilla, vanillaRes = pcall(originalFn, sprayerSelf)
@@ -5877,7 +5877,7 @@ function HookManager:installExternalFillOptInHook()
             end
         end
     end
-    SoilLogger.debug("BUY opt-in hook: vehicleType scan — seen=%d, sprayer-types patched=%d",
+    SoilLogger.debug("BUY opt-in hook: vehicleType scan - seen=%d, sprayer-types patched=%d",
         typesSeen, typesPatched)
 
     -- -----------------------------------------------------------------
@@ -5904,21 +5904,21 @@ function HookManager:installExternalFillOptInHook()
             end
         end
     end
-    SoilLogger.debug("BUY opt-in hook: live vehicle scan — seen=%d, patched=%d", vehSeen, vehPatched)
+    SoilLogger.debug("BUY opt-in hook: live vehicle scan - seen=%d, patched=%d", vehSeen, vehPatched)
 
     -- -----------------------------------------------------------------
     -- Cleanup: restore only the Sprayer class reference on uninstall.
-    -- (Types/instances aren't restored — they'd already be stale.)
+    -- (Types/instances aren't restored - they'd already be stale.)
     -- -----------------------------------------------------------------
     self:register(Sprayer, "getIsSprayerExternallyFilled", originalClassFn,
         "Sprayer.getIsSprayerExternallyFilled (class only)")
-    SoilLogger.info("[OK] External fill opt-in hook installed — BUY mode should now engage for custom types")
+    SoilLogger.info("[OK] External fill opt-in hook installed - BUY mode should now engage for custom types")
     return true
 end
 
 -- =========================================================
 -- Re-apply the opt-in patch to the `getExternalFill` function too
--- (same dispatch issue — the existing installExternalFillHook patches only the
+-- (same dispatch issue - the existing installExternalFillHook patches only the
 -- class table, so it never reaches live instances).  We piggy-back here to
 -- patch typeDef.functions["getExternalFill"] and live instances with the
 -- SAME wrapper that installExternalFillHook already built.
@@ -5953,7 +5953,7 @@ function HookManager:propagateExternalFillHookToLiveVehicles()
             vehPatched = vehPatched + 1
         end
     end
-    SoilLogger.debug("getExternalFill wrapper propagated — typeDefs=%d, liveVehicles=%d",
+    SoilLogger.debug("getExternalFill wrapper propagated - typeDefs=%d, liveVehicles=%d",
         typesPatched, vehPatched)
 end
 
@@ -5965,13 +5965,13 @@ end
 -- to set the "fillTypeId" shader parameter that selects which texture in the
 -- terrain fill-type array is shown on the fill plane / fill volume mesh.
 -- Custom fill types are not registered with texture array entries, so the
--- call returns nil and the visual never updates — the fill plane and hopper
+-- call returns nil and the visual never updates - the fill plane and hopper
 -- mesh stay on whatever they showed before (or show nothing/wrong colour).
 --
 -- Fix: wrap getTextureArrayIndexByFillTypeIndex. When the index belongs to one
 -- of our custom types and the original returns nil, remap to the vanilla
 -- equivalent (FERTILIZER for solid types, LIQUIDFERTILIZER for liquid types)
--- and return its texture array index. Purely cosmetic — nutrient tracking is
+-- and return its texture array index. Purely cosmetic - nutrient tracking is
 -- unaffected.
 ---@return boolean success
 function HookManager:installFillTypeMaterialHook()
@@ -6023,8 +6023,8 @@ function HookManager:installFillTypeMaterialHook()
         AMS      = { "FERTILIZER", "LIME" },            -- AMS is off-white/light grey granular
         MAP      = { "FERTILIZER", "LIME" },            -- MAP is off-white/light brown granular
         DAP      = { "FERTILIZER", "LIME" },            -- DAP is off-white/grey-brown granular
-        POTASH    = { "FERTILIZER", "LIME" },           -- Potassium chloride — pinkish but granular
-        POLIFOSKA = { "FERTILIZER", "LIME" },           -- Compound 6-20-30 granular — off-white/pinkish
+        POTASH    = { "FERTILIZER", "LIME" },           -- Potassium chloride - pinkish but granular
+        POLIFOSKA = { "FERTILIZER", "LIME" },           -- Compound 6-20-30 granular - off-white/pinkish
         GYPSUM    = { "LIME", "FERTILIZER" },            -- Gypsum is bright white powder → LIME first
 
         -- ── ORGANIC / COMPOST TYPES ────────────────────────────────────────
@@ -6056,7 +6056,7 @@ function HookManager:installFillTypeMaterialHook()
                 local vanillaFT = fm:getFillTypeByIndex(vanillaIdx)
                 table.insert(logLines, string.format("  %-20s → %s", customName, vanillaFT and vanillaFT.name or "?"))
             else
-                SoilLogger.warning("Fill type material hook: no texture array entry found for %s priorities (%s) — type will show default",
+                SoilLogger.warning("Fill type material hook: no texture array entry found for %s priorities (%s) - type will show default",
                     customName, table.concat(priorities, ", "))
             end
         end
@@ -6076,7 +6076,7 @@ function HookManager:installFillTypeMaterialHook()
     end
 
     if not next(remap) then
-        SoilLogger.warning("Fill type material hook: no custom fill types could be remapped — skipping")
+        SoilLogger.warning("Fill type material hook: no custom fill types could be remapped - skipping")
         return false
     end
 
@@ -6108,13 +6108,13 @@ end
 -- =========================================================
 -- FertilizerMotionPathEffect (used by liquid sprayer boom visuals) looks up motion
 -- path data by fill type index. Vanilla types have data registered; our custom types
--- do not, so the lookup returns nil and the effect never starts — even when our
+-- do not, so the lookup returns nil and the effect never starts - even when our
 -- setEffectTypeInfo hook correctly remaps the index to LIQUIDFERTILIZER before storage.
 -- The failure is inside FS25's internal C++ effect pipeline, which may execute before
 -- the Lua hook fires.
 --
 -- Fix: hook Sprayer.onUpdateTick (registered via SpecializationUtil.registerEventListener,
--- dynamic dispatch — reaches all vehicles immediately). On the client (visual only):
+-- dynamic dispatch - reaches all vehicles immediately). On the client (visual only):
 --   • detect fill type change and when getAreEffectsVisible() changes state
 --   • call setEffectTypeInfo + startEffects directly with the vanilla-equivalent fill type
 --   • call stopEffects when the sprayer stops or fill type changes
@@ -6136,12 +6136,12 @@ function HookManager:installSprayerVisualEffectHook()
     local liqFertIdx = fm:getFillTypeIndexByName("LIQUIDFERTILIZER")
 
     -- Build remap: custom fill type index → vanilla fill type index (cosmetic only).
-    -- LIQUID types only — solid types are intentionally EXCLUDED.
+    -- LIQUID types only - solid types are intentionally EXCLUDED.
     -- Solid types (UREA, AMS, MAP, DAP, etc.) use the vanilla path (remap returns nil →
     -- just return), which lets vanilla's onEndWorkAreaProcessing/updateSprayerEffects manage
     -- effects. This matches how AN works (AN is absent from this remap and works correctly).
     -- The custom path (Sprayer.onUpdateTick appended) fires BEFORE WorkArea.onUpdateTick,
-    -- so getAreEffectsVisible() is false when our code runs — the stop-path kills effects
+    -- so getAreEffectsVisible() is false when our code runs - the stop-path kills effects
     -- every tick for solid types. The vanilla path fires from onEndWorkAreaProcessing, which
     -- runs AFTER processSprayerArea sets lastSprayTime → effectsVisible = true → effects start.
     local remap = {}
@@ -6229,7 +6229,7 @@ function HookManager:installSprayerVisualEffectHook()
 
             -- If fill type changed away from custom, stop our managed effects and reset.
             -- Also reset lastEffectsState so vanilla re-evaluates its state machine next
-            -- tick — without this, vanilla thinks effects are still running after our stop
+            -- tick - without this, vanilla thinks effects are still running after our stop
             -- and won't restart them when switching to a vanilla fill type (HERBICIDE etc.).
             local lastFT = spec._soilManagedFillType
             if lastFT and lastFT ~= fillType then
@@ -6239,7 +6239,7 @@ function HookManager:installSprayerVisualEffectHook()
                 spec.lastEffectsState     = nil
             end
 
-            -- Fold detection — computed once, applied to both vanilla and custom paths below.
+            -- Fold detection - computed once, applied to both vanilla and custom paths below.
             -- Mirror vanilla Foldable line 1286: working position is dir==-1,fa==0 OR dir==1,fa==1.
             -- turnOnFoldDirection defaults to 1 or -1 (never 0 after Foldable init); if somehow
             -- nil, fall back to animation-only detection (0 < fa < 1).
@@ -6262,7 +6262,7 @@ function HookManager:installSprayerVisualEffectHook()
             end
 
             -- getAreEffectsVisible() uses a 100ms window on lastSprayTime; if processSprayerArea
-            -- isn't running (vehicle stopped or empty) that window expires naturally — no speed
+            -- isn't running (vehicle stopped or empty) that window expires naturally - no speed
             -- check needed. The speed check broke trailed spreaders whose getLastSpeed() returns 0.
             local effectsVisible = sprayerSelf:getAreEffectsVisible()
 
@@ -6270,7 +6270,7 @@ function HookManager:installSprayerVisualEffectHook()
 
             -- Stop path: suppress every tick (no state-change guard).
             -- vanilla onUpdateTick runs before us (appendedFunction) and can
-            -- restart effects each tick, so we must cancel every tick — same
+            -- restart effects each tick, so we must cancel every tick - same
             -- reason the vanilla fill type path at line ~4725 does the same.
             if not effectsVisible then
                 stopSprayerEffects(sprayerSelf)
@@ -6287,7 +6287,7 @@ function HookManager:installSprayerVisualEffectHook()
             -- dynamic suppression changes: stops effects on sections suppressed by Smart Sensor,
             -- boundary enforcement, or overlap prevention; restarts them when un-suppressed.
             -- Does NOT stop sections that VWW set to isActive=false for its own reasons
-            -- (overlap prevention, width control, "no width" mode) — those are VWW's concern.
+            -- (overlap prevention, width control, "no width" mode) - those are VWW's concern.
             do
                 local vwwS = sprayerSelf.spec_variableWorkWidth
                 if vwwS and vwwS.sections then
@@ -6309,7 +6309,7 @@ function HookManager:installSprayerVisualEffectHook()
 
                     -- When ALL VWW sections are overlap-suppressed, also stop global effects.
                     -- Self-propelled boom sprayers (e.g. Agri-Dino) have a non-VWW centre
-                    -- work area whose spray comes from spec.effects / sprayTypes — the
+                    -- work area whose spray comes from spec.effects / sprayTypes - the
                     -- per-section loop above never reaches those.
                     local overlapSuppressed2 = sprayerSelf._sfOverlapSuppressedSections
                     if overlapSuppressed2 and #vwwS.sections > 0 then
@@ -6324,7 +6324,7 @@ function HookManager:installSprayerVisualEffectHook()
                             end
                             sprayerSelf._sfWasAllOverlapSuppressed = true
                             SoilLogger.debug("[OverlapPrev] allSuppressed=%d → global effects stopped", #vwwS.sections)
-                            return  -- skip start path — nothing unsuppressed to start
+                            return  -- skip start path - nothing unsuppressed to start
                         elseif sprayerSelf._sfWasAllOverlapSuppressed then
                             -- Transitioning out of full suppression: force global effect restart
                             sprayerSelf._sfWasAllOverlapSuppressed = nil
@@ -6347,7 +6347,7 @@ function HookManager:installSprayerVisualEffectHook()
 
     local count = 0
     for _ in pairs(remap) do count = count + 1 end
-    SoilLogger.info("[OK] Sprayer visual effect hook installed on onUpdateTick — %d custom fill types", count)
+    SoilLogger.info("[OK] Sprayer visual effect hook installed on onUpdateTick - %d custom fill types", count)
     return true
 end
 
@@ -6396,7 +6396,7 @@ end
 function HookManager:installPFNitrogenMapHook()
     if type(NitrogenMap) ~= "table" or
        type(NitrogenMap.getFertilizerUsageByNitrogenAmount) ~= "function" then
-        SoilLogger.info("[PFNitrogenGuard] NitrogenMap not found — PF absent or API changed, skipping")
+        SoilLogger.info("[PFNitrogenGuard] NitrogenMap not found - PF absent or API changed, skipping")
         return true  -- not a failure; PF just isn't installed
     end
 
@@ -6419,7 +6419,7 @@ end
 -- =========================================================
 --- Collect world positions spanning the spray boom's lateral extent by reading
 --- work-area start/end nodes on the vehicle and all attached implements.
---- Used to mark every 10 m cell the boom passes over — not just the rootNode cell.
+--- Used to mark every 10 m cell the boom passes over - not just the rootNode cell.
 ---
 --- Falls back to nil when no spanning node pair is found (caller marks only rootNode).
 ---@param vehicle table  The sprayer vehicle (self in the spray hook)
@@ -6441,7 +6441,7 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
         -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
         -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
         -- 'height' the forward edge. The old code read start and a non-existent 'end', so a
-        -- broadcast spreader without VariableWorkWidth collapsed to the single start node —
+        -- broadcast spreader without VariableWorkWidth collapsed to the single start node -
         -- getBoomCellPositions then returned nil and dry fertilizer never painted boom-width
         -- coverage cells (no tracking markers, map barely changed). Issue #626.
         if obj.spec_workArea and obj.spec_workArea.workAreas then
@@ -6451,7 +6451,7 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
                 addNode(wa.height)
             end
         end
-        -- VWW section maxWidthNodes capture the outer boom edge of each section —
+        -- VWW section maxWidthNodes capture the outer boom edge of each section -
         -- workArea start/end nodes are often co-located at the centre, giving a
         -- near-zero span and causing the function to return nil for boom sprayers.
         local vww = obj.spec_variableWorkWidth
