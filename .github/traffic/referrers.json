@@ -3845,33 +3845,33 @@
   "2026-06-30": [
     {
       "referrer": "github.com",
-      "count": 1816,
-      "uniques": 288
+      "count": 1842,
+      "uniques": 295
     },
     {
       "referrer": "Google",
-      "count": 1096,
-      "uniques": 355
+      "count": 1114,
+      "uniques": 359
     },
     {
       "referrer": "Bing",
-      "count": 333,
+      "count": 325,
       "uniques": 93
     },
     {
       "referrer": "kingmods.net",
-      "count": 300,
-      "uniques": 107
+      "count": 301,
+      "uniques": 104
     },
     {
       "referrer": "l.facebook.com",
-      "count": 158,
-      "uniques": 69
+      "count": 140,
+      "uniques": 62
     },
     {
       "referrer": "youtube.com",
-      "count": 133,
-      "uniques": 70
+      "count": 131,
+      "uniques": 73
     },
     {
       "referrer": "Yahoo",
@@ -3880,17 +3880,17 @@
     },
     {
       "referrer": "reddit.com",
-      "count": 33,
+      "count": 34,
       "uniques": 19
     },
     {
-      "referrer": "DuckDuckGo",
-      "count": 31,
-      "uniques": 10
+      "referrer": "yandex.ru",
+      "count": 32,
+      "uniques": 11
     },
     {
-      "referrer": "yandex.ru",
-      "count": 27,
+      "referrer": "DuckDuckGo",
+      "count": 30,
       "uniques": 10
     }
   ]
