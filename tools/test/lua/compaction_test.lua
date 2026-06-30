@@ -1,4 +1,4 @@
--- compaction_test.lua — pure scoring for the ground-pressure compaction model.
+-- compaction_test.lua - pure scoring for the ground-pressure compaction model.
 -- Guards SoilCompactionModel.scorePoints / advanceWetness: the agronomy-based math that
 -- replaced the old flat "≥8 t = +8 points" rule (Talia's Discord feedback). Expected
 -- values are derived from the constants so tuning changes don't false-fail the test.

@@ -37,7 +37,7 @@ for (const file of files) {
 
 const n = files.length;
 if (errors === 0) {
-  console.log(c.green(`✓ Lua 5.1 syntax OK — ${n} file${n === 1 ? "" : "s"} parsed.`));
+  console.log(c.green(`✓ Lua 5.1 syntax OK - ${n} file${n === 1 ? "" : "s"} parsed.`));
   process.exit(0);
 } else {
   console.log(c.red(`\n${errors} syntax error${errors === 1 ? "" : "s"} across ${n} files.`));

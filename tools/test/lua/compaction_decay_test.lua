@@ -1,8 +1,8 @@
--- compaction_decay_test.lua — persistence of compaction recovery (nemrod153 Discord report).
+-- compaction_decay_test.lua - persistence of compaction recovery (nemrod153 Discord report).
 -- Natural decay and taproot bio-drilling shave points off the field-average compaction.
 -- The average is DERIVED as compactionSum / compactionTotalCells, so the old code (which
 -- only lowered field.compaction) was silently wiped the instant onCompaction /
--- onSubsoilerPass re-derived the average from the untouched compactionSum — that is the
+-- onSubsoilerPass re-derived the average from the untouched compactionSum - that is the
 -- nemrod153 "radish decompaction reset the moment I started subsoiling" report.
 -- _applyCompactionDecay must fade compactionSum AND every zoneData cell so the recovery
 -- survives a later per-cell rewrite.

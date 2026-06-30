@@ -5,10 +5,10 @@ import shutil
 from pathlib import Path
 
 # ============================================================
-# build.py — Build & deploy FS25_SoilFertilizer
+# build.py - Build & deploy FS25_SoilFertilizer
 # Usage:
-#   python build.py            — builds zip only
-#   python build.py --deploy   — builds zip AND copies to mods folder
+#   python build.py            - builds zip only
+#   python build.py --deploy   - builds zip AND copies to mods folder
 # ============================================================
 
 MOD_NAME = "FS25_SoilFertilizer"

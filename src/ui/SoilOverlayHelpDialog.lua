@@ -1,5 +1,5 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Soil Map Overlay Help Dialog
+-- FS25 Soil & Fertilizer - Soil Map Overlay Help Dialog
 -- =========================================================
 -- Opened from the Help button in the overlay sidebar.
 -- Two-column layout: how-to-read/layers | tooltip/legend/buttons/tips
@@ -20,7 +20,7 @@ SoilOverlayHelpDialog.INSTANCE = nil
 -- H   = section header (bold, green, uppercase)
 -- B   = body line (white, normal)
 -- S   = spacer (blank gap)
--- COL = column break — switch from col1 to col2
+-- COL = column break - switch from col1 to col2
 SoilOverlayHelpDialog.CONTENT = {
     -- ── LEFT COLUMN ──────────────────────────────────────
     { t="H", v="HOW TO READ THE MAP" },
@@ -47,8 +47,8 @@ SoilOverlayHelpDialog.CONTENT = {
     -- ── RIGHT COLUMN ─────────────────────────────────────
     { t="H", v="CELL TOOLTIP (HOVER A CELL)" },
     { t="B", v="Shows the exact nutrient value (ppm)," },
-    { t="B", v="its Good / Fair / Poor status, and —" },
-    { t="B", v="when a crop is planted — the crop's target" },
+    { t="B", v="its Good / Fair / Poor status, and -" },
+    { t="B", v="when a crop is planted - the crop's target" },
     { t="B", v="and the gap above or below it." },
     { t="S", v=" " },
     { t="H", v="COLOUR LEGEND (SIDEBAR)" },

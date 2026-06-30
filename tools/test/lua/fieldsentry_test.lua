@@ -1,4 +1,4 @@
--- fieldsentry_test.lua — FieldSentry Phase 1 backend gate (#651).
+-- fieldsentry_test.lua - FieldSentry Phase 1 backend gate (#651).
 -- The module itself is dependency-free; the last block also loads the soil system to
 -- prove the freeze gate in _processOneDailyField actually skips a blacklisted field.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/FieldSentry.lua, src/SoilFertilitySystem.lua

@@ -1,4 +1,4 @@
-// lint.mjs — FS25-specific footgun linter.
+// lint.mjs - FS25-specific footgun linter.
 //
 // Catches patterns that parse fine under Lua 5.1 but break (or silently no-op) inside
 // the FS25 sandbox, per the "What DOESN'T Work" table in CLAUDE.md. Syntax-level issues
@@ -23,7 +23,7 @@ const RULES = [
     name: "no-os-time",
     re: /\bos\.(time|date|clock)\s*\(/,
     severity: "error",
-    msg: "os.time/os.date/os.clock are not available in the FS25 Lua sandbox — use g_currentMission.time or .environment.currentDay.",
+    msg: "os.time/os.date/os.clock are not available in the FS25 Lua sandbox - use g_currentMission.time or .environment.currentDay.",
   },
   {
     name: "no-goto",
@@ -55,7 +55,7 @@ for (const file of files) {
 const n = files.length;
 if (errors === 0) {
   console.log(
-    c.green(`✓ Lint clean — ${n} files`) +
+    c.green(`✓ Lint clean - ${n} files`) +
       (warnings ? c.yellow(` (${warnings} warning${warnings === 1 ? "" : "s"})`) : "")
   );
   process.exit(0);

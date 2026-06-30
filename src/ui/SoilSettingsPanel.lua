@@ -1,7 +1,7 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Settings Panel
+-- FS25 Soil & Fertilizer - Settings Panel
 -- =========================================================
--- Fully custom-drawn settings panel. No XML — pure overlay.
+-- Fully custom-drawn settings panel. No XML - pure overlay.
 -- Open/close: SHIFT+O
 -- Landing page → category tile → settings list.
 -- =========================================================
@@ -516,7 +516,7 @@ function SoilSettingsPanel:draw()
     self:drawRect(PX,          PY,          bw, PH, C.border)
     self:drawRect(PX + PW - bw, PY,         bw, PH, C.border)
 
-    -- Page content (skipped when popup is open — popup draws its own dim overlay)
+    -- Page content (skipped when popup is open - popup draws its own dim overlay)
     if not self.popupVisible then
         if self.page == PAGE_LANDING then
             self:drawLandingPage()
@@ -577,7 +577,7 @@ function SoilSettingsPanel:drawTitleBar()
     -- Version tag
     self:drawText(PX + PW - 0.020, ty + TB_H * 0.32, TS_TINY, self.modVersion, C.hint, RenderText.ALIGN_RIGHT, false)
 
-    -- [X] close button — right side
+    -- [X] close button - right side
     local cbW = 0.038
     local cbH = TB_H * 0.60
     local cbX = PX + PW - cbW - 0.010
@@ -651,7 +651,7 @@ function SoilSettingsPanel:drawLandingPage()
         self:drawCategoryCard(cardX, CARD_Y, CARD_W, CARD_H, cat, i)
     end
 
-    -- ADMIN button — bottom-right corner
+    -- ADMIN button - bottom-right corner
     local btnW = 0.090
     local btnH = 0.032
     local btnX = CX + CW - btnW
@@ -917,7 +917,7 @@ function SoilSettingsPanel:drawSetStatePage()
     -- Title
     local titleY = CY_TOP - 0.040
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
-        string.format("SET FIELD STATE  —  Field #%s", tostring(fid or "?")),
+        string.format("SET FIELD STATE  -  Field #%s", tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
     self:drawRect(CX, titleY - 0.006, CW, 0.001, C.divider)
 
@@ -1004,7 +1004,7 @@ function SoilSettingsPanel:drawSetDiseasePage()
     -- Title
     local titleY = CY_TOP - 0.040
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
-        string.format("SET FIELD DISEASE  —  Field #%s", tostring(fid or "?")),
+        string.format("SET FIELD DISEASE  -  Field #%s", tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
     self:drawRect(CX, titleY - 0.006, CW, 0.001, C.divider)
 
@@ -1127,7 +1127,7 @@ local function getPlayerFieldId()
         end
     end
 
-    -- No valid position found — don't pass 0,0 to the field lookup
+    -- No valid position found - don't pass 0,0 to the field lookup
     if x == nil then return nil end
 
     if g_fieldManager then
@@ -1745,7 +1745,7 @@ function SoilSettingsPanel:handleClick(id, data)
         end
 
         -- Mutating actions are admin-only. Setting ROWS are already locked for
-        -- non-admins, but these buttons were not — a non-admin clicking Reset
+        -- non-admins, but these buttons were not - a non-admin clicking Reset
         -- mutated local state and desynced the client until the next full sync.
         -- Read-only actions (field info / forecast / list) stay open to everyone.
         local mutatingActions = {

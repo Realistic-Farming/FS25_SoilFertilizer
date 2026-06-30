@@ -31,7 +31,7 @@ SoilSmartSensorPanel.PAD     = 0.006   -- inner padding
 SoilSmartSensorPanel.TITLE_H = 0.022   -- title bar height
 SoilSmartSensorPanel.GAP     = 0.007   -- gap between this panel and the rate panel above
 
--- Colors (shared with SoilHUD palette — data indicators only)
+-- Colors (shared with SoilHUD palette - data indicators only)
 SoilSmartSensorPanel.C_BORDER   = {0.20, 0.20, 0.20, 0.40}
 SoilSmartSensorPanel.C_SHADOW   = {0.00, 0.00, 0.00, 0.30}
 SoilSmartSensorPanel.C_ON       = {0.25, 0.85, 0.25, 1.00}
@@ -65,10 +65,10 @@ function SoilSmartSensorPanel:initialize()
             self.initialized = true
             SoilLogger.info("[SoilSmartSensorPanel] Initialized")
         else
-            SoilLogger.warning("[SoilSmartSensorPanel] createImageOverlay returned invalid handle — panel will not render")
+            SoilLogger.warning("[SoilSmartSensorPanel] createImageOverlay returned invalid handle - panel will not render")
         end
     else
-        SoilLogger.warning("[SoilSmartSensorPanel] createImageOverlay not available — panel will not render")
+        SoilLogger.warning("[SoilSmartSensorPanel] createImageOverlay not available - panel will not render")
     end
 end
 

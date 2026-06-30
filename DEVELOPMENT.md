@@ -75,7 +75,7 @@ FS25_SoilFertilizer/
 │   ├── ui/
 │   │   ├── SoilHUD.lua             # Always-on HUD panel overlay
 │   │   ├── SoilSettingsPanel.lua   # HUD settings sub-panel (position, theme, transparency)
-│   │   ├── SoilPDAScreen.lua       # PDA screen (K key) — Farm Overview + Treatment Plan tabs
+│   │   ├── SoilPDAScreen.lua       # PDA screen (K key) - Farm Overview + Treatment Plan tabs
 │   │   ├── SoilMapOverlay.lua      # In-game map polygon fill overlay
 │   │   ├── SoilLayerSystem.lua     # Overlay layer definitions (N/P/K/OM/pH)
 │   │   ├── SoilFieldDetailDialog.lua  # Field detail popup dialog
@@ -155,10 +155,10 @@ SoilConstants.CROP_EXTRACTION = {
 ```
 
 **Calibration Guidelines**:
-- **High N crops**: Wheat, Barley, Corn (leafy growth) — N: 15-20
-- **High P crops**: Corn, Soybeans (energy/seeds) — P: 8-12
-- **High K crops**: Potatoes, Sugar Beets (roots/tubers) — K: 12-18
-- **Nitrogen-fixing**: Soybeans, Peas (legumes) — N: 5-8 (they fix their own)
+- **High N crops**: Wheat, Barley, Corn (leafy growth) - N: 15-20
+- **High P crops**: Corn, Soybeans (energy/seeds) - P: 8-12
+- **High K crops**: Potatoes, Sugar Beets (roots/tubers) - K: 12-18
+- **Nitrogen-fixing**: Soybeans, Peas (legumes) - N: 5-8 (they fix their own)
 
 ### Step 2: Test
 
@@ -168,7 +168,7 @@ SoilConstants.CROP_EXTRACTION = {
 4. Check nutrients after: `SoilFieldInfo <fieldId>`
 5. Verify depletion matches your rates × difficulty multiplier
 
-**No other code changes needed** — the system automatically picks up crops from Constants.
+**No other code changes needed** - the system automatically picks up crops from Constants.
 
 ---
 
@@ -237,7 +237,7 @@ SettingsSchema.definitions = {
 }
 ```
 
-**Important**: Do NOT reorder existing entries — this breaks XML save/load compatibility with existing saves.
+**Important**: Do NOT reorder existing entries - this breaks XML save/load compatibility with existing saves.
 
 ### Step 2: Add Translations to modDesc.xml
 
@@ -360,7 +360,7 @@ All hooks are tracked in `HookManager` and restored on mod unload via `HookManag
 ```lua
 function HookManager:installYourHook()
     if not YourGameClass or not YourGameClass.yourMethod then
-        SoilLogger.warning("Could not install your hook — method not found")
+        SoilLogger.warning("Could not install your hook - method not found")
         return
     end
 
@@ -405,7 +405,7 @@ function SoilFertilitySystem:onYourEvent(...)
 end
 ```
 
-**Always use `pcall()`** — a crash in our code must never crash the player's game.
+**Always use `pcall()`** - a crash in our code must never crash the player's game.
 
 ---
 
@@ -415,9 +415,9 @@ end
 
 | File | Role |
 |------|------|
-| `src/ui/SoilHUD.lua` | Always-on HUD panel — shows current field soil stats, sprayer rate panel, position/theme/font settings |
+| `src/ui/SoilHUD.lua` | Always-on HUD panel - shows current field soil stats, sprayer rate panel, position/theme/font settings |
 | `src/ui/SoilReportDialog.lua` | Full-farm paginated soil report (K key) |
-| `gui/SoilReportDialog.xml` | Dialog layout — must be included in the zip |
+| `gui/SoilReportDialog.xml` | Dialog layout - must be included in the zip |
 
 ### HUD Visibility Logic
 
@@ -438,12 +438,12 @@ FS25 does not expose Z-order APIs for Overlays. Render order is determined by ca
 
 ### Quick Testing Checklist
 
-- [ ] Load mod in clean savegame — no errors in log.txt
-- [ ] Harvest crops — nutrients deplete correctly (`SoilFieldInfo <id>`)
-- [ ] Apply fertilizer — nutrients restore correctly, spray visuals appear
-- [ ] Toggle settings — changes take effect and persist after save/reload
-- [ ] Save and reload — all field data and settings survive
-- [ ] Multiplayer — server/client sync works (client joins and sees field data immediately)
+- [ ] Load mod in clean savegame - no errors in log.txt
+- [ ] Harvest crops - nutrients deplete correctly (`SoilFieldInfo <id>`)
+- [ ] Apply fertilizer - nutrients restore correctly, spray visuals appear
+- [ ] Toggle settings - changes take effect and persist after save/reload
+- [ ] Save and reload - all field data and settings survive
+- [ ] Multiplayer - server/client sync works (client joins and sees field data immediately)
 
 
 ### Debug Logging
@@ -460,10 +460,10 @@ Check `log.txt` (search for `[SoilFertilizer]`) for errors and diagnostic output
 
 FS25 uses Lua 5.1 (not 5.2+):
 
-- No `goto` or `continue` — use guard clauses / `if/else`
-- No `os.time()` or `os.date()` — use `g_currentMission.time`
-- No bitwise operators — use `bitAND`, `bitOR`
-- `#` on a hash-keyed table returns undefined behavior — iterate with `pairs()` and count manually
+- No `goto` or `continue` - use guard clauses / `if/else`
+- No `os.time()` or `os.date()` - use `g_currentMission.time`
+- No bitwise operators - use `bitAND`, `bitOR`
+- `#` on a hash-keyed table returns undefined behavior - iterate with `pairs()` and count manually
 
 ### 2. Global Namespace Pollution
 
@@ -479,7 +479,7 @@ function SoilNetworkEvents_RequestSync() end
 
 ### 3. Hook Accumulation
 
-Always register cleanup for every hook you install. Use `self:registerCleanup(name, fn)` in HookManager — it's called automatically on mod unload. Never reinstall a hook without cleaning up the previous one.
+Always register cleanup for every hook you install. Use `self:registerCleanup(name, fn)` in HookManager - it's called automatically on mod unload. Never reinstall a hook without cleaning up the previous one.
 
 ### 4. Multiplayer Desyncs
 
@@ -494,13 +494,13 @@ Vanilla FS25 spray effect code checks `FillType.LIQUIDFERTILIZER` and `SprayType
 This mod solves it with a three-layer approach in `HookManager:installEffectTypeHook()`:
 1. Hook `g_effectManager.setEffectTypeInfo` to remap custom indices to vanilla before effects are stored
 2. Inject custom fill types into vanilla `sprayType.fillTypes` arrays so `getIsSprayTypeActive` returns true
-3. Wrap `Sprayer.onEndWorkAreaProcessing` with a temporary global table swap — `FillType` and `SprayType` in `getfenv(0)` are replaced with modified copies where the vanilla constant name points to our custom index, then restored immediately after the call
+3. Wrap `Sprayer.onEndWorkAreaProcessing` with a temporary global table swap - `FillType` and `SprayType` in `getfenv(0)` are replaced with modified copies where the vanilla constant name points to our custom index, then restored immediately after the call
 
 If adding a new custom fill type, add it to the `remap` table in `installEffectTypeHook()`.
 
 ### 6. Settings Schema Order Matters
 
-`SettingsSchema.definitions` order determines XML save/load order and network stream order. **Never reorder existing entries after a release** — it breaks saves.
+`SettingsSchema.definitions` order determines XML save/load order and network stream order. **Never reorder existing entries after a release** - it breaks saves.
 
 ### 7. Translation Keys
 
@@ -565,7 +565,7 @@ To create them:
 py build.py --deploy
 ```
 
-Check `log.txt` after launching — search for `[SoilFertilizer]` to verify load.
+Check `log.txt` after launching - search for `[SoilFertilizer]` to verify load.
 
 ### Preparing a Release
 

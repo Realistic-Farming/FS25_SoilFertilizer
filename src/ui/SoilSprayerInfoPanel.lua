@@ -115,7 +115,7 @@ function SoilSprayerInfoPanel:initialize()
             self:loadLayout()
             SoilLogger.info("[SoilSprayerInfoPanel] Initialized")
         else
-            SoilLogger.warning("[SoilSprayerInfoPanel] createImageOverlay failed — panel will not render")
+            SoilLogger.warning("[SoilSprayerInfoPanel] createImageOverlay failed - panel will not render")
         end
     end
 end

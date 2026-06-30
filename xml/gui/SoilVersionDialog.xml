@@ -5,7 +5,7 @@
     Controller: SoilVersionDialog (src/ui/SoilVersionDialog.lua)
 
     Changelog lines are created dynamically in Lua (no fixed slots).
-    sfVer_changelogBox is a vertical BoxLayout — Lua adds TextElements to it.
+    sfVer_changelogBox is a vertical BoxLayout - Lua adds TextElements to it.
 -->
 <GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
   <GuiElement profile="newLayer"/>
@@ -40,7 +40,7 @@
                    position="0px -40px"/>
       </GuiElement>
 
-      <!-- ─── FOOTER section — anchored below changelog ─── -->
+      <!-- ─── FOOTER section - anchored below changelog ─── -->
       <GuiElement profile="sfVer_footerSection" position="0px -420px">
         <Bitmap profile="sfVer_footerBg" position="0px 0px"/>
 
@@ -97,7 +97,7 @@
       <textAlignment value="center"/>
     </Profile>
 
-    <!-- Vertical BoxLayout — Lua adds TextElements here dynamically -->
+    <!-- Vertical BoxLayout - Lua adds TextElements here dynamically -->
     <Profile name="sfVer_changelogBox" extends="emptyPanel" with="anchorTopCenter">
       <size value="620px 260px"/>
       <flowDirection value="vertical"/>

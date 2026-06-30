@@ -236,7 +236,7 @@
         <!--
             Extend the NATIVE FS25 FERTILIZER category with our custom dry types.
             Vanilla spreaders, bigBag specialization fill checks, and any other category-based
-            lookup all use "FERTILIZER" — extending it here means our custom types pass
+            lookup all use "FERTILIZER" - extending it here means our custom types pass
             every check automatically, including the BigBag fill trigger.
             The Lua installFillUnitHook also patches supportedFillTypes directly as a
             belt-and-suspenders fallback for vehicles that use name-based (not category-based)
@@ -245,7 +245,7 @@
         <fillTypeCategory name="FERTILIZER">FERTILIZER UREA AN AMS MAP DAP POTASH GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE POLIFOSKA</fillTypeCategory>
 
         <!--
-            Same principle for liquid sprayers — extend LIQUIDFERTILIZER so vanilla sprayers
+            Same principle for liquid sprayers - extend LIQUIDFERTILIZER so vanilla sprayers
             that already accept LIQUIDFERTILIZER will also accept our liquid nitrogen products
             and starter fertilizer.
         -->

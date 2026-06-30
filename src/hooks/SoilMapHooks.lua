@@ -83,7 +83,7 @@ function SoilMapHooks:onLoadMapFinished()
                 soilOverlay.ingameMapRef = ref
                 SoilLogger.debug("SoilMapHooks: ingameMap ref cached for minimap overlay (state=%s)", tostring(ref.state))
             else
-                SoilLogger.warning("SoilMapHooks: could not capture ingameMap ref — minimap overlay will not render")
+                SoilLogger.warning("SoilMapHooks: could not capture ingameMap ref - minimap overlay will not render")
             end
         end
     end
@@ -348,7 +348,7 @@ if IngameMapElement ~= nil then
     end)
     SoilLogger.info("SoilMapHooks: IngameMapElement.draw hook installed for overlay drawing")
 else
-    SoilLogger.warning("SoilMapHooks: IngameMapElement not available — map overlay dots will not draw")
+    SoilLogger.warning("SoilMapHooks: IngameMapElement not available - map overlay dots will not draw")
 end
 
 -- Hook IngameMap.drawFields at class level for DMV minimap heatmap rendering.
@@ -363,6 +363,6 @@ if IngameMap ~= nil and IngameMap.drawFields ~= nil then
     end)
     SoilLogger.info("SoilMapHooks: IngameMap.drawFields hook installed for DMV minimap heatmap")
 else
-    SoilLogger.warning("SoilMapHooks: IngameMap.drawFields not available — DMV minimap heatmap will not render")
+    SoilLogger.warning("SoilMapHooks: IngameMap.drawFields not available - DMV minimap heatmap will not render")
 end
 

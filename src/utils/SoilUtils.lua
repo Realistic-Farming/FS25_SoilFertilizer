@@ -23,7 +23,7 @@ end
 
 --- Returns the localized display name for a crop given its internal fruit-type name
 --- (e.g. "WHEAT", "GREENRYE"). Soil data stores the raw uppercase identifier; rendering
---- it directly (capitalised, underscores → spaces) showed English names to every locale —
+--- it directly (capitalised, underscores → spaces) showed English names to every locale -
 --- the Bodenmonitor mistranslation in #635. Each fruit type owns a fill type whose .title
 --- is already localized by the engine, so resolve through that. Falls back to a prettified
 --- raw name when no fruit/fill type matches (custom or unknown crops still read cleanly).
@@ -51,8 +51,8 @@ end
 --- nutrient profile to the soil.
 ---
 --- Rule: if getSprayerFillUnitIndex() + getFillUnitFillType() returns a valid, non-UNKNOWN
---- type, the physical tank wins. Only when the tank reads empty/UNKNOWN — external-fill
---- BUY mode, or a source trailer feeding an empty sprayer — do we keep the passed-in
+--- type, the physical tank wins. Only when the tank reads empty/UNKNOWN - external-fill
+--- BUY mode, or a source trailer feeding an empty sprayer - do we keep the passed-in
 --- fallback (typically wap.sprayFillType), which then legitimately carries the intended
 --- product. All pcall-wrapped so a malformed modded sprayer can never crash the caller.
 ---

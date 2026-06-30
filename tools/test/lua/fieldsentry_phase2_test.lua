@@ -1,4 +1,4 @@
--- fieldsentry_phase2_test.lua — FieldSentry Phase 2 contract integration (#654).
+-- fieldsentry_phase2_test.lua - FieldSentry Phase 2 contract integration (#654).
 -- Covers the provider registry, the unified contract gate, and fail-closed behaviour.
 -- Pure Lua mocks only; no engine beyond the prelude stubs.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/FieldSentry.lua

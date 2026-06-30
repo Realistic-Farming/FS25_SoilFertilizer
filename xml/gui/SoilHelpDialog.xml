@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <!--
-    Soil & Fertilizer — In-Game Help Guide (PDA)
+    Soil & Fertilizer - In-Game Help Guide (PDA)
     Opened from the PDA X/help button.
     Content lines are built dynamically in Lua.
     Controller: SoilHelpDialog (src/ui/SoilHelpDialog.lua)
@@ -60,7 +60,7 @@
       <imageColor value="0.06 0.10 0.14 0.9"/>
     </Profile>
 
-    <!-- Vertical column — Lua adds TextElements at runtime -->
+    <!-- Vertical column - Lua adds TextElements at runtime -->
     <Profile name="sfHelp_col" extends="emptyPanel" with="anchorTopCenter">
       <size value="430px 580px"/>
       <flowDirection value="vertical"/>

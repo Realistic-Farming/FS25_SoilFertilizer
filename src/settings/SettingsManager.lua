@@ -2,7 +2,7 @@
 -- FS25 Realistic Soil & Fertilizer - Settings Manager
 -- =========================================================
 -- Saves/loads mod settings from the server savegame XML.
--- Auto-generated from SettingsSchema — add settings there.
+-- Auto-generated from SettingsSchema - add settings there.
 -- =========================================================
 -- Author: TisonK
 -- =========================================================

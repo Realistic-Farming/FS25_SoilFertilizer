@@ -36,7 +36,7 @@ function SoilFertilitySystem.new(settings)
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
     self.hookManager:installFillUnitHookEarly()
     -- Install early so the PlaceableSilo.onLoad append is in place before savegame silos
-    -- load — augments Storage.fillTypes before onFinalizePlacement builds the station
+    -- load - augments Storage.fillTypes before onFinalizePlacement builds the station
     -- aggregate, so bulk fertilizer/lime bins accept SF fill types automatically (#605).
     self.hookManager:installSiloFillTypeHook()
     self.layerSystem  = SoilLayerSystem  and SoilLayerSystem.new()  or nil
@@ -203,7 +203,7 @@ end
 ---@param fruitTypeIndex number FS25 fruit type index
 ---@param liters number Amount harvested in liters
 ---@param strawRatio number 0.0-1.0 fraction of straw that was chopped (0 = dropped/collected, 1 = fully chopped)
---- Pure yield-modifier calculation — the SINGLE source of truth for both the
+--- Pure yield-modifier calculation - the SINGLE source of truth for both the
 --- applied harvest reduction (computeYieldModifier) and the monitor's forecast
 --- (getFieldInfo.yieldEfficiency). Reads explicit N/P/K so callers control the
 --- nutrient source; BOTH call sites pass FIELD-AVERAGE values, so the number the
@@ -344,10 +344,10 @@ function SoilFertilitySystem:_omYieldModifier(field)
 end
 
 --- Forage yield modifier for windrow-drop mowers (#696). Forage crops are gated out of
---- _yieldModifierFromNutrients via NON_CROP_NAMES (correct — no yield % score for hay), so
+--- _yieldModifierFromNutrients via NON_CROP_NAMES (correct - no yield % score for hay), so
 --- the mower path needs its own nutrient read. Uses the "tolerant" tier (matching
 --- alfalfa/luzerne/clover) plus the shared OM factor. Weed/pest/disease are intentionally
---- excluded — forage quality is not tracked per field.
+--- excluded - forage quality is not tracked per field.
 ---@param fieldId number
 ---@return number modifier  Multiplier applied to windrow liters (≤ ~1.05)
 function SoilFertilitySystem:computeMowerYieldModifier(fieldId)
@@ -433,7 +433,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
     -- Clear weed/disease chemical protection on harvest too (#639). The crop cycle ends
     -- with the harvest, so carrying the previous spray's "protected" status into the bare
     -- field left the HUD showing weed/disease protection that the player could not clear.
-    -- Mirrors the insecticide reset above (counters only — pressure is re-derived live).
+    -- Mirrors the insecticide reset above (counters only - pressure is re-derived live).
     do
         local field = self.fieldData[fieldId]
         if field then
@@ -442,7 +442,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         end
     end
 
-    -- Nutrient depletion uses original (biological) liters — the soil gave up these
+    -- Nutrient depletion uses original (biological) liters - the soil gave up these
     -- nutrients regardless of the yield modifier applied in the combine hook.
     self:updateFieldNutrients(fieldId, fruitTypeIndex, liters, strawRatio, area)
 
@@ -466,7 +466,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
     -- Broadcast to clients in multiplayer, throttled to once every 5 s per field.
     -- onHarvest is driven by Combine.addCutterArea, which fires many times per second
     -- per combine. An unthrottled broadcast here floods the network the instant the
-    -- cutter engages the crop and stalls every client — the dedicated-server FPS
+    -- cutter engages the crop and stalls every client - the dedicated-server FPS
     -- collapse in issue #631. Mirror the same 5 s throttle already used by onMow and
     -- onFertilizerApplied so the per-tick fire-rate no longer reaches the wire.
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo and g_currentMission.missionDynamicInfo.isMultiplayer then
@@ -488,7 +488,7 @@ end
 --- Handles nutrient depletion for crops that are CUT but not direct-threshed:
 --- grass, alfalfa, clover, mowed triticale, etc.
 --- Uses area-based depletion (not liter-based) since no yield liters are produced
---- at mow time — the cut material is left as a windrow for later pickup.
+--- at mow time - the cut material is left as a windrow for later pickup.
 ---@param fieldId    number Field/farmland ID
 ---@param fruitTypeIndex number FS25 fruit type index
 ---@param areaHa     number Area mowed this tick in hectares
@@ -511,7 +511,7 @@ function SoilFertilitySystem:onMow(fieldId, fruitTypeIndex, areaHa)
     -- Mowing ALWAYS uses CROP_EXTRACTION_FORAGE, never the per-crop grain rates.
     -- Reason: CROP_EXTRACTION rates are calibrated for harvested grain volume/density
     -- (threshed yield, e.g. wheat at 0.39 L/sqm). The Mower spec cuts whole-plant
-    -- biomass (e.g. wheat windrow at 3.8 L/sqm) — a completely different density.
+    -- biomass (e.g. wheat windrow at 3.8 L/sqm) - a completely different density.
     -- Using grain rates with windrow-equivalent area would over-extract by ~10x.
     -- CROP_EXTRACTION_FORAGE is calibrated for cut green biomass at MOWER_HA_FACTOR.
     -- This also prevents "mowing wheat before harvest depletes N faster than combining"
@@ -532,10 +532,10 @@ function SoilFertilitySystem:onMow(fieldId, fruitTypeIndex, areaHa)
     field.lastHarvest = (g_currentMission and g_currentMission.environment
                          and g_currentMission.environment.currentDay) or 0
 
-    SoilLogger.debug("Mow: Field %d, %s, %.5f ha — N:%.1f P:%.1f K:%.1f",
+    SoilLogger.debug("Mow: Field %d, %s, %.5f ha - N:%.1f P:%.1f K:%.1f",
         fieldId, fruitDesc.name, areaHa, field.nitrogen, field.phosphorus, field.potassium)
 
-    -- Broadcast field update to clients in multiplayer (throttled — mower fires every tick)
+    -- Broadcast field update to clients in multiplayer (throttled - mower fires every tick)
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo
         and g_currentMission.missionDynamicInfo.isMultiplayer then
         if SoilFieldUpdateEvent then
@@ -591,28 +591,28 @@ function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters)
 end
 
 -- Hook delegate: called by HookManager when field ownership changes.
--- PHASE 1: Soil data is PRESERVED across ownership changes — real soil does not
+-- PHASE 1: Soil data is PRESERVED across ownership changes - real soil does not
 -- reset when land is sold.  We only update active-set membership here.
 function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId)
     if not fieldId or fieldId <= 0 then return end
 
     if farmId == nil or farmId == 0 then
-        -- Field sold / abandoned — pull it out of the active simulation set.
+        -- Field sold / abandoned - pull it out of the active simulation set.
         -- fieldData intentionally kept: new owner inherits the soil conditions.
         self:_removeFromActiveSet(fieldId)
         -- Clear GRLE so unmasked DMV no longer colours this unowned field.
         if self.layerSystem and self.layerSystem.available then
             self.layerSystem:clearFieldFromLayers(fieldId, nil)
         end
-        SoilLogger.debug("[PERF-P1] Field %d released by farm — removed from active set (data preserved)", fieldId)
+        SoilLogger.debug("[PERF-P1] Field %d released by farm - removed from active set (data preserved)", fieldId)
         return
     end
 
-    -- Field acquired — ensure data entry exists, then add to active set.
+    -- Field acquired - ensure data entry exists, then add to active set.
     local field = self:getOrCreateField(fieldId, true)
     if field then
         self:_addToActiveSet(fieldId)
-        SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d — added to active set", fieldId, farmId)
+        SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d - added to active set", fieldId, farmId)
     end
 end
 
@@ -621,7 +621,7 @@ end
 --- amendment landed; sowing a NEW crop (including direct drilling over the old one) or
 --- tilling the field voids it. The one-shot is otherwise only consumed at harvest, so
 --- replanting without harvesting left it stuck on the field and it wrongly docked the
---- next crop's yield by up to 80% — the persistent-burn-after-replant bug reported by
+--- next crop's yield by up to 80% - the persistent-burn-after-replant bug reported by
 --- multiple players (direct seeding over a burned field never reset it).
 ---@param field table        Field data record
 ---@param fieldId number     Field id (logging only)
@@ -640,7 +640,7 @@ end
 --- Called when a field is sown. Reserved for future sowing-time logic.
 --- NOTE: We previously cleared lastCrop here to force live HUD detection (#123),
 --- but that caused duplicate crop entries in history when the same crop is replanted
---- (especially visible with FS25_CropRotation installed — issue #204).
+--- (especially visible with FS25_CropRotation installed - issue #204).
 --- Live FieldState detection in getFieldInfo() works regardless of lastCrop, so
 --- the clearing was unnecessary and harmful to rotation history accuracy.
 ---@param fieldId number The field being sown
@@ -820,7 +820,7 @@ end
 --- Increases organic matter and normalizes pH
 ---@param fieldId number The field being plowed
 ---@param area number Area processed in hectares (e.g. from lastStatsArea)
----@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) — skip coverage reset
+---@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) - skip coverage reset
 ---@param cropBiomass number|nil Crop biomass factor 0..1 if a standing/dead crop was incorporated (#674)
 function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass)
     if not fieldId or fieldId <= 0 then return end
@@ -828,7 +828,7 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
 
-    -- Tillage destroys the spray application context — reset pass % so the next
+    -- Tillage destroys the spray application context - reset pass % so the next
     -- spraying run is not overlap-suppressed by stale coverage. Combo implements
     -- that spray while tilling would wipe their own coverage every tick, so skip.
     if not isAlsoSprayer then
@@ -855,12 +855,12 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
 
     local changed = false
 
-    -- Tilling mixes the soil and ends the crop — void any pending amendment burn.
+    -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "plowing") then changed = true end
 
     -- Plowing effects 1 & 2: OM oxidation loss and pH normalization (only if plowingBonus enabled)
     if self.settings.plowingBonus then
-        -- Deep inversion exposes buried humus to air, oxidising it — plowing COSTS organic
+        -- Deep inversion exposes buried humus to air, oxidising it - plowing COSTS organic
         -- matter rather than adding it (#695, reversed from the old +0.5/pass bonus). Residue
         -- incorporation below (gated separately) can offset this when straw/green matter is
         -- actually worked in, so a residue-rich plow can still net positive.
@@ -918,7 +918,7 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
         changed = true
     end
 
-    -- Plowing benefit 6: Residue incorporation — straw stubble worked in releases OM and NPK
+    -- Plowing benefit 6: Residue incorporation - straw stubble worked in releases OM and NPK
     -- Gated by residueIncorporation setting (separate from plowingBonus so OM/pH and
     -- residue nutrient release can be toggled independently).
     if self.settings.residueIncorporation and SoilConstants.RESIDUE_INCORPORATION then
@@ -974,7 +974,7 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
         end
     end
 
-    -- Plowing benefit 7 (#674): green-manure incorporation — plowing in a STANDING or
+    -- Plowing benefit 7 (#674): green-manure incorporation - plowing in a STANDING or
     -- dead crop (cover crop, failed/burned crop, tall stubble) returns its biomass to the
     -- soil as a large OM + N boost, far above the bare-stubble residue release above.
     if self.settings.residueIncorporation and cropBiomass and cropBiomass > 0
@@ -1002,7 +1002,7 @@ end
 --- Partially reduces weed, pest, and disease pressure.
 ---@param fieldId number
 ---@param area number Area processed in hectares (e.g. from lastStatsArea)
----@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) — skip coverage reset
+---@param isAlsoSprayer boolean|nil True if the implement also sprays (combo tools) - skip coverage reset
 ---@param cropBiomass number|nil Crop biomass factor 0..1 if a standing/dead crop was incorporated (#674)
 function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBiomass)
     if not fieldId or fieldId <= 0 then return end
@@ -1011,7 +1011,7 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
 
-    -- Tillage destroys the spray application context — reset pass % (see onPlowing).
+    -- Tillage destroys the spray application context - reset pass % (see onPlowing).
     if not isAlsoSprayer then
         self:resetSessionCoverage(fieldId, "cultivation")
     end
@@ -1036,7 +1036,7 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
     local changed = false
     local c = SoilConstants.CULTIVATION
 
-    -- Tilling mixes the soil and ends the crop — void any pending amendment burn.
+    -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "cultivation") then changed = true end
 
     if self.settings.weedPressure and c.WEED_PRESSURE_REDUCTION and (field.weedPressure or 0) > 0 then
@@ -1114,7 +1114,7 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
         end
     end
 
-    -- #674: green-manure incorporation — cultivating in a standing/dead cover crop mixes
+    -- #674: green-manure incorporation - cultivating in a standing/dead cover crop mixes
     -- its biomass into the topsoil (shallower than plowing, so a smaller boost).
     if self.settings.residueIncorporation and cropBiomass and cropBiomass > 0
        and SoilConstants.CROP_INCORPORATION then
@@ -1221,7 +1221,7 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
         changed = true
     end
 
-    -- Minimal disease benefit — residue stays on surface between strips
+    -- Minimal disease benefit - residue stays on surface between strips
     if self.settings.diseasePressure and (field.diseasePressure or 0) > 0 then
         local before = field.diseasePressure
         field.diseasePressure = math.max(0, before - st.DISEASE_PRESSURE_REDUCTION * factor)
@@ -1335,7 +1335,7 @@ function SoilFertilitySystem:onHerbicideApplied(fieldId, effectiveness)
     field.weedPressure = math.max(0, before - reduction)
     -- Duration is in in-game DAYS (the daily tick decrements it by 1 per game day), so
     -- it must equal the day count directly. Multiplying by daysPerPeriod made protection
-    -- last DURATION_DAYS *months* — it never expired, so the HUD "protected" status stuck
+    -- last DURATION_DAYS *months* - it never expired, so the HUD "protected" status stuck
     -- forever (#639). See HERBICIDE_DURATION_DAYS comment in Constants.lua.
     field.herbicideDaysLeft = wp.HERBICIDE_DURATION_DAYS
 
@@ -1360,7 +1360,7 @@ end
 --- looks up its herbicide replacement via weedSystem:getHerbicideReplacements() so we
 --- transition to the correct withered equivalent rather than hardcoding state 7.
 --- When targetState is WEED_STATE_CLEAR (0), unconditionally clears all weeds.
---- Uses FieldUpdateTask — same API as EasyDevControls, server-side only.
+--- Uses FieldUpdateTask - same API as EasyDevControls, server-side only.
 ---@param fieldId number
 ---@param targetState number  WEED_STATE_WITHERED or WEED_STATE_CLEAR
 function SoilFertilitySystem:applyWeedMapState(fieldId, targetState)
@@ -1386,7 +1386,7 @@ function SoilFertilitySystem:applyWeedMapState(fieldId, targetState)
         return
     end
 
-    -- fieldId is the farmland ID — getFieldById uses field's own internal ID (different).
+    -- fieldId is the farmland ID - getFieldById uses field's own internal ID (different).
     -- Search by farmland.id instead, matching the pattern used in the daily update.
     local fsField = nil
     if g_fieldManager and g_fieldManager.fields then
@@ -1433,10 +1433,10 @@ function SoilFertilitySystem:applyWeedMapState(fieldId, targetState)
             else
                 -- No live weeds to wither here (state 0, or already withered/dying). Painting the
                 -- withered state across the whole field polygon would fabricate "burnt weed"
-                -- textures on a clean field — and that fake coverage bakes into the weed density
+                -- textures on a clean field - and that fake coverage bakes into the weed density
                 -- map, so it reappears on every save/reload even at 0% pressure (#698). Skip:
                 -- leave the weed map untouched. There is nothing to brown.
-                self:log("[WeedMap] SKIP: no live weeds to wither (state %s) on field %d — not painting",
+                self:log("[WeedMap] SKIP: no live weeds to wither (state %s) on field %d - not painting",
                     tostring(currentState), fieldId)
                 return
             end
@@ -1444,7 +1444,7 @@ function SoilFertilitySystem:applyWeedMapState(fieldId, targetState)
             -- Replacement table unavailable: we cannot tell clean ground from weedy, so do NOT
             -- blanket-paint the withered state onto a possibly-clean field (avoids the #698
             -- fake-coverage bug). Better to skip the cosmetic browning than fabricate weeds.
-            self:log("[WeedMap] SKIP: herbicide replacement table unavailable — not painting")
+            self:log("[WeedMap] SKIP: herbicide replacement table unavailable - not painting")
             return
         end
     end
@@ -1622,7 +1622,7 @@ function SoilFertilitySystem:_findFieldObject(fieldId)
 end
 
 --- Best-effort live growth-stage fraction (0..1) for a field, or nil when unknown.
---- Uses an FS25 FieldState probe — wrapped so any API hiccup degrades to "unknown".
+--- Uses an FS25 FieldState probe - wrapped so any API hiccup degrades to "unknown".
 ---@param fieldId number
 ---@return number|nil
 function SoilFertilitySystem:_getFieldGrowthFraction(fieldId)
@@ -1678,7 +1678,7 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
     local pressure = field.diseasePressure or 0
 
     if pressure < onset * 0.5 then
-        -- Infection has effectively cleared — drop the name.
+        -- Infection has effectively cleared - drop the name.
         field.activeDisease = nil
         field.activeDiseaseSeverity = 1.0
         return
@@ -1698,7 +1698,7 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
 end
 
 --- Scouting report for a field: named disease, severity tier, recommended chemicals.
---- Pure read — safe for UI / console / HUD callers.
+--- Pure read - safe for UI / console / HUD callers.
 ---@param fieldId number
 ---@return table|nil report
 function SoilFertilitySystem:getScoutReport(fieldId)
@@ -1971,7 +1971,7 @@ function SoilFertilitySystem:update(dt)
         local n    = #list
 
         if n == 0 then
-            -- No owned fields — batch is trivially complete
+            -- No owned fields - batch is trivially complete
             self._pendingDailyUpdate = false
             SoilLogger.debug("[PERF-P4] Day %d daily batch: 0 active fields, nothing to process",
                 self._dailyBatchDay)
@@ -2016,7 +2016,7 @@ function SoilFertilitySystem:scanFields()
        and g_currentMission.missionDynamicInfo
        and g_currentMission.missionDynamicInfo.isMultiplayer
        and g_server == nil then
-        self:info("Client: skipping local field scan — waiting for server sync")
+        self:info("Client: skipping local field scan - waiting for server sync")
         self.fieldsScanPending = false
         return true   -- signal 'done' to suppress further retries
     end
@@ -2044,11 +2044,11 @@ function SoilFertilitySystem:scanFields()
     end
 
     -- TRUE FS25 SOURCE OF TRUTH
-    -- field.fieldId / field.id / field.index do NOT exist in FS25 — all return nil.
+    -- field.fieldId / field.id / field.index do NOT exist in FS25 - all return nil.
     -- The correct field identifier is field.farmland.id (confirmed in-game).
     -- g_currentMission.fieldManager does not exist; use the global g_fieldManager.fields table directly.
     if not g_fieldManager or not g_fieldManager.fields then
-        self:warning("g_fieldManager.fields not available — scan deferred")
+        self:warning("g_fieldManager.fields not available - scan deferred")
         return false
     end
     local fields = g_fieldManager.fields
@@ -2060,8 +2060,8 @@ function SoilFertilitySystem:scanFields()
 
             if actualFieldId and actualFieldId > 0 then
                 -- Prefer the actual crop polygon area (field.areaHa) over farmland.areaInHa.
-                -- Farmlands include roads, hedges, and uncultivable land — typically ~2× the
-                -- actual sprayed area — which causes Pass% to cap at ~50% after a full field pass.
+                -- Farmlands include roads, hedges, and uncultivable land - typically ~2× the
+                -- actual sprayed area - which causes Pass% to cap at ~50% after a full field pass.
                 -- field.areaHa defaults to 1.0 before the polygon loads; skip it when it is
                 -- suspiciously close to that sentinel value so we don't record tiny false areas.
                 -- initialize() runs after loadMission00Finished so polygons are loaded by now.
@@ -2085,7 +2085,7 @@ function SoilFertilitySystem:scanFields()
                 -- the rolled defaults in that case (#685) and returns false, so we paint those
                 -- defaults into the layers here instead of leaving the field at 0/0/0/0.
                 if isNew and self.layerSystem and self.layerSystem.available then
-                    -- Pass the Field object (not field.farmland) — Field has polygonPoints for AABB
+                    -- Pass the Field object (not field.farmland) - Field has polygonPoints for AABB
                     local seeded = self.layerSystem:readFieldFromLayers(actualFieldId, self.fieldData[actualFieldId], field)
                     if not seeded then
                         self.layerSystem:writeFieldToLayers(actualFieldId, self.fieldData[actualFieldId], field, false)
@@ -2240,7 +2240,7 @@ end
 -- =========================================================
 -- Owned fields are tracked in activeFieldIds {[fieldId]=true} so that
 -- daily simulation, rain leaching, and pressure growth only iterate
--- the subset of fields the player actually owns — skipping the potentially
+-- the subset of fields the player actually owns - skipping the potentially
 -- hundreds of unowned parcels on a large map.
 --
 -- _activeFieldList is a sorted array derived from the set.  It is rebuilt
@@ -2293,7 +2293,7 @@ end
 --
 -- NOTE (issue #632): the previous "deterministic hash" was an affine LCG
 -- (a*n+b mod m) with no nonlinear step. Evaluated on the arithmetic input
--- fieldId*67890+slot it returned an ARITHMETIC sequence — every field stepped in
+-- fieldId*67890+slot it returned an ARITHMETIC sequence - every field stepped in
 -- lockstep along one ramp and all five nutrients shared the same step, so the whole
 -- map looked uniform. fract(sin(x)) supplies the nonlinearity (math.sin is the only
 -- Lua 5.1 primitive that breaks the progression) so values are genuinely independent
@@ -2512,7 +2512,7 @@ end
 function SoilFertilitySystem:rerollUnownedFields()
     local playerFarmId = g_currentMission and g_currentMission:getFarmId()
     if not playerFarmId or playerFarmId == 0 then
-        SoilLogger.warning("rerollUnownedFields: no valid player farm id — aborting to protect owned fields")
+        SoilLogger.warning("rerollUnownedFields: no valid player farm id - aborting to protect owned fields")
         return 0, 0
     end
 
@@ -2521,7 +2521,7 @@ function SoilFertilitySystem:rerollUnownedFields()
         if type(fieldId) == "number" and type(field) == "table" then
             local owner = g_farmlandManager and g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == playerFarmId then
-                -- Player's own field — leave its soil and progress alone.
+                -- Player's own field - leave its soil and progress alone.
                 skipped = skipped + 1
             else
                 local soil = self:_computeInitialSoil(fieldId)
@@ -2727,7 +2727,7 @@ function SoilFertilitySystem:prePopulateAllZoneData()
     SoilLogger.info("Zone data pre-population complete: %d field(s) processed", count)
 end
 
--- Daily soil update — PHASE 4: converted to batch scheduler.
+-- Daily soil update - PHASE 4: converted to batch scheduler.
 -- Instead of processing every field synchronously on the day-rollover tick
 -- (which can stall for hundreds of ms on large maps), we queue work and
 -- drain it across multiple frames via the update(dt) batch loop.
@@ -2805,7 +2805,7 @@ end
 
 function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- FieldSentry gate (#651): a field the player has put to sleep (manual blacklist)
-    -- — or that a later phase disables (deco/NPC/farmland) — skips the daily
+    -- - or that a later phase disables (deco/NPC/farmland) - skips the daily
     -- depletion/recovery/leaching/seasonal pass entirely, so its soil values freeze
     -- at whatever they were. Single O(1) check; no equation code below is touched.
     local isMeadow = false
@@ -2847,7 +2847,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field._covLastZ               = nil
     field._farmlandAreaConfirmed  = nil
 
-    -- Session spray coverage (pass %) also resets on day change — stale coverage
+    -- Session spray coverage (pass %) also resets on day change - stale coverage
     -- from a previous day must not suppress the next legitimate spraying run.
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
@@ -2947,7 +2947,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- bonus above, when roots and residue break down. sownCrop is the currently-drilled
     -- crop (set on seeding, cleared on harvest) so the trickle runs only while the legume
     -- is actually in the ground, and pauses over winter dormancy. Reuses the cropRotation
-    -- setting — nothing new to switch on. Meadow legumes (clover/luzerne) are handled by
+    -- setting - nothing new to switch on. Meadow legumes (clover/luzerne) are handled by
     -- the meadow profile's sward fixation and returned earlier, so no double-counting.
     if self.settings.cropRotation and season ~= seasonal.WINTER_SEASON then
         local cr = SoilConstants.CROP_ROTATION
@@ -2960,7 +2960,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- ── Taproot bio-drilling decompaction while standing (#687) ──────────────
     -- Deep-rooting crops (oilseed radish, and to a lesser extent canola) drive roots
     -- through compacted layers, easing compaction biologically as they grow. A slow,
-    -- passive helper on top of natural decay — never a subsoiler replacement. Mirrors the
+    -- passive helper on top of natural decay - never a subsoiler replacement. Mirrors the
     -- daily natural-decay reduction (field-average), respects the same decay tuning, and
     -- pauses over winter dormancy. sownCrop keeps it running only while the crop stands.
     if self.settings.compactionEnabled and SoilConstants.COMPACTION
@@ -2984,7 +2984,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phNorm.RATE * timeFactor)
     end
 
-    -- ── Weed pressure — sourced from game's native weed density map ─────────
+    -- ── Weed pressure - sourced from game's native weed density map ─────────
     -- weedPressure is now derived from FieldState.weedFactor (the game's weed
     -- density map) rather than a hand-rolled accumulation model. This means
     -- plant canopy closure, herbicide, cultivation and plowing all suppress
@@ -3002,7 +3002,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- Tick herbicideDaysLeft counter.
             -- When protection expires: reset session coverage so the next application
             -- requires a full field pass again rather than triggering on the first tick.
-            -- Do NOT force WEED_STATE_CLEAR — state 7 (withered) transitions to 0
+            -- Do NOT force WEED_STATE_CLEAR - state 7 (withered) transitions to 0
             -- naturally via the vanilla WeedSystem; forcing it here causes an abrupt
             -- "weeds vanish instantly" when time is fast-forwarded.
             if (field.herbicideDaysLeft or 0) > 0 then
@@ -3018,7 +3018,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
             -- Sample FieldState.weedFactor from the game's weed density map.
             -- weedFactor: 0.0 = clean, 1.0 = fully weedy (matches FieldState default
-            -- and getHarvestScaleMultiplier semantics — higher = more yield penalty).
+            -- and getHarvestScaleMultiplier semantics - higher = more yield penalty).
             local gameWeedFactor = 0.0
             if g_fieldManager and g_fieldManager.fields then
                 local fsField = g_fieldManager.fields[fieldId]
@@ -3059,11 +3059,11 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                 end
             end
             -- When herbicide is active the game's density map still shows dying weeds for
-            -- 1-2 days — reading it would overwrite the pressure reduction from onHerbicideApplied.
+            -- 1-2 days - reading it would overwrite the pressure reduction from onHerbicideApplied.
             -- Under protection, or when herbicide was applied today (even partial coverage), only
-            -- allow pressure to decrease — never let the daily weedFactor read undo a reduction.
+            -- allow pressure to decrease - never let the daily weedFactor read undo a reduction.
             -- herbicideAppliedDay is set by onHerbicideApplied (FERTILIZER_PROFILES path);
-            -- herbicideDailyApplied is set by the direct-application path — check both.
+            -- herbicideDailyApplied is set by the direct-application path - check both.
             local herbicideAppliedToday =
                 (self.herbicideDailyApplied and
                  self.herbicideDailyApplied[fieldId] and
@@ -3246,7 +3246,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- NOTE: weed pressure is NOT re-read from the weed density map here.
     -- An older AABB-based sync (readWeedCoverageForFarmland) used to overwrite
     -- field.weedPressure at this point, silently undoing the herbicide-protection
-    -- clamp and the MAX_DAILY_INCREASE spike cap applied above (#536) — withered
+    -- clamp and the MAX_DAILY_INCREASE spike cap applied above (#536) - withered
     -- weeds still count as coverage in that sampler. The FieldState.weedFactor
     -- read above is the single authoritative source.
     local layerSys = self.layerSystem
@@ -3290,7 +3290,7 @@ end
 
 
 -- Apply rain effects
--- PHASE 1: Only leach owned/active fields — unowned parcels don't need
+-- PHASE 1: Only leach owned/active fields - unowned parcels don't need
 -- per-frame nutrient calculations since no player is managing them.
 -- NOTE: This function is called every frame during rain. The per-frame leach is
 -- intentional and correctly physics-integrated via dt scaling, unlike the daily batch.
@@ -3337,9 +3337,9 @@ end
 -- Update field nutrients after harvest
 ---@param fieldId number The field being harvested
 ---@param fruitTypeIndex number FS25 fruit type index
----@param harvestedLiters number 0/1 flag from addCutterArea (NOT actual grain volume — use area for depletion)
+---@param harvestedLiters number 0/1 flag from addCutterArea (NOT actual grain volume - use area for depletion)
 ---@param strawRatio number 0.0-1.0 fraction of straw chopped back into the field (adds organic matter)
----@param area number Area harvested in pixels — always used for depletion; liters is unreliable
+---@param area number Area harvested in pixels - always used for depletion; liters is unreliable
 function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harvestedLiters, strawRatio, area)
     if not self.settings.enabled or not self.settings.nutrientCycles then return end
 
@@ -3358,7 +3358,7 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     -- Shift crop history ONCE per harvest event (lastCrop → lastCrop2 → lastCrop3).
     -- updateFieldNutrients fires many times during a single harvest (addCutterArea is
     -- per-cut, see Step 1), so an unguarded shift pushes the SAME crop into lastCrop2 and
-    -- lastCrop3 within one harvest — faking a 3-season monoculture and a false rotation
+    -- lastCrop3 within one harvest - faking a 3-season monoculture and a false rotation
     -- fatigue penalty (#638). A genuine new harvest event = the crop differs from the last
     -- recorded crop, OR this harvest is on a later game day than the previous record. Both
     -- conditions collapse the repeated per-cut calls (same crop, same day) into one shift,
@@ -3388,7 +3388,7 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     local areaHa = 0
     if area and area > 0 then
         if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then
-            SoilLogger.debug("updateFieldNutrients: getFruitPixelsToSqm unavailable — skipping depletion for field %d", fieldId)
+            SoilLogger.debug("updateFieldNutrients: getFruitPixelsToSqm unavailable - skipping depletion for field %d", fieldId)
             return
         end
         areaHa = MathUtil.areaToHa(area, g_currentMission:getFruitPixelsToSqm())
@@ -3407,7 +3407,7 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
         factor = factor * diffMultiplier
     end
 
-    -- Step 2b: Compaction penalty — compacted soil reduces nutrient uptake efficiency,
+    -- Step 2b: Compaction penalty - compacted soil reduces nutrient uptake efficiency,
     -- causing crops to deplete more of what's available to achieve the same yield.
     if self.settings.compactionEnabled and SoilConstants.COMPACTION then
         local cp = SoilConstants.COMPACTION
@@ -3418,16 +3418,16 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
         end
     end
 
-    -- Step 3a: Crop rotation fatigue — same crop two seasons running depletes more.
+    -- Step 3a: Crop rotation fatigue - same crop two seasons running depletes more.
     -- Perennial forages (alfalfa, grass, ryegrass…) are cut several times per season and
     -- legitimately stay on the same field for years, so they must NOT trip monoculture
-    -- fatigue — a 3rd cut is peak management, not a tired field (#694).
+    -- fatigue - a 3rd cut is peak management, not a tired field (#694).
     local isPerennialForage = SoilConstants.PERENNIAL_FORAGE_NAMES
                               and SoilConstants.PERENNIAL_FORAGE_NAMES[name]
     if self.settings.cropRotation and not isPerennialForage
        and field.lastCrop2 and field.lastCrop2 == fruitDesc.name then
         factor = factor * SoilConstants.CROP_ROTATION.FATIGUE_MULTIPLIER
-        self:log("Rotation fatigue on field %d (%s harvested twice) — factor ×%.2f",
+        self:log("Rotation fatigue on field %d (%s harvested twice) - factor ×%.2f",
             fieldId, fruitDesc.name, SoilConstants.CROP_ROTATION.FATIGUE_MULTIPLIER)
     end
 
@@ -3585,7 +3585,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             end
             if hasCrop then
                 -- Perennial forage (grass, meadow, alfalfa…) is exempt from amendment burn
-                -- while the sward is short — young regrowth or freshly cut. Liming or spreading
+                -- while the sward is short - young regrowth or freshly cut. Liming or spreading
                 -- organics on a short/cut sward is standard practice (small leaf area, low burn
                 -- risk), so only penalise once it has regrown into its harvest window (tall).
                 -- Annual crops are never exempt. Shared by lime (#646) and organic matter
@@ -3630,7 +3630,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     local limits = SoilConstants.NUTRIENT_LIMITS
 
     -- AREA NORMALIZATION: Calculate hectares for this field.
-    -- Confirm area on first spray of each session — prefer the actual crop polygon area (field.areaHa)
+    -- Confirm area on first spray of each session - prefer the actual crop polygon area (field.areaHa)
     -- because farmland.areaInHa includes roads/hedges (~2× crop area), which causes
     -- Pass% to cap at ~50% after a full field pass (issue #475/#476).
     -- Also re-confirm at the start of every new session so field-size changes (issue #507) take effect.
@@ -3718,7 +3718,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
         -- pH bulk sync: lime raises pH field-wide so all cells track it uniformly.
-        -- N/P/K/OM are NOT bulk-synced — cells visited by the boom (markBoomCells)
+        -- N/P/K/OM are NOT bulk-synced - cells visited by the boom (markBoomCells)
         -- get the updated field average written there, while unvisited pre-populated
         -- cells keep their initial value. This creates spatial differentiation on the
         -- overlay map: freshly-sprayed areas show higher nutrient values than areas
@@ -3762,7 +3762,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         end
 
         -- Write updated values to density map layers (per-pixel, at sprayer position).
-        -- No throttle — live updates paint a continuous trail on the minimap heatmap.
+        -- No throttle - live updates paint a continuous trail on the minimap heatmap.
         if self.layerSystem and self.layerSystem.available then
             local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
@@ -3829,7 +3829,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             -- rather than a stale snapshot of the field average at first-application time.
             -- pH is handled by the bulk sync above (applied to all cells uniformly).
             -- Pest/disease are position-specific and handled separately below.
-            -- cellFactor note: must use areaInHa (not zone.CELL_AREA_HA) — see issue #205 Bug 2.
+            -- cellFactor note: must use areaInHa (not zone.CELL_AREA_HA) - see issue #205 Bug 2.
             if dN  > 0 then cell.N  = math.min(limits.MAX,                cell.N  + dN)  end
             if dP  > 0 then cell.P  = math.min(limits.MAX,                cell.P  + dP)  end
             if dK  > 0 then cell.K  = math.min(limits.MAX,                cell.K  + dK)  end
@@ -3844,7 +3844,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     field.fertilizerApplied = (field.fertilizerApplied or 0) + liters
 
     -- Check for "Field fully treated" notification (once per field per day at 90% threshold)
-    -- Skip notification for crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE) —
+    -- Skip notification for crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE) -
     -- they share FERTILIZER_PROFILES entries for pest/disease reduction but are not fertilizers,
     -- so "fully treated with INSECTICIDE" would be misleading and incorrect.
     local isCropProtection = (
@@ -3888,7 +3888,7 @@ function SoilFertilitySystem:onInsecticideAppliedIncremental(fieldId, reduction)
     end
 
     -- Update per-cell pest pressure for existing zoneData entries only.
-    -- Do NOT create new entries here — doing so would stamp N/P/K/pH/OM field-average
+    -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
     -- values onto cells the insecticide boom passes over, making those cells appear
     -- "treated with nutrients" on the soil map overlay (issue #517 root cause).
     local x, z = self._lastSprayX, self._lastSprayZ
@@ -3920,7 +3920,7 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     end
 
     -- Update per-cell disease pressure for existing zoneData entries only.
-    -- Do NOT create new entries here — doing so would stamp N/P/K/pH/OM field-average
+    -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
     -- values onto cells the fungicide boom passes over, making those cells appear
     -- "treated with nutrients" on the soil map overlay (issue #517 root cause).
     local x, z = self._lastSprayX, self._lastSprayZ
@@ -3945,7 +3945,7 @@ end
 -- #205 over-effectiveness bug).
 --
 -- Fix: cap total daily reduction at REDUCTION × effectiveness.  Progress is
--- still smooth per-frame (good HUD feel) but over-application is useless —
+-- still smooth per-frame (good HUD feel) but over-application is useless -
 -- matching realism and the once-per-day model used by onHerbicideApplied.
 ---@return number currentDay
 local function _soilGetCurrentDay()
@@ -4092,7 +4092,7 @@ end
 --- Called from HookManager after applySingle to fill in the full lateral sweep.
 ---
 --- overlayOnly: when true, stamp the visual overlay (zoneData) and the spray trail
---- but DO NOT advance the session/daily coverage counters — the caller drives those
+--- but DO NOT advance the session/daily coverage counters - the caller drives those
 --- via the liter-based trackSprayerCoverage instead. Used for broadcast / dry
 --- spreaders (no VariableWorkWidth): the per-field polygon test below rejects boom
 --- cells that credit the wrong sub-field on multi-field farmlands, which froze the
@@ -4125,7 +4125,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
         if not seen[cellKey] then
             seen[cellKey] = true
 
-            -- Cell centre — used both for the polygon membership test and the
+            -- Cell centre - used both for the polygon membership test and the
             -- spray-trail point so they stay in lockstep.
             local cellCx = (cx + 0.5) * zone.CELL_SIZE
             local cellCz = (cz + 0.5) * zone.CELL_SIZE
@@ -4195,7 +4195,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
         field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
         field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)
 
-        -- Issue #660 / #661 diagnostics: pass% is reported wrong on some implements — the
+        -- Issue #660 / #661 diagnostics: pass% is reported wrong on some implements - the
         -- fertilizing seeder over-counts (94% at half done), a wide dry-lime spreader on a
         -- 40 ha field under-counts (35% when nearly done). Log the raw inputs (unique session
         -- cells, session ha, field ha, fraction, boom-point count, cell ha) throttled once / 2 s
@@ -4211,7 +4211,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
         end
     end
 
-    -- Full pass complete — clear trail so the overlay disappears as a visual reward.
+    -- Full pass complete - clear trail so the overlay disappears as a visual reward.
     -- Match the 0.99 threshold used by overlap prevention so dots clear when the
     -- sprayer auto-shuts off rather than requiring the last fractional percent.
     if (field.sessionCoverageFraction or 0) >= 0.99 and field.sprayTrailPts then
@@ -4222,7 +4222,7 @@ end
 --- Direct-path buffering for non-profile products (Herbicide/Insecticide/Fungicide)
 -- NOTE: the formula (liters/targetVol)×REDUCTION depends on targetRate (from
 -- Constants, a real-world L/ha figure ~1.5) matching the actual vanilla sprayer
--- LPS (~93.5 L/ha for liquid).  It does NOT — hence the daily cap below.
+-- LPS (~93.5 L/ha for liquid).  It does NOT - hence the daily cap below.
 function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, liters)
     if not self.settings.weedPressure then return end
     local field = self:getOrCreateField(fieldId, true)
@@ -4286,7 +4286,7 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
                 (field.zoneData[cellKey].weedPressure or field.weedPressure or 0) - reduction)
         end
 
-        -- Broadcast updated weed pressure to all clients (dedicated server fix — Issue #257)
+        -- Broadcast updated weed pressure to all clients (dedicated server fix - Issue #257)
         if g_server and g_currentMission and g_currentMission.missionDynamicInfo
             and g_currentMission.missionDynamicInfo.isMultiplayer then
             if SoilFieldUpdateEvent then
@@ -4492,7 +4492,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         if not t then return "Unknown" end
         if value < t.poor then return "Poor" end
         -- When a crop is growing, treat its opt target as the Good threshold if lower
-        -- than the global threshold — so reaching the crop's blue tick always shows Good.
+        -- than the global threshold - so reaching the crop's blue tick always shows Good.
         local goodAt = t.fair
         if ct then
             local nutKey = nutrient == "nitrogen" and "N"
@@ -4601,7 +4601,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local cropLowerInfo = cropName and string.lower(cropName) or ""
     local isNonCropField = nonCrops[cropLowerInfo]
 
-    -- Yield efficiency forecast — MUST equal the grain the combine actually receives.
+    -- Yield efficiency forecast - MUST equal the grain the combine actually receives.
     -- The applied reduction (computeYieldModifier) is driven by FIELD-AVERAGE nutrients
     -- and frozen for the duration of a harvest pass, so this forecast does the same:
     --   * during an active harvest of this crop -> return the frozen applied value, so
@@ -4922,7 +4922,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         self.insecticideAppliedDay[fieldId] = getXMLInt(xmlFile, fieldKey .. "#insecticideAppliedDay") or 0
         self.fungicideAppliedDay[fieldId] = getXMLInt(xmlFile, fieldKey .. "#fungicideAppliedDay") or 0
 
-        -- Refresh fieldArea — prefer the actual crop polygon area (field.areaHa) so that
+        -- Refresh fieldArea - prefer the actual crop polygon area (field.areaHa) so that
         -- Pass% uses the correct denominator. Farmland.areaInHa includes roads/hedges
         -- (~2× crop area), causing Pass% to cap at ~50% on a full-field spray (#475/#476).
         -- Use farmland area as fallback when crop polygon area is the unloaded default (1.0).
@@ -4991,7 +4991,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- Reconstruct the compaction running sum + field-average from the per-cell
         -- zoneData just loaded. Gameplay (onCompaction / onSubsoilerPass) stores per-cell
         -- compaction in zoneData[cellKey].compaction and derives the field.compaction
-        -- scalar from compactionSum / compactionTotalCells — it never populates the legacy
+        -- scalar from compactionSum / compactionTotalCells - it never populates the legacy
         -- compactionCells table. So saving wrote an empty compactionCells block and the
         -- scalar reset to 0 on every reload, even though the per-cell values round-tripped
         -- in zoneData: that was the "compaction drops to 0% after reload" half of #656.
@@ -5135,7 +5135,7 @@ function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ, points)
         field.compactionTotalCells = math.max(1, math.ceil(areaInHa / zone.CELL_AREA_HA))
     end
     -- Clamp the field-AVERAGE to MAX_COMPACTION. Each cell is already capped at 100, but the
-    -- average can creep past it when more cells get packed than `compactionTotalCells` — that
+    -- average can creep past it when more cells get packed than `compactionTotalCells` - that
     -- denominator comes from the crop-polygon fieldArea, while cells are packed across the
     -- (larger) real field ground incl. headland/boundary cells. That was the "105% compaction"
     -- overshoot in #703.
@@ -5244,7 +5244,7 @@ end
 
 --- FieldSentry FR3 (#654): apply a one-shot, lightweight nutrient catch-up to a field's
 --- average N/P/K. Used to reconcile a contract that harvested the field while FieldSentry
---- had it masked, so it does not sit frozen in stasis. Deliberately cheap — it only
+--- had it masked, so it does not sit frozen in stasis. Deliberately cheap - it only
 --- touches the field-average scalars (no zone writes, no extraction model, no per-cell
 --- work), so it never kicks off the heavy daily sim. FieldSentry computes the amounts
 --- from its own static crop coefficients; this just applies and (in MP) broadcasts them.

@@ -1,12 +1,12 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Multi-Page Field Guide Dialog
+-- FS25 Soil & Fertilizer - Multi-Page Field Guide Dialog
 -- =========================================================
 -- 5 tabs: Overview | HUD Guide | Workflow | Products | F.A.Q.
 -- Content tables use {t="H"|"B"|"S"|"COL", v="text"}:
 --   H   = section header (gold, bold, uppercase)
 --   B   = body line (white, normal)
 --   S   = spacer (blank gap)
---   COL = column break — switch from col1 to col2
+--   COL = column break - switch from col1 to col2
 -- =========================================================
 -- Author: TisonK
 -- =========================================================
@@ -23,11 +23,11 @@ SoilGuideDialog.INSTANCE = nil
 -- ── Page subtitles ─────────────────────────────────────────
 
 SoilGuideDialog.SUBTITLES = {
-    "Overview — What this mod tracks and why it matters",
-    "HUD Guide — Reading the nutrient bars and on-screen indicators",
-    "Workflow — Your daily and seasonal soil management routine",
-    "Products — What each fertilizer affects and when to use it",
-    "F.A.Q. — Common questions answered",
+    "Overview - What this mod tracks and why it matters",
+    "HUD Guide - Reading the nutrient bars and on-screen indicators",
+    "Workflow - Your daily and seasonal soil management routine",
+    "Products - What each fertilizer affects and when to use it",
+    "F.A.Q. - Common questions answered",
 }
 
 -- ── Page content ───────────────────────────────────────────
@@ -53,7 +53,7 @@ SoilGuideDialog.PAGE1 = {
     { t="B", k="sf_guide_p1_15", v="FAIR (yellow) Below optimal." },
     { t="B", k="sf_guide_p1_16", v="  Plan a top-up. Yield slightly reduced." },
     { t="B", k="sf_guide_p1_17", v="POOR (red)    Below minimum threshold." },
-    { t="B", k="sf_guide_p1_18", v="  Act now — yield impact is severe." },
+    { t="B", k="sf_guide_p1_18", v="  Act now - yield impact is severe." },
     -- COLUMN BREAK
     { t="COL", v="" },
     -- RIGHT COLUMN: Quick start / Tools at a glance
@@ -62,7 +62,7 @@ SoilGuideDialog.PAGE1 = {
     { t="B", k="sf_guide_p1_21", v="2. Check Farm Overview for red-flagged fields." },
     { t="B", k="sf_guide_p1_22", v="3. Use Treatment Plan to see what's needed." },
     { t="B", k="sf_guide_p1_23", v="4. Apply the right fertilizer product." },
-    { t="B", k="sf_guide_p1_24", v="5. Harvest normally — nutrients auto-deduct." },
+    { t="B", k="sf_guide_p1_24", v="5. Harvest normally - nutrients auto-deduct." },
     { t="S", v=" " },
     { t="H", k="sf_guide_p1_25", v="TOOLS AT A GLANCE" },
     { t="B", k="sf_guide_p1_26", v="HUD Bars     Soil levels for your current field." },
@@ -72,7 +72,7 @@ SoilGuideDialog.PAGE1 = {
     { t="B", k="sf_guide_p1_30", v="Soil Map     Per-cell nutrient colour overlay." },
     { t="B", k="sf_guide_p1_31", v="  Key: SF Toggle Cell Map" },
     { t="B", k="sf_guide_p1_32", v="Field Detail  Per-field view in PDA." },
-    { t="B", k="sf_guide_p1_33", v="  PDA > Farm Overview — click any field row." },
+    { t="B", k="sf_guide_p1_33", v="  PDA > Farm Overview - click any field row." },
     { t="B", k="sf_guide_p1_34", v="Smart Sensor  Blocks sections with no active need." },
     { t="B", k="sf_guide_p1_35", v="  Enable in Admin > Smart Systems in Settings." },
     { t="B", k="sf_guide_p1_36", v="See & Spray   Live per-cell pressure in the vehicle." },
@@ -249,7 +249,7 @@ SoilGuideDialog.PAGE4 = {
 
 SoilGuideDialog.PAGE5 = {
     -- LEFT COLUMN: First 4 Q&As
-    { t="H", k="sf_guide_p5_01", v="MY BARS ARE ALWAYS EMPTY — IS IT BROKEN?" },
+    { t="H", k="sf_guide_p5_01", v="MY BARS ARE ALWAYS EMPTY - IS IT BROKEN?" },
     { t="B", k="sf_guide_p5_02", v="No. Soil starts at low base levels on a new save." },
     { t="B", k="sf_guide_p5_03", v="A field that was never fertilized shows real values." },
     { t="B", k="sf_guide_p5_04", v="Apply fertilizer to build levels over time." },
@@ -298,7 +298,7 @@ SoilGuideDialog.PAGE5 = {
     { t="B", k="sf_guide_p5_39", v="admin permissions in multiplayer sessions." },
     { t="S", v=" " },
     { t="H", k="sf_guide_p5_40", v="HOW DOES SOIL AFFECT YIELD?" },
-    { t="B", k="sf_guide_p5_41", v="GOOD soil: full yield — no penalty." },
+    { t="B", k="sf_guide_p5_41", v="GOOD soil: full yield - no penalty." },
     { t="B", k="sf_guide_p5_42", v="FAIR soil: ~5-15% yield penalty per nutrient." },
     { t="B", k="sf_guide_p5_43", v="POOR soil: up to 40% penalty. Correct it fast." },
     { t="B", k="sf_guide_p5_44", v="Penalties stack: POOR N + FAIR P = severe loss." },

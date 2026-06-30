@@ -123,7 +123,7 @@ function collectData() {
         if (!data.byExt[e]) data.byExt[e] = { files: [], lines: { total: 0, code: 0, blank: 0 } };
         data.byExt[e].files.push(rel);
 
-        // Count lines for text-based code files (skip JSON — inflated by lock files)
+        // Count lines for text-based code files (skip JSON - inflated by lock files)
         if (['.lua', '.js', '.xml', '.md', '.yml', '.ps1', '.sh', '.bat'].includes(e)) {
             const lines = countLines(filePath);
             data.byExt[e].lines.total += lines.total;
@@ -148,38 +148,38 @@ function countFeatures(data) {
     const luaRels = data.allFiles.filter(f => f.ext === '.lua').map(f => f.rel);
     const xmlRels = data.allFiles.filter(f => f.ext === '.xml').map(f => f.rel);
 
-    // GUI XML — all XML files in xml/gui/
+    // GUI XML - all XML files in xml/gui/
     const guiXml = xmlRels.filter(f => f.startsWith('xml/gui/') && f.endsWith('.xml'));
     const dialogXml = guiXml.filter(f => f.includes('Dialog'));
     const frameXml = guiXml.filter(f => f.includes('Screen') || f.includes('Frame'));
     const otherGuiXml = guiXml.filter(f => !f.includes('Dialog') && !f.includes('Screen') && !f.includes('Frame'));
 
-    // GUI Lua — all Lua files in src/ui/
+    // GUI Lua - all Lua files in src/ui/
     const guiLua = luaRels.filter(f => f.startsWith('src/ui/'));
     const dialogLua = guiLua.filter(f => f.includes('Dialog'));
 
-    // Core managers — root-level src files
+    // Core managers - root-level src files
     const managers = luaRels.filter(f => /^src\/(SoilFertilityManager|SoilFertilitySystem|SprayerRateManager)\.lua$/.test(f));
 
-    // Events — all Lua files in src/network/
+    // Events - all Lua files in src/network/
     const events = luaRels.filter(f => f.startsWith('src/network/'));
 
-    // Specializations — none in this mod
+    // Specializations - none in this mod
     const specs = [];
 
-    // Integrations — all Lua files in src/integrations/
+    // Integrations - all Lua files in src/integrations/
     const extensions = luaRels.filter(f => f.startsWith('src/integrations/'));
 
-    // Utilities — all Lua files in src/utils/
+    // Utilities - all Lua files in src/utils/
     const utilities = luaRels.filter(f => f.startsWith('src/utils/'));
 
-    // Hooks — all Lua files in src/hooks/
+    // Hooks - all Lua files in src/hooks/
     const vehicleScripts = luaRels.filter(f => f.startsWith('src/hooks/'));
 
-    // Config/Settings — src/config/ + src/settings/
+    // Config/Settings - src/config/ + src/settings/
     const coreFiles = luaRels.filter(f => f.startsWith('src/config/') || f.startsWith('src/settings/'));
 
-    // Translation files — XML files matching translations/translation_*.xml
+    // Translation files - XML files matching translations/translation_*.xml
     const translationFiles = xmlRels.filter(f => /^translations\/translation_\w+\.xml$/.test(f));
 
     // Translation key count from English file (uses <e k="..." /> format)
@@ -191,7 +191,7 @@ function countFeatures(data) {
         translationKeys = matches ? matches.length : 0;
     }
 
-    // Icons — PNG files anywhere
+    // Icons - PNG files anywhere
     const icons = data.allFiles.filter(f => f.ext === '.png');
 
     // Assets
@@ -239,7 +239,7 @@ function printTerminal(data, features) {
 
     console.log();
     console.log(c.cyan + '═══════════════════════════════════════════════════════════════════════');
-    console.log('  FS25_SoilFertilizer — Codebase Statistics v2.0');
+    console.log('  FS25_SoilFertilizer - Codebase Statistics v2.0');
     console.log('═══════════════════════════════════════════════════════════════════════' + c.reset);
 
     // ── Overall Summary ──
@@ -410,7 +410,7 @@ function printMarkdown(data, features) {
         out.push('');
     }
 
-    // Dialog categories — count by name pattern
+    // Dialog categories - count by name pattern
     const dialogCategories = {
         'Soil Info': features.dialogLua.filter(f => /SoilFieldDetail|SoilMapCell|SoilReport/.test(f)),
         'Help & Info': features.dialogLua.filter(f => /SoilHelp|SoilOverlayHelp|SoilVersion/.test(f)),

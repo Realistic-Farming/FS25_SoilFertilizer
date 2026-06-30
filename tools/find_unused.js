@@ -870,7 +870,7 @@ function main() {
     // === Check 1: Unregistered Lua files ===
     console.log(`${colors.bold}[1] Checking for unregistered Lua files...${colors.reset}`);
     const registered = parseModDescSources(modRoot);
-    // SoilFertilizer loads all files via source() chains — trace from each entry
+    // SoilFertilizer loads all files via source() chains - trace from each entry
     // Start with empty set so traceSourceChain reads each entry file (not pre-blocked)
     const expanded = new Set();
     for (const entry of registered) {

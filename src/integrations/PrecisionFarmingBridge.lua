@@ -10,9 +10,9 @@
 --
 -- OPERATING MODES
 --   Standalone (PF absent or probe failed):
---     isActive = false — SF runs exactly as before, full N/P/K/pH/OM
+--     isActive = false - SF runs exactly as before, full N/P/K/pH/OM
 --   PF Mode (PF active):
---     isActive = true — SF excludes N from yield-penalty averaging
+--     isActive = true - SF excludes N from yield-penalty averaging
 --     (PF's ExtendedCombine already applies an N-based penalty)
 --     HookManager relays SF fill types to PF's nitrogen map via
 --     a LIQUIDFERTILIZER volume swap (Phase 3 relay).
@@ -55,7 +55,7 @@ end
 ---
 --- Root-cause fix for the long-standing "false PF detected" frustration:
 --- the old check used g_modManager:getModByName(), which only confirms a mod is
---- PRESENT in the mods folder (it is a registry/metadata lookup — see how the
+--- PRESENT in the mods folder (it is a registry/metadata lookup - see how the
 --- base game's StoreManager uses it purely for .title/.isDLC). It returns a
 --- descriptor even for a mod the player did NOT enable for this savegame, so SF
 --- would disable itself for anyone who merely had the PF DLC installed.
@@ -63,10 +63,10 @@ end
 --- We now use the same signals the BASE GAME and other nutrient mods use, both of
 --- which mean "loaded into THIS running save" (so installed-but-disabled no longer
 --- trips detection):
----   Tier 1: g_modIsLoaded[name] — engine table, true only for loaded mods
+---   Tier 1: g_modIsLoaded[name] - engine table, true only for loaded mods
 ---           (used by TypeManager, StoreManager, VehicleCamera, and our own
 ---            FS25_SeasonalCropStress for FS25_MoistureSystem).
----   Tier 2: missionDynamicInfo.mods — the active-mods list for this session
+---   Tier 2: missionDynamicInfo.mods - the active-mods list for this session
 ---           (the exact channel ThundR's PF Configurator reads to find PF).
 --- getModByName is kept ONLY for diagnostics (SoilPFDump), never as the trigger.
 --- Must be called after the mission is ready (deferred init phase).
@@ -105,11 +105,11 @@ function PrecisionFarmingBridge:initialize()
     end
 
     if not self.isActive then
-        SoilLogger.info("[PFBridge] Precision Farming not active in this savegame — standalone mode")
+        SoilLogger.info("[PFBridge] Precision Farming not active in this savegame - standalone mode")
         return false
     end
 
-    SoilLogger.info("[PFBridge] Precision Farming active (detected via %s) — SF defers N/pH to PF",
+    SoilLogger.info("[PFBridge] Precision Farming active (detected via %s) - SF defers N/pH to PF",
         tostring(self.detectedVia))
 
     -- Map API is not cross-mod accessible (PF uses its own env). isActive gates
@@ -132,14 +132,14 @@ function PrecisionFarmingBridge:initialize()
             if ok then
                 self.apiVerified = true
                 self.canReadMaps = true
-                SoilLogger.info("[PFBridge] Map API found on g_currentMission — read enabled")
+                SoilLogger.info("[PFBridge] Map API found on g_currentMission - read enabled")
             end
         end
     end
 
     -- Detect [TH] Precision Farming Configurator (FS25_0_THPFConfigurator).
     -- When present, it reads our <thPFConfig> block from modDesc.xml and injects
-    -- our fill types into PF's nitrogen/pH maps directly — no relay needed.
+    -- our fill types into PF's nitrogen/pH maps directly - no relay needed.
     -- Same "loaded in this save" rule as PF itself: g_modIsLoaded first, with the
     -- active-mods list as a fallback (never getModByName, which sees installed-only).
     pcall(function()
@@ -161,11 +161,11 @@ function PrecisionFarmingBridge:initialize()
     end)
 
     if self.thpfActive then
-        SoilLogger.info("[PFBridge] Mode: PF + THPF Configurator — fill type integration via modDesc.xml declarations")
+        SoilLogger.info("[PFBridge] Mode: PF + THPF Configurator - fill type integration via modDesc.xml declarations")
     elseif self.canReadMaps then
-        SoilLogger.info("[PFBridge] Mode: PF standalone (map read enabled) — relay active for custom fill types")
+        SoilLogger.info("[PFBridge] Mode: PF standalone (map read enabled) - relay active for custom fill types")
     else
-        SoilLogger.info("[PFBridge] Mode: PF standalone (detection only) — relay active for custom fill types")
+        SoilLogger.info("[PFBridge] Mode: PF standalone (detection only) - relay active for custom fill types")
     end
 
     -- PHASE 5 NOTE: Write-back to PF's nitrogenMap/phMap is not currently possible.
@@ -248,7 +248,7 @@ function PrecisionFarmingBridge:_sampleFieldGrid(field, sampler)
     local cx = field.posX or field.worldX or 0
     local cz = field.posZ or field.worldZ or 0
     if cx == 0 and cz == 0 then
-        SoilLogger.debug("[PFBridge] _sampleFieldGrid: no position found on field object — sampling around world origin")
+        SoilLogger.debug("[PFBridge] _sampleFieldGrid: no position found on field object - sampling around world origin")
     end
     -- Use a fixed half-size of 30 m; fine for diagnostic/calibration purposes
     local hw = 30
@@ -287,7 +287,7 @@ PrecisionFarmingBridge.SF_FILL_TYPE_N_AMOUNTS = {
     LIQUID_AMS    = 0.24,   -- AMS solution ~21% N
     LIQUID_DAP    = 0.18,   -- DAP solution 18-46-0
     LIQUID_MAP    = 0.11,   -- MAP solution 11-52-0
-    -- LIQUID_POTASH: 0% N — not relayed
+    -- LIQUID_POTASH: 0% N - not relayed
 }
 
 -- PF's LIQUIDFERTILIZER N content (from PrecisionFarming.xml <nAmount>) used as relay baseline.
@@ -299,7 +299,7 @@ PrecisionFarmingBridge.PF_LF_N_KG_PER_L = 0.39
 ---@param nitrogenMap table PF nitrogenMap object from extendedSprayer spec
 function PrecisionFarmingBridge:injectCustomFillTypes(nitrogenMap)
     if not nitrogenMap or not nitrogenMap.fertilizerFillTypes then
-        SoilLogger.warning("[PFBridge] injectCustomFillTypes: fertilizerFillTypes not found — skipping")
+        SoilLogger.warning("[PFBridge] injectCustomFillTypes: fertilizerFillTypes not found - skipping")
         self.fillTypesInjected = true
         return
     end
@@ -320,7 +320,7 @@ function PrecisionFarmingBridge:injectCustomFillTypes(nitrogenMap)
     end)
 
     if not ok then
-        SoilLogger.warning("[PFBridge] injectCustomFillTypes: pcall failed — %s", tostring(errMsg))
+        SoilLogger.warning("[PFBridge] injectCustomFillTypes: pcall failed - %s", tostring(errMsg))
     end
     self.fillTypesInjected = true
 end
@@ -361,7 +361,7 @@ function PrecisionFarmingBridge:dumpApi()
     print(string.format("[SoilPFDump] Bridge status: isActive=%s  detectedVia=%s  apiVerified=%s",
         tostring(self.isActive), tostring(self.detectedVia), tostring(self.apiVerified)))
 
-    -- 0. AUTHORITATIVE detection — the two "loaded in THIS save" signals SF trusts.
+    -- 0. AUTHORITATIVE detection - the two "loaded in THIS save" signals SF trusts.
     print("[SoilPFDump] ----- active-mod detection (authoritative) -----")
     local t1 = nil
     pcall(function() t1 = (g_modIsLoaded ~= nil) and g_modIsLoaded[PF_MOD_NAME] or nil end)
@@ -379,9 +379,9 @@ function PrecisionFarmingBridge:dumpApi()
     end)
     print(string.format("[SoilPFDump]   Tier2 missionDynamicInfo.mods contains '%s' = %s", PF_MOD_NAME, tostring(t2)))
 
-    -- 1. g_modManager — INSTALLED check only (diagnostic). A non-nil result here
+    -- 1. g_modManager - INSTALLED check only (diagnostic). A non-nil result here
     --    while Tier1/Tier2 are false means PF is in the mods folder but NOT enabled
-    --    for this savegame — the exact case the old detector wrongly treated as active.
+    --    for this savegame - the exact case the old detector wrongly treated as active.
     print("[SoilPFDump] ----- g_modManager check (installed only, NOT used to trigger) -----")
     if g_modManager then
         local ok, pfMod = pcall(function()
@@ -430,7 +430,7 @@ function PrecisionFarmingBridge:dumpApi()
         print("[SoilPFDump]   g_specializationManager is nil")
     end
 
-    -- 3. g_currentMission — broad scan for any non-standard table/userdata fields
+    -- 3. g_currentMission - broad scan for any non-standard table/userdata fields
     print("[SoilPFDump] ----- g_currentMission broad scan -----")
     if g_currentMission then
         local mOk, mErr = pcall(function()

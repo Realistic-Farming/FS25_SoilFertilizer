@@ -14,7 +14,7 @@
 SoilSettingsUI = {}
 local SoilSettingsUI_mt = Class(SoilSettingsUI)
 
--- Capture mod name at load time — g_currentModName is only valid during loading.
+-- Capture mod name at load time - g_currentModName is only valid during loading.
 local SF_MOD_NAME = g_currentModName
 
 -- The 3 settings injected into the vanilla settings page (Shift+Esc).

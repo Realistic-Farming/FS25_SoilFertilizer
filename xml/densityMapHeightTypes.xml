@@ -2,7 +2,7 @@
 <map>
     <densityMapHeightTypes>
 
-        <!-- Mineral granular fertilizers — flat pile, similar to base FERTILIZER/LIME -->
+        <!-- Mineral granular fertilizers - flat pile, similar to base FERTILIZER/LIME -->
         <densityMapHeightType fillTypeName="UREA" maxSurfaceAngle="20" fillToGroundScale="1.0" allowsSmoothing="false">
             <collision scale="1.0" baseOffset="0.05" minOffset="0.0" maxOffset="0.15" />
         </densityMapHeightType>
@@ -25,7 +25,7 @@
             <collision scale="1.0" baseOffset="0.05" minOffset="0.0" maxOffset="0.15" />
         </densityMapHeightType>
 
-        <!-- Organic bulk amendments — taller pile, similar to WOODCHIPS -->
+        <!-- Organic bulk amendments - taller pile, similar to WOODCHIPS -->
         <densityMapHeightType fillTypeName="COMPOST" maxSurfaceAngle="35" fillToGroundScale="1.0" allowsSmoothing="false">
             <collision scale="1.0" baseOffset="0.10" minOffset="0.0" maxOffset="0.50" />
         </densityMapHeightType>

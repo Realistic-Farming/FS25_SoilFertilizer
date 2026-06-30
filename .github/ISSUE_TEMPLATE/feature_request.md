@@ -12,7 +12,7 @@ assignees: ''
 
 ## Proposed Solution
 
-<!-- Describe the feature. Be specific — "add more crops" is less useful than "add hemp with N=0.22, P=0.09, K=0.18 extraction rates" -->
+<!-- Describe the feature. Be specific - "add more crops" is less useful than "add hemp with N=0.22, P=0.09, K=0.18 extraction rates" -->
 
 ## How It Would Feel In-Game
 
@@ -25,7 +25,7 @@ assignees: ''
 
 ## Relevant Architecture Notes
 
-<!-- Optional — if you've read DEVELOPMENT.md and know which files would be involved, mention them -->
+<!-- Optional - if you've read DEVELOPMENT.md and know which files would be involved, mention them -->
 <!-- e.g. "This would be a new entry in Constants.lua CROP_EXTRACTION" -->
 
 ## Anything Else

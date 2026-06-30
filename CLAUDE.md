@@ -147,8 +147,8 @@ All mods live under the **Mods Base Directory** above:
 
 ## Git Workflow
 
-- **Work branch:** `development` — all commits and pushes go here.
-- **Stable branch:** `main` — only updated via pull requests from `development`.
+- **Work branch:** `development` - all commits and pushes go here.
+- **Stable branch:** `main` - only updated via pull requests from `development`.
 - Never commit or push directly to `main`. Always work on `development` and PR to `main`.
 
 ---
@@ -159,13 +159,13 @@ All mods live under the **Mods Base Directory** above:
 
 `modDesc.xml` declares a single `<sourceFile filename="src/main.lua" />`. `main.lua` uses `source()` to load all 14 modules in strict dependency order across 5 phases:
 
-1. **Utilities & Config** — `Logger.lua`, `Constants.lua`, `SettingsSchema.lua`
-2. **Core Systems** — `HookManager.lua`, `SoilFertilitySystem.lua`, `SoilFertilityManager.lua`
-3. **Settings** — `SettingsManager.lua`, `Settings.lua`, `SoilSettingsGUI.lua`
-4. **UI** — `UIHelper.lua`, `SoilSettingsUI.lua`
-5. **Network** — `NetworkEvents.lua`
+1. **Utilities & Config** - `Logger.lua`, `Constants.lua`, `SettingsSchema.lua`
+2. **Core Systems** - `HookManager.lua`, `SoilFertilitySystem.lua`, `SoilFertilityManager.lua`
+3. **Settings** - `SettingsManager.lua`, `Settings.lua`, `SoilSettingsGUI.lua`
+4. **UI** - `UIHelper.lua`, `SoilSettingsUI.lua`
+5. **Network** - `NetworkEvents.lua`
 
-**Adding a new module:** Add the `source()` call in `main.lua` at the correct phase. The loading order matters — utilities and config must load before everything else, settings before UI, etc.
+**Adding a new module:** Add the `source()` call in `main.lua` at the correct phase. The loading order matters - utilities and config must load before everything else, settings before UI, etc.
 
 ### Central Coordinator: SoilFertilityManager
 
@@ -245,9 +245,9 @@ All `getWorldTranslation()` calls wrapped in `pcall()` for crash prevention. Pat
 ### Settings System
 
 `SettingsSchema.lua` is the **single source of truth** for all settings. Each setting is defined once with `{id, type, default, uiId}`. This drives:
-- `SettingsManager` — auto-generates XML load/save
-- `Settings` — auto-generates defaults and validation
-- `SoilSettingsUI` — auto-generates in-game UI elements
+- `SettingsManager` - auto-generates XML load/save
+- `Settings` - auto-generates defaults and validation
+- `SoilSettingsUI` - auto-generates in-game UI elements
 
 **Adding a new setting:** Add one entry to `SettingsSchema.definitions` + translations in `modDesc.xml`.
 
@@ -265,8 +265,8 @@ Full sync has retry logic: 3 attempts at 5-second intervals.
 
 ### Save/Load
 
-- **Soil data:** `{savegameDirectory}/soilData.xml` — per-field N/P/K/OM/pH, lastCrop, lastHarvest, fertilizerApplied
-- **Settings:** `{savegameDirectory}/FS25_SoilFertilizer.xml` — all settings from schema
+- **Soil data:** `{savegameDirectory}/soilData.xml` - per-field N/P/K/OM/pH, lastCrop, lastHarvest, fertilizerApplied
+- **Settings:** `{savegameDirectory}/FS25_SoilFertilizer.xml` - all settings from schema
 - Save path discovered via `g_currentMission.missionInfo.savegameDirectory`
 
 ### Core Simulation (SoilFertilitySystem)
@@ -352,9 +352,9 @@ If a file exceeds 1500 lines, refactor it into smaller modules with clear single
 
 ---
 
-## Adding a New Custom Fill Type — Checklist
+## Adding a New Custom Fill Type - Checklist
 
-Every new fill type (liquid or solid) must be registered in **all** of the locations below or it will have bugs (wrong drain rate, no effects, no BUY mode, etc.). Check every item — the POLIFOSKA incident is the canonical example of what happens when even one is missed.
+Every new fill type (liquid or solid) must be registered in **all** of the locations below or it will have bugs (wrong drain rate, no effects, no BUY mode, etc.). Check every item - the POLIFOSKA incident is the canonical example of what happens when even one is missed.
 
 ### Constants.lua
 | # | Location | What to add |
@@ -363,7 +363,7 @@ Every new fill type (liquid or solid) must be registered in **all** of the locat
 | 2 | `BASE_RATES` | `{ value = X, unit = "dry"\|"liquid" }` |
 | 3 | `FERTILIZER_TYPES` list | Add name string |
 
-### HookManager.lua — solid and liquid name lists (7 functions)
+### HookManager.lua - solid and liquid name lists (7 functions)
 | # | Function | List |
 |---|----------|------|
 | 4 | `registerCustomSprayTypes()` | `solidNames` or `liquidNames` |
@@ -373,10 +373,10 @@ Every new fill type (liquid or solid) must be registered in **all** of the locat
 | 8 | `installFillUnitHookEarly()` | `solidNames` or `liquidNames` |
 | 9 | `installFillUnitHook()` | `solidNames` or `liquidNames` |
 | 10 | `installSprayerVisualEffectHook()` | inline solid or liquid table |
-| 11 | `installFillTypeMaterialHook()` | `PER_TYPE_PRIORITIES` (solid only) — visual texture priority |
+| 11 | `installFillTypeMaterialHook()` | `PER_TYPE_PRIORITIES` (solid only) - visual texture priority |
 | 12 | `installPurchaseRefillHook()` | `ALL_CUSTOM_NAMES` + `FALLBACK_PRICES` |
 
-### modDesc.xml — thPFConfig (2 entries)
+### modDesc.xml - thPFConfig (2 entries)
 | # | Section | What to add |
 |---|---------|-------------|
 | 13 | `<thPFConfig><sprayTypes>` | Full `<sprayType>` block with rates and `<fertilizerUsage>` |
@@ -385,7 +385,7 @@ Every new fill type (liquid or solid) must be registered in **all** of the locat
 ### PrecisionFarmingBridge.lua (high-N products only)
 | # | Location | What to add |
 |---|----------|-------------|
-| 15 | `SF_FILL_TYPE_N_AMOUNTS` | kg N per litre — only for primary-N products (≥20% N); skip P/K compounds |
+| 15 | `SF_FILL_TYPE_N_AMOUNTS` | kg N per litre - only for primary-N products (≥20% N); skip P/K compounds |
 
 ### Objects & UI
 | # | Location | What to add |
@@ -395,7 +395,7 @@ Every new fill type (liquid or solid) must be registered in **all** of the locat
 
 ---
 
-## Adding a New Setting — Checklist
+## Adding a New Setting - Checklist
 
 | # | File | What to add |
 |---|------|-------------|
@@ -416,8 +416,8 @@ Every release must include ALL of the following before tagging:
 | Step | What to update | Location |
 |------|---------------|----------|
 | 1 | Bump `<version>` | `modDesc.xml` |
-| 2 | Bump version string | `README.md` — line with `**Version:**` |
-| 3 | Update startup dialog changelog bullets | `src/SoilFertilityManager.lua` — the hardcoded `What's new:` block in the `showNotifications` dialog |
+| 2 | Bump version string | `README.md` - line with `**Version:**` |
+| 3 | Update startup dialog changelog bullets | `src/SoilFertilityManager.lua` - the hardcoded `What's new:` block in the `showNotifications` dialog |
 | 4 | Build zip (after version bump commit) | `bash build.sh --deploy` |
 | 5 | Copy zip into repo | `cp ../FS25_SoilFertilizer.zip ./FS25_SoilFertilizer.zip` |
 
@@ -429,4 +429,4 @@ Steps 1–3 must all be committed before running the build so the zip contains t
 
 - **Never** add "Generated with Claude Code", "Co-Authored-By: Claude", or any claude.ai links to commit messages, PR descriptions, code comments, or any other output.
 - **Never** advertise or reference Anthropic, Claude, or claude.ai in any project artifacts.
-- This mod is by its human author(s) — keep it that way.
+- This mod is by its human author(s) - keep it that way.

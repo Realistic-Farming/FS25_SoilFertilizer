@@ -9,7 +9,7 @@ local function tr(key, fallback)
     local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
     local i18n   = (modEnv and modEnv.i18n) or g_i18n
     if i18n then
-        -- pcall-wrap getText for parity with the other UI panels' tr() helpers —
+        -- pcall-wrap getText for parity with the other UI panels' tr() helpers -
         -- a missing/malformed l10n entry should fall back, never crash the overlay.
         local ok, text = pcall(function() return i18n:getText(key) end)
         if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
@@ -26,7 +26,7 @@ SoilMapOverlay.ALPHA          = 0.72
 -- Sampling constants
 SoilMapOverlay.SAMPLE_UPDATE_INTERVAL_MS = 2000
 SoilMapOverlay.POLYGON_STEP        = 10  -- world-unit grid spacing for polygon sampling (meters)
-SoilMapOverlay.MINIMAP_POLYGON_STEP = 12  -- world-unit step for minimap polygon fill — denser for solid-fill look
+SoilMapOverlay.MINIMAP_POLYGON_STEP = 12  -- world-unit step for minimap polygon fill - denser for solid-fill look
 SoilMapOverlay.MINIMAP_DOT_SIZE     = 4   -- screen pixels per fill point (overlapping dots = solid field fill)
 -- Point budgets per density level (1=Low, 2=Medium, 3=High).
 -- These are the BASE values for a standard 2048m map. At runtime the budget is
@@ -194,7 +194,7 @@ function SoilMapOverlay:initialize()
         if self._pdaDMVAvailable then
             SoilLogger.info("[OK] SoilMapOverlay PDA DMV overlays created (%dx%d)", resX, resY)
         else
-            SoilLogger.warning("SoilMapOverlay: PDA DMV overlay creation failed — polygon fallback active")
+            SoilLogger.warning("SoilMapOverlay: PDA DMV overlay creation failed - polygon fallback active")
         end
     end
 end
@@ -330,7 +330,7 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
 
     -- GRLE-backed layers (N/P/K/pH/OM/Pest/Disease/Compaction)
     -- State 0 (unwritten GRLE pixels) is mapped to transparent, so generating the
-    -- overlay early is safe — unpopulated areas stay invisible until data is written.
+    -- overlay early is safe - unpopulated areas stay invisible until data is written.
     local fieldKey = PDA_LAYER_GRLE[layerIdx]
     if fieldKey and layerSystem and layerSystem.available then
         local entry = layerSystem:getLayerEntryForField(fieldKey)
@@ -409,7 +409,7 @@ local function isPointInPoly(px, pz, verts)
 end
 
 --- Return an array of world {x, z} sample points that fill every field on a
---- farmland — including player-plowed expansion that lies outside the static
+--- farmland - including player-plowed expansion that lies outside the static
 --- field polygons (#672). Cells inside any predefined polygon are always kept;
 --- cells outside are kept only when the engine reports live field ground that
 --- belongs to this farmland, which is exactly what a plowed extension is.
@@ -614,7 +614,7 @@ function SoilMapOverlay:updateSamplePoints(force)
     -- getFarmlandFillPoints() handles the grid sampling and caching; it covers the
     -- predefined field polygons plus any plowed expansion (live field ground), and
     -- falls back to a single centroid point when polygon data is absent.
-    -- Only owned fields are sampled — activeFieldIds is maintained by the ownership
+    -- Only owned fields are sampled - activeFieldIds is maintained by the ownership
     -- hook and already represents the correct set for both SP and MP.
     local fields = g_fieldManager.fields
     if fields == nil then
@@ -931,7 +931,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         elseif pct < med then return ttFAIR[1], ttFAIR[2], ttFAIR[3]
         else return ttPOOR[1], ttPOOR[2], ttPOOR[3] end
     end
-    -- Localized crop name (#635) — see SoilUtils.getCropDisplayName.
+    -- Localized crop name (#635) - see SoilUtils.getCropDisplayName.
     local function cropTitle(name)
         return SoilUtils.getCropDisplayName(name)
     end
@@ -1000,13 +1000,13 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         local omR, omG, omB, hint
         if om >= (rc and rc.OM_GOOD or 4.0) then
             omR, omG, omB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
-            hint = "Healthy — maintain with straw"
+            hint = "Healthy - maintain with straw"
         elseif om >= (rc and rc.OM_FAIR or 2.5) then
             omR, omG, omB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
             hint = "Incorporate straw / manure"
         else
             omR, omG, omB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
-            hint = "Low — add manure or digestate"
+            hint = "Low - add manure or digestate"
         end
         addRow("Organic Matter", fmtV(string.format("%.1f%%", om)), omR, omG, omB)
         addRow("Tip",            hint, NEU[1], NEU[2], NEU[3])
@@ -1664,7 +1664,7 @@ function SoilMapOverlay:onDrawMinimap(ingameMap)
     if g_client == nil then return end  -- server-only mode has no HUD
 
     -- When the GRLE heatmap overlay (SoilMinimapLayer) is active and rendering
-    -- per-pixel NPK data, skip centroid dots — the overlay already paints the minimap.
+    -- per-pixel NPK data, skip centroid dots - the overlay already paints the minimap.
     local sml = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
     if sml and sml._initialized and sml._usingDensityLayers then
         return
@@ -1700,7 +1700,7 @@ function SoilMapOverlay:onDrawMinimap(ingameMap)
     -- Phase 2: Live Graphical Report next to minimap
 end
 
--- (drawMiniReport removed — per-cell data shown via PDA map overlay tiles)
+-- (drawMiniReport removed - per-cell data shown via PDA map overlay tiles)
 
 -- ── Minimap Zoom ──────────────────────────────────────────
 

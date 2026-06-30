@@ -32,13 +32,13 @@
         <vi>Đất &amp; Phân Bón Thực Tế</vi>
     </title>
     <description>
-        <en>Adds realistic per-field soil management to Farming Simulator 25. Tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH for every field on the map. Crops deplete nutrients at harvest; fertilizers, manure, and lime replenish them. Rain causes leaching, seasons shift nitrogen levels, and neglected fields slowly recover on their own. Includes a live soil HUD, full farm soil report (K key), 25+ custom fertilizer types, field health tracking (weed, pest, disease), and three smart precision systems: Smart Sensor (blocks sections with no active need), See &amp; Spray (live per-cell pressure overlay), and Variable Rate Application (auto boom rate from soil deficits). Free Panel Layout lets you drag and collapse each in-vehicle panel independently. Fully multiplayer with server-authoritative settings. Works on multifruit maps — unknown crops use a balanced fallback rate. Optional: install the Precision Farming DLC + [TH] Precision Farming Configurator for full integration.</en>
+        <en>Adds realistic per-field soil management to Farming Simulator 25. Tracks Nitrogen, Phosphorus, Potassium, Organic Matter, and pH for every field on the map. Crops deplete nutrients at harvest; fertilizers, manure, and lime replenish them. Rain causes leaching, seasons shift nitrogen levels, and neglected fields slowly recover on their own. Includes a live soil HUD, full farm soil report (K key), 25+ custom fertilizer types, field health tracking (weed, pest, disease), and three smart precision systems: Smart Sensor (blocks sections with no active need), See &amp; Spray (live per-cell pressure overlay), and Variable Rate Application (auto boom rate from soil deficits). Free Panel Layout lets you drag and collapse each in-vehicle panel independently. Fully multiplayer with server-authoritative settings. Works on multifruit maps - unknown crops use a balanced fallback rate. Optional: install the Precision Farming DLC + [TH] Precision Farming Configurator for full integration.</en>
         <de>Fügt realistisches feldspezifisches Bodenmanagement zu Farming Simulator 25 hinzu. Verfolgt Stickstoff, Phosphor, Kalium, organische Substanz und pH-Wert für jedes Feld. Ernten erschöpfen Nährstoffe; Dünger, Mist und Kalk ergänzen sie. Regen verursacht Auswaschung, Jahreszeiten beeinflussen den Stickstoffgehalt, und brachliegende Felder erholen sich langsam von selbst. Enthält ein Live-Boden-HUD, einen vollständigen Hofbodenbericht (K-Taste) und 9 benutzerdefinierte Düngertypen. Vollständig multiplayer-fähig mit serverautoritativen Einstellungen.</de>
         <fr>Ajoute une gestion réaliste du sol par parcelle à Farming Simulator 25. Suit l'Azote, le Phosphore, le Potassium, la Matière Organique et le pH pour chaque champ. Les récoltes épuisent les nutriments ; les engrais, le fumier et la chaux les reconstituent. La pluie lessive les nutriments, les saisons font varier l'azote, et les champs abandonnés se régénèrent lentement. Comprend un HUD sol en direct, un rapport complet de la ferme (touche K) et 9 types d'engrais personnalisés. Multijoueur complet avec paramètres contrôlés par le serveur.</fr>
         <pl>Dodaje realistyczne zarządzanie glebą per-pole do Farming Simulator 25. Śledzi Azot, Fosfor, Potas, Materię Organiczną i pH dla każdego pola. Zbiory wyczerpują składniki odżywcze; nawozy, obornik i wapno je uzupełniają. Deszcz powoduje wymywanie, pory roku wpływają na poziom azotu, a zaniedbane pola powoli się regenerują. Zawiera HUD gleby, pełny raport gleby (klawisz K) i 9 niestandardowych typów nawozów. Pełna obsługa trybu wieloosobowego.</pl>
         <es>Añade gestión realista del suelo por campo a Farming Simulator 25. Rastrea Nitrógeno, Fósforo, Potasio, Materia Orgánica y pH para cada campo. Las cosechas agotan los nutrientes; los fertilizantes, el estiércol y la cal los reponen. La lluvia causa lixiviación, las estaciones afectan el nitrógeno, y los campos abandonados se recuperan lentamente. Incluye HUD de suelo en vivo, informe completo de la granja (tecla K) y 9 tipos de fertilizantes personalizados. Multijugador completo con configuración controlada por el servidor.</es>
         <it>Aggiunge una gestione realistica del suolo per campo a Farming Simulator 25. Tiene traccia di Azoto, Fosforo, Potassio, Sostanza Organica e pH per ogni campo. I raccolti esauriscono i nutrienti; fertilizzanti, letame e calce li reintegrano. La pioggia causa lisciviazione, le stagioni influenzano l'azoto e i campi abbandonati si riprendono lentamente. Include HUD del suolo in tempo reale, report completo dell'azienda (tasto K) e 9 tipi di fertilizzanti personalizzati. Multiplayer completo con impostazioni controllate dal server.</it>
-        <cz>Přidává realistickou správu půdy pro každé pole do Farming Simulator 25. Sleduje Dusík, Fosfor, Draslík, Organickou Hmotu a pH pro každé pole na mapě. Sklizeň vyčerpává živiny; hnojiva, hnůj a vápno je doplňují. Déšť způsobuje vymývání, roční období ovlivňují hladiny dusíku a zanedbané pole se pomalu zotavují samy. Zahrnuje živý HUD půdy, kompletní zprávu o půdě farmy (klávesa K), 25+ vlastních typů hnojiv, sledování zdraví pole (plevel, škůdci, choroby) a tři chytré přesné systémy: Chytrý senzor (blokuje sekce bez aktivní potřeby), Viz &amp; Postřik (živý překryv tlaku po buňkách) a Aplikace proměnné dávky (automatická dávka ramene dle deficitů půdy). Volné rozvržení panelů umožňuje nezávisle přesouvat a sbalovat každý panel ve vozidle. Plná podpora pro více hráčů s nastavením autoritativním pro server. Funguje na mapách s více plodinami — neznámé plodiny používají vyváženou záložní sazbu. Volitelné: nainstalujte Precision Farming DLC + [TH] Precision Farming Configurator pro plnou integraci.</cz>
+        <cz>Přidává realistickou správu půdy pro každé pole do Farming Simulator 25. Sleduje Dusík, Fosfor, Draslík, Organickou Hmotu a pH pro každé pole na mapě. Sklizeň vyčerpává živiny; hnojiva, hnůj a vápno je doplňují. Déšť způsobuje vymývání, roční období ovlivňují hladiny dusíku a zanedbané pole se pomalu zotavují samy. Zahrnuje živý HUD půdy, kompletní zprávu o půdě farmy (klávesa K), 25+ vlastních typů hnojiv, sledování zdraví pole (plevel, škůdci, choroby) a tři chytré přesné systémy: Chytrý senzor (blokuje sekce bez aktivní potřeby), Viz &amp; Postřik (živý překryv tlaku po buňkách) a Aplikace proměnné dávky (automatická dávka ramene dle deficitů půdy). Volné rozvržení panelů umožňuje nezávisle přesouvat a sbalovat každý panel ve vozidle. Plná podpora pro více hráčů s nastavením autoritativním pro server. Funguje na mapách s více plodinami - neznámé plodiny používají vyváženou záložní sazbu. Volitelné: nainstalujte Precision Farming DLC + [TH] Precision Farming Configurator pro plnou integraci.</cz>
         <br>Adiciona gerenciamento realista de solo por campo ao Farming Simulator 25. Rastreia Nitrogênio, Fósforo, Potássio, Matéria Orgânica e pH para cada campo. As colheitas esgotam os nutrientes; fertilizantes, esterco e calcário os repõem. A chuva causa lixiviação, as estações afetam o nitrogênio e os campos abandonados se recuperam lentamente. Inclui HUD de solo ao vivo, relatório completo da fazenda (tecla K) e 9 tipos de fertilizantes personalizados. Multijogador completo com configurações controladas pelo servidor.</br>
         <uk>Додає реалістичне управління ґрунтом для кожного поля у Farming Simulator 25. Відстежує Азот, Фосфор, Калій, Органічну Речовину та pH для кожного поля. Збір врожаю виснажує поживні речовини; добрива, гній і вапно їх поповнюють. Дощ спричиняє вимивання, сезони впливають на азот, а занедбані поля повільно відновлюються. Включає HUD ґрунту, повний звіт ферми (клавіша K) та 9 типів добрив. Повна підтримка мультиплеєра.</uk>
         <ru>Добавляет реалистичное управление почвой для каждого поля в Farming Simulator 25. Отслеживает Азот, Фосфор, Калий, Органическое Вещество и pH для каждого поля. Уборка урожая истощает питательные вещества; удобрения, навоз и известь их восполняют. Дождь вызывает вымывание, сезоны влияют на азот, а заброшенные поля медленно восстанавливаются. Включает HUD почвы, полный отчёт фермы (клавиша K) и 9 типов удобрений. Полная поддержка мультиплеера.</ru>
@@ -169,7 +169,7 @@
         <storeItem xmlFilename="objects/bigBag/chicken_manure/multiPurchaseBigBag_chicken_manure_10k.xml"/>
         <storeItem xmlFilename="objects/bigBag/pelletized_manure/multiPurchaseBigBag_pelletized_manure.xml"/>
         <storeItem xmlFilename="objects/bigBag/pelletized_manure/multiPurchaseBigBag_pelletized_manure_10k.xml"/>
-        <!-- Single items — registered for multiPurchase spawning, hidden from shop UI -->
+        <!-- Single items - registered for multiPurchase spawning, hidden from shop UI -->
         <storeItem xmlFilename="objects/liquidTank/uan32/liquidTank_uan32.xml"/>
         <storeItem xmlFilename="objects/liquidTank/uan28/liquidTank_uan28.xml"/>
         <storeItem xmlFilename="objects/liquidTank/anhydrous/liquidTank_anhydrous.xml"/>
@@ -203,7 +203,7 @@
 
 
     <!-- ═══════════════════════════════════════════════════════════
-         HELP LINES  —  ESC > Help > Realistic Soil & Fertilizer
+         HELP LINES  -  ESC > Help > Realistic Soil & Fertilizer
          ═══════════════════════════════════════════════════════════ -->
     <helpLines>
 
@@ -466,13 +466,13 @@
         ══════════════════════════════════════════════════════════════════════
         [TH] PRECISION FARMING CONFIGURATOR INTEGRATION
         Requires: FS25_precisionFarming DLC + FS25_0_THPFConfigurator mod.
-        If either is absent this block is silently ignored — all three
+        If either is absent this block is silently ignored - all three
         operating modes (SF-only, SF+PF, SF+PF+THPF) are fully supported.
 
-        <sprayTypes>    — tells THPF the N content and PF application rates
+        <sprayTypes>    - tells THPF the N content and PF application rates
                           for our N-bearing fill types so PF can paint its
                           nitrogen density map correctly.
-        <sprayTypeMapping> — tells THPF what group each custom fill type
+        <sprayTypeMapping> - tells THPF what group each custom fill type
                           belongs to (FERTILIZER / MANURE / DIGESTATE /
                           LIME / HERBICIDE). Enables PF HUD naming and
                           auto-injection into compatible vehicles/storages.
@@ -583,7 +583,7 @@
                 <fertilizerUsage amount="0.21"/> <!-- Ammonium sulfate 21% N by weight -->
             </sprayType>
 
-            <!-- Phosphorus & potassium products (PF does not manage P/K — fertilizerUsage declares N content only) -->
+            <!-- Phosphorus & potassium products (PF does not manage P/K - fertilizerUsage declares N content only) -->
             <sprayType name="LIQUID_POTASH" litersPerSecond="0.0300" type="FERTILIZER" sprayGroundType="LIQUIDFERTILIZER">
                 <applicationRate autoAdjustToFruit="true" regularRate="100">
                     <soil soilTypeIndex="1" rate="50"/>
@@ -591,7 +591,7 @@
                     <soil soilTypeIndex="3" rate="90"/>
                     <soil soilTypeIndex="4" rate="70"/>
                 </applicationRate>
-                <fertilizerUsage amount="0"/> <!-- 0-0-60 — pure K, zero N -->
+                <fertilizerUsage amount="0"/> <!-- 0-0-60 - pure K, zero N -->
             </sprayType>
 
             <sprayType name="POTASH" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
@@ -601,7 +601,7 @@
                     <soil soilTypeIndex="3" rate="180"/>
                     <soil soilTypeIndex="4" rate="140"/>
                 </applicationRate>
-                <fertilizerUsage amount="0"/> <!-- 0-0-60 granular — zero N -->
+                <fertilizerUsage amount="0"/> <!-- 0-0-60 granular - zero N -->
             </sprayType>
 
             <sprayType name="MAP" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
@@ -611,7 +611,7 @@
                     <soil soilTypeIndex="3" rate="190"/>
                     <soil soilTypeIndex="4" rate="150"/>
                 </applicationRate>
-                <fertilizerUsage amount="0.11"/> <!-- 11-52-0 granular — 11% N -->
+                <fertilizerUsage amount="0.11"/> <!-- 11-52-0 granular - 11% N -->
             </sprayType>
 
             <sprayType name="DAP" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
@@ -621,7 +621,7 @@
                     <soil soilTypeIndex="3" rate="190"/>
                     <soil soilTypeIndex="4" rate="150"/>
                 </applicationRate>
-                <fertilizerUsage amount="0.18"/> <!-- 18-46-0 granular — 18% N -->
+                <fertilizerUsage amount="0.18"/> <!-- 18-46-0 granular - 18% N -->
             </sprayType>
 
             <sprayType name="POLIFOSKA" litersPerSecond="0.0600" type="FERTILIZER" sprayGroundType="FERTILIZER">
@@ -631,10 +631,10 @@
                     <soil soilTypeIndex="3" rate="210"/>
                     <soil soilTypeIndex="4" rate="165"/>
                 </applicationRate>
-                <fertilizerUsage amount="0.06"/> <!-- 6-20-30 compound — 6% N by weight -->
+                <fertilizerUsage amount="0.06"/> <!-- 6-20-30 compound - 6% N by weight -->
             </sprayType>
 
-            <!-- Lime types (pH amendment — no N content) -->
+            <!-- Lime types (pH amendment - no N content) -->
             <sprayType name="LIQUIDLIME" litersPerSecond="0.0815" type="LIME" sprayGroundType="LIME"/>
             <sprayType name="GYPSUM"     litersPerSecond="0.0600" type="LIME" sprayGroundType="LIME"/>
         </sprayTypes>

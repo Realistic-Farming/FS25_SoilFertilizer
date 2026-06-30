@@ -278,10 +278,10 @@ function SoilHarvesterPanel:getActiveCombine()
 end
 
 -- Returns grain tank { level, capacity, ratio, fillType } for the combine.
--- Works even when tank is empty (fill type UNKNOWN) — detects by largest capacity.
+-- Works even when tank is empty (fill type UNKNOWN) - detects by largest capacity.
 function SoilHarvesterPanel:getGrainTank(combine)
     if not combine then return nil end
-    -- Use getFillUnits() — the correct FS25 API (getNumFillUnits does not exist)
+    -- Use getFillUnits() - the correct FS25 API (getNumFillUnits does not exist)
     local ok, units = pcall(function() return combine:getFillUnits() end)
     if not ok or not units or #units == 0 then return nil end
 
@@ -428,7 +428,7 @@ function SoilHarvesterPanel:update(dt)
     local tank = self:getGrainTank(combine)
     if tank then
         if self._lastHarvFId ~= fieldId then
-            -- Switched to a new field — reset session counter
+            -- Switched to a new field - reset session counter
             self._sessGrainL  = 0
             self._lastTankLvl = tank.level
             self._lastHarvFId = fieldId

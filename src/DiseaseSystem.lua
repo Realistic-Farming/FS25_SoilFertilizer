@@ -1,10 +1,10 @@
 -- =========================================================
--- FS25 Soil & Fertilizer — Disease & Chemical System (pure logic)
+-- FS25 Soil & Fertilizer - Disease & Chemical System (pure logic)
 -- =========================================================
 -- Stateless helpers over the data tables in Constants.lua:
---   • DISEASE_DEFS / DISEASE_REGISTRY   — named crop-specific diseases
---   • FUNGICIDE_CATALOG                 — menu-selectable chemicals + effectiveness
---   • DISEASE_TREATMENT / DIFFICULTY    — timing, weather, stage, difficulty gates
+--   • DISEASE_DEFS / DISEASE_REGISTRY   - named crop-specific diseases
+--   • FUNGICIDE_CATALOG                 - menu-selectable chemicals + effectiveness
+--   • DISEASE_TREATMENT / DIFFICULTY    - timing, weather, stage, difficulty gates
 --
 -- NOTHING here touches game state. Every function takes plain arguments and returns
 -- plain values, so the whole module is exercised by the fengari self-test suite.
@@ -22,7 +22,7 @@ local function clamp(v, lo, hi)
     return v
 end
 
--- Deterministic 0..1 hash (fract(sin) — a real per-seed hash, not an affine LCG ramp;
+-- Deterministic 0..1 hash (fract(sin) - a real per-seed hash, not an affine LCG ramp;
 -- see the #632 uniform-soil pitfall). Stable for a given integer seed.
 local function hash01(n)
     local x = math.sin((n + 1) * 12.9898) * 43758.5453
@@ -226,7 +226,7 @@ end
 -- ── Treatment effectiveness ───────────────────────────────
 
 --- Live growth-stage fraction 0..1 from FS25 integer growth state.
---- FS25 has no Zadoks/BBCH scale — this maps state→fraction so the proposal's
+--- FS25 has no Zadoks/BBCH scale - this maps state→fraction so the proposal's
 --- "GS 30-50" windows become "mid third of growth".
 ---@param growthState number|nil
 ---@param numStates number|nil   max growth states for the fruit

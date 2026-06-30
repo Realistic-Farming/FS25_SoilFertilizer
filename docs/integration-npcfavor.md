@@ -35,7 +35,7 @@ so your mod still loads if S&F is absent).
 | `unregisterContractProvider(name)` | Remove it (on teardown). |
 | `applyRetroactiveHarvest(fieldId, liters, fruitType, seq)` | One-shot nutrient catch-up when a contract finishes. |
 
-Tunable: `FieldSentry_Core.FAVOR_TIER_THRESHOLD` (default `4`) — at or above this favor
+Tunable: `FieldSentry_Core.FAVOR_TIER_THRESHOLD` (default `4`) - at or above this favor
 tier a provider may keep S&F running instead of masking (see *Favor-tier exemption*).
 
 ---
@@ -55,7 +55,7 @@ tier a provider may keep S&F running instead of masking (see *Favor-tier exempti
 Hard rules, because FieldSentry **fails closed**:
 
 - Return a **table**, always, with a real `boolean` in `active`. A `nil`, a non-table, a
-  crash, or a non-boolean `active` is treated as "contract active, not exempt" — the field
+  crash, or a non-boolean `active` is treated as "contract active, not exempt" - the field
   stays masked. A broken provider can never silently un-mask an NPC field.
 - Keep it **non-blocking and cheap**. It is called per field on the daily sim seam, wrapped
   in `pcall`. No yields, no heavy lookups, no allocations you can avoid. An O(1) table read
@@ -116,7 +116,7 @@ the field and records a transient `contractExempt` hint (readable via
 relationships: a best friend lets the player prepare and benefit from real soil management
 on the contract field, while a hostile neighbour's field stays a plain vanilla mask.
 
-FieldSentry never flips a persistent player setting from a hint — the exemption is
+FieldSentry never flips a persistent player setting from a hint - the exemption is
 recomputed live each refresh from what your callback returns.
 
 ---

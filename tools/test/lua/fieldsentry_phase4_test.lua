@@ -1,4 +1,4 @@
--- fieldsentry_phase4_test.lua — FieldSentry Phase 4 deco / fake-field detection (#651).
+-- fieldsentry_phase4_test.lua - FieldSentry Phase 4 deco / fake-field detection (#651).
 -- Covers the author/player deco hint, the injected detector hook, the classification rule
 -- order (structural before classification), persistence, and FR5 sync reuse. Pure mocks.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/FieldSentry.lua

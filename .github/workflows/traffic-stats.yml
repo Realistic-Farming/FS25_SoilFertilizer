@@ -1,5 +1,5 @@
 # ============================================================================
-# GitHub Repository Traffic Stats — Reusable Template
+# GitHub Repository Traffic Stats - Reusable Template
 # ============================================================================
 #
 # WHAT THIS IS:
@@ -12,26 +12,26 @@
 #   1. Copy this file to: .github/workflows/traffic-stats.yml
 #   2. Create a Personal Access Token (classic) with `repo` scope
 #   3. Add it as a repository secret named TRAFFIC_TOKEN
-#   4. Push to your default branch — the workflow runs hourly on schedule
+#   4. Push to your default branch - the workflow runs hourly on schedule
 #   5. After the first run, check the `traffic-stats` branch for your dashboard
 #      at .github/traffic/SUMMARY.md
 #
 # WHAT IT COLLECTS:
 #   - Hourly:  Release download counts (lightweight snapshot)
-#   - Every 6h: Full dashboard — views, clones, referrers, stars, forks,
+#   - Every 6h: Full dashboard - views, clones, referrers, stars, forks,
 #               watchers, popular paths + chart generation
 #   - Manual:  Trigger anytime via workflow_dispatch for a full collection
 #
 # DATA STORAGE:
 #   All data is committed to an orphan branch called `traffic-stats` so it
 #   never clutters your main branch. Data files:
-#     - daily.json       — Views & clones per day (preserved forever)
-#     - downloads.json   — Release download snapshots (hourly)
-#     - referrers.json   — Referrer snapshots (daily)
-#     - metadata.json    — Stars, forks, watchers (daily)
-#     - stats.json       — Combined legacy snapshots (6-hourly)
-#     - charts/*.png     — Auto-generated dashboard charts
-#     - SUMMARY.md       — Markdown dashboard with embedded charts
+#     - daily.json       - Views & clones per day (preserved forever)
+#     - downloads.json   - Release download snapshots (hourly)
+#     - referrers.json   - Referrer snapshots (daily)
+#     - metadata.json    - Stars, forks, watchers (daily)
+#     - stats.json       - Combined legacy snapshots (6-hourly)
+#     - charts/*.png     - Auto-generated dashboard charts
+#     - SUMMARY.md       - Markdown dashboard with embedded charts
 #
 # SMART DEDUPLICATION:
 #   Download snapshots are only recorded when the count changes, with a
@@ -43,12 +43,12 @@
 #   - The PAT owner must have push access to the repository
 #
 # CHARTS GENERATED (6 total):
-#   1. Views & Clones — dual-panel time series
-#   2. Total Acquisition per Release — stacked bars + daily clone timeline
-#   3. Referrers — horizontal bar chart
-#   4. Repository Growth — stars, forks, watchers line chart
-#   5. Visitor Engagement — pages per visitor with trend line
-#   6. Conversion Funnel — visitors vs downloaders with conversion rate
+#   1. Views & Clones - dual-panel time series
+#   2. Total Acquisition per Release - stacked bars + daily clone timeline
+#   3. Referrers - horizontal bar chart
+#   4. Repository Growth - stars, forks, watchers line chart
+#   5. Visitor Engagement - pages per visitor with trend line
+#   6. Conversion Funnel - visitors vs downloaders with conversion rate
 #
 # ============================================================================
 
@@ -175,7 +175,7 @@ jobs:
               echo "$DL_UPDATED" > "$DOWNLOADS_FILE"
               echo "Heartbeat snapshot saved: $TOTAL_DL total (unchanged, 6hr checkpoint)"
             else
-              echo "No change in downloads ($TOTAL_DL) — skipping snapshot"
+              echo "No change in downloads ($TOTAL_DL) - skipping snapshot"
             fi
           fi
 
@@ -512,7 +512,7 @@ jobs:
               print(f"Generated: downloads.png ({len(tags)} releases, {total_all} total acquisitions)")
 
           elif downloads:
-              # No release timeline yet — fallback to simple download chart
+              # No release timeline yet - fallback to simple download chart
               if len(downloads) >= 2:
                   timestamps = [datetime.strptime(d["timestamp"], "%Y-%m-%dT%H:%M:%SZ") for d in downloads]
                   totals = [d["total_downloads"] for d in downloads]
@@ -643,7 +643,7 @@ jobs:
                   pages_per_visitor = [v / u if u > 0 else 0 for v, u in zip(views, uniques)]
 
                   fig, ax1 = plt.subplots(figsize=(12, 6))
-                  fig.suptitle("Visitor Engagement — Are People Exploring?",
+                  fig.suptitle("Visitor Engagement - Are People Exploring?",
                                fontsize=15, fontweight='bold', color='#58a6ff')
 
                   # Stacked area: unique visitors vs total views
@@ -721,7 +721,7 @@ jobs:
                   conversion = [a / v * 100 if v > 0 else 0 for a, v in zip(acquisitions, visitors)]
 
                   fig, ax1 = plt.subplots(figsize=(12, 6))
-                  fig.suptitle("Conversion Funnel — Visitors Who Download",
+                  fig.suptitle("Conversion Funnel - Visitors Who Download",
                                fontsize=15, fontweight='bold', color='#58a6ff')
 
                   # Grouped bars: visitors vs acquisitions
