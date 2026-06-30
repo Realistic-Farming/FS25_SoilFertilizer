@@ -146,20 +146,15 @@ function SoilHUD:initialize()
         SoilLogger.warning("SoilHUD: createImageOverlay not available")
     end
 
-    -- ── Native FS25 Field Info box ────────────────────────
-    if g_currentMission and g_currentMission.hud and g_currentMission.hud.infoDisplay then
-        local ok, box = pcall(function()
-            return g_currentMission.hud.infoDisplay:createBox(InfoDisplayKeyValueBox)
-        end)
-        if ok and box then
-            self.fieldInfoBox = box
-            SoilLogger.info("SoilHUD: FieldInfoBox registered with native HUD infoDisplay")
-        else
-            SoilLogger.warning("SoilHUD: infoDisplay:createBox() failed — SOIL NUTRIENTS box will not appear")
-        end
-    else
-        SoilLogger.info("SoilHUD: infoDisplay not available (server or early init) — skipping FieldInfoBox")
-    end
+    -- NOTE: we used to spawn a standalone InfoDisplayKeyValueBox here
+    -- (g_currentMission.hud.infoDisplay:createBox(...)) as a sibling panel next to the
+    -- base game's FIELD INFO box. That never matched the feature description ("Show soil
+    -- nutrients in the native Field Info panel") and produced a duplicate floating panel.
+    -- Soil data is now injected directly into the base game's own box — see
+    -- HookManager:installNativeFieldInfoHook(), which appends to
+    -- PlayerHUDUpdater.fieldAddFarmland. self.fieldInfoBox is kept nil/unused so the old
+    -- delete()/destroyBox() guards remain harmless no-ops.
+    self.fieldInfoBox = nil
 
     self.initialized = true
     SoilLogger.info("SoilHUD initialized at (%.3f, %.3f) scale=%.2f", self.panelX, self.panelY, self.scale)
@@ -648,7 +643,10 @@ function SoilHUD:update(dt)
     local rm             = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
     self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
 
-    self:updateFieldInfoBox()
+    -- updateFieldInfoBox() no longer runs here — soil data is injected directly into the
+    -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
+    -- instead of a separate panel. The function is kept below (now building line data via
+    -- buildFieldInfoLines) in case it's needed for debugging or a future standalone mode.
 
     -- Pre-format draw() strings that depend on both field info and sprayer state.
     -- Doing this in update() (5 Hz for field data, every frame for sprayer state)
@@ -711,26 +709,18 @@ function SoilHUD:update(dt)
     end
 end
 
--- ── Native FIELD INFO box ────────────────────────────────
--- Populates an InfoDisplayKeyValueBox (same style as the base game FIELD INFO panel)
--- with a full soil summary for the current field. Called every frame so showNextFrame()
--- keeps the box visible; stops calling when off-field so it auto-hides.
-function SoilHUD:updateFieldInfoBox()
-    local box = self.fieldInfoBox
-    if not box then return end
+-- ── Field info line builder ───────────────────────────────
+-- Pure data builder: turns a soilSystem:getFieldInfo() result into an ordered list of
+-- {label, value} rows. Used by both updateFieldInfoBox() (legacy standalone panel, kept
+-- for compatibility) and HookManager:installNativeFieldInfoHook() (injects the same rows
+-- into the base game's own FIELD INFO box). Keeping this box-agnostic means both call
+-- sites stay in sync automatically — no more drifting copies of the grade/yield/needs math.
+---@param info table Result of soilSystem:getFieldInfo(fieldId)
+---@return table lines Ordered array of { label = string, value = string }
+function SoilHUD:buildFieldInfoLines(info)
+    local lines = {}
+    if not info then return lines end
 
-    if self.settings and self.settings.showFieldInfoBox == false then return end
-
-    -- Only show the native FIELD INFO style box when actually on a field.
-    -- This prevents it from showing up on roads, grass, or yards (Tier 2 farmland fallback).
-    if not self.isOnField then return end
-
-    local info = self.cachedFieldInfo
-    if not info then return end
-
-    if not g_SoilFertilityManager or not g_SoilFertilityManager.settings.enabled then return end
-
-    local ppm = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
     local rc  = SoilConstants.REPORT_COLORS or {}
     local phGoodLow  = rc.PH_GOOD_LOW  or 6.0
     local phGoodHigh = rc.PH_GOOD_HIGH or 7.0
@@ -766,28 +756,22 @@ function SoilHUD:updateFieldInfoBox()
     if pestPct    >= pestMed                        then grade = "Poor" end
     if diseasePct >= diseaseMed                     then grade = "Poor" end
 
-    -- ── Yield penalty (N/P/K deficit vs crop threshold) ────
+    -- ── Yield ────────────────────────────────────────────────
+    -- Single source of truth: info.yieldEfficiency is the SAME field-average
+    -- number shown on the Soil Monitor panel and actually applied at harvest
+    -- via computeYieldModifier (see SoilFertilitySystem.lua). This row used to
+    -- run its own separate N/P/K-only deficit calc here (excluding OM/weed/
+    -- pest/disease/amendment-burn) and display it as a "~-X%" penalty -- a
+    -- different number, in a different format, from a different formula than
+    -- the Soil Monitor's "Yield: X%" efficiency figure. That's why the two
+    -- boxes could show e.g. 84% and -27% for the same field. Formatting
+    -- yieldEfficiency directly here guarantees the FIELD INFO box and the
+    -- Soil Monitor panel can never disagree again.
     local yieldStr = g_i18n:getText("sf_hud_optimal") or "Optimal"
-    local ys = SoilConstants.YIELD_SENSITIVITY
-    if ys then
-        local cropLower = info.lastCrop and string.lower(info.lastCrop) or nil
-        local isNonCrop = cropLower and ys.NON_CROP_NAMES and ys.NON_CROP_NAMES[cropLower]
-        if not isNonCrop then
-            local tier     = (cropLower and ys.CROP_TIERS and ys.CROP_TIERS[cropLower]) or ys.DEFAULT_TIER
-            local tierData = ys.TIERS and ys.TIERS[tier]
-            local thresh   = ys.OPTIMAL_THRESHOLD or 70
-            if tierData then
-                local nDef    = math.max(0, thresh - info.nitrogen.value)   / thresh
-                local pDef    = math.max(0, thresh - info.phosphorus.value) / thresh
-                local kDef    = math.max(0, thresh - info.potassium.value)  / thresh
-                local penalty = math.min(ys.MAX_PENALTY, (nDef + pDef + kDef) / 3 * tierData.scale)
-                local pct     = math.floor(penalty * 100 + 0.5)
-                if pct > 0 then
-                    yieldStr = string.format("~-%d%%", pct)
-                    if grade == "Good" then grade = "Fair" end
-                end
-            end
-        end
+    if info.yieldEfficiency ~= nil then
+        local pct = math.floor(info.yieldEfficiency + 0.5)
+        yieldStr = string.format("%d%%", pct)
+        if pct < 100 and grade == "Good" then grade = "Fair" end
     end
 
     -- ── Crop rotation label ─────────────────────────────────
@@ -801,14 +785,37 @@ function SoilHUD:updateFieldInfoBox()
         end
     end
 
-    -- ── Nutrient value formatter (current / crop-target) ───
-    local ct = info.cropTargets
-    local function fmtNutrient(rawValue, label, ppmMult)
-        local val = math.floor(rawValue * ppmMult + 0.5)
-        if ct and ct[label] then
-            return string.format("%d / %d", val, math.floor(ct[label].opt * ppmMult + 0.5))
+    -- ── Active named disease (display name) ─────────────────
+    -- info.activeDisease is a DISEASE_DEFS id (e.g. "late_blight"); sf_dis_<id> keys give
+    -- the human-readable name (already used by the disease report/recommend flow). Falls
+    -- back to a title-cased version of the id itself if a key is ever missing.
+    local activeDiseaseStr = nil
+    if info.activeDisease then
+        local key = "sf_dis_" .. info.activeDisease
+        activeDiseaseStr = g_i18n:hasText(key) and g_i18n:getText(key) or nil
+        if not activeDiseaseStr then
+            activeDiseaseStr = string.gsub(info.activeDisease, "_", " ")
+            activeDiseaseStr = string.gsub(activeDiseaseStr, "(%a)(%w*)", function(first, rest)
+                return string.upper(first) .. rest
+            end)
         end
-        return tostring(val)
+    end
+
+    -- ── Amendment burn risk (#684) ───────────────────────────
+    -- Pre-emptive warning that liming/manuring THIS crop RIGHT NOW would scorch it.
+    -- Same condition the standalone Soil Monitor panel uses (amendBurnRisk and no burn
+    -- already in progress) so the two never disagree about when to show it.
+    local showBurnRisk = info.amendBurnRisk == true and (info.amendBurnPenalty or 0) <= 0
+
+    -- ── Sim asleep status (FieldSentry, #651) ────────────────
+    -- A slept field's soil values are frozen by design (e.g. far from any active player) --
+    -- without this, a field that never seems to change looks like a bug, not a feature.
+    -- Only shown when actually asleep; active fields don't need a row saying so.
+    local simStatusStr = nil
+    if info.simDisabled then
+        simStatusStr = (info.simDisabledReasonKey and g_i18n:getText(info.simDisabledReasonKey))
+            or info.simDisabledReason
+            or "asleep"
     end
 
     -- ── Needs summary (actionable issues list) ─────────────
@@ -831,30 +838,83 @@ function SoilHUD:updateFieldInfoBox()
         return string.format("%d%%", pct)
     end
 
-    -- ── Populate box ────────────────────────────────────────
+    -- ── Assemble rows ────────────────────────────────────────
+    -- Each row carries a `group` ("early" or "late") that controls where it lands in the
+    -- native FIELD INFO box. That box updates an existing label in place rather than
+    -- re-inserting it, so a row's on-screen position is fixed by whichever native call
+    -- first creates it -- not by the order we build `lines` in here. installNativeFieldInfoHook
+    -- appends "early" rows right after the native Farmland/Owned by rows (fieldAddFarmland),
+    -- and "late" rows right after the native Crop type/Growth rows (fieldAddFruit), which is
+    -- what actually produces:
+    --   Farmland, Owned by, Soil Grade, Yield, pH, OM, Needs, Rotation, Crop type, Growth, Amend. burn risk
+    if simStatusStr then
+        table.insert(lines, {
+            group = "early",
+            label = g_i18n:getText("sf_fieldinfo_sim_status") or "Sim Status",
+            value = (g_i18n:getText("sf_fieldsentry_asleep") or "sim asleep") .. " (" .. simStatusStr .. ")"
+        })
+    end
+    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", value = grade })
+    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_yield") or "Yield",      value = yieldStr })
+    -- N/P/K (ppm) and Compaction are intentionally NOT duplicated here -- they're already
+    -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
+    -- numbers in this box was redundant. Compaction still feeds the "Needs" summary below
+    -- via compPct even though its own row is gone.
+    table.insert(lines, { group = "early", label = "pH",      value = string.format("%.1f", info.pH) })
+    table.insert(lines, { group = "early", label = "OM",      value = string.format("%.1f%%", info.organicMatter) })
+    if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
+    if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
+    if diseasePct > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease",   value = pressureLine(diseasePct, info.fungicideActive) }) end
+    if activeDiseaseStr then
+        table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_disease") or "Active Disease", value = activeDiseaseStr })
+    end
+    table.insert(lines, {
+        group = "early",
+        label = g_i18n:getText("sf_fieldinfo_needs") or "Needs",
+        value = #needs > 0 and table.concat(needs, ", ") or (g_i18n:getText("sf_report_rec_optimal") or "All good")
+    })
+    -- Crop Rotation: always shown (Bonus/Fatigue/OK, or a neutral fallback when rotation
+    -- tracking has no data for this field yet -- e.g. crop rotation setting disabled, or
+    -- the field has no harvest history). Previously this row only appeared when
+    -- info.rotationStatus was set, which made it look "missing" rather than informative.
+    table.insert(lines, {
+        group = "early",
+        label = g_i18n:getText("sf_fieldinfo_rotation") or "Rotation",
+        value = rotStr or (g_i18n:getText("sf_report_rotation_na") or "N/A")
+    })
+    if showBurnRisk then
+        table.insert(lines, { group = "late", label = g_i18n:getText("sf_fieldinfo_burn_risk") or "Amend. burn risk", value = "Yes" })
+    end
+
+    return lines
+end
+
+-- ── Native FIELD INFO box (legacy standalone panel) ──────
+-- Kept for compatibility / debugging only. Not called during normal play anymore —
+-- see buildFieldInfoLines() above and HookManager:installNativeFieldInfoHook(), which
+-- injects the same rows directly into the base game's own FIELD INFO box instead of a
+-- separate panel.
+function SoilHUD:updateFieldInfoBox()
+    local box = self.fieldInfoBox
+    if not box then return end
+
+    if self.settings and self.settings.showFieldInfoBox == false then return end
+
+    -- Only show the native FIELD INFO style box when actually on a field.
+    -- This prevents it from showing up on roads, grass, or yards (Tier 2 farmland fallback).
+    if not self.isOnField then return end
+
+    local info = self.cachedFieldInfo
+    if not info then return end
+
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.settings.enabled then return end
+
     box:clear()
     box:setTitle(g_i18n:getText("sf_fieldinfo_box_title") or "Soil Nutrients")
 
-    box:addLine(g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", grade)
-    box:addLine(g_i18n:getText("sf_fieldinfo_yield") or "Yield",      yieldStr)
-    if rotStr then
-        box:addLine(g_i18n:getText("sf_fieldinfo_rotation") or "Rotation", rotStr)
+    for _, line in ipairs(self:buildFieldInfoLines(info)) do
+        box:addLine(line.label, line.value)
     end
-    box:addLine("N (ppm)", fmtNutrient(info.nitrogen.value,   "N", ppm.N))
-    box:addLine("P (ppm)", fmtNutrient(info.phosphorus.value, "P", ppm.P))
-    box:addLine("K (ppm)", fmtNutrient(info.potassium.value,  "K", ppm.K))
-    box:addLine("pH",      string.format("%.1f", info.pH))
-    box:addLine("OM",      string.format("%.1f%%", info.organicMatter))
-    if weedPct    > 0 then box:addLine(g_i18n:getText("sf_hud_weeds")      or "Weed Risk",  pressureLine(weedPct,    info.herbicideActive))  end
-    if pestPct    > 0 then box:addLine(g_i18n:getText("sf_hud_pests")      or "Pests",      pressureLine(pestPct,    info.insecticideActive)) end
-    if diseasePct > 0 then box:addLine(g_i18n:getText("sf_hud_disease")    or "Disease",    pressureLine(diseasePct, info.fungicideActive))   end
-    if compPct    > 0 then
-        -- g_i18n:formatText() does not exist in FS25; use string.format with getText instead
-        local label = g_i18n:hasText("sf_hud_compaction") and string.format(g_i18n:getText("sf_hud_compaction"), compPct) or string.format("Compaction: %d%%", compPct)
-        box:addLine(label, "") -- Add as a single line since the label has the value
-    end
-    box:addLine(g_i18n:getText("sf_fieldinfo_needs") or "Needs",
-        #needs > 0 and table.concat(needs, ", ") or (g_i18n:getText("sf_report_rec_optimal") or "All good"))
 
     box:showNextFrame()
 end

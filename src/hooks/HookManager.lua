@@ -150,6 +150,13 @@ function HookManager:installAll(soilSystem)
     local ownershipOk = self:installOwnershipHook()
     if ownershipOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Native FIELD INFO injection: appends soil grade/yield/N-P-K/etc rows directly into
+    -- the base game's own FIELD INFO panel (PlayerHUDUpdater.fieldAddFarmland), instead of
+    -- a separate floating panel. Client-only; no-ops server-side / when PlayerHUDUpdater
+    -- isn't available.
+    local nativeFieldInfoOk = self:installNativeFieldInfoHook()
+    if nativeFieldInfoOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Weather/environment effects
     local weatherOk = self:installWeatherHook()
     if weatherOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -3265,6 +3272,507 @@ function HookManager:installOwnershipHook()
 
     SoilLogger.info("[OK] Field ownership hook installed (MessageType.FARMLAND_OWNER_CHANGED)")
     return true
+end
+
+-- =========================================================
+-- HOOK: Native FIELD INFO injection
+-- =========================================================
+-- Appends our soil rows directly into the base game's own FIELD INFO box instead of
+-- spawning a separate panel.
+--
+-- PlayerHUDUpdater.fieldAddFarmland(hudUpdater, data, box) is the base-game function that
+-- populates the FIELD INFO box (owner, size, soil type…) whenever the player/vehicle is on
+-- farmland. `box` is the live InfoDisplayKeyValueBox the base game is already drawing this
+-- frame. Utils.appendedFunction runs our callback AFTER the base game's own logic, with the
+-- same arguments, so we can call box:addLine(...) again to tack our rows onto the SAME box.
+-- We never call box:clear()/box:setTitle() — that would wipe the base game's own rows.
+---@return boolean success True if hook installed successfully
+function HookManager:installNativeFieldInfoHook()
+    if PlayerHUDUpdater == nil or PlayerHUDUpdater.fieldAddFarmland == nil then
+        SoilLogger.warning("Could not install native field info hook - PlayerHUDUpdater.fieldAddFarmland not available")
+        return false
+    end
+
+    local hookManagerSelf = self -- captured upvalue for getFieldIdAtWorldPosition's cache
+
+    --- Resolves a vehicle's world (x, z). Tries rootNode first, then falls back to
+    --- components[1].node — some vehicle types (notably certain implements/trailers) don't
+    --- expose rootNode directly. This gap (no components[1] fallback) in an earlier version
+    --- of this hook was the most likely cause of silent fieldId-resolution failures.
+    local function getVehiclePositionXZ(vehicle)
+        if vehicle == nil then
+            return nil, nil
+        end
+
+        local node = vehicle.rootNode
+        if node == nil and vehicle.components ~= nil and vehicle.components[1] ~= nil then
+            node = vehicle.components[1].node
+        end
+        if node == nil then
+            return nil, nil
+        end
+
+        local ok, x, _, z = pcall(getWorldTranslation, node)
+        if ok then return x, z end
+        return nil, nil
+    end
+
+    --- Resolves the world (x, z) the player is currently associated with — controlled
+    --- vehicle first (covers driving/standing-in), then the on-foot player root node.
+    --- Mirrors the proven SoilWorkYieldBonus:getPlayerPositionXZ() priority order exactly.
+    local function getPlayerOrVehiclePositionXZ()
+        if g_currentMission ~= nil and g_currentMission.controlledVehicle ~= nil then
+            local x, z = getVehiclePositionXZ(g_currentMission.controlledVehicle)
+            if x ~= nil then return x, z end
+        end
+
+        if g_localPlayer ~= nil and g_localPlayer.rootNode ~= nil then
+            local ok, x, _, z = pcall(getWorldTranslation, g_localPlayer.rootNode)
+            if ok then return x, z end
+        end
+
+        return nil, nil
+    end
+
+    --- Pulls a numeric fieldId out of an arbitrary "field-like" value: a raw id, an object
+    --- with getId()/.fieldId/.id, or (last resort) any nested table carrying .fieldId/.id.
+    --- Ported from the proven SoilWorkYieldBonus:getFieldIdFromFieldValue().
+    local function getFieldIdFromFieldValue(field)
+        if field == nil then return nil end
+        if type(field) == "number" then return field end
+        if type(field) ~= "table" then return nil end
+
+        if field.getId ~= nil then
+            local ok, fieldId = pcall(field.getId, field)
+            if ok and fieldId ~= nil then return fieldId end
+        end
+        if field.fieldId ~= nil then return field.fieldId end
+        if field.id ~= nil then return field.id end
+
+        for _, value in pairs(field) do
+            if type(value) == "table" then
+                local fieldId = value.fieldId or value.id
+                if fieldId ~= nil then return fieldId end
+            end
+        end
+
+        return nil
+    end
+
+    --- Ported from SoilWorkYieldBonus:getFarmlandIdFromValue().
+    local function getFarmlandIdFromValue(farmland)
+        if farmland == nil then return nil end
+        if type(farmland) == "number" then return farmland end
+        if type(farmland) ~= "table" then return nil end
+        return farmland.id or farmland.farmlandId
+    end
+
+    --- Resolves a fieldId from a farmlandId (or farmland object), trying the field manager's
+    --- farmland→field mapping first, then the farmland's own .field, falling back to treating
+    --- the farmlandId as the fieldId directly (true on most FS25 maps).
+    --- Ported from SoilWorkYieldBonus:getFieldIdByFarmlandId().
+    local function getFieldIdByFarmlandId(farmlandId)
+        if farmlandId == nil then return nil end
+
+        local farmland = nil
+        if type(farmlandId) == "table" then
+            farmland = farmlandId
+            farmlandId = getFarmlandIdFromValue(farmland)
+        end
+        if farmlandId == nil then return nil end
+
+        local field = nil
+        if g_fieldManager ~= nil and g_fieldManager.farmlandIdFieldMapping ~= nil then
+            field = g_fieldManager.farmlandIdFieldMapping[farmlandId]
+        end
+
+        local fieldId = getFieldIdFromFieldValue(field)
+        if fieldId ~= nil then return fieldId end
+
+        if g_farmlandManager ~= nil and g_farmlandManager.getFarmlandById ~= nil then
+            farmland = farmland or g_farmlandManager:getFarmlandById(farmlandId)
+            if farmland ~= nil then
+                fieldId = getFieldIdFromFieldValue(farmland.field)
+                if fieldId ~= nil then return fieldId end
+            end
+        end
+
+        return farmlandId
+    end
+
+    --- Pulls a fieldId directly out of the `data` argument fieldAddFarmland is called with —
+    --- i.e. the exact subject the FIELD INFO box is about to display, regardless of what world
+    --- position we could or couldn't resolve. This is the fallback that matters most: position
+    --- lookups can miss (elevated cabs, odd vehicle node hierarchies, MapDataGrid cache misses),
+    --- but `data` already IS the field being shown. Ported from
+    --- SoilWorkYieldBonus:getFieldIdFromFieldInfoData().
+    local function getFieldIdFromFieldInfoData(data)
+        if data == nil then return nil end
+        if data.fieldId ~= nil then return data.fieldId end
+
+        local fieldId = getFieldIdFromFieldValue(data.field)
+        if fieldId ~= nil then return fieldId end
+
+        fieldId = getFieldIdFromFieldValue(data.fieldData)
+        if fieldId ~= nil then return fieldId end
+
+        if data.farmland ~= nil then
+            fieldId = getFieldIdFromFieldValue(data.farmland.field)
+            if fieldId ~= nil then return fieldId end
+
+            fieldId = getFieldIdByFarmlandId(data.farmland)
+            if fieldId ~= nil then return fieldId end
+
+            if data.farmland.id ~= nil then
+                fieldId = getFieldIdByFarmlandId(data.farmland.id)
+                if fieldId ~= nil then return fieldId end
+            end
+        end
+
+        if data.farmlandId ~= nil then
+            fieldId = getFieldIdByFarmlandId(data.farmlandId)
+            if fieldId ~= nil then return fieldId end
+        end
+
+        return nil
+    end
+
+    --- PlayerHUDUpdater.fieldAddFarmland's exact parameter order isn't guaranteed to match
+    --- across FS25 builds/patches (and the (hudUpdater, data, box) order quoted in third-party
+    --- examples may simply be wrong for this version). Rather than assume a position, scan the
+    --- call args for whichever one actually quacks like an InfoDisplayKeyValueBox.
+    local function findBoxArg(...)
+        for i = 1, select("#", ...) do
+            local arg = select(i, ...)
+            if type(arg) == "table" and type(arg.addLine) == "function" then
+                return arg
+            end
+        end
+        return nil
+    end
+
+    --- Maps which native hook call each buildFieldInfoLines() row group is appended after --
+    --- "early" rows land right after the native Farmland/Owned by rows (fieldAddFarmland),
+    --- "late" rows land right after the native Crop type/Growth rows (fieldAddFruit). Must be
+    --- declared before onFieldAddFarmland below, since it's captured as an upvalue there.
+    local GROUP_FOR_SOURCE = {
+        fieldAddFarmland = "early",
+        fieldAddFruit    = "late",
+    }
+
+    local function onFieldAddFarmland(sourceFnName, hudUpdater, data, box, ...)
+        if hookManagerSelf._nativeFieldInfoFired == nil then
+            hookManagerSelf._nativeFieldInfoFired = {}
+        end
+        if hookManagerSelf._nativeFieldInfoFired[sourceFnName] ~= true then
+            hookManagerSelf._nativeFieldInfoFired[sourceFnName] = true
+            SoilLogger.info("Native field info hook: PlayerHUDUpdater.%s fired for the first time (argc=%d)",
+                sourceFnName, select("#", hudUpdater, data, box, ...))
+        end
+
+        -- Prefer the documented (hudUpdater, data, box) order — that's what the proven
+        -- SoilWorkYieldBonus mod relies on. Only fall back to scanning if it doesn't hold,
+        -- as a safety net against a base-game signature change.
+        if not (type(box) == "table" and type(box.addLine) == "function") then
+            box = findBoxArg(hudUpdater, data, box, ...)
+        end
+
+        if box == nil then
+            if hookManagerSelf._nativeFieldInfoDiagCount == nil then
+                hookManagerSelf._nativeFieldInfoDiagCount = 0
+            end
+            if hookManagerSelf._nativeFieldInfoDiagCount < 5 then
+                hookManagerSelf._nativeFieldInfoDiagCount = hookManagerSelf._nativeFieldInfoDiagCount + 1
+                local argTypes = {}
+                for i, arg in ipairs({hudUpdater, data, box, ...}) do
+                    table.insert(argTypes, string.format("arg%d=%s", i, type(arg)))
+                end
+                SoilLogger.warning("Native field info hook: fieldAddFarmland fired but no addLine-capable arg found (%s) — base game signature may not match; injection skipped",
+                    table.concat(argTypes, ", "))
+            end
+            return
+        end
+
+        if g_SoilFertilityManager == nil
+            or g_SoilFertilityManager.soilSystem == nil
+            or g_SoilFertilityManager.settings == nil
+            or g_SoilFertilityManager.settings.enabled == false
+            or g_SoilFertilityManager.settings.showFieldInfoBox == false then
+            return
+        end
+
+        -- fieldId resolution: position first (matches what's actually under the player/
+        -- vehicle), then fall back to pulling it straight out of `data` — the exact subject
+        -- the box is already displaying. Order ported from the proven SoilWorkYieldBonus mod.
+        local fieldId = nil
+        local x, z = getPlayerOrVehiclePositionXZ()
+        if x ~= nil then
+            fieldId = hookManagerSelf:getFieldIdAtWorldPosition(x, z)
+        end
+        if fieldId == nil then
+            fieldId = getFieldIdFromFieldInfoData(data)
+        end
+
+        if fieldId == nil then
+            if hookManagerSelf._nativeFieldInfoFieldIdDiagCount == nil then
+                hookManagerSelf._nativeFieldInfoFieldIdDiagCount = 0
+            end
+            if hookManagerSelf._nativeFieldInfoFieldIdDiagCount < 5 then
+                hookManagerSelf._nativeFieldInfoFieldIdDiagCount = hookManagerSelf._nativeFieldInfoFieldIdDiagCount + 1
+                SoilLogger.warning("Native field info hook: box found but fieldId could not be resolved (position=%s, data=%s)",
+                    tostring(x ~= nil), tostring(data ~= nil))
+            end
+            return
+        end
+
+        local info = g_SoilFertilityManager.soilSystem:getFieldInfo(fieldId)
+        if info == nil then
+            return
+        end
+
+        -- Reuse the same line-building logic the (legacy) standalone Soil Nutrients panel
+        -- used, so the two never drift out of sync. soilHUD is only created client-side
+        -- (see SoilFertilityManager init), which matches where this hook actually fires.
+        if g_SoilFertilityManager.soilHUD == nil or g_SoilFertilityManager.soilHUD.buildFieldInfoLines == nil then
+            return
+        end
+
+        local lines = g_SoilFertilityManager.soilHUD:buildFieldInfoLines(info)
+        -- Skip our own deficit-style "Yield" row here -- when the native-row override
+        -- above (see installFieldInfoFn) successfully matched and replaced the vanilla
+        -- "Yield bonus" row, that row already shows our number; a second appended Yield
+        -- row would just be confusing duplicate information. If the override could not
+        -- find a native row to replace (e.g. unmatched language string), we still show
+        -- this row as a fallback so the data is not lost entirely.
+        local yieldRowLabel = g_i18n:getText("sf_fieldinfo_yield") or "Yield"
+        -- Only add the subset of rows that belong at this insertion point -- the native box
+        -- updates an existing label in place rather than re-inserting it, so a row's on-screen
+        -- position is fixed by whichever call first creates it. "early" rows go right after
+        -- Farmland/Owned by (this is the fieldAddFarmland pass); "late" rows go right after
+        -- Crop type/Growth (the fieldAddFruit pass). See GROUP_FOR_SOURCE below.
+        local expectedGroup = GROUP_FOR_SOURCE[sourceFnName]
+        for _, line in ipairs(lines) do
+            if (expectedGroup == nil or line.group == expectedGroup)
+                and (line.label ~= yieldRowLabel or hookManagerSelf._nativeYieldRowOverridden ~= true) then
+                box:addLine(line.label, line.value)
+            end
+        end
+    end
+
+    --- Heuristic fragments used to spot the vanilla "Yield bonus" row by its (already
+    --- localized) label text. We do not have the base game l10n keys for every language,
+    --- so this is matched case-insensitively as a substring rather than an exact key.
+    --- If your client language is not matching, enable debug logging: the first ~20
+    --- unmatched row labels seen by the hook get logged so you can add the right
+    --- fragment for your language here.
+    local YIELD_LABEL_FRAGMENTS = {
+        "yield",        -- en
+        "ertrag",       -- de
+        "rendement",    -- fr / nl
+        "rendimiento",  -- es
+        "resa",         -- it
+        "rendimento",   -- pt / br
+        "plon",         -- pl
+        "vynos",        -- cz / sk (ascii fallback for "výnos")
+        "hozam",        -- hu
+        "urodzaj",      -- pl (alt)
+        "skord",        -- sv (ascii fallback for "skörd")
+        "avling",       -- no / da
+    }
+
+    local function isYieldBonusLabel(label)
+        if type(label) ~= "string" then return false end
+        local lower = string.lower(label)
+        for _, frag in ipairs(YIELD_LABEL_FRAGMENTS) do
+            if string.find(lower, frag, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+
+    --- Heuristic fragments used to spot (and suppress) the vanilla "Fertilized" row by its
+    --- (already localized) label text, same approach as YIELD_LABEL_FRAGMENTS above. Per
+    --- user preference this row is dropped from the FIELD INFO box entirely.
+    local FERTILIZED_LABEL_FRAGMENTS = {
+        "fertili",      -- en / fr (fertilisé) / es (fertilizado) / it (fertilizzato) / pt (fertilizado)
+        "gedungt",      -- de (ascii fallback for "gedüngt")
+        "bemest",       -- nl
+        "nawoz",        -- pl (nawożenie / nawożone)
+        "pohnojen",     -- cz / sk
+        "tragya",       -- hu (ascii fallback for "trágyázott")
+        "godsl",        -- sv (ascii fallback for "gödslad")
+        "gjods",        -- no (ascii fallback for "gjødslet")
+        "godet",        -- da
+    }
+
+    local function isFertilizedLabel(label)
+        if type(label) ~= "string" then return false end
+        local lower = string.lower(label)
+        for _, frag in ipairs(FERTILIZED_LABEL_FRAGMENTS) do
+            if string.find(lower, frag, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+
+    --- Wraps a single PlayerHUDUpdater function (by name) so we can intercept the box
+    --- BEFORE the native call writes its own "Yield bonus" row, replace that row's
+    --- displayed value with our own field-average yieldEfficiency (the same number that
+    --- drives the actual harvest reduction via computeYieldModifier), then append our
+    --- remaining soil rows afterward. A plain Utils.appendedFunction can only run AFTER
+    --- the original and can't edit a row the original already drew, so this installs a
+    --- full replacement function instead and calls `original` itself via pcall.
+    local function installFieldInfoFn(functionName, appendRows)
+        if appendRows == nil then appendRows = true end
+        if PlayerHUDUpdater[functionName] == nil then
+            SoilLogger.warning("Could not install native field info hook on PlayerHUDUpdater.%s - not available", functionName)
+            return false
+        end
+
+        local original = PlayerHUDUpdater[functionName]
+
+        PlayerHUDUpdater[functionName] = function(hudUpdater, data, box, ...)
+            -- Resolve the real box arg up front (same scan onFieldAddFarmland uses) so we
+            -- can wrap its addLine before calling the original.
+            local realBox = box
+            if not (type(realBox) == "table" and type(realBox.addLine) == "function") then
+                realBox = findBoxArg(hudUpdater, data, box, ...)
+            end
+
+            hookManagerSelf._nativeYieldRowOverridden = false
+
+            local restoreAddLine  = nil
+            local replacementText = nil
+            local matchedLabel    = nil
+
+            if realBox ~= nil
+                and g_SoilFertilityManager ~= nil
+                and g_SoilFertilityManager.soilSystem ~= nil
+                and g_SoilFertilityManager.settings ~= nil
+                and g_SoilFertilityManager.settings.enabled ~= false
+                and g_SoilFertilityManager.settings.showFieldInfoBox ~= false then
+
+                local fieldId = nil
+                local x, z = getPlayerOrVehiclePositionXZ()
+                if x ~= nil then
+                    fieldId = hookManagerSelf:getFieldIdAtWorldPosition(x, z)
+                end
+                if fieldId == nil then
+                    fieldId = getFieldIdFromFieldInfoData(data)
+                end
+
+                if fieldId ~= nil then
+                    local info = g_SoilFertilityManager.soilSystem:getFieldInfo(fieldId)
+                    if info ~= nil then
+                        if info.yieldEfficiency ~= nil then
+                            replacementText = string.format("%d%%", math.floor(info.yieldEfficiency + 0.5))
+                        end
+
+                        local origAddLine = realBox.addLine
+                        restoreAddLine = function() realBox.addLine = origAddLine end
+
+                        realBox.addLine = function(selfBox, label, value, ...)
+                            if replacementText ~= nil and matchedLabel == nil and isYieldBonusLabel(label) then
+                                matchedLabel = label
+                                SoilLogger.debug("Native field info hook: overriding native yield row '%s' (%s -> %s)",
+                                    tostring(label), tostring(value), replacementText)
+                                value = replacementText
+                            elseif isFertilizedLabel(label) then
+                                -- Drop the base game's own "Fertilized" row entirely (per user
+                                -- preference) -- skip calling origAddLine so it never appears.
+                                SoilLogger.debug("Native field info hook: suppressing native Fertilized row '%s' (%s)",
+                                    tostring(label), tostring(value))
+                                return
+                            else
+                                if hookManagerSelf._nativeFieldInfoLabelDiagCount == nil then
+                                    hookManagerSelf._nativeFieldInfoLabelDiagCount = 0
+                                end
+                                if hookManagerSelf._nativeFieldInfoLabelDiagCount < 20 then
+                                    hookManagerSelf._nativeFieldInfoLabelDiagCount = hookManagerSelf._nativeFieldInfoLabelDiagCount + 1
+                                    SoilLogger.debug("Native field info hook: row seen label='%s' value='%s'", tostring(label), tostring(value))
+                                end
+                            end
+                            return origAddLine(selfBox, label, value, ...)
+                        end
+                    end
+                end
+            end
+
+            local ok, errorMsg = pcall(original, hudUpdater, data, box, ...)
+            if not ok then
+                SoilLogger.error("Native field info hook (%s) failed in original call: %s", functionName, tostring(errorMsg))
+            end
+
+            if restoreAddLine then restoreAddLine() end
+
+            if replacementText ~= nil then
+                if matchedLabel ~= nil then
+                    hookManagerSelf._nativeYieldRowOverridden = true
+                elseif hookManagerSelf._nativeYieldNoMatchWarned ~= true then
+                    hookManagerSelf._nativeYieldNoMatchWarned = true
+                    SoilLogger.warning("Native field info hook (%s): no native yield-bonus row matched our label heuristic -- it will keep showing vanilla's own number until YIELD_LABEL_FRAGMENTS is extended for your language. Enable debug logging to see the row labels actually seen.", functionName)
+                end
+            end
+
+            -- Append our remaining soil rows (Soil Grade, N/P/K, pH, OM, Needs, etc.) -- only
+            -- for the functions we know own a slot for them. Other discovered field* functions
+            -- (see below) are wrapped purely to catch and suppress/override native rows like
+            -- "Fertilized" or "Yield bonus", without injecting our own rows a second time.
+            if appendRows then
+                local appendOk, appendErr = pcall(onFieldAddFarmland, functionName, hudUpdater, data, box, ...)
+                if not appendOk then
+                    SoilLogger.error("Native field info hook (%s) failed: %s", functionName, tostring(appendErr))
+                end
+            end
+        end
+
+        self:register(PlayerHUDUpdater, functionName, original, "PlayerHUDUpdater." .. functionName .. " (native soil info injection)")
+        SoilLogger.info("[OK] Native FIELD INFO injection hook installed (PlayerHUDUpdater.%s)", functionName)
+        return true
+    end
+
+    -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddFruit owns the
+    -- crop/yield-state rows (Crop type/Growth/Yield-bonus/Weed/Needs lime) — the
+    -- ones our soil data is actually relevant alongside. A confirmed working reference
+    -- (FS22_CropRotation, github.com/bodzio528/FS22_CropRotation) hooks fieldAddFruit
+    -- specifically for this kind of row, with the identical (updater, data, box) signature.
+    -- We hook both: harmless if one is a no-op for this box, and avoids re-guessing again
+    -- if a future base-game patch moves things around.
+    local farmlandHookOk = installFieldInfoFn("fieldAddFarmland", true)
+    local fruitHookOk    = installFieldInfoFn("fieldAddFruit", true)
+
+    -- The native "Fertilized" row isn't guaranteed to come from fieldAddFruit on every FS25
+    -- build -- that assumption was ported from an FS22 mod and may not hold here. Rather than
+    -- guess another exact function name, scan PlayerHUDUpdater for every other function whose
+    -- name looks like it's part of building this same FIELD INFO box (starts with "field") and
+    -- wrap it too, purely to catch/suppress native rows via the addLine override above (no
+    -- extra rows of our own are appended through these -- see appendRows=false). This makes
+    -- the Fertilized suppression resilient to whichever function actually adds that row.
+    local extraHookCount = 0
+    if type(PlayerHUDUpdater) == "table" then
+        local extraNames = {}
+        for key, value in pairs(PlayerHUDUpdater) do
+            if type(key) == "string" and type(value) == "function"
+                and key ~= "fieldAddFarmland" and key ~= "fieldAddFruit"
+                and string.find(string.lower(key), "^field") then
+                table.insert(extraNames, key)
+            end
+        end
+        table.sort(extraNames)
+        for _, name in ipairs(extraNames) do
+            if installFieldInfoFn(name, false) then
+                extraHookCount = extraHookCount + 1
+            end
+        end
+        if extraHookCount > 0 then
+            SoilLogger.info("Native field info hook: also wrapped %d additional PlayerHUDUpdater.field* function(s) for Fertilized-row suppression: %s",
+                extraHookCount, table.concat(extraNames, ", "))
+        end
+    end
+
+    return farmlandHookOk or fruitHookOk or extraHookCount > 0
 end
 
 -- =========================================================

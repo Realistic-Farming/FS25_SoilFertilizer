@@ -24,16 +24,17 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- NEW: Fields now catch named, crop-specific fungal diseases",
+    "- Fields now catch named, crop-specific fungal diseases",
     "- Scout a field (Shift+K) to identify the disease and the best fungicide to use",
     "- 23 real fungicides, each with per-disease effectiveness, timing & weather rules",
     "- Match the right chemical to the disease, the wrong one only half works",
     "- Crop rotation and soil health now raise or lower disease pressure",
     "- New Disease Difficulty setting: Easy / Normal / Hard",
     "- Console: SoilScout, SoilTreat, SoilFungicides, SoilSetDiseaseDifficulty",
-    "- FIX: Field compaction can no longer read above 100%, the average is now capped",
-    "- FIX: Precision Farming is now detected only when it is actually enabled for your save, not just installed in the mods folder",
-    "- FIX: Soil Monitor and applied nutrients now follow the product physically in the tank, even when AI or Courseplay is driving",
+    "- Field compaction can no longer read above 100%, the average is now capped",
+    "- Precision Farming is now detected only when it is actually enabled for your save, not just installed in the mods folder",
+    "- Soil Monitor and applied nutrients now follow the product physically in the tank, even when AI or Courseplay is driving",
+    "- Field Info box refactored (removed redundant info and added new info lines)"
 }
 
 -- ── i18n helper ───────────────────────────────────────────

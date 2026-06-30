@@ -700,6 +700,9 @@
     <e k="sf_fieldinfo_grade" v="Soil Grade" eh="65d1be5f" />
     <e k="sf_fieldinfo_yield" v="Yield" eh="97345487" />
     <e k="sf_fieldinfo_rotation" v="Rotation" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_disease" v="Active Disease" />
+    <e k="sf_fieldinfo_burn_risk" v="Amend. burn risk" />
+    <e k="sf_fieldinfo_sim_status" v="Sim Status" />
     <e k="sf_fieldinfo_needs" v="Needs" eh="94d6125d" />
     <e k="sf_field" v="Field" eh="6f16a5f8" />
     <e k="sf_no_field" v="No field selected" eh="717ff56f" />
@@ -1007,9 +1010,10 @@
     <e k="sf_guide_tab_4" v="PRODUCTS" eh="d71bd8a0" />
     <e k="sf_guide_tab_5" v="F.A.Q." eh="a922ea47" />
     <e k="sf_report_fields_tracked"   v="Fields Tracked:" />
-    <e k="sf_report_rotation_bonus"   v="Rotation Bonus" />
+    <e k="sf_report_rotation_bonus"   v="Bonus" />
     <e k="sf_report_rotation_fatigue" v="Fatigue: same crop" eh="7b173595" />
-    <e k="sf_report_rotation_ok"      v="Rotation: OK" />
+    <e k="sf_report_rotation_ok"      v="OK" />
+    <e k="sf_report_rotation_na"      v="N/A" />
     <e k="sf_report_rec_optimal"      v="Soil Health: Optimal" />
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
