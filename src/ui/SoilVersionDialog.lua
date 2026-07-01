@@ -32,10 +32,12 @@ SoilVersionDialog.CHANGELOG = {
     "- New Disease Difficulty setting: Easy / Normal / Hard",
     "- Console: SoilScout, SoilTreat, SoilFungicides, SoilSetDiseaseDifficulty",
     "- Field compaction can no longer read above 100%, the average is now capped",
+    "- High compaction now actually cuts yield (up to 15%), even with nutrients topped up",
     "- Precision Farming is now detected only when it is actually enabled for your save, not just installed in the mods folder",
     "- Soil Monitor and applied nutrients now follow the product physically in the tank, even when AI or Courseplay is driving",
     "- Field Info box refactored (removed redundant info and added new info lines)",
-    "- All help texts and documentation are now in sync"
+    "- All help texts and documentation are now in sync",
+    "- Added a Simplified Chinese translation (中文)"
 }
 
 -- ── i18n helper ───────────────────────────────────────────
