@@ -360,7 +360,6 @@ Open the developer console with **`~`** and type `soilfertility` for the full li
 | `SoilSaveData` | - | Force-save soil state now |
 | `SoilDebug` | - | Toggle verbose debug logging |
 | `soilSetState` | `<fieldId> <N> <P> <K> <pH> <OM>` | Directly set a field's soil values (advanced) |
-| `SoilPFDump` | - | Dump the Precision Farming bridge state (diagnostics) |
 
 ---
 

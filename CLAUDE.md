@@ -374,7 +374,6 @@ Type `soilfertility` in the developer console (`~` key) for the full list. Key c
 | `SoilSaveData` | Force save soil data |
 | `SoilDrainVehicle` | Drain custom fill types from vehicle + implements (50% refund) |
 | `soilSetState <fieldId> <N> <P> <K> <pH> <OM>` | Directly set a field's soil values |
-| `SoilPFDump` | Dump Precision Farming bridge diagnostics |
 | `SoilSprayerDebug` | Toggle sprayer debug logging |
 | `SoilDebug` | Toggle debug mode |
 
@@ -418,22 +417,13 @@ Every new fill type (liquid or solid) must be registered in **all** of the locat
 | 11 | `installFillTypeMaterialHook()` | `PER_TYPE_PRIORITIES` (solid only) - visual texture priority |
 | 12 | `installPurchaseRefillHook()` | `ALL_CUSTOM_NAMES` + `FALLBACK_PRICES` |
 
-### modDesc.xml - thPFConfig (2 entries)
-| # | Section | What to add |
-|---|---------|-------------|
-| 13 | `<thPFConfig><sprayTypes>` | Full `<sprayType>` block with rates and `<fertilizerUsage>` |
-| 14 | `<thPFConfig><sprayTypeMapping>` | `<sprayType name="..." group="FERTILIZER" isLiquid="..."/>` |
-
-### PrecisionFarmingBridge.lua (high-N products only)
-| # | Location | What to add |
-|---|----------|-------------|
-| 15 | `SF_FILL_TYPE_N_AMOUNTS` | kg N per litre - only for primary-N products (≥20% N); skip P/K compounds |
+Note: Soil & Fertilizer has zero Precision Farming integration. Do NOT add a `<thPFConfig>` block to modDesc.xml or a `SF_FILL_TYPE_N_AMOUNTS` entry for a new fill type. SF stands down when PF is active; it never feeds fill types to PF.
 
 ### Objects & UI
 | # | Location | What to add |
 |---|----------|-------------|
-| 16 | `objects/bigBag/<type>/` | BigBag + multiPurchase XML files if purchasable |
-| 17 | `src/ui/SoilVersionDialog.lua` | Add CHANGELOG bullet |
+| 13 | `objects/bigBag/<type>/` | BigBag + multiPurchase XML files if purchasable |
+| 14 | `src/ui/SoilVersionDialog.lua` | Add CHANGELOG bullet |
 
 ---
 

@@ -25,7 +25,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     self.disableGUI = disableGUI or false
     self.lastSeenVersion = ""
 
-    -- PF bridge (created early so SoilPFDump works before deferred init fires)
+    -- PF detector (holds detection state; initialize() runs in the deferred init phase)
     self.pfBridge = PrecisionFarmingBridge and PrecisionFarmingBridge:new() or nil
     self.hasPrecisionFarming = false
 

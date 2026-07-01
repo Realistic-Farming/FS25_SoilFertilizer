@@ -43,7 +43,6 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilSaveData", "Force save soil data", "consoleCommandSaveData", self)
     addConsoleCommand("SoilDebug", "Toggle debug mode", "consoleCommandDebug", self)
     addConsoleCommand("SoilDrainVehicle", "Drain custom fertilizer from current vehicle/implements (50% refund)", "consoleCommandDrainVehicle", self)
-    addConsoleCommand("SoilPFDump", "Dump Precision Farming bridge API for integration diagnostics", "consoleCommandPFDump", self)
     addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
@@ -82,7 +81,6 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilSaveData - Force save soil data")
     print("SoilDebug - Toggle debug mode")
     print("SoilDrainVehicle - Drain custom fertilizer from vehicle/implements (50% refund)")
-    print("SoilPFDump - Dump Precision Farming API for integration diagnostics")
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
     print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
@@ -1024,11 +1022,3 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
         rerolled, skipped)
 end
 
-function SoilSettingsGUI:consoleCommandPFDump()
-    if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
-        g_SoilFertilityManager.pfBridge:dumpApi()
-        return "PF dump written - check the console output above"
-    end
-    print("[SoilPFDump] SF bridge not yet initialised - load a savegame first, then run SoilPFDump")
-    return "Bridge not ready - load savegame first"
-end

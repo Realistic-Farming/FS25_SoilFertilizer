@@ -288,11 +288,6 @@ function HookManager:installAll(soilSystem)
     -- Hooks onUpdateTick (event listener, dynamic dispatch) so it reaches all vehicles.
     self:installSprayerVisualEffectHook()
 
-    -- Guard PF NitrogenMap against divide-by-zero when a zero-N fill type (e.g. LIQUID_POTASH)
-    -- is loaded in a sprayer. PF's getFertilizerUsageByNitrogenAmount divides by the fill type's
-    -- N content, which is 0 for K-only and P-only products. Optional: no-op when PF is absent.
-    self:installPFNitrogenMapHook()
-
     -- Smart Soil Sensor: per-section spray suppression based on SF soil data.
     -- Appended AFTER installDensityMapSprayHook so cleanup unwinds correctly.
     self:installSectionControlHook()
@@ -6383,34 +6378,6 @@ function HookManager:installClientJoinHook()
     -- Store reference so uninstallAll can remove it
     self._clientJoinListener = listener
     SoilLogger.info("[OK] Client join hook installed (addModEventListener/onClientJoined)")
-    return true
-end
-
--- =========================================================
--- HOOK 13: PF NitrogenMap zero-N guard
--- =========================================================
---- Wraps NitrogenMap.getFertilizerUsageByNitrogenAmount in a pcall so that
---- zero-N fill types (LIQUID_POTASH, POTASH) don't cause a divide-by-zero crash
---- in PrecisionFarming's sprayer HUD. No-op when PF is not installed.
----@return boolean success
-function HookManager:installPFNitrogenMapHook()
-    if type(NitrogenMap) ~= "table" or
-       type(NitrogenMap.getFertilizerUsageByNitrogenAmount) ~= "function" then
-        SoilLogger.info("[PFNitrogenGuard] NitrogenMap not found - PF absent or API changed, skipping")
-        return true  -- not a failure; PF just isn't installed
-    end
-
-    local orig = NitrogenMap.getFertilizerUsageByNitrogenAmount
-    NitrogenMap.getFertilizerUsageByNitrogenAmount = function(self, ...)
-        local ok, result = pcall(orig, self, ...)
-        if not ok then
-            return 0
-        end
-        return result
-    end
-    self:register(NitrogenMap, "getFertilizerUsageByNitrogenAmount", orig,
-                  "NitrogenMap.getFertilizerUsageByNitrogenAmount")
-    SoilLogger.info("[OK] PF NitrogenMap zero-N guard installed")
     return true
 end
 

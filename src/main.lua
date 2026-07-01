@@ -661,7 +661,6 @@ function soilfertility()
         print("SoilSaveData - Force save soil data")
         print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
         print("SoilRerollUnownedFields - Re-roll starting soil for fields you don't own (keeps your own)")
-        print("SoilPFDump - Dump Precision Farming API (for integration diagnostics)")
         print("")
         print("NOTE: In multiplayer, only server admins can change settings")
         print("================================")
@@ -677,7 +676,7 @@ function soilStatus()
         local isClient = g_client ~= nil
 
         local pfBridge = g_SoilFertilityManager.pfBridge
-        local pfStatus = (pfBridge and pfBridge.isActive) and "ACTIVE (N/pH deferred to PF)" or "not detected"
+        local pfStatus = (pfBridge and pfBridge.isActive) and "ACTIVE - SF disabled" or "not detected"
         print(string.format(
             "=== Soil & Fertilizer Status ===\n" ..
             "Mode: %s\n" ..
@@ -755,22 +754,10 @@ function SoilSprayerDebug()
         tostring(spec._soilEffectsActive), tostring(spec._soilManagedFillType)))
 end
 
--- Dump Precision Farming bridge status and API discovery to the log.
-function SoilPFDump()
-    if g_SoilFertilityManager and g_SoilFertilityManager.pfBridge then
-        g_SoilFertilityManager.pfBridge:dumpApi()
-        return "PF dump written to log (check console output)"
-    end
-    -- Bridge created in SoilFertilityManager.new() so this only happens before mission load.
-    print("[SoilPFDump] SF bridge not yet initialised - load a savegame first, then run SoilPFDump")
-    return "Bridge not ready - load savegame first"
-end
-
 -- Expose global console functions
 getfenv(0)["soilfertility"] = soilfertility
 getfenv(0)["soilStatus"] = soilStatus
 getfenv(0)["SoilSprayerDebug"] = SoilSprayerDebug
-getfenv(0)["SoilPFDump"] = SoilPFDump
 getfenv(0)["soilEnable"] = function()
     if g_SoilFertilityManager and g_SoilFertilityManager.settingsGUI then
         return g_SoilFertilityManager.settingsGUI:consoleCommandSoilEnable()
