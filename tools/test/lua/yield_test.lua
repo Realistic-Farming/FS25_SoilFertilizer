@@ -62,3 +62,46 @@ do
   local m = sys:_yieldModifierFromNutrients(field, UNKNOWN, thresh, thresh, thresh, nil)
   T.near("yield: amendment burn penalty multiplies (0.20 → x0.80)", m, 0.80)
 end
+
+-- Soil compaction cuts yield even with nutrients fully topped up (#713). This is the
+-- exact bug report: high compaction + all nutrients applied was still yielding max.
+local cp = SoilConstants.COMPACTION
+do
+  local sys = newSys()
+  sys.settings.compactionEnabled = true
+  local m = sys:_yieldModifierFromNutrients({ compaction = 100 }, UNKNOWN, thresh, thresh, thresh, nil)
+  T.near("yield: 100% compaction with full nutrients → -YIELD_PENALTY_MAX", m, 1.0 - cp.YIELD_PENALTY_MAX)
+end
+
+-- Penalty scales linearly with compaction.
+do
+  local sys = newSys()
+  sys.settings.compactionEnabled = true
+  local m = sys:_yieldModifierFromNutrients({ compaction = 50 }, UNKNOWN, thresh, thresh, thresh, nil)
+  T.near("yield: 50% compaction is half the max penalty", m, 1.0 - 0.5 * cp.YIELD_PENALTY_MAX)
+end
+
+-- Disabling the setting removes the penalty entirely.
+do
+  local sys = newSys()
+  sys.settings.compactionEnabled = false
+  local m = sys:_yieldModifierFromNutrients({ compaction = 100 }, UNKNOWN, thresh, thresh, thresh, nil)
+  T.near("yield: compaction penalty off when setting disabled", m, 1.0)
+end
+
+-- Stray values above MAX_COMPACTION (e.g. the old 105% reading) are capped.
+do
+  local sys = newSys()
+  sys.settings.compactionEnabled = true
+  local m = sys:_yieldModifierFromNutrients({ compaction = 150 }, UNKNOWN, thresh, thresh, thresh, nil)
+  T.near("yield: compaction penalty caps at MAX_COMPACTION", m, 1.0 - cp.YIELD_PENALTY_MAX)
+end
+
+-- Grass / non-crop fields are exempt from the compaction penalty too.
+do
+  local grassName = next(ys.NON_CROP_NAMES)
+  local sys = newSys()
+  sys.settings.compactionEnabled = true
+  local m = sys:_yieldModifierFromNutrients({ compaction = 100 }, grassName, thresh, thresh, thresh, nil)
+  T.near("yield: grass ignores compaction penalty", m, 1.0)
+end

@@ -311,6 +311,22 @@ function SoilFertilitySystem:_yieldModifierFromNutrients(field, cropName, nVal, 
         end
     end
 
+    -- Soil compaction yield penalty (#713): compacted soil restricts root growth, so the
+    -- crop yields less even when N/P/K are fully topped up. This is its own setting
+    -- (independent of nutrientCycles) and is skipped for grass/non-crop, matching the
+    -- pressures. It is separate from the extra harvest depletion applied in
+    -- updateFieldNutrients - that hits future fertility, this hits the current crop.
+    if self.settings.compactionEnabled and SoilConstants.COMPACTION and not isGrass then
+        local cp = SoilConstants.COMPACTION
+        local ymax = cp.YIELD_PENALTY_MAX or 0
+        local compaction = math.min(field.compaction or 0, cp.MAX_COMPACTION or 100)
+        if compaction > 0 and ymax > 0 then
+            local penalty = (compaction / 100) * ymax
+            modifier = modifier * (1.0 - penalty)
+            plog("Compaction penalty field %d: compaction=%.0f%% → -%.0f%%", logFieldId, compaction, penalty * 100)
+        end
+    end
+
     -- Amendment burn penalty: lime or OM applied to growing crop (issue #437).
     -- Evaluated read-only here; computeYieldModifier consumes the one-shot after applying it.
     if field.amendBurnPenalty and field.amendBurnPenalty > 0 then

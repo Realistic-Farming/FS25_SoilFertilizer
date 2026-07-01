@@ -20,7 +20,7 @@
 
 Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain washes potassium out of sandy ground. Fallow fields slowly breathe back to life. The numbers you see in the HUD aren't arbitrary, they're the consequence of every harvest, every storm, and every bag of fertilizer you did or didn't apply.
 
-`Singleplayer` • `Multiplayer (server-authoritative)` • `Persistent saves` • `26 languages`
+`Singleplayer` • `Multiplayer (server-authoritative)` • `Persistent saves` • `27 languages`
 
 </div>
 
@@ -164,8 +164,9 @@ gradually reduces how effectively the field can absorb nutrients.
 | **Subsoiler pass** | Any cultivator with `isSubsoiler = true` | −15% compaction per pass |
 | **Natural decay** | Automatically | −0.5% per game day |
 
-At maximum compaction (100%), the field's nutrient extraction penalty reaches **20%** - compacted
-soil binds nutrients and reduces their availability to crops.
+Compaction bites in two ways. It reduces yield directly (up to **15%** at 100% compaction, so a
+compacted field yields less even when N/P/K are fully topped up), and it also makes the crop pull
+harder on the soil, adding up to **20%** extra nutrient depletion at harvest.
 
 The HUD shows compaction as a colour-coded row (green < 20%, amber 20–60%, red > 60%). It also
 appears as **overlay layer 10** on the in-game map. Compaction is saved to `soilData.xml` and

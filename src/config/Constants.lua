@@ -1468,6 +1468,9 @@ SoilConstants.COMPACTION = {
     GRASS_RESTORE_DEBOUNCE_MS = 1000,  -- min gap between whole-field sward restores per field
     MAX_COMPACTION            = 100.0,
     NUTRIENT_PENALTY_MAX      = 0.20,  -- max 20% extra nutrient extraction at max compaction
+    YIELD_PENALTY_MAX         = 0.15,  -- max 15% direct yield loss at max compaction (#713):
+                                       -- compacted soil restricts roots, so the crop yields less
+                                       -- even when N/P/K are topped up. Scales linearly with compaction.
     -- Driving-based compaction: any heavy vehicle moving across a field compacts the
     -- cell under it, whether or not it is working (spraying/harvesting/tilling have
     -- their own hooks too). Sampled on a short timer so the wheels lay a continuous

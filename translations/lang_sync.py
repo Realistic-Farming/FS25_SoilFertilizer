@@ -138,7 +138,7 @@ LANGUAGE_NAMES = {
     'br': 'Portuguese (BR)',
     'pt': 'Portuguese (PT)',
     'cz': 'Czech',
-    'cs': 'Czech (deprecated)',
+    'cs': 'Chinese (Simplified)',
     'uk': 'Ukrainian',
     'nl': 'Dutch',
     'da': 'Danish',

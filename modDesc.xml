@@ -28,6 +28,7 @@
         <jp>リアルな土壌と肥料</jp>
         <ct>真實土壤與肥料</ct>
         <fc>真实土壤与肥料</fc>
+        <cs>真实土壤与肥料</cs>
         <id>Tanah &amp; Pupuk Realistis</id>
         <vi>Đất &amp; Phân Bón Thực Tế</vi>
     </title>
@@ -56,6 +57,7 @@
         <jp>Farming Simulator 25にフィールドごとのリアルな土壌管理を追加します。マップ上のすべてのフィールドの窒素、リン、カリウム、有機物、pHを追跡します。収穫時に栄養素が消費され、肥料、堆肥、石灰で補充されます。雨による溶脱、季節による窒素レベルの変化、放置されたフィールドの自然回復をシミュレートします。リアルタイム土壌HUD、農場全体の土壌レポート（Kキー）、9種類のカスタム肥料タイプを含みます。サーバー権限設定で完全マルチプレイヤー対応。</jp>
         <ct>為 Farming Simulator 25 添加每塊田地的真實土壤管理系統。追蹤地圖上每塊田地的氮、磷、鉀、有機質和 pH 值。收穫時消耗養分；肥料、堆肥和石灰可補充養分。降雨導致養分流失，季節影響氮含量，荒廢的田地會緩慢自然恢復。包含即時土壤 HUD、完整農場土壤報告（K 鍵）和 9 種自訂肥料類型。完整多人遊戲支援。</ct>
         <fc>为 Farming Simulator 25 添加每块田地的真实土壤管理系统。追踪地图上每块田地的氮、磷、钾、有机质和 pH 值。收获时消耗养分；肥料、堆肥和石灰可补充养分。降雨导致养分流失，季节影响氮含量，荒废的田地会缓慢自然恢复。包含实时土壤 HUD、完整农场土壤报告（K 键）和 9 种自定义肥料类型。完整多人游戏支持。</fc>
+        <cs>为 Farming Simulator 25 添加每块田地的真实土壤管理系统。追踪地图上每块田地的氮、磷、钾、有机质和 pH 值。收获时消耗养分；肥料、堆肥和石灰可补充养分。降雨导致养分流失，季节影响氮含量，荒废的田地会缓慢自然恢复。包含实时土壤 HUD、完整农场土壤报告（K 键）和 9 种自定义肥料类型。完整多人游戏支持。</cs>
         <id>Menambahkan manajemen tanah per-lahan yang realistis ke Farming Simulator 25. Melacak Nitrogen, Fosfor, Kalium, Bahan Organik, dan pH untuk setiap lahan di peta. Panen menguras nutrisi; pupuk, pupuk kandang, dan kapur mengisinya kembali. Hujan menyebabkan pencucian, musim mempengaruhi kadar nitrogen, dan lahan yang diabaikan pulih perlahan. Termasuk HUD tanah langsung, laporan tanah pertanian lengkap (tombol K), dan 9 jenis pupuk khusus. Multiplayer penuh.</id>
         <vi>Thêm quản lý đất đai thực tế theo từng thửa ruộng vào Farming Simulator 25. Theo dõi Nitơ, Phốt pho, Kali, Chất hữu cơ và pH cho mỗi thửa ruộng trên bản đồ. Thu hoạch làm cạn kiệt dinh dưỡng; phân bón, phân chuồng và vôi bổ sung lại. Mưa gây rửa trôi, mùa vụ ảnh hưởng đến hàm lượng nitơ và những thửa ruộng bị bỏ hoang dần hồi phục. Bao gồm HUD đất trực tiếp, báo cáo đất đầy đủ của trang trại (phím K) và 9 loại phân bón tùy chỉnh. Hỗ trợ đầy đủ nhiều người chơi.</vi>
     </description>

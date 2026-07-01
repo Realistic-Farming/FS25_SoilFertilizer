@@ -382,7 +382,9 @@ Type `soilfertility` in the developer console (`~` key) for the full list. Key c
 
 ## Localization
 
-All i18n strings are inline in `modDesc.xml` under `<l10n>` (not separate translation files). 26 languages: en, de, fr, nl, it, pl, es, ea, pt, br, ru, uk, cz, hu, ro, tr, fi, no, sv, da, kr, jp, ct, fc, id, vi. Access via `g_i18n:getText("key_name")`.
+All i18n strings live in per-language files under `translations/` (`translation_<code>.xml`), referenced from `modDesc.xml` via `<l10n filenamePrefix="translations/translation" />`. 27 languages: en, de, fr, nl, it, pl, es, ea, pt, br, ru, uk, cz, hu, ro, tr, fi, no, sv, da, kr, jp, ct, cs, fc, id, vi. Access via `g_i18n:getText("key_name")`.
+
+> Chinese codes: `ct` = Traditional. Simplified ships as both `fc` (historical) and `cs` (player-confirmed to load in-game, added in #715 with a real translation). FS25 loads `translation_<suffix>.xml` by the client's language suffix, so shipping both covers whichever suffix a client uses. Put new Simplified work in `cs`; `fc` stays as a fallback.
 
 ---
 
