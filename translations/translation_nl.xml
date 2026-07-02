@@ -716,6 +716,8 @@
     <e k="sf_nav_smart_systems_desc"       v="Slimme sensor, Zie &amp; Sproei en Variabele doseringssystemen configureren" />
     <e k="sf_nav_tuning_label"            v="Constanten afstemeditor" />
     <e k="sf_nav_tuning_desc"             v="Simulatieconstanten fijnafstellen: uitputtingssnelheden, stressgroei, beginwaarden bodem" />
+    <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
+    <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
     <e k="sf_panel_hdr_smart_sensor_sys"   v="Slimme sensorsysteem" />
     <e k="sf_panel_hdr_see_spray_sys"      v="Zie &amp; Sproei systeem" />
     <e k="sf_panel_hdr_var_rate_sys"       v="Variabele doseringssysteem" />

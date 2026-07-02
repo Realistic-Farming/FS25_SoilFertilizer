@@ -245,6 +245,7 @@ local ADMIN_SECTIONS = {
             { stype = "action", id = "nav_vehicle_tools" },
             { stype = "action", id = "nav_smart_systems" },
             { stype = "action", id = "nav_tuning" },
+            { stype = "action", id = "nav_crop_tuning" },
         },
     },
     {
@@ -1740,6 +1741,13 @@ function SoilSettingsPanel:handleClick(id, data)
             if g_SoilFertilityManager and g_SoilFertilityManager.tuningPanel then
                 self:close()
                 g_SoilFertilityManager.tuningPanel:open()
+            end
+            return
+        elseif actionId == "nav_crop_tuning" then
+            -- Open Crop Tuning Editor (per-crop N/P/K, #717)
+            if g_SoilFertilityManager and g_SoilFertilityManager.cropTuningPanel then
+                self:close()
+                g_SoilFertilityManager.cropTuningPanel:open()
             end
             return
         end

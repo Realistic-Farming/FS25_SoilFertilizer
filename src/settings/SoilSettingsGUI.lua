@@ -56,6 +56,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilFungicides", "List fungicides, or recommendations for a disease: SoilFungicides [diseaseId]", "consoleCommandFungicides", self)
     addConsoleCommand("SoilSetDisease", "TEST: force disease on the current field: SoilSetDisease <pressure 0-100> [diseaseId]", "consoleCommandSetDisease", self)
     addConsoleCommand("SoilSetDiseaseDifficulty", "Set disease difficulty (1=Easy, 2=Normal, 3=Hard)", "consoleCommandSetDiseaseDifficulty", self)
+    addConsoleCommand("SoilAddCrop", "Add a custom crop to the tuning table (seeded from generic defaults): SoilAddCrop <name> (#717)", "consoleCommandAddCrop", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
@@ -89,6 +90,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilFieldSentry [fieldId] - FieldSentry: show a field's sim status, or list slept fields (#651)")
     print("SoilMeadowField <fieldId> [true|false] - FieldSentry: flag/clear a field as meadow (#651)")
     print("SoilDecoField <fieldId> [true|false] - FieldSentry: flag/clear a field as decorative/fake (#651)")
+    print("SoilAddCrop <name> - Add a custom crop to the Crop Tuning Editor (#717)")
     print("==============================================")
     return "Type 'soilfertility' for more info"
 end
@@ -1020,5 +1022,36 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
         "Re-rolled starting soil for %d field(s) you don't own and saved; " ..
         "left your %d owned field(s) untouched. Reopen the soil map if it looks stale.",
         rerolled, skipped)
+end
+
+--- SoilAddCrop <name>
+--- Adds a custom crop to the per-crop tuning table (issue #717), seeded from the
+--- generic CROP_EXTRACTION_DEFAULT. The Crop Tuning Editor then lists it for N/P/K
+--- adjustment, and it is persisted to soilCropTuning.xml.
+function SoilSettingsGUI:consoleCommandAddCrop(name)
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.cropTuning then
+        return "Error: Soil Mod not initialized"
+    end
+    if name == nil or name == "" then
+        return "Usage: SoilAddCrop <name>  (e.g. SoilAddCrop triticale)"
+    end
+
+    -- The crop tuning table feeds the server-side simulation; a client edit would
+    -- only touch its local copy and desync, so gate this to the server/host.
+    local isServer = g_currentMission and g_currentMission:getIsServer()
+    if not isServer then
+        return "SoilAddCrop must be run on the server/host (it owns the simulation)."
+    end
+
+    local ok, err = g_SoilFertilityManager.cropTuning:addCrop(name)
+    if not ok then
+        return string.format("Could not add crop '%s': %s", tostring(name), tostring(err))
+    end
+
+    local key   = name:gsub("%s+", ""):lower()
+    local rates = g_SoilFertilityManager.cropTuning:getRates(key)
+    return string.format(
+        "Added crop '%s' (N=%.2f P=%.2f K=%.2f). Open the Crop Tuning Editor to adjust it.",
+        key, rates and rates.N or 0, rates and rates.P or 0, rates and rates.K or 0)
 end
 

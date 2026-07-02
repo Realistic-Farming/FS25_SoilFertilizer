@@ -735,6 +735,8 @@
     <e k="sf_nav_smart_systems_desc"       v="Nastavit Chytrý senzor, Vidět &amp; Postřiknout a systémy Variabilní dávky" />
     <e k="sf_nav_tuning_label"            v="Editor ladění konstant" />
     <e k="sf_nav_tuning_desc"             v="Jemné doladění konstant simulace: rychlosti vyčerpání, růst stresu, počáteční hodnoty půdy" />
+    <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
+    <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
     <e k="sf_panel_hdr_smart_sensor_sys"   v="Systém Chytrý senzor" />
     <e k="sf_panel_hdr_see_spray_sys"      v="Systém Vidět &amp; Postřiknout" />
     <e k="sf_panel_hdr_var_rate_sys"       v="Systém Variabilní dávky" />

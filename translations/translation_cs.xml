@@ -1091,5 +1091,7 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
 		<e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+    <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
+    <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
     </elements>
 </l10n>

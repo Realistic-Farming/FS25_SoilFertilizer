@@ -687,6 +687,8 @@
     <e k="sf_nav_smart_systems_desc"       v="Smart-Sensor-, See-&amp;-Spray- und Variable-Rate-Systeme konfigurieren" />
     <e k="sf_nav_tuning_label"            v="Konstanten-Tuning-Editor" />
     <e k="sf_nav_tuning_desc"             v="Simulationskonstanten feinabstimmen: Verarmungsraten, Stresswachstum, Start-Bodenwerte" />
+    <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
+    <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
     <e k="sf_panel_hdr_smart_sensor_sys"   v="Smart-Sensor-System" />
     <e k="sf_panel_hdr_see_spray_sys"      v="See-&amp;-Spray-System" />
     <e k="sf_panel_hdr_var_rate_sys"       v="Variable-Rate-System" />

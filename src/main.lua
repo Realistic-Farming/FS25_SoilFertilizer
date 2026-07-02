@@ -34,6 +34,7 @@ source(modDirectory .. "src/utils/Logger.lua")
 source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
+source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
@@ -78,6 +79,7 @@ source(modDirectory .. "src/ui/SoilHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilGuideDialog.lua")
 source(modDirectory .. "src/ui/SoilOverlayHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilTuningPanel.lua")
+source(modDirectory .. "src/ui/SoilCropTuningPanel.lua")
 source(modDirectory .. "src/ui/SoilSettingsPanel.lua")
 source(modDirectory .. "src/SoilFertilityManager.lua")
 
@@ -542,6 +544,9 @@ FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission
     if sfm and sfm.tuningPanel then
         sfm.tuningPanel:draw()
     end
+    if sfm and sfm.cropTuningPanel then
+        sfm.cropTuningPanel:draw()
+    end
     if sfm and sfm.variableRatePanel then
         sfm.variableRatePanel:draw()
     end
@@ -613,6 +618,12 @@ function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed
     -- Tuning panel eats input when open (checked before settings panel - both can't be open simultaneously)
     if sfm and sfm.tuningPanel and sfm.tuningPanel:isOpen() then
         local consumed = sfm.tuningPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
+        eventUsed = consumed or eventUsed
+        return eventUsed
+    end
+    -- Crop tuning panel eats input when open (same exclusivity as the tuning panel)
+    if sfm and sfm.cropTuningPanel and sfm.cropTuningPanel:isOpen() then
+        local consumed = sfm.cropTuningPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         eventUsed = consumed or eventUsed
         return eventUsed
     end

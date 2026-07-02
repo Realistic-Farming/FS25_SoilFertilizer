@@ -155,6 +155,15 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Tuning panel created")
         end
 
+        -- Crop Tuning Editor (per-crop N/P/K, issue #717) + its data layer
+        if SoilCropTuning then
+            self.cropTuning = SoilCropTuning.new(self.settings)
+        end
+        if SoilCropTuningPanel then
+            self.cropTuningPanel = SoilCropTuningPanel.new(self.settings, self.cropTuning)
+            SoilLogger.info("Crop tuning panel created")
+        end
+
         -- Variable Rate panel (System 3)
         if SoilVariableRatePanel then
             self.variableRatePanel = SoilVariableRatePanel.new(self.soilSystem, self.settings)
@@ -603,6 +612,10 @@ function SoilFertilityManager:onMissionLoaded()
             self.tuningPanel:initialize()
         end
 
+        if self.cropTuningPanel then
+            self.cropTuningPanel:initialize()
+        end
+
         if self.variableRatePanel then
             self.variableRatePanel:initialize()
         end
@@ -689,6 +702,12 @@ function SoilFertilityManager:onMissionStarted()
         -- DMV minimap heatmap - must init AFTER soilSystem so layerSystem is ready
         if self.soilMinimapLayer then
             self.soilMinimapLayer:initialize()
+        end
+
+        -- Apply the player-editable per-crop N/P/K overrides (#717) before
+        -- loading field data, so the sim sees tuned rates from the first tick.
+        if self.cropTuning then
+            self.cropTuning:load()
         end
 
         self:loadSoilData()
@@ -1372,6 +1391,10 @@ function SoilFertilityManager:update(dt)
         self.tuningPanel:update()
     end
 
+    if self.cropTuningPanel then
+        self.cropTuningPanel:update()
+    end
+
     -- Compaction: periodic check for local player's heavy vehicle driving over fields.
     -- getIsServer() is the documented API; the .isServer field is not guaranteed on FSBaseMission.
     -- Sampled on a short interval (CHECK_INTERVAL_MS) so the wheels lay a continuous
@@ -1845,6 +1868,11 @@ function SoilFertilityManager:delete()
     if self.tuningPanel then
         self.tuningPanel:delete()
         self.tuningPanel = nil
+    end
+
+    if self.cropTuningPanel then
+        self.cropTuningPanel:delete()
+        self.cropTuningPanel = nil
     end
 
     if self.settingsPanel then
