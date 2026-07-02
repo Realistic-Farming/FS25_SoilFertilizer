@@ -56,7 +56,15 @@ local function applyChange(key, value)
 end
 
 function SoilSettingsHubBridge.register(mgr)
-    if g_settingsHub == nil then return end
+    -- The reliable cross-mod handle is g_currentMission.settingsHub (the same one
+    -- FarmTablet reads). The bare g_settingsHub global is only visible inside
+    -- SettingsHub's own mod environment, so it reads back nil from here; prefer the
+    -- mission reference and only fall back to the global.
+    local hub = (g_currentMission ~= nil and g_currentMission.settingsHub) or g_settingsHub
+    if hub == nil then
+        SoilLogger.info("SettingsHub not detected; skipping tablet registration")
+        return
+    end
     if mgr == nil or mgr.settings == nil then return end
 
     local defs = {}
@@ -82,7 +90,7 @@ function SoilSettingsHubBridge.register(mgr)
     end
 
     local ok, err = pcall(function()
-        g_settingsHub:registerModule("SoilFertilizer", {
+        hub:registerModule("SoilFertilizer", {
             adminSettings = defs,
             onChange      = function(key, value, playerId) applyChange(key, value) end,
         })
