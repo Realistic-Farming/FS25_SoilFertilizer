@@ -413,7 +413,7 @@
     <e k="sf_help_k" v="K (Калій) - Вносьте Поташ. Важливо для коренів." eh="e0217634" />
     <e k="sf_help_om" v="OM (Органіка) - Накопичується повільно. Вносьте гній/компост." eh="a4e29617" />
     <e k="sf_help_soil_header" v="ХІМІЯ ҐРУНТУ" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = Ідеал. < 6.5 - Вапно. > 7.5 - Гіпс." eh="8929304d" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = Ідеал. &lt; 6.5 - Вапно. > 7.5 - Гіпс." eh="8929304d" />
     <e k="sf_help_pressure_header" v="ТИСК НА ВРОЖАЙ" eh="132b0f66" />
     <e k="sf_help_weed" v="Бур'яни > 20% - Гербіцид." eh="c8d890df" />
     <e k="sf_help_pest" v="Шкідники > 20% - Інсектицид." eh="f4932a05" />
@@ -513,7 +513,7 @@
 
     <e k="sf_notify_welcome" v="Мод Ґрунт та Добриво Активний | Shift+O для налаштувань | 'soilfertility' для команд" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Що нового у цій версії:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Дякую, що користуєтесь моїм модом <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Дякую, що користуєтесь моїм модом &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Знайшли баг? Повідомте на GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Гарного фермерства і пам'ятайте:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Ваш ґрунт пам'ятає все..." eh="1a3e5c35" />

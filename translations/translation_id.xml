@@ -429,7 +429,7 @@
     <e k="sf_help_k" v="K  (Kalium)       - Terapkan Kalium. Penting untuk akar." eh="e0217634" />
     <e k="sf_help_om" v="OM (Bahan Organik) - Terbentuk lambat. Bajak kotoran hewan/kompos." eh="a4e29617" />
     <e k="sf_help_soil_header" v="KIMIA TANAH" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH  6.5-7.0 = Ideal.  < 6.5 terapkan Kapur.  > 7.5 terapkan Gips." eh="8929304d" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = Ideal.  &lt; 6.5 terapkan Kapur.  > 7.5 terapkan Gips." eh="8929304d" />
     <e k="sf_help_pressure_header" v="TEKANAN TANAMAN" eh="132b0f66" />
     <e k="sf_help_weed" v="Gulma    > 20% - Terapkan Herbisida." eh="c8d890df" />
     <e k="sf_help_pest" v="Hama     > 20% - Terapkan Insektisida." eh="f4932a05" />
@@ -542,7 +542,7 @@
          ====================================================== -->
     <e k="sf_notify_welcome" v="Mod Tanah &amp; Pupuk Aktif | Shift+O buka pengaturan | Ketik 'soilfertility' untuk perintah" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Yang baru di versi ini:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Terima kasih telah menggunakan mod saya, ini sangat berarti bagi saya <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Terima kasih telah menggunakan mod saya, ini sangat berarti bagi saya &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Menemukan bug? Silakan laporkan di GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Selamat bertani dan jangan lupa:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Tanah Anda mengingat segalanya..." eh="1a3e5c35" />

@@ -543,7 +543,7 @@
          ====================================================== -->
     <e k="sf_notify_welcome" v="Mod Sol și Îngrășământ Activ | Shift+O pentru setări | Scrie 'soilfertility' pentru comenzi" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Ce este nou în această versiune:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Mulțumesc că folosești mod-ul meu, înseamnă mult pentru mine <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Mulțumesc că folosești mod-ul meu, înseamnă mult pentru mine &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Ai găsit un bug? Te rugăm să-l raportezi pe GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Fermă fericită și nu uita:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Solul tău ține minte totul..." eh="1a3e5c35" />

@@ -295,7 +295,7 @@
     <e k="helpLine_sf_se_p1_server_title" v="Paramètres serveur (admin uniquement en multijoueur)" eh="49f37ed7" />
     <e k="helpLine_sf_se_p1_server_text" v="Système de fertilité, cycles de nutriments, effets saisonniers, effets de la pluie, bonus de labour, pression des mauvaises herbes/ravageurs/maladies, coûts des engrais, notifications, rotation des cultures et contrôle automatique du débit. En multijoueur, seul l’administrateur du serveur peut modifier ces paramètres. Les changements sont synchronisés instantanément avec tous les clients." eh="abca5e43" />
     <e k="helpLine_sf_se_p1_diff_title" v="Difficulté" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="Simple (0.7x) réduit la déplétion de 30% pour une expérience plus détendue. Réaliste (1.0x) est le mode équilibré par défaut. Hardcore (1.5x) augmente la déplétion de 50% pour une gestion des sols intensive. Accès via ESC > Paramètres > Soil & Fertilizer." eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_diff_text" v="Simple (0.7x) réduit la déplétion de 30% pour une expérience plus détendue. Réaliste (1.0x) est le mode équilibré par défaut. Hardcore (1.5x) augmente la déplétion de 50% pour une gestion des sols intensive. Accès via ESC > Paramètres > Soil &amp; Fertilizer." eh="ca93ca3e" />
     <e k="helpLine_sf_se_p2_title" v="HUD et contrôle du débit" eh="399f4910" />
     <e k="helpLine_sf_se_p2_hud_title" v="Options HUD par joueur" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Chaque joueur contrôle son propre HUD - non synchronisé avec le serveur. Options : afficher le HUD (on/off), position (5 presets + déplacement manuel), thème de couleur (vert / bleu / ambre / mono), taille de police (petit / moyen / grand), transparence (25% à 100%), unités impériales (on/off)." eh="f3934884" />
@@ -345,7 +345,7 @@
     <e k="sf_map_overlay_high" v="Élevé" eh="655d20c1" />
 
     <!-- Écran PDA des sols (SoilPDAScreen.lua) -->
-    <e k="sf_pda_screen_title" v="Sol & Engrais" eh="f31197fb" />
+    <e k="sf_pda_screen_title" v="Sol &amp; Engrais" eh="f31197fb" />
     <e k="sf_pda_tab_map" v="Carte des sols" eh="59f988b2" />
     <e k="sf_pda_tab_fields" v="Champs" eh="a4ca5edd" />
     <e k="sf_pda_tab_treatment" v="Plan de traitement" eh="4ba012e2" />
@@ -410,7 +410,7 @@
     <e k="sf_help_k" v="K (Potassium) - Utiliser potasse. Important pour les racines." eh="e0217634" />
     <e k="sf_help_om" v="OM (matière org.) - Croissance lente. Incorporer fumier/compost." eh="a4e29617" />
     <e k="sf_help_soil_header" v="CHIMIE DU SOL" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH  6.5-7.0 = idéal. < 6.5 chaux. > 7.5 gypse." eh="8929304d" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = idéal. &lt; 6.5 chaux. > 7.5 gypse." eh="8929304d" />
     <e k="sf_help_pressure_header" v="PRESSION CULTURALE" eh="132b0f66" />
     <e k="sf_help_weed" v="Mauvaises herbes > 20% - herbicide." eh="c8d890df" />
     <e k="sf_help_pest" v="Ravageurs > 20% - insecticide." eh="f4932a05" />
@@ -519,9 +519,9 @@
     <!-- ======================================================
          NOTIFICATIONS
          ====================================================== -->
-    <e k="sf_notify_welcome" v="Mod Sol & Fertilisation actif | Shift+O pour ouvrir les paramètres | Tapez 'soilfertility' pour les commandes" eh="d97e4139" />
+    <e k="sf_notify_welcome" v="Mod Sol &amp; Fertilisation actif | Shift+O pour ouvrir les paramètres | Tapez 'soilfertility' pour les commandes" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nouveautés de cette version :" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Merci d'utiliser mon mod, ça me fait vraiment plaisir <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Merci d'utiliser mon mod, ça me fait vraiment plaisir &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Vous avez trouvé un bug ? Merci de le signaler sur GitHub !" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Bonne partie et n'oubliez pas :" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Votre sol se souvient de tout..." eh="1a3e5c35" />
@@ -544,7 +544,7 @@
          ====================================================== -->
     <e k="sf_panel_cat_sim" v="Simulation" eh="4f502b57" />
     <e k="sf_panel_cat_sim_desc" v="Mécaniques de la ferme, difficulté et cycles de nutriments" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="Affichage & HUD" eh="37b17394" />
+    <e k="sf_panel_cat_display" v="Affichage &amp; HUD" eh="37b17394" />
     <e k="sf_panel_cat_display_desc" v="Apparence du HUD, thème de couleur, position et taille de police" eh="5b91fada" />
     <e k="sf_panel_cat_overlay" v="Superposition carte" eh="28b898b6" />
     <e k="sf_panel_cat_overlay_desc" v="Couche de superposition active affichée sur la carte PDA" eh="a5892aef" />
@@ -557,11 +557,11 @@
     <e k="sf_panel_hdr_position" v="Position" eh="52f5e0bc" />
     <e k="sf_panel_hdr_layer" v="Couche" eh="359b71e8" />
     <e k="sf_panel_hdr_performance" v="Performance" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="Contrôle du mod & difficulté" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_mod_ctrl" v="Contrôle du mod &amp; difficulté" eh="ae2e88fb" />
     <e k="sf_panel_hdr_systems" v="Systèmes" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="Actions & outils de champ" eh="f64ba1c9" />
+    <e k="sf_panel_hdr_actions" v="Actions &amp; outils de champ" eh="f64ba1c9" />
     <e k="sf_panel_hdr_hud_layout" v="Disposition du HUD" eh="54e1930b" />
-    <e k="sf_hud_enter_drag_label" v="Déplacer & redimensionner les panneaux" eh="be34d24d" />
+    <e k="sf_hud_enter_drag_label" v="Déplacer &amp; redimensionner les panneaux" eh="be34d24d" />
     <e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="1d7b1dee" />
     <e k="sf_independent_panels_short" v="Disposition libre des panneaux" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Permet de positionner indépendamment les panneaux du système intelligent en mode édition" eh="de43cebd" />

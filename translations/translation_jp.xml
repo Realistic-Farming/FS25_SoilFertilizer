@@ -534,7 +534,7 @@
     <!-- 通知 -->
     <e k="sf_notify_welcome" v="土壌・肥料Mod 有効 | Shift+O で設定 | 'soilfertility' でコマンド一覧" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="このバージョンの新機能:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Mod をご利用いただきありがとうございます。とても励みになります <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Mod をご利用いただきありがとうございます。とても励みになります &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="バグを発見しましたか？ GitHub で報告をお願いします！" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="楽しい農業を！ そして忘れないでください：" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="土壌はすべてを覚えています..." eh="1a3e5c35" />

@@ -536,7 +536,7 @@
     <!-- Notifications -->
     <e k="sf_notify_welcome" v="Jord- og gjødselmod aktiv | Shift+O for innstillinger | Skriv 'soilfertility' for kommandoer" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nytt i denne versjonen:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Takk for at du bruker modden min, det betyr mye for meg <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Takk for at du bruker modden min, det betyr mye for meg &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Funnet en feil? Vennligst rapporter det på GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="God gårdsdrift og ikke glem:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Jorda di husker alt..." eh="1a3e5c35" />

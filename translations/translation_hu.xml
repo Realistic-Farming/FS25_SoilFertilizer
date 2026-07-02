@@ -430,7 +430,7 @@
     <e k="sf_help_k" v="K (Kálium)     - Pótlás: Hamuzsír. Fontos a gyökereknek." eh="e0217634" />
     <e k="sf_help_om" v="OM (Szerves a.) - Lassan épül. Trágya/Komposzt beszántása." eh="a4e29617" />
     <e k="sf_help_soil_header" v="TALAJKÉMIA" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = Ideális. < 6.5 mész. > 7.5 gipsz." eh="8929304d" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = Ideális. &lt; 6.5 mész. > 7.5 gipsz." eh="8929304d" />
     <e k="sf_help_pressure_header" v="NÖVÉNYI NYOMÁS" eh="132b0f66" />
     <e k="sf_help_weed" v="Gyom    > 20% - Gyomirtó szer." eh="c8d890df" />
     <e k="sf_help_pest" v="Kártevő > 20% - Rovarölő szer." eh="f4932a05" />

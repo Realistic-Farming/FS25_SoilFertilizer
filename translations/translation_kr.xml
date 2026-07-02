@@ -428,7 +428,7 @@
     <e k="sf_help_k" v="K (칼륨) - 칼리를 살포하세요. 뿌리에 중요합니다." eh="e0217634" />
     <e k="sf_help_om" v="OM (유기물) - 천천히 쌓임. 퇴비/컴포스트를 갈아엎으세요." eh="a4e29617" />
     <e k="sf_help_soil_header" v="토양 화학" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = 이상적. < 6.5 석회 살포. > 7.5 석고 살포." eh="8929304d" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = 이상적. &lt; 6.5 석회 살포. > 7.5 석고 살포." eh="8929304d" />
     <e k="sf_help_pressure_header" v="작물 위협" eh="132b0f66" />
     <e k="sf_help_weed" v="잡초 > 20% - 제초제 살포." eh="c8d890df" />
     <e k="sf_help_pest" v="해충 > 20% - 살충제 살포." eh="f4932a05" />

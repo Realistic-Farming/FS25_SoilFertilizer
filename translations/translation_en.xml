@@ -429,7 +429,7 @@
     <e k="sf_help_k" v="K  (Potassium)    - Apply Potash. Important for roots." eh="e0217634" />
     <e k="sf_help_om" v="OM (Organic Mat.) - Builds slowly. Plow in manure/compost." eh="a4e29617" />
     <e k="sf_help_soil_header" v="SOIL CHEMISTRY" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH  6.5-7.0 = Ideal.  < 6.5 apply Lime.  > 7.5 apply Gypsum." eh="8929304d" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = Ideal.  &lt; 6.5 apply Lime.  > 7.5 apply Gypsum." eh="8929304d" />
     <e k="sf_help_pressure_header" v="CROP PRESSURE" eh="132b0f66" />
     <e k="sf_help_weed" v="Weed    > 20% - Apply Herbicide." eh="c8d890df" />
     <e k="sf_help_pest" v="Pest    > 20% - Apply Insecticide." eh="f4932a05" />
@@ -542,7 +542,7 @@
          ====================================================== -->
     <e k="sf_notify_welcome" v="Soil &amp; Fertilizer Mod Active | Shift+O to open settings | Type 'soilfertility' for commands" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="What's new in this version:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Thank you for using my mod, it means a lot to me <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Thank you for using my mod, it means a lot to me &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Found a bug? Please report it on github!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Happy farming and don't forget:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Your soil remembers everything..." eh="1a3e5c35" />

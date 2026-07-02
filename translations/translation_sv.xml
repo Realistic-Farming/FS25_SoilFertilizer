@@ -413,7 +413,7 @@
     <e k="sf_help_k" v="K  (Kalium)         - Sprid kaliumklorid. Viktigt för rötter." eh="e0217634" />
     <e k="sf_help_om" v="OM (Org. material) - Byggs upp långsamt. Ploj ner stallgödsel/kompost." eh="a4e29617" />
     <e k="sf_help_soil_header" v="MARKKEMI" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH  6.5-7.0 = Idealt.  < 6.5 sprid Kalk.  > 7.5 sprid Gips." eh="8929304d" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = Idealt.  &lt; 6.5 sprid Kalk.  > 7.5 sprid Gips." eh="8929304d" />
     <e k="sf_help_pressure_header" v="TRYCK PÅ GRÖDAN" eh="132b0f66" />
     <e k="sf_help_weed" v="Ogräs     > 20% - Sprid ogräsmedel." eh="c8d890df" />
     <e k="sf_help_pest" v="Skadedjur > 20% - Sprid insektsmedel." eh="f4932a05" />
@@ -513,7 +513,7 @@
 
     <e k="sf_notify_welcome" v="Mark &amp; Gödsel-mod aktiv | Skift+O för inställningar | Skriv 'soilfertility' för kommandon" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nyheter i denna version:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Tack för att du använder min mod, det betyder mycket för mig <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Tack för att du använder min mod, det betyder mycket för mig &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Hittat en bugg? Rapportera den gärna på GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Lycka till med jordbruket och glöm inte:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Din jord minns allt..." eh="1a3e5c35" />

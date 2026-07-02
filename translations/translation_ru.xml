@@ -414,7 +414,7 @@
     <e k="sf_help_k" v="K (Калий) - Вносите калийные. Важно для корней." eh="e0217634" />
     <e k="sf_help_om" v="OM (Органика) - Строится медленно. Заделывайте навоз/компост." eh="a4e29617" />
     <e k="sf_help_soil_header" v="ХИМИЯ ПОЧВЫ" eh="19c67ff5" />
-    <e k="sf_help_ph" v="6.5-7.0 - Идеал. < 6.5 - Известь. > 7.5 - Гипс." eh="8929304d" />
+    <e k="sf_help_ph" v="6.5-7.0 - Идеал. &lt; 6.5 - Известь. > 7.5 - Гипс." eh="8929304d" />
     <e k="sf_help_pressure_header" v="УГРОЗЫ" eh="132b0f66" />
     <e k="sf_help_weed" v="Сорняки > 20% - Гербицид." eh="c8d890df" />
     <e k="sf_help_pest" v="Вредители > 20% - Инсектицид." eh="f4932a05" />
@@ -510,7 +510,7 @@
     <e k="sf_sprayer_burn_possible" v="РИСК ОЖОГА: ВОЗМОЖЕН" eh="25b251b6" />
     <e k="sf_notify_welcome" v="Мод «Почва и удобрения» активен | Shift+O: настройки | Введите 'soilfertility' для команд" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Что нового в этой версии:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Спасибо, что используете мой мод <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Спасибо, что используете мой мод &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Нашли баг? Напишите на GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Удачного фермерства!" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Почва помнит всё..." eh="1a3e5c35" />

@@ -413,7 +413,7 @@
     <e k="sf_help_k" v="K (Kali) - Bón Kali. Quan trọng cho bộ rễ." eh="e0217634" />
     <e k="sf_help_om" v="OM (Hữu cơ) - Tăng chậm. Cày vùi phân chuồng/compost." eh="a4e29617" />
     <e k="sf_help_soil_header" v="HÓA HỌC ĐẤT" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = Lý tưởng. < 6.5 bón Vôi. > 7.5 bón Thạch cao." eh="8929304d" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = Lý tưởng. &lt; 6.5 bón Vôi. > 7.5 bón Thạch cao." eh="8929304d" />
     <e k="sf_help_pressure_header" v="ÁP LỰC MÙA VỤ" eh="132b0f66" />
     <e k="sf_help_weed" v="Cỏ dại   > 20% - Dùng thuốc diệt cỏ." eh="c8d890df" />
     <e k="sf_help_pest" v="Sâu bệnh  > 20% - Dùng thuốc trừ sâu." eh="f4932a05" />
@@ -513,7 +513,7 @@
 
     <e k="sf_notify_welcome" v="Mod Đất &amp; Phân bón Hoạt động | Shift+O để mở cài đặt | Gõ 'soilfertility' để xem lệnh" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Có gì mới trong phiên bản này:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Cảm ơn bạn đã sử dụng mod của mình <3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer" v="Cảm ơn bạn đã sử dụng mod của mình &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Tìm thấy lỗi? Hãy báo cáo trên GitHub!" eh="728e2cf3" />
     <e k="sf_startup_dialog_footer3" v="Chúc bạn canh tác vui vẻ và đừng quên:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="Đất của bạn nhớ tất cả mọi thứ..." eh="1a3e5c35" />

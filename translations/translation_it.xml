@@ -429,7 +429,7 @@
     <e k="sf_help_k" v="K (Potassio) - Applica Potassio. Importante per le radici." eh="e0217634" />
     <e k="sf_help_om" v="OM (Sost. Org.) - Cresce lentamente. Interra letame/compost." eh="a4e29617" />
     <e k="sf_help_soil_header" v="CHIMICA DEL SUOLO" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = Ideale.  < 6.5 applica Calce.  > 7.5 applica Gesso." eh="8929304d" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = Ideale.  &lt; 6.5 applica Calce.  > 7.5 applica Gesso." eh="8929304d" />
     <e k="sf_help_pressure_header" v="STATO COLTURA" eh="132b0f66" />
     <e k="sf_help_weed" v="Erbacce > 20% - Applica Erbicida." eh="c8d890df" />
     <e k="sf_help_pest" v="Parassiti > 20% - Applica Insetticida." eh="f4932a05" />
