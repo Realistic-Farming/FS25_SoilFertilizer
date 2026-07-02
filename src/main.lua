@@ -89,6 +89,7 @@ source(modDirectory .. "src/network/NetworkEvents.lua")
 -- 6. Integrations
 source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
 source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
+source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 
 -- Register our custom density map height types with the DMHM mod file list.
 -- DensityMapHeightManager:loadMapData iterates modDensityHeightMapTypeFilenames and
@@ -158,6 +159,12 @@ local function loadedMission(mission, node)
         return
     end
     sfm:onMissionLoaded()
+
+    -- FarmTablet System Settings app: mirror our settings into SettingsHub so the
+    -- tablet can list them. No-ops when SettingsHub is not installed.
+    if SoilSettingsHubBridge then
+        SoilSettingsHubBridge.register(sfm)
+    end
 
     -- TIP ON GROUND FIX: directly inject our solid fill types into the
     -- DensityMapHeightManager Lua tables so they can be tipped to the ground.
