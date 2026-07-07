@@ -4205,5 +4205,57 @@
       "count": 33,
       "uniques": 18
     }
+  ],
+  "2026-07-07": [
+    {
+      "referrer": "github.com",
+      "count": 1912,
+      "uniques": 349
+    },
+    {
+      "referrer": "Google",
+      "count": 1221,
+      "uniques": 406
+    },
+    {
+      "referrer": "youtube.com",
+      "count": 581,
+      "uniques": 321
+    },
+    {
+      "referrer": "Bing",
+      "count": 383,
+      "uniques": 128
+    },
+    {
+      "referrer": "kingmods.net",
+      "count": 344,
+      "uniques": 123
+    },
+    {
+      "referrer": "l.facebook.com",
+      "count": 96,
+      "uniques": 47
+    },
+    {
+      "referrer": "yandex.ru",
+      "count": 66,
+      "uniques": 13
+    },
+    {
+      "referrer": "DuckDuckGo",
+      "count": 50,
+      "uniques": 18
+    },
+    {
+      "referrer": "Yahoo",
+      "count": 38,
+      "uniques": 10
+    },
+    {
+      "referrer": "ecosia.org",
+      "count": 31,
+      "uniques": 2
+    }
   ]
 }
