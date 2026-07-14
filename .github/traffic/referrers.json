@@ -4573,38 +4573,38 @@
   "2026-07-14": [
     {
       "referrer": "github.com",
-      "count": 1742,
-      "uniques": 396
+      "count": 1657,
+      "uniques": 385
     },
     {
       "referrer": "Google",
-      "count": 1276,
-      "uniques": 454
+      "count": 1267,
+      "uniques": 464
     },
     {
       "referrer": "youtube.com",
-      "count": 798,
-      "uniques": 430
+      "count": 818,
+      "uniques": 438
     },
     {
       "referrer": "Bing",
-      "count": 382,
-      "uniques": 143
+      "count": 385,
+      "uniques": 145
     },
     {
       "referrer": "kingmods.net",
-      "count": 230,
-      "uniques": 106
-    },
-    {
-      "referrer": "yandex.ru",
-      "count": 73,
-      "uniques": 14
+      "count": 222,
+      "uniques": 102
     },
     {
       "referrer": "l.facebook.com",
+      "count": 70,
+      "uniques": 36
+    },
+    {
+      "referrer": "yandex.ru",
       "count": 67,
-      "uniques": 35
+      "uniques": 14
     },
     {
       "referrer": "DuckDuckGo",
@@ -4613,13 +4613,13 @@
     },
     {
       "referrer": "Yahoo",
-      "count": 31,
-      "uniques": 11
+      "count": 33,
+      "uniques": 12
     },
     {
-      "referrer": "search.brave.com",
+      "referrer": "ecosia.org",
       "count": 29,
-      "uniques": 10
+      "uniques": 1
     }
   ]
 }
