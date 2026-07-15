@@ -1136,6 +1136,8 @@
     <e k="sf_tebuconazole_title" v="Tebuconazole" />
     <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
     <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
+    <e k="sf_treat_tank_tag" v="tank - spray" />
+    <e k="sf_treat_physical" v="%s is a sprayable product - buy the tank and spray the field" />
 </elements>
 
 
