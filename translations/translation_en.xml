@@ -1154,5 +1154,23 @@
         <e k="sf_multi_tank_short"             v="Multi-Tank Application" />
     <e k="sf_multi_tank_long"              v="Apply fertilizer to multiple tanks at once (front + rear)" />
     <e k="sf_desc_multiTankApplication"   v="When enabled, applying product also fills or drains secondary tanks proportionally" />
+    <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
+    <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
+    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_name" v="IBC Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_function" v="Azoxystrobin fungicide (liquid)" />
+    <e k="sf_boscalid_title" v="Boscalid" />
+    <e k="sf_bigBag_boscalid_name" v="IBC Boscalid" />
+    <e k="sf_bigBag_boscalid_function" v="Boscalid fungicide (liquid)" />
+    <e k="sf_mancozeb_title" v="Mancozeb" />
+    <e k="sf_bigBag_mancozeb_name" v="IBC Mancozeb" />
+    <e k="sf_bigBag_mancozeb_function" v="Mancozeb fungicide (liquid)" />
+    <e k="sf_metalaxyl_title" v="Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_name" v="IBC Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_function" v="Metalaxyl fungicide (liquid)" />
+    <e k="sf_tebuconazole_title" v="Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
 </elements>
 </l10n>

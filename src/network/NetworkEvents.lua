@@ -1189,6 +1189,10 @@ function SoilTreatFieldEvent:run(connection)
         SoilLogger.warning("Server: Rejected unknown fungicide '%s' from treat request", tostring(self.chemId))
         return
     end
+    if SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[self.chemId] then
+        SoilLogger.warning("Server: Rejected physical fungicide '%s' from menu treat request (spray the tank instead)", tostring(self.chemId))
+        return
+    end
 
     -- Charge the requesting player's farm.
     local farmId = nil

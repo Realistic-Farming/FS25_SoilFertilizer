@@ -354,6 +354,9 @@ function SoilSettingsGUI:consoleCommandTreat(chemical, fieldId)
     if not SoilConstants.FUNGICIDE_CATALOG[chemId] then
         return string.format("Unknown chemical '%s'. Run SoilFungicides for the list.", chemical)
     end
+    if SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[chemId] then
+        return string.format("%s is a physical product - buy the tank and spray the field (not a menu chemical).", chemId)
+    end
     local fid = resolveDiseaseFieldId(fieldId)
     if not fid then return "Usage: SoilTreat <chemical> <fieldId>  (or stand on a field)" end
 
@@ -379,9 +382,11 @@ function SoilSettingsGUI:consoleCommandFungicides(diseaseId)
     local lines = { "=== Fungicide Catalog ===" }
     for _, id in ipairs(SoilConstants.FUNGICIDE_ORDER) do
         local c = SoilConstants.FUNGICIDE_CATALOG[id]
+        local tag = (c.seedTreatment and "  (seed)")
+            or (SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[id] and "  (tank - spray)")
+            or ""
         lines[#lines+1] = string.format("%-18s  $%d/ha  T%d  %s%s",
-            id, c.costPerHa or 0, c.tier or 1, c.group or "",
-            c.seedTreatment and "  (seed)" or "")
+            id, c.costPerHa or 0, c.tier or 1, c.group or "", tag)
     end
     lines[#lines+1] = "Apply with: SoilTreat <chemical> <fieldId>"
     lines[#lines+1] = "========================="

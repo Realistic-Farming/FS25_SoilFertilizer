@@ -4550,10 +4550,25 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     self:trackSprayerCoverage(fieldId, liters, "INSECTICIDE")
 end
 
-function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters)
+function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters, chemId)
     if not self.settings.diseasePressure then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- Physical named fungicide (6-chemical kit): scale this generic pass by the chemical's
+    -- control rate against the field's active disease (the catalog's per-disease matrix) and
+    -- record which chemical was used, so a sprayed AZOXYSTROBIN behaves like its catalog entry.
+    -- Generic FUNGICIDE never reaches here (it routes through the fertilizer path), so chemId
+    -- is always one of the six; the guard keeps it safe regardless.
+    local rateName = "FUNGICIDE"
+    if chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
+        rateName = chemId
+        field.lastFungicide = chemId
+        if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
+            local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
+            effectiveness = (effectiveness or 1.0) * control
+        end
+    end
 
     -- Confirm field area on first application (mirrors onInsecticideAppliedDirect / applyFertilizer)
     local _isNewSession = not next(field.sessionCoverageCells or {})
@@ -4575,7 +4590,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
 
     local areaInHa = field.fieldArea or 1.0
     if areaInHa <= 0 then areaInHa = 1.0 end
-    local targetRate = SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE.value
+    local targetRate = (SoilConstants.SPRAYER_RATE.BASE_RATES[rateName] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
     local targetVol = areaInHa * targetRate
     if targetVol <= 0 then return end
 

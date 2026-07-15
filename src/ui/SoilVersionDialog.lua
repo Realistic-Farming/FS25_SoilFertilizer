@@ -24,17 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- See & Spray now works on every sprayer, with per-section shutoff on overlaps",
-    "    and field boundaries, plus variable-rate spot spraying (fertiliser too)",
-    "- Rotation foresight: the field-detail screen projects the next crop's yield",
-    "    before you plant, so you can plan the rotation from the soil you have",
-    "- Disease scouting: a field's named disease stays hidden on the Soil Monitor",
-    "    until you scout it - the monitor shows 'scout to identify' instead",
-    "- Fixed (#730): mowing meadows no longer drops N/P/K to the floor in one pass",
-    "- Fixed (#728): Vredo slurry spreader no longer treated as a chemical sprayer",
-    "- Fixed (#720): crop tuning edits now survive save and reload",
-    "- Fixed (#726): fungicide application no longer errors on some fields",
-    "- Dual and quad-tank sprayers now apply from all tanks correctly"
+    "- Six real fungicides you can buy and spray: Propiconazole, Azoxystrobin,",
+    "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank",
+    "- Scout a field and it names the chemical that best controls its disease -",
+    "    load that tank and spray it, and the catalog's control rate is applied",
+    "- The menu still lists the full chemical library for everything else;",
+    "    the six physical ones now point you to their tank instead of instant-apply",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

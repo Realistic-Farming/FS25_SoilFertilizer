@@ -537,6 +537,8 @@ SoilConstants.FERTILIZER_TYPES = {
     "LIQUIDLIME",
     -- Crop protection
     "INSECTICIDE", "FUNGICIDE",
+    -- Physical named fungicides (6-chemical kit): buyable tanks sprayed like FUNGICIDE
+    "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE",
 }
 
 -- ========================================
@@ -918,6 +920,13 @@ SoilConstants.SPRAYER_RATE = {
         -- (1.5 L/ha was pure active ingredient dose; 100-150 L/ha is field-realistic)
         INSECTICIDE = { value = 100.0, unit = "liquid" },
         FUNGICIDE   = { value = 100.0, unit = "liquid" },
+        -- Physical named fungicides (6-chemical kit) - same carrier rate as generic FUNGICIDE
+        PROPICONAZOLE = { value = 100.0, unit = "liquid" },
+        AZOXYSTROBIN  = { value = 100.0, unit = "liquid" },
+        BOSCALID      = { value = 100.0, unit = "liquid" },
+        MANCOZEB      = { value = 100.0, unit = "liquid" },
+        METALAXYL     = { value = 100.0, unit = "liquid" },
+        TEBUCONAZOLE  = { value = 100.0, unit = "liquid" },
         HERBICIDE   = { value = 100.0, unit = "liquid" },
         -- Fallback for unrecognized fill types
         DEFAULT           = { value =    93.5, unit = "liquid" },
@@ -1115,6 +1124,10 @@ SoilConstants.DISEASE_PRESSURE = {
     -- Fungicide fill type names → effectiveness multiplier
     FUNGICIDE_TYPES = {
         FUNGICIDE = 1.0,
+        -- Physical named fungicides (6-chemical kit). Base multiplier 1.0; the per-disease
+        -- control rate is applied at spray time in onFungicideAppliedDirect via the catalog.
+        PROPICONAZOLE = 1.0, AZOXYSTROBIN = 1.0, BOSCALID = 1.0,
+        MANCOZEB = 1.0, METALAXYL = 1.0, TEBUCONAZOLE = 1.0,
     },
     -- Pressure points removed on a single full-field fungicide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.
@@ -1371,6 +1384,17 @@ SoilConstants.FUNGICIDE_ORDER = {
     "METALAXYL", "FOSETYL_AL", "THIOPHANATE_METHYL",
     "SULFUR", "COPPER_HYDROXIDE",
     "FLUDIOXONIL", "METALAXYL_M", "THIRAM", "CAPTAN",
+}
+
+-- Physical fungicides: the six catalog chemicals that also ship as buyable, sprayable fill
+-- types (the 6-chemical kit). They stay in recommend()/the scout list so scouting still
+-- names them as the right control, but the menu/console INSTANT-apply paths reject them
+-- (you load the tank and spray instead). Spraying routes into the catalog control math via
+-- onFungicideAppliedDirect. This set is the single source of truth for "is physical".
+SoilConstants.PHYSICAL_FUNGICIDE_ORDER = { "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE" }
+SoilConstants.PHYSICAL_FUNGICIDES = {
+    PROPICONAZOLE = true, AZOXYSTROBIN = true, BOSCALID = true,
+    MANCOZEB = true, METALAXYL = true, TEBUCONAZOLE = true,
 }
 
 -- Treatment mechanics (timing, weather, disease-stage gating).

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK</author>
-    <version>2.4.6.0</version>
+    <version>2.4.7.0</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -149,6 +149,12 @@
         <storeItem xmlFilename="objects/liquidTank/liquid_potash/multiPurchaseLiquidTank_liquid_potash.xml"/>
         <storeItem xmlFilename="objects/liquidTank/insecticide/multiPurchaseLiquidTank_insecticide.xml"/>
         <storeItem xmlFilename="objects/liquidTank/fungicide/multiPurchaseLiquidTank_fungicide.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/propiconazole/multiPurchaseLiquidTank_propiconazole.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/azoxystrobin/multiPurchaseLiquidTank_azoxystrobin.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/boscalid/multiPurchaseLiquidTank_boscalid.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/mancozeb/multiPurchaseLiquidTank_mancozeb.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/metalaxyl/multiPurchaseLiquidTank_metalaxyl.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/tebuconazole/multiPurchaseLiquidTank_tebuconazole.xml"/>
         <storeItem xmlFilename="objects/liquidTank/liquidlime/multiPurchaseLiquidTank_liquidlime.xml"/>
         <!-- Big Bags / Solid (multi-purchase) -->
         <storeItem xmlFilename="objects/bigBag/urea/multiPurchaseBigBag_urea.xml"/>
@@ -179,6 +185,12 @@
         <storeItem xmlFilename="objects/liquidTank/liquid_potash/liquidTank_liquid_potash.xml"/>
         <storeItem xmlFilename="objects/liquidTank/insecticide/liquidTank_insecticide.xml"/>
         <storeItem xmlFilename="objects/liquidTank/fungicide/liquidTank_fungicide.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/propiconazole/liquidTank_propiconazole.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/azoxystrobin/liquidTank_azoxystrobin.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/boscalid/liquidTank_boscalid.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/mancozeb/liquidTank_mancozeb.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/metalaxyl/liquidTank_metalaxyl.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/tebuconazole/liquidTank_tebuconazole.xml"/>
         <storeItem xmlFilename="objects/liquidTank/liquidlime/liquidTank_liquidlime.xml"/>
         <storeItem xmlFilename="objects/bigBag/urea/bigBag_urea.xml"/>
         <storeItem xmlFilename="objects/bigBag/an/bigBag_an.xml"/>

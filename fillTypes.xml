@@ -131,6 +131,50 @@
             <pallet filename="objects/liquidTank/fungicide/liquidTank_fungicide.xml" />
         </fillType>
 
+        <!-- Physical named fungicides (6-chemical kit) - sprayed like FUNGICIDE -->
+        <fillType name="PROPICONAZOLE" title="$l10n_sf_propiconazole_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.40"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/propiconazole/liquidTank_propiconazole.xml" />
+        </fillType>
+        <fillType name="AZOXYSTROBIN" title="$l10n_sf_azoxystrobin_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.60"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/azoxystrobin/liquidTank_azoxystrobin.xml" />
+        </fillType>
+        <fillType name="BOSCALID" title="$l10n_sf_boscalid_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.85"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/boscalid/liquidTank_boscalid.xml" />
+        </fillType>
+        <fillType name="MANCOZEB" title="$l10n_sf_mancozeb_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.90"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/mancozeb/liquidTank_mancozeb.xml" />
+        </fillType>
+        <fillType name="METALAXYL" title="$l10n_sf_metalaxyl_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.45"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/metalaxyl/liquidTank_metalaxyl.xml" />
+        </fillType>
+        <fillType name="TEBUCONAZOLE" title="$l10n_sf_tebuconazole_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.55"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/tebuconazole/liquidTank_tebuconazole.xml" />
+        </fillType>
+
         <fillType name="LIQUID_UREA" title="$l10n_sf_liquid_urea_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="0"/>
             <economy pricePerLiter="0.60"/>
@@ -249,7 +293,7 @@
             that already accept LIQUIDFERTILIZER will also accept our liquid nitrogen products
             and starter fertilizer.
         -->
-        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
+        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
     </fillTypeCategories>
 
 </map>

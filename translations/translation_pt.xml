@@ -1138,7 +1138,25 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
-    </elements>
+        <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
+    <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
+    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_name" v="IBC Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_function" v="Azoxystrobin fungicide (liquid)" />
+    <e k="sf_boscalid_title" v="Boscalid" />
+    <e k="sf_bigBag_boscalid_name" v="IBC Boscalid" />
+    <e k="sf_bigBag_boscalid_function" v="Boscalid fungicide (liquid)" />
+    <e k="sf_mancozeb_title" v="Mancozeb" />
+    <e k="sf_bigBag_mancozeb_name" v="IBC Mancozeb" />
+    <e k="sf_bigBag_mancozeb_function" v="Mancozeb fungicide (liquid)" />
+    <e k="sf_metalaxyl_title" v="Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_name" v="IBC Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_function" v="Metalaxyl fungicide (liquid)" />
+    <e k="sf_tebuconazole_title" v="Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
+</elements>
 
 
 </l10n>

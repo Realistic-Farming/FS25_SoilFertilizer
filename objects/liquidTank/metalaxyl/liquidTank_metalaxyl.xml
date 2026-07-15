@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<vehicle type="pallet" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../shared/xml/schema/vehicle.xsd">
+
+    <parentFile xmlFilename="$data/objects/pallets/liquidTank/herbicideTankHelm.xml">
+        <attributes>
+            <set path="vehicle.storeData.name"                        value="$l10n_sf_bigBag_metalaxyl_name"/>
+            <set path="vehicle.storeData.image"                       value="$data/objects/pallets/liquidTank/store_herbicideTankHelm.png"/>
+            <set path="vehicle.storeData.price"                       value="2900"/>
+            <set path="vehicle.storeData.showInStore"                 value="false"/>
+            <set path="vehicle.storeData.functions.function"          value="$l10n_sf_bigBag_metalaxyl_function"/>
+            <set path="vehicle.storeData.specs.fillTypes"             value="METALAXYL"/>
+
+            <set path="vehicle.fillUnit.fillUnitConfigurations.fillUnitConfiguration(0).fillUnits.fillUnit#fillTypes"      value="METALAXYL"/>
+            <set path="vehicle.fillUnit.fillUnitConfigurations.fillUnitConfiguration(0).fillUnits.fillUnit#startFillType"  value="METALAXYL"/>
+            <set path="vehicle.fillUnit.fillUnitConfigurations.fillUnitConfiguration(0).fillUnits.fillUnit#capacity"       value="2000"/>
+            <set path="vehicle.fillUnit.fillUnitConfigurations.fillUnitConfiguration(0).fillUnits.fillUnit#startFillLevel" value="2000"/>
+        </attributes>
+    </parentFile>
+
+    <!-- ONLY FOR ICON GENERATION -->
+    <storeData>
+        <name>$l10n_sf_bigBag_metalaxyl_name</name>
+        <image>$data/objects/pallets/liquidTank/store_herbicideTankHelm.png</image>
+        <brand>HELM</brand>
+        <category>ibc palletFertilizerHerbicide</category>
+        <storeIconRendering>
+            <settings cameraXRot="-15" cameraYRot="25"/>
+        </storeIconRendering>
+        <vertexBufferMemoryUsage>0</vertexBufferMemoryUsage>
+        <indexBufferMemoryUsage>0</indexBufferMemoryUsage>
+        <textureMemoryUsage>0</textureMemoryUsage>
+        <audioMemoryUsage>0</audioMemoryUsage>
+        <instanceVertexBufferMemoryUsage>0</instanceVertexBufferMemoryUsage>
+        <instanceIndexBufferMemoryUsage>0</instanceIndexBufferMemoryUsage>
+    </storeData>
+</vehicle>
