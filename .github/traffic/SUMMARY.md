@@ -1,7 +1,7 @@
 # Repository Traffic Dashboard
 
-**Last updated:** 2026-07-14T18:08:21Z
-**Days tracked:** 89 | **Download snapshots:** 1029 (hourly)
+**Last updated:** 2026-07-15T12:20:14Z
+**Days tracked:** 90 | **Download snapshots:** 1035 (hourly)
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Metric | 14-Day Total | Unique |
 |--------|-------------|--------|
-| Page Views | 8653 | 1900 |
-| Git Clones | 1156 | 341 |
+| Page Views | 8456 | 1857 |
+| Git Clones | 1131 | 340 |
 
 > **Engagement:** 4.5 pages per visitor (14-day avg)
 
@@ -30,9 +30,9 @@
 
 ![Conversion](charts/conversion.png)
 
-> **14-day conversion:** 5169 of 1900 visitors cloned or downloaded (**272.0%**)
+> **14-day conversion:** 5187 of 1857 visitors cloned or downloaded (**279.3%**)
 >
-> Unique cloners: 341 | Release downloads: 4828
+> Unique cloners: 340 | Release downloads: 4847
 
 ---
 
@@ -42,9 +42,9 @@
 
 | Channel | Count |
 |---------|-------|
-| Zip Downloads | 4828 |
-| Git Clones (14-day) | 1156 |
-| **Total Acquisitions** | **5984** |
+| Zip Downloads | 4847 |
+| Git Clones (14-day) | 1131 |
+| **Total Acquisitions** | **5978** |
 
 ---
 
@@ -54,15 +54,15 @@
 
 | Source | Views | Unique |
 |--------|-------|--------|
-| github.com | 1657 | 385 |
-| Google | 1267 | 464 |
-| youtube.com | 818 | 438 |
-| Bing | 385 | 145 |
-| kingmods.net | 222 | 102 |
-| l.facebook.com | 70 | 36 |
-| yandex.ru | 67 | 14 |
+| github.com | 1613 | 386 |
+| Google | 1248 | 463 |
+| youtube.com | 751 | 408 |
+| Bing | 360 | 143 |
+| kingmods.net | 223 | 102 |
+| l.facebook.com | 64 | 33 |
+| yandex.ru | 63 | 14 |
 | DuckDuckGo | 44 | 15 |
-| Yahoo | 33 | 12 |
+| Yahoo | 29 | 12 |
 | ecosia.org | 29 | 1 |
 
 ---
@@ -73,7 +73,7 @@
 
 | Metric | Current |
 |--------|---------|
-| Stars | 91 |
+| Stars | 92 |
 | Forks | 11 |
 | Watchers | 12 |
 
@@ -83,16 +83,16 @@
 
 | Page | Views | Unique |
 |------|-------|--------|
-| `/Realistic-Farming/FS25_SoilFertilizer` | 4415 | 1709 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.4.5.0` | 871 | 597 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases` | 686 | 298 |
-| `/Realistic-Farming/FS25_SoilFertilizer/issues` | 482 | 151 |
-| `/Realistic-Farming/FS25_SoilFertilizer/blob/main/README.md` | 214 | 132 |
-| `/Realistic-Farming/FS25_SoilFertilizer/discussions` | 127 | 71 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.4.4.0` | 119 | 96 |
-| `/Realistic-Farming/FS25_SoilFertilizer/tree/development` | 88 | 17 |
-| `/Realistic-Farming/FS25_SoilFertilizer/tree/main` | 71 | 37 |
+| `/Realistic-Farming/FS25_SoilFertilizer` | 4343 | 1677 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.4.5.0` | 897 | 609 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases` | 673 | 291 |
+| `/Realistic-Farming/FS25_SoilFertilizer/issues` | 492 | 155 |
+| `/Realistic-Farming/FS25_SoilFertilizer/blob/main/README.md` | 209 | 128 |
+| `/Realistic-Farming/FS25_SoilFertilizer/discussions` | 118 | 65 |
+| `/Realistic-Farming/FS25_SoilFertilizer/tree/development` | 85 | 17 |
 | `/Realistic-Farming/FS25_SoilFertilizer/issues/726` | 71 | 23 |
+| `/Realistic-Farming/FS25_SoilFertilizer/tree/main` | 68 | 35 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.4.4.0` | 67 | 57 |
 
 ---
 
