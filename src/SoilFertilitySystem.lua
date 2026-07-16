@@ -4264,6 +4264,15 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     -- Fertilizer products: coverage is handled by markBoomCells (cell dedup).
     if updateFractions == false then return end
 
+    -- Liter-based coverage is a FALLBACK for applications with no boom position.
+    -- If the geometric path (markBoomCells) is already tracking this field this
+    -- session, defer to it: adding the liter estimate on top double-counts and pins
+    -- Pass% at 100% (#726). The call site enables this path with `not isFertilizer`,
+    -- on the old assumption that crop protection never has boom points; modern
+    -- sprayers and See & Spray DO provide them, so markBoomCells runs too. It stamps
+    -- sessionCoverageCells, so any cell means the geometric path owns coverage here.
+    if next(field.sessionCoverageCells or {}) ~= nil then return end
+
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
 

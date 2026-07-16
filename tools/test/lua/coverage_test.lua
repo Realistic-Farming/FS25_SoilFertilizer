@@ -73,6 +73,36 @@ do
          sys.fieldData[1].fieldArea, 5.0)
 end
 
+-- ── #726 root cause: liter fallback must defer to the geometric path ──
+-- When markBoomCells has stamped cells (crop protection WITH boom points, e.g. See &
+-- Spray), the liter estimate must NOT also write coverage, or the two writers
+-- double-count and pin Pass% at 100%.
+do
+  local sys = newSys({
+    [1] = {
+      fieldArea = 2.0,
+      sessionCoverageHa = 0.5,                 -- geometric path already recorded 0.5 ha
+      sessionCoverageFraction = 0.25,
+      sessionCoverageCells = { ["c1"] = 123 },  -- markBoomCells stamped a cell -> geometric active
+    },
+  })
+  -- A huge liter estimate that WOULD saturate to 100% if it were counted here.
+  sys:trackSprayerCoverage(1, 100000, "HERBICIDE", true)
+  T.eq("#726: liter path defers when geometric cells exist (fraction unchanged)",
+       sys.fieldData[1].sessionCoverageFraction, 0.25)
+  T.near("#726: liter path leaves session ha untouched",
+         sys.fieldData[1].sessionCoverageHa, 0.5)
+end
+
+do
+  -- True no-boom fallback: no geometric cells -> the liter path still runs as before.
+  local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)  -- 0.5 ha of a 2 ha field
+  T.near("#726: liter fallback still tracks with no boom cells (25%)",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
+end
+
 -- ── Fertilizer profile sanity: every profile is a real number table ──
 do
   local bad = 0
