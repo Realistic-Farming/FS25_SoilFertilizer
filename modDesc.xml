@@ -155,6 +155,8 @@
         <storeItem xmlFilename="objects/liquidTank/mancozeb/multiPurchaseLiquidTank_mancozeb.xml"/>
         <storeItem xmlFilename="objects/liquidTank/metalaxyl/multiPurchaseLiquidTank_metalaxyl.xml"/>
         <storeItem xmlFilename="objects/liquidTank/tebuconazole/multiPurchaseLiquidTank_tebuconazole.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/sulfur/multiPurchaseLiquidTank_sulfur.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/copper_hydroxide/multiPurchaseLiquidTank_copper_hydroxide.xml"/>
         <storeItem xmlFilename="objects/liquidTank/liquidlime/multiPurchaseLiquidTank_liquidlime.xml"/>
         <!-- Big Bags / Solid (multi-purchase) -->
         <storeItem xmlFilename="objects/bigBag/urea/multiPurchaseBigBag_urea.xml"/>
@@ -191,6 +193,8 @@
         <storeItem xmlFilename="objects/liquidTank/mancozeb/liquidTank_mancozeb.xml"/>
         <storeItem xmlFilename="objects/liquidTank/metalaxyl/liquidTank_metalaxyl.xml"/>
         <storeItem xmlFilename="objects/liquidTank/tebuconazole/liquidTank_tebuconazole.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/sulfur/liquidTank_sulfur.xml"/>
+        <storeItem xmlFilename="objects/liquidTank/copper_hydroxide/liquidTank_copper_hydroxide.xml"/>
         <storeItem xmlFilename="objects/liquidTank/liquidlime/liquidTank_liquidlime.xml"/>
         <storeItem xmlFilename="objects/bigBag/urea/bigBag_urea.xml"/>
         <storeItem xmlFilename="objects/bigBag/an/bigBag_an.xml"/>

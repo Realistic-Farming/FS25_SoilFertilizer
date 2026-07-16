@@ -2062,11 +2062,23 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
         end
     end
 
-    -- Rain effects
+    -- Rain effects (+ SCS-001 irrigation-driven leaching)
     if self.settings.rainEffects and env.weather then
         local rainScale = env.weather:getRainFallScale()
         if rainScale and rainScale > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
+            -- Raining: per-frame leach (existing cadence), now moisture-aware per field.
             self:applyRainEffects(dt, rainScale)
+            self._irrigLeachAccumMs = 0
+        elseif g_currentMission and g_currentMission.cropStressManager then
+            -- No rain, but SeasonalCropStress is loaded: irrigation can still leach a
+            -- pivot-watered field. Throttled (accumulate dt, fire every interval) so this
+            -- never becomes a permanent per-frame full-field loop. Zero cost when SCS absent.
+            self._irrigLeachAccumMs = (self._irrigLeachAccumMs or 0) + dt
+            if self._irrigLeachAccumMs >= SoilConstants.RAIN.IRRIGATION_LEACH_INTERVAL_MS then
+                local accumDt = self._irrigLeachAccumMs
+                self._irrigLeachAccumMs = 0
+                self:applyRainEffects(accumDt, 0)  -- rainScale 0; per-field SCS moisture drives it
+            end
         end
     end
 end
@@ -3495,8 +3507,14 @@ local RWE_LEACH_MULTIPLIERS = {
     crop_yield_bonus   = 0.85,
 }
 
+-- Nutrient leaching from sustained soil moisture. Driven by rain (rainScale > 0) and/or,
+-- when SeasonalCropStress is present, irrigation (SCS-001): a field's SCS moisture reads
+-- into the same leach factor, so watering is a trade-off rather than a free yield lever.
+-- Firewall: SF is the sole writer of its N/P/K; it only READS SCS moisture, never writes it.
+-- When SCS is absent (moisture nil) this is byte-identical to the original rain-only leach.
 function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     if not self.settings.enabled or not self.settings.rainEffects then return end
+    rainScale = rainScale or 0
 
     local rain = SoilConstants.RAIN
     local limits = SoilConstants.NUTRIENT_LIMITS
@@ -3509,22 +3527,58 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     end
 
     local tunRain = getTuningMult(self.settings, "tuningRainLeaching", "ZERO_MULT")
-    local leachFactor = rainScale * dt * rain.LEACH_BASE_FACTOR * rweMultiplier * tunRain
+    local baseFactor = dt * rain.LEACH_BASE_FACTOR * rweMultiplier * tunRain
+
+    -- SCS-001: bind the SCS moisture reader once. g_cropStressManager is per-mod scoped
+    -- and NOT visible from here; the reliable cross-mod handle is the mission bridge
+    -- g_currentMission.cropStressManager (mirrors our own mission.soilFertilityManager).
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    local moistThreshold = rain.IRRIGATION_LEACH_THRESHOLD
     local count = 0
 
     -- Iterate only owned fields (activeFieldIds set, Phase 1)
     for fieldId in pairs(self.activeFieldIds) do
         local field = self.fieldData[fieldId]
         if field then
-            field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
-            field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
-            field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-            field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
-            count = count + 1
+            -- Per-field SCS moisture (0-1) or nil. pcall-wrapped, neutral when absent/error.
+            local moisture = nil
+            if csMgr then
+                local ok, m = pcall(csMgr.getMoisture, csMgr, fieldId)
+                if ok and type(m) == "number" then moisture = m end
+            end
+
+            -- Effective wetness driver: rain, or sustained irrigation moisture above the
+            -- threshold (SCS-001 widened trigger). Irrigation is scaled gentler than rain
+            -- (IRRIGATION_LEACH_SCALE) since it is continuous, not intermittent.
+            local drive = rainScale
+            if moisture and moisture > moistThreshold then
+                local irrigDrive = ((moisture - moistThreshold) / (1.0 - moistThreshold)) * rain.IRRIGATION_LEACH_SCALE
+                if irrigDrive > drive then drive = irrigDrive end
+            end
+
+            if drive > 0 then
+                -- Sustained moisture amplifies leaching; high organic matter buffers it (OM 0-10).
+                local scsMoistureMult = 1.0
+                if moisture then
+                    local omBuffer = 1.0 - ((field.organicMatter or 0) / 10.0) * rain.OM_LEACH_DAMPEN
+                    if omBuffer < 0 then omBuffer = 0 end
+                    scsMoistureMult = 1.0 + moisture * rain.MOISTURE_LEACH_GAIN * omBuffer
+                end
+
+                local leachFactor = drive * baseFactor * scsMoistureMult
+                if leachFactor > 0 then
+                    field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
+                    field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
+                    field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                    field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
+                    count = count + 1
+                end
+            end
         end
     end
 
-    SoilLogger.debug("[PERF-P1] Rain leach: %d active field(s), leachFactor=%.6f", count, leachFactor)
+    SoilLogger.debug("[PERF-P1] Leach: %d field(s), rainScale=%.3f baseFactor=%.9f%s",
+        count, rainScale, baseFactor, csMgr and " (SCS moisture-aware)" or "")
 end
 
 -- Update field nutrients after harvest
@@ -4551,6 +4605,17 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
 end
 
 function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters, chemId)
+    -- Organic certification (OM-209): a synthetic fungicide on a transitioning or
+    -- certified field is a breach (full reset to conventional); the approved organic
+    -- pair (SULFUR / COPPER_HYDROXIDE, in ORGANIC.APPROVED_INPUTS) passes clean. This is
+    -- the fungicide analogue of the onFertilizerApplied breach check. chemId is the
+    -- upper-case fill type name, exactly what onInputApplied expects. It runs before the
+    -- disease-sim guard below so organic rules hold even when disease pressure is off, and
+    -- on the same server-authoritative apply path as the fertilizer breach.
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic and chemId then
+        g_SoilFertilityManager.organic:onInputApplied(fieldId, chemId)
+    end
+
     if not self.settings.diseasePressure then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end

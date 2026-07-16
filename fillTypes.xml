@@ -175,6 +175,22 @@
             <pallet filename="objects/liquidTank/tebuconazole/liquidTank_tebuconazole.xml" />
         </fillType>
 
+        <!-- Organic-approved physical fungicides (OM-209) - sprayed like FUNGICIDE; in ORGANIC.APPROVED_INPUTS so they do NOT breach organic cert -->
+        <fillType name="SULFUR" title="$l10n_sf_sulfur_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.40"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/sulfur/liquidTank_sulfur.xml" />
+        </fillType>
+        <fillType name="COPPER_HYDROXIDE" title="$l10n_sf_copper_hydroxide_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.55"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+            <sprayType sprayTypeStr="HERBICIDE"/>
+            <pallet filename="objects/liquidTank/copper_hydroxide/liquidTank_copper_hydroxide.xml" />
+        </fillType>
+
         <fillType name="LIQUID_UREA" title="$l10n_sf_liquid_urea_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="0"/>
             <economy pricePerLiter="0.60"/>
@@ -293,7 +309,7 @@
             that already accept LIQUIDFERTILIZER will also accept our liquid nitrogen products
             and starter fertilizer.
         -->
-        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
+        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE SULFUR COPPER_HYDROXIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
     </fillTypeCategories>
 
 </map>

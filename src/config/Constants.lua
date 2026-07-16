@@ -320,6 +320,16 @@ SoilConstants.RAIN = {
     PHOSPHORUS_MULTIPLIER = 0.5,     -- phosphorus binds to soil (least mobile)
     PH_ACIDIFICATION = 0.1,          -- rain acidification multiplier
     MIN_RAIN_THRESHOLD = 0.1,        -- minimum rainScale to trigger effects
+
+    -- SCS-001 irrigation-driven leaching (reads SeasonalCropStress moisture, SF-side).
+    -- Sustained soil moisture (rain AND irrigation) costs nutrients, so irrigation is a
+    -- trade-off, not a free yield lever. Neutral (no effect) when SCS is absent. Numbers
+    -- are conservative + VISIBLE-first anchors; final values ride the Soil balance pass.
+    IRRIGATION_LEACH_THRESHOLD = 0.55,   -- SCS moisture (0-1) above which a non-rain field leaches
+    IRRIGATION_LEACH_SCALE     = 0.40,   -- how hard saturated irrigation drives leaching vs rain (<1 = gentler)
+    MOISTURE_LEACH_GAIN        = 0.50,   -- extra leaching from sustained moisture (amplifies the rain factor)
+    OM_LEACH_DAMPEN            = 0.50,   -- high organic matter (0-10) softens the moisture add (buffer)
+    IRRIGATION_LEACH_INTERVAL_MS = 30000,-- throttle for the no-rain irrigation leach pass (accumulated dt)
 }
 
 -- ========================================
@@ -514,6 +524,11 @@ SoilConstants.ORGANIC = {
         LIME              = true,
         LIQUIDLIME        = true,
         GYPSUM            = true,
+        -- Organic-approved crop protection (OM-209): the mineral preventatives
+        -- allowed under organic rules. Their fungicide application does NOT breach
+        -- cert; the synthetic fungicides (not listed here) do. See onFungicideAppliedDirect.
+        SULFUR            = true,
+        COPPER_HYDROXIDE  = true,
     },
 }
 
@@ -539,6 +554,8 @@ SoilConstants.FERTILIZER_TYPES = {
     "INSECTICIDE", "FUNGICIDE",
     -- Physical named fungicides (6-chemical kit): buyable tanks sprayed like FUNGICIDE
     "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE",
+    -- Organic-approved preventatives (OM-209): same sprayed-tank path, organic-legal
+    "SULFUR", "COPPER_HYDROXIDE",
 }
 
 -- ========================================
@@ -927,6 +944,9 @@ SoilConstants.SPRAYER_RATE = {
         MANCOZEB      = { value = 100.0, unit = "liquid" },
         METALAXYL     = { value = 100.0, unit = "liquid" },
         TEBUCONAZOLE  = { value = 100.0, unit = "liquid" },
+        -- Organic-approved preventatives (OM-209) - same carrier rate as generic FUNGICIDE
+        SULFUR           = { value = 100.0, unit = "liquid" },
+        COPPER_HYDROXIDE = { value = 100.0, unit = "liquid" },
         HERBICIDE   = { value = 100.0, unit = "liquid" },
         -- Fallback for unrecognized fill types
         DEFAULT           = { value =    93.5, unit = "liquid" },
@@ -1128,6 +1148,8 @@ SoilConstants.DISEASE_PRESSURE = {
         -- control rate is applied at spray time in onFungicideAppliedDirect via the catalog.
         PROPICONAZOLE = 1.0, AZOXYSTROBIN = 1.0, BOSCALID = 1.0,
         MANCOZEB = 1.0, METALAXYL = 1.0, TEBUCONAZOLE = 1.0,
+        -- Organic-approved preventatives (OM-209): same base multiplier; catalog control at spray time
+        SULFUR = 1.0, COPPER_HYDROXIDE = 1.0,
     },
     -- Pressure points removed on a single full-field fungicide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.
@@ -1386,15 +1408,18 @@ SoilConstants.FUNGICIDE_ORDER = {
     "FLUDIOXONIL", "METALAXYL_M", "THIRAM", "CAPTAN",
 }
 
--- Physical fungicides: the six catalog chemicals that also ship as buyable, sprayable fill
--- types (the 6-chemical kit). They stay in recommend()/the scout list so scouting still
--- names them as the right control, but the menu/console INSTANT-apply paths reject them
--- (you load the tank and spray instead). Spraying routes into the catalog control math via
--- onFungicideAppliedDirect. This set is the single source of truth for "is physical".
-SoilConstants.PHYSICAL_FUNGICIDE_ORDER = { "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE" }
+-- Physical fungicides: the catalog chemicals that also ship as buyable, sprayable fill
+-- types (the 6-chemical kit + the sulfur/copper organic pair, OM-209). They stay in
+-- recommend()/the scout list so scouting still names them as the right control, but the
+-- menu/console INSTANT-apply paths reject them (you load the tank and spray instead).
+-- Spraying routes into the catalog control math via onFungicideAppliedDirect. This set is
+-- the single source of truth for "is physical". SULFUR/COPPER_HYDROXIDE are additionally
+-- the organic-legal pair (see ORGANIC.APPROVED_INPUTS); the six synthetics breach cert.
+SoilConstants.PHYSICAL_FUNGICIDE_ORDER = { "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE" }
 SoilConstants.PHYSICAL_FUNGICIDES = {
     PROPICONAZOLE = true, AZOXYSTROBIN = true, BOSCALID = true,
     MANCOZEB = true, METALAXYL = true, TEBUCONAZOLE = true,
+    SULFUR = true, COPPER_HYDROXIDE = true,
 }
 
 -- Treatment mechanics (timing, weather, disease-stage gating).
