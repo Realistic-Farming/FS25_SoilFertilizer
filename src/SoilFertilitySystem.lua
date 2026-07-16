@@ -4673,7 +4673,14 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99993] = (field.nutrientBuffer[99993] or 0) + liters
-    self:trackSprayerCoverage(fieldId, liters, "FUNGICIDE")
+    -- Work Trail fix: tag coverage with the REAL chemical name (chemId), not the literal
+    -- "FUNGICIDE". The sprayer hook already tracked this pass under fillType.name
+    -- (e.g. "SULFUR"/"PROPICONAZOLE") via trackSprayerCoverage. Tagging "FUNGICIDE" here made
+    -- sessionLastProduct flip every tick, tripping the product-change reset (#442) that wipes
+    -- sessionCoverageCells + sprayTrailPts, so the work-trail overlay vanished the instant it drew.
+    -- Only the named physical fungicides hit this (generic FUNGICIDE's fill name IS "FUNGICIDE").
+    -- updateFractions=false: name-only, so this does not double-count the area already tracked.
+    self:trackSprayerCoverage(fieldId, liters, chemId or "FUNGICIDE", false)
 end
 
 --- Apply over-application burn penalty to a field.
