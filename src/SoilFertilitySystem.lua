@@ -3889,8 +3889,14 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         -- needed) so it works from the first pass and on dedicated servers.
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): a re-confirmation must never drop the field area below
+            -- the hectares already covered this session. A bogus small resolve (e.g. a wrong
+            -- farmland->field mapping on a multi-field parcel) would otherwise collapse the
+            -- denominator and pin Pass% at 100%, and skew per-ha rates + the compaction average.
+            -- No-op in the healthy path (session coverage <= true crop area).
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil  -- recompute the average denominator on the corrected area
             end
             field._farmlandAreaConfirmed = true
@@ -4483,8 +4489,12 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         -- Prefer the arable crop-polygon area over the parcel (#719); mirrors applyFertilizer.
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors applyFertilizer. Never let a re-confirm drop the
+            -- field area below the hectares already covered this session (a bogus small resolve
+            -- would collapse the denominator and pin Pass% at 100%). No-op in the healthy path.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true
@@ -4568,8 +4578,12 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     if not field._farmlandAreaConfirmed or _isNewSession then
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors applyFertilizer / onHerbicideAppliedDirect. A re-confirm
+            -- must never drop the field area below the hectares already covered this session, or a
+            -- bogus small resolve would collapse the denominator and pin Pass% at 100%. No-op healthy.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true
@@ -4640,8 +4654,12 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     if not field._farmlandAreaConfirmed or _isNewSession then
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors the other direct spray paths. A re-confirm must never
+            -- drop the field area below the hectares already covered this session, or a bogus small
+            -- resolve would collapse the denominator and pin Pass% at 100%. No-op in the healthy path.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true

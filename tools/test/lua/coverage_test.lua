@@ -45,6 +45,34 @@ do  -- overlayOnly: counter stays put, overlay still painted (preserves #626)
        sys.fieldData[1].zoneData ~= nil and next(sys.fieldData[1].zoneData) ~= nil)
 end
 
+-- ── #726 sanity floor: a re-confirm must not shrink fieldArea below session coverage ──
+-- Drives the real onHerbicideAppliedDirect area-confirm block. liters=0 skips the
+-- reduction branch; _resolveCropAreaHa is overridden on the instance to force the
+-- resolve value. sessionCoverageCells={} makes it a "new session" so the re-confirm fires.
+do
+  -- Bogus tiny resolve (e.g. a wrong farmland->field mapping) must NOT collapse the denominator.
+  local sys = newSys({
+    [1] = { fieldArea = 5.0, sessionCoverageHa = 3.0, sessionCoverageCells = {}, weedPressure = 10 },
+  })
+  sys.settings = { weedPressure = true }
+  sys._resolveCropAreaHa = function() return 0.5 end
+  sys:onHerbicideAppliedDirect(1, 1.0, 0)
+  T.near("#726 floor: fieldArea held at session coverage, not collapsed to 0.5",
+         sys.fieldData[1].fieldArea, 3.0)
+end
+
+do
+  -- Healthy path: a legit crop area above the covered ha still takes effect (floor is a no-op).
+  local sys = newSys({
+    [1] = { fieldArea = 10.0, sessionCoverageHa = 2.0, sessionCoverageCells = {}, weedPressure = 10 },
+  })
+  sys.settings = { weedPressure = true }
+  sys._resolveCropAreaHa = function() return 5.0 end
+  sys:onHerbicideAppliedDirect(1, 1.0, 0)
+  T.near("#726 floor: healthy re-confirm still applies the true crop area",
+         sys.fieldData[1].fieldArea, 5.0)
+end
+
 -- ── Fertilizer profile sanity: every profile is a real number table ──
 do
   local bad = 0
