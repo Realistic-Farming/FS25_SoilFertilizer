@@ -336,6 +336,12 @@
     <e k="sf_crop_rotation_short" v="Střídání plodin" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Povolit/zakázat bonus za střídání plodin a únavu z monokultury (sekvence luštěnin obnovují dusík; po sobě jdoucí sezóny stejné plodiny zvyšují vyčerpání)" eh="958b4212" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
+    <e k="sf_report_rotation_ok" v="[EN] OK" eh="e0aa021e" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
+    <e k="sf_report_rec_optimal" v="[EN] Soil Health: Optimal" eh="6ee9d19b" />
+    <e k="sf_report_rec_good" v="[EN] Good" eh="0c6ad70b" />
+    <e k="sf_report_rec_fair" v="[EN] Fair" eh="f7f20cf0" />
+    <e k="sf_report_rec_poor" v="[EN] Poor" eh="0e94d017" />
     <e k="sf_gypsum_title" v="Sádrovec (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompost (organický)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Biomasa (N+P)" eh="f0c901dc" />
@@ -784,6 +790,7 @@
     <e k="sf_see_spray_disease"     v="Choroby" />
     <e k="sf_see_spray_weed"        v="Plevel" />
     <e k="sf_see_spray_suppressed"  v="Všechny sekce potlačeny: žádný tlak nezjištěn" />
+    <e k="sf_see_spray_protected" v="[EN] 0% (Protected)" eh="190bfadc" />
     <!-- VARIABLE RATE PANEL -->
     <e k="sf_var_rate_panel_title" v="VARIABILNÍ DÁVKA" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. dávka" />
@@ -1031,6 +1038,8 @@
     <e k="sf_guide_tab_3" v="PRACOVNÍ POSTUP" eh="7337e059" />
     <e k="sf_guide_tab_4" v="PRODUKTY" eh="d71bd8a0" />
     <e k="sf_guide_tab_5" v="ČASTÉ DOTAZY" eh="a922ea47" />
+    <e k="sf_report_fields_tracked" v="[EN] Fields Tracked:" eh="7b1e59b8" />
+    <e k="sf_report_rotation_bonus" v="[EN] Bonus" eh="3c0ee4ba" />
     	<e k="sf_fieldsentry_asleep" v="simulace spí" eh="7d49241b" />
     	<e k="sf_fs_reason_manual" v="ručně" eh="3c78b355" />
     	<e k="sf_fs_reason_npc" v="zakázka NPC" eh="2e1a268b" />
@@ -1130,6 +1139,9 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
         <e k="sf_propiconazole_title" v="Propiconazole" />
     <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
     <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />

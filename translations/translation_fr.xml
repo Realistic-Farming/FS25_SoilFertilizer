@@ -106,7 +106,14 @@
     <e k="input_SF_TOGGLE_AUTO" v="Basculer le mode automatique" eh="a8642cf0" />
     <e k="input_SF_CYCLE_MAP_LAYER" v="Changer la couche de carte du sol" eh="8e4a716c" />
     <e k="input_SF_SOIL_PDA" v="Ouvrir le PDA du sol" eh="7d70f7b4" />
+    <e k="input_SF_SENSOR_PEST" v="[EN] Toggle Pest Sensor" eh="d747a693" />
+    <e k="input_SF_SENSOR_DISEASE" v="[EN] Toggle Disease Sensor" eh="8e24719a" />
+    <e k="input_SF_SENSOR_NUTRIENT" v="[EN] Toggle Nutrient Sensor" eh="8ac40270" />
+    <e k="input_SF_SEE_SPRAY_PEST" v="[EN] See &amp; Spray: Pest" eh="7fd924e4" />
     <e k="input_SF_SEE_SPRAY_DISEASE" v="[EN] See &amp; Spray: Disease" eh="a5e476a8" />
+    <e k="input_SF_SEE_SPRAY_WEED" v="[EN] See &amp; Spray: Weed" eh="bbdbcf08" />
+    <e k="input_SF_VARIABLE_RATE" v="[EN] Toggle Variable Rate" eh="4f2a546d" />
+    <e k="input_SF_MINIMAP_ZOOM" v="[EN] Cycle Minimap Zoom" eh="cca8129a" />
     <e k="sf_uan32_title" v="Engrais UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Engrais UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Ammoniac anhydre (N)" eh="3fc85c02" />
@@ -774,9 +781,15 @@
          ====================================================== -->
     <e k="sf_var_rate_panel_title" v="TAUX VARIABLE" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Taux var." />
+    <e k="action_SF_SENSOR_PEST" v="[EN] SF: Toggle Pest Sensor" eh="e8152517" />
+    <e k="action_SF_SENSOR_DISEASE" v="[EN] SF: Toggle Disease Sensor" eh="94d79cce" />
+    <e k="action_SF_SENSOR_NUTRIENT" v="[EN] SF: Toggle Nutrient Sensor" eh="cf84e8d8" />
+    <e k="action_SF_SEE_SPRAY_PEST" v="[EN] SF: Toggle See &amp; Spray Pest" eh="65c74849" />
 
     <!-- noms d’affichage des actions d’entrée -->
     <e k="action_SF_SEE_SPRAY_DISEASE" v="SF : Activer/Désactiver See &amp; Spray Maladies" eh="205a3668" />
+    <e k="action_SF_SEE_SPRAY_WEED" v="[EN] SF: Toggle See &amp; Spray Weed" eh="c0ec3165" />
+    <e k="action_SF_VARIABLE_RATE" v="[EN] SF: Toggle Variable Rate" eh="c47214bb" />
     <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
@@ -1016,6 +1029,7 @@
     <e k="sf_report_rotation_bonus"   v="Bonus de rotation" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="Rotation : OK" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="Santé du sol : Optimale" />
     <e k="sf_report_rec_good"         v="Bonne" />
     <e k="sf_report_rec_fair"         v="Moyenne" />
@@ -1123,6 +1137,9 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
         <e k="sf_propiconazole_title" v="Propiconazole" />
     <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
     <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />

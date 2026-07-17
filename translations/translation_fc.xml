@@ -1047,6 +1047,7 @@
     <e k="sf_report_rotation_bonus"   v="轮作增益" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="轮作状态：正常" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="土壤健康：最佳" />
     <e k="sf_report_rec_good"         v="良好" />
     <e k="sf_report_rec_fair"         v="一般" />
@@ -1150,6 +1151,9 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
         <e k="sf_propiconazole_title" v="Propiconazole" />
     <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
     <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />

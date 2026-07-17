@@ -692,6 +692,8 @@
     <e k="sf_panel_hdr_smart_systems"      v="Smart Systems" />
     <e k="sf_nav_smart_systems_label"      v="Smart Systems" />
     <e k="sf_nav_smart_systems_desc"       v="Opsæt Smart Sensor, præcisionssprøjtningssystemet til variabel dosering" />
+    <e k="sf_nav_tuning_label" v="[EN] Constants Tuning Editor" eh="e56a0d6d" />
+    <e k="sf_nav_tuning_desc" v="[EN] Fine-tune simulation constants: depletion rates, stress growth, starting soil values" eh="0f9d6cdd" />
     <e k="sf_panel_hdr_smart_sensor_sys"   v="Smart Sensor System" />
     <e k="sf_panel_hdr_see_spray_sys"      v="præcisionssprøjtning" />
     <e k="sf_panel_hdr_var_rate_sys"       v="variabelt doseringssystem" />
@@ -728,6 +730,7 @@
     <e k="sf_see_spray_disease"     v="Sygdom" />
     <e k="sf_see_spray_weed"        v="Ukrudt" />
     <e k="sf_see_spray_suppressed"  v="Alle sektioner deaktiveret: intet tryk registreret" />
+    <e k="sf_see_spray_protected" v="[EN] 0% (Protected)" eh="190bfadc" />
     <!-- VARIABLE RATE PANEL -->
     <e k="sf_var_rate_panel_title" v="Variabel dosering" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. dose" />
@@ -982,6 +985,7 @@
     <e k="sf_report_rotation_bonus"   v="Rotation Bonus" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="Rotation: OK" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="Soil Health: Optimal" />
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
@@ -1085,6 +1089,9 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
     <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
     <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
         <e k="sf_propiconazole_title" v="Propiconazole" />
