@@ -3008,6 +3008,73 @@ function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
     field.diseasePressure = math.max(0, (field.diseasePressure or 0) - m.PRESSURE_DECAY * timeFactor)
 end
 
+-- Weed-factor sample offsets (metres) relative to the field centre. FieldState:update
+-- reads weed density at ONE point, so a single centre read misjudges a patchy field:
+-- a clean centre on an otherwise weedy field reported 0% while the minimap overlay
+-- (which reads the whole WeedSystem map) showed heavy weeds. Averaging
+-- the centre plus two rings gives a field-representative value from the SAME source, so
+-- withered-weed handling and the herbicide clamp below are unchanged.
+local WEED_SAMPLE_OFFSETS = {
+    { 0, 0 },
+    -- inner ring ~12 m
+    { 0, 12 }, { 8.5, 8.5 }, { 12, 0 }, { 8.5, -8.5 }, { 0, -12 }, { -8.5, -8.5 }, { -12, 0 }, { -8.5, 8.5 },
+    -- outer ring ~30 m
+    { 0, 30 }, { 21, 21 }, { 30, 0 }, { 21, -21 }, { 0, -30 }, { -21, -21 }, { -30, 0 }, { -21, 21 },
+}
+
+--- Average the game's weed factor across the field instead of reading a single centre
+--- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
+--- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
+--- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
+--- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
+--- field where every ring point is rejected this collapses to the old centre-only read.
+---@param fsField table   g_fieldManager field (has posX/posZ, farmland)
+---@param fieldId number
+function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
+    if not (fsField and fsField.posX and fsField.posZ) then return 0 end
+    if not self._fieldStateCache then self._fieldStateCache = {} end
+    if not self._fieldStateCache[fieldId] then
+        local cok, cfs = pcall(FieldState.new)
+        self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
+    end
+    local fs = self._fieldStateCache[fieldId]
+    if not fs then return 0 end
+
+    local nonCrops = (SoilConstants.YIELD_SENSITIVITY and
+        SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
+
+    -- Centre read gates the whole sample: only trust weed data when a managed
+    -- (non-forage) crop is actually present. Bare/UNKNOWN or grass/forage → skip.
+    local ok = pcall(function() fs:update(fsField.posX, fsField.posZ) end)
+    if not (ok and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN) then
+        return 0
+    end
+    local centreFruit = fs.fruitTypeIndex
+    local fruitDesc   = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(centreFruit)
+    local fruitName   = (fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)) or ""
+    if nonCrops[fruitName] then return 0 end
+
+    local sum   = fs.weedFactor or 0
+    local count = 1
+
+    for i = 2, #WEED_SAMPLE_OFFSETS do
+        local off    = WEED_SAMPLE_OFFSETS[i]
+        local px, pz = fsField.posX + off[1], fsField.posZ + off[2]
+        local pok = pcall(function() fs:update(px, pz) end)
+        if pok and fs.isValid and fs.fruitTypeIndex == centreFruit then
+            -- farmlandId is 0 until the engine populates it; treat 0/nil as "unknown,
+            -- accept" and only reject on a definite different-farmland reading.
+            local farmOk = (fs.farmlandId == nil) or (fs.farmlandId == 0) or (fs.farmlandId == fieldId)
+            if farmOk then
+                sum   = sum + (fs.weedFactor or 0)
+                count = count + 1
+            end
+        end
+    end
+
+    return sum / count
+end
+
 function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- FieldSentry gate (#651): a field the player has put to sleep (manual blacklist)
     -- - or that a later phase disables (deco/NPC/farmland) - skips the daily
@@ -3224,6 +3291,9 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- Sample FieldState.weedFactor from the game's weed density map.
             -- weedFactor: 0.0 = clean, 1.0 = fully weedy (matches FieldState default
             -- and getHarvestScaleMultiplier semantics - higher = more yield penalty).
+            -- Sample the game's weed factor across the field (multi-point average).
+            -- Grass/forage and bare fields skip inside the helper (returns 0), matching
+            -- the old centre-only guard. See _sampleFieldWeedFactor.
             local gameWeedFactor = 0.0
             if g_fieldManager and g_fieldManager.fields then
                 local fsField = g_fieldManager.fields[fieldId]
@@ -3236,32 +3306,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                         end
                     end
                 end
-                if fsField and fsField.posX and fsField.posZ then
-                    if not self._fieldStateCache then self._fieldStateCache = {} end
-                    if not self._fieldStateCache[fieldId] then
-                        local cok, cfs = pcall(FieldState.new)
-                        self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
-                    end
-                    local cachedFs = self._fieldStateCache[fieldId]
-                    local ok = cachedFs and pcall(function() cachedFs:update(fsField.posX, fsField.posZ) end)
-                    local fs = cachedFs
-                    -- Only trust weedFactor when a managed (non-forage) crop is present.
-                    -- Bare/plowed fields: fruitTypeIndex=UNKNOWN, weedFactor=0 → skip.
-                    -- Grass/forage crops: FS25 returns weedFactor=0 regardless of actual
-                    -- weed state (grass coverage is indistinguishable from weeds in the
-                    -- density map) → skip for NON_CROP_NAMES to avoid false 100%.
-                    if ok and fs and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
-                        local fruitDesc = g_fruitTypeManager and
-                            g_fruitTypeManager:getFruitTypeByIndex(fs.fruitTypeIndex)
-                        local fruitName = fruitDesc and fruitDesc.name and
-                            string.lower(fruitDesc.name) or ""
-                        local nonCrops = (SoilConstants.YIELD_SENSITIVITY and
-                            SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
-                        if not nonCrops[fruitName] then
-                            gameWeedFactor = fs.weedFactor
-                        end
-                    end
-                end
+                gameWeedFactor = self:_sampleFieldWeedFactor(fsField, fieldId)
             end
             -- When herbicide is active the game's density map still shows dying weeds for
             -- 1-2 days - reading it would overwrite the pressure reduction from onHerbicideApplied.
