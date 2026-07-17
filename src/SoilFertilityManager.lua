@@ -1949,8 +1949,10 @@ function SoilFertilityManager:delete()
     if self.soilSystem then
         self.soilSystem:delete()
     end
-    if self.settings then
-        self.settings:save()
-    end
+    -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
+    -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step
+    -- with the rest of the savegame (the settings twin of the soilData-on-quit bug,
+    -- #730). Real persistence is already covered: every change point saves immediately
+    -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
 end
