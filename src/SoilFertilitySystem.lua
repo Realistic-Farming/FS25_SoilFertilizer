@@ -870,6 +870,7 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
     field.sprayTrailPts           = nil
+    field._zoneBaseline           = nil   -- #735: re-snapshot the pre-spray baseline next session
     SoilLogger.debug("Session coverage reset: field %d (%s)", fieldId, reason or "?")
 end
 
@@ -4009,6 +4010,18 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         -- Capture before-values for diagnostic logging (debug mode only).
         local dbgN0, dbgP0, dbgK0, dbgPH0 = field.nitrogen, field.phosphorus, field.potassium, field.pH
 
+        -- #735: snapshot the field's pre-spray baseline ONCE per session, BEFORE the
+        -- field-average update below mutates field.nitrogen. Lazily-created zoneData
+        -- cells seed from this uniform baseline instead of the running average, so a
+        -- uniform pass no longer paints a false low->high gradient across the field.
+        -- Cleared on session reset (harvest/tillage/day change) so it re-snapshots.
+        if field._zoneBaseline == nil then
+            field._zoneBaseline = {
+                N  = field.nitrogen,   P  = field.phosphorus,
+                K  = field.potassium,  OM = field.organicMatter,
+            }
+        end
+
         local tunFert = getTuningMult(self.settings, "tuningFertilizerEfficiency", "RATE_MULT")
         if entry.N then field.nitrogen   = math.min(limits.MAX, field.nitrogen   + entry.N * factor * tunFert) end
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor * tunFert) end
@@ -4017,11 +4030,12 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
         -- pH bulk sync: lime raises pH field-wide so all cells track it uniformly.
-        -- N/P/K/OM are NOT bulk-synced - cells visited by the boom (markBoomCells)
-        -- get the updated field average written there, while unvisited pre-populated
-        -- cells keep their initial value. This creates spatial differentiation on the
-        -- overlay map: freshly-sprayed areas show higher nutrient values than areas
-        -- the boom hasn't reached yet.
+        -- N/P/K/OM are NOT bulk-synced - each cell visited by the boom accumulates its
+        -- OWN local dose (delta block below), seeded from the pre-spray field baseline
+        -- (#735), while unvisited pre-populated cells keep their initial value. This
+        -- creates spatial differentiation on the overlay map: freshly-sprayed areas show
+        -- higher nutrient values than areas the boom hasn't reached yet, without the
+        -- earlier false gradient from seeding cells off the climbing field average.
         if entry.pH and field.zoneData then
             for _, cell in pairs(field.zoneData) do
                 cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * factor))
@@ -4106,14 +4120,19 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                 local zdCount = 0
                 for _ in pairs(field.zoneData) do zdCount = zdCount + 1 end
                 if zdCount < MAX_ZONE_CELLS then
+                    -- Seed from the pre-spray field baseline (#735), NOT the running field
+                    -- average. field.nitrogen climbs field-wide as you spray, so seeding off
+                    -- it made cells visited later in a pass read higher than earlier ones,
+                    -- painting a false red->green gradient across a uniform pass. The delta
+                    -- block below then adds this cell's own dose on top of the baseline.
+                    -- Fallback to the old pre-update value only if no baseline was captured.
+                    local base = field._zoneBaseline
                     field.zoneData[cellKey] = {
-                        -- Pre-update values: the delta block below brings this cell to the
-                        -- same level as the field average without double-counting the delta.
-                        N  = math.max(limits.MIN, field.nitrogen      - dN),
-                        P  = math.max(limits.MIN, field.phosphorus    - dP),
-                        K  = math.max(limits.MIN, field.potassium     - dK),
+                        N  = math.max(limits.MIN, base and base.N  or (field.nitrogen      - dN)),
+                        P  = math.max(limits.MIN, base and base.P  or (field.phosphorus    - dP)),
+                        K  = math.max(limits.MIN, base and base.K  or (field.potassium     - dK)),
                         pH = field.pH,   -- pH already post-update via bulk sync above
-                        OM = math.max(0, field.organicMatter          - dOM),
+                        OM = math.max(0,          base and base.OM or (field.organicMatter - dOM)),
                         weedPressure    = field.weedPressure,
                         pestPressure    = field.pestPressure,
                         diseasePressure = field.diseasePressure,
