@@ -24,9 +24,10 @@ Each field builds its own history. Nitrogen drops after a heavy wheat crop. Rain
 
 </div>
 
-> [!CAUTION]
-> Soil Layer Installer is NEEDED please download and patch before opening playing.
-> [Soil Layer Install](https://github.com/Realistic-Farming/FS25_SoilLayerInstaller)
+> [!NOTE]
+> **Soil Layer Installer is no longer required.** The mod now builds its own per-pixel soil maps at startup, on every map, with no map preparation of any kind. Just install the zip and play.
+>
+> If you already patched a map with the [Soil Layer Installer](https://github.com/Realistic-Farming/FS25_SoilLayerInstaller), nothing breaks and nothing needs undoing - those layers are simply used as a fallback now.
 
 > [!WARNING]
 > **Not compatible with Precision Farming (FS25_precisionFarming).** The mod automatically detects when Precision Farming is active for your savegame and disables itself to prevent conflicts and data corruption.
