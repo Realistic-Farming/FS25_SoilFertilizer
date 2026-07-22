@@ -47,6 +47,7 @@ SFNozzleEffects.init(modDirectory)
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
+source(modDirectory .. "src/maps/SoilValueMaps.lua")
 source(modDirectory .. "src/SprayerRateManager.lua")
 source(modDirectory .. "src/SoilSensorManager.lua")
 -- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its

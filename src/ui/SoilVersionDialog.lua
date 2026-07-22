@@ -108,7 +108,7 @@ function SoilVersionDialog:onOpen()
 
     -- Title
     if self._elTitle then
-        self._elTitle:setText("FS25_SoilFertilizer  |  v" .. (self._version or "?"))
+        self._elTitle:setText("FS25_SoilFertilizer REFINED  |  v" .. (self._version or "?"))
     end
 
     -- "What's new" header

@@ -17,6 +17,7 @@ SoilConstants = {}
 SoilConstants.TIMING = {
     UPDATE_INTERVAL = 30000,     -- ms between periodic checks
     FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in
+    MAX_DAILY_CATCHUP = 10,      -- cap on skipped days simulated in one catch-up pass
 }
 
 -- ========================================

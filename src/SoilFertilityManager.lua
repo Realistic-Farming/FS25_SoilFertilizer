@@ -672,6 +672,12 @@ function SoilFertilityManager:activateSoilSystem()
 
         self.soilSystem:prePopulateAllZoneData()
         self:seedGRLEFromFieldData()
+
+        -- REFINED: seed / migrate the per-pixel value maps once fieldData is final.
+        -- No-op when the maps were restored from the savegame files.
+        if self.soilSystem.seedValueMaps then
+            self.soilSystem:seedValueMaps()
+        end
     end)
 
     if not ok then
@@ -1245,6 +1251,11 @@ function SoilFertilityManager:saveSoilData()
     else
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
     end
+
+    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
+    if self.soilSystem.valueMaps then
+        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+    end
 end
 
 --- Load soil data from XML file
@@ -1352,6 +1363,19 @@ end
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
 function SoilFertilityManager:update(dt)
+    -- REFINED: periodic value-map checksum broadcast (MP drift detection).
+    -- Server-only, every 5 real minutes, only when clients are connected.
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer then
+        self._vmChecksumTimer = (self._vmChecksumTimer or 0) + dt
+        if self._vmChecksumTimer >= 300000 then
+            self._vmChecksumTimer = 0
+            if SoilNetworkEvents_BroadcastValueMapChecksums then
+                SoilNetworkEvents_BroadcastValueMapChecksums()
+            end
+        end
+    end
+
     -- Deferred fill type registration retry (dedicated server timing fix: #431)
     -- Also re-patches ALL vehicles every frame until all custom types are resolvable,
     -- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
