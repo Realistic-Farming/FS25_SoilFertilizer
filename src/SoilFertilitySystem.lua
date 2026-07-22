@@ -31,6 +31,9 @@ function SoilFertilitySystem.new(settings)
     self.updateInterval = SoilConstants.TIMING.UPDATE_INTERVAL
     self.isInitialized = false
     self.lastUpdateDay = 0
+    -- Monotonic day of the last processed daily pass, for skipped-day catch-up.
+    -- 0 means "not yet observed" so the first day-change never spuriously catches up.
+    self.lastUpdateMonotonicDay = 0
     self.hookManager = HookManager.new()
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -1726,6 +1729,19 @@ function SoilFertilitySystem:_currentDay()
             and g_currentMission.environment.currentDay) or 0
 end
 
+--- Monotonic day counter for ARITHMETIC (elapsed-day math). Unlike currentDay,
+--- which wraps within a season and is only safe for change-detection,
+--- currentMonotonicDay increases forever, so (now - last) is the true number of
+--- days that passed - the value a skipped-day catch-up needs. Falls back to
+--- currentDay when the field is unavailable.
+function SoilFertilitySystem:_currentMonotonicDay()
+    local env = g_currentMission and g_currentMission.environment
+    if env then
+        return env.currentMonotonicDay or env.currentDay or 0
+    end
+    return 0
+end
+
 --- Current season index (1=Spring 2=Summer 3=Fall 4=Winter), or nil if unavailable.
 ---@return number|nil
 function SoilFertilitySystem:_currentSeason()
@@ -2073,7 +2089,22 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
     local currentDay = env.currentDay or 0
     if currentDay ~= self.lastUpdateDay then
         self.lastUpdateDay = currentDay
-        self:updateDailySoil()
+        -- Skipped-day catch-up: currentDay only proves a NEW day, not how many
+        -- passed (it wraps within a season), so a sleep or time-skip across
+        -- several days used to collapse into a single daily pass and silently
+        -- drop the missing days' soil changes. The monotonic day gives the true
+        -- gap. Clamped so a huge jump (or a pre-tracking save whose monotonic day
+        -- has not been observed yet) can never stall the frame; the first
+        -- observation is always treated as one day.
+        local monoDay = self:_currentMonotonicDay()
+        local elapsed = 1
+        if self.lastUpdateMonotonicDay > 0 and monoDay > self.lastUpdateMonotonicDay then
+            elapsed = monoDay - self.lastUpdateMonotonicDay
+            local maxCatchup = (SoilConstants.TIMING and SoilConstants.TIMING.MAX_DAILY_CATCHUP) or 10
+            if elapsed > maxCatchup then elapsed = maxCatchup end
+        end
+        self.lastUpdateMonotonicDay = monoDay
+        self:updateDailySoil(elapsed)
         -- Advance organic transitions (uses the monotonic day internally).
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:onDayChanged()
@@ -2188,7 +2219,9 @@ function SoilFertilitySystem:update(dt)
                     -- decay...) is mirrored onto the per-pixel value maps as one
                     -- uniform whole-field shift that preserves spatial variation.
                     local vmSnap = self:_vmSnapshotField(fd)
-                    self:_processOneDailyField(fid, fd)
+                    for _ = 1, (self._dailyBatchRepeat or 1) do
+                        self:_processOneDailyField(fid, fd)
+                    end
                     self:_vmApplySnapshotDeltas(fid, fd, vmSnap)
                     -- Display layers (pressures/urgency/yield) mirror immediately
                     -- rather than waiting for the round-robin sweep to reach us
@@ -3368,11 +3401,45 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, fillTypeName)
     if minimapLayer then minimapLayer:markDirty() end
 end
 
+-- Finish the in-flight daily batch synchronously: process every field still past
+-- the cursor with the batch's current repeat count, then close it out. Called when
+-- a new day arrives before the async batch drained, so a field's daily pass is
+-- never abandoned (the stranded-tail bug). Rare (only under rapid time advance),
+-- so paying the remainder in one frame at the catch-up moment is acceptable.
+function SoilFertilitySystem:_drainDailyBatchSync()
+    local list = self._activeFieldList
+    if not list then
+        self._pendingDailyUpdate = false
+        return
+    end
+    local n          = #list
+    local cursor     = self._dailyBatchCursor or 0
+    local repeatDays = self._dailyBatchRepeat or 1
+    while cursor < n do
+        cursor = cursor + 1
+        local fid = list[cursor]
+        local fd  = self.fieldData[fid]
+        if fd then
+            local vmSnap = self:_vmSnapshotField(fd)
+            for _ = 1, repeatDays do
+                self:_processOneDailyField(fid, fd)
+            end
+            self:_vmApplySnapshotDeltas(fid, fd, vmSnap)
+            if self:vmAvailable() then
+                self:_vmMirrorDisplayField(fid, fd)
+            end
+        end
+    end
+    self._dailyBatchCursor   = n
+    self._pendingDailyUpdate = false
+    self.lastSeason          = self._dailyBatchSeason
+end
+
 -- Daily soil update - PHASE 4: converted to batch scheduler.
 -- Instead of processing every field synchronously on the day-rollover tick
 -- (which can stall for hundreds of ms on large maps), we queue work and
 -- drain it across multiple frames via the update(dt) batch loop.
-function SoilFertilitySystem:updateDailySoil()
+function SoilFertilitySystem:updateDailySoil(elapsedDays)
     if not self.settings.enabled or not self.settings.nutrientCycles then return end
 
     local currentDay = (g_currentMission and g_currentMission.environment and
@@ -3383,6 +3450,18 @@ function SoilFertilitySystem:updateDailySoil()
         SoilLogger.debug("[PERF-P4] Day %d batch already queued, skipping duplicate trigger", currentDay)
         return
     end
+
+    -- Stranding fix: if the PREVIOUS day's batch never finished draining before
+    -- this new day arrived (rapid time advance), finish its remaining fields now
+    -- instead of resetting the cursor and freezing that unprocessed tail forever.
+    if self._pendingDailyUpdate then
+        self:_drainDailyBatchSync()
+    end
+
+    -- Skipped-day catch-up: how many days this pass stands in for. Each active
+    -- field runs its daily logic this many times so missed days are applied
+    -- rather than silently dropped.
+    self._dailyBatchRepeat = math.max(1, math.floor(elapsedDays or 1))
 
     -- Snapshot current state for all per-field workers in this batch
     self._dailyBatchDay    = currentDay
