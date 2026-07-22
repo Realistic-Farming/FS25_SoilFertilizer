@@ -89,7 +89,12 @@ SoilConstants.FIELD_VARIATION = {
 SoilConstants.PLOWING = {
     MIN_DEPTH_FOR_PLOWING = 0.15,  -- Minimum working depth (meters) to qualify as deep plowing
     PEST_PRESSURE_REDUCTION    = 30,  -- Points removed from pest pressure on plowing
-    DISEASE_PRESSURE_REDUCTION = 40,  -- Points removed from disease pressure on plowing
+    -- #737 option D: was 40, which cleared roughly six years of disease accumulation
+    -- (~6.8 pts/year) in a single pass and pinned the pressure near zero for anyone
+    -- who ploughs at all. 15 clears about two years, which is a real reset without
+    -- being an erase. NOTE: CULTIVATION.DISEASE_PRESSURE_REDUCTION is also 15, so a
+    -- plough and a cultivator now relieve disease equally; see the commit body.
+    DISEASE_PRESSURE_REDUCTION = 15,
 }
 
 -- ========================================
@@ -1085,8 +1090,14 @@ SoilConstants.PEST_PRESSURE = {
     INSECTICIDE_DURATION_DAYS = 30,
 
     -- On harvest: pest pressure resets to this fraction of current value
-    -- (insects disperse when the host crop is removed)
-    HARVEST_RESET_FRACTION = 0.30,
+    -- (insects disperse when the host crop is removed).
+    -- #737 option D: was 0.30. Pest grows ~8.52 pts/year at the low tier, and with
+    -- an annual harvest the pre-harvest steady state is P = A / (1 - f), so at
+    -- f = 0.30 the field converged on 12.2 and could NEVER reach the first costing
+    -- tier at 20. At f = 0.60 the steady peak is 21.3, so a neglected field crosses
+    -- 20 over a couple of years and holds in the low band, while a harvest still
+    -- disperses well over a third: a real reset, not a no-op.
+    HARVEST_RESET_FRACTION = 0.60,
 
     -- Harvest yield penalty at each pressure tier
     YIELD_PENALTY_LOW    = 0.00,  -- 0-20:  none
@@ -1127,8 +1138,22 @@ SoilConstants.DISEASE_PRESSURE = {
     -- for DRY_DAYS_THRESHOLD consecutive days.
     -- NOTE: tracking consecutive dry days requires a new field: `field.dryDayCount`
     -- (integer, default 0). Increment each day without rain, reset to 0 on rain.
-    DRY_DAYS_THRESHOLD = 3,    -- after this many dry days, decay begins
-    DRY_DECAY_RATE     = 0.5,  -- pts/day removed during dry period
+    DRY_DAYS_THRESHOLD = 3,    -- after this many dry days, growth is DAMPED (see DRY_GROWTH_MULT)
+    DRY_DECAY_RATE     = 0.5,  -- pts/day removed once a real drought is reached
+
+    -- #737 option D: a dry spell used to REPLACE growth entirely (the decay branch was
+    -- an `elseif`, so any dry day past the threshold skipped the growth path and the
+    -- field only ever lost pressure). Combined with the plough reset that pinned disease
+    -- near zero permanently. Now a dry day inside the fungal window still grows, at a
+    -- damped rate, and outright decay waits for a genuine drought at a higher threshold.
+    -- The freeze-at-zero goes; the drought signal stays.
+    DRY_GROWTH_MULT        = 0.40,  -- dry-day growth as a fraction of the wet base rate
+    -- Multiplier on the climate's dry threshold at which decay takes over from damped
+    -- growth. Keeps the climate scaling intact: Temperate damps from 3 dry days and
+    -- decays from 6, Wet damps from 14 and decays from 28.
+    -- NOT specified in the #737 ruling; chosen here as the smallest value that leaves a
+    -- clear damped band before decay. Flagged to Claude(A) for confirmation.
+    DROUGHT_THRESHOLD_MULT = 2.0,
 
     -- Crop susceptibility multipliers (lowercased fruitDesc.name → multiplier)
     CROP_SUSCEPTIBILITY = {

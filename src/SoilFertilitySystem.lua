@@ -3939,9 +3939,16 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
 
         local pressure = field.diseasePressure or 0
-        local dryThreshold = cm.dryThreshold * daysPerMonth
+        -- #737 option D: two thresholds, not one. Past dryThreshold a dry day still
+        -- grows disease, only damped (DRY_GROWTH_MULT). Outright decay waits for a
+        -- genuine drought at droughtThreshold. Previously the decay branch was an
+        -- `elseif` on dryThreshold, so any dry spell REPLACED growth rather than
+        -- slowing it and disease could never establish.
+        local dryThreshold     = cm.dryThreshold * daysPerMonth
+        local droughtThreshold = dryThreshold * (dp.DROUGHT_THRESHOLD_MULT or 2.0)
+        local dryDays          = field.dryDayCount or 0
 
-        if (field.dryDayCount or 0) >= dryThreshold then
+        if dryDays >= droughtThreshold then
             field.diseasePressure = math.max(0, pressure - dp.DRY_DECAY_RATE * cm.dryDecayMult * timeFactor)
         elseif (field.fungicideDaysLeft or 0) <= 0 then
             local baseRate
@@ -3974,7 +3981,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
             local rainBonus = isRaining and (dp.RAIN_BONUS * cm.rainBonusMult) or 0
             local tunDis = getTuningMult(self.settings, "tuningDiseaseGrowth", "ZERO_MULT")
-            field.diseasePressure = math.min(100, pressure + ((baseRate * cm.growthMult * seasonMult * cropMult * tunDis * diffMult * soilMult * rotMult) + rainBonus) * timeFactor)
+            -- Damp growth once the dry threshold is passed but before a real drought.
+            -- Applied to the base rate only: rainBonus is already zero on a dry day.
+            local dryMult = (dryDays >= dryThreshold) and (dp.DRY_GROWTH_MULT or 0.40) or 1.0
+            field.diseasePressure = math.min(100, pressure + ((baseRate * cm.growthMult * seasonMult * cropMult * tunDis * diffMult * soilMult * rotMult * dryMult) + rainBonus) * timeFactor)
         end
 
         -- Maintain the named active disease over the scalar pressure.
