@@ -24,12 +24,16 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- NEW SOIL ENGINE (thanks to Graham / WizardlyPayload): soil is now stored",
+    "    per pixel across the map, not as one average per field. Spray half a",
+    "    field and the map shows it. All 11 layers render at PF quality.",
+    "- The Soil Layer Installer is NO LONGER REQUIRED. The maps are built at",
+    "    startup on any map. Already patched? Nothing breaks, leave it as is.",
+    "- Pest and disease can finally build up. They were capped below the level",
+    "    where they cost you anything, so most players never saw them at all.",
     "- Six real fungicides you can buy and spray: Propiconazole, Azoxystrobin,",
-    "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank",
-    "- Scout a field and it names the chemical that best controls its disease -",
-    "    load that tank and spray it, and the catalog's control rate is applied",
-    "- The menu still lists the full chemical library for everything else;",
-    "    the six physical ones now point you to their tank instead of instant-apply",
+    "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank.",
+    "    Scout a field and it names the one that best controls its disease.",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
