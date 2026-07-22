@@ -3024,6 +3024,19 @@ local function vmShouldSeed(vm, key, force)
     return entry ~= nil and not entry.loaded
 end
 
+--- Discovery gate for the display layers: an active infection stays invisible on
+--- EVERY painted surface (the disease map, the urgency map, and via the mirror
+--- the MP-synced client picture) until the field is scouted. Undiscovered disease
+--- reads as HEALTHY (zero pressure, which the display encoding floors to visible
+--- green, never transparent), so an unscouted field is indistinguishable from a
+--- clean one. This protects the scouting economy the same way the disease HUD
+--- self-gates on diseaseDiscovered. Pest has no discovery concept, so it is not
+--- gated.
+function SoilFertilitySystem:_vmShownDiseasePressure(field)
+    if not field.diseaseDiscovered then return 0 end
+    return field.diseasePressure or 0
+end
+
 --- Cheap field-average urgency (mirrors getFieldUrgency without the full
 --- getFieldInfo status computation - used for per-frame display mirroring).
 function SoilFertilitySystem:_vmComputeUrgency(field)
@@ -3036,7 +3049,7 @@ function SoilFertilitySystem:_vmComputeUrgency(field)
     local phDef = math.max(0, phOpt - (field.pH or phOpt)) / (phOpt - phMin)
     local weedDef    = (field.weedPressure    or 0) / 100
     local pestDef    = (field.pestPressure    or 0) / 100
-    local diseaseDef = (field.diseasePressure or 0) / 100
+    local diseaseDef = self:_vmShownDiseasePressure(field) / 100
     return math.min(100, ((nDef + pDef + kDef + phDef + weedDef + pestDef + diseaseDef) / 7) * 100)
 end
 
@@ -3045,7 +3058,7 @@ function SoilFertilitySystem:_vmDisplayValues(field)
     return {
         weedPressure    = field.weedPressure    or 0,
         pestPressure    = field.pestPressure    or 0,
-        diseasePressure = field.diseasePressure or 0,
+        diseasePressure = self:_vmShownDiseasePressure(field),
         urgency         = self:_vmComputeUrgency(field),
         yieldEfficiency = field.yieldEfficiency or 100,
     }
@@ -4567,7 +4580,11 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                         self.valueMaps:writeValueAtWorld("pestPressure", sprayX, sprayZ, cell.pestPressure, half)
                     end
                     if entry.diseaseReduction then
-                        self.valueMaps:writeValueAtWorld("diseasePressure", sprayX, sprayZ, cell.diseasePressure, half)
+                        -- Discovery gate: a sprayed strip must not reveal
+                        -- undiscovered disease; paint healthy until scouted.
+                        local shownDisease = 0
+                        if field.diseaseDiscovered then shownDisease = cell.diseasePressure or 0 end
+                        self.valueMaps:writeValueAtWorld("diseasePressure", sprayX, sprayZ, shownDisease, half)
                     end
                 end
             end
