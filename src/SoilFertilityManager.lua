@@ -253,7 +253,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+Num*) - PLAYER context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - PLAYER context
                 if g_SoilFertilityManager.soilHUD then
                     local dragOk, dragId = g_inputBinding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -263,7 +263,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if dragOk and dragId then
                         g_SoilFertilityManager.hudDragEventId = dragId
                         g_inputBinding:setActionEventTextVisibility(dragId, false)
-                        SoilLogger.info("HUD drag (Shift+Num*) registered in PLAYER context")
+                        SoilLogger.info("HUD drag (Shift+H) registered in PLAYER context")
                     end
                 end
 
@@ -353,7 +353,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 -- endActionEventsModification fires on every vehicle mount/seat change
                 -- (including Courseplay seat cycling). Without cleanup, duplicate
                 -- registrations accumulate - callbacks fire 2-3× per keypress and
-                -- SF_HUD_DRAG (Shift+Num*) toggles edit mode.
+                -- SF_HUD_DRAG (Shift+H) toggles edit mode.
                 --
                 -- IMPORTANT: Also purge PLAYER context event IDs here. FS25's
                 -- removeActionEvent works by action slot, not strictly by context.
@@ -451,7 +451,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+Num*) - VEHICLE context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - VEHICLE context
                 if g_SoilFertilityManager.soilHUD then
                     local vDragOk, vDragId = binding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -461,7 +461,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if vDragOk and vDragId then
                         g_SoilFertilityManager.vehicleHudDragEventId = vDragId
                         binding:setActionEventTextVisibility(vDragId, false)
-                        SoilLogger.debug("HUD drag (Shift+Num*) registered in VEHICLE context")
+                        SoilLogger.debug("HUD drag (Shift+H) registered in VEHICLE context")
                     end
                 end
 
@@ -546,7 +546,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if pDragOk and pDragId then
                         g_SoilFertilityManager.hudDragEventId = pDragId
                         binding:setActionEventTextVisibility(pDragId, false)
-                        SoilLogger.debug("HUD drag (Shift+Num*) re-registered in PLAYER context after vehicle exit")
+                        SoilLogger.debug("HUD drag (Shift+H) re-registered in PLAYER context after vehicle exit")
                     end
                 end
 
@@ -872,7 +872,7 @@ function SoilFertilityManager:onOpenSettingsInput()
     end
 end
 
--- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+Num*)
+-- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+H)
 function SoilFertilityManager:onHUDDragInput()
     if not self.soilHUD then return end
     if not self.soilHUD.visible then return end

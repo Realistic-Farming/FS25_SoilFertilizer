@@ -640,7 +640,7 @@ end
 --   patching working in the same callback).
 
 -- Route mouse events to SoilHUD (for drag/resize edit mode).
--- Edit mode is entered via Shift+Num* (SF_HUD_DRAG input action) - not via RMB.
+-- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) - not via RMB.
 -- RMB only exits edit mode (and only when this mod is already in edit mode).
 -- This guarantees RMB is never consumed during normal play, preserving
 -- CoursePlay, AutoDrive, and other mods that rely on RMB.
