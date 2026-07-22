@@ -3089,23 +3089,50 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
                         or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
                 end
             end
+            -- Recover each legacy cell's world position by ENCODING grid
+            -- positions to keys, never DECODING the key. The legacy key
+            -- cx*10000+cz is not invertible once a coordinate is negative (cell
+            -- (2,-5) encodes to 19995 and a naive decode reads it back as
+            -- (1,9995)), and FS25 maps are origin-centred so roughly half of any
+            -- real field's cells carry a negative component. Decoding therefore
+            -- paints those cells at the wrong world position on first load of a
+            -- migrated save. Walking the field polygon and encoding each position
+            -- is always safe (position -> key is the same map the store used).
             local half = zone.CELL_SIZE * 0.5
-            for cellKey, cell in pairs(field.zoneData) do
-                local keyNum = tonumber(cellKey)
-                if keyNum then
-                    local cx = math.floor(keyNum / 10000)
-                    local cz = keyNum - cx * 10000
-                    local wx = (cx + 0.5) * zone.CELL_SIZE
-                    local wz = (cz + 0.5) * zone.CELL_SIZE
-                    if cell.N  and cell.N  > 0 then vm:writeValueAtWorld("nitrogen",      wx, wz, cell.N,  half) end
-                    if cell.P  and cell.P  > 0 then vm:writeValueAtWorld("phosphorus",    wx, wz, cell.P,  half) end
-                    if cell.K  and cell.K  > 0 then vm:writeValueAtWorld("potassium",     wx, wz, cell.K,  half) end
-                    if cell.pH and cell.pH > 5.0 then vm:writeValueAtWorld("pH",          wx, wz, cell.pH, half) end
-                    if cell.OM and cell.OM > 0 then vm:writeValueAtWorld("organicMatter", wx, wz, cell.OM, half) end
-                    if cell.compaction and cell.compaction > 0 and vmShouldSeed(vm, "compaction", force) then
-                        vm:writeValueAtWorld("compaction", wx, wz, cell.compaction, half)
+            local cs   = zone.CELL_SIZE
+            local minX, maxX = verts[1].x, verts[1].x
+            local minZ, maxZ = verts[1].z, verts[1].z
+            for i = 2, #verts do
+                local vx, vz = verts[i].x, verts[i].z
+                if vx < minX then minX = vx end
+                if vx > maxX then maxX = vx end
+                if vz < minZ then minZ = vz end
+                if vz > maxZ then maxZ = vz end
+            end
+            local cxMin, cxMax = math.floor(minX / cs), math.floor(maxX / cs)
+            local czMin, czMax = math.floor(minZ / cs), math.floor(maxZ / cs)
+            local budget = 100000   -- safety valve against a degenerate bbox
+            for cx = cxMin, cxMax do
+                for cz = czMin, czMax do
+                    budget = budget - 1
+                    if budget < 0 then break end
+                    local cell = field.zoneData[tostring(cx * 10000 + cz)]
+                    if cell then
+                        local wx = (cx + 0.5) * cs
+                        local wz = (cz + 0.5) * cs
+                        if _isPointInPoly(wx, wz, verts) then
+                            if cell.N  and cell.N  > 0   then vm:writeValueAtWorld("nitrogen",      wx, wz, cell.N,  half) end
+                            if cell.P  and cell.P  > 0   then vm:writeValueAtWorld("phosphorus",    wx, wz, cell.P,  half) end
+                            if cell.K  and cell.K  > 0   then vm:writeValueAtWorld("potassium",     wx, wz, cell.K,  half) end
+                            if cell.pH and cell.pH > 5.0 then vm:writeValueAtWorld("pH",            wx, wz, cell.pH, half) end
+                            if cell.OM and cell.OM > 0   then vm:writeValueAtWorld("organicMatter", wx, wz, cell.OM, half) end
+                            if cell.compaction and cell.compaction > 0 and vmShouldSeed(vm, "compaction", force) then
+                                vm:writeValueAtWorld("compaction", wx, wz, cell.compaction, half)
+                            end
+                        end
                     end
                 end
+                if budget < 0 then break end
             end
             SoilLogger.debug("ValueMaps: field %d migrated from zoneData cells", fieldId)
         end
