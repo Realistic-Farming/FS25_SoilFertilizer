@@ -91,10 +91,11 @@ SoilConstants.PLOWING = {
     PEST_PRESSURE_REDUCTION    = 30,  -- Points removed from pest pressure on plowing
     -- #737 option D: was 40, which cleared roughly six years of disease accumulation
     -- (~6.8 pts/year) in a single pass and pinned the pressure near zero for anyone
-    -- who ploughs at all. 15 clears about two years, which is a real reset without
-    -- being an erase. NOTE: CULTIVATION.DISEASE_PRESSURE_REDUCTION is also 15, so a
-    -- plough and a cultivator now relieve disease equally; see the commit body.
-    DISEASE_PRESSURE_REDUCTION = 15,
+    -- who ploughs at all. 18 clears about 2.6 years: a real reset, not an erase.
+    -- Holds the STRICT physical ordering the constants file documents, by how much
+    -- infected residue each implement buries:
+    --     plough 18  >  cultivator 15  >  strip-till 10 (residue left on the surface)
+    DISEASE_PRESSURE_REDUCTION = 18,
 }
 
 -- ========================================
@@ -1151,8 +1152,8 @@ SoilConstants.DISEASE_PRESSURE = {
     -- Multiplier on the climate's dry threshold at which decay takes over from damped
     -- growth. Keeps the climate scaling intact: Temperate damps from 3 dry days and
     -- decays from 6, Wet damps from 14 and decays from 28.
-    -- NOT specified in the #737 ruling; chosen here as the smallest value that leaves a
-    -- clear damped band before decay. Flagged to Claude(A) for confirmation.
+    -- RULED (#737): the smallest value leaving a clear damped band before decay at every
+    -- climate is precisely the shape the ruling described. Confirmed, not merely tolerated.
     DROUGHT_THRESHOLD_MULT = 2.0,
 
     -- Crop susceptibility multipliers (lowercased fruitDesc.name → multiplier)

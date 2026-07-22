@@ -56,16 +56,20 @@ T.ok("a harvest still disperses at least a third", (1.0 - pp.HARVEST_RESET_FRACT
 local diseaseYearly = dp.GROWTH_RATE_LOW * 3 * (dp.SEASONAL_SPRING + dp.SEASONAL_SUMMER
                                               + dp.SEASONAL_FALL   + dp.SEASONAL_WINTER)
 T.near("disease gains ~6.8 pts/year before rain", diseaseYearly, 6.84, 0.05)
-T.near("plough disease relief is now 15", SoilConstants.PLOWING.DISEASE_PRESSURE_REDUCTION, 15, 0.0001)
+T.near("plough disease relief is now 18", SoilConstants.PLOWING.DISEASE_PRESSURE_REDUCTION, 18, 0.0001)
 local yearsCleared = SoilConstants.PLOWING.DISEASE_PRESSURE_REDUCTION / diseaseYearly
-T.ok("a plough now clears about two years, not six", yearsCleared > 1.5 and yearsCleared < 3.0)
+T.ok("a plough now clears about 2.6 years, not six", yearsCleared > 2.0 and yearsCleared < 3.2)
 
--- Physical ordering: a plough disturbs at least as much as a cultivator.
--- NOTE: the #737 ruling assumed the cultivator's disease figure was 10; it is 15,
--- so these are currently EQUAL. Locked as >= so the ordering can never invert,
--- and flagged to Claude(A) for whether the plough should sit strictly above.
-T.ok("plough relief is not weaker than the cultivator's",
-  SoilConstants.PLOWING.DISEASE_PRESSURE_REDUCTION >= SoilConstants.CULTIVATION.DISEASE_PRESSURE_REDUCTION)
+-- STRICT physical ordering by how much infected residue each implement buries.
+-- The #737 ruling first cited "the cultivator's 10"; 10 is actually STRIP-TILL's
+-- disease figure (it leaves residue on the surface) and the cultivator's is 15.
+-- Locked as strict > at both seams so neither end can drift into equality again.
+local plough     = SoilConstants.PLOWING.DISEASE_PRESSURE_REDUCTION
+local cultivator = SoilConstants.CULTIVATION.DISEASE_PRESSURE_REDUCTION
+local stripTill  = SoilConstants.STRIP_TILL.DISEASE_PRESSURE_REDUCTION
+T.ok("a plough buries strictly more infected residue than a cultivator", plough > cultivator)
+T.ok("a cultivator buries strictly more than a strip-till pass", cultivator > stripTill)
+T.near("strip-till disease relief is 10 (the figure the ruling first cited)", stripTill, 10, 0.0001)
 
 -- ── 4. A dry spell damps growth, it no longer replaces it ────────────────────
 T.near("dry-day growth is 40% of the wet base rate", dp.DRY_GROWTH_MULT, 0.40, 0.0001)
