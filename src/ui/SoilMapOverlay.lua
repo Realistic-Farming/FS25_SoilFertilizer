@@ -284,6 +284,25 @@ local PDA_LAYER_GRLE = {
     [10] = "compaction",
 }
 
+-- REFINED: layer index → SoilValueMaps key. These runtime bit vector maps exist
+-- on EVERY map (no GRLE authoring needed), so the engine DMV overlay - the same
+-- pipeline Precision Farming uses - becomes the primary PDA render path.
+-- Layer 7 (weed) prefers the game-native weed foliage map when the terrain has
+-- one (handled first in _pdaKickBuild); this entry is its universal fallback.
+local PDA_LAYER_VM = {
+    [1]  = "nitrogen",
+    [2]  = "phosphorus",
+    [3]  = "potassium",
+    [4]  = "pH",
+    [5]  = "organicMatter",
+    [6]  = "urgency",
+    [7]  = "weedPressure",
+    [8]  = "pestPressure",
+    [9]  = "diseasePressure",
+    [10] = "compaction",
+    [11] = "yieldEfficiency",
+}
+
 function SoilMapOverlay:_pdaPollBuildFinished()
     if not self._pdaBuildInFlight or not self._pdaBuildHandle then return end
     if not getIsDensityMapVisualizationOverlayReady then return end
@@ -298,6 +317,10 @@ end
 function SoilMapOverlay:_pdaKickBuild(layerIdx)
     local ov = self._pdaOverlays[self._pdaBuildIdx]
     if not ov then return end
+
+    -- Recomputed below; cleared first so a stale true can't survive a switch
+    -- to a layer that has no DMV backing on this engine/terrain.
+    self._pdaUsingDMV = false
 
     if resetDensityMapVisualizationOverlay then
         resetDensityMapVisualizationOverlay(ov)
@@ -319,6 +342,29 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
                 local r, g, b = weedColors[ci][1], weedColors[ci][2], weedColors[ci][3]
                 -- Signature: (overlay, mapId, maskMapId, fieldMask, firstChannel, numChannels, state, r, g, b, a)
                 setDensityMapVisualizationOverlayStateColor(ov, mapId, 0, 0, firstCh or 0, numCh or 4, state, r, g, b, 0.85)
+            end
+            self._pdaUsingDMV = true
+            generateDensityMapVisualizationOverlay(ov)
+            self._pdaBuildHandle   = ov
+            self._pdaBuildInFlight = true
+            return
+        end
+    end
+
+    -- REFINED primary path: runtime per-pixel value maps (SoilValueMaps).
+    -- Available on every map, ~2 m/px - crisp PF-quality colouring with no
+    -- GRLE authoring. Raw 0 (no data) falls into state 0 = transparent.
+    local vmKey = PDA_LAYER_VM[layerIdx]
+    local soilSys = self.soilSystem
+    if vmKey and soilSys and soilSys.vmAvailable and soilSys:vmAvailable() then
+        local bvm, firstCh, numCh, def = soilSys.valueMaps:getOverlayMapData(vmKey)
+        if bvm then
+            -- State 0 = raw 0-15 (no-data sentinel + lowest band) → transparent
+            setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
+            for i = 1, 15 do
+                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                local r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
+                setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, 1.0)
             end
             self._pdaUsingDMV = true
             generateDensityMapVisualizationOverlay(ov)
@@ -357,6 +403,63 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
 
     -- No DMV for this layer (urgency = layer 6, or GRLE not yet available)
     self._pdaUsingDMV = false
+end
+
+--- REFINED: draw the engine DMV overlay stretched over the terrain rect of the
+--- PDA map (same render technique as SoilMinimapLayer:draw, which is proven on
+--- the HUD minimap). Returns true when the DMV overlay was drawn - the caller
+--- then skips the legacy dot rendering entirely.
+function SoilMapOverlay:_pdaDrawDMV(ingameMap, mapX, mapY, mapWidth, mapHeight, layerIdx)
+    if not self._pdaDMVAvailable then return false end
+
+    local now = (g_currentMission and g_currentMission.time) or g_time or 0
+
+    self:_pdaPollBuildFinished()
+
+    -- Kick a (re)build when the layer changed or the refresh timer elapsed
+    if layerIdx ~= self._pdaActiveLayer then
+        self._pdaActiveLayer  = layerIdx
+        self._pdaHasShownOnce = false     -- don't show the previous layer's pixels
+        self._pdaBuildInFlight = false
+        self:_pdaKickBuild(layerIdx)
+        self._pdaNextBuildMs = now + 3000
+    elseif not self._pdaBuildInFlight and now >= self._pdaNextBuildMs then
+        self:_pdaKickBuild(layerIdx)
+        self._pdaNextBuildMs = now + 3000
+    end
+
+    if not self._pdaUsingDMV then return false end
+    if not self._pdaHasShownOnce then return false end   -- dots until first build lands
+
+    local ov = self._pdaOverlays[self._pdaShowIdx]
+    if not ov then return false end
+
+    -- Terrain rect in screen space via the shared world→screen affine
+    local half = ((g_currentMission and g_currentMission.terrainSize) or 2048) * 0.5
+    local ax, ay = self:worldToScreenPosition(ingameMap, -half, -half)
+    local bx, by = self:worldToScreenPosition(ingameMap, half, half)
+    if not ax or not bx then return false end
+
+    local x1, x2 = math.min(ax, bx), math.max(ax, bx)
+    local y1, y2 = math.min(ay, by), math.max(ay, by)
+    if x1 == x2 or y1 == y2 then return false end
+
+    -- Clip to the visible map area and pick the matching UV slice
+    local rx1 = math.max(x1, mapX);              local ry1 = math.max(y1, mapY)
+    local rx2 = math.min(x2, mapX + mapWidth);   local ry2 = math.min(y2, mapY + mapHeight)
+    if (rx2 - rx1) <= 0 or (ry2 - ry1) <= 0 then return false end
+
+    local uL = (rx1 - x1) / (x2 - x1); local vT = (ry1 - y1) / (y2 - y1)
+    local uR = (rx2 - x1) / (x2 - x1); local vB = (ry2 - y1) / (y2 - y1)
+
+    setOverlayUVs(ov, uL, vT, uL, vB, uR, vT, uR, vB)
+    setOverlayColor(ov, 1, 1, 1, SoilMapOverlay.ALPHA)
+    renderOverlay(ov, rx1, ry1, rx2 - rx1, ry2 - ry1)
+
+    if Overlay ~= nil and Overlay.DEFAULT_UVS ~= nil then
+        setOverlayUVs(ov, unpack(Overlay.DEFAULT_UVS))
+    end
+    return true
 end
 
 -- ── Sidebar Clicks ────────────────────────────────────────
@@ -741,7 +844,27 @@ function SoilMapOverlay:onDraw(frame, mapElement, ingameMap, pageIndex)
     local mapX, mapY, mapWidth, mapHeight = self:getMapRenderBounds(frame, ingameMap)
     if mapX == nil or mapWidth == nil or mapHeight == nil then return end
 
-    -- PDA always uses polygon tiles (field-clamped, works without GRLE data)
+    -- REFINED primary path: engine density-map visualization overlay backed by
+    -- the per-pixel value maps (PF-quality). All 11 layers are DMV-backed.
+    if self:_pdaDrawDMV(ingameMap, mapX, mapY, mapWidth, mapHeight, layerIdx) then
+        self:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeight)
+        return
+    end
+
+    -- REFINED: when the DMV pipeline is driving this layer, NEVER fall through
+    -- to the legacy 10 m tiles - drawing them while the async overlay build is
+    -- pending was the "old grid flashes before the map appears" artifact
+    -- (Precision Farming shows nothing while its overlay generates, then the
+    -- finished per-pixel image). _pdaUsingDMV is set by the kick that
+    -- _pdaDrawDMV just performed, so this correctly covers first-open and
+    -- layer-switch frames.
+    if self._pdaUsingDMV then
+        self:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeight)
+        return
+    end
+
+    -- Legacy fallback: polygon tiles. Only reachable when the engine has no
+    -- DMV support or a layer has no per-pixel backing map on this terrain.
     self:updateSamplePoints(false)
 
     if #self.samplePoints > 0 then
@@ -1389,22 +1512,55 @@ function SoilMapOverlay:drawLegend(panelX, bottomY, panelWidth)
             renderText(ix + dotSz + dotGapX, dotCY, textSz, tr(item.key, item.label))
         end
     else
-        -- Gradient bar with "Poor" / "Good" end labels
-        local steps = 40
+        -- REFINED: PF-style quantized class bar - 15 discrete swatches matching
+        -- the exact colour states the DMV map overlay renders, with the layer's
+        -- real value range as end labels (e.g. pH 5.0 → 7.5).
+        local layerIdx = self.settings and self.settings.activeMapLayer or 0
+        local vmDef
+        local soilSys = self.soilSystem
+        if soilSys and soilSys.valueMaps then
+            local vmKeys = { [1]="nitrogen", [2]="phosphorus", [3]="potassium",
+                             [4]="pH", [5]="organicMatter", [6]="urgency",
+                             [7]="weedPressure", [8]="pestPressure",
+                             [9]="diseasePressure", [10]="compaction",
+                             [11]="yieldEfficiency" }
+            local key = vmKeys[layerIdx]
+            if key then
+                local entry = soilSys.valueMaps:getLayerEntry(key)
+                vmDef = entry and entry.def
+            end
+        end
+
+        local steps = vmDef and 15 or 40
         local stepW = barW / steps
+        local gapW  = vmDef and math.min(stepW * 0.12, 0.0012) or 0
         for i = 0, steps - 1 do
-            local r, g, b = healthGradient(i / (steps - 1))
-            drawFilledRect(barX + i * stepW, barY, stepW + 0.00001, barH, r, g, b, 0.92)
+            local r, g, b
+            if vmDef then
+                local semanticVal = vmDef.minVal + ((i + 1) / 15.0) * (vmDef.maxVal - vmDef.minVal)
+                r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
+            else
+                r, g, b = healthGradient(i / (steps - 1))
+            end
+            drawFilledRect(barX + i * stepW, barY, stepW - gapW + 0.00001, barH, r, g, b, 0.92)
         end
         self:drawThinBorder(barX, barY, barW, barH, 0.25, 0.25, 0.25, 0.5)
 
         local labelY = legendY + (legendH - barH) * 0.5 - textSz * 1.1
         setTextBold(false)
         setTextColor(0.72, 0.72, 0.72, 1)
-        setTextAlignment(RenderText.ALIGN_LEFT)
-        renderText(barX, labelY, textSz, tr("sf_pda_map_legend_poor", "Poor"))
-        setTextAlignment(RenderText.ALIGN_RIGHT)
-        renderText(barX + barW, labelY, textSz, tr("sf_pda_map_legend_good", "Good"))
+        if vmDef then
+            local fmt = (layerIdx == 4 or layerIdx == 5) and "%.1f" or "%d"
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            renderText(barX, labelY, textSz, string.format(fmt, vmDef.minVal))
+            setTextAlignment(RenderText.ALIGN_RIGHT)
+            renderText(barX + barW, labelY, textSz, string.format(fmt, vmDef.maxVal))
+        else
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            renderText(barX, labelY, textSz, tr("sf_pda_map_legend_poor", "Poor"))
+            setTextAlignment(RenderText.ALIGN_RIGHT)
+            renderText(barX + barW, labelY, textSz, tr("sf_pda_map_legend_good", "Good"))
+        end
     end
 
     setTextColor(1, 1, 1, 1)
@@ -1481,6 +1637,22 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
             if val >= 4.0     then return GOOD[1], GOOD[2], GOOD[3]
             elseif val >= 2.5 then return FAIR[1], FAIR[2], FAIR[3]
             else                   return POOR[1], POOR[2], POOR[3] end
+        elseif layerIdx == 6 then                      -- urgency: high = bad
+            if val > 66     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 33 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx >= 7 and layerIdx <= 9 then    -- pressures: high = bad
+            if val > 50     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 20 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 10 then                     -- compaction: high = bad
+            if val > 60     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 20 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 11 then                     -- yield: high = good
+            if val < 55     then return POOR[1], POOR[2], POOR[3]
+            elseif val < 80 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end

@@ -1573,10 +1573,13 @@ function HookManager:installVariableRateHook()
                     if fieldId and fieldId > 0 then
                         local fd = soilSys.fieldData[fieldId]
                         if fd then
-                            local cellKey = tostring(
-                                math.floor(sx / zone.CELL_SIZE) * 10000 +
-                                math.floor(sz / zone.CELL_SIZE))
-                            local cell = fd.zoneData and fd.zoneData[cellKey]
+                            -- REFINED: per-pixel reads from the value maps (~2 m/px);
+                            -- fall back to field averages when a pixel is unwritten.
+                            local vm = (soilSys.vmAvailable and soilSys:vmAvailable()) and soilSys.valueMaps or nil
+                            local function readAt(key)
+                                if vm then return vm:readValueAtWorld(key, sx, sz) end
+                                return nil
+                            end
 
                             local nutrientVal
                             local effTarget = target
@@ -1585,19 +1588,19 @@ function HookManager:installVariableRateHook()
                                 local omTarget = SoilConstants.SPRAYER_RATE and
                                     SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS and
                                     SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS.OM or 5.0
-                                nutrientVal = (cell and cell.OM) or fd.organicMatter or omTarget
+                                nutrientVal = readAt("organicMatter") or fd.organicMatter or omTarget
                                 effTarget   = omTarget
                             elseif isN then
-                                nutrientVal = (cell and cell.N) or fd.nitrogen or target
+                                nutrientVal = readAt("nitrogen") or fd.nitrogen or target
                             elseif isP then
-                                nutrientVal = (cell and cell.P) or fd.phosphorus or target
+                                nutrientVal = readAt("phosphorus") or fd.phosphorus or target
                             elseif isK then
-                                nutrientVal = (cell and cell.K) or fd.potassium or target
+                                nutrientVal = readAt("potassium") or fd.potassium or target
                             else
                                 -- Complex NPK: use worst (lowest) of the three
-                                local n = (cell and cell.N) or fd.nitrogen   or target
-                                local p = (cell and cell.P) or fd.phosphorus or target
-                                local k = (cell and cell.K) or fd.potassium  or target
+                                local n = readAt("nitrogen")   or fd.nitrogen   or target
+                                local p = readAt("phosphorus") or fd.phosphorus or target
+                                local k = readAt("potassium")  or fd.potassium  or target
                                 nutrientVal = math.min(n, p, k)
                             end
 
@@ -3177,6 +3180,10 @@ function HookManager:installSprayerAreaHook()
                                                         else
                                                             soilSys:markBoomCells(fieldId, boomPts, true)
                                                         end
+                                                        -- REFINED: paint the real boom strip on the value maps
+                                                        if soilSys.paintBoomStrip then
+                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName)
+                                                        end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
                                                         soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true)
@@ -3223,6 +3230,11 @@ function HookManager:installSprayerAreaHook()
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    -- REFINED: paint the real boom-width strip into the per-pixel
+                    -- value maps (continuous PF-style work strips at ~2 m/px).
+                    if boomPts and soilSys.paintBoomStrip then
+                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name)
+                    end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
                     else

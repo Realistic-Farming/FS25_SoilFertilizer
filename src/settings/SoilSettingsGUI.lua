@@ -69,9 +69,106 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilSetDisease", "TEST: force disease on the current field: SoilSetDisease <pressure 0-100> [diseaseId]", "consoleCommandSetDisease", self)
     addConsoleCommand("SoilSetDiseaseDifficulty", "Set disease difficulty (1=Easy, 2=Normal, 3=Hard)", "consoleCommandSetDiseaseDifficulty", self)
     addConsoleCommand("SoilAddCrop", "Add a custom crop to the tuning table (seeded from generic defaults): SoilAddCrop <name> (#717)", "consoleCommandAddCrop", self)
+    -- REFINED: per-pixel value map debug commands
+    addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
+    addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
+    addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
+    addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
+end
+
+-- ── REFINED: value map debug commands ─────────────────────
+
+-- World position of the local player or controlled vehicle (nil when unknown).
+local function sfGetDebugPosition()
+    local veh = g_currentMission and g_currentMission.controlledVehicle
+    if veh and veh.rootNode then
+        local ok, x, _, z = pcall(getWorldTranslation, veh.rootNode)
+        if ok and x then return x, z end
+    end
+    local player = g_localPlayer or (g_currentMission and g_currentMission.player)
+    if player then
+        if player.getPosition then
+            local ok, x, _, z = pcall(function() return player:getPosition() end)
+            if ok and x then return x, z end
+        end
+        if player.rootNode then
+            local ok, x, _, z = pcall(getWorldTranslation, player.rootNode)
+            if ok and x then return x, z end
+        end
+    end
+    return nil, nil
+end
+
+local function sfGetValueMapsForConsole()
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    local vm = soilSys and soilSys.valueMaps
+    if not vm then return nil, "SoilValueMaps module not loaded" end
+    if not vm.available then return nil, "SoilValueMaps not available (see log for init warnings)" end
+    return vm, nil
+end
+
+function SoilSettingsGUI:consoleCommandVmStats()
+    local vm, err = sfGetValueMapsForConsole()
+    if not vm then return err end
+    return vm:getDebugStats()
+end
+
+function SoilSettingsGUI:consoleCommandVmRead(xArg, zArg)
+    local vm, err = sfGetValueMapsForConsole()
+    if not vm then return err end
+
+    local x, z = tonumber(xArg), tonumber(zArg)
+    if not x or not z then
+        x, z = sfGetDebugPosition()
+        if not x then return "No position: pass coordinates (SoilVmRead <x> <z>) or enter a vehicle" end
+    end
+
+    local lines = { string.format("Value maps at (%.1f, %.1f):", x, z) }
+    for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        local v = vm:readValueAtWorld(def.key, x, z)
+        lines[#lines + 1] = string.format("  %-14s = %s", def.key,
+            v and string.format("%.2f", v) or "no data")
+    end
+    return table.concat(lines, "\n")
+end
+
+function SoilSettingsGUI:consoleCommandVmPaint(layerKey, valueArg, radiusArg, xArg, zArg)
+    local vm, err = sfGetValueMapsForConsole()
+    if not vm then return err end
+
+    if not layerKey or not vm:getLayerEntry(layerKey) then
+        return "Usage: SoilVmPaint <layer> <value> [radius] [x z]\nLayers: nitrogen, phosphorus, potassium, pH, organicMatter, compaction"
+    end
+    local value = tonumber(valueArg)
+    if not value then return "Invalid value: " .. tostring(valueArg) end
+    local radius = tonumber(radiusArg) or 5
+
+    local x, z = tonumber(xArg), tonumber(zArg)
+    if not x or not z then
+        x, z = sfGetDebugPosition()
+        if not x then return "No position: pass coordinates or enter a vehicle" end
+    end
+
+    vm:writeValueAtWorld(layerKey, x, z, value, radius)
+    local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+    if minimapLayer then minimapLayer:markDirty() end
+    local mapOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
+    if mapOverlay then mapOverlay:requestRefresh() end
+    return string.format("Painted %s=%.2f at (%.1f, %.1f) r=%.1fm", layerKey, value, x, z, radius)
+end
+
+function SoilSettingsGUI:consoleCommandVmReseed()
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if not soilSys or not soilSys.seedValueMaps then return "Soil system not ready" end
+    soilSys:seedValueMaps(true)
+    local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+    if minimapLayer then minimapLayer:markDirty() end
+    local mapOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
+    if mapOverlay then mapOverlay:requestRefresh() end
+    return "Value maps reseeded from field data (forced)"
 end
 
 function SoilSettingsGUI:consoleCommandHelp()
@@ -96,6 +193,10 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilDrainVehicle - Drain custom fertilizer from vehicle/implements (50% refund)")
     print("soilSetState <fieldId> <N> <P> <K> <pH> <OM> - Set state for a field")
     print("soilRecoverField [fieldId] - Recover field to default values")
+    print("SoilVmStats - REFINED: per-pixel value map status")
+    print("SoilVmRead [x z] - REFINED: read value maps at position")
+    print("SoilVmPaint <layer> <value> [radius] [x z] - REFINED: paint value map")
+    print("SoilVmReseed - REFINED: force-reseed value maps from field data")
     print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
     print("SoilRerollUnownedFields - Re-roll starting soil for fields you don't own (keeps your own)")
     print("SoilBlacklistField <fieldId> [true|false] - FieldSentry: sleep/wake a field's soil sim (#651)")

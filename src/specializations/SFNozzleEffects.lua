@@ -5,7 +5,9 @@
 -- No PF dependency - ever.
 
 SFNozzleEffects = {}
-SFNozzleEffects.SPEC_TABLE_NAME = "spec_FS25_SoilFertilizer.sfNozzleEffects"
+-- Derive the spec table name from the actual mod environment so the spec keeps
+-- working regardless of the mod folder/zip name (REFINED rename safety).
+SFNozzleEffects.SPEC_TABLE_NAME = "spec_" .. (g_currentModName or "FS25_SoilFertilizer_Refined") .. ".sfNozzleEffects"
 
 -- Fade direction vectors (mirrors PF ESE constants)
 SFNozzleEffects.FADE_DIR_OFF   = {0,  0}
@@ -696,13 +698,19 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
             local fieldId3 = nozzleFarmId or spec._sfFieldId
             local fd3 = fieldId3 and sfm3.soilSystem.fieldData[fieldId3]
             if fd3 then
-                local cellKey = tostring(math.floor(probeX / CELL_SIZE) * 10000 + math.floor(probeZ / CELL_SIZE))
-                local cell    = fd3.zoneData and fd3.zoneData[cellKey]
-                local cellN  = (cell and cell.N)  or fd3.nitrogen      or 0
-                local cellP  = (cell and cell.P)  or fd3.phosphorus    or 0
-                local cellK  = (cell and cell.K)  or fd3.potassium     or 0
-                local cellPH = (cell and cell.pH) or fd3.pH            or SoilConstants.NUTRIENT_LIMITS.PH_OPTIMAL
-                local cellOM = (cell and cell.OM) or fd3.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+                -- REFINED: per-pixel nutrient reads from the value maps at the probe
+                -- position, falling back to field averages for unwritten pixels.
+                local soilSys3 = sfm3.soilSystem
+                local vm3 = (soilSys3.vmAvailable and soilSys3:vmAvailable()) and soilSys3.valueMaps or nil
+                local function vmRead(key)
+                    if vm3 then return vm3:readValueAtWorld(key, probeX, probeZ) end
+                    return nil
+                end
+                local cellN  = vmRead("nitrogen")      or fd3.nitrogen      or 0
+                local cellP  = vmRead("phosphorus")    or fd3.phosphorus    or 0
+                local cellK  = vmRead("potassium")     or fd3.potassium     or 0
+                local cellPH = vmRead("pH")            or fd3.pH            or SoilConstants.NUTRIENT_LIMITS.PH_OPTIMAL
+                local cellOM = vmRead("organicMatter") or fd3.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
                 local tgt     = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
                 local adequate, anyCriteria = true, false
                 if (prof.N  or 0) > 0 then adequate = adequate and (cellN  >= tgt.N );  anyCriteria = true end
@@ -739,9 +747,19 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
     local cellKey = tostring(math.floor(px / CELL_SIZE) * 10000 + math.floor(pz / CELL_SIZE))
     local cell    = fd.zoneData and fd.zoneData[cellKey]
 
-    local pestVal    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
-    local diseaseVal = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
-    local weedVal    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
+    -- REFINED: per-pixel pressure reads from the value maps at the probe
+    -- position (PF-grade granularity - catches strips the 10 m cells missed).
+    -- Falls back to the legacy zone cell, then the field average.
+    local soilSysSS = sfm.soilSystem
+    local vmSS = (soilSysSS.vmAvailable and soilSysSS:vmAvailable()) and soilSysSS.valueMaps or nil
+    local function vmPressure(key)
+        if vmSS then return vmSS:readValueAtWorld(key, px, pz) end
+        return nil
+    end
+
+    local pestVal    = vmPressure("pestPressure")    or (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
+    local diseaseVal = vmPressure("diseasePressure") or (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
+    local weedVal    = vmPressure("weedPressure")    or (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
 
     if isPest    and pestVal    >= ssCfg.PEST_THRESHOLD    then return true, 1 end
     if isDisease and diseaseVal >= ssCfg.DISEASE_THRESHOLD then return true, 1 end

@@ -253,7 +253,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - PLAYER context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+Num*) - PLAYER context
                 if g_SoilFertilityManager.soilHUD then
                     local dragOk, dragId = g_inputBinding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -263,7 +263,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if dragOk and dragId then
                         g_SoilFertilityManager.hudDragEventId = dragId
                         g_inputBinding:setActionEventTextVisibility(dragId, false)
-                        SoilLogger.info("HUD drag (Shift+H) registered in PLAYER context")
+                        SoilLogger.info("HUD drag (Shift+Num*) registered in PLAYER context")
                     end
                 end
 
@@ -353,7 +353,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 -- endActionEventsModification fires on every vehicle mount/seat change
                 -- (including Courseplay seat cycling). Without cleanup, duplicate
                 -- registrations accumulate - callbacks fire 2-3× per keypress and
-                -- SF_HUD_DRAG (Shift+H) toggles edit mode.
+                -- SF_HUD_DRAG (Shift+Num*) toggles edit mode.
                 --
                 -- IMPORTANT: Also purge PLAYER context event IDs here. FS25's
                 -- removeActionEvent works by action slot, not strictly by context.
@@ -451,7 +451,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - VEHICLE context
+                -- HUD drag toggle (SF_HUD_DRAG, default Shift+Num*) - VEHICLE context
                 if g_SoilFertilityManager.soilHUD then
                     local vDragOk, vDragId = binding:registerActionEvent(
                         InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
@@ -461,7 +461,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if vDragOk and vDragId then
                         g_SoilFertilityManager.vehicleHudDragEventId = vDragId
                         binding:setActionEventTextVisibility(vDragId, false)
-                        SoilLogger.debug("HUD drag (Shift+H) registered in VEHICLE context")
+                        SoilLogger.debug("HUD drag (Shift+Num*) registered in VEHICLE context")
                     end
                 end
 
@@ -546,7 +546,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     if pDragOk and pDragId then
                         g_SoilFertilityManager.hudDragEventId = pDragId
                         binding:setActionEventTextVisibility(pDragId, false)
-                        SoilLogger.debug("HUD drag (Shift+H) re-registered in PLAYER context after vehicle exit")
+                        SoilLogger.debug("HUD drag (Shift+Num*) re-registered in PLAYER context after vehicle exit")
                     end
                 end
 
@@ -672,6 +672,12 @@ function SoilFertilityManager:activateSoilSystem()
 
         self.soilSystem:prePopulateAllZoneData()
         self:seedGRLEFromFieldData()
+
+        -- REFINED: seed / migrate the per-pixel value maps once fieldData is final.
+        -- No-op when the maps were restored from the savegame files.
+        if self.soilSystem.seedValueMaps then
+            self.soilSystem:seedValueMaps()
+        end
     end)
 
     if not ok then
@@ -866,7 +872,7 @@ function SoilFertilityManager:onOpenSettingsInput()
     end
 end
 
--- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+H)
+-- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+Num*)
 function SoilFertilityManager:onHUDDragInput()
     if not self.soilHUD then return end
     if not self.soilHUD.visible then return end
@@ -1245,6 +1251,11 @@ function SoilFertilityManager:saveSoilData()
     else
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
     end
+
+    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
+    if self.soilSystem.valueMaps then
+        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+    end
 end
 
 --- Load soil data from XML file
@@ -1352,6 +1363,19 @@ end
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
 function SoilFertilityManager:update(dt)
+    -- REFINED: periodic value-map checksum broadcast (MP drift detection).
+    -- Server-only, every 5 real minutes, only when clients are connected.
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer then
+        self._vmChecksumTimer = (self._vmChecksumTimer or 0) + dt
+        if self._vmChecksumTimer >= 300000 then
+            self._vmChecksumTimer = 0
+            if SoilNetworkEvents_BroadcastValueMapChecksums then
+                SoilNetworkEvents_BroadcastValueMapChecksums()
+            end
+        end
+    end
+
     -- Deferred fill type registration retry (dedicated server timing fix: #431)
     -- Also re-patches ALL vehicles every frame until all custom types are resolvable,
     -- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)

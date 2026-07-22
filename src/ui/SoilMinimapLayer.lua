@@ -165,12 +165,12 @@ local LAYER_FIELD_KEYS = {
     [3]  = "potassium",
     [4]  = "pH",
     [5]  = "organicMatter",
-    -- [6] = urgency: computed from N/P/K - no density map layer
-    [7]  = "weed",
+    [6]  = "urgency",          -- REFINED: mirrored onto its own value map
+    [7]  = "weed",             -- game foliage map first, weedPressure value map fallback
     [8]  = "pestPressure",
     [9]  = "diseasePressure",
     [10] = "compaction",
-    [11] = "yieldEfficiency",  -- field-uniform yield % (soilYield GRLE)
+    [11] = "yieldEfficiency",
 }
 
 -- Engine limit: 16 state colour entries per DMV overlay configuration.
@@ -238,6 +238,41 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
         end
     end
 
+    -- ── REFINED primary path: runtime per-pixel value maps (SoilValueMaps) ────
+    -- Available on every map at ~2 m/px, no GRLE authoring required.
+    local VM_KEYS = { nitrogen = true, phosphorus = true, potassium = true,
+                      pH = true, organicMatter = true, compaction = true,
+                      urgency = true, weedPressure = true, pestPressure = true,
+                      diseasePressure = true, yieldEfficiency = true }
+    -- Weed: when the terrain has no native weed foliage map, fall back to
+    -- the mirrored weedPressure value map so the layer still renders.
+    local vmFieldKey = (fieldKey == "weed") and "weedPressure" or fieldKey
+    local soilSys = self.soilSystem
+    if vmFieldKey and VM_KEYS[vmFieldKey] and soilSys and soilSys.vmAvailable and soilSys:vmAvailable() then
+        local bvm, firstCh, numCh, def = soilSys.valueMaps:getOverlayMapData(vmFieldKey)
+        if bvm then
+            local ovEntry = self:_getOrCreateOverlay(layerIdx)
+            if ovEntry then
+                local ov = ovEntry.ov
+                if not ovEntry.configured then
+                    setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
+                    for i = 1, GRLE_STATE_MAX do
+                        local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
+                        setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, 1.0)
+                    end
+                    ovEntry.configured = true
+                    SoilLogger.info("SoilMinimapLayer: value-map overlay configured bvm=%s key=%s", tostring(bvm), tostring(fieldKey))
+                end
+                self._usingDensityLayers = true
+                generateDensityMapVisualizationOverlay(ov)
+                ovEntry.inFlight    = true
+                self._buildInFlight = true
+                return
+            end
+        end
+    end
+
     -- ── Per-pixel GRLE path (nutrients + pest/disease/compaction) ─────────────
     -- Each layer gets its own dedicated overlay so each overlay only ever has
     -- one GRLE handle registered - avoids the engine's 8-handle-per-overlay limit.
@@ -289,12 +324,17 @@ function SoilMinimapLayer:draw(mapSelf)
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
 
     if not self._usingDensityLayers then
-        -- No GRLE density-map layers on this terrain - hand off to polygon centroid dots.
+        -- REFINED: the per-pixel value maps back every layer, so while the first
+        -- DMV build is still pending we show nothing (PF behaviour) instead of
+        -- flashing the legacy centroid dots. The dot handoff remains only for
+        -- the case where the per-pixel maps genuinely failed to initialize.
         local sfm = g_SoilFertilityManager
-        if sfm and sfm.soilMapOverlay then
+        local soilSys = sfm and sfm.soilSystem
+        local vmOk = soilSys and soilSys.vmAvailable and soilSys:vmAvailable()
+        if not vmOk and sfm and sfm.soilMapOverlay then
             sfm.soilMapOverlay:onDrawMinimap(mapSelf)
         end
-        -- Still show the layer indicator in the polygon fallback path
+        -- Still show the layer indicator while the overlay builds
         if layerIdx > 0 then
             local wx, wy = mapSelf:getPosition()
             self:drawLayerIndicator(wx, wy, mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)

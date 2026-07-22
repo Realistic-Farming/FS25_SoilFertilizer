@@ -345,6 +345,12 @@ function SoilRequestFullSyncEvent:run(connection)
         end
         connection:sendEvent(SoilFieldBatchSyncEvent.new(allBatch, true))
     end
+
+    -- REFINED: stream the per-pixel value maps after the field data
+    -- (own dispatcher, interleaves safely with the field batch dispatcher).
+    if SoilNetworkEvents_SendValueMaps then
+        SoilNetworkEvents_SendValueMaps(connection)
+    end
 end
 
 -- ========================================
@@ -1668,6 +1674,328 @@ if FieldSentry_Core then
             g_server:broadcastEvent(SoilFieldSentryStatusEvent.new(fieldId, reason, seq))
         end
     end
+end
+
+-- ========================================
+-- REFINED: PER-PIXEL VALUE MAP SYNC (Server -> Client)
+-- ========================================
+-- Streams the SoilValueMaps layers to joining clients as RLE-compressed rows
+-- of the coarse sync grid (top 4 bits per pixel, max 512x512 - see
+-- SoilValueMaps.SYNC_GRID). Sent after the field batch sync completes.
+-- A trailing checksum event lets clients detect drift and request a resend.
+
+local function sfGetValueMaps()
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    local vm = soilSys and soilSys.valueMaps
+    if vm and vm.available then return vm end
+    return nil
+end
+
+SoilValueMapChunkEvent = {}
+SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
+
+InitEventClass(SoilValueMapChunkEvent, "SoilValueMapChunkEvent")
+
+function SoilValueMapChunkEvent.emptyNew()
+    return Event.new(SoilValueMapChunkEvent_mt)
+end
+
+--- layerIdx: 1-based index into SoilValueMaps.LAYER_DEFS
+--- gyStart:  first sync-grid row carried by this chunk (0-based)
+--- rows:     array of row arrays (4-bit states, 1-based Lua arrays)
+--- isLast:   true on the final chunk of the final layer
+function SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, isLast)
+    local self = SoilValueMapChunkEvent.emptyNew()
+    self.layerIdx = layerIdx
+    self.gyStart  = gyStart
+    self.rows     = rows or {}
+    self.isLast   = isLast or false
+    return self
+end
+
+function SoilValueMapChunkEvent:writeStream(streamId, connection)
+    streamWriteUInt8(streamId, self.layerIdx)
+    streamWriteUInt16(streamId, self.gyStart)
+    streamWriteUInt8(streamId, #self.rows)
+    streamWriteBool(streamId, self.isLast)
+    for _, row in ipairs(self.rows) do
+        streamWriteUInt16(streamId, #row)
+        -- RLE: (state, runLength) pairs - soil rows are mostly long runs
+        local i, n = 1, #row
+        local runs = {}
+        while i <= n do
+            local state = row[i]
+            local len = 1
+            while i + len <= n and row[i + len] == state do len = len + 1 end
+            runs[#runs + 1] = { state = state, len = len }
+            i = i + len
+        end
+        streamWriteUInt16(streamId, #runs)
+        for _, run in ipairs(runs) do
+            streamWriteUIntN(streamId, run.state, 4)
+            streamWriteUInt16(streamId, run.len)
+        end
+    end
+end
+
+function SoilValueMapChunkEvent:readStream(streamId, connection)
+    self.layerIdx = streamReadUInt8(streamId)
+    self.gyStart  = streamReadUInt16(streamId)
+    local rowCount = streamReadUInt8(streamId)
+    self.isLast   = streamReadBool(streamId)
+    self.rows = {}
+    for r = 1, rowCount do
+        local rowLen  = streamReadUInt16(streamId)
+        local numRuns = streamReadUInt16(streamId)
+        local row = {}
+        local idx = 1
+        for _ = 1, numRuns do
+            local state = streamReadUIntN(streamId, 4)
+            local len   = streamReadUInt16(streamId)
+            for _ = 1, len do
+                if idx <= rowLen then
+                    row[idx] = state
+                    idx = idx + 1
+                end
+            end
+        end
+        self.rows[r] = row
+    end
+    self:run(connection)
+end
+
+function SoilValueMapChunkEvent:run(connection)
+    -- CLIENT ONLY
+    if g_server ~= nil then return end
+    local vm = sfGetValueMaps()
+    if not vm then return end
+    local def = SoilValueMaps.LAYER_DEFS[self.layerIdx]
+    if not def then return end
+
+    for i, row in ipairs(self.rows) do
+        vm:applySyncRow(def.key, self.gyStart + (i - 1), row)
+    end
+
+    if self.isLast then
+        SoilLogger.info("Client: value map sync complete (%d layers)", #SoilValueMaps.LAYER_DEFS)
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
+        local mapOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
+        if mapOverlay then mapOverlay:requestRefresh() end
+    end
+end
+
+-- ── Checksum verification ─────────────────────────────────
+
+--- Per-layer checksum: sum of all sync-grid states + count of non-zero cells.
+--- Cheap to compute on both sides (reads the coarse grid, not full resolution).
+local function sfComputeLayerChecksum(vm, layerKey)
+    local stride  = vm:getSyncStride()
+    local numRows = math.floor(vm.resolution / stride)
+    local sum, nonZero = 0, 0
+    for gy = 0, numRows - 1 do
+        local row = vm:readSyncRow(layerKey, gy)
+        if row then
+            for _, state in ipairs(row) do
+                sum = sum + state
+                if state > 0 then nonZero = nonZero + 1 end
+            end
+        end
+    end
+    return sum, nonZero
+end
+
+SoilValueMapChecksumEvent = {}
+SoilValueMapChecksumEvent_mt = Class(SoilValueMapChecksumEvent, Event)
+
+InitEventClass(SoilValueMapChecksumEvent, "SoilValueMapChecksumEvent")
+
+function SoilValueMapChecksumEvent.emptyNew()
+    return Event.new(SoilValueMapChecksumEvent_mt)
+end
+
+--- checksums: array indexed by layerIdx of { sum = n, nonZero = n }
+function SoilValueMapChecksumEvent.new(checksums)
+    local self = SoilValueMapChecksumEvent.emptyNew()
+    self.checksums = checksums or {}
+    return self
+end
+
+function SoilValueMapChecksumEvent:writeStream(streamId, connection)
+    streamWriteUInt8(streamId, #self.checksums)
+    for _, cs in ipairs(self.checksums) do
+        streamWriteInt32(streamId, cs.sum)
+        streamWriteInt32(streamId, cs.nonZero)
+    end
+end
+
+function SoilValueMapChecksumEvent:readStream(streamId, connection)
+    local count = streamReadUInt8(streamId)
+    self.checksums = {}
+    for i = 1, count do
+        self.checksums[i] = {
+            sum     = streamReadInt32(streamId),
+            nonZero = streamReadInt32(streamId),
+        }
+    end
+    self:run(connection)
+end
+
+function SoilValueMapChecksumEvent:run(connection)
+    -- CLIENT ONLY: compare against the local maps; request a resync when a
+    -- layer has drifted (tolerance covers coarse-grid quantisation noise).
+    if g_server ~= nil then return end
+    local vm = sfGetValueMaps()
+    if not vm then return end
+
+    for layerIdx, cs in ipairs(self.checksums) do
+        local def = SoilValueMaps.LAYER_DEFS[layerIdx]
+        if def then
+            local localSum, localNonZero = sfComputeLayerChecksum(vm, def.key)
+            local sumDrift = math.abs(localSum - cs.sum)
+            local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
+            if sumDrift > tolerance then
+                SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync",
+                    def.key, localSum, cs.sum)
+                if g_client then
+                    g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
+                end
+            end
+        end
+    end
+end
+
+-- ── Layer resync request (Client -> Server) ───────────────
+
+SoilRequestValueMapEvent = {}
+SoilRequestValueMapEvent_mt = Class(SoilRequestValueMapEvent, Event)
+
+InitEventClass(SoilRequestValueMapEvent, "SoilRequestValueMapEvent")
+
+function SoilRequestValueMapEvent.emptyNew()
+    return Event.new(SoilRequestValueMapEvent_mt)
+end
+
+--- layerIdx: 1-based LAYER_DEFS index, or 0 = all layers
+function SoilRequestValueMapEvent.new(layerIdx)
+    local self = SoilRequestValueMapEvent.emptyNew()
+    self.layerIdx = layerIdx or 0
+    return self
+end
+
+function SoilRequestValueMapEvent:writeStream(streamId, connection)
+    streamWriteUInt8(streamId, self.layerIdx)
+end
+
+function SoilRequestValueMapEvent:readStream(streamId, connection)
+    self.layerIdx = streamReadUInt8(streamId)
+    self:run(connection)
+end
+
+function SoilRequestValueMapEvent:run(connection)
+    if g_server == nil or not connection then return end
+    SoilNetworkEvents_SendValueMaps(connection, self.layerIdx > 0 and self.layerIdx or nil)
+end
+
+-- ── Server-side dispatch ──────────────────────────────────
+
+--- Stream the value map layers to one client connection.
+--- onlyLayerIdx: optional 1-based LAYER_DEFS index to resend a single layer.
+--- Mirrors the field-batch strategy: synchronous on dedicated servers,
+--- drip-fed via addUpdateable on listen servers to protect the render thread.
+function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
+    if g_server == nil or not connection then return end
+    local vm = sfGetValueMaps()
+    if not vm then return end
+
+    local stride  = vm:getSyncStride()
+    local numRows = math.floor(vm.resolution / stride)
+    if numRows <= 0 then return end
+
+    local ROWS_PER_EVENT = 16
+
+    -- Build the (layerIdx, gyStart) work list
+    local work = {}
+    for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        if onlyLayerIdx == nil or layerIdx == onlyLayerIdx then
+            local gy = 0
+            while gy < numRows do
+                work[#work + 1] = { layerIdx = layerIdx, key = def.key, gyStart = gy }
+                gy = gy + ROWS_PER_EVENT
+            end
+        end
+    end
+    if #work == 0 then return end
+
+    local function buildChunk(item, isLast)
+        local rows = {}
+        local gyEnd = math.min(item.gyStart + ROWS_PER_EVENT - 1, numRows - 1)
+        for gy = item.gyStart, gyEnd do
+            rows[#rows + 1] = vm:readSyncRow(item.key, gy) or {}
+        end
+        return SoilValueMapChunkEvent.new(item.layerIdx, item.gyStart, rows, isLast)
+    end
+
+    local function buildChecksums()
+        local checksums = {}
+        for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+            local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
+            checksums[#checksums + 1] = { sum = sum, nonZero = nonZero }
+        end
+        return checksums
+    end
+
+    if g_dedicatedServer ~= nil or g_currentMission == nil
+       or g_currentMission.addUpdateable == nil then
+        -- Synchronous path (connection lifetime guaranteed - see issue #228)
+        for i, item in ipairs(work) do
+            connection:sendEvent(buildChunk(item, i == #work))
+        end
+        connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+        SoilLogger.info("Server: value maps sent synchronously (%d chunks)", #work)
+    else
+        -- Listen server: drip-feed chunks across frames
+        local dispatcher = {
+            index      = 1,
+            timer      = 0,
+            delay      = 40,   -- ms between chunks
+            work       = work,
+            connection = connection,
+            update = function(dsp, dt)
+                if not dsp.connection or dsp.index > #dsp.work then
+                    g_currentMission:removeUpdateable(dsp)
+                    return
+                end
+                dsp.timer = dsp.timer + dt
+                if dsp.timer < dsp.delay then return end
+                dsp.timer = 0
+
+                local isLast = (dsp.index == #dsp.work)
+                dsp.connection:sendEvent(buildChunk(dsp.work[dsp.index], isLast))
+                dsp.index = dsp.index + 1
+
+                if isLast then
+                    dsp.connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+                    g_currentMission:removeUpdateable(dsp)
+                end
+            end,
+        }
+        g_currentMission:addUpdateable(dispatcher)
+        SoilLogger.info("Server: value map dispatcher registered (%d chunks)", #work)
+    end
+end
+
+--- Broadcast checksums to all clients (periodic drift detection).
+function SoilNetworkEvents_BroadcastValueMapChecksums()
+    if g_server == nil then return end
+    local vm = sfGetValueMaps()
+    if not vm then return end
+    local checksums = {}
+    for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
+        checksums[#checksums + 1] = { sum = sum, nonZero = nonZero }
+    end
+    g_server:broadcastEvent(SoilValueMapChecksumEvent.new(checksums))
 end
 
 SoilLogger.info("Network events system loaded")
