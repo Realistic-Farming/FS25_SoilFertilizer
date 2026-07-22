@@ -479,7 +479,17 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmlan
         if not (skipPerPixel and def.perPixel) then
         local entry = self.layerHandles[def.name]
         if entry and fieldData[def.field] ~= nil then
-            local encoded = encode(fieldData[def.field], def)
+            -- Discovery gate (merge item 3, extended here during the item 4 review).
+            -- These layers are a DISPLAY mirror, and this writer does not flow
+            -- through _vmDisplayValues, so without its own gate an unscouted field
+            -- paints its real disease onto the GRLE layer the PDA renders whenever
+            -- the runtime value maps are unavailable. Undiscovered paints the
+            -- HEALTHY value so unscouted ground reads identical to clean ground.
+            local rawValue = fieldData[def.field]
+            if def.field == "diseasePressure" and not fieldData.diseaseDiscovered then
+                rawValue = 0
+            end
+            local encoded = encode(rawValue, def)
             local modifier = entry.modifier
             local filter   = DensityMapFilter.new(modifier)
 

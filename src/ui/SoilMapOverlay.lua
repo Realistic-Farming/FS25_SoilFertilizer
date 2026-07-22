@@ -401,7 +401,10 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
         end
     end
 
-    -- No DMV for this layer (urgency = layer 6, or GRLE not yet available)
+    -- No DMV for this layer. Reachable when the value maps are unavailable AND the
+    -- layer has no GRLE backing either: urgency (6), weed (7) without a native
+    -- foliage map, and yield (11). Falls through to the legacy sample-point path,
+    -- where per-cell truth exists only for the biotic + compaction stamps.
     self._pdaUsingDMV = false
 end
 
@@ -670,26 +673,38 @@ local LAYER_GRLE_NAME = {
 
 -- Extract the per-cell value for a given overlay layer index (1-5 only).
 -- Must be defined before updateSamplePoints to be in scope as an upvalue.
-local function getCellLayerValue(cell, layerIdx)
-    if layerIdx == 1 then return cell.N
-    elseif layerIdx == 2 then return cell.P
-    elseif layerIdx == 3 then return cell.K
-    elseif layerIdx == 4 then return cell.pH
-    elseif layerIdx == 5 then return cell.OM
-    elseif layerIdx == 6 then
-        -- Urgency calculation (local approximation)
-        local n = cell.N or 0
-        local p = cell.P or 0
-        local k = cell.K or 0
-        -- Simplified urgency for map: inverse of NPK average relative to 100
-        return 100 - (n + p + k) / 3
-    elseif layerIdx == 7 then return cell.weedPressure
+-- Per-cell value for the LEGACY zoneData render path (used only when neither the
+-- runtime value maps nor GRLE info layers are available on this terrain).
+--
+-- REFINED: zoneData cells carry ONLY the biotic + compaction stamps that
+-- markBoomCells writes; N/P/K/pH/OM now live on the per-pixel value maps and are
+-- never written to a cell. Layers 1-6 therefore have no per-cell truth here and
+-- MUST return nil so the caller falls back to the field average. That fallback is
+-- also the correct answer for urgency, because getLayerColor computes it from
+-- getFieldUrgency rather than approximating it from nutrients the cell lacks.
+--
+-- Returning a fabricated value for those layers is not a cosmetic issue: the
+-- caller treats "non-nil" as the measured flag and draws the cell at full opacity.
+---@param cell table zoneData cell
+---@param layerIdx number active map layer
+---@param fieldEntry table|nil owning fieldData entry, required to gate disease
+local function getCellLayerValue(cell, layerIdx, fieldEntry)
+    if layerIdx == 7 then return cell.weedPressure
     elseif layerIdx == 8 then return cell.pestPressure
-    elseif layerIdx == 9 then return cell.diseasePressure
+    elseif layerIdx == 9 then
+        -- Discovery gate (merge item 3): this path does not flow through
+        -- _vmDisplayValues, so it needs its own gate or an unscouted field leaks
+        -- its disease here. Undiscovered paints the HEALTHY value, exactly as the
+        -- value-map producer does, so unscouted reads identical to clean.
+        if fieldEntry and not fieldEntry.diseaseDiscovered then return 0 end
+        return cell.diseasePressure
     elseif layerIdx == 10 then return cell.compaction
     end
     return nil
 end
+
+-- Exported for the self-test suite; call sites keep using the local upvalue.
+SoilMapOverlay._getCellLayerValue = getCellLayerValue
 
 function SoilMapOverlay:updateSamplePoints(force)
     local now = (g_currentMission and g_currentMission.time) or g_time or 0
@@ -775,10 +790,11 @@ function SoilMapOverlay:updateSamplePoints(force)
                         end
                     elseif layerIdx >= 1 and layerIdx <= 10 then
                         -- zoneData per-cell path: standard maps, layers 1-10.
-                        -- Cells that have been measured (sprayer/harvester passed) show their
-                        -- real local value at full opacity. Unvisited cells fall back to the
-                        -- field-level average at half opacity so the map stays fully coloured
-                        -- but players can tell measured zones from estimated ones.
+                        -- Cells with real per-cell data (the weed/pest/disease/compaction
+                        -- stamps) show it at full opacity. Everything else, including every
+                        -- nutrient layer and urgency, falls back to the field-level average
+                        -- at half opacity, so the map stays fully coloured but players can
+                        -- tell measured zones from estimated ones.
                         local fieldEntry = self.soilSystem.fieldData and self.soilSystem.fieldData[farmlandId]
                         local zoneData = fieldEntry and fieldEntry.zoneData
                         local zone = SoilConstants.ZONE
@@ -794,7 +810,7 @@ function SoilMapOverlay:updateSamplePoints(force)
                                     local cellKey = tostring(cx * 10000 + cz)
                                     local cell = zoneData[cellKey]
                                     if cell then
-                                        local val = getCellLayerValue(cell, layerIdx)
+                                        local val = getCellLayerValue(cell, layerIdx, fieldEntry)
                                         if val then
                                             r, g, b = self:valueToLayerColor(layerIdx, val)
                                             a = 1.0   -- measured: full opacity
@@ -1798,7 +1814,7 @@ function SoilMapOverlay:updateMinimapCentroids(force)
                                 local cz   = math.floor(pt.z / zone.CELL_SIZE)
                                 local cell = zoneData[tostring(cx * 10000 + cz)]
                                 if cell then
-                                    local val = getCellLayerValue(cell, layerIdx)
+                                    local val = getCellLayerValue(cell, layerIdx, fieldEntry)
                                     if val then
                                         pr, pg, pb = self:valueToLayerColor(layerIdx, val)
                                     end
