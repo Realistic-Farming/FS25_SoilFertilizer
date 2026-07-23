@@ -752,7 +752,7 @@
   "v2.4.2.8": {
     "published_at": "2026-06-15T22:09:07Z",
     "tag": "v2.4.2.8",
-    "peak_downloads": 149
+    "peak_downloads": 150
   },
   "v2.4.2.9": {
     "published_at": "2026-06-17T20:45:08Z",
@@ -782,11 +782,11 @@
   "v2.4.6.0": {
     "published_at": "2026-07-03T06:50:59Z",
     "tag": "v2.4.6.0",
-    "peak_downloads": 425
+    "peak_downloads": 434
   },
   "v2.4.7.0": {
     "published_at": "2026-07-22T21:28:55Z",
     "tag": "v2.4.7.0",
-    "peak_downloads": 14
+    "peak_downloads": 16
   }
 }
