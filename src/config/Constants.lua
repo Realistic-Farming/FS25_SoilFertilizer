@@ -16,8 +16,27 @@ SoilConstants = {}
 -- ========================================
 SoilConstants.TIMING = {
     UPDATE_INTERVAL = 30000,     -- ms between periodic checks
-    FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in
+    FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in (already season-scaled at its read site by daysPerMonth; do NOT season-scale again, see DURATION)
     MAX_DAILY_CATCHUP = 10,      -- cap on skipped days simulated in one catch-up pass
+}
+
+-- ========================================
+-- DURATION SCALING (SF-31 / #740)
+-- ========================================
+-- The absolute chemical day-counts (fungicide/herbicide/insecticide) are tuned
+-- against a reference season length. On a short 1-day-month save an absolute
+-- 35-day fungicide would cover ~3 game years (the #639/#740 problem), so at the
+-- application sites those counts pass through SoilDuration.seasonScaled(), which
+-- reads days-per-period from Time Guard's context and scales:
+--     effectiveDays = max(1, round(baseDays * daysPerPeriod / REFERENCE_DPP))
+-- A save at REFERENCE_DPP days-per-month is unchanged; shorter saves scale down.
+-- REFERENCE_DPP is the days-per-month the shipped duration constants were tuned
+-- against (Tyson's ruling, 2026-07-23). Time Guard absent -> the absolute count.
+-- EXCLUSIONS (already season-honest, must NOT double-scale): the organic
+-- TRANSITION_DAYS (year-normalised via Time Guard) and the fallow threshold
+-- (multiplied by daysPerMonth at its read site).
+SoilConstants.DURATION = {
+    REFERENCE_DPP = 3,   -- days-per-month the chemical durations were tuned at
 }
 
 -- ========================================

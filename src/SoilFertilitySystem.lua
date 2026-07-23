@@ -1465,7 +1465,7 @@ function SoilFertilitySystem:onHerbicideApplied(fieldId, effectiveness)
     -- it must equal the day count directly. Multiplying by daysPerPeriod made protection
     -- last DURATION_DAYS *months* - it never expired, so the HUD "protected" status stuck
     -- forever (#639). See HERBICIDE_DURATION_DAYS comment in Constants.lua.
-    field.herbicideDaysLeft = wp.HERBICIDE_DURATION_DAYS
+    field.herbicideDaysLeft = SoilDuration.seasonScaled(wp.HERBICIDE_DURATION_DAYS)
 
     self:log("[Herbicide] Field %d: weed pressure %.0f -> %.0f, protected for %d days",
         fieldId, before, field.weedPressure, field.herbicideDaysLeft)
@@ -1659,7 +1659,7 @@ function SoilFertilitySystem:onInsecticideApplied(fieldId, effectiveness)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = pp.INSECTICIDE_DURATION_DAYS
+        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
     end
 
     self:log("[Insecticide] Field %d: pest pressure %.0f -> %.0f, protected for %d days",
@@ -1699,7 +1699,7 @@ function SoilFertilitySystem:onFungicideApplied(fieldId, effectiveness)
     -- cm.fungicideMult still scales it (shorter in wet climates).
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(dp.FUNGICIDE_DURATION_DAYS * cm.fungicideMult)
+        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * cm.fungicideMult)
     end
 
     self:log("[Fungicide] Field %d: disease pressure %.0f -> %.0f, protected for %d days",
@@ -4723,7 +4723,7 @@ function SoilFertilitySystem:onInsecticideAppliedIncremental(fieldId, reduction)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = pp.INSECTICIDE_DURATION_DAYS
+        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
     end
 
     -- Update per-cell pest pressure for existing zoneData entries only.
@@ -4755,7 +4755,7 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(dp.FUNGICIDE_DURATION_DAYS * (cm.fungicideMult or 1))
+        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * (cm.fungicideMult or 1))
     end
 
     -- Update per-cell disease pressure for existing zoneData entries only.
@@ -5118,7 +5118,7 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         local wasProtected = (field.herbicideDaysLeft or 0) > 0
         if (field.sessionCoverageFraction or 0) >= protThreshold then
             -- Duration is in in-game DAYS (decremented 1/game-day); see #639.
-            field.herbicideDaysLeft = SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS
+            field.herbicideDaysLeft = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
             -- Apply weed map state (visual browning) exactly once when protection is first granted.
             -- applyWeedMapState is server-only; guards inside it handle the nil-field case.
             if not wasProtected and g_server then
