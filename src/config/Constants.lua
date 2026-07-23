@@ -173,16 +173,16 @@ SoilConstants.RESIDUE_INCORPORATION = {
         K  = 1.8,    -- increased from 0.3
     },
     STRIP_TILL = {
-        OM = 0.05,
-        N  = 1.2,
-        P  = 0.4,
-        K  = 0.8,
+        OM = 0.05,   -- increased from 0.03 for game visibility
+        N  = 1.2,    -- increased from 0.2
+        P  = 0.4,    -- increased from 0.02
+        K  = 0.8,    -- increased from 0.15
     },
     DIRECT_DRILL = {
-        OM = 0.03,
-        N  = 0.6,
-        P  = 0.2,
-        K  = 0.4,
+        OM = 0.03,   -- increased from 0.02 for game visibility
+        N  = 0.6,    -- increased from 0.1
+        P  = 0.2,    -- increased from 0.01
+        K  = 0.4,    -- increased from 0.08
     },
 }
 
