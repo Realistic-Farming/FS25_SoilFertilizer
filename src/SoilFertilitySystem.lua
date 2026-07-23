@@ -4464,7 +4464,13 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                     -- perennial forage or a freshly-sown annual is standard practice, so skip it.
                     -- On an established crop it builds up over application time toward OM_MAX (#688).
                     if not burnExempt then
-                        self:applyAmendmentBurnSlice(field, (ab and ab.OM_MAX) or 0.20)
+                        -- Finished compost scorches an established crop far more gently than fresh
+                        -- slurry/manure - stabilized humus carries no free salt/ammonia to burn the
+                        -- canopy - so it caps at the lower COMPOST_MAX (agronomic constant, Arissani
+                        -- 2026-07-24). Seedling / short-cut sward stay exempt (handled above).
+                        local omCap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
+                                   or (ab and ab.OM_MAX) or 0.20
+                        self:applyAmendmentBurnSlice(field, omCap)
                         if not field._amendBurnNotified then
                             field._amendBurnNotified = true
                             self:showNotification(

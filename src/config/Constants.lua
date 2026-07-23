@@ -460,6 +460,10 @@ SoilConstants.AMEND_BURN = {
     -- the field costs only a small slice, so you have time to shut the sprayer off.
     LIME_MAX = 0.80,   -- lime/LIQUIDLIME on an established crop, fully built up
     OM_MAX   = 0.20,   -- organic amendment (slurry/manure/digestate) fully built up
+    -- Finished compost is gentler than fresh slurry/manure on an established crop: stabilized
+    -- humus carries no free salt or ammonia to scorch the canopy, so it caps well below OM_MAX.
+    -- Agronomic constant (true at every difficulty, not a spine dial) - Arissani, 2026-07-24.
+    COMPOST_MAX = 0.08,
 }
 
 SoilConstants.FERTILIZER_PROFILES = {
