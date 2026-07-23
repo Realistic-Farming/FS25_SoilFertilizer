@@ -630,7 +630,7 @@ function SoilPDAScreen:_buildTreatmentData()
         local hasIssue = info.needsFertilization
             or (info.weedPressure    or 0) >= PRESSURE_THRESHOLD
             or (info.pestPressure    or 0) >= PRESSURE_THRESHOLD
-            or (info.diseasePressure or 0) >= PRESSURE_THRESHOLD
+            or (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD
         if hasIssue or entry.urgency > 0 then
             table.insert(self.treatmentData, entry)
         end
@@ -715,7 +715,7 @@ function SoilPDAScreen:_refreshSummaryStats()
         sumOM = sumOM + (info.organicMatter or 3.5)
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
-        if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
+        if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
         if info.needsFertilization then attentionCount = attentionCount + 1 end
     end
 
@@ -779,7 +779,7 @@ function SoilPDAScreen:_refreshTreatmentSidebar()
         if info.needsFertilization then needsFert = needsFert + 1 end
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
-        if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
+        if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
     end
 
     local function setText(el, val)
@@ -920,7 +920,7 @@ local function buildNeedsString(info)
     if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then
         table.insert(needs, tr("sf_pda_need_pest", "Insecticide"))
     end
-    if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then
+    if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then
         table.insert(needs, tr("sf_pda_need_disease", "Fungicide"))
     end
 

@@ -24,13 +24,17 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- NEW SOIL ENGINE (thanks to Graham / WizardlyPayload): soil is now stored",
+    "- NEW SOIL ENGINE (thanks to WizardlyPayload): soil is now stored",
     "    per pixel across the map, not as one average per field. Spray half a",
     "    field and the map shows it. All 11 layers render at PF quality.",
     "- The Soil Layer Installer is NO LONGER REQUIRED. The maps are built at",
     "    startup on any map. Already patched? Nothing breaks, leave it as is.",
     "- Pest and disease can finally build up. They were capped below the level",
     "    where they cost you anything, so most players never saw them at all.",
+    "- Unscouted ground no longer shows as clean green on the disease map. It",
+    "    reads a neutral \"Unscouted\" state until you scout it, whatever is hiding.",
+    "- Fungicide, herbicide and insecticide protection now scale with your season",
+    "    length, so short 1-day months no longer give years of cover.",
     "- Six real fungicides you can buy and spray: Propiconazole, Azoxystrobin,",
     "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank.",
     "    Scout a field and it names the one that best controls its disease.",

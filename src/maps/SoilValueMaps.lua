@@ -28,6 +28,16 @@
 SoilValueMaps = {}
 local SoilValueMaps_mt = Class(SoilValueMaps)
 
+-- Unscouted-disease marker (Unscouted Indicator). The diseasePressure DISPLAY
+-- layer reserves DMV colour state 1 (raw 16-31) for UNKNOWN by flooring its live
+-- values to raw 32 (state 2+). A pixel painted at UNKNOWN_RAW lands in that
+-- reserved band and colours as the neutral "unscouted" tone, never as clean
+-- green. Producers signal unknown by passing UNKNOWN_VALUE (a sentinel below the
+-- layer's minVal) into the paint path; encode() maps it to the def's unknownRaw.
+-- Defined before LAYER_DEFS so the diseasePressure def can reference UNKNOWN_RAW.
+SoilValueMaps.UNKNOWN_RAW   = 24    -- mid state-1 band (16-31)
+SoilValueMaps.UNKNOWN_VALUE = -1    -- sentinel semantic value = "not scouted"
+
 -- ─────────────────────────────────────────────────────────
 -- Layer definitions
 -- Keys match fieldData keys (same convention as SoilLayerSystem).
@@ -46,7 +56,10 @@ SoilValueMaps.LAYER_DEFS = {
     -- REFINED display layers (field-level agronomy rendered per-pixel)
     { key = "weedPressure",    file = "sfSoilMap_WP.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
     { key = "pestPressure",    file = "sfSoilMap_PP.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
-    { key = "diseasePressure", file = "sfSoilMap_DP.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
+    -- diseasePressure floors to raw 32 (DMV state 2), reserving state 1 (raw
+    -- 16-31) for the UNKNOWN/unscouted marker. unknownRaw is painted directly
+    -- when a field is not yet scouted, so unscouted never reads as clean green.
+    { key = "diseasePressure", file = "sfSoilMap_DP.grle",  minVal = 0,   maxVal = 100, rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW },
     { key = "urgency",         file = "sfSoilMap_UR.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
     { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
 }
@@ -67,6 +80,11 @@ local MAX_RESOLUTION = 4096
 -- ─────────────────────────────────────────────────────────
 
 local function encode(value, def)
+    -- Unknown marker (unscouted disease): a sentinel value below minVal encodes to
+    -- the reserved state-1 raw so the pixel reads as UNKNOWN, never as clean.
+    if def.unknownRaw and type(value) == "number" and value < def.minVal then
+        return def.unknownRaw
+    end
     local clamped  = math.max(def.minVal, math.min(def.maxVal, value or def.minVal))
     local fraction = (clamped - def.minVal) / (def.maxVal - def.minVal)
     local raw = RAW_MIN + math.floor(fraction * RAW_SPAN + 0.5)
@@ -74,6 +92,7 @@ local function encode(value, def)
     if def.rawFloor and raw < def.rawFloor then raw = def.rawFloor end
     return raw
 end
+SoilValueMaps._encode = encode   -- test seam
 
 local function decode(raw, def)
     if raw == nil or raw <= 0 then return nil end

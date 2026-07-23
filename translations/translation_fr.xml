@@ -1183,5 +1183,6 @@
     <e k="sf_copper_hydroxide_title" v="Hydroxyde de cuivre" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Hydroxyde de cuivre" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Fongicide à base d'hydroxyde de cuivre, compatible agriculture biologique (liquide)" />
+    <e k="sf_unscouted" v="Non inspecté" />
 </elements>
 </l10n>

@@ -67,23 +67,29 @@ T.near("layer 7 (weed) reads the cell",       getCellValue(cell, 7,  scouted), 4
 T.near("layer 8 (pest) reads the cell",       getCellValue(cell, 8,  scouted), 31, 0.001)
 T.near("layer 10 (compaction) reads the cell", getCellValue(cell, 10, scouted), 18, 0.001)
 
--- ── 4. The discovery gate holds on this path ─────────────────────────────────
+-- ── 4. The discovery gate holds on this path (Unscouted Indicator) ───────────
 T.near("scouted disease reads its real pressure",
   getCellValue(cell, 9, scouted), 66, 0.001)
-T.near("UNSCOUTED disease reads healthy, identical to a clean field",
-  getCellValue(cell, 9, unscouted), 0, 0.001)
-T.near("a field that has never been scouted reads healthy",
-  getCellValue(cell, 9, field(nil)), 0, 0.001)
+T.ok("UNSCOUTED disease reads the UNKNOWN marker, not clean (0)",
+  getCellValue(cell, 9, unscouted) < 0)
+T.ok("a field that has never been scouted reads the UNKNOWN marker",
+  getCellValue(cell, 9, field(nil)) < 0)
 
 -- Pest has no discovery concept and must show through regardless.
 T.near("pest is never gated by discovery",
   getCellValue(cell, 8, unscouted), 31, 0.001)
 
--- A clean scouted field and an unscouted infected field must be indistinguishable.
+-- The no-leak invariant: an unscouted INFECTED field and an unscouted CLEAN field
+-- are indistinguishable (both the UNKNOWN marker), and both are distinct from a
+-- scouted clean field (which reads a real 0, coloured green).
 local clean = boomCell()
 clean.diseasePressure = 0
-T.eq("unscouted infection is indistinguishable from clean ground",
-  getCellValue(cell, 9, unscouted), getCellValue(clean, 9, scouted))
+T.eq("unscouted infected == unscouted clean (both UNKNOWN)",
+  getCellValue(cell, 9, unscouted), getCellValue(clean, 9, unscouted))
+T.near("a scouted clean field reads its real 0",
+  getCellValue(clean, 9, scouted), 0, 0.001)
+T.ok("UNKNOWN (unscouted) is distinct from a scouted clean 0",
+  getCellValue(cell, 9, unscouted) ~= getCellValue(clean, 9, scouted))
 
 -- ── 5. Unknown layers stay nil ───────────────────────────────────────────────
 -- Layer 11 (yield) has no cell backing and the caller's legacy branch only spans

@@ -1150,6 +1150,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
+    <e k="sf_unscouted" v="Niezbadane" />
 </elements>
 
 

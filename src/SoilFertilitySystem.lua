@@ -3059,14 +3059,22 @@ end
 
 --- Discovery gate for the display layers: an active infection stays invisible on
 --- EVERY painted surface (the disease map, the urgency map, and via the mirror
---- the MP-synced client picture) until the field is scouted. Undiscovered disease
---- reads as HEALTHY (zero pressure, which the display encoding floors to visible
---- green, never transparent), so an unscouted field is indistinguishable from a
---- clean one. This protects the scouting economy the same way the disease HUD
---- self-gates on diseaseDiscovered. Pest has no discovery concept, so it is not
---- gated.
+--- the MP-synced client picture) until the field is scouted. Unscouted ground now
+--- paints a uniform UNKNOWN marker (the reserved DMV state 1), not clean green, so
+--- an unscouted infected field and an unscouted clean field are indistinguishable
+--- yet neither pretends to be healthy (Unscouted Indicator). Returns the UNKNOWN
+--- sentinel (< 0) for unscouted ground so the paint path floors it to UNKNOWN_RAW;
+--- callers that need a number clamp it to 0 (it never counts as trouble). When the
+--- disease system is OFF there is nothing to hide, so it falls back to clean (0).
+--- This protects the scouting economy the same way the disease HUD self-gates on
+--- diseaseDiscovered. Pest has no discovery concept, so it is not gated.
 function SoilFertilitySystem:_vmShownDiseasePressure(field)
-    if not field.diseaseDiscovered then return 0 end
+    if not field.diseaseDiscovered then
+        if self.settings and self.settings.diseasePressure then
+            return SoilValueMaps.UNKNOWN_VALUE   -- sentinel < 0 -> painted as UNKNOWN
+        end
+        return 0
+    end
     return field.diseasePressure or 0
 end
 
@@ -3082,7 +3090,7 @@ function SoilFertilitySystem:_vmComputeUrgency(field)
     local phDef = math.max(0, phOpt - (field.pH or phOpt)) / (phOpt - phMin)
     local weedDef    = (field.weedPressure    or 0) / 100
     local pestDef    = (field.pestPressure    or 0) / 100
-    local diseaseDef = self:_vmShownDiseasePressure(field) / 100
+    local diseaseDef = math.max(0, self:_vmShownDiseasePressure(field)) / 100
     return math.min(100, ((nDef + pDef + kDef + phDef + weedDef + pestDef + diseaseDef) / 7) * 100)
 end
 
@@ -3245,14 +3253,25 @@ function SoilFertilitySystem:_vmMirrorDisplayField(fieldId, field)
     local verts
     local changed = false
     for _, key in ipairs(VM_DISPLAY_KEYS) do
-        local delta = cur[key] - prev[key]
-        if math.abs(delta) >= VM_MIRROR_EPSILON then
+        -- Unscouted<->scouted disease is a state switch (the UNKNOWN sentinel <-> a
+        -- real pressure), not a smooth delta, so repaint that field's disease layer
+        -- absolutely rather than applying a bogus raw delta across the reserved band.
+        if key == "diseasePressure" and (cur[key] < 0) ~= (prev[key] < 0) then
             verts = verts or self:_getFieldPolyVerts(fieldId, field)
             if not verts then return end
-            local applied = self.valueMaps:applyDeltaToPolygon(key, verts, delta)
-            if applied ~= 0 then
-                prev[key] = prev[key] + applied
-                changed = true
+            self.valueMaps:paintPolygon(key, verts, cur[key])
+            prev[key] = cur[key]
+            changed = true
+        else
+            local delta = cur[key] - prev[key]
+            if math.abs(delta) >= VM_MIRROR_EPSILON then
+                verts = verts or self:_getFieldPolyVerts(fieldId, field)
+                if not verts then return end
+                local applied = self.valueMaps:applyDeltaToPolygon(key, verts, delta)
+                if applied ~= 0 then
+                    prev[key] = prev[key] + applied
+                    changed = true
+                end
             end
         end
     end
@@ -4670,8 +4689,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                     end
                     if entry.diseaseReduction then
                         -- Discovery gate: a sprayed strip must not reveal
-                        -- undiscovered disease; paint healthy until scouted.
-                        local shownDisease = 0
+                        -- undiscovered disease; paint the UNKNOWN marker until scouted.
+                        local shownDisease = SoilValueMaps.UNKNOWN_VALUE
                         if field.diseaseDiscovered then shownDisease = cell.diseasePressure or 0 end
                         self.valueMaps:writeValueAtWorld("diseasePressure", sprayX, sprayZ, shownDisease, half)
                     end
@@ -5688,6 +5707,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         activeDisease = field.activeDisease,  -- DISEASE_DEFS id of the named infection, or nil
         diseaseDiscovered = field.diseaseDiscovered or false,  -- discovery gate: false = named infection not yet scouted (HUD shows "?")
+        -- Scouting-gated display value: nil = unscouted (UI shows "Unscouted"); a
+        -- number once scouted. Disease-off shows the value (nothing to hide). The
+        -- RAW diseasePressure above stays ungated for the NPC roll and scouting.
+        shownDiseasePressure = (field.diseaseDiscovered or not (self.settings and self.settings.diseasePressure))
+            and (field.diseasePressure or 0) or nil,
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
@@ -5727,7 +5751,9 @@ function SoilFertilitySystem:getFieldUrgency(fieldId)
 
     local weedDef = (info.weedPressure or 0) / 100
     local pestDef = (info.pestPressure or 0) / 100
-    local diseaseDef = (info.diseasePressure or 0) / 100
+    -- Scouting-gated: unscouted disease (shownDiseasePressure nil) must not raise
+    -- urgency or it would leak what the honest disease layer hides.
+    local diseaseDef = (info.shownDiseasePressure or 0) / 100
 
     urgency = math.min(100, ((nDef + pDef + kDef + phDef + weedDef + pestDef + diseaseDef) / 7) * 100)
     return urgency

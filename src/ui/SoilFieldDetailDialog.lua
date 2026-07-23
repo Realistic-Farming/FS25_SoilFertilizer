@@ -340,7 +340,8 @@ function SoilFieldDetailDialog:_populateData()
     -- Crop pressure
     self:_setPressure(self.detailWeed,    self.detailWeedStatus,    info.weedPressure    or 0, info.herbicideActive)
     self:_setPressure(self.detailPest,    self.detailPestStatus,    info.pestPressure    or 0, info.insecticideActive)
-    self:_setPressure(self.detailDisease, self.detailDiseaseStatus, info.diseasePressure or 0, info.fungicideActive)
+    -- Disease uses the scouting-gated value: nil (unscouted) renders "Unscouted".
+    self:_setPressure(self.detailDisease, self.detailDiseaseStatus, info.shownDiseasePressure, info.fungicideActive)
 
     -- History
     if self.detailLastCrop then
@@ -556,6 +557,12 @@ end
 ---@param activeProduct boolean   true if protection product active
 function SoilFieldDetailDialog:_setPressure(valueEl, statusEl, pressure, activeProduct)
     local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
+    if pressure == nil then
+        -- Unscouted disease: show "Unscouted", no percentage or severity (would leak).
+        if valueEl  then valueEl:setText(tr("sf_unscouted", "Unscouted")) end
+        if statusEl then statusEl:setText("") end
+        return
+    end
     if valueEl then
         valueEl:setText(string.format("%.0f%%", pressure))
     end

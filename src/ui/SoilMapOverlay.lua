@@ -51,6 +51,11 @@ SoilMapOverlay.CB_POOR = {0.90, 0.37, 0.00}
 SoilMapOverlay.CB_FAIR = {0.94, 0.86, 0.00}
 SoilMapOverlay.CB_GOOD = {0.00, 0.45, 0.70}
 
+-- Unscouted-disease tone: neutral, desaturated, brightness-distinct from the
+-- pressure ramp in both palettes so colourblind players can tell it apart.
+SoilMapOverlay.C_UNKNOWN  = {0.55, 0.57, 0.60}
+SoilMapOverlay.CB_UNKNOWN = {0.38, 0.40, 0.43}
+
 -- ── Gradient helpers ──────────────────────────────────────
 -- Shared red→amber→green gradient.  t=0 is worst (red), t=1 is best (green).
 -- These are the same three stop-colors used in drawHealthGradientBar.
@@ -362,7 +367,12 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
             -- State 0 = raw 0-15 (no-data sentinel + lowest band) → transparent
             setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
             for i = 1, 15 do
-                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                local semanticVal
+                if layerIdx == 9 and i == 1 then
+                    semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                else
+                    semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                end
                 local r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
                 setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, 1.0)
             end
@@ -389,7 +399,12 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
             -- State 0 = raw 0-15 (unwritten/near-zero) → transparent.
             setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, 0, 0, 0, 0, 0)
             for i = 1, 15 do
-                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                local semanticVal
+                if layerIdx == 9 and i == 1 then
+                    semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                else
+                    semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                end
                 local r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
                 setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, i, r, g, b, 1.0)
             end
@@ -696,7 +711,9 @@ local function getCellLayerValue(cell, layerIdx, fieldEntry)
         -- _vmDisplayValues, so it needs its own gate or an unscouted field leaks
         -- its disease here. Undiscovered paints the HEALTHY value, exactly as the
         -- value-map producer does, so unscouted reads identical to clean.
-        if fieldEntry and not fieldEntry.diseaseDiscovered then return 0 end
+        if fieldEntry and not fieldEntry.diseaseDiscovered then
+            return (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- unscouted -> UNKNOWN tone, not clean
+        end
         return cell.diseasePressure
     elseif layerIdx == 10 then return cell.compaction
     end
@@ -1208,14 +1225,19 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 9 then
         -- ── Disease Pressure ────────────────────────────────────
-        local dp = math.floor((info.diseasePressure or 0) + 0.5)
-        addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
-        if info.fungicideActive then
-            addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
-        elseif dp >= 20 then
-            addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+        if info.shownDiseasePressure == nil then
+            -- Unscouted: no percentage, no fungicide hint (would leak the disease).
+            addRow("Disease Pressure", g_i18n:getText("sf_unscouted"), NEU[1], NEU[2], NEU[3])
         else
-            addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+            local dp = math.floor((info.shownDiseasePressure or 0) + 0.5)
+            addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
+            if info.fungicideActive then
+                addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+            elseif dp >= 20 then
+                addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            else
+                addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+            end
         end
 
     elseif layerIdx == 10 then
@@ -1516,6 +1538,11 @@ function SoilMapOverlay:drawLegend(panelX, bottomY, panelWidth)
             { c = FAIR, key = "sf_pda_map_legend_fair", label = "Fair" },
             { c = GOOD, key = "sf_pda_map_legend_good", label = "Good" },
         }
+        -- Disease layer: unscouted ground has its own reserved "Unscouted" state.
+        if (self.settings and self.settings.activeMapLayer) == 9 then
+            local ur, ug, ub = self:unknownColor()
+            table.insert(items, { c = { ur, ug, ub }, key = "sf_unscouted", label = "Unscouted" })
+        end
         local colW   = barW / #items
         local dotCY  = legendY + (legendH - dotSz) * 0.5
         for i, item in ipairs(items) do
@@ -1625,10 +1652,23 @@ function SoilMapOverlay:statusColors()
     return SoilMapOverlay.C_POOR, SoilMapOverlay.C_FAIR, SoilMapOverlay.C_GOOD
 end
 
+-- Neutral "unscouted" tone for the disease layer's reserved UNKNOWN state.
+function SoilMapOverlay:unknownColor()
+    if self.settings and self.settings.colorblindMode then
+        return SoilMapOverlay.CB_UNKNOWN[1], SoilMapOverlay.CB_UNKNOWN[2], SoilMapOverlay.CB_UNKNOWN[3]
+    end
+    return SoilMapOverlay.C_UNKNOWN[1], SoilMapOverlay.C_UNKNOWN[2], SoilMapOverlay.C_UNKNOWN[3]
+end
+
 -- Convert a raw decoded value (from the density map layer) to a gradient colour.
 ---@param layerIdx integer
 ---@param val      number
 function SoilMapOverlay:valueToLayerColor(layerIdx, val)
+    -- Unscouted disease marker: a negative sentinel colours as the neutral unknown
+    -- tone in either palette, never the pressure ramp.
+    if layerIdx == 9 and (val or 0) < 0 then
+        return self:unknownColor()
+    end
     if self.settings and self.settings.colorblindMode then
         local POOR, FAIR, GOOD = self:statusColors()
         local T = SoilConstants.STATUS_THRESHOLDS
@@ -1723,7 +1763,8 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             elseif v > 20 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 9 then
-            local v = info.diseasePressure or 0
+            if info.shownDiseasePressure == nil then return self:unknownColor() end
+            local v = info.shownDiseasePressure or 0
             if v > 50 then return POOR[1], POOR[2], POOR[3]
             elseif v > 20 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
@@ -1751,11 +1792,15 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     elseif layerIdx == 6 then val = self.soilSystem:getFieldUrgency(farmlandId)
     elseif layerIdx == 7 then val = info.weedPressure  or 0
     elseif layerIdx == 8 then val = info.pestPressure  or 0
-    elseif layerIdx == 9 then val = info.diseasePressure or 0
+    elseif layerIdx == 9 then val = info.shownDiseasePressure or 0
     elseif layerIdx == 10 then val = info.compaction   or 0
     elseif layerIdx == 11 then val = info.yieldEfficiency or 0
     else   val = 100 end
 
+    -- Unscouted disease shows the neutral unknown tone, never the pressure ramp.
+    if layerIdx == 9 and info.shownDiseasePressure == nil then
+        return self:unknownColor()
+    end
     return healthGradient(layerValueToT(layerIdx, val))
 end
 

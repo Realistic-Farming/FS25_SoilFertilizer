@@ -486,10 +486,21 @@ function SoilLayerSystem:writeFieldToLayers(fieldId, fieldData, fsFieldOrFarmlan
             -- the runtime value maps are unavailable. Undiscovered paints the
             -- HEALTHY value so unscouted ground reads identical to clean ground.
             local rawValue = fieldData[def.field]
-            if def.field == "diseasePressure" and not fieldData.diseaseDiscovered then
-                rawValue = 0
+            local encoded
+            if def.field == "diseasePressure" then
+                -- Unscouted Indicator: unscouted ground paints the reserved UNKNOWN
+                -- state (raw 16-31), scouted disease floors to state 2+ so no live
+                -- value falls into the reserved band. This GRLE encode has no
+                -- rawFloor of its own, so the floor is applied here.
+                local unknownRaw = (SoilValueMaps and SoilValueMaps.UNKNOWN_RAW) or 24
+                if not fieldData.diseaseDiscovered then
+                    encoded = unknownRaw
+                else
+                    encoded = math.max(32, encode(rawValue, def))
+                end
+            else
+                encoded = encode(rawValue, def)
             end
-            local encoded = encode(rawValue, def)
             local modifier = entry.modifier
             local filter   = DensityMapFilter.new(modifier)
 

@@ -257,7 +257,12 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
                 if not ovEntry.configured then
                     setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
                     for i = 1, GRLE_STATE_MAX do
-                        local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        local semanticVal
+                        if layerIdx == 9 and i == 1 then
+                            semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                        else
+                            semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        end
                         local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
                         setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, 1.0)
                     end
@@ -288,7 +293,12 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
                 if not ovEntry.configured then
                     setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, 0, 0, 0, 0, 0)
                     for i = 1, GRLE_STATE_MAX do
-                        local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        local semanticVal
+                        if layerIdx == 9 and i == 1 then
+                            semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                        else
+                            semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        end
                         local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
                         setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, i, r, g, b, 1.0)
                     end
