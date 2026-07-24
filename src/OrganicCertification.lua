@@ -167,13 +167,17 @@ end
 -- Transitions
 -- ---------------------------------------------------------
 
---- Broadcast a field's current state to clients after an organic-state change.
--- Server-authoritative and multiplayer only. Cert changes happen outside the
--- sprayer's throttled broadcast (a breach, a daily promotion, or an opt in/out),
--- so we push the field explicitly - including sold / inactive fields the daily
--- pass would skip. Organic now rides in every field payload, so this one call
--- carries the new standing to every peer.
-function OrganicCertification:broadcastFieldState(fieldId)
+--- Propagate an organic-state change everywhere it needs to show.
+-- (1) Repaint the field's organicStatus map layer (singleplayer + server; the
+-- value-map join sync carries the pixels to clients). (2) In multiplayer, broadcast
+-- the field so every peer's cert state converges. Cert changes happen outside the
+-- sprayer's throttled broadcast (a breach, a daily promotion, or an opt in/out), so
+-- we push the field explicitly - including sold / inactive fields the daily pass
+-- would skip. Organic rides in every field payload, so one broadcast carries it.
+function OrganicCertification:applyStateChange(fieldId)
+    if self.soilSystem and self.soilSystem.paintOrganicStatus then
+        self.soilSystem:paintOrganicStatus(fieldId)
+    end
     if g_server == nil then return end
     local mdi = g_currentMission and g_currentMission.missionDynamicInfo
     if not (mdi and mdi.isMultiplayer) then return end
@@ -235,7 +239,7 @@ function OrganicCertification:optIn(fieldId)
     o.state = SoilConstants.ORGANIC.STATE_TRANSITION
     o.startDay = self:getCurrentDay()
     o.certifiedDay = 0
-    self:broadcastFieldState(fieldId)
+    self:applyStateChange(fieldId)
     return true, string.format("Field %d entered organic transition (%d days at current difficulty). Use only approved inputs.",
         fieldId, self:getTransitionDays())
 end
@@ -258,7 +262,7 @@ function OrganicCertification:optOut(fieldId)
     o.state = SoilConstants.ORGANIC.STATE_CONVENTIONAL
     o.startDay = 0
     o.certifiedDay = 0
-    self:broadcastFieldState(fieldId)
+    self:applyStateChange(fieldId)
     return true, string.format("Field %d reverted to conventional", fieldId)
 end
 
@@ -292,7 +296,7 @@ function OrganicCertification:onInputApplied(fieldId, fillTypeName)
     end
     self:notify(string.format("Field %d lost organic status: %s is not approved",
         fieldId, tostring(fillTypeName)))
-    self:broadcastFieldState(fieldId)
+    self:applyStateChange(fieldId)
     return true
 end
 
@@ -322,7 +326,7 @@ function OrganicCertification:onDayChanged()
                 -- Broadcast this field itself; the daily pass covers only the active
                 -- set, so a sold or inactive mid-transition field would otherwise
                 -- promote on the host and stay stale on every client.
-                self:broadcastFieldState(fieldId)
+                self:applyStateChange(fieldId)
             end
         end
     end

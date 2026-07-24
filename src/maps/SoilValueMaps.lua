@@ -62,6 +62,13 @@ SoilValueMaps.LAYER_DEFS = {
     { key = "diseasePressure", file = "sfSoilMap_DP.grle",  minVal = 0,   maxVal = 100, rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW },
     { key = "urgency",         file = "sfSoilMap_UR.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
     { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
+    -- Organic certification status: a categorical 3-state layer (0 conventional,
+    -- 1 in-transition, 2 certified) backing the organic map display. EPHEMERAL (no
+    -- file): it is a lossless projection of each field's persisted organic state, so
+    -- it is rebuilt from that state on load instead of persisted separately. NO
+    -- rawFloor: conventional encodes to raw 1, which shares DMV colour state 0 with
+    -- the raw-0 no-data sentinel, so a conventional field stays untinted (deliberate).
+    { key = "organicStatus",   ephemeral = true,            minVal = 0,   maxVal = 2 },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel
@@ -165,7 +172,7 @@ function SoilValueMaps:initialize(savegameDir)
             SoilLogger.warning("SoilValueMaps: createBitVectorMap failed for %s", def.key)
         else
             local loaded = false
-            if savegameDir and fileExists ~= nil then
+            if savegameDir and fileExists ~= nil and def.file then
                 local path = savegameDir .. "/" .. def.file
                 if fileExists(path) then
                     local ok = loadBitVectorMapFromFile(bvm, path, NUM_CHANNELS)
@@ -206,7 +213,11 @@ function SoilValueMaps:initialize(savegameDir)
     end
 
     self.available      = true
-    self.loadedFromSave = (loadedCount == #SoilValueMaps.LAYER_DEFS)
+    -- Ephemeral layers (no file) never load from save; count them out so a full
+    -- restore of the persisted layers still short-circuits the reseed.
+    local persistedCount = 0
+    for _, d in ipairs(SoilValueMaps.LAYER_DEFS) do if d.file then persistedCount = persistedCount + 1 end end
+    self.loadedFromSave = (loadedCount == persistedCount)
 
     -- Probe executeAdd availability once (used for uniform field deltas)
     do
@@ -291,10 +302,12 @@ function SoilValueMaps:saveToSavegame(savegameDir)
     end
     local saved = 0
     for _, entry in pairs(self.layers) do
-        local path = savegameDir .. "/" .. entry.def.file
-        local ok, err = pcall(saveBitVectorMapToFile, entry.bvm, path)
-        if ok then saved = saved + 1
-        else SoilLogger.warning("SoilValueMaps: save failed for %s: %s", path, tostring(err)) end
+        if entry.def.file then   -- ephemeral layers (organicStatus) are rebuilt, not saved
+            local path = savegameDir .. "/" .. entry.def.file
+            local ok, err = pcall(saveBitVectorMapToFile, entry.bvm, path)
+            if ok then saved = saved + 1
+            else SoilLogger.warning("SoilValueMaps: save failed for %s: %s", path, tostring(err)) end
+        end
     end
     SoilLogger.info("SoilValueMaps: %d layer maps saved to %s", saved, savegameDir)
 end

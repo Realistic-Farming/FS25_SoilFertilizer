@@ -3215,11 +3215,36 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
     field._vmDisp = disp   -- prime the mirror cache
 end
 
+--- Paint a field's organic certification state (0 conventional / 1 in-transition /
+--- 2 certified) into the ephemeral organicStatus value-map layer. Conventional
+--- encodes to a transparent DMV state, so a conventional field reads as no-data.
+--- Rebuilt from field.organic, never persisted; the value-map join sync carries it
+--- to clients. No-op when the value maps are unavailable.
+function SoilFertilitySystem:paintOrganicStatus(fieldId, field)
+    if not self:vmAvailable() then return end
+    field = field or (self.fieldData and self.fieldData[fieldId])
+    if not field then return end
+    local stateInt = 0
+    if field.organic and OrganicCertification then
+        stateInt = OrganicCertification.encodeState(field.organic.state)
+    end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if verts then
+        self.valueMaps:paintPolygon("organicStatus", verts, stateInt)
+    end
+end
+
 --- Seed ALL fields into the value maps. Called once after loadSoilData.
 --- Per-layer gating: layers restored from savegame files keep their pixels;
 --- only missing/new layers are painted.
 function SoilFertilitySystem:seedValueMaps(force)
     if not self:vmAvailable() then return end
+    -- organicStatus is ephemeral (never persisted); rebuild it from each field's
+    -- organic state on every load so an already-certified field renders on first
+    -- load, even when the persisted layers were all restored and seeding is skipped.
+    for fieldId, field in pairs(self.fieldData) do
+        self:paintOrganicStatus(fieldId, field)
+    end
     if self.valueMaps.loadedFromSave and not force then
         SoilLogger.info("ValueMaps: all layers restored from savegame - seeding skipped")
         return
