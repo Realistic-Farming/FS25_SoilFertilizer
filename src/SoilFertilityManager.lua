@@ -99,6 +99,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Field Detail dialog registered")
         end
 
+        -- Rotation Planner dialog (Wizard UI brief #739; PDA EXTRA_2)
+        if RotationPlannerDialog and g_gui then
+            RotationPlannerDialog.register(modDirectory)
+            SoilLogger.info("Rotation Planner dialog registered")
+        end
+
         -- Treatment Detail dialog (opened from PDA Screen treatment list + SF_TREATMENT hotkey)
         if SoilTreatmentDialog and g_gui then
             SoilTreatmentDialog.register(modDirectory)

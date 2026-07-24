@@ -115,6 +115,7 @@ function SoilPDAScreen:initialize()
         {inputAction = "MENU_BACK"},
         {inputAction = "MENU_ACCEPT", text = tr("sf_pda_filter_all", "Filter"), callback = function() self:onClickFilter() end},
         {inputAction = "MENU_EXTRA_1", text = tr("sf_pda_btn_help", "Help"), callback = function() self:onClickHelp() end},
+        {inputAction = "MENU_EXTRA_2", text = tr("sf_rp_open", "Rotation Planner"), callback = function() self:onClickRotationPlanner() end},
     }
     self:setMenuButtonInfo(self.menuButtonInfo)
 end
@@ -983,3 +984,13 @@ end
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, _onMissionLoaded)
 FSBaseMission.update            = Utils.appendedFunction(FSBaseMission.update,            _onUpdate)
 FSBaseMission.delete            = Utils.appendedFunction(FSBaseMission.delete,            _onDelete)
+
+function SoilPDAScreen:onClickRotationPlanner()
+    if RotationPlannerDialog ~= nil then
+        local startId = nil
+        if self.fieldData ~= nil and self.fieldData[1] ~= nil then
+            startId = self.fieldData[1].fieldId
+        end
+        RotationPlannerDialog.show(startId)
+    end
+end
