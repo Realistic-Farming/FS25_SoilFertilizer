@@ -89,3 +89,39 @@ do
 
   SoilDiseaseSystem = nil  -- leave the global env as we found it
 end
+
+-- ── #739 data surface: the blessed public contract the planner reads ──
+-- getCropFamily wraps SoilConstants.CROP_FAMILY (case-insensitive, nil for unknown);
+-- getRotationCandidatePool publishes the SAME curated pool the field-detail dialog
+-- uses, so the planner surface can never disagree with the foresight rows.
+do
+  local sys = newSys()
+
+  T.eq("739: getCropFamily grain",           sys:getCropFamily("wheat"),   "grain")
+  T.eq("739: getCropFamily pulse (legume)",  sys:getCropFamily("soybean"), "pulse")
+  T.eq("739: getCropFamily case-insensitive", sys:getCropFamily("SoyBean"), "pulse")
+  T.eq("739: getCropFamily forage",          sys:getCropFamily("grass"),   "forage")
+  T.eq("739: getCropFamily unknown → nil",   sys:getCropFamily("unobtanium"), nil)
+  T.eq("739: getCropFamily nil → nil",       sys:getCropFamily(nil),       nil)
+  T.eq("739: getCropFamily empty → nil",     sys:getCropFamily(""),        nil)
+
+  local pool = sys:getRotationCandidatePool()
+  T.ok("739: pool identity == the blessed constant", pool == SoilConstants.ROTATION_CANDIDATE_POOL)
+  T.ok("739: pool exposes a legume set",  type(pool.LEGUME) == "table" and #pool.LEGUME > 0)
+  T.ok("739: pool exposes a neutral set", type(pool.NEUTRAL) == "table" and #pool.NEUTRAL > 0)
+  -- every published candidate must resolve to a real family, or a UI row reads blank
+  local allResolve = true
+  for _, list in pairs(pool) do
+    for _, name in ipairs(list) do
+      if sys:getCropFamily(name) == nil then allResolve = false end
+    end
+  end
+  T.ok("739: every pool candidate resolves to a family", allResolve)
+  -- the legume pool must actually be legumes (pulse/forage), or the Bonus row lies
+  local legumesAreLegumes = true
+  for _, name in ipairs(pool.LEGUME) do
+    local fam = sys:getCropFamily(name)
+    if fam ~= "pulse" and fam ~= "forage" then legumesAreLegumes = false end
+  end
+  T.ok("739: legume pool holds only pulse/forage crops", legumesAreLegumes)
+end

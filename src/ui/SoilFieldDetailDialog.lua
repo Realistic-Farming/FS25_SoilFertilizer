@@ -34,8 +34,10 @@ local COLOR_DIM   = {0.60, 0.60, 0.60, 1.0}
 -- the mod's own rotation logic, so the preview can never disagree with what the
 -- player actually gets. Names are lowercase; getFruitTypeByName upper-cases
 -- internally so they resolve on any map (falling back to a title-cased label).
-local RF_LEGUME_CANDIDATES  = { "soybean", "peas", "clover", "alfalfa" }
-local RF_NEUTRAL_CANDIDATES = { "wheat", "barley", "maize", "canola" }
+-- Published pool (#739): both this dialog and the rotation planner read the same
+-- blessed constant, so the two surfaces can never disagree on the candidate set.
+local RF_LEGUME_CANDIDATES  = SoilConstants.ROTATION_CANDIDATE_POOL.LEGUME
+local RF_NEUTRAL_CANDIDATES = SoilConstants.ROTATION_CANDIDATE_POOL.NEUTRAL
 
 --- Curated 3-crop candidate set for the field's current crop.
 --- Returns { sameCrop, aLegume, aNeutralCereal } (entries may be nil when the

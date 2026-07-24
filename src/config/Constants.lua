@@ -1515,6 +1515,19 @@ SoilConstants.CROP_FAMILY = {
     parsnip="root", beetroot="root", cotton="other",
 }
 
+-- Rotation-planner candidate pool (published contract, #739). The single source
+-- of truth for the curated crops the rotation surfaces project: a small set that
+-- always exercises the three rotation outcomes (a legume for Bonus, a neutral
+-- cereal for OK, plus the same-crop Fatigue row the caller adds). The field-detail
+-- dialog's Rotation Foresight and the rotation planner both read THIS pool, so the
+-- two surfaces can never disagree. Names are lowercase; getFruitTypeByName
+-- upper-cases internally so they resolve on any map. Blessed for external readers
+-- via SoilFertilitySystem:getRotationCandidatePool().
+SoilConstants.ROTATION_CANDIDATE_POOL = {
+    LEGUME  = { "soybean", "peas", "clover", "alfalfa" },
+    NEUTRAL = { "wheat", "barley", "maize", "canola" },
+}
+
 -- Rotation → disease pressure modifiers (multiply daily build-up).
 SoilConstants.DISEASE_ROTATION = {
     MONO_2YR_MULT  = 1.50,  -- same crop last 2 harvests

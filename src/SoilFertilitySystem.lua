@@ -5522,6 +5522,27 @@ function SoilFertilitySystem:projectRotation(fieldId, candidateCropName)
     }
 end
 
+--- Blessed crop-family lookup (#739). Public wrapper over SoilConstants.CROP_FAMILY
+--- so the rotation planner (and any other reader) resolves families through a stable
+--- contract instead of poking the internal table. Case-insensitive; returns the
+--- family string ("grain"/"pulse"/"oilseed"/"forage"/"root"/"other") or nil for an
+--- unknown crop.
+---@param cropName string|nil Fruit name (any case)
+---@return string|nil family
+function SoilFertilitySystem:getCropFamily(cropName)
+    if not cropName or cropName == "" then return nil end
+    return SoilConstants.CROP_FAMILY[cropName:lower()]
+end
+
+--- Blessed rotation-planner candidate pool (#739). Returns the same curated pool
+--- the field-detail dialog's Rotation Foresight uses, so the planner surface can
+--- never disagree with it. Shape: { LEGUME = {..names..}, NEUTRAL = {..names..} }
+--- (lowercase fruit names). The caller adds the same-crop "Fatigue" row itself.
+---@return table pool
+function SoilFertilitySystem:getRotationCandidatePool()
+    return SoilConstants.ROTATION_CANDIDATE_POOL
+end
+
 --- Get field info for display (HUD, console, etc)
 ---@param fieldId number The field ID to query
 ---@param x number|nil Optional world X coordinate for local cell lookup
@@ -5726,7 +5747,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         pH = ph,
         lastCrop = cropName,
         lastCrop2 = field.lastCrop2,
+        lastCrop3 = field.lastCrop3,  -- #739: third-back crop, already stored+synced, now published for the rotation planner
         rotationStatus = rotationStatus,
+        rotationBonusDaysLeft = field.rotationBonusDaysLeft or 0,  -- #739: remaining legume-bonus days, for the planner's timeline
         daysSinceHarvest = field.lastHarvest > 0 and (currentDay - field.lastHarvest) or 0,
         fertilizerApplied = field.fertilizerApplied or 0,
         yieldEfficiency = yieldEfficiency,
