@@ -195,7 +195,7 @@ function RotationPlannerDialog:_refresh()
             "Same candidates as the field-detail foresight. Read-only; nothing is planted."))
     end
 
-    local candidates = RotationPlannerData.pickCandidates(current)
+    local candidates = RotationPlannerData.pickCandidates(current, cache and cache.soil)
     for i = 1, 3 do
         local cand = candidates[i]
         if cand == nil then

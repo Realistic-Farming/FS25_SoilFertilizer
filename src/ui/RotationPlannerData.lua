@@ -2,14 +2,14 @@
 -- Rotation Planner - shared read helpers (Wizard UI brief #739)
 -- =========================================================
 -- Pure reader over SoilFertilitySystem:projectRotation / getFieldInfo.
--- Candidate pool mirrors SoilFieldDetailDialog foresight verbatim until K
--- publishes a blessed getter (ROTATION-PLANNER-DATA-SURFACE-BUILD-BRIEF).
+-- Prefer K's blessed getRotationCandidatePool (#739, SF db315d5e). Local
+-- mirrors remain as degrade-when-absent fallback only.
 -- Stores nothing, writes nothing, plants nothing.
 -- =========================================================
 
 RotationPlannerData = {}
 
--- Mirrored from SoilFieldDetailDialog.lua (keep in lockstep until published).
+-- Fallback mirrors (used only when the blessed pool getter is absent).
 RotationPlannerData.LEGUME_CANDIDATES  = { "soybean", "peas", "clover", "alfalfa" }
 RotationPlannerData.NEUTRAL_CANDIDATES = { "wheat", "barley", "maize", "canola" }
 
@@ -28,15 +28,33 @@ function RotationPlannerData.getSoilSystem()
     return mgr.soilSystem
 end
 
+--- Resolve the curated pool: blessed getter first, local mirrors as fallback.
+function RotationPlannerData.candidateLists(soil)
+    if soil ~= nil and type(soil.getRotationCandidatePool) == "function" then
+        local ok, pool = pcall(function() return soil:getRotationCandidatePool() end)
+        if ok and type(pool) == "table" and type(pool.LEGUME) == "table" and type(pool.NEUTRAL) == "table" then
+            return pool.LEGUME, pool.NEUTRAL
+        end
+    end
+    if SoilConstants ~= nil and type(SoilConstants.ROTATION_CANDIDATE_POOL) == "table" then
+        local pool = SoilConstants.ROTATION_CANDIDATE_POOL
+        if type(pool.LEGUME) == "table" and type(pool.NEUTRAL) == "table" then
+            return pool.LEGUME, pool.NEUTRAL
+        end
+    end
+    return RotationPlannerData.LEGUME_CANDIDATES, RotationPlannerData.NEUTRAL_CANDIDATES
+end
+
 --- Same curated 3-crop set as field-detail foresight.
-function RotationPlannerData.pickCandidates(currentCrop)
+function RotationPlannerData.pickCandidates(currentCrop, soil)
     local cur = currentCrop and string.lower(currentCrop) or ""
+    local legumes, neutrals = RotationPlannerData.candidateLists(soil)
     local legume
-    for _, c in ipairs(RotationPlannerData.LEGUME_CANDIDATES) do
+    for _, c in ipairs(legumes) do
         if c ~= cur then legume = c break end
     end
     local neutral
-    for _, c in ipairs(RotationPlannerData.NEUTRAL_CANDIDATES) do
+    for _, c in ipairs(neutrals) do
         if c ~= cur and c ~= legume then neutral = c break end
     end
     local same = (cur ~= "") and cur or nil
