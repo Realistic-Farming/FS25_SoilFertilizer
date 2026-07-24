@@ -139,7 +139,11 @@ SoilConstants.CULTIVATION = {
 --   • Pests: MORE effective than cultivator (deep knife disrupts soil larvae)
 --   • Disease: LESS than cultivator (residue left on surface → spore habitat)
 --   • No pH normalization (no soil layer inversion)
---   • Small OM boost in tilled strips (some sub-surface matter incorporated)
+--   • OM: modest net gain per pass - its residue incorporation (below) less its
+--     light oxidation (OM_DYNAMICS.OXIDATION.STRIP_TILL). The old separate OM_BOOST
+--     (+0.10/pass) was RETIRED into this single residue+oxidation gradient (#738), so
+--     strip-till has one gain term and one loss term like every other tillage type.
+--     Its generosity is preserved by its LOW oxidation (0.02), not a bloated gain.
 -- The RidgeTiller FS25 spec (processRidgeTillerArea / RIDGEFORMER work area)
 -- is completely separate from Cultivator.processCultivatorArea, so a dedicated
 -- hook is required.
@@ -147,8 +151,7 @@ SoilConstants.STRIP_TILL = {
     WEED_PRESSURE_REDUCTION    = 15,  -- pts; less than cultivator (partial surface coverage)
     PEST_PRESSURE_REDUCTION    = 12,  -- pts; more than cultivator (deep knife action)
     DISEASE_PRESSURE_REDUCTION = 10,  -- pts; less than cultivator (residue left in place)
-    OM_BOOST                   = 0.10, -- % OM increase per pass (tilled-strip incorporation)
-    -- No pH normalization - strip-till does not invert soil horizons
+    -- OM_BOOST retired into the residue+oxidation gradient (#738). No pH normalization.
 }
 
 -- ========================================
@@ -264,9 +267,34 @@ SoilConstants.FALLOW_RECOVERY = {
 -- Deep tillage (plowing) accelerates the loss by exposing buried humus to air.
 -- All on the 0-10 OM scale; per-day rates are month-normalised by the caller.
 SoilConstants.OM_DYNAMICS = {
-    DAILY_DECAY         = 0.005, -- passive humus oxidation, OM pts/day
-    DECAY_FLOOR         = 1.0,   -- passive decay never pushes OM below this (degraded mineral soil)
-    PLOW_OXIDATION_LOSS = 0.10,  -- OM lost per full plow pass (deep inversion aerates buried humus)
+    DAILY_DECAY = 0.005, -- passive humus oxidation, OM pts/day
+    DECAY_FLOOR = 1.0,   -- passive decay never pushes OM below this (degraded mineral soil)
+
+    -- #738 no-till OM: per-tillage OXIDATION gradient. OM burned per full pass by
+    -- disturbing/aerating buried humus. Monotone with soil disturbance:
+    --   plough (deep inversion) > cultivator (topsoil mix) > strip-till (knife bands)
+    --   > direct-drill (opener slot, none).
+    -- STEEP at the top on purpose: the plough's oxidation (0.14) approaches its own
+    -- residue burst (0.15), so a ploughed field nets near-flat and slowly mines OM
+    -- against daily decay, while a no-till field builds it. Together with the residue
+    -- incorporation gains and the no-till daily credit below, the SEASON OM trajectory
+    -- ranks direct-drill > strip-till > cultivator > plough (the #738 ruled ordering).
+    -- Magnitudes are XML-configurable and Agronomy-dial-scalable (Tyson's to tune).
+    OXIDATION = {
+        PLOW         = 0.14,  -- was the lone PLOW_OXIDATION_LOSS 0.10; steepened for the gradient
+        CULTIVATOR   = 0.06,
+        STRIP_TILL   = 0.02,
+        DIRECT_DRILL = 0.00,  -- opener disturbance does not aerate buried humus
+    },
+
+    -- #738 no-till seasonal credit: OM/day gained by a field under an ACTIVE crop
+    -- that was DRILLED INTO UNTILLED RESIDUE (no plough/cultivator/strip pass since the
+    -- last harvest) - the preserved residue mat slowly humifying. Applied on the daily
+    -- pass, fenced against the fallow OM recovery (only while a crop grows) so the two
+    -- never stack. Smaller than the daily decay it offsets, so a no-till field still
+    -- loses a little OM day to day but far less than a tilled one, and skips the
+    -- per-pass oxidation hit entirely - the season-long reason no-till builds carbon.
+    NO_TILL_DAILY_CREDIT = 0.004,
 }
 
 -- ========================================

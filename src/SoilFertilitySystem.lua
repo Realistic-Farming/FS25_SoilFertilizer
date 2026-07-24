@@ -554,6 +554,12 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionCoverageCells    = {}
         harvestField.sessionLastProduct      = nil
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
+
+        -- #738 no-till OM: the crop is off the field. Fresh, untouched residue now covers
+        -- bare ground, so reset the tillage-since-harvest tracker and end the no-till
+        -- credit - fallow recovery governs OM until the next crop is sown/drilled.
+        harvestField.tilledSinceHarvest = false
+        harvestField.noTillActive       = false
         harvestField.sprayTrailPts           = nil
         harvestField.sownCrop                = nil  -- crop harvested; lastCrop now carries it (#661)
         -- frozenYieldModifier is NOT cleared here (#598): onHarvest fires per-cut, so
@@ -790,6 +796,13 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
         end
     end
 
+    -- #738 no-till OM: a crop drilled into UNTILLED residue (no plough/cultivator/strip
+    -- pass since the last harvest) is a no-till crop and accrues the daily OM credit while
+    -- it grows. A crop sown after any tillage pass is conventional (tilledSinceHarvest set
+    -- by those hooks, cleared at harvest). This is the agronomic definition of no-till -
+    -- you drill instead of tilling - so it needs no implement-type detection.
+    field.noTillActive = not field.tilledSinceHarvest
+
     local areaHa = area or 0.001
     local fieldAreaHa = field.fieldArea and field.fieldArea > 0 and field.fieldArea or 1.0
     local factor = areaHa / fieldAreaHa
@@ -930,6 +943,36 @@ function SoilFertilitySystem:_applyCropIncorporation(fieldId, field, profile, bi
     return true
 end
 
+--- #738 no-till OM: apply a tillage pass's organic-matter OXIDATION loss (deep
+--- disturbance aerating buried humus). Shared by the plough/cultivator/strip-till
+--- hooks with each type's own gradient value. Reduces the field-average OM (floored
+--- at DECAY_FLOOR), and mirrors the loss positionally onto the OM value map at the
+--- pass location - the same scalar-uses-`factor`, VM-uses-`cellFactor` split the
+--- residue-incorporation writes use, degrading to scalar-only when no value map is
+--- present. Returns true if the field OM changed.
+---@param field table The field data table
+---@param oxid number OM lost per full pass (OM_DYNAMICS.OXIDATION.*)
+---@param factor number Field-fraction processed this tick (areaHa / fieldAreaHa)
+---@param areaHa number Area processed this tick, for the per-cell VM intensity
+---@return boolean changed
+function SoilFertilitySystem:_applyTillageOxidation(field, oxid, factor, areaHa)
+    if not oxid or oxid <= 0 or not field then return false end
+    local omDyn  = SoilConstants.OM_DYNAMICS
+    local floor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
+    local before = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+    local after  = math.max(floor, before - oxid * factor)
+    if after >= before then return false end
+    field.organicMatter = after
+    -- Positional loss on the OM value map (crop-incorporation precedent).
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    if tx and tz then
+        local zone = SoilConstants.ZONE
+        local cellFactor = areaHa / zone.CELL_AREA_HA
+        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * cellFactor) }, zone.CELL_SIZE * 0.5)
+    end
+    return true
+end
+
 --- Hook delegate: called by HookManager when plowing occurs
 --- Increases organic matter and normalizes pH
 ---@param fieldId number The field being plowed
@@ -972,19 +1015,23 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
     -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "plowing") then changed = true end
 
+    -- #738: this field has now been TILLED since the last harvest, so the next crop sown
+    -- into it is conventional, not no-till. Any crop currently growing is destroyed by the
+    -- pass, so its no-till credit ends here too.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     -- Plowing effects 1 & 2: OM oxidation loss and pH normalization (only if plowingBonus enabled)
     if self.settings.plowingBonus then
         -- Deep inversion exposes buried humus to air, oxidising it - plowing COSTS organic
         -- matter rather than adding it (#695, reversed from the old +0.5/pass bonus). Residue
         -- incorporation below (gated separately) can offset this when straw/green matter is
         -- actually worked in, so a residue-rich plow can still net positive.
-        local omDyn    = SoilConstants.OM_DYNAMICS
-        local omLoss   = (omDyn and omDyn.PLOW_OXIDATION_LOSS or 0) * factor
-        local omFloor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
-        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        local omAfter  = math.max(omFloor, omBefore - omLoss)
-        if omAfter < omBefore then
-            field.organicMatter = omAfter
+        -- #738: plough oxidation via the shared per-tillage gradient (positional VM
+        -- write + floored scalar). Steepest of the gradient - deep inversion burns the
+        -- most buried humus, so a residue-poor plough nets slightly negative on OM.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.PLOW, factor, areaHa) then
             changed = true
         end
 
@@ -1153,6 +1200,11 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
     -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "cultivation") then changed = true end
 
+    -- #738: a cultivator pass counts as tillage - the next sown crop is conventional,
+    -- and any growing crop's no-till credit ends here.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     if self.settings.weedPressure and c.WEED_PRESSURE_REDUCTION and (field.weedPressure or 0) > 0 then
         local before = field.weedPressure
         local reduction = c.WEED_PRESSURE_REDUCTION * factor
@@ -1193,6 +1245,13 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
         changed = true
         SoilLogger.debug("Residue incorporation (cultivation) field %d: +N%.4f +P%.4f +K%.4f (factor %.4f)",
             fieldId, dN, dP, dK, factor)
+
+        -- #738: cultivator oxidation (topsoil mixing aerates humus). Netted against the
+        -- residue gain above, cultivation still adds OM but less than strip-till/no-till.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.CULTIVATOR, factor, areaHa) then
+            changed = true
+        end
 
         -- REFINED: local per-pixel bump at the cultivator position on the value
         -- maps; pressure reductions stay on the coarse zone grid.
@@ -1321,6 +1380,11 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
     local st = SoilConstants.STRIP_TILL
     local changed = false
 
+    -- #738: strip-till is a (reduced) tillage pass. A crop drilled after it takes the
+    -- strip-till residue profile, not the no-till daily credit, so mark the field tilled.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     -- Partial weed suppression (only tilled strips are disrupted)
     if self.settings.weedPressure and (field.weedPressure or 0) > 0 then
         local before = field.weedPressure
@@ -1342,22 +1406,28 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
         changed = true
     end
 
-    -- Small OM boost from subsurface incorporation in tilled strips
-    if st.OM_BOOST and st.OM_BOOST > 0 then
-        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        local omAfter  = math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX,
-                                  omBefore + st.OM_BOOST * factor)
-        if omAfter > omBefore then
-            field.organicMatter = omAfter
-            changed = true
-        end
-    end
-
     -- Residue incorporation: strip-till knifes work only tilled strips (~30% of surface),
     -- so residue nutrient release is the smallest of all tillage types.
     if self.settings.residueIncorporation and SoilConstants.RESIDUE_INCORPORATION then
         local ri     = SoilConstants.RESIDUE_INCORPORATION.STRIP_TILL
         local limits = SoilConstants.NUTRIENT_LIMITS
+
+        -- #738: strip-till residue OM now lands on the field average too (previously only
+        -- the VM got it, while the retired OM_BOOST carried the scalar). One gain term.
+        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+        local omAfter  = math.min(limits.ORGANIC_MATTER_MAX, omBefore + (ri.OM * factor))
+        if omAfter > omBefore then
+            field.organicMatter = omAfter
+            changed = true
+        end
+
+        -- #738: strip-till oxidation (lightest of the tilling types - only narrow knife
+        -- bands are disturbed). Netted with the residue gain, strip-till nets clearly
+        -- positive, second only to no-till on the season OM trajectory.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.STRIP_TILL, factor, areaHa) then
+            changed = true
+        end
 
         local dN, dP, dK = ri.N * factor, ri.P * factor, ri.K * factor
         field.nitrogen   = math.min(limits.MAX, (field.nitrogen   or 0) + dN)
@@ -2705,6 +2775,8 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         lastCrop3 = nil,
         rotationBonusDaysLeft = 0,
         lastHarvest = 0,
+        tilledSinceHarvest = false,  -- #738: any plough/cultivator/strip pass since last harvest
+        noTillActive = false,        -- #738: active crop drilled into untilled residue (daily OM credit)
         fertilizerApplied = 0,
         initialized = true,
         weedPressure = 0,
@@ -3736,6 +3808,15 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         field.potassium     = math.min(limits.MAX, field.potassium     + recovery.potassium * timeFactor * tunFallow)
         field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
                                        field.organicMatter + recovery.organicMatter * timeFactor * tunFallow)
+    elseif field.noTillActive and omDyn and (omDyn.NO_TILL_DAILY_CREDIT or 0) > 0 then
+        -- #738 no-till OM: an ACTIVE crop drilled into untilled residue accrues a small
+        -- daily OM gain (the preserved residue mat humifying). Fenced against the fallow
+        -- recovery above via this elseif, so the two can never stack; applies only while a
+        -- crop grows (outside the fallow window). Smaller than the daily decay it offsets,
+        -- so no-till still drifts down slightly day to day but skips the per-pass tillage
+        -- oxidation entirely - the season-long reason no-till out-builds every tilled type.
+        field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
+                                       (field.organicMatter or 0) + omDyn.NO_TILL_DAILY_CREDIT * timeFactor)
     end
 
     -- ── Seasonal nitrogen shift ──────────────────────────────────────────────
@@ -5864,6 +5945,8 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#sownCrop", field.sownCrop or "")
             setXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft", field.rotationBonusDaysLeft or 0)
             setXMLInt(xmlFile, fieldKey .. "#lastHarvest", field.lastHarvest or 0)
+            setXMLInt(xmlFile, fieldKey .. "#tilledSinceHarvest", field.tilledSinceHarvest and 1 or 0)  -- #738
+            setXMLInt(xmlFile, fieldKey .. "#noTillActive", field.noTillActive and 1 or 0)              -- #738
             setXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied", field.fertilizerApplied or 0)
             setXMLFloat(xmlFile, fieldKey .. "#weedPressure", field.weedPressure or 0)
             setXMLInt(xmlFile, fieldKey .. "#herbicideDaysLeft", field.herbicideDaysLeft or 0)
@@ -5976,6 +6059,8 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             sownCrop = getXMLString(xmlFile, fieldKey .. "#sownCrop"),
             rotationBonusDaysLeft = getXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft") or 0,
             lastHarvest = getXMLInt(xmlFile, fieldKey .. "#lastHarvest") or 0,
+            tilledSinceHarvest = (getXMLInt(xmlFile, fieldKey .. "#tilledSinceHarvest") or 0) == 1,  -- #738
+            noTillActive = (getXMLInt(xmlFile, fieldKey .. "#noTillActive") or 0) == 1,               -- #738
             fertilizerApplied = getXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied") or 0,
             weedPressure = getXMLFloat(xmlFile, fieldKey .. "#weedPressure") or 0,
             herbicideDaysLeft = getXMLInt(xmlFile, fieldKey .. "#herbicideDaysLeft") or 0,
