@@ -171,6 +171,7 @@ local LAYER_FIELD_KEYS = {
     [9]  = "diseasePressure",
     [10] = "compaction",
     [11] = "yieldEfficiency",
+    [12] = "organicStatus",
 }
 
 -- Engine limit: 16 state colour entries per DMV overlay configuration.
@@ -243,7 +244,8 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
     local VM_KEYS = { nitrogen = true, phosphorus = true, potassium = true,
                       pH = true, organicMatter = true, compaction = true,
                       urgency = true, weedPressure = true, pestPressure = true,
-                      diseasePressure = true, yieldEfficiency = true }
+                      diseasePressure = true, yieldEfficiency = true,
+                      organicStatus = true }
     -- Weed: when the terrain has no native weed foliage map, fall back to
     -- the mirrored weedPressure value map so the layer still renders.
     local vmFieldKey = (fieldKey == "weed") and "weedPressure" or fieldKey
@@ -257,14 +259,26 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
                 if not ovEntry.configured then
                     setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
                     for i = 1, GRLE_STATE_MAX do
-                        local semanticVal
-                        if layerIdx == 9 and i == 1 then
-                            semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                        local r, g, b, a = 0, 0, 0, 0
+                        if layerIdx == 12 then
+                            if i == 8 then
+                                r, g, b = soilMapOverlay:organicTransitionColor()
+                                a = 1.0
+                            elseif i == 15 then
+                                r, g, b = soilMapOverlay:organicCertifiedColor()
+                                a = 1.0
+                            end
                         else
-                            semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                            local semanticVal
+                            if layerIdx == 9 and i == 1 then
+                                semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1
+                            else
+                                semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                            end
+                            r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
+                            a = 1.0
                         end
-                        local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
-                        setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, 1.0)
+                        setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, a)
                     end
                     ovEntry.configured = true
                     SoilLogger.info("SoilMinimapLayer: value-map overlay configured bvm=%s key=%s", tostring(bvm), tostring(fieldKey))
@@ -452,7 +466,7 @@ local LAYER_LABEL = {
     [1]  = "N",        [2]  = "P",      [3]  = "K",
     [4]  = "pH",       [5]  = "OM",     [6]  = "!",
     [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
-    [10] = "Compact",  [11] = "Yield",
+    [10] = "Compact",  [11] = "Yield",  [12] = "Organic",
 }
 -- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
 local LAYER_LABEL_COLOR = {
@@ -461,7 +475,7 @@ local LAYER_LABEL_COLOR = {
     [5]  = {0.60, 0.35, 0.10},  [6]  = {0.95, 0.25, 0.25},
     [7]  = {0.20, 0.70, 0.20},  [8]  = {0.85, 0.75, 0.10},
     [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
-    [11] = {0.35, 0.85, 0.45},
+    [11] = {0.35, 0.85, 0.45},  [12] = {0.28, 0.78, 0.38},
 }
 
 -- Short abbreviations worth showing in brackets after the full name. Only the
