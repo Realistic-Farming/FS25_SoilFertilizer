@@ -38,6 +38,11 @@ SoilVersionDialog.CHANGELOG = {
     "- Six real fungicides you can buy and spray: Propiconazole, Azoxystrobin,",
     "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank.",
     "    Scout a field and it names the one that best controls its disease.",
+    "- Harvesting contracts now reach 100%. When poor soil trimmed your yield",
+    "    the contract's target used to move out of reach, so honest work never",
+    "    finished. The target is now underwritten so the contract can complete.",
+    "- New weather presets (Arid / Normal / Wet). If you run without a live",
+    "    moisture source, rain leaching and drying still behave sensibly.",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
