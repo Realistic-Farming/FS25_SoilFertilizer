@@ -134,6 +134,16 @@ function HookManager:installAll(soilSystem)
     local yieldModOk = self:installYieldModifierHook()
     if yieldModOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Harvest contract underwrite (#741 / SF-29): wraps HarvestMission.getCompletion so a
+    -- base-game harvest contract on a degraded neighbour field tops up to the vanilla-
+    -- expected completion at delivery (divides out the same yield modifier the hopper hook
+    -- above applied). Server-side, fail-safe, no soil write, no farm-money move. Must run
+    -- after installYieldModifierHook so the modifier it inverts is the one in force.
+    if HarvestContractUnderwrite and HarvestContractUnderwrite.install then
+        local underwriteOk = HarvestContractUnderwrite.install(self)
+        if underwriteOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    end
+
     -- Mower hook: forage crops cut to windrow (grass, alfalfa, clover, mowed triticale…)
     local mowerOk = self:installMowerHook()
     if mowerOk then successCount = successCount + 1 else failCount = failCount + 1 end

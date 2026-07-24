@@ -1735,4 +1735,20 @@ SoilConstants.TUNING = {
     ZERO_MULT  = {0.0,  0.50, 1.0, 1.50, 2.0},  -- Stress/effect multiplier (0 = disabled)
 }
 
+-- ========================================
+-- HARVEST CONTRACT UNDERWRITE (#741 / SF-29)
+-- ========================================
+-- Base-game harvest contracts only ever run on UNOWNED (neighbour) fields, which roll a
+-- poor soil profile and sit excluded from the daily sim. SF's yield modifier then cuts the
+-- delivered liters, so the contract's liters-based completion (anchored to a full-health
+-- expectation) never reaches 100% - a field can be fully harvested and still read ~32%
+-- (#741). The underwrite tops the contract's OWN completion accounting up to the vanilla
+-- expectation at delivery by dividing out SF's own yield modifier. It writes no soil, moves
+-- no farm money (the base game pays its own reward on success), and is capped at 1.0 so it
+-- can never exceed the vanilla amount. Composes cleanly with the RETAINED FieldSentry
+-- contract mask (orthogonal: the mask skips the daily sim, this corrects harvest accounting).
+SoilConstants.HARVEST_UNDERWRITE = {
+    ENABLED = true,   -- master switch for the #741 completability guarantee (server-side)
+}
+
 SoilLogger.info("Constants loaded")

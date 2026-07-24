@@ -1234,5 +1234,8 @@
 <e k="sf_rp_next" v="Next field" />
     
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+
+    <!-- Harvest contract underwrite (#741) -->
+    <e k="sf_underwrite_notify" v="Harvest contract topped up on field %s: degraded soil compensated to the expected yield." />
 </elements>
 </l10n>
