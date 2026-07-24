@@ -37,7 +37,7 @@
       <Text profile="sfDetail_status" id="rpCand3Status" text="" position="-40px -314px"/>
       <Text profile="sfDetail_value"  id="rpCand3Effect" text="" position="120px -314px"/>
 
-      <Text profile="sf_hintText" id="rpHint"
+      <Text profile="sfDetail_label" id="rpHint"
             text="$l10n_sf_rp_hint"
             position="0px -360px" size="520px 80px" wrapText="true"/>
     </GuiElement>
