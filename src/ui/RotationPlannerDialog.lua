@@ -22,8 +22,11 @@ local function tr(key, fallback)
     return fallback or key
 end
 
-function RotationPlannerDialog.new()
-    local self = setmetatable({}, RotationPlannerDialog_mt)
+function RotationPlannerDialog.new(target, customMt)
+    -- MUST chain the ScreenElement constructor so GuiElement state (self.elements,
+    -- etc.) is initialized; a bare setmetatable({}) leaves self.elements nil and
+    -- loadGui crashes on table.insert(self.elements, rootElement) (#744).
+    local self = ScreenElement.new(target, customMt or RotationPlannerDialog_mt)
     self._fieldIds = {}
     self._index = 1
     return self
