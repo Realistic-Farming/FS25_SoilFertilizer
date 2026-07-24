@@ -174,7 +174,7 @@ local MULTI_OPTS = {
                          "sf_hud_trans_4", "sf_hud_trans_5"},
     activeMapLayer    = {"sf_layer_1", "sf_layer_2", "sf_layer_3", "sf_layer_4",
                          "sf_layer_5", "sf_layer_6", "sf_layer_7", "sf_layer_8",
-                         "sf_layer_9", "sf_layer_10", "sf_layer_11"},
+                         "sf_layer_9", "sf_layer_10", "sf_layer_11", "sf_layer_12"},
     overlayDensity    = {"sf_density_1", "sf_density_2", "sf_density_3"},
 }
 

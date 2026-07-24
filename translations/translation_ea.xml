@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Suelo y Fertilizante" eh="f31197fb" />
@@ -346,6 +346,14 @@
     <e k="sf_map_layer_disease" v="Presión de Enfermedad" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Compactación" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
+    <e k="sf_map_layer_organic_status" v="Organic Status" />
+    <e k="sf_layer_12" v="Organic Status" />
+    <e k="sf_org_legend_conventional" v="Conventional" />
+    <e k="sf_org_legend_transition" v="Transitioning" />
+    <e k="sf_org_legend_certified" v="Certified" />
+    <e k="sf_org_tt_conventional" v="Not in organic conversion" />
+    <e k="sf_org_tt_certified" v="Organic certified" />
+    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Ciclar Capa de Suelo" eh="032fdac7" />
     <e k="sf_map_page_title" v="Capas de Suelo" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Capa del Mapa" eh="81332549" />
@@ -479,6 +487,22 @@
     <e k="sf_rf_intro" v="[EN] If you plant next on this field:" eh="34964567" />
     <e k="sf_rf_hint" v="[EN] Grow a crop on this field first to preview rotations." eh="817d250a" />
     <e k="sf_rf_status_bonus" v="[EN] Bonus" eh="3c0ee4ba" />
+    <e k="sf_rp_status_unknown" v="Unknown" />
+    <e k="sf_rp_no_crop" v="-" />
+    <e k="sf_rp_no_history" v="No crop history yet" />
+    <e k="sf_rp_standing_unknown" v="Unknown" />
+    <e k="sf_rp_bonus_days" v="bonus %dd" />
+    <e k="sf_rp_title" v="Rotation Planner" />
+    <e k="sf_rp_open" v="Rotation Planner" />
+    <e k="sf_rp_farm_header" v="Farm standing" />
+    <e k="sf_rp_what_if" v="What if (next crop)" />
+    <e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
+    <e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
+    <e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
+    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+    <e k="sf_rp_no_fields" v="No fields" />
+    <e k="sf_rp_prev" v="Prev field" />
+    <e k="sf_rp_next" v="Next field" />
     <e k="sf_rf_status_ok" v="[EN] OK" eh="e0aa021e" />
     <e k="sf_rf_status_fatigue" v="[EN] Fatigue" eh="b5ff1b29" />
     <e k="sf_rf_effect_fatigue" v="[EN] x1.15 depletion" eh="5f05aded" />

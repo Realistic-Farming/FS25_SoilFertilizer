@@ -115,6 +115,7 @@ function SoilPDAScreen:initialize()
         {inputAction = "MENU_BACK"},
         {inputAction = "MENU_ACCEPT", text = tr("sf_pda_filter_all", "Filter"), callback = function() self:onClickFilter() end},
         {inputAction = "MENU_EXTRA_1", text = tr("sf_pda_btn_help", "Help"), callback = function() self:onClickHelp() end},
+        {inputAction = "MENU_EXTRA_2", text = tr("sf_rp_open", "Rotation Planner"), callback = function() self:onClickRotationPlanner() end},
     }
     self:setMenuButtonInfo(self.menuButtonInfo)
 end
@@ -214,6 +215,12 @@ function SoilPDAScreen._performRegistration(modDir)
     -- Call initialize to set up menu button info
     if type(screen.initialize) == "function" then
         pcall(screen.initialize, screen)
+    end
+
+    -- registerPage already hides the frame; re-assert so a failed mid-register
+    -- cannot leave this page permanently visible under other menu tabs.
+    if screen.setVisible ~= nil then
+        screen:setVisible(false)
     end
 
     SoilLogger.info("SoilPDAScreen: registered successfully")
@@ -471,6 +478,16 @@ function SoilPDAScreen:onClickHelp()
         SoilGuideDialog.show()
     elseif SoilHelpDialog then
         SoilHelpDialog.show()
+    end
+end
+
+function SoilPDAScreen:onClickRotationPlanner()
+    if RotationPlannerDialog ~= nil then
+        local startId = nil
+        if self.fieldData ~= nil and self.fieldData[1] ~= nil then
+            startId = self.fieldData[1].fieldId
+        end
+        RotationPlannerDialog.show(startId)
     end
 end
 
@@ -962,23 +979,175 @@ end
 
 -- ── Module-level lifecycle hooks (installed at source-time) ──
 
+--- FS25 TabbedMenu:onPageChange only hides the *previous* currentPage.
+--- Mid-click LUA errors (StatisticsFrame isa) and orphan addElement pages leave
+--- Finances/Statistics/Vehicles/Map stacked. Enforce after page changes, on open,
+--- on draw, and while the menu is open.
+local function enforceSingleVisibleMenuPage(menu)
+    if menu == nil then return end
+    local current = menu.currentPage
+
+    local function hideIfNotCurrent(el)
+        if el == nil or el.setVisible == nil then return end
+        local want = (el == current)
+        if el.getIsVisible ~= nil then
+            local ok, vis = pcall(el.getIsVisible, el)
+            if ok and vis == want then return end
+        elseif el.visible ~= nil and el.visible == want then
+            return
+        end
+        pcall(el.setVisible, el, want)
+    end
+
+    if menu.pageFrames ~= nil then
+        for _, frame in ipairs(menu.pageFrames) do
+            hideIfNotCurrent(frame)
+        end
+    end
+
+    local paging = menu.pagingElement
+    if paging ~= nil then
+        if paging.pages ~= nil then
+            for _, pageInfo in pairs(paging.pages) do
+                hideIfNotCurrent(pageInfo and pageInfo.element)
+            end
+        end
+        if paging.elements ~= nil then
+            for _, el in ipairs(paging.elements) do
+                if el ~= nil and (el.getMenuButtonInfo ~= nil or el.onFrameOpen ~= nil) then
+                    hideIfNotCurrent(el)
+                end
+            end
+        end
+    end
+
+    if menu.pageRoots ~= nil then
+        for frame, root in pairs(menu.pageRoots) do
+            if root ~= nil and root.setVisible ~= nil then
+                local want = (frame == current)
+                if root.getIsVisible ~= nil then
+                    local ok, vis = pcall(root.getIsVisible, root)
+                    if not (ok and vis == want) then
+                        pcall(root.setVisible, root, want)
+                    end
+                else
+                    pcall(root.setVisible, root, want)
+                end
+            end
+        end
+    end
+end
+
+--- StatisticsFrame.mouseEvent crashes with "isa of table" when a non-Class
+--- entry lands in an internal list. That abort leaves the menu mid-transition.
+local function _installStatisticsFrameMouseGuard()
+    if InGameMenuStatisticsFrame == nil then return end
+    if InGameMenuStatisticsFrame._rfMouseGuard or InGameMenuStatisticsFrame._sfMouseGuard then return end
+    InGameMenuStatisticsFrame._sfMouseGuard = true
+
+    if InGameMenuStatisticsFrame.mouseEvent ~= nil then
+        InGameMenuStatisticsFrame.mouseEvent = Utils.overwrittenFunction(
+            InGameMenuStatisticsFrame.mouseEvent,
+            function(self, superFunc, posX, posY, isDown, isUp, button, eventUsed)
+                local ok, ret = pcall(superFunc, self, posX, posY, isDown, isUp, button, eventUsed)
+                if not ok then
+                    SoilLogger.debug("StatisticsFrame.mouseEvent suppressed: %s", tostring(ret))
+                    local menu = g_gui and (g_gui.screenControllers[InGameMenu] or g_inGameMenu)
+                    enforceSingleVisibleMenuPage(menu)
+                    return eventUsed
+                end
+                return ret
+            end
+        )
+    end
+
+    for _, fname in ipairs({"onClickSubCategory", "onSubCategoryChanged", "onClickPaging"}) do
+        if InGameMenuStatisticsFrame[fname] ~= nil then
+            InGameMenuStatisticsFrame[fname] = Utils.appendedFunction(
+                InGameMenuStatisticsFrame[fname],
+                function(self, ...)
+                    local menu = g_gui and (g_gui.screenControllers[InGameMenu] or g_inGameMenu)
+                    enforceSingleVisibleMenuPage(menu)
+                end
+            )
+        end
+    end
+end
+
+local function _installMenuPageVisibilityGuard()
+    if InGameMenu == nil then return end
+    -- SettingsHub owns the suite-wide guard when present; keep this as a
+    -- fallback so SoilFertilizer still heals stacking when run alone.
+    if InGameMenu._rfPageVisibilityGuard then
+        return
+    end
+
+    if not InGameMenu._sfPageVisibilityGuard then
+        InGameMenu._sfPageVisibilityGuard = true
+
+        if InGameMenu.onPageChange ~= nil then
+            InGameMenu.onPageChange = Utils.overwrittenFunction(
+                InGameMenu.onPageChange,
+                function(self, superFunc, pageIndex, pageMappingIndex, element, skipTabVisualUpdate)
+                    local ok, err = pcall(superFunc, self, pageIndex, pageMappingIndex, element, skipTabVisualUpdate)
+                    if not ok then
+                        SoilLogger.warning("InGameMenu.onPageChange error (recovering page visibility): %s", tostring(err))
+                    end
+                    enforceSingleVisibleMenuPage(self)
+                end
+            )
+        end
+
+        if InGameMenu.onOpen ~= nil then
+            InGameMenu.onOpen = Utils.appendedFunction(InGameMenu.onOpen, function(self)
+                enforceSingleVisibleMenuPage(self)
+            end)
+        end
+
+        if InGameMenu.goToPage ~= nil then
+            InGameMenu.goToPage = Utils.appendedFunction(InGameMenu.goToPage, function(self)
+                enforceSingleVisibleMenuPage(self)
+            end)
+        end
+
+        SoilLogger.info("SoilPDAScreen: InGameMenu single-page visibility guard installed")
+    end
+
+    if not InGameMenu._sfPageVisibilityDrawGuard then
+        InGameMenu._sfPageVisibilityDrawGuard = true
+        local drawName = (InGameMenu.draw ~= nil) and "draw" or ((InGameMenu.onDraw ~= nil) and "onDraw" or nil)
+        if drawName ~= nil then
+            InGameMenu[drawName] = Utils.appendedFunction(InGameMenu[drawName], function(self)
+                enforceSingleVisibleMenuPage(self)
+            end)
+            SoilLogger.info("SoilPDAScreen: InGameMenu draw-time page visibility guard installed")
+        end
+    end
+
+    _installStatisticsFrameMouseGuard()
+end
+
 local function _onMissionLoaded(mission)
+    _installMenuPageVisibilityGuard()
     SoilPDAScreen.register(SF_PDA_MOD_DIR)
 end
 
 local function _onUpdate(mission, dt)
     SoilPDAScreen._attemptDeferredRegister(dt)
+    -- SettingsHub owns the live enforce loop when present.
+    if InGameMenu ~= nil and InGameMenu._rfPageVisibilityGuard then
+        return
+    end
+    if g_gui ~= nil and g_gui.getIsGuiVisible and g_gui:getIsGuiVisible() and g_gui.currentGuiName == "InGameMenu" then
+        local menu = g_gui.screenControllers[InGameMenu] or g_inGameMenu
+        enforceSingleVisibleMenuPage(menu)
+    end
 end
 
 local function _onDelete(mission)
-    -- Nothing to clean up - g_inGameMenu owns the page reference
 end
 
--- Register a keyboard shortcut (SF_SOIL_PDA → Shift+P) for quick PDA toggle
--- (Removed: Shift P toggle is now a UI button)
-local function _registerToggleAction(mission)
-    -- No-op
-end
+_installMenuPageVisibilityGuard()
 
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, _onMissionLoaded)
 FSBaseMission.update            = Utils.appendedFunction(FSBaseMission.update,            _onUpdate)

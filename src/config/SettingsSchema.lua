@@ -216,13 +216,25 @@ SettingsSchema.definitions = {
         uiId = "sf_crop_rotation",
     },
     {
+        -- Legacy single-layer focus (kept for save migration / settings UI). Prefer enabledMapLayers.
         id = "activeMapLayer",
         type = "number",
-        default = 0,  -- 0=Off, 1=N, 2=P, 3=K, 4=pH, 5=OM, 6=Urgency, 7=Weed, 8=Pest, 9=Disease, 10=Compaction
+        default = 0,  -- 0=Off, 1=N … 12=Organic status
         min = 0,
-        max = 10,
+        max = 12,
         uiId = "sf_active_map_layer",
-        localOnly = true,  -- per-player map view, not synced to server
+        localOnly = true,
+    },
+    {
+        -- Bitmask of enabled PDA/minimap layers (bit i = layer i). Multiple layers can be on;
+        -- draw order paints more important layers (e.g. compaction) on top.
+        id = "enabledMapLayers",
+        type = "number",
+        default = 0,
+        min = 0,
+        max = 8191,  -- bits 1..12
+        uiId = "sf_enabled_map_layers",
+        localOnly = true,
     },
     {
         id = "overlayDensity",
