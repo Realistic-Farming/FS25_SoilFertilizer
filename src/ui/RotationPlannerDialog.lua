@@ -105,7 +105,13 @@ function RotationPlannerDialog:onOpen()
         { inputAction = "MENU_PAGE_NEXT", text = tr("sf_rp_next", "Next field"),
           callback = function() self:_step(1) end },
     }
-    self:setMenuButtonInfo(self.menuButtonInfo)
+    -- setMenuButtonInfo is a TabbedMenuFrameElement API, not available on a
+    -- ScreenElement dialog. Calling it unconditionally aborted onOpen before
+    -- _refresh(), leaving the dialog blank (#744). ESC/Back comes from the XML
+    -- buttonBack; guard the call so the content always populates.
+    if self.setMenuButtonInfo ~= nil then
+        self:setMenuButtonInfo(self.menuButtonInfo)
+    end
     self:_refresh()
 end
 
