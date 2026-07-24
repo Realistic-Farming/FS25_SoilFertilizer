@@ -1813,50 +1813,109 @@ function SoilFertilitySystem:_currentMonotonicDay()
 end
 
 --- Current season index (1=Spring 2=Summer 3=Fall 4=Winter), or nil if unavailable.
+--- The shipped FS25 engine returns currentSeason 1-4 (spring=1); this is the same value
+--- SeasonalCropStress reads and normalizes DOWN to its 0-based tables (WeatherIntegration
+--- subtracts 1 when in [1,4]). CLIMATE_PRECIP is likewise 1-indexed, so the raw value
+--- indexes it directly - NO offset (verified against SCS + SF's own shipped season use;
+--- this is the #740 build-gate "season-index catch", discharged). The 0-based fallback
+--- below only guards a hypothetical build that returns spring=0, so the climate can never
+--- land a season off or nil-index the table.
 ---@return number|nil
 function SoilFertilitySystem:_currentSeason()
-    return (g_currentMission and g_currentMission.environment
-            and g_currentMission.environment.currentSeason) or nil
+    local raw = g_currentMission and g_currentMission.environment
+                and g_currentMission.environment.currentSeason
+    if raw == nil then return nil end
+    if raw >= 1 and raw <= 4 then return raw end   -- shipped engine: 1-indexed (spring=1)
+    if raw == 0 then return 1 end                  -- fallback: a 0-based build's spring
+    return nil
 end
 
---- #740: the rain scale SF's soil math should use. weatherSource == 1 (default) returns
---- the true in-game rain, so behaviour is unchanged. A preset (2=Arid, 3=Normal, 4=Wet)
---- returns a synthetic per-day value instead - the game weather is almost always dry on
---- short months, which starves the rain-driven modifiers (leaching, disease wet/dry,
---- pest), so the preset supplies precipitation the game will not. Deterministic per day,
---- so it is MP-consistent and every field/client agrees on a day's weather.
+--- #740: the rain scale SF's soil math should use. Real weather is ALWAYS primary. On a
+--- short month the compressed calendar oversamples the sky as dry, which starves the
+--- rain-driven modifiers (leaching, disease wet/dry, pest); the fill supplies the rain the
+--- calendar skipped, at the season's climate, ONLY as the month shortens, and never on a
+--- real rain day. weatherSource: 1 = opt-out (pure real weather, no fill); 2/3/4 = the
+--- climate bias (Arid/Normal/Wet) the fill uses. Sets self._rainWasFilled so applyRainEffects
+--- can apply the per-day precedence (a filled day is SF-supplied precipitation, so SCS's
+--- rain-reflecting moisture is not double-counted). Deterministic per day => MP-consistent.
 ---@return number rainScale  (>= 0; > RAIN.MIN_RAIN_THRESHOLD counts as raining)
 function SoilFertilitySystem:getEffectiveRainScale()
+    -- Real weather (RealisticWeather-shaped when present) is primary and unchanged.
+    local env = g_currentMission and g_currentMission.environment
+    local real = 0
+    if env and env.weather and env.weather.getRainFallScale then
+        real = env.weather:getRainFallScale() or 0
+    end
+
     local src = (self.settings and self.settings.weatherSource) or 1
     if src == 1 then
-        local env = g_currentMission and g_currentMission.environment
-        if env and env.weather and env.weather.getRainFallScale then
-            return env.weather:getRainFallScale() or 0
-        end
+        -- Opt-out: pure real weather, no month-length fill at any calendar length.
+        self._rainWasFilled = false
+        return real
+    end
+
+    if real > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
+        -- Real rain day: primary, never overridden. The fill only tops up dry days.
+        self._rainWasFilled = false
+        return real
+    end
+
+    -- Dry real day: engage the fill only as the month shortens.
+    local dpm = (env and env.daysPerPeriod) or 1
+    local w = self:_fillWeight(dpm)
+    if w <= 0 then
+        -- At/above the sampling reference the fill is off => byte-identical to real (0).
+        self._rainWasFilled = false
         return 0
     end
-    return self:_syntheticRainScale(src)
+
+    -- w gates ENGAGEMENT frequency (how often a dry day is filled toward the season
+    -- shortfall), never intensity: a filled-wet day returns the FULL season intensity.
+    local filled = self:_syntheticRainScale(src, w)
+    self._rainWasFilled = (filled > SoilConstants.RAIN.MIN_RAIN_THRESHOLD)
+    return filled
 end
 
---- Synthetic per-day rain for a climate preset (#740). A seeded per-day roll against the
---- season's rain probability decides wet vs dry; a wet day returns that season's intensity,
---- a dry day returns 0. The roll is a fract(sin(day)) hash (NOT an affine LCG - see the
---- per-field hash pitfall), keyed on the monotonic day so the whole map shares a day's
---- weather and it is stable across a save/reload on the same day.
----@param src number  weatherSource preset (2=Arid, 3=Normal, 4=Wet)
+--- #740 month-length engagement weight for the short-month fill. 0 at/above the sampling
+--- reference (weather samples adequately), rising to 1 as the month shortens.
+--- w = clamp((REF - dpm) / (REF - 1), 0, 1) ^ EXP. See SoilConstants.SHORT_MONTH_FILL.
+---@param daysPerMonth number  the calendar's days-per-period (days per in-game month)
+---@return number w  engagement weight in [0, 1]
+function SoilFertilitySystem:_fillWeight(daysPerMonth)
+    local fill = SoilConstants.SHORT_MONTH_FILL
+    local ref = (fill and fill.SAMPLING_REFERENCE) or 15
+    local exp = (fill and fill.ENGAGEMENT_EXPONENT) or 2.5
+    if not daysPerMonth or daysPerMonth >= ref then return 0 end
+    local t = (ref - daysPerMonth) / (ref - 1)
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    return t ^ exp
+end
+
+--- Synthetic per-day fill rain for a climate bias (#740). A seeded per-day roll against the
+--- season's rain-day fraction (scaled by the engagement weight w) decides wet vs dry; a wet
+--- day returns the climate's intensity, a dry day returns 0. Scaling the probability by w
+--- makes the filled wet-day fraction track the season climate (shortfall-targeting: real is
+--- ~0 on short months, so w*P approaches the season target as the month shrinks, and stays
+--- small on longer months where w is small, so no over-fill). The roll is a fract(sin(day))
+--- hash (NOT an affine LCG - see the per-field hash pitfall), keyed on the monotonic day so
+--- the whole map shares a day's weather and it is stable across a save/reload on the same day.
+---@param src number  climate bias (2=Arid, 3=Normal, 4=Wet)
+---@param w number     engagement weight in [0, 1] (nil => 1, the full climate)
 ---@return number rainScale
-function SoilFertilitySystem:_syntheticRainScale(src)
+function SoilFertilitySystem:_syntheticRainScale(src, w)
     local preset = SoilConstants.CLIMATE_PRECIP and SoilConstants.CLIMATE_PRECIP[src]
     if not preset then return 0 end
     local season = self:_currentSeason() or 2   -- default to summer if the env is unavailable
-    local prob = (preset.PROB and preset.PROB[season]) or 0
+    local baseProb = (preset.PROB and preset.PROB[season]) or 0
+    if baseProb <= 0 then return 0 end
+    local prob = baseProb * (w or 1)
     if prob <= 0 then return 0 end
     local env = g_currentMission and g_currentMission.environment
     local day = (env and (env.currentMonotonicDay or env.currentDay)) or 0
     local s    = math.sin(day * 12.9898 + 78.233) * 43758.5453
     local roll = s - math.floor(s)   -- fractional part in [0, 1)
     if roll < prob then
-        return (preset.INTENSITY and preset.INTENSITY[season]) or 0.6   -- wet day
+        return preset.INTENSITY or 0.6   -- filled-wet day: full climate intensity
     end
     return 0   -- dry day
 end
@@ -1908,7 +1967,7 @@ end
 ---@param season number|nil
 ---@return boolean isWet, boolean isCool
 function SoilFertilitySystem:_diseaseClimateNow(season)
-    -- #740: real in-game rain, or the synthetic climate preset when weatherSource != 1.
+    -- #740: real in-game rain, topped up by the short-month climate fill on dry days.
     local rs = self:getEffectiveRainScale()
     local isWet = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
     -- Cool proxy from season (summer = warm; spring/fall/winter = cool). Avoids depending
@@ -2222,8 +2281,11 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
     end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
-    -- #740: getEffectiveRainScale is the real weather by default, or a synthetic per-day
-    -- value from the chosen climate preset; rainEffects stays the master on/off.
+    -- #740: getEffectiveRainScale is the real weather, topped up by the short-month climate
+    -- fill on dry days (and it sets self._rainWasFilled for applyRainEffects' per-day
+    -- precedence); rainEffects stays the master on/off. Skipped-day catch-up replays the
+    -- landing day's fill roll (per-day deterministic hash, scaled by elapsed) - no worse
+    -- than the real-weather replay, and no new persisted state (CC-D, simple option).
     if self.settings.rainEffects then
         local rainScale = self:getEffectiveRainScale()
         if rainScale and rainScale > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
@@ -4044,7 +4106,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
             local rainBonus = 0
             do
-                -- #740: real rain, or the synthetic climate preset.
+                -- #740: real rain, topped up by the short-month climate fill on dry days.
                 local rs = self:getEffectiveRainScale()
                 if rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then rainBonus = pp.RAIN_BONUS end
             end
@@ -4060,8 +4122,8 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
             or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
 
-        -- #740: real rain, or the synthetic climate preset - drives the wet/dry-day cycle
-        -- (dryDayCount) the disease model needs, which barely moves on short in-game months.
+        -- #740: real rain, topped up by the short-month climate fill - drives the wet/dry-day
+        -- cycle (dryDayCount) the disease model needs, which barely moves on short in-game months.
         local rs = self:getEffectiveRainScale()
         local isRaining = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
 
@@ -4241,39 +4303,61 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     -- g_currentMission.cropStressManager (mirrors our own mission.soilFertilityManager).
     local csMgr = g_currentMission and g_currentMission.cropStressManager
     local moistThreshold = rain.IRRIGATION_LEACH_THRESHOLD
-    -- #740 interim precedence guard: when a synthetic climate preset is active
-    -- (weatherSource != 1), SF's own precipitation is the sole precipitation authority, so
-    -- SCS moisture is left OUT of the leach - part of that moisture reflects the real weather
-    -- SF is now overriding, and counting both would double-count precipitation (Arissani's
-    -- flag). Default (in-game weather) keeps the full rain + SCS-irrigation model unchanged.
-    -- Stopgap until the SF / RealisticWeather / SCS precedence bridge design lands.
-    local presetActive = ((self.settings and self.settings.weatherSource) or 1) ~= 1
+    -- #740 per-day precedence (replaces the blanket preset guard): one precipitation
+    -- authority per day. A FILLED-wet day is SF-supplied precipitation (the fill topped up
+    -- a dry short-month sky), so SCS's rain-reflecting moisture LEVEL is NOT counted - part
+    -- of it reflects the real weather SF is now standing in for, and counting both would
+    -- double-count precipitation. Real IRRIGATION is still counted, read as the irrigation-
+    -- only RATE (getIrrigationRate) so a pivot-watered field still leaches on a filled day.
+    -- A REAL rain day (filledDay=false) keeps the full rain + SCS-moisture model unchanged,
+    -- so this is byte-identical whenever the fill is not engaged (opt-out / long months).
+    local filledDay = self._rainWasFilled == true
     local count = 0
 
     -- Iterate only owned fields (activeFieldIds set, Phase 1)
     for fieldId in pairs(self.activeFieldIds) do
         local field = self.fieldData[fieldId]
         if field then
-            -- Per-field SCS moisture (0-1) or nil. pcall-wrapped, neutral when absent/error.
-            local moisture = nil
+            -- REAL day: per-field SCS moisture LEVEL (0-1), the blended rain+irrigation total.
+            -- FILLED day: irrigation-only RATE (per-hour gain) instead, so rain moisture is
+            -- not double-counted. Both pcall-wrapped, neutral when SCS absent/errors.
+            local moisture = nil     -- SCS moisture level, used only on a REAL day
+            local irrigRate = nil    -- SCS irrigation-only rate, used only on a FILLED day
             if csMgr then
-                local ok, m = pcall(csMgr.getMoisture, csMgr, fieldId)
-                if ok and type(m) == "number" then moisture = m end
+                if filledDay then
+                    local ok, r = pcall(csMgr.getIrrigationRate, csMgr, fieldId)
+                    if ok and type(r) == "number" then irrigRate = r end
+                else
+                    local ok, m = pcall(csMgr.getMoisture, csMgr, fieldId)
+                    if ok and type(m) == "number" then moisture = m end
+                end
             end
 
-            -- Effective wetness driver: rain, or sustained irrigation moisture above the
-            -- threshold (SCS-001 widened trigger). Irrigation is scaled gentler than rain
-            -- (IRRIGATION_LEACH_SCALE) since it is continuous, not intermittent.
+            -- Effective wetness driver: rain (or the fill), plus a sustained-water term.
+            -- On a REAL day that term is the SCS moisture level above the threshold (SCS-001);
+            -- on a FILLED day it is real irrigation only, normalized to a 0-1 intensity so the
+            -- units match. Irrigation is scaled gentler than rain (IRRIGATION_LEACH_SCALE).
             local drive = rainScale
-            if moisture and not presetActive and moisture > moistThreshold then
-                local irrigDrive = ((moisture - moistThreshold) / (1.0 - moistThreshold)) * rain.IRRIGATION_LEACH_SCALE
-                if irrigDrive > drive then drive = irrigDrive end
+            if not filledDay then
+                if moisture and moisture > moistThreshold then
+                    local irrigDrive = ((moisture - moistThreshold) / (1.0 - moistThreshold)) * rain.IRRIGATION_LEACH_SCALE
+                    if irrigDrive > drive then drive = irrigDrive end
+                end
+            else
+                if irrigRate and irrigRate > 0 then
+                    local irrigIntensity = irrigRate / (rain.IRRIGATION_RATE_LEACH_REF or 0.018)
+                    if irrigIntensity > 1 then irrigIntensity = 1 end
+                    local irrigDrive = irrigIntensity * rain.IRRIGATION_LEACH_SCALE
+                    if irrigDrive > drive then drive = irrigDrive end
+                end
             end
 
             if drive > 0 then
                 -- Sustained moisture amplifies leaching; high organic matter buffers it (OM 0-10).
+                -- Only on a REAL day: on a FILLED day SF is the precipitation authority, so the
+                -- rain-reflecting moisture amplification is dropped (left at 1.0).
                 local scsMoistureMult = 1.0
-                if moisture and not presetActive then
+                if moisture and not filledDay then
                     local omBuffer = 1.0 - ((field.organicMatter or 0) / 10.0) * rain.OM_LEACH_DAMPEN
                     if omBuffer < 0 then omBuffer = 0 end
                     scsMoistureMult = 1.0 + moisture * rain.MOISTURE_LEACH_GAIN * omBuffer

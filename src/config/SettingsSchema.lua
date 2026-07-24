@@ -130,7 +130,11 @@ SettingsSchema.definitions = {
     {
         id = "weatherSource",
         type = "number",
-        default = 1,  -- 1=In-game weather (real rain), 2=Arid, 3=Normal, 4=Wet (synthetic climate, #740)
+        -- #740 climate bias for the short-month rain fill: 1=Real weather only (opt-out,
+        -- no fill), 2=Arid, 3=Normal, 4=Wet. Default Normal so short-month saves feel a
+        -- living climate automatically; at 15+ days-per-month the fill is off (byte-
+        -- identical to real weather), so normal-length saves are unaffected.
+        default = 3,
         min = 1,
         max = 4,
         uiId = "sf_ws",

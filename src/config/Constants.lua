@@ -384,6 +384,13 @@ SoilConstants.RAIN = {
     MOISTURE_LEACH_GAIN        = 0.50,   -- extra leaching from sustained moisture (amplifies the rain factor)
     OM_LEACH_DAMPEN            = 0.50,   -- high organic matter (0-10) softens the moisture add (buffer)
     IRRIGATION_LEACH_INTERVAL_MS = 30000,-- throttle for the no-rain irrigation leach pass (accumulated dt)
+    -- #740 filled-day irrigation: on a short-month FILLED-wet day SF supplies the
+    -- precipitation, so SCS's rain-reflecting moisture LEVEL is not counted (it would
+    -- double-count). Real irrigation is still counted, read as the irrigation-only RATE
+    -- (getIrrigationRate, moisture-gain per hour) and normalized to a 0-1 intensity
+    -- against this reference before driving leach. Matches SCS's default flowRatePerHour
+    -- (0.018); SF-side tunable, so it stays decoupled from SCS internals.
+    IRRIGATION_RATE_LEACH_REF  = 0.018,  -- irrigation rate (per-hour gain) that counts as full-intensity irrigation
 }
 
 -- ========================================
@@ -1275,22 +1282,42 @@ SoilConstants.DISEASE_CLIMATE_MOISTURE = {
 -- and wet-day spike that disease/pest depend on.
 --   PROB[season]      : fraction of days that rain in that season (the seeded roll's threshold)
 --   INTENSITY[season] : the rainScale used on a wet day (drives leaching + wet-day effects)
---   Seasons: 1=spring, 2=summer, 3=autumn, 4=winter. Index matches the weatherSource value.
--- This only changes what SF's soil math ASSUMES; it never changes the game's visual weather.
--- All tunable.
+--   Seasons: 1=spring, 2=summer, 3=autumn, 4=winter (the engine's currentSeason is
+--            1-indexed; SeasonalCropStress normalizes the same 1-4 to its 0-based
+--            tables, so PROB[currentSeason] indexes correctly with NO offset).
+--   PROB[season] : the season's RAIN-DAY FRACTION (target fraction of days that rain).
+--   INTENSITY    : the rainScale a FILLED-wet day returns (one value per climate).
+-- The weatherSource setting now selects a CLIMATE BIAS (2=Arid/3=Normal/4=Wet) for the
+-- short-month FILL; 1 = the opt-out (pure real weather, no fill). #740 reshape: real
+-- weather stays primary and the fill only tops up the rain a compressed calendar skips.
+-- This only changes what SF's soil math ASSUMES; it never changes the game's visual
+-- weather. RULED by Arissani's balance pass 2026-07-25 (rain-day % -> fraction). All tunable.
 SoilConstants.CLIMATE_PRECIP = {
     [2] = { -- Arid: dry summers, light rain
-        PROB      = { [1] = 0.25, [2] = 0.10, [3] = 0.20, [4] = 0.30 },
-        INTENSITY = { [1] = 0.45, [2] = 0.35, [3] = 0.40, [4] = 0.50 },
+        PROB      = { [1] = 0.20, [2] = 0.10, [3] = 0.18, [4] = 0.16 },
+        INTENSITY = 0.40,
     },
-    [3] = { -- Normal / temperate
-        PROB      = { [1] = 0.50, [2] = 0.35, [3] = 0.45, [4] = 0.55 },
-        INTENSITY = { [1] = 0.60, [2] = 0.50, [3] = 0.55, [4] = 0.65 },
+    [3] = { -- Normal / temperate (default climate bias)
+        PROB      = { [1] = 0.40, [2] = 0.20, [3] = 0.38, [4] = 0.32 },
+        INTENSITY = 0.55,
     },
     [4] = { -- Wet: frequent rain, wet winters
-        PROB      = { [1] = 0.75, [2] = 0.55, [3] = 0.70, [4] = 0.85 },
-        INTENSITY = { [1] = 0.80, [2] = 0.70, [3] = 0.75, [4] = 0.90 },
+        PROB      = { [1] = 0.65, [2] = 0.35, [3] = 0.62, [4] = 0.55 },
+        INTENSITY = 0.80,
     },
+}
+
+-- #740 short-month FILL engagement (RULED by Arissani's balance pass 2026-07-25). The
+-- fill only engages as the month shortens: w = clamp((REF - dpm) / (REF - 1), 0, 1)^EXP,
+-- where dpm = daysPerPeriod (the calendar's days-per-month). w = 0 at/above SAMPLING_REFERENCE
+-- (byte-identical to real weather), rising to 1 at a 1-day month. It gates the wet-day
+-- FREQUENCY (how often a dry day is filled toward the season shortfall), never intensity.
+-- SAMPLING_REFERENCE is its OWN constant - deliberately NOT DURATION.REFERENCE_DPP (that is
+-- a chemical-duration reference; anchoring the fill on 3 would give common 3+ day saves zero
+-- fill). ENGAGEMENT_EXPONENT is the one tuning dial (feel: 10d ~0.05, 7d ~0.2, 4d ~0.5, 1d ~1).
+SoilConstants.SHORT_MONTH_FILL = {
+    SAMPLING_REFERENCE = 15,   -- days-per-month at/above which the fill is off (weather samples adequately)
+    ENGAGEMENT_EXPONENT = 2.5, -- curve steepness; higher = fill stays low until the month is very short
 }
 
 -- ========================================
