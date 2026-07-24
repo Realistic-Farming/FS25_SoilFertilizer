@@ -41,8 +41,10 @@ SoilVersionDialog.CHANGELOG = {
     "- Harvesting contracts now reach 100%. When poor soil trimmed your yield",
     "    the contract's target used to move out of reach, so honest work never",
     "    finished. The target is now underwritten so the contract can complete.",
-    "- New weather presets (Arid / Normal / Wet). If you run without a live",
-    "    moisture source, rain leaching and drying still behave sensibly.",
+    "- Short months feel a living climate. On short calendars the game rarely",
+    "    rains, so soil went stale; SoilFertilizer now tops up the rain a short",
+    "    month skips, at your chosen climate (Arid / Normal / Wet). Real weather",
+    "    stays in charge, and normal-length saves are unchanged.",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
