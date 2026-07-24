@@ -3478,43 +3478,14 @@ end
 ---@param fieldId    number
 ---@param boomPoints table   Array of {x=,z=} spanning the boom (from getBoomCellPositions)
 ---@param fillTypeName string  FERTILIZER_PROFILES key
-function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, fillTypeName)
-    if not self:vmAvailable() then return end
-    if not boomPoints or #boomPoints == 0 then return end
-    local field = self.fieldData and self.fieldData[fieldId]
-    if not field then return end
-    local entry = SoilConstants.FERTILIZER_PROFILES[fillTypeName]
-    if not entry then return end
-
-    -- Boom endpoints: the two points with maximum pairwise distance
-    local ax, az, bx, bz = boomPoints[1].x, boomPoints[1].z, boomPoints[1].x, boomPoints[1].z
-    if #boomPoints > 1 then
-        local best = -1
-        for i = 1, #boomPoints do
-            for j = i + 1, #boomPoints do
-                local dx = boomPoints[i].x - boomPoints[j].x
-                local dz = boomPoints[i].z - boomPoints[j].z
-                local d = dx * dx + dz * dz
-                if d > best then
-                    best = d
-                    ax, az = boomPoints[i].x, boomPoints[i].z
-                    bx, bz = boomPoints[j].x, boomPoints[j].z
-                end
-            end
-        end
-    end
-
-    -- Strip half-thickness along travel: covers inter-frame gaps at speed
-    local h = 2.5
-    local vm = self.valueMaps
-    if entry.N  then vm:paintStrip("nitrogen",      ax, az, bx, bz, h, field.nitrogen)      end
-    if entry.P  then vm:paintStrip("phosphorus",    ax, az, bx, bz, h, field.phosphorus)    end
-    if entry.K  then vm:paintStrip("potassium",     ax, az, bx, bz, h, field.potassium)     end
-    if entry.pH then vm:paintStrip("pH",            ax, az, bx, bz, h, field.pH)            end
-    if entry.OM then vm:paintStrip("organicMatter", ax, az, bx, bz, h, field.organicMatter) end
-
-    local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
-    if minimapLayer then minimapLayer:markDirty() end
+--- DEPRECATED (#735): this used to paint the boom strip with the field AVERAGE
+--- (field.nitrogen ...), which made a single uniform pass show a false low->high
+--- gradient (the reported bug: red where you started, green where you finished, because
+--- the average drifts up as you spray). The per-pixel painting now lives in markBoomCells,
+--- which applies the correct LOCAL dose to each cell exactly once. Kept as a safe no-op so
+--- the existing sprayer-hook call sites need no change; remove the calls in a later pass.
+function SoilFertilitySystem:paintBoomStrip(_fieldId, _boomPoints, _fillTypeName)
+    return
 end
 
 -- Finish the in-flight daily batch synchronously: process every field still past
@@ -4698,6 +4669,27 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
+        -- #735: stash THIS tick's field-average nutrient delta so markBoomCells can paint
+        -- the boom's newly-covered cells with the correct LOCAL dose (each cell = its own
+        -- pre-spray value + the local application rate) instead of the drifting field
+        -- average. markBoomCells re-scales this per-field-average delta up to a per-cell
+        -- delta by (fieldArea / area-covered-this-tick) - see the paint there. Deltas
+        -- accumulate across VWW sections in the same tick (each calls applyFertilizer),
+        -- and reset when the tick or product changes; sessionCoverageCells (the dedup) is
+        -- itself reset on product change (#442) and session end, so a re-spray repaints.
+        local now = (g_currentMission and g_currentMission.time) or 0
+        if not field._sprayDose or field._sprayDose.time ~= now or field._sprayDose.product ~= fillType.name then
+            field._sprayDose = { dN = 0, dP = 0, dK = 0, dPH = 0, dOM = 0,
+                                 area = areaInHa, time = now, product = fillType.name }
+        end
+        local sd = field._sprayDose
+        sd.area = areaInHa
+        if entry.N  then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
+        if entry.P  then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
+        if entry.K  then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
+        if entry.pH then sd.dPH = sd.dPH + entry.pH * factor * tunFert end
+        if entry.OM then sd.dOM = sd.dOM + entry.OM * factor * tunFert end
+
         -- REFINED: no pH bulk sync. Like PF's lime map, only ground the boom has
         -- actually passed over gets the new pH (paintBoomStrip / the dot write
         -- below); unsprayed areas keep their old value on the per-pixel map.
@@ -4736,12 +4728,17 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         end
 
         -- REFINED: per-pixel write at the sprayer position into the runtime value
-        -- maps (~2 m/px). The full boom-width strip is painted by paintBoomStrip
-        -- (called from the sprayer hook with the real boom span); this dot is the
-        -- per-section / fallback write so narrow tools and VWW sections paint too.
+        -- maps (~2 m/px). The full boom-width strip is now painted per-cell by
+        -- markBoomCells (#735, correct local dose). This dot is the NARROW-TOOL
+        -- fallback only: tools whose span is under one cell yield no boom points, so
+        -- markBoomCells never runs and this dot is their sole per-pixel write. It
+        -- DEFERS whenever a boom paint happened in the last ~half second (a wide
+        -- sprayer), so it can't restamp the field average over the correct strip.
         local sprayX = self._lastSprayX
         local sprayZ = self._lastSprayZ
-        if sprayX and sprayZ and self:vmAvailable() then
+        local boomRecent = field._vmBoomPaintTime ~= nil
+            and (now - field._vmBoomPaintTime) >= 0 and (now - field._vmBoomPaintTime) < 500
+        if sprayX and sprayZ and self:vmAvailable() and not boomRecent then
             local vm = self.valueMaps
             if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
             if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
@@ -5097,6 +5094,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     if not field.zoneData             then field.zoneData             = {} end
 
     local seen = {}
+    local newCells  -- #735: cells first covered THIS call, painted below with the local spray dose
     for _, pt in ipairs(boomPoints) do
         local cx = math.floor(pt.x / zone.CELL_SIZE)
         local cz = math.floor(pt.z / zone.CELL_SIZE)
@@ -5122,6 +5120,10 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 -- and avoid suppressing sections that are still on their current pass.
                 if not field.sessionCoverageCells[cellKey] then
                     field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
+                    -- #735: newly covered this session - record its centre so the correct
+                    -- local nutrient dose is painted onto it exactly once (dedup by this set).
+                    if newCells == nil then newCells = {} end
+                    newCells[#newCells + 1] = { x = cellCx, z = cellCz }
                     if not overlayOnly then
                         field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
@@ -5162,6 +5164,35 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 end
             end
         end
+    end
+
+    -- #735: paint the correct LOCAL nutrient dose onto the cells first covered this call.
+    -- applyFertilizer stashed THIS tick's field-average delta (field._sprayDose); the true
+    -- per-cell dose is that average delta scaled up by fieldArea / area-covered-this-tick, so
+    -- one uniform pass raises every covered cell by the same amount (its own pre-spray value
+    -- + the dose) with no false low->high gradient, and the map still converges to the field
+    -- average once the whole field is covered. addValueAtWorld is a per-cell read-add-write and
+    -- each cell is painted once (sessionCoverageCells dedup), so consecutive frames over the
+    -- same ground never stack the delta. Replaces the old paintBoomStrip average stamp.
+    local sd  = field._sprayDose
+    local nowMs = (g_currentMission and g_currentMission.time) or 0
+    if sd and newCells and #newCells > 0 and self:vmAvailable()
+       and sd.time == nowMs and sd.area and sd.area > 0 then
+        local scale = sd.area / (#newCells * cellArea)
+        local vm = self.valueMaps
+        local r  = zone.CELL_SIZE * 0.5
+        for _, c in ipairs(newCells) do
+            if sd.dN  ~= 0 then vm:addValueAtWorld("nitrogen",      c.x, c.z, sd.dN  * scale, r) end
+            if sd.dP  ~= 0 then vm:addValueAtWorld("phosphorus",    c.x, c.z, sd.dP  * scale, r) end
+            if sd.dK  ~= 0 then vm:addValueAtWorld("potassium",     c.x, c.z, sd.dK  * scale, r) end
+            if sd.dPH ~= 0 then vm:addValueAtWorld("pH",            c.x, c.z, sd.dPH * scale, r) end
+            if sd.dOM ~= 0 then vm:addValueAtWorld("organicMatter", c.x, c.z, sd.dOM * scale, r) end
+        end
+        field._vmBoomPaintTime = nowMs
+        -- Consume so the second markBoomCells hook site in the same tick can't re-apply.
+        sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
     end
 
     -- Recompute fractions after all cells are processed.
