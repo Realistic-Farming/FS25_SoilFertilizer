@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="Attiva/disattiva impatto stagionale sui nutrienti del suolo (spinta primaverile, rallentamento autunnale)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Effetti Pioggia" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Attiva/disattiva impatto pioggia su suolo (lisciviazione nutrienti, cambiamenti pH)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="Bonus Aratura" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Attiva/disattiva benefici aratura per fertilità suolo (miglior azoto e materia organica)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Incorporamento residui" eh="f4352cb5" />
@@ -637,6 +643,7 @@
     <e k="sf_desc_hudTransparency" v="Trasparenza dello sfondo dell'HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Cambiamenti del suolo basati sulle stagioni" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="La pioggia causa il lisciviamento dei nutrienti" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Bonus aratura per il recupero del suolo" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="La lavorazione del terreno rilascia i nutrienti dai residui" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Monitora e penalizza la diffusione delle erbacce" eh="df20c38d" />

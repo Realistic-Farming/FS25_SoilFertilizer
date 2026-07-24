@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="Bật/tắt tác động theo mùa đối với chất dinh dưỡng trong đất (thúc đẩy tăng trưởng vụ xuân, làm chậm vụ thu)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Hiệu ứng mưa" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Bật/tắt tác động của mưa đối với đất (rửa trôi chất dinh dưỡng, thay đổi pH)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="Thưởng khi cày" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Bật/tắt lợi ích của việc cày đối với độ phì nhiêu của đất (cải thiện đạm và chất hữu cơ)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Vùi phụ phẩm" eh="f4352cb5" />
@@ -599,6 +605,7 @@
     <e k="sf_desc_hudTransparency" v="Độ trong suốt của nền HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Thay đổi đất đai theo mùa" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Mưa gây rửa trôi chất dinh dưỡng" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Thưởng khi cày để phục hồi đất" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="Làm đất giải phóng dinh dưỡng từ phụ phẩm" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Theo dõi và phạt khi cỏ dại lan rộng" eh="df20c38d" />

@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="토양 영양분에 대한 계절적 영향 활성화/비활성화 (봄철 성장 촉진, 가을철 성장 둔화)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="강우 효과" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="토양에 대한 강우 영향 활성화/비활성화 (영양분 용탈, pH 변화)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="쟁기질 보너스" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="토양 비옥도에 대한 쟁기질 혜택 활성화/비활성화 (질소 및 유기물 개선)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="잔사 혼입" eh="f4352cb5" />
@@ -624,6 +630,7 @@
     <e k="sf_desc_hudTransparency" v="HUD 배경 투명도" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="계절에 따른 토양 변화" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="비로 인한 영양분 용탈 발생" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="토양 회복을 위한 쟁기질 보너스" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="경운 작업 시 잔사 영양분 방출" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="잡초 확산 추적 및 불이익 부여" eh="df20c38d" />

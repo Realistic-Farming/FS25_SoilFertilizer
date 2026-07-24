@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="Aktivera/inaktivera säsongspåverkan på marknäring (tillväxtökning på våren, avmattning på hösten)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Regneffekter" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Aktivera/inaktivera regnets påverkan på marken (näringsläckage, pH-förändringar)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="Plogningsbonus" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Aktivera/inaktivera fördelar med plogning för markens bördighet (förbättrat kväve och organiskt material)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Residuinblandning" eh="f4352cb5" />
@@ -599,6 +605,7 @@
     <e k="sf_desc_hudTransparency" v="Bakgrundsgenomskinlighet i HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Säsongsdrivna markförändringar" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Regn orsakar näringsläckage" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Plogningsbonus för markens återhämtning" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="Jordbearbetning frigör näring från rester" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Spåra och bestraffa ogrässpridning" eh="df20c38d" />

@@ -114,7 +114,7 @@ local CATEGORIES = {
             },
             {
                 headerKey = "sf_panel_hdr_environment",
-                items     = { "seasonalEffects", "rainEffects", "plowingBonus", "residueIncorporation" }
+                items     = { "seasonalEffects", "rainEffects", "weatherSource", "plowingBonus", "residueIncorporation" }
             },
             {
                 headerKey = "sf_panel_hdr_crop_stress",
@@ -165,6 +165,7 @@ local MULTI_OPTS = {
     difficulty        = {"sf_diff_1", "sf_diff_2", "sf_diff_3"},
     replenishmentRate = {"sf_rr_1", "sf_rr_2", "sf_rr_3", "sf_rr_4", "sf_rr_5"},
     diseaseMoisture   = {"sf_dm_1", "sf_dm_2", "sf_dm_3", "sf_dm_4"},
+    weatherSource     = {"sf_ws_1", "sf_ws_2", "sf_ws_3", "sf_ws_4"},
     diseaseDifficulty = {"sf_disease_difficulty_1", "sf_disease_difficulty_2", "sf_disease_difficulty_3"},
     hudPosition       = {"sf_hud_pos_1", "sf_hud_pos_2", "sf_hud_pos_3",
                          "sf_hud_pos_4", "sf_hud_pos_5", "sf_hud_pos_6"},
@@ -189,6 +190,7 @@ local SETTING_DESCS = {
     replenishmentRate = "sf_desc_replenishmentRate",
     seasonalEffects   = "sf_desc_seasonalEffects",
     rainEffects       = "sf_desc_rainEffects",
+    weatherSource     = "sf_desc_weatherSource",
     plowingBonus      = "sf_desc_plowingBonus",
     residueIncorporation = "sf_desc_residueIncorporation",
     weedPressure      = "sf_desc_weedPressure",

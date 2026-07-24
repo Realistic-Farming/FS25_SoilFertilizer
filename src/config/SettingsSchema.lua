@@ -128,6 +128,14 @@ SettingsSchema.definitions = {
         uiId = "sf_rain_effects",
     },
     {
+        id = "weatherSource",
+        type = "number",
+        default = 1,  -- 1=In-game weather (real rain), 2=Arid, 3=Normal, 4=Wet (synthetic climate, #740)
+        min = 1,
+        max = 4,
+        uiId = "sf_ws",
+    },
+    {
         id = "plowingBonus",
         type = "boolean",
         default = true,

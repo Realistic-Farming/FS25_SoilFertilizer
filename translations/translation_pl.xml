@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="Włącz/wyłącz wpływ sezonowy na składniki odżywcze gleby (wiosenny wzrost, jesienne spowolnienie)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Efekty deszczu" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Włącz/wyłącz wpływ deszczu na glebę (wypłukiwanie składników, zmiany pH)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="Bonus za orkę" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Włącz/wyłącz korzyści z orki dla żyzności gleby (poprawa zawartości azotu i materii organicznej)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Mieszanie resztek" eh="f4352cb5" />
@@ -625,6 +631,7 @@
     <e k="sf_desc_hudTransparency" v="Przezroczystość tła HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Zmiany gleby zależne od pory roku" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Deszcz powoduje wypłukiwanie składników" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Bonus orki dla regeneracji gleby" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="Uprawa uwalnia składniki z resztek" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Śledź i karz rozprzestrzenianie chwastów" eh="df20c38d" />

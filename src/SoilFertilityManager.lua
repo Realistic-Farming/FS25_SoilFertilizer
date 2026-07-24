@@ -1523,10 +1523,17 @@ function SoilFertilityManager:_updateSoilWetness()
     end
     self._wetnessLastGameH = gameH
 
+    -- #740: soil wetness (which drives compaction susceptibility) follows the same rain
+    -- source as the rest of the sim - real weather by default, or the synthetic climate
+    -- preset - so an Arid/Wet setting makes soil correspondingly drier/wetter to compact.
     local isRaining = false
-    if env.weather and env.weather.getRainFallScale then
+    local soil = self.soilSystem
+    local thr = (SoilConstants.RAIN and SoilConstants.RAIN.MIN_RAIN_THRESHOLD) or 0.1
+    if soil and soil.getEffectiveRainScale then
+        local okR, rs = pcall(function() return soil:getEffectiveRainScale() end)
+        isRaining = okR and rs ~= nil and rs > thr
+    elseif env.weather and env.weather.getRainFallScale then
         local okR, rs = pcall(function() return env.weather:getRainFallScale() end)
-        local thr = (SoilConstants.RAIN and SoilConstants.RAIN.MIN_RAIN_THRESHOLD) or 0.1
         isRaining = okR and rs ~= nil and rs > thr
     end
 

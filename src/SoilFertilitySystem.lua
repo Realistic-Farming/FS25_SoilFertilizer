@@ -1819,6 +1819,48 @@ function SoilFertilitySystem:_currentSeason()
             and g_currentMission.environment.currentSeason) or nil
 end
 
+--- #740: the rain scale SF's soil math should use. weatherSource == 1 (default) returns
+--- the true in-game rain, so behaviour is unchanged. A preset (2=Arid, 3=Normal, 4=Wet)
+--- returns a synthetic per-day value instead - the game weather is almost always dry on
+--- short months, which starves the rain-driven modifiers (leaching, disease wet/dry,
+--- pest), so the preset supplies precipitation the game will not. Deterministic per day,
+--- so it is MP-consistent and every field/client agrees on a day's weather.
+---@return number rainScale  (>= 0; > RAIN.MIN_RAIN_THRESHOLD counts as raining)
+function SoilFertilitySystem:getEffectiveRainScale()
+    local src = (self.settings and self.settings.weatherSource) or 1
+    if src == 1 then
+        local env = g_currentMission and g_currentMission.environment
+        if env and env.weather and env.weather.getRainFallScale then
+            return env.weather:getRainFallScale() or 0
+        end
+        return 0
+    end
+    return self:_syntheticRainScale(src)
+end
+
+--- Synthetic per-day rain for a climate preset (#740). A seeded per-day roll against the
+--- season's rain probability decides wet vs dry; a wet day returns that season's intensity,
+--- a dry day returns 0. The roll is a fract(sin(day)) hash (NOT an affine LCG - see the
+--- per-field hash pitfall), keyed on the monotonic day so the whole map shares a day's
+--- weather and it is stable across a save/reload on the same day.
+---@param src number  weatherSource preset (2=Arid, 3=Normal, 4=Wet)
+---@return number rainScale
+function SoilFertilitySystem:_syntheticRainScale(src)
+    local preset = SoilConstants.CLIMATE_PRECIP and SoilConstants.CLIMATE_PRECIP[src]
+    if not preset then return 0 end
+    local season = self:_currentSeason() or 2   -- default to summer if the env is unavailable
+    local prob = (preset.PROB and preset.PROB[season]) or 0
+    if prob <= 0 then return 0 end
+    local env = g_currentMission and g_currentMission.environment
+    local day = (env and (env.currentMonotonicDay or env.currentDay)) or 0
+    local s    = math.sin(day * 12.9898 + 78.233) * 43758.5453
+    local roll = s - math.floor(s)   -- fractional part in [0, 1)
+    if roll < prob then
+        return (preset.INTENSITY and preset.INTENSITY[season]) or 0.6   -- wet day
+    end
+    return 0   -- dry day
+end
+
 --- Locate the g_fieldManager field object for a farmland id (shared search pattern).
 ---@param fieldId number farmland id
 ---@return table|nil fsField
@@ -1866,11 +1908,9 @@ end
 ---@param season number|nil
 ---@return boolean isWet, boolean isCool
 function SoilFertilitySystem:_diseaseClimateNow(season)
-    local isWet = false
-    if g_currentMission and g_currentMission.environment and g_currentMission.environment.weather then
-        local rs = g_currentMission.environment.weather:getRainFallScale()
-        isWet = rs ~= nil and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
-    end
+    -- #740: real in-game rain, or the synthetic climate preset when weatherSource != 1.
+    local rs = self:getEffectiveRainScale()
+    local isWet = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
     -- Cool proxy from season (summer = warm; spring/fall/winter = cool). Avoids depending
     -- on an unverified temperature API while still steering disease selection sensibly.
     local isCool = season ~= 2
@@ -2182,8 +2222,10 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
     end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
-    if self.settings.rainEffects and env.weather then
-        local rainScale = env.weather:getRainFallScale()
+    -- #740: getEffectiveRainScale is the real weather by default, or a synthetic per-day
+    -- value from the chosen climate preset; rainEffects stays the master on/off.
+    if self.settings.rainEffects then
+        local rainScale = self:getEffectiveRainScale()
         if rainScale and rainScale > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
             -- Raining: per-frame leach (existing cadence), now moisture-aware per field.
             self:applyRainEffects(dt, rainScale)
@@ -4001,10 +4043,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             end
 
             local rainBonus = 0
-            if g_currentMission and g_currentMission.environment and
-               g_currentMission.environment.weather then
-                local rs = g_currentMission.environment.weather:getRainFallScale()
-                if rs and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then rainBonus = pp.RAIN_BONUS end
+            do
+                -- #740: real rain, or the synthetic climate preset.
+                local rs = self:getEffectiveRainScale()
+                if rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then rainBonus = pp.RAIN_BONUS end
             end
 
             local tunPest = getTuningMult(self.settings, "tuningPestGrowth", "ZERO_MULT")
@@ -4018,11 +4060,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
             or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
 
-        local isRaining = false
-        if g_currentMission and g_currentMission.environment and g_currentMission.environment.weather then
-            local rs = g_currentMission.environment.weather:getRainFallScale()
-            isRaining = rs ~= nil and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
-        end
+        -- #740: real rain, or the synthetic climate preset - drives the wet/dry-day cycle
+        -- (dryDayCount) the disease model needs, which barely moves on short in-game months.
+        local rs = self:getEffectiveRainScale()
+        local isRaining = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
 
         if isRaining then
             field.dryDayCount = 0

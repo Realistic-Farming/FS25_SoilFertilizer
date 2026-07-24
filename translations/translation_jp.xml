@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="土壌養分への季節的な影響（春の成長促進、秋の停滞）を有効/無効にします" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="雨の影響" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="土壌への雨の影響（養分の流出、pHの変化）を有効/無効にします" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="耕耘ボーナス" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="土壌肥沃度に対する耕耘のメリット（窒素と有機物の改善）を有効/無効にします" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="残渣のすき込み" eh="f4352cb5" />
@@ -623,6 +629,7 @@
     <e k="sf_desc_hudTransparency" v="HUD 背景の透明度" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="季節による土壌の変化" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="雨による養分の流出" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="土壌回復に対する耕耘ボーナス" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="耕耘による残渣からの養分放出" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="雑草の広がりを追跡し、収量に反映させます" eh="df20c38d" />

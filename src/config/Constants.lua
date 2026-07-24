@@ -1264,6 +1264,36 @@ SoilConstants.DISEASE_CLIMATE_MOISTURE = {
 }
 
 -- ========================================
+-- CLIMATE PRECIPITATION PRESETS (#740)
+-- ========================================
+-- The `weatherSource` setting picks where SF's rain-driven modifiers (leaching, disease
+-- wet/dry, pest rain-bonus) read precipitation from. weatherSource == 1 = the true
+-- in-game weather (default, unchanged). 2/3/4 = these synthetic presets, which the game
+-- weather cannot: on short (e.g. 1-day) months the real weather is almost always dry, so
+-- the rain-driven effects rarely fire. A preset instead derives a per-day wet/dry from a
+-- SEEDED per-day roll against the season's rain probability, keeping the dry-day build-up
+-- and wet-day spike that disease/pest depend on.
+--   PROB[season]      : fraction of days that rain in that season (the seeded roll's threshold)
+--   INTENSITY[season] : the rainScale used on a wet day (drives leaching + wet-day effects)
+--   Seasons: 1=spring, 2=summer, 3=autumn, 4=winter. Index matches the weatherSource value.
+-- This only changes what SF's soil math ASSUMES; it never changes the game's visual weather.
+-- All tunable.
+SoilConstants.CLIMATE_PRECIP = {
+    [2] = { -- Arid: dry summers, light rain
+        PROB      = { [1] = 0.25, [2] = 0.10, [3] = 0.20, [4] = 0.30 },
+        INTENSITY = { [1] = 0.45, [2] = 0.35, [3] = 0.40, [4] = 0.50 },
+    },
+    [3] = { -- Normal / temperate
+        PROB      = { [1] = 0.50, [2] = 0.35, [3] = 0.45, [4] = 0.55 },
+        INTENSITY = { [1] = 0.60, [2] = 0.50, [3] = 0.55, [4] = 0.65 },
+    },
+    [4] = { -- Wet: frequent rain, wet winters
+        PROB      = { [1] = 0.75, [2] = 0.55, [3] = 0.70, [4] = 0.85 },
+        INTENSITY = { [1] = 0.80, [2] = 0.70, [3] = 0.75, [4] = 0.90 },
+    },
+}
+
+-- ========================================
 -- DISEASE & CHEMICAL MANAGEMENT (named crop-specific diseases)
 -- ========================================
 -- A naming + chemistry layer over the diseasePressure scalar above. The scalar

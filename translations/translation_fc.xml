@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="开启/关闭季节对土壤养分的影响（春季生长加成、秋季生长减缓）" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="降雨影响" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="开启/关闭降雨对土壤的影响（养分流失、酸碱度变化）" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="耕地增益" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="开启/关闭耕地带来的土壤肥力加成（提升氮元素与有机质含量）" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Residue Incorporation" eh="f4352cb5" />
@@ -640,6 +646,7 @@
     <e k="sf_desc_hudTransparency" v="HUD background transparency" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Season-driven soil changes" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Rain causes nutrient leaching" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Plow bonus for soil recovery" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="Tillage releases residue nutrients" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Track and penalize weed spread" eh="df20c38d" />

@@ -10,6 +10,12 @@
     <e k="sf_seasonal_effects_long" v="Ativar/desativar impacto sazonal nos nutrientes do solo (impulso primaveril, desaceleração outonal)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Efeitos Chuva" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Ativar/desativar impacto chuva no solo (lixiviação nutrientes, alterações pH)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="Weather Source" />
+    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
+    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
     <e k="sf_plowing_bonus_short" v="Bônus Aração" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Ativar/desativar benefícios aração para fertilidade solo (melhor nitrogênio e matéria orgânica)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Incorporação de Resíduos" eh="f4352cb5" />
@@ -638,6 +644,7 @@
     <e k="sf_desc_hudTransparency" v="Transparência do fundo do HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Mudanças no solo impulsionadas pelas estações" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="A chuva causa lixiviação de nutrientes" eh="82fec75d" />
+    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Bônus de arado para recuperação do solo" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="O preparo do solo libera nutrientes dos resíduos" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Rastrear e penalizar a propagação de ervas daninhas" eh="df20c38d" />
