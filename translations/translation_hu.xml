@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Talaj &amp; Műtrágya" eh="f31197fb" />
@@ -1142,6 +1142,21 @@
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
     <e k="sf_unscouted" v="Felderítetlen" />
+<e k="sf_map_layer_organic_status" v="Organic Status" />
+    
+<e k="sf_layer_12" v="Organic Status" />
+    
+<e k="sf_org_legend_conventional" v="Conventional" />
+    
+<e k="sf_org_legend_transition" v="Transitioning" />
+    
+<e k="sf_org_legend_certified" v="Certified" />
+    
+<e k="sf_org_tt_conventional" v="Not in organic conversion" />
+    
+<e k="sf_org_tt_certified" v="Organic certified" />
+    
+    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
 </elements>
 
 
