@@ -10,12 +10,18 @@
     <e k="sf_seasonal_effects_long" v="Ativar/desativar impacto sazonal nos nutrientes do solo (impulso de crescimento na primavera, abrandamento no outono)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Efeitos da Chuva" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Ativar/desativar impacto da chuva no solo (lixiviação de nutrientes, mudanças de pH)" eh="de3b14b9" />
-    <e k="sf_ws_short" v="Weather Source" />
-    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
-    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_short" v="World Climate" />
+    <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
+    <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
+    <e k="sf_ws_1" v="Real sky only" />
     <e k="sf_ws_2" v="Arid" />
     <e k="sf_ws_3" v="Normal" />
     <e k="sf_ws_4" v="Wet" />
+    <e k="sf_ws_blurb_4" v="Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." />
+    <e k="sf_ws_blurb_3" v="Normal: balanced seasonal rains for short months. Default living climate." />
+    <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
+    <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
+    <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
     <e k="sf_plowing_bonus_short" v="Bónus de Lavoura" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Ativar/desativar benefícios da lavoura para a fertilidade do solo (melhoria de nitrogénio e matéria orgânica)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Incorporação de Resíduos" eh="f4352cb5" />
@@ -644,7 +650,6 @@
     <e k="sf_desc_hudTransparency" v="Transparência do fundo do HUD" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Mudanças de solo impulsionadas pela estação" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="A chuva causa lixiviação de nutrientes" eh="82fec75d" />
-    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Bónus de arado para recuperação do solo" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="O preparo liberta nutrientes dos resíduos" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Monitorizar e penalizar propagação de ervas daninhas" eh="df20c38d" />
