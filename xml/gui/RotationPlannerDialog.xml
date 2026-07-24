@@ -42,8 +42,10 @@
             position="0px -360px" size="520px 80px" wrapText="true"/>
     </GuiElement>
 
-    <GuiElement profile="fs25_dialogButtonBox">
-      <Button profile="buttonBack" text="$l10n_button_back" onClick="onClickBack"/>
-    </GuiElement>
+    <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonOK"   id="rpPrevBtn" text="$l10n_sf_rp_prev" onClick="onClickPrev"/>
+      <Button profile="buttonOK"   id="rpNextBtn" text="$l10n_sf_rp_next" onClick="onClickNext"/>
+      <Button profile="buttonBack" id="rpBackBtn" text="$l10n_button_back" onClick="onClickBack"/>
+    </BoxLayout>
   </GuiElement>
 </GUI>

@@ -98,21 +98,17 @@ function RotationPlannerDialog:onOpen()
             if id == self._startFieldId then self._index = i break end
         end
     end
-    self.menuButtonInfo = {
-        { inputAction = "MENU_BACK", callback = function() self:onClickBack() end },
-        { inputAction = "MENU_PAGE_PREV", text = tr("sf_rp_prev", "Prev field"),
-          callback = function() self:_step(-1) end },
-        { inputAction = "MENU_PAGE_NEXT", text = tr("sf_rp_next", "Next field"),
-          callback = function() self:_step(1) end },
-    }
-    -- setMenuButtonInfo is a TabbedMenuFrameElement API, not available on a
-    -- ScreenElement dialog. Calling it unconditionally aborted onOpen before
-    -- _refresh(), leaving the dialog blank (#744). ESC/Back comes from the XML
-    -- buttonBack; guard the call so the content always populates.
-    if self.setMenuButtonInfo ~= nil then
-        self:setMenuButtonInfo(self.menuButtonInfo)
-    end
+    -- Field cycling is XML footer Prev/Next (ScreenElement dialogs do not get
+    -- TabbedMenuFrame setMenuButtonInfo). Back stays on the XML buttonBack.
     self:_refresh()
+end
+
+function RotationPlannerDialog:onClickPrev()
+    self:_step(-1)
+end
+
+function RotationPlannerDialog:onClickNext()
+    self:_step(1)
 end
 
 function RotationPlannerDialog:onClickBack()
