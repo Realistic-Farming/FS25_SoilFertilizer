@@ -1136,5 +1136,36 @@
 <e k="sf_org_tt_certified" v="Organic certified" />
     
     <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
+<e k="sf_rp_status_unknown" v="Unknown" />
+    
+<e k="sf_rp_no_crop" v="-" />
+    
+<e k="sf_rp_no_history" v="No crop history yet" />
+    
+<e k="sf_rp_standing_unknown" v="Unknown" />
+    
+<e k="sf_rp_bonus_days" v="bonus %dd" />
+    
+<e k="sf_rp_title" v="Rotation Planner" />
+    
+<e k="sf_rp_open" v="Rotation Planner" />
+    
+<e k="sf_rp_farm_header" v="Farm standing" />
+    
+<e k="sf_rp_what_if" v="What if (next crop)" />
+    
+<e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
+    
+<e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
+    
+<e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
+    
+    <e k="sf_rp_no_fields" v="No fields" />
+    
+<e k="sf_rp_prev" v="Prev field" />
+    
+<e k="sf_rp_next" v="Next field" />
+    
+    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
 </elements>
 </l10n>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
+  <GuiElement profile="newLayer"/>
+  <Bitmap profile="dialogFullscreenBg" id="dialogBg"/>
+
+  <GuiElement profile="sfDetail_bg" id="dialogElement">
+    <ThreePartBitmap profile="fs25_dialogBgMiddle"/>
+    <ThreePartBitmap profile="fs25_dialogBgTop"/>
+    <ThreePartBitmap profile="fs25_dialogBgBottom"/>
+
+    <GuiElement profile="fs25_dialogContentContainer">
+      <Text profile="fs25_dialogTitle" id="rpTitle"
+            text="$l10n_sf_rp_title" position="0px -30px"/>
+
+      <Text profile="sfDetail_sectionHeader" id="rpFarmHeader"
+            text="$l10n_sf_rp_farm_header" position="0px -70px"/>
+      <Text profile="sfDetail_label" id="rpFarmSummary"
+            text="" position="0px -98px" size="520px 40px" wrapText="true"/>
+
+      <Text profile="sfDetail_sectionHeader" id="rpFieldHeader"
+            text="" position="0px -150px"/>
+      <Text profile="sfDetail_label" id="rpStanding"
+            text="" position="0px -178px" size="520px 36px" wrapText="true"/>
+
+      <Bitmap profile="sfDetail_sectionBg3alt" position="0px -220px"/>
+      <Text profile="sfDetail_sectionHeader" text="$l10n_sf_rp_what_if" position="0px -225px"/>
+
+      <Text profile="sfDetail_label"  id="rpCand1Crop"   text="" position="-240px -258px"/>
+      <Text profile="sfDetail_status" id="rpCand1Status" text="" position="-40px -258px"/>
+      <Text profile="sfDetail_value"  id="rpCand1Effect" text="" position="120px -258px"/>
+
+      <Text profile="sfDetail_label"  id="rpCand2Crop"   text="" position="-240px -286px"/>
+      <Text profile="sfDetail_status" id="rpCand2Status" text="" position="-40px -286px"/>
+      <Text profile="sfDetail_value"  id="rpCand2Effect" text="" position="120px -286px"/>
+
+      <Text profile="sfDetail_label"  id="rpCand3Crop"   text="" position="-240px -314px"/>
+      <Text profile="sfDetail_status" id="rpCand3Status" text="" position="-40px -314px"/>
+      <Text profile="sfDetail_value"  id="rpCand3Effect" text="" position="120px -314px"/>
+
+      <Text profile="sf_hintText" id="rpHint"
+            text="$l10n_sf_rp_hint"
+            position="0px -360px" size="520px 80px" wrapText="true"/>
+    </GuiElement>
+
+    <GuiElement profile="fs25_dialogButtonBox">
+      <Button profile="buttonBack" text="$l10n_button_back" onClick="onClickBack"/>
+    </GuiElement>
+  </GuiElement>
+</GUI>
