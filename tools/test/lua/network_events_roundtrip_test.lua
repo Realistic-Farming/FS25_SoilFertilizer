@@ -8,7 +8,7 @@
 -- fills it; a fresh instance's readStream drains it. A correct pair leaves the FIFO
 -- exactly empty with zero type mismatches. run() is a no-op here (g_server/g_client
 -- are nil in the prelude), so readStream's trailing self:run() does not interfere.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
 local CONN = { getIsServer = function() return false end }
 
@@ -38,6 +38,7 @@ local function sampleField()
     coverageFraction = 0.5, compaction = 11,
     nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
     activeDisease = "septoria", diseaseDiscovered = true,
+    organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
   }
 end
 
@@ -64,6 +65,13 @@ local function assertSampleField(name, b)
   T.ok(name .. ": buffer present", b.nutrientBuffer ~= nil)
   T.near(name .. ": buffer[12]", b.nutrientBuffer[12], 4.5)
   T.near(name .. ": buffer[3]", b.nutrientBuffer[3], 1.25)
+  T.ok(name .. ": organic present", b.organic ~= nil)
+  if b.organic then
+    T.eq(name .. ": organic state", b.organic.state, SoilConstants.ORGANIC.STATE_CERTIFIED)
+    T.eq(name .. ": organic startDay", b.organic.startDay, 100)
+    T.eq(name .. ": organic certifiedDay", b.organic.certifiedDay, 220)
+    T.eq(name .. ": organic breaches", b.organic.breaches, 2)
+  end
 end
 
 -- ── Harness self-checks: the FIFO must actually catch desync, or the whole suite
@@ -185,6 +193,17 @@ end
 do
   local d = rt("scout", SoilScoutFieldEvent.new(9), SoilScoutFieldEvent)
   T.eq("scout: fieldId", d.fieldId, 9)
+end
+
+-- ── SoilOrganicOptEvent (client -> server): fieldId + doOptIn bool ──
+do
+  local d = rt("organicOpt/in", SoilOrganicOptEvent.new(7, true), SoilOrganicOptEvent)
+  T.eq("organicOpt/in: fieldId", d.fieldId, 7)
+  T.ok("organicOpt/in: doOptIn true", d.doOptIn == true)
+
+  d = rt("organicOpt/out", SoilOrganicOptEvent.new(4, false), SoilOrganicOptEvent)
+  T.eq("organicOpt/out: fieldId", d.fieldId, 4)
+  T.ok("organicOpt/out: doOptIn false", d.doOptIn == false)
 end
 
 -- ── SoilSprayerRateEvent: netId (int32) + rateIndex (uint8) ──

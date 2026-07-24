@@ -430,6 +430,12 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         if activeDisease == "" then activeDisease = nil end
         local diseaseDiscovered = streamReadBool(streamId)
 
+        -- Organic certification (consume unconditionally to keep stream aligned)
+        local orgState  = streamReadInt32(streamId)
+        local orgStart  = streamReadInt32(streamId)
+        local orgCert   = streamReadInt32(streamId)
+        local orgBreach = streamReadInt32(streamId)
+
         -- Validate and sanitize field data
         local function validateNumber(value, min, max, default, name)
             if type(value) ~= "number" or value ~= value then  -- Check for NaN
@@ -498,6 +504,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
             if self.fieldData[fieldId].lastCrop3 == "" then
                 self.fieldData[fieldId].lastCrop3 = nil
             end
+            OrganicCertification.applyFieldOrganic(self.fieldData[fieldId], orgState, orgStart, orgCert, orgBreach)
         end
     end
 
@@ -566,6 +573,13 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         -- Named active disease (appended last to keep older alignment intact)
         streamWriteString(streamId, field.activeDisease or "")
         streamWriteBool(streamId, field.diseaseDiscovered or false)
+
+        -- Organic certification (state enum + startDay + certifiedDay + breaches)
+        local orgState, orgStart, orgCert, orgBreach = OrganicCertification.encodeFieldOrganic(field)
+        streamWriteInt32(streamId, orgState)
+        streamWriteInt32(streamId, orgStart)
+        streamWriteInt32(streamId, orgCert)
+        streamWriteInt32(streamId, orgBreach)
     end
 end
 
@@ -715,6 +729,13 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         -- Named active disease (appended last to keep zone alignment intact)
         streamWriteString(streamId, field.activeDisease or "")
         streamWriteBool(streamId, field.diseaseDiscovered or false)
+
+        -- Organic certification (state enum + startDay + certifiedDay + breaches)
+        local orgState, orgStart, orgCert, orgBreach = OrganicCertification.encodeFieldOrganic(field)
+        streamWriteInt32(streamId, orgState)
+        streamWriteInt32(streamId, orgStart)
+        streamWriteInt32(streamId, orgCert)
+        streamWriteInt32(streamId, orgBreach)
     end
 end
 
@@ -784,6 +805,12 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         if activeDisease == "" then activeDisease = nil end
         local diseaseDiscovered = streamReadBool(streamId)
 
+        -- Organic certification (consume unconditionally to keep stream aligned)
+        local orgState  = streamReadInt32(streamId)
+        local orgStart  = streamReadInt32(streamId)
+        local orgCert   = streamReadInt32(streamId)
+        local orgBreach = streamReadInt32(streamId)
+
         if type(fieldId) == "number" and fieldId >= 0 then
             self.batchFields[fieldId] = {
                 fieldArea             = math.max(0.01, fieldArea or 1.0),
@@ -817,6 +844,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 zoneData              = zd,
                 initialized           = true,
             }
+            OrganicCertification.applyFieldOrganic(self.batchFields[fieldId], orgState, orgStart, orgCert, orgBreach)
         end
     end
 
@@ -995,6 +1023,12 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     if activeDisease == "" then activeDisease = nil end
     local diseaseDiscovered = streamReadBool(streamId)
 
+    -- Organic certification (matches writeStream order: after the disease pair)
+    local orgState  = streamReadInt32(streamId)
+    local orgStart  = streamReadInt32(streamId)
+    local orgCert   = streamReadInt32(streamId)
+    local orgBreach = streamReadInt32(streamId)
+
     -- Clamp all values to valid ranges
     self.field = {
         fieldArea = math.max(0.01, fieldArea or 1.0),
@@ -1045,6 +1079,9 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
         self.field.lastCrop3 = nil
     end
 
+    -- Attach the synced organic state so run()'s field replace carries it.
+    OrganicCertification.applyFieldOrganic(self.field, orgState, orgStart, orgCert, orgBreach)
+
     self:run(connection)
 end
 
@@ -1094,6 +1131,15 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     -- Named active disease (appended last)
     streamWriteString(streamId, self.field.activeDisease or "")
     streamWriteBool(streamId, self.field.diseaseDiscovered or false)
+
+    -- Organic certification (state enum + startDay + certifiedDay + breaches).
+    -- Sent on every field update so the routine broadcast carries the field's
+    -- organic standing instead of wiping it on the client's replace.
+    local orgState, orgStart, orgCert, orgBreach = OrganicCertification.encodeFieldOrganic(self.field)
+    streamWriteInt32(streamId, orgState)
+    streamWriteInt32(streamId, orgStart)
+    streamWriteInt32(streamId, orgCert)
+    streamWriteInt32(streamId, orgBreach)
 end
 
 function SoilFieldUpdateEvent:run(connection)
@@ -1211,6 +1257,52 @@ function SoilTreatFieldEvent:run(connection)
         charge = true,
         farmId = farmId,
     })
+end
+
+-- ==========================================================================
+-- SoilOrganicOptEvent (client -> server): a client asks the server to opt a field
+-- into or out of the organic transition. Organic state is server-authoritative
+-- (single-writer): the server validates and calls optIn/optOut, and those methods
+-- self-broadcast the resulting field state to every peer. Mirrors SoilTreatFieldEvent.
+-- ==========================================================================
+SoilOrganicOptEvent = {}
+SoilOrganicOptEvent_mt = Class(SoilOrganicOptEvent, Event)
+
+InitEventClass(SoilOrganicOptEvent, "SoilOrganicOptEvent")
+
+function SoilOrganicOptEvent.emptyNew()
+    return Event.new(SoilOrganicOptEvent_mt)
+end
+
+function SoilOrganicOptEvent.new(fieldId, doOptIn)
+    local self = SoilOrganicOptEvent.emptyNew()
+    self.fieldId = fieldId
+    self.doOptIn = doOptIn and true or false
+    return self
+end
+
+function SoilOrganicOptEvent:readStream(streamId, connection)
+    self.fieldId = streamReadInt32(streamId)
+    self.doOptIn = streamReadBool(streamId)
+    self:run(connection)
+end
+
+function SoilOrganicOptEvent:writeStream(streamId, connection)
+    streamWriteInt32(streamId, self.fieldId or 0)
+    streamWriteBool(streamId, self.doOptIn)
+end
+
+function SoilOrganicOptEvent:run(connection)
+    -- SERVER ONLY: authoritative opt in/out. optIn/optOut self-broadcast the
+    -- resulting field state, so every client converges without extra work here.
+    if g_server == nil then return end
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.organic then return end
+    local organic = g_SoilFertilityManager.organic
+    if self.doOptIn then
+        organic:optIn(self.fieldId)
+    else
+        organic:optOut(self.fieldId)
+    end
 end
 
 -- ==========================================================================

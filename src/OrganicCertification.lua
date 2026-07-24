@@ -32,6 +32,60 @@ function OrganicCertification.new(soilSystem)
 end
 
 -- ---------------------------------------------------------
+-- Wire encoding (network serialization)
+-- ---------------------------------------------------------
+-- The model stores state as a string; the network path (the NetworkSync bridge
+-- scalars + every field event stream) carries a compact int enum so both sides
+-- agree byte-for-byte. 0 conventional, 1 in_transition, 2 certified.
+OrganicCertification.STATE_TO_INT = {
+    [SoilConstants.ORGANIC.STATE_CONVENTIONAL] = 0,
+    [SoilConstants.ORGANIC.STATE_TRANSITION]   = 1,
+    [SoilConstants.ORGANIC.STATE_CERTIFIED]    = 2,
+}
+OrganicCertification.INT_TO_STATE = {
+    [0] = SoilConstants.ORGANIC.STATE_CONVENTIONAL,
+    [1] = SoilConstants.ORGANIC.STATE_TRANSITION,
+    [2] = SoilConstants.ORGANIC.STATE_CERTIFIED,
+}
+
+--- Encode a string organic state to its wire int (defaults to 0 conventional).
+function OrganicCertification.encodeState(state)
+    return OrganicCertification.STATE_TO_INT[state] or 0
+end
+
+--- Decode a wire int back to the string organic state (defaults to conventional).
+function OrganicCertification.decodeState(intVal)
+    return OrganicCertification.INT_TO_STATE[intVal] or SoilConstants.ORGANIC.STATE_CONVENTIONAL
+end
+
+--- Read a field's organic state as a serializable tuple, defaulting a stateless
+--- field to conventional/zeros. Returns stateInt, startDay, certifiedDay, breaches.
+function OrganicCertification.encodeFieldOrganic(field)
+    local o = field and field.organic
+    if not o then return 0, 0, 0, 0 end
+    return OrganicCertification.encodeState(o.state), o.startDay or 0, o.certifiedDay or 0, o.breaches or 0
+end
+
+--- Apply a decoded organic tuple onto a field table (server-authoritative sync).
+--- Mirrors loadFieldState: a plain conventional field with no breaches keeps no
+--- sub-table, so the wire never resurrects one where the model would not.
+function OrganicCertification.applyFieldOrganic(field, stateInt, startDay, certifiedDay, breaches)
+    if not field then return end
+    local state = OrganicCertification.decodeState(stateInt)
+    breaches = breaches or 0
+    if state == SoilConstants.ORGANIC.STATE_CONVENTIONAL and breaches == 0 then
+        field.organic = nil
+        return
+    end
+    field.organic = {
+        state        = state,
+        startDay     = startDay or 0,
+        certifiedDay = certifiedDay or 0,
+        breaches     = breaches,
+    }
+end
+
+-- ---------------------------------------------------------
 -- State helpers
 -- ---------------------------------------------------------
 
@@ -113,10 +167,60 @@ end
 -- Transitions
 -- ---------------------------------------------------------
 
+--- Broadcast a field's current state to clients after an organic-state change.
+-- Server-authoritative and multiplayer only. Cert changes happen outside the
+-- sprayer's throttled broadcast (a breach, a daily promotion, or an opt in/out),
+-- so we push the field explicitly - including sold / inactive fields the daily
+-- pass would skip. Organic now rides in every field payload, so this one call
+-- carries the new standing to every peer.
+function OrganicCertification:broadcastFieldState(fieldId)
+    if g_server == nil then return end
+    local mdi = g_currentMission and g_currentMission.missionDynamicInfo
+    if not (mdi and mdi.isMultiplayer) then return end
+    local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
+    if field and SoilNetworkEvents_BroadcastFieldUpdate then
+        SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
+    end
+end
+
+--- Route an opt-in through the single-writer discipline (server-authoritative).
+-- On a pure client this sends a request the server validates and applies; on the
+-- server or in singleplayer it applies directly. Callers (console, UI) use this,
+-- never optIn/optOut, so a client never mutates cert state locally.
+function OrganicCertification:requestOptIn(fieldId)
+    return self:_requestOpt(fieldId, true)
+end
+
+--- Route an opt-out through the single-writer discipline. See requestOptIn.
+function OrganicCertification:requestOptOut(fieldId)
+    return self:_requestOpt(fieldId, false)
+end
+
+function OrganicCertification:_requestOpt(fieldId, doOptIn)
+    if fieldId == nil then return false, "No field selected" end
+    -- Pure client: ask the server. It validates, applies, and broadcasts back, so
+    -- the local state converges on the next field update rather than being set here.
+    if g_server == nil and g_client ~= nil then
+        if SoilOrganicOptEvent ~= nil then
+            g_client:getServerConnection():sendEvent(SoilOrganicOptEvent.new(fieldId, doOptIn))
+            return true, string.format("Requested organic %s for field %d; the server will apply it.",
+                doOptIn and "transition" or "opt-out", fieldId)
+        end
+        return false, "Organic change unavailable (network not ready)"
+    end
+    -- Server or singleplayer: apply directly (optIn/optOut self-broadcast on success).
+    if doOptIn then return self:optIn(fieldId) else return self:optOut(fieldId) end
+end
+
 --- Opt a field into the organic transition (conventional -> in_transition).
 -- @param fieldId  field id
 -- @return boolean success, string message
 function OrganicCertification:optIn(fieldId)
+    -- Server-authoritative floor: a pure client must never mutate cert state
+    -- locally (it desyncs the lobby). Callers route through requestOptIn.
+    if g_server == nil and g_client ~= nil then
+        return false, "Organic changes are server-authoritative"
+    end
     local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
     if not field then return false, string.format("Field %s is not tracked yet", tostring(fieldId)) end
     local o = self:ensureState(field)
@@ -131,6 +235,7 @@ function OrganicCertification:optIn(fieldId)
     o.state = SoilConstants.ORGANIC.STATE_TRANSITION
     o.startDay = self:getCurrentDay()
     o.certifiedDay = 0
+    self:broadcastFieldState(fieldId)
     return true, string.format("Field %d entered organic transition (%d days at current difficulty). Use only approved inputs.",
         fieldId, self:getTransitionDays())
 end
@@ -139,6 +244,10 @@ end
 -- @param fieldId  field id
 -- @return boolean success, string message
 function OrganicCertification:optOut(fieldId)
+    -- Server-authoritative floor (see optIn).
+    if g_server == nil and g_client ~= nil then
+        return false, "Organic changes are server-authoritative"
+    end
     local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
     if not field then return false, string.format("Field %s is not tracked yet", tostring(fieldId)) end
     local o = self:ensureState(field)
@@ -149,6 +258,7 @@ function OrganicCertification:optOut(fieldId)
     o.state = SoilConstants.ORGANIC.STATE_CONVENTIONAL
     o.startDay = 0
     o.certifiedDay = 0
+    self:broadcastFieldState(fieldId)
     return true, string.format("Field %d reverted to conventional", fieldId)
 end
 
@@ -182,6 +292,7 @@ function OrganicCertification:onInputApplied(fieldId, fillTypeName)
     end
     self:notify(string.format("Field %d lost organic status: %s is not approved",
         fieldId, tostring(fillTypeName)))
+    self:broadcastFieldState(fieldId)
     return true
 end
 
@@ -208,6 +319,10 @@ function OrganicCertification:onDayChanged()
                     SoilLogger.info("Organic: field %d is now CERTIFIED organic", fieldId)
                 end
                 self:notify(string.format("Field %d is now certified organic!", fieldId))
+                -- Broadcast this field itself; the daily pass covers only the active
+                -- set, so a sold or inactive mid-transition field would otherwise
+                -- promote on the host and stay stale on every client.
+                self:broadcastFieldState(fieldId)
             end
         end
     end
@@ -282,13 +397,13 @@ end
 function OrganicCertification:consoleOrganicOptIn(arg)
     local fieldId = self:resolveFieldId(arg)
     if not fieldId then return "Usage: SoilOrganicOptIn <fieldId> (or stand on a field)" end
-    local _, msg = self:optIn(fieldId)
+    local _, msg = self:requestOptIn(fieldId)
     return msg
 end
 
 function OrganicCertification:consoleOrganicOptOut(arg)
     local fieldId = self:resolveFieldId(arg)
     if not fieldId then return "Usage: SoilOrganicOptOut <fieldId> (or stand on a field)" end
-    local _, msg = self:optOut(fieldId)
+    local _, msg = self:requestOptOut(fieldId)
     return msg
 end

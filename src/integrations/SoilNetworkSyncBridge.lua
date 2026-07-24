@@ -95,7 +95,8 @@ end
 -- Flatten the whole field map into one integer-indexed primitive array (the shape
 -- NetworkSync expects). arr[1] = field count, then per field:
 --   fieldId, <each SCALARS value>, lastCrop, lastCrop2, lastCrop3, activeDisease,
---   bufferCount, bufferCount x (fillTypeIndex, amount)
+--   bufferCount, bufferCount x (fillTypeIndex, amount),
+--   organicState, organicStartDay, organicCertifiedDay, organicBreaches
 function SoilNetworkSyncBridge.serializeFields(fieldData)
     local arr = { 0 }   -- slot 1 reserved for the count
     local n = 0
@@ -120,6 +121,15 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
             arr[#arr + 1] = ftIdx
             arr[#arr + 1] = amount
         end
+
+        -- Organic certification (state enum + startDay + certifiedDay + breaches).
+        -- Without this the 1Hz whole-map apply below rebuilds each client field with
+        -- no organic and wipes what the client held; sending it keeps cert true.
+        local orgState, orgStart, orgCert, orgBreach = OrganicCertification.encodeFieldOrganic(field)
+        arr[#arr + 1] = orgState
+        arr[#arr + 1] = orgStart
+        arr[#arr + 1] = orgCert
+        arr[#arr + 1] = orgBreach
     end
     arr[1] = n
     return arr
@@ -165,6 +175,14 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
             if ftIdx ~= nil then buffer[ftIdx] = amount end
         end
         field.nutrientBuffer = buffer
+
+        -- Organic certification (same trailing order as serializeFields). Applied
+        -- authoritatively so the client's cert state matches the server.
+        local orgState  = tonumber(arr[i]) or 0; i = i + 1
+        local orgStart  = tonumber(arr[i]) or 0; i = i + 1
+        local orgCert   = tonumber(arr[i]) or 0; i = i + 1
+        local orgBreach = tonumber(arr[i]) or 0; i = i + 1
+        OrganicCertification.applyFieldOrganic(field, orgState, orgStart, orgCert, orgBreach)
 
         out[fieldId] = field
     end
