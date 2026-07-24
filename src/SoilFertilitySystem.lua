@@ -4241,6 +4241,13 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     -- g_currentMission.cropStressManager (mirrors our own mission.soilFertilityManager).
     local csMgr = g_currentMission and g_currentMission.cropStressManager
     local moistThreshold = rain.IRRIGATION_LEACH_THRESHOLD
+    -- #740 interim precedence guard: when a synthetic climate preset is active
+    -- (weatherSource != 1), SF's own precipitation is the sole precipitation authority, so
+    -- SCS moisture is left OUT of the leach - part of that moisture reflects the real weather
+    -- SF is now overriding, and counting both would double-count precipitation (Arissani's
+    -- flag). Default (in-game weather) keeps the full rain + SCS-irrigation model unchanged.
+    -- Stopgap until the SF / RealisticWeather / SCS precedence bridge design lands.
+    local presetActive = ((self.settings and self.settings.weatherSource) or 1) ~= 1
     local count = 0
 
     -- Iterate only owned fields (activeFieldIds set, Phase 1)
@@ -4258,7 +4265,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
             -- threshold (SCS-001 widened trigger). Irrigation is scaled gentler than rain
             -- (IRRIGATION_LEACH_SCALE) since it is continuous, not intermittent.
             local drive = rainScale
-            if moisture and moisture > moistThreshold then
+            if moisture and not presetActive and moisture > moistThreshold then
                 local irrigDrive = ((moisture - moistThreshold) / (1.0 - moistThreshold)) * rain.IRRIGATION_LEACH_SCALE
                 if irrigDrive > drive then drive = irrigDrive end
             end
@@ -4266,7 +4273,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
             if drive > 0 then
                 -- Sustained moisture amplifies leaching; high organic matter buffers it (OM 0-10).
                 local scsMoistureMult = 1.0
-                if moisture then
+                if moisture and not presetActive then
                     local omBuffer = 1.0 - ((field.organicMatter or 0) / 10.0) * rain.OM_LEACH_DAMPEN
                     if omBuffer < 0 then omBuffer = 0 end
                     scsMoistureMult = 1.0 + moisture * rain.MOISTURE_LEACH_GAIN * omBuffer

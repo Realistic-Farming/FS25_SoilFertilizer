@@ -93,3 +93,25 @@ do
   setEnv(2); setDay(7)
   T.eq("740: unknown preset -> 0 (safe degrade)", s:getEffectiveRainScale(), 0)
 end
+
+-- ── interim precedence guard: a preset leaves SCS moisture OUT of the leach ──
+-- (so synthetic precipitation is not counted on top of the real-weather moisture SCS
+--  reflects). In-game weather keeps the full rain + SCS-moisture amplification.
+do
+  local function leachedNitrogen(src)
+    local s = setmetatable({}, { __index = SoilFertilitySystem })
+    s.settings      = { enabled = true, rainEffects = true, weatherSource = src }
+    s.vmAvailable   = function() return false end
+    s.activeFieldIds = { [1] = true }
+    s.fieldData     = { [1] = { nitrogen = 50, potassium = 50, phosphorus = 50, pH = 6.5, organicMatter = 3 } }
+    g_currentMission.cropStressManager = { getMoisture = function(_self, _fid) return 0.9 end }
+    g_currentMission.randomWorldEvents = nil
+    s:applyRainEffects(1e6, 0.5)   -- raining (0.5 > MIN_RAIN_THRESHOLD)
+    g_currentMission.cropStressManager = nil
+    return s.fieldData[1].nitrogen
+  end
+  local nIngame = leachedNitrogen(1)   -- SCS moisture amplifies the leach
+  local nPreset = leachedNitrogen(3)   -- preset: SCS moisture excluded
+  T.ok("740: leaching happens in both modes", nIngame < 50 and nPreset < 50)
+  T.ok("740: a preset leaches LESS than in-game (SCS moisture not double-counted)", nPreset > nIngame)
+end
