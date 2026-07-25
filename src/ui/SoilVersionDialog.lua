@@ -43,8 +43,9 @@ SoilVersionDialog.CHANGELOG = {
     "    finished. The target is now underwritten so the contract can complete.",
     "- Short months feel a living climate. On short calendars the game rarely",
     "    rains, so soil went stale; SoilFertilizer now tops up the rain a short",
-    "    month skips, at your chosen climate (Arid / Normal / Wet). Real weather",
-    "    stays in charge, and normal-length saves are unchanged.",
+    "    month skips, at your World Climate (Arid / Normal / Wet). Real sky only",
+    "    opts out of the fill. Real weather stays in charge; normal-length saves",
+    "    are unchanged.",
 }
 
 -- ── i18n helper ───────────────────────────────────────────

@@ -10,12 +10,18 @@
     <e k="sf_seasonal_effects_long" v="Seizoensgebonden impact op bodemvoedingsstoffen in-/uitschakelen (groeiboost in de lente, vertraging in de herfst)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Regeneffecten" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Regenimpact op de bodem in-/uitschakelen (uitspoeling van voedingsstoffen, pH-veranderingen)" eh="de3b14b9" />
-    <e k="sf_ws_short" v="Weather Source" />
-    <e k="sf_ws_long" v="Where soil rain effects read precipitation from. In-game Weather uses the real forecast; Arid, Normal or Wet use a synthetic per-season climate so rain effects still work on short months. Does not change the in-game visual weather." />
-    <e k="sf_ws_1" v="In-game Weather" />
+    <e k="sf_ws_short" v="World Climate" />
+    <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
+    <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
+    <e k="sf_ws_1" v="Real sky only" />
     <e k="sf_ws_2" v="Arid" />
     <e k="sf_ws_3" v="Normal" />
     <e k="sf_ws_4" v="Wet" />
+    <e k="sf_ws_blurb_4" v="Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." />
+    <e k="sf_ws_blurb_3" v="Normal: balanced seasonal rains for short months. Default living climate." />
+    <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
+    <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
+    <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
     <e k="sf_plowing_bonus_short" v="Ploegbonus" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Ploegvoordelen voor bodemvruchtbaarheid in-/uitschakelen (verbeterde stikstof en organische stof)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Gewasresten inwerken" eh="f4352cb5" />
@@ -631,7 +637,6 @@
     <e k="sf_desc_hudTransparency" v="HUD-achtergrondtransparantie" eh="d20d72dc" />
     <e k="sf_desc_seasonalEffects" v="Seizoensgestuurde bodemveranderingen" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Regen veroorzaakt uitspoeling van voedingsstoffen" eh="82fec75d" />
-    <e k="sf_desc_weatherSource" v="Rain source for soil effects: real weather, or a synthetic Arid/Normal/Wet climate for short months" />
     <e k="sf_desc_plowingBonus" v="Ploegbonus voor bodemherstel" eh="23522b97" />
     <e k="sf_desc_residueIncorporation" v="Grondbewerking geeft voedingsstoffen uit resten vrij" eh="e8cd556b" />
     <e k="sf_desc_weedPressure" v="Onkruidverspreiding bijhouden en bestraffen" eh="df20c38d" />
