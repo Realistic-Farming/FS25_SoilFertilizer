@@ -10,9 +10,10 @@
 - Keep it honest: near-term is committed, mid-term is intended, long-term is aspirational.
 
 ## Current baseline
-- Version at baseline: v2.4.6.0 (development)
-- Audit reference: ecosystem-dev-tracking Point 1-8 docs (baseline v3); CLAUDE-LOG.md bedrock-delegation entries 2026-07-08
-- Baseline date: 2026-07-08
+- Version at baseline: v2.4.7.0 (development); the pre-release testing cycle for the disease cluster + physical fungicides + the Refined engine adoption.
+- Refined per-pixel value-map engine (WizardlyPayload's #736) adopted and merged into development (cd871bd7); our simulation runs on top of it. The old SoilLayerInstaller handshake is no longer required.
+- Audit reference: ecosystem-dev-tracking Point 1-8 docs (baseline v3); CLAUDE-LOG.md through the 2026-07-24 spatial-soil drop
+- Baseline date: 2026-07-08 (updated 2026-07-25)
 
 ## Near-term (next release cycle)
 - [ ] Adopt NetworkSync v2 sub-module delta: add `onWriteDelta`/`onReadDelta` to SoilNetworkSyncBridge so only changed fields sync instead of the whole field map.
@@ -25,8 +26,8 @@
 - [ ] Emit a clean disease-at-harvest signal (pathogen id + pressure) for an external diseased-food/mycotoxin model. Data already retained on fieldData at harvest; expose it deliberately.
 
 ## Long-term / aspirational
-- [ ] Deeper agronomy passes as the sim matures (compaction, cover, rotation tuning) without breaking the one-yield-truth pillar.
-- [ ] Per-pixel mode parity and richer SoilLayerInstaller handshake coverage.
+- [~] Deeper agronomy passes as the sim matures (compaction, cover, rotation tuning) without breaking the one-yield-truth pillar. Progress: no-till OM gradient (#738) and the rotation planner (#739) landed this cycle; compaction and cover remain.
+- [x] Per-pixel value-map parity: shipped via the Refined engine adoption (#736). The SoilLayerInstaller handshake is retired (the installer is no longer required).
 
 ## Cross-mod / ecosystem dependencies
 - [ ] NetworkSync v2 delta adoption (blocks on: FS25_NetworkSync v2.0.0.0, now released; this is an opt-in on our side).
@@ -37,5 +38,6 @@
 ## Deferred / parked
 - Precision Farming integration: never. Permanent stand-down house rule, not a roadmap item.
 - Grass FIELD crop parity (weed/pest/disease + OM/organic + yield-% for grass grown on a real field): SCOPED IN 2026-07-16 (was "parked by design"). New rule: meadow grass stays soil-aware only (out of those models), but grass on a managed FIELD participates like any crop. Build surface: re-gate the `not isGrass` skips (SoilFertilitySystem.lua:269 weed / 287 pest / ~324 disease) on meadow-vs-field using the FieldSentry `isMeadow` discriminator (SoilFertilitySystem.lua:3016) instead of fruit type, and give grass fruit types disease-susceptibility + yield-% values (balance pass). Feeds Feed Provenance (a grass FIELD then seeds disease automatically via the harvest bus). Meadow grass (no fieldId) stays neutral and out.
-- Rotation Foresight v2: an at-the-drill / sowing pre-plant prompt. Needs a reachable sowing/pre-plant hook; v1 ships on the field-detail / scout / FarmTablet surface and does not need it. (ledger OPEN A)
-- Disease progressive reveal: a richer readout where the Disease track mirrors the intel ladder - blank unscouted, "present" once the dog flags it, full % + name once scouted. Post-rollout upgrade; needs per-field knowledge state in SoilHUD. (ledger, 2026-07)
+- Rotation Foresight v2: an at-the-drill / sowing pre-plant prompt. Needs a reachable sowing/pre-plant hook. v1 SHIPPED this cycle on the field-detail / scout / FarmTablet surface (#739 data surface + the in-menu rotation planner dialog #744 + the FarmTablet app); v2 (the sowing-time prompt) still needs the hook. (ledger OPEN A)
+- Disease progressive reveal: a richer readout where the Disease track mirrors the intel ladder - blank unscouted, "present" once the dog flags it, full % + name once scouted. First half SHIPPED: the unscouted indicator (cb29b018) reads UNKNOWN instead of clean green. The "present once the dog flags it" middle rung and full per-field knowledge state in SoilHUD remain. (ledger, 2026-07)
+- #740 World Climate selection UI: the player-facing climate picker for the short-month rain fill is in review as Wizard PR #747 (renames the control to World Climate, 4-chip picker, 26 languages). Merge lands the UI on the already-built mechanism.
