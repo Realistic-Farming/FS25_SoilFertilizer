@@ -477,7 +477,8 @@
     <e k="sf_pda_col_priority" v="Urgență" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Nevoi" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Toate câmpurile sunt în stare bună." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Câmpurile listate în dreapta au nevoie de tratament. Fă clic pe un rând pentru a vedea inputurile recomandate și cantitățile estimate." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Câmpurile din dreapta au nevoie de tratament. Selectați un rând pentru a vedea planul dedesubt." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Selectați un câmp deasupra pentru a vedea rețeta de tratament." eh="522cca27" />
     <e k="sf_pda_need_n" v="Azot" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potasiu" eh="3a4edc67" />

@@ -476,7 +476,8 @@
     <e k="sf_pda_col_priority" v="緊急度" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="必要項目" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="すべてのフィールドが良好な状態です。" eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="右側にリストされているフィールドは処理が必要です。行をクリックすると、推奨される投入物と推定数量が表示されます。" eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="右側のフィールドは処理が必要です。行を選択すると下に計画が表示されます。" eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="上のフィールドを選択すると処理計画が表示されます。" eh="522cca27" />
     <e k="sf_pda_need_n" v="窒素" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="リン" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="カリウム" eh="3a4edc67" />

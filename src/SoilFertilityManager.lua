@@ -105,7 +105,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Rotation Planner dialog registered")
         end
 
-        -- Treatment Detail dialog (opened from PDA Screen treatment list + SF_TREATMENT hotkey)
+        -- Treatment Detail dialog (hotkey / underfoot; PDA Treatment tab uses inline pane)
         if SoilTreatmentDialog and g_gui then
             SoilTreatmentDialog.register(modDirectory)
             SoilLogger.info("Soil Treatment dialog registered")

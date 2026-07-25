@@ -6,9 +6,9 @@
     Layout:
       LEFT  (460px) - context-sensitive sidebar:
           Overview tab  → Full field list (N/P/K/pH/OM/Status), clickable → field detail
-          Map tab       → Simple jump list (Field# + Status chip), clickable → centers mini-map
-          Treatment tab → Summary stats + hint text
-      RIGHT (1000px) - tab content panels (3 tabs: Overview, Soil Map, Treatment)
+          Treatment tab → Summary stats + hint text (larger type)
+      RIGHT (1000px) - tab content panels (2 tabs: Overview, Treatment)
+          Treatment → urgent field list + inline prescription pane under the list
 -->
 <GUI name="menuSoilFertilizer">
   <GuiElement profile="fs25_menuContainer">
@@ -57,26 +57,26 @@
           </GuiElement>
         </GuiElement>
 
-        <!-- SIDEBAR B: Treatment summary shown on Treatment tab -->
+        <!-- SIDEBAR B: Treatment summary shown on Treatment tab (larger type) -->
         <GuiElement id="sidebarTreatment" position="0px 0px" width="420px" height="640px" visible="false">
           <Text profile="sf_sectionHeader" text="$l10n_sf_pda_section_attention" position="10px -10px"/>
-          <ThreePartBitmap width="400px" height="220px" position="10px -42px">
+          <ThreePartBitmap width="400px" height="240px" position="10px -42px">
             <GuiElement profile="fs25_subCategoryContainer" width="360px">
-              <Text profile="sf_statLabel" text="$l10n_sf_pda_needs_fert_label"   position="10px -20px"  size="230px 22px"/>
-              <Text profile="sf_statValue" id="treatStatNeedsFert" text="0"        position="245px -20px" size="100px 22px"/>
-              <Text profile="sf_statLabel" text="$l10n_sf_pda_weed_label"         position="10px -48px"  size="230px 22px"/>
-              <Text profile="sf_statValue" id="treatStatWeed"      text="0"        position="245px -48px" size="100px 22px"/>
-              <Text profile="sf_statLabel" text="$l10n_sf_pda_pest_label"         position="10px -76px"  size="230px 22px"/>
-              <Text profile="sf_statValue" id="treatStatPest"      text="0"        position="245px -76px" size="100px 22px"/>
-              <Text profile="sf_statLabel" text="$l10n_sf_pda_disease_label"      position="10px -104px" size="230px 22px"/>
-              <Text profile="sf_statValue" id="treatStatDisease"   text="0"        position="245px -104px" size="100px 22px"/>
-              <Text profile="sf_statLabel" text="$l10n_sf_pda_total_urgent_label" position="10px -148px" size="230px 22px"/>
-              <Text profile="sf_statValue" id="treatStatTotal"     text="0"        position="245px -148px" size="100px 22px"/>
+              <Text profile="sf_treatStatLabel" text="$l10n_sf_pda_needs_fert_label"   position="10px -22px"  size="230px 26px"/>
+              <Text profile="sf_treatStatValue" id="treatStatNeedsFert" text="0"        position="245px -22px" size="100px 26px"/>
+              <Text profile="sf_treatStatLabel" text="$l10n_sf_pda_weed_label"         position="10px -54px"  size="230px 26px"/>
+              <Text profile="sf_treatStatValue" id="treatStatWeed"      text="0"        position="245px -54px" size="100px 26px"/>
+              <Text profile="sf_treatStatLabel" text="$l10n_sf_pda_pest_label"         position="10px -86px"  size="230px 26px"/>
+              <Text profile="sf_treatStatValue" id="treatStatPest"      text="0"        position="245px -86px" size="100px 26px"/>
+              <Text profile="sf_treatStatLabel" text="$l10n_sf_pda_disease_label"      position="10px -118px" size="230px 26px"/>
+              <Text profile="sf_treatStatValue" id="treatStatDisease"   text="0"        position="245px -118px" size="100px 26px"/>
+              <Text profile="sf_treatStatLabel" text="$l10n_sf_pda_total_urgent_label" position="10px -164px" size="230px 26px"/>
+              <Text profile="sf_treatStatValue" id="treatStatTotal"     text="0"        position="245px -164px" size="100px 26px"/>
             </GuiElement>
           </ThreePartBitmap>
-          <Text profile="sf_hintText" id="treatHintText"
+          <Text profile="sf_treatHintText" id="treatHintText"
                 text="$l10n_sf_pda_treatment_hint"
-                position="10px -275px" size="390px 220px" wrapText="true" textMaxNumLines="6" autoFitHeight="true"/>
+                position="10px -300px" size="390px 220px" wrapText="true" textMaxNumLines="6" autoFitHeight="true"/>
         </GuiElement>
 
       </GuiElement>
@@ -123,21 +123,21 @@
               position="0px 350px" size="1000px 40px" visible="false"/>
       </GuiElement>
 
-      <!-- TAB 2: TREATMENT PLAN -->
+      <!-- TAB 2: TREATMENT PLAN (list + inline detail pane under it) -->
       <GuiElement id="treatmentContent" position="0px 0px" width="1000px" height="668px" visible="false">
         <Text profile="sf_sectionHeader" text="$l10n_sf_pda_treatment_section_title" position="0px 648px"/>
-        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_field"    position="8px 618px" size="80px 24px"/>
-        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_priority" position="90px 618px" size="120px 24px"/>
-        <Text profile="sf_colHeader"      text="$l10n_sf_pda_col_needs"    position="220px 618px" size="740px 24px"/>
-        <GuiElement id="treatmentListContainer" position="0px 100px" width="1000px" height="508px">
+        <Text profile="sf_treatColHeader" text="$l10n_sf_pda_col_field"    position="8px 616px" size="80px 26px"/>
+        <Text profile="sf_treatColHeader" text="$l10n_sf_pda_col_priority" position="90px 616px" size="120px 26px"/>
+        <Text profile="sf_treatColHeader" text="$l10n_sf_pda_col_needs"    position="220px 616px" size="740px 26px"/>
+        <GuiElement id="treatmentListContainer" position="0px 340px" width="1000px" height="268px">
           <SmoothList id="treatmentList" profile="sf_smoothList"
                       startClipperElementName="tlStart"
                       endClipperElementName="tlEnd">
-            <ListItem profile="sf_listRow" onClick="onClickTreatmentRow">
+            <ListItem profile="sf_treatListRow" onClick="onClickTreatmentRow">
               <Bitmap profile="sf_rowBg" name="alternating"/>
-              <Text profile="sf_cellLeft"  name="treatRowId"      size="80px 28px"/>
-              <Text profile="sf_cellRight" name="treatRowUrgency" position="90px 0" size="120px 28px"/>
-              <Text profile="sf_cellLeft"  name="treatRowNeeds"   position="220px 0" size="760px 28px"/>
+              <Text profile="sf_treatCellLeft"  name="treatRowId"      size="80px 32px"/>
+              <Text profile="sf_treatCellRight" name="treatRowUrgency" position="90px 0" size="120px 32px"/>
+              <Text profile="sf_treatCellLeft"  name="treatRowNeeds"   position="220px 0" size="760px 32px"/>
             </ListItem>
           </SmoothList>
           <Bitmap profile="fs25_secondaryMenuStartClipper" name="tlStart"/>
@@ -146,9 +146,45 @@
             <Slider profile="fs25_listSlider" dataElementId="treatmentList"/>
           </ThreePartBitmap>
         </GuiElement>
+
+        <!-- Inline prescription under the field list (no dialog) -->
+        <GuiElement id="treatmentDetailPane" position="0px 8px" width="1000px" height="320px">
+          <ThreePartBitmap width="960px" height="310px" position="0px 5px">
+            <GuiElement profile="fs25_subCategoryContainer" width="920px">
+              <Text profile="sf_treatDetailTitle" id="treatDetailTitle" text="" position="10px -10px" size="900px 28px"/>
+              <Text profile="sf_treatDetailEmpty" id="treatDetailEmpty"
+                    text="$l10n_sf_pda_treatment_select"
+                    position="10px -130px" size="900px 48px"/>
+              <GuiElement id="treatDetailBody" position="0px 0px" width="920px" height="310px" visible="false">
+                <Text profile="sf_treatDetailSection" text="$l10n_sf_treat_section_soil" position="10px -40px" size="900px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_col_ph" position="10px -64px" size="70px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatPH" position="90px -64px" size="810px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_col_om" position="10px -88px" size="70px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatOM" position="90px -88px" size="810px 22px"/>
+
+                <Text profile="sf_treatDetailSection" text="$l10n_sf_treat_section_fert" position="10px -118px" size="900px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_col_n" position="10px -142px" size="70px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatN" position="90px -142px" size="810px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_col_p" position="10px -166px" size="70px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatP" position="90px -166px" size="810px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_col_k" position="10px -190px" size="70px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatK" position="90px -190px" size="810px 22px"/>
+
+                <Text profile="sf_treatDetailSection" text="$l10n_sf_treat_section_prot" position="10px -220px" size="900px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_need_weed" position="10px -244px" size="120px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatWeed" position="140px -244px" size="760px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_need_pest" position="10px -268px" size="120px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatPest" position="140px -268px" size="760px 22px"/>
+                <Text profile="sf_treatDetailLabel" text="$l10n_sf_pda_need_disease" position="10px -292px" size="120px 22px"/>
+                <Text profile="sf_treatDetailAction" id="pdaTreatDisease" position="140px -292px" size="760px 22px"/>
+              </GuiElement>
+            </GuiElement>
+          </ThreePartBitmap>
+        </GuiElement>
+
         <Text profile="sf_emptyHint" id="treatmentEmptyHint"
               text="$l10n_sf_pda_no_treatment"
-              position="0px 350px" size="1000px 40px" visible="false"/>
+              position="0px 480px" size="1000px 40px" visible="false"/>
       </GuiElement>
 
       <!-- Tab bar - 2 tabs, evenly spaced -->
@@ -264,6 +300,55 @@
       <textSize value="14px"/>
       <textAlignment value="center"/>
       <textColor value="$preset_colorWhite_50"/>
+    </Profile>
+    <!-- Treatment tab: slightly larger type to use dead space -->
+    <Profile name="sf_treatStatLabel" extends="sf_statLabel">
+      <textSize value="16px"/>
+      <size value="230px 26px"/>
+    </Profile>
+    <Profile name="sf_treatStatValue" extends="sf_statValue">
+      <textSize value="16px"/>
+      <size value="100px 26px"/>
+    </Profile>
+    <Profile name="sf_treatHintText" extends="sf_hintText">
+      <textSize value="15px"/>
+    </Profile>
+    <Profile name="sf_treatColHeader" extends="sf_colHeader">
+      <textSize value="15px"/>
+    </Profile>
+    <Profile name="sf_treatListRow" extends="sf_listRow">
+      <height value="32px"/>
+    </Profile>
+    <Profile name="sf_treatCellLeft" extends="sf_cellLeft">
+      <textSize value="15px"/>
+    </Profile>
+    <Profile name="sf_treatCellRight" extends="sf_treatCellLeft">
+      <textAlignment value="right"/>
+    </Profile>
+    <Profile name="sf_treatDetailTitle" extends="fs25_textDefault" with="anchorTopLeft">
+      <textSize value="16px"/>
+      <textBold value="true"/>
+      <textColor value="0.35 0.85 0.40 1.0"/>
+    </Profile>
+    <Profile name="sf_treatDetailEmpty" extends="fs25_textDefault" with="anchorTopLeft">
+      <textSize value="15px"/>
+      <textAlignment value="center"/>
+      <textColor value="$preset_colorWhite_50"/>
+    </Profile>
+    <Profile name="sf_treatDetailSection" extends="fs25_textDefault" with="anchorTopLeft">
+      <textSize value="14px"/>
+      <textBold value="true"/>
+      <textUpperCase value="true"/>
+      <textColor value="1 0.8 0.2 1"/>
+    </Profile>
+    <Profile name="sf_treatDetailLabel" extends="fs25_textDefault" with="anchorTopLeft">
+      <textSize value="14px"/>
+      <textColor value="0.65 0.65 0.65 1"/>
+    </Profile>
+    <Profile name="sf_treatDetailAction" extends="fs25_textDefault" with="anchorTopLeft">
+      <textSize value="14px"/>
+      <textBold value="true"/>
+      <textColor value="$preset_colorWhite"/>
     </Profile>
   </GUIProfiles>
 </GUI>
