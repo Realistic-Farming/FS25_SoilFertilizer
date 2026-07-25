@@ -74,9 +74,214 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
+    addConsoleCommand("SoilProbe741", "TEMP #741: dump HarvestMission methods + a live instance to log.txt", "consoleProbe741", self)
+    addConsoleCommand("SoilProbeWeather", "TEMP WeatherGuard: dump the base weather + forecast API to log.txt (run on HOST and CLIENT, then diff)", "consoleProbeWeather", self)
     addConsoleCommand("soilfertility", "Show all soil commands", "consoleCommandHelp", self)
 
     SoilLogger.info("Console commands registered")
+end
+
+-- ── TEMP #741 PROBE (remove after we capture the HarvestMission hook) ──────
+-- HarvestMission is withheld from the SDK dump, so introspect the live global
+-- class + a live instance to find the deposit/success method and the liters fields.
+function SoilSettingsGUI:consoleProbe741()
+    local function P(...)
+        local t = {}
+        for i = 1, select("#", ...) do t[i] = tostring(select(i, ...)) end
+        print("SF741PROBE: " .. table.concat(t, "  "))
+    end
+    local H = HarvestMission
+    if not H then P("no HarvestMission global"); return "SF741PROBE: no HarvestMission global" end
+
+    -- Source file:line of the key methods (tells us where the bodies live).
+    if debug and debug.getinfo then
+        for _, n in ipairs({ "fillSold", "getMaxCutLiters", "getCompletion", "finish", "validate", "getStealingCosts" }) do
+            local f = H[n]
+            if type(f) == "function" then
+                local ok, info = pcall(debug.getinfo, f, "S")
+                if ok and info then P("src", n, "=", (info.short_src or info.source), ":", info.linedefined) end
+            end
+        end
+    end
+
+    -- Enumerate EVERY active mission so we SEE what is present (no guessing on the type string).
+    local target
+    local mm = g_missionManager
+    if mm and mm.missions then
+        P("-- all active missions (", #mm.missions, ") --")
+        for i, m in ipairs(mm.missions) do
+            local tn, isHarv = "?", false
+            pcall(function() tn = (m.getMissionTypeName and m:getMissionTypeName()) or "?" end)
+            pcall(function() isHarv = (m.isa and m:isa(H)) or false end)
+            local hasMax = type(m.getMaxCutLiters) == "function"
+            P("  mission", i, "type=", tn, "isaHarvest=", isHarv, "hasGetMaxCutLiters=", hasMax)
+            if not target and (isHarv or tn == "HarvestMission" or hasMax) then target = m end
+        end
+    else
+        P("no g_missionManager.missions")
+    end
+
+    if not target then
+        P("(no harvest mission found -- accept a Harvesting contract, keep it RUNNING, then re-run)")
+        P("=== end probe ==="); return "SF741PROBE: no harvest mission (see log)"
+    end
+
+    P("-- TARGET harvest mission instance fields --")
+    for k, v in pairs(target) do
+        local ty = type(v)
+        P("  field", k, "=", (ty == "table" or ty == "function") and ty or v)
+    end
+    if type(target.harvest) == "table" then
+        for k, v in pairs(target.harvest) do P("  harvest.", k, "=", (type(v) == "table") and "table" or v) end
+    end
+    local ok1, maxLit = pcall(function() return target.getMaxCutLiters and target:getMaxCutLiters() end)
+    P("  eval getMaxCutLiters() =", ok1 and tostring(maxLit) or "err")
+    local ok2, comp = pcall(function() return target.getCompletion and target:getCompletion() end)
+    P("  eval getCompletion() =", ok2 and tostring(comp) or "err")
+    P("=== end probe ===")
+    return "SF741PROBE written to log.txt -- tell Claude"
+end
+
+-- ── TEMP WeatherGuard PROBE (the WG-1 build-gating confirm) ───────────────
+-- Weather / WeatherForecast are withheld from the SDK dump, the LUADOC and
+-- lua-scripting (exactly like HarvestMission was for #741), so introspect the
+-- live objects instead of guessing.
+--
+-- HOW TO ANSWER THE MP SYNC QUESTION: run this on the DEDICATED SERVER and on
+-- a joined CLIENT at the same in-game time, then diff the two FINGERPRINT
+-- lines. Identical fingerprint = the forecast is engine-replicated and the
+-- WeatherGuard forecast getters are safe to advertise on all peers. Divergent
+-- fingerprint = the forecast is per-peer and WeatherGuard has to read it
+-- server-side and sync it.
+function SoilSettingsGUI:consoleProbeWeather()
+    local function P(...)
+        local t = {}
+        for i = 1, select("#", ...) do t[i] = tostring(select(i, ...)) end
+        print("SFWGPROBE: " .. table.concat(t, "  "))
+    end
+
+    local env = g_currentMission and g_currentMission.environment
+    if not env then P("no g_currentMission.environment"); return "SFWGPROBE: no environment" end
+
+    P("=== peer role ===")
+    local dyn = g_currentMission.missionDynamicInfo
+    P("  isServer=", g_currentMission.isServer, " isClient=", g_currentMission.isClient,
+      " isMP=", dyn and dyn.isMultiplayer, " isDedicated=", dyn and dyn.isDedicatedServer)
+
+    P("=== calendar (the getClimate season confirm) ===")
+    P("  currentDay=", env.currentDay, " monotonicDay=", env.currentMonotonicDay,
+      " dayTime=", env.dayTime, " currentPeriod=", env.currentPeriod, " daysPerPeriod=", env.daysPerPeriod)
+    P("  currentSeason=", env.currentSeason, " (type ", type(env.currentSeason), ")")
+    if Season then
+        for _, n in ipairs({ "SPRING", "SUMMER", "AUTUMN", "WINTER", "NUM_SEASONS" }) do
+            P("  Season." .. n .. " =", Season[n])
+        end
+    else
+        P("  no Season global")
+    end
+
+    local w = env.weather
+    if not w then P("no environment.weather"); P("=== end probe ==="); return "SFWGPROBE: no weather" end
+
+    P("=== weather object: candidate methods (present/absent) ===")
+    for _, n in ipairs({ "getRainFallScale", "getIsRaining", "getWeatherTypeAtTime",
+                         "getWeatherObjectByIndex", "getForecastInstanceVariation",
+                         "getCurrentTemperature", "getTemperature", "getIsWeatherActive" }) do
+        P("  w." .. n .. " =", type(w[n]))
+    end
+    P("  w.currentWeather =", tostring(w.currentWeather), " (Claude(A)'s suspected no-op field)")
+    P("  w.weatherType    =", tostring(w.weatherType))
+
+    P("=== live current-sky reads ===")
+    local function ev(label, fn)
+        local ok, v = pcall(fn)
+        P("  " .. label .. " =", ok and tostring(v) or ("ERR " .. tostring(v)))
+    end
+    ev("getRainFallScale()", function() return w:getRainFallScale() end)
+    ev("getIsRaining()",     function() return w:getIsRaining() end)
+    ev("cloudCoverage",      function() return env.cloudUpdater:getCloudCoverage() end)
+    ev("temperatureAtTime",  function() return w.temperatureUpdater:getTemperatureAtTime(env.dayTime) end)
+    ev("weatherTypeAtTime(now)", function()
+        return w:getWeatherTypeAtTime(env.currentMonotonicDay or env.currentDay, env.dayTime)
+    end)
+
+    P("=== forecast surface ===")
+    P("  w.forecast =", type(w.forecast), "  w.forecastItems =", type(w.forecastItems),
+      " count=", w.forecastItems and #w.forecastItems or "n/a")
+    if type(w.forecast) == "table" then
+        for _, n in ipairs({ "dataForTime", "getHourlyForecast", "fillWeatherForecast", "getForecast" }) do
+            P("  w.forecast." .. n .. " =", type(w.forecast[n]))
+        end
+        for k, v in pairs(w.forecast) do
+            local ty = type(v)
+            P("  forecast field", k, "=", (ty == "table" or ty == "function") and ty or v)
+        end
+    end
+
+    -- The native horizon: how far ahead the base game actually fills.
+    -- This is the "how many days without RealisticWeather" confirm.
+    local items = w.forecastItems
+    if type(items) == "table" and #items > 0 then
+        local baseDay = env.currentMonotonicDay or env.currentDay or 1
+        local first, last = items[1], items[#items]
+        local lastEndDay = (tonumber(last.startDay) or baseDay)
+            + ((tonumber(last.startDayTime) or 0) + (tonumber(last.duration) or 0)) / 86400000
+        P("  NATIVE HORIZON: items=", #items, " firstStartDay=", first.startDay,
+          " lastEndDay~=", string.format("%.2f", lastEndDay),
+          " daysAhead~=", string.format("%.2f", lastEndDay - baseDay))
+
+        P("  -- first 10 forecast items --")
+        local fp = {}
+        for i = 1, math.min(10, #items) do
+            local it = items[i]
+            local wt = "?"
+            pcall(function()
+                local obj = w:getWeatherObjectByIndex(it.season, it.objectIndex)
+                wt = obj and obj.weatherType or "?"
+            end)
+            local rain = "?"
+            pcall(function()
+                local v = w:getForecastInstanceVariation(it)
+                rain = v and v.rain and v.rain.rainfallScale or "?"
+            end)
+            P("   [", i, "] startDay=", it.startDay, " startDayTime=", it.startDayTime,
+              " dur=", it.duration, " season=", it.season, " objIdx=", it.objectIndex,
+              " weatherType=", wt, " rainfallScale=", rain)
+            fp[i] = tostring(it.startDay) .. ":" .. tostring(it.startDayTime)
+                 .. ":" .. tostring(it.objectIndex) .. ":" .. tostring(it.season)
+            if i == 1 then
+                for k, v in pairs(it) do
+                    P("     item1 field", k, "=", (type(v) == "table") and "table" or v)
+                end
+            end
+        end
+        -- THE MP DIFF LINE: compare this single line between host and client.
+        P("  FINGERPRINT day=", baseDay, " | ", table.concat(fp, " , "))
+    else
+        P("  no forecastItems on this map (WeatherForecastHUD guards for exactly this)")
+    end
+
+    -- Claude(A)'s documented path, tested head-on so we can say which one is real.
+    P("=== forecast:dataForTime path (Claude(A)'s route) ===")
+    if type(w.forecast) == "table" and type(w.forecast.dataForTime) == "function" then
+        local baseDay = env.currentMonotonicDay or env.currentDay or 1
+        for _, d in ipairs({ 0, 1, 3, 7, 9, 14 }) do
+            local ok, obj = pcall(function() return w.forecast:dataForTime(baseDay + d, env.dayTime) end)
+            local rain = "?"
+            if ok and obj then
+                pcall(function()
+                    local v = w:getForecastInstanceVariation(obj)
+                    rain = v and v.rain and v.rain.rainfallScale or "?"
+                end)
+            end
+            P("  +", d, "d -> obj=", ok and tostring(obj) or ("ERR " .. tostring(obj)), " rainfallScale=", rain)
+        end
+    else
+        P("  forecast:dataForTime NOT present (the forecastItems path is the real one)")
+    end
+
+    P("=== end probe ===")
+    return "SFWGPROBE written to log.txt -- run on HOST and CLIENT, then diff the FINGERPRINT line"
 end
 
 -- ── REFINED: value map debug commands ─────────────────────
