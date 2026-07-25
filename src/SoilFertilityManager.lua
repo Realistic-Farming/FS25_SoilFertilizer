@@ -99,6 +99,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Field Detail dialog registered")
         end
 
+        -- Rotation Planner dialog (Wizard UI brief #739; PDA EXTRA_2)
+        if RotationPlannerDialog and g_gui then
+            RotationPlannerDialog.register(modDirectory)
+            SoilLogger.info("Rotation Planner dialog registered")
+        end
+
         -- Treatment Detail dialog (opened from PDA Screen treatment list + SF_TREATMENT hotkey)
         if SoilTreatmentDialog and g_gui then
             SoilTreatmentDialog.register(modDirectory)
@@ -672,6 +678,12 @@ function SoilFertilityManager:activateSoilSystem()
 
         self.soilSystem:prePopulateAllZoneData()
         self:seedGRLEFromFieldData()
+
+        -- REFINED: seed / migrate the per-pixel value maps once fieldData is final.
+        -- No-op when the maps were restored from the savegame files.
+        if self.soilSystem.seedValueMaps then
+            self.soilSystem:seedValueMaps()
+        end
     end)
 
     if not ok then
@@ -1245,6 +1257,11 @@ function SoilFertilityManager:saveSoilData()
     else
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
     end
+
+    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
+    if self.soilSystem.valueMaps then
+        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+    end
 end
 
 --- Load soil data from XML file
@@ -1352,6 +1369,19 @@ end
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
 function SoilFertilityManager:update(dt)
+    -- REFINED: periodic value-map checksum broadcast (MP drift detection).
+    -- Server-only, every 5 real minutes, only when clients are connected.
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer then
+        self._vmChecksumTimer = (self._vmChecksumTimer or 0) + dt
+        if self._vmChecksumTimer >= 300000 then
+            self._vmChecksumTimer = 0
+            if SoilNetworkEvents_BroadcastValueMapChecksums then
+                SoilNetworkEvents_BroadcastValueMapChecksums()
+            end
+        end
+    end
+
     -- Deferred fill type registration retry (dedicated server timing fix: #431)
     -- Also re-patches ALL vehicles every frame until all custom types are resolvable,
     -- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
@@ -1493,10 +1523,17 @@ function SoilFertilityManager:_updateSoilWetness()
     end
     self._wetnessLastGameH = gameH
 
+    -- #740: soil wetness (which drives compaction susceptibility) follows the same rain
+    -- source as the rest of the sim - real weather by default, or the synthetic climate
+    -- preset - so an Arid/Wet setting makes soil correspondingly drier/wetter to compact.
     local isRaining = false
-    if env.weather and env.weather.getRainFallScale then
+    local soil = self.soilSystem
+    local thr = (SoilConstants.RAIN and SoilConstants.RAIN.MIN_RAIN_THRESHOLD) or 0.1
+    if soil and soil.getEffectiveRainScale then
+        local okR, rs = pcall(function() return soil:getEffectiveRainScale() end)
+        isRaining = okR and rs ~= nil and rs > thr
+    elseif env.weather and env.weather.getRainFallScale then
         local okR, rs = pcall(function() return env.weather:getRainFallScale() end)
-        local thr = (SoilConstants.RAIN and SoilConstants.RAIN.MIN_RAIN_THRESHOLD) or 0.1
         isRaining = okR and rs ~= nil and rs > thr
     end
 
@@ -1949,8 +1986,10 @@ function SoilFertilityManager:delete()
     if self.soilSystem then
         self.soilSystem:delete()
     end
-    if self.settings then
-        self.settings:save()
-    end
+    -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
+    -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step
+    -- with the rest of the savegame (the settings twin of the soilData-on-quit bug,
+    -- #730). Real persistence is already covered: every change point saves immediately
+    -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
 end

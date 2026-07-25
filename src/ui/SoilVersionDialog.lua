@@ -24,17 +24,28 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
-    "- See & Spray now works on every sprayer, with per-section shutoff on overlaps",
-    "    and field boundaries, plus variable-rate spot spraying (fertiliser too)",
-    "- Rotation foresight: the field-detail screen projects the next crop's yield",
-    "    before you plant, so you can plan the rotation from the soil you have",
-    "- Disease scouting: a field's named disease stays hidden on the Soil Monitor",
-    "    until you scout it - the monitor shows 'scout to identify' instead",
-    "- Fixed (#730): mowing meadows no longer drops N/P/K to the floor in one pass",
-    "- Fixed (#728): Vredo slurry spreader no longer treated as a chemical sprayer",
-    "- Fixed (#720): crop tuning edits now survive save and reload",
-    "- Fixed (#726): fungicide application no longer errors on some fields",
-    "- Dual and quad-tank sprayers now apply from all tanks correctly"
+    "- NEW SOIL ENGINE (thanks to WizardlyPayload): soil is now stored",
+    "    per pixel across the map, not as one average per field. Spray half a",
+    "    field and the map shows it. All 11 layers render at PF quality.",
+    "- The Soil Layer Installer is NO LONGER REQUIRED. The maps are built at",
+    "    startup on any map. Already patched? Nothing breaks, leave it as is.",
+    "- Pest and disease can finally build up. They were capped below the level",
+    "    where they cost you anything, so most players never saw them at all.",
+    "- Unscouted ground no longer shows as clean green on the disease map. It",
+    "    reads a neutral \"Unscouted\" state until you scout it, whatever is hiding.",
+    "- Fungicide, herbicide and insecticide protection now scale with your season",
+    "    length, so short 1-day months no longer give years of cover.",
+    "- Six real fungicides you can buy and spray: Propiconazole, Azoxystrobin,",
+    "    Boscalid, Mancozeb, Metalaxyl and Tebuconazole, each as an IBC tank.",
+    "    Scout a field and it names the one that best controls its disease.",
+    "- Harvesting contracts now reach 100%. When poor soil trimmed your yield",
+    "    the contract's target used to move out of reach, so honest work never",
+    "    finished. The target is now underwritten so the contract can complete.",
+    "- Short months feel a living climate. On short calendars the game rarely",
+    "    rains, so soil went stale; SoilFertilizer now tops up the rain a short",
+    "    month skips, at your World Climate (Arid / Normal / Wet). Real sky only",
+    "    opts out of the fill. Real weather stays in charge; normal-length saves",
+    "    are unchanged.",
 }
 
 -- ── i18n helper ───────────────────────────────────────────
@@ -113,7 +124,7 @@ function SoilVersionDialog:onOpen()
 
     -- Title
     if self._elTitle then
-        self._elTitle:setText("FS25_SoilFertilizer  |  v" .. (self._version or "?"))
+        self._elTitle:setText("FS25_SoilFertilizer REFINED  |  v" .. (self._version or "?"))
     end
 
     -- "What's new" header

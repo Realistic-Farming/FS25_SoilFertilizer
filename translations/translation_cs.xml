@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="【中文】土壤与肥料模组" eh="f31197fb" />
@@ -10,6 +10,18 @@
     <e k="sf_seasonal_effects_long" v="开启/关闭季节对土壤养分的影响（春季生长加成、秋季生长减缓）" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="降雨影响" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="开启/关闭降雨对土壤的影响（养分流失、酸碱度变化）" eh="de3b14b9" />
+    <e k="sf_ws_short" v="World Climate" />
+    <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
+    <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
+    <e k="sf_ws_1" v="Real sky only" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
+    <e k="sf_ws_blurb_4" v="Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." />
+    <e k="sf_ws_blurb_3" v="Normal: balanced seasonal rains for short months. Default living climate." />
+    <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
+    <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
+    <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
     <e k="sf_plowing_bonus_short" v="耕地增益" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="开启/关闭耕地带来的土壤肥力加成（提升氮元素与有机质含量）" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="秸秆还田养分释放" eh="f4352cb5" />
@@ -737,6 +749,11 @@
     <e k="sf_cell_sidebar_header" v="采样单元详情" eh="6fc5243e" />
     <e k="sf_cell_coord" v="坐标" eh="99171d3a" />
     <e k="sf_cell_click_hint" v="点击地图任意位置查看该点土壤数据" eh="fc9d240b" />
+    <e k="sf_panel_hdr_smart_systems" v="[EN] Smart Systems" eh="2c27459c" />
+    <e k="sf_nav_smart_systems_label" v="[EN] Smart Systems" eh="2c27459c" />
+    <e k="sf_nav_smart_systems_desc" v="[EN] Configure Smart Sensor, See &amp; Spray and Variable Rate systems" eh="54ce9ec0" />
+    <e k="sf_nav_tuning_label" v="[EN] Constants Tuning Editor" eh="e56a0d6d" />
+    <e k="sf_nav_tuning_desc" v="[EN] Fine-tune simulation constants: depletion rates, stress growth, starting soil values" eh="0f9d6cdd" />
 
     <!-- ======================================================
          SMART SYSTEMS (admin panel section)
@@ -747,11 +764,20 @@
          SMART SENSOR PANEL
          ====================================================== -->
     <e k="sf_sensor_panel_title" v="智能传感器控制面板" eh="33809906" />
+    <e k="sf_sensor_pest" v="[EN] Pest Sensor" eh="81192ad7" />
+    <e k="sf_sensor_disease" v="[EN] Disease Sensor" eh="37955f80" />
+    <e k="sf_sensor_nutrient" v="[EN] Nutrient Sensor" eh="facbd45b" />
+    <e k="sf_sensor_state_on" v="[EN] ON" eh="90651ebe" />
+    <e k="sf_sensor_state_off" v="[EN] OFF" eh="88559a0c" />
 
     <!-- ======================================================
          SEE & SPRAY PANEL
          ====================================================== -->
     <e k="sf_see_spray_panel_title" v="识别精准喷施面板" eh="a7e00bf0" />
+    <e k="sf_see_spray_pest" v="[EN] Pest" eh="8f2aee79" />
+    <e k="sf_see_spray_disease" v="[EN] Disease" eh="e7067a8c" />
+    <e k="sf_see_spray_weed" v="[EN] Weed" eh="2b75024d" />
+    <e k="sf_see_spray_suppressed" v="[EN] All sections suppressed: no pressure detected" eh="858d9549" />
 <e k="sf_see_spray_protected"   v="0%（无胁迫区域）" />
 
     <!-- ======================================================
@@ -1007,6 +1033,7 @@
     <e k="sf_report_rotation_bonus"   v="轮作增益" />
     <e k="sf_report_rotation_fatigue" v="地力衰减：连作同种作物" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="轮作状态：正常" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="土壤健康：最优" />
     <e k="sf_report_rec_good"         v="良好" />
     <e k="sf_report_rec_fair"         v="一般" />
@@ -1110,7 +1137,107 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
 		<e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
     <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
     <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
-    </elements>
+    <e k="sf_panel_hdr_smart_sensor_sys" v="[EN] Smart Sensor System" eh="98a0d4b0" />
+    <e k="sf_panel_hdr_see_spray_sys" v="[EN] See &amp; Spray System" eh="c088f9ae" />
+    <e k="sf_panel_hdr_var_rate_sys" v="[EN] Variable Rate System" eh="31d6f5bd" />
+    <e k="sf_smart_sensor_short" v="[EN] Smart Sensor" eh="20c668af" />
+    <e k="sf_smart_sensor_long" v="[EN] Enable or disable the Smart Spray Sensor system" eh="b2eaad7b" />
+    <e k="sf_see_and_spray_short" v="[EN] See &amp; Spray" eh="528cf03f" />
+    <e k="sf_see_and_spray_long" v="[EN] Enable or disable the See &amp; Spray precision spraying system" eh="11dbdf6c" />
+    <e k="sf_variable_rate_short" v="[EN] Variable Rate" eh="ec53a1fc" />
+    <e k="sf_variable_rate_long" v="[EN] Enable or disable Variable Rate Application based on soil deficits" eh="1cd8efb1" />
+    <e k="sf_desc_smartSensorEnabled" v="[EN] Allow players to use Smart Sensor boom-section control based on live soil data" eh="7b26757b" />
+    <e k="sf_desc_seeAndSprayEnabled" v="[EN] Suppress boom sections over areas that do not need spraying" eh="324ceae5" />
+    <e k="sf_config_seeSpray" v="[EN] See &amp; Spray" eh="528cf03f" />
+    <e k="sf_config_seeSprayWeed" v="[EN] See &amp; Spray: Weed" eh="bbdbcf08" />
+    <e k="sf_config_seeSprayPest" v="[EN] See &amp; Spray: Pest" eh="7fd924e4" />
+    <e k="sf_config_seeSprayDisease" v="[EN] See &amp; Spray: Disease" eh="a5e476a8" />
+    <e k="sf_desc_variableRateEnabled" v="[EN] Adjust application rate per section based on soil nutrient deficits" eh="094e5778" />
+    <e k="sf_panel_hdr_field_boundary" v="[EN] Field Boundary Control" eh="d3314e11" />
+    <e k="sf_field_boundary_short" v="[EN] Boundary Control" eh="9322b2c5" />
+    <e k="sf_field_boundary_long" v="[EN] Enable or disable automatic field boundary section control" eh="8901fbcb" />
+    <e k="sf_desc_fieldBoundaryControl" v="[EN] Automatically shuts off boom sections that extend outside field boundaries, preventing off-field product application." eh="8de79d2b" />
+    <e k="sf_panel_hdr_overlap_prev" v="[EN] Overlap Prevention" eh="dbf6d3a1" />
+    <e k="sf_overlap_prev_short" v="[EN] Overlap Prevention" eh="dbf6d3a1" />
+    <e k="sf_overlap_prev_long" v="[EN] Enable or disable density-map-based overlap prevention" eh="c4d0710b" />
+    <e k="sf_desc_overlapPrevention" v="[EN] Automatically shuts off boom sections over ground that is already fully fertilized, preventing wasteful re-application on overlapping swaths." eh="a0a86991" />
+        <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
+    <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
+    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_name" v="IBC Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_function" v="Azoxystrobin fungicide (liquid)" />
+    <e k="sf_boscalid_title" v="Boscalid" />
+    <e k="sf_bigBag_boscalid_name" v="IBC Boscalid" />
+    <e k="sf_bigBag_boscalid_function" v="Boscalid fungicide (liquid)" />
+    <e k="sf_mancozeb_title" v="Mancozeb" />
+    <e k="sf_bigBag_mancozeb_name" v="IBC Mancozeb" />
+    <e k="sf_bigBag_mancozeb_function" v="Mancozeb fungicide (liquid)" />
+    <e k="sf_metalaxyl_title" v="Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_name" v="IBC Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_function" v="Metalaxyl fungicide (liquid)" />
+    <e k="sf_tebuconazole_title" v="Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
+    <e k="sf_treat_tank_tag" v="tank - spray" />
+    <e k="sf_treat_physical" v="%s is a sprayable product - buy the tank and spray the field" />
+    <e k="sf_sulfur_title" v="Sulfur" />
+    <e k="sf_bigBag_sulfur_name" v="IBC Sulfur" />
+    <e k="sf_bigBag_sulfur_function" v="Sulfur fungicide, organic-approved (liquid)" />
+    <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
+    <e k="sf_unscouted" v="未侦察" />
+<e k="sf_map_layer_organic_status" v="Organic Status" />
+    
+<e k="sf_layer_12" v="Organic Status" />
+    
+<e k="sf_org_legend_conventional" v="Conventional" />
+    
+<e k="sf_org_legend_transition" v="Transitioning" />
+    
+<e k="sf_org_legend_certified" v="Certified" />
+    
+<e k="sf_org_tt_conventional" v="Not in organic conversion" />
+    
+<e k="sf_org_tt_certified" v="Organic certified" />
+    
+    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
+<e k="sf_rp_status_unknown" v="Unknown" />
+    
+<e k="sf_rp_no_crop" v="-" />
+    
+<e k="sf_rp_no_history" v="No crop history yet" />
+    
+<e k="sf_rp_standing_unknown" v="Unknown" />
+    
+<e k="sf_rp_bonus_days" v="bonus %dd" />
+    
+<e k="sf_rp_title" v="Rotation Planner" />
+    
+<e k="sf_rp_open" v="Rotation Planner" />
+    
+<e k="sf_rp_farm_header" v="Farm standing" />
+    
+<e k="sf_rp_what_if" v="What if (next crop)" />
+    
+<e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
+    
+<e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
+    
+<e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
+    
+    <e k="sf_rp_no_fields" v="No fields" />
+    
+<e k="sf_rp_prev" v="Prev field" />
+    
+<e k="sf_rp_next" v="Next field" />
+    
+    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+</elements>
 </l10n>

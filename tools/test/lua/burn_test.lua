@@ -152,3 +152,36 @@ do
   at(1000); sys:applyAmendmentBurnSlice(field, OM_MAX)
   T.eq("amend burn: OM build-up never lowers an existing lime burn", field.amendBurnPenalty, LIME_MAX)
 end
+
+-- ── Finished compost is gentler than fresh slurry/manure (Arissani, 2026-07-24) ──
+-- applyFertilizer gives the COMPOST fill type its own amendment-burn cap, COMPOST_MAX, below
+-- the OM_MAX that fresh slurry/manure/digestate build up to: stabilized humus carries no free
+-- salt or ammonia to scorch a canopy. It is a smaller burn, NOT an exemption - an established
+-- crop still takes a little. (Seedling / short-cut sward stay fully exempt, handled upstream.)
+local COMPOST_MAX = SoilConstants.AMEND_BURN.COMPOST_MAX
+
+do
+  T.ok("compost burn: COMPOST_MAX is defined", COMPOST_MAX ~= nil)
+  T.ok("compost burn: gentler than fresh OM (COMPOST_MAX < OM_MAX)", COMPOST_MAX and COMPOST_MAX < OM_MAX)
+  T.ok("compost burn: not a full exemption (COMPOST_MAX > 0)", COMPOST_MAX and COMPOST_MAX > 0)
+end
+
+-- Under identical sustained application, compost caps at COMPOST_MAX and stays strictly below
+-- what fresh manure/slurry builds to.
+do
+  local compost = {}
+  local manure  = {}
+  local sys = newSys({})
+  at(0); sys:applyAmendmentBurnSlice(compost, COMPOST_MAX)   -- open each pass (first tick docks nothing)
+  at(0); sys:applyAmendmentBurnSlice(manure,  OM_MAX)
+  local t = 0
+  while t < FULL_MS * 2 do
+    t = t + 1000
+    at(t); sys:applyAmendmentBurnSlice(compost, COMPOST_MAX)
+    at(t); sys:applyAmendmentBurnSlice(manure,  OM_MAX)
+  end
+  T.near("compost burn: sustained compost caps at COMPOST_MAX", compost.amendBurnPenalty, COMPOST_MAX, 1e-6)
+  T.near("compost burn: sustained manure caps at OM_MAX", manure.amendBurnPenalty, OM_MAX, 1e-6)
+  T.ok("compost burn: compost penalty stays strictly below fresh manure",
+       compost.amendBurnPenalty < manure.amendBurnPenalty)
+end

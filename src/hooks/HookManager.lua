@@ -134,6 +134,16 @@ function HookManager:installAll(soilSystem)
     local yieldModOk = self:installYieldModifierHook()
     if yieldModOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Harvest contract underwrite (#741 / SF-29): wraps HarvestMission.getCompletion so a
+    -- base-game harvest contract on a degraded neighbour field tops up to the vanilla-
+    -- expected completion at delivery (divides out the same yield modifier the hopper hook
+    -- above applied). Server-side, fail-safe, no soil write, no farm-money move. Must run
+    -- after installYieldModifierHook so the modifier it inverts is the one in force.
+    if HarvestContractUnderwrite and HarvestContractUnderwrite.install then
+        local underwriteOk = HarvestContractUnderwrite.install(self)
+        if underwriteOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    end
+
     -- Mower hook: forage crops cut to windrow (grass, alfalfa, clover, mowed triticale…)
     local mowerOk = self:installMowerHook()
     if mowerOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -423,7 +433,7 @@ function HookManager:registerCustomSprayTypes()
     -- through to whatever vanilla spray type LPS the game uses (often very low or undefined).
     -- The result: wap.usage was tiny → nutrient gain and coverage nearly zero (issue #311).
     -- Fix: register all three with customLPS = BASE_RATE / 36000 so they drain at the calibrated rate.
-    local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
+    local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
                           "LIQUIDMANURE", "MANURE", "DIGESTATE" }
     -- Granular/solid types → inherit visual from FERTILIZER
@@ -540,7 +550,7 @@ function HookManager:installEffectTypeHook()
     self._effectSolidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                                 "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     self._effectLiquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-                                "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
+                                "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
     self._effectFertIdx = fertIdx
     self._effectLiqIdx  = liqIdx
@@ -718,7 +728,7 @@ function HookManager:installSprayTypeEffectsHook()
     -- the game's native slurry/manure systems, not the sprayer effect path - registerCustomSprayTypes
     -- only calibrates their drain rate (issue #311). Do not add them to this effects list.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-                          "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
+                          "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
 
     -- Build name-lookup sets for fast membership tests
@@ -947,7 +957,7 @@ function HookManager:installDensityMapSprayHook()
     -- so FSDensityMapUtil.updateSprayArea writes the lime ground state, not the fertilizer state.
     -- HERBICIDE is excluded - it must keep its native HERBICIDE spray type for weed density map.
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
-                          "INSECTICIDE", "FUNGICIDE",
+                          "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
@@ -1573,10 +1583,13 @@ function HookManager:installVariableRateHook()
                     if fieldId and fieldId > 0 then
                         local fd = soilSys.fieldData[fieldId]
                         if fd then
-                            local cellKey = tostring(
-                                math.floor(sx / zone.CELL_SIZE) * 10000 +
-                                math.floor(sz / zone.CELL_SIZE))
-                            local cell = fd.zoneData and fd.zoneData[cellKey]
+                            -- REFINED: per-pixel reads from the value maps (~2 m/px);
+                            -- fall back to field averages when a pixel is unwritten.
+                            local vm = (soilSys.vmAvailable and soilSys:vmAvailable()) and soilSys.valueMaps or nil
+                            local function readAt(key)
+                                if vm then return vm:readValueAtWorld(key, sx, sz) end
+                                return nil
+                            end
 
                             local nutrientVal
                             local effTarget = target
@@ -1585,19 +1598,19 @@ function HookManager:installVariableRateHook()
                                 local omTarget = SoilConstants.SPRAYER_RATE and
                                     SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS and
                                     SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS.OM or 5.0
-                                nutrientVal = (cell and cell.OM) or fd.organicMatter or omTarget
+                                nutrientVal = readAt("organicMatter") or fd.organicMatter or omTarget
                                 effTarget   = omTarget
                             elseif isN then
-                                nutrientVal = (cell and cell.N) or fd.nitrogen or target
+                                nutrientVal = readAt("nitrogen") or fd.nitrogen or target
                             elseif isP then
-                                nutrientVal = (cell and cell.P) or fd.phosphorus or target
+                                nutrientVal = readAt("phosphorus") or fd.phosphorus or target
                             elseif isK then
-                                nutrientVal = (cell and cell.K) or fd.potassium or target
+                                nutrientVal = readAt("potassium") or fd.potassium or target
                             else
                                 -- Complex NPK: use worst (lowest) of the three
-                                local n = (cell and cell.N) or fd.nitrogen   or target
-                                local p = (cell and cell.P) or fd.phosphorus or target
-                                local k = (cell and cell.K) or fd.potassium  or target
+                                local n = readAt("nitrogen")   or fd.nitrogen   or target
+                                local p = readAt("phosphorus") or fd.phosphorus or target
+                                local k = readAt("potassium")  or fd.potassium  or target
                                 nutrientVal = math.min(n, p, k)
                             end
 
@@ -2978,7 +2991,7 @@ function HookManager:installSprayerAreaHook()
                         soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters)
                     end
                     if diseaseOnlyDirect and soilSys.onFungicideAppliedDirect then
-                        soilSys:onFungicideAppliedDirect(fId, diseaseEffectiveness, sectionLiters)
+                        soilSys:onFungicideAppliedDirect(fId, diseaseEffectiveness, sectionLiters, fillType.name)
                     end
                     local entry = SoilConstants.FERTILIZER_PROFILES[fillType.name]
                     if entry and (entry.N or entry.P or entry.K) and
@@ -3134,7 +3147,7 @@ function HookManager:installSprayerAreaHook()
                                                         soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2)
                                                     end
                                                     if disOnly2 and soilSys.onFungicideAppliedDirect then
-                                                        soilSys:onFungicideAppliedDirect(fId2, disE, sLiters2)
+                                                        soilSys:onFungicideAppliedDirect(fId2, disE, sLiters2, ftName)
                                                     end
                                                     if rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                                                         soilSys:applyBurnEffect(fId2, rateMultiplier)
@@ -3176,6 +3189,10 @@ function HookManager:installSprayerAreaHook()
                                                             soilSys:markBoomCells(fieldId, boomPts)
                                                         else
                                                             soilSys:markBoomCells(fieldId, boomPts, true)
+                                                        end
+                                                        -- REFINED: paint the real boom strip on the value maps
+                                                        if soilSys.paintBoomStrip then
+                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName)
                                                         end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
@@ -3223,6 +3240,11 @@ function HookManager:installSprayerAreaHook()
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    -- REFINED: paint the real boom-width strip into the per-pixel
+                    -- value maps (continuous PF-style work strips at ~2 m/px).
+                    if boomPts and soilSys.paintBoomStrip then
+                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name)
+                    end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
                     else
@@ -4591,7 +4613,7 @@ function HookManager:installFillUnitHookEarly()
 
     local solidNames         = {"UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
-    local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
+    local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base)
     local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
@@ -4718,7 +4740,7 @@ function HookManager:installFillUnitHook()
 
     local solidNames  = {"UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
-    local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE",
+    local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base).
     local manureCompatNames = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
@@ -5057,7 +5079,7 @@ HookManager.SILO_GROUPS = {
     { base = "MANURE",           names = { "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE" } },
     { base = "LIQUIDFERTILIZER", names = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
                                            "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
-                                           "INSECTICIDE", "FUNGICIDE", "LIQUIDLIME" } },
+                                           "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE", "LIQUIDLIME" } },
 }
 
 -- Resolve SILO_GROUPS names → { baseIdx, idxList } once (cached; re-resolves while empty
@@ -5330,7 +5352,7 @@ function HookManager:installPurchaseRefillHook()
     local ALL_CUSTOM_NAMES = {
         -- Liquid
         "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-        "INSECTICIDE", "FUNGICIDE",
+        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
         "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
         -- Solid
         "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
@@ -5350,6 +5372,11 @@ function HookManager:installPurchaseRefillHook()
     local FALLBACK_PRICES = {
         UAN32 = 1.60, UAN28 = 1.50, ANHYDROUS = 1.85, STARTER = 1.70,
         LIQUIDLIME = 1.20, INSECTICIDE = 1.20, FUNGICIDE = 1.30,
+        -- Physical named fungicides (6-chemical kit): premium anchors, balance pass owns finals
+        PROPICONAZOLE = 1.40, AZOXYSTROBIN = 1.60, BOSCALID = 1.85,
+        MANCOZEB = 0.90, METALAXYL = 1.45, TEBUCONAZOLE = 1.55,
+        -- Organic-approved preventatives (OM-209): cheap, priced below the synthetic six
+        SULFUR = 0.40, COPPER_HYDROXIDE = 0.55,
         LIQUID_UREA = 1.70, LIQUID_AMS = 1.45, LIQUID_MAP = 2.00, LIQUID_DAP = 1.80, LIQUID_POTASH = 1.85,
         UREA = 1.65, AN = 1.55, AMS = 1.40, MAP = 1.95, DAP = 1.75, POTASH = 1.80, POLIFOSKA = 1.35,
         COMPOST = 0.60, BIOSOLIDS = 0.55, CHICKEN_MANURE = 0.50,
@@ -6211,7 +6238,7 @@ function HookManager:installFillTypeMaterialHook()
     -- Liquid custom types → LIQUIDFERTILIZER (all liquid, colour difference is minor)
     local LIQUID_NAMES = {
         "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-        "INSECTICIDE", "FUNGICIDE",
+        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
         "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"
     }
     local liqFertIdx = fm:getFillTypeIndexByName("LIQUIDFERTILIZER")
@@ -6320,7 +6347,7 @@ function HookManager:installSprayerVisualEffectHook()
     local remap = {}
     if liqFertIdx then
         for _, name in ipairs({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-                                 "HERBICIDE", "INSECTICIDE", "FUNGICIDE",
+                                 "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                  "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }) do
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = liqFertIdx end

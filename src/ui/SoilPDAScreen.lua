@@ -115,6 +115,7 @@ function SoilPDAScreen:initialize()
         {inputAction = "MENU_BACK"},
         {inputAction = "MENU_ACCEPT", text = tr("sf_pda_filter_all", "Filter"), callback = function() self:onClickFilter() end},
         {inputAction = "MENU_EXTRA_1", text = tr("sf_pda_btn_help", "Help"), callback = function() self:onClickHelp() end},
+        {inputAction = "MENU_EXTRA_2", text = tr("sf_rp_open", "Rotation Planner"), callback = function() self:onClickRotationPlanner() end},
     }
     self:setMenuButtonInfo(self.menuButtonInfo)
 end
@@ -630,7 +631,7 @@ function SoilPDAScreen:_buildTreatmentData()
         local hasIssue = info.needsFertilization
             or (info.weedPressure    or 0) >= PRESSURE_THRESHOLD
             or (info.pestPressure    or 0) >= PRESSURE_THRESHOLD
-            or (info.diseasePressure or 0) >= PRESSURE_THRESHOLD
+            or (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD
         if hasIssue or entry.urgency > 0 then
             table.insert(self.treatmentData, entry)
         end
@@ -715,7 +716,7 @@ function SoilPDAScreen:_refreshSummaryStats()
         sumOM = sumOM + (info.organicMatter or 3.5)
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
-        if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
+        if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
         if info.needsFertilization then attentionCount = attentionCount + 1 end
     end
 
@@ -779,7 +780,7 @@ function SoilPDAScreen:_refreshTreatmentSidebar()
         if info.needsFertilization then needsFert = needsFert + 1 end
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
-        if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
+        if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then diseaseCount = diseaseCount + 1 end
     end
 
     local function setText(el, val)
@@ -920,7 +921,7 @@ local function buildNeedsString(info)
     if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then
         table.insert(needs, tr("sf_pda_need_pest", "Insecticide"))
     end
-    if (info.diseasePressure or 0) >= PRESSURE_THRESHOLD then
+    if (info.shownDiseasePressure or 0) >= PRESSURE_THRESHOLD then
         table.insert(needs, tr("sf_pda_need_disease", "Fungicide"))
     end
 
@@ -983,3 +984,13 @@ end
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, _onMissionLoaded)
 FSBaseMission.update            = Utils.appendedFunction(FSBaseMission.update,            _onUpdate)
 FSBaseMission.delete            = Utils.appendedFunction(FSBaseMission.delete,            _onDelete)
+
+function SoilPDAScreen:onClickRotationPlanner()
+    if RotationPlannerDialog ~= nil then
+        local startId = nil
+        if self.fieldData ~= nil and self.fieldData[1] ~= nil then
+            startId = self.fieldData[1].fieldId
+        end
+        RotationPlannerDialog.show(startId)
+    end
+end

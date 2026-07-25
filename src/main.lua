@@ -34,6 +34,7 @@ source(modDirectory .. "src/utils/Logger.lua")
 source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
+source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
@@ -47,12 +48,17 @@ SFNozzleEffects.init(modDirectory)
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
+source(modDirectory .. "src/maps/SoilValueMaps.lua")
 source(modDirectory .. "src/SprayerRateManager.lua")
 source(modDirectory .. "src/SoilSensorManager.lua")
 -- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
+-- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
+-- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
+-- SoilFertilitySystem:computeYieldModifier at runtime; installed as a class hook by HookManager.
+source(modDirectory .. "src/HarvestContractUnderwrite.lua")
 source(modDirectory .. "src/OrganicCertification.lua")
 
 -- 3. Settings
@@ -72,7 +78,9 @@ source(modDirectory .. "src/ui/SoilMapOverlay.lua")
 source(modDirectory .. "src/ui/SoilMinimapLayer.lua")
 source(modDirectory .. "src/hooks/SoilMapHooks.lua")
 source(modDirectory .. "src/ui/SoilPDAScreen.lua")
+source(modDirectory .. "src/ui/RotationPlannerData.lua")
 source(modDirectory .. "src/ui/SoilFieldDetailDialog.lua")
+source(modDirectory .. "src/ui/RotationPlannerDialog.lua")
 source(modDirectory .. "src/ui/SoilTreatmentDialog.lua")
 source(modDirectory .. "src/ui/SoilScoutDialog.lua")
 source(modDirectory .. "src/ui/SoilVersionDialog.lua")

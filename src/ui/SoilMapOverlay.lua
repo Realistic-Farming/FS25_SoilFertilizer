@@ -20,7 +20,7 @@ local function tr(key, fallback)
 end
 
 -- ── Constants ─────────────────────────────────────────────
-SoilMapOverlay.LAYER_COUNT    = 11
+SoilMapOverlay.LAYER_COUNT    = 12
 SoilMapOverlay.ALPHA          = 0.72
 
 -- Sampling constants
@@ -50,6 +50,11 @@ SoilMapOverlay.C_GOOD = {0.25, 0.85, 0.25}
 SoilMapOverlay.CB_POOR = {0.90, 0.37, 0.00}
 SoilMapOverlay.CB_FAIR = {0.94, 0.86, 0.00}
 SoilMapOverlay.CB_GOOD = {0.00, 0.45, 0.70}
+
+-- Unscouted-disease tone: neutral, desaturated, brightness-distinct from the
+-- pressure ramp in both palettes so colourblind players can tell it apart.
+SoilMapOverlay.C_UNKNOWN  = {0.55, 0.57, 0.60}
+SoilMapOverlay.CB_UNKNOWN = {0.38, 0.40, 0.43}
 
 -- ── Gradient helpers ──────────────────────────────────────
 -- Shared red→amber→green gradient.  t=0 is worst (red), t=1 is best (green).
@@ -102,7 +107,16 @@ SoilMapOverlay.LAYER_ACCENT = {
     [9] = {0.80, 0.10, 0.80},  -- Disease: magenta
     [10] = {0.55, 0.30, 0.10}, -- Compaction: dark brown/orange
     [11] = {0.35, 0.85, 0.45}, -- Yield: green (high = good)
+    [12] = {0.28, 0.78, 0.38}, -- Organic status: certified green
 }
+
+-- Organic status map (layer 12): ruled colour family. Conventional is untinted
+-- (collapses with no-data). Transition = amber; certified = green. Categories,
+-- never a quality ramp.
+SoilMapOverlay.C_ORG_TRANS  = {1.00, 0.72, 0.18}
+SoilMapOverlay.C_ORG_CERT   = {0.28, 0.78, 0.38}
+SoilMapOverlay.CB_ORG_TRANS = {0.90, 0.60, 0.00}
+SoilMapOverlay.CB_ORG_CERT  = {0.00, 0.70, 0.45}
 
 -- i18n key per layer index (0 = Off)
 SoilMapOverlay.LAYER_KEYS = {
@@ -118,6 +132,7 @@ SoilMapOverlay.LAYER_KEYS = {
     [9] = "sf_map_layer_disease",
     [10] = "sf_map_layer_compaction",
     [11] = "sf_map_layer_yield",
+    [12] = "sf_map_layer_organic_status",
 }
 
 -- Inverted layers: high value = bad (urgency / pressures). Yield (11) is NOT here:
@@ -284,6 +299,26 @@ local PDA_LAYER_GRLE = {
     [10] = "compaction",
 }
 
+-- REFINED: layer index → SoilValueMaps key. These runtime bit vector maps exist
+-- on EVERY map (no GRLE authoring needed), so the engine DMV overlay - the same
+-- pipeline Precision Farming uses - becomes the primary PDA render path.
+-- Layer 7 (weed) prefers the game-native weed foliage map when the terrain has
+-- one (handled first in _pdaKickBuild); this entry is its universal fallback.
+local PDA_LAYER_VM = {
+    [1]  = "nitrogen",
+    [2]  = "phosphorus",
+    [3]  = "potassium",
+    [4]  = "pH",
+    [5]  = "organicMatter",
+    [6]  = "urgency",
+    [7]  = "weedPressure",
+    [8]  = "pestPressure",
+    [9]  = "diseasePressure",
+    [10] = "compaction",
+    [11] = "yieldEfficiency",
+    [12] = "organicStatus",
+}
+
 function SoilMapOverlay:_pdaPollBuildFinished()
     if not self._pdaBuildInFlight or not self._pdaBuildHandle then return end
     if not getIsDensityMapVisualizationOverlayReady then return end
@@ -298,6 +333,10 @@ end
 function SoilMapOverlay:_pdaKickBuild(layerIdx)
     local ov = self._pdaOverlays[self._pdaBuildIdx]
     if not ov then return end
+
+    -- Recomputed below; cleared first so a stale true can't survive a switch
+    -- to a layer that has no DMV backing on this engine/terrain.
+    self._pdaUsingDMV = false
 
     if resetDensityMapVisualizationOverlay then
         resetDensityMapVisualizationOverlay(ov)
@@ -328,6 +367,49 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
         end
     end
 
+    -- REFINED primary path: runtime per-pixel value maps (SoilValueMaps).
+    -- Available on every map, ~2 m/px - crisp PF-quality colouring with no
+    -- GRLE authoring. Raw 0 (no data) falls into state 0 = transparent.
+    local vmKey = PDA_LAYER_VM[layerIdx]
+    local soilSys = self.soilSystem
+    if vmKey and soilSys and soilSys.vmAvailable and soilSys:vmAvailable() then
+        local bvm, firstCh, numCh, def = soilSys.valueMaps:getOverlayMapData(vmKey)
+        if bvm then
+            -- State 0 = raw 0-15 (no-data sentinel + lowest band) → transparent
+            setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
+            for i = 1, 15 do
+                local r, g, b, a = 0, 0, 0, 0
+                if layerIdx == 12 then
+                    -- Categorical: only DMV states that the backing paints
+                    -- (raw 128 → state 8 transition; raw 255 → state 15 certified).
+                    -- All other states stay transparent (conventional = state 0).
+                    if i == 8 then
+                        r, g, b = self:organicTransitionColor()
+                        a = 1.0
+                    elseif i == 15 then
+                        r, g, b = self:organicCertifiedColor()
+                        a = 1.0
+                    end
+                else
+                    local semanticVal
+                    if layerIdx == 9 and i == 1 then
+                        semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1
+                    else
+                        semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                    end
+                    r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
+                    a = 1.0
+                end
+                setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, a)
+            end
+            self._pdaUsingDMV = true
+            generateDensityMapVisualizationOverlay(ov)
+            self._pdaBuildHandle   = ov
+            self._pdaBuildInFlight = true
+            return
+        end
+    end
+
     -- GRLE-backed layers (N/P/K/pH/OM/Pest/Disease/Compaction)
     -- State 0 (unwritten GRLE pixels) is mapped to transparent, so generating the
     -- overlay early is safe - unpopulated areas stay invisible until data is written.
@@ -343,7 +425,12 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
             -- State 0 = raw 0-15 (unwritten/near-zero) → transparent.
             setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, 0, 0, 0, 0, 0)
             for i = 1, 15 do
-                local semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                local semanticVal
+                if layerIdx == 9 and i == 1 then
+                    semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                else
+                    semanticVal = def.minVal + (i / 15.0) * (def.maxVal - def.minVal)
+                end
                 local r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
                 setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, 4, 4, i, r, g, b, 1.0)
             end
@@ -355,8 +442,68 @@ function SoilMapOverlay:_pdaKickBuild(layerIdx)
         end
     end
 
-    -- No DMV for this layer (urgency = layer 6, or GRLE not yet available)
+    -- No DMV for this layer. Reachable when the value maps are unavailable AND the
+    -- layer has no GRLE backing either: urgency (6), weed (7) without a native
+    -- foliage map, and yield (11). Falls through to the legacy sample-point path,
+    -- where per-cell truth exists only for the biotic + compaction stamps.
     self._pdaUsingDMV = false
+end
+
+--- REFINED: draw the engine DMV overlay stretched over the terrain rect of the
+--- PDA map (same render technique as SoilMinimapLayer:draw, which is proven on
+--- the HUD minimap). Returns true when the DMV overlay was drawn - the caller
+--- then skips the legacy dot rendering entirely.
+function SoilMapOverlay:_pdaDrawDMV(ingameMap, mapX, mapY, mapWidth, mapHeight, layerIdx)
+    if not self._pdaDMVAvailable then return false end
+
+    local now = (g_currentMission and g_currentMission.time) or g_time or 0
+
+    self:_pdaPollBuildFinished()
+
+    -- Kick a (re)build when the layer changed or the refresh timer elapsed
+    if layerIdx ~= self._pdaActiveLayer then
+        self._pdaActiveLayer  = layerIdx
+        self._pdaHasShownOnce = false     -- don't show the previous layer's pixels
+        self._pdaBuildInFlight = false
+        self:_pdaKickBuild(layerIdx)
+        self._pdaNextBuildMs = now + 3000
+    elseif not self._pdaBuildInFlight and now >= self._pdaNextBuildMs then
+        self:_pdaKickBuild(layerIdx)
+        self._pdaNextBuildMs = now + 3000
+    end
+
+    if not self._pdaUsingDMV then return false end
+    if not self._pdaHasShownOnce then return false end   -- dots until first build lands
+
+    local ov = self._pdaOverlays[self._pdaShowIdx]
+    if not ov then return false end
+
+    -- Terrain rect in screen space via the shared world→screen affine
+    local half = ((g_currentMission and g_currentMission.terrainSize) or 2048) * 0.5
+    local ax, ay = self:worldToScreenPosition(ingameMap, -half, -half)
+    local bx, by = self:worldToScreenPosition(ingameMap, half, half)
+    if not ax or not bx then return false end
+
+    local x1, x2 = math.min(ax, bx), math.max(ax, bx)
+    local y1, y2 = math.min(ay, by), math.max(ay, by)
+    if x1 == x2 or y1 == y2 then return false end
+
+    -- Clip to the visible map area and pick the matching UV slice
+    local rx1 = math.max(x1, mapX);              local ry1 = math.max(y1, mapY)
+    local rx2 = math.min(x2, mapX + mapWidth);   local ry2 = math.min(y2, mapY + mapHeight)
+    if (rx2 - rx1) <= 0 or (ry2 - ry1) <= 0 then return false end
+
+    local uL = (rx1 - x1) / (x2 - x1); local vT = (ry1 - y1) / (y2 - y1)
+    local uR = (rx2 - x1) / (x2 - x1); local vB = (ry2 - y1) / (y2 - y1)
+
+    setOverlayUVs(ov, uL, vT, uL, vB, uR, vT, uR, vB)
+    setOverlayColor(ov, 1, 1, 1, SoilMapOverlay.ALPHA)
+    renderOverlay(ov, rx1, ry1, rx2 - rx1, ry2 - ry1)
+
+    if Overlay ~= nil and Overlay.DEFAULT_UVS ~= nil then
+        setOverlayUVs(ov, unpack(Overlay.DEFAULT_UVS))
+    end
+    return true
 end
 
 -- ── Sidebar Clicks ────────────────────────────────────────
@@ -567,26 +714,40 @@ local LAYER_GRLE_NAME = {
 
 -- Extract the per-cell value for a given overlay layer index (1-5 only).
 -- Must be defined before updateSamplePoints to be in scope as an upvalue.
-local function getCellLayerValue(cell, layerIdx)
-    if layerIdx == 1 then return cell.N
-    elseif layerIdx == 2 then return cell.P
-    elseif layerIdx == 3 then return cell.K
-    elseif layerIdx == 4 then return cell.pH
-    elseif layerIdx == 5 then return cell.OM
-    elseif layerIdx == 6 then
-        -- Urgency calculation (local approximation)
-        local n = cell.N or 0
-        local p = cell.P or 0
-        local k = cell.K or 0
-        -- Simplified urgency for map: inverse of NPK average relative to 100
-        return 100 - (n + p + k) / 3
-    elseif layerIdx == 7 then return cell.weedPressure
+-- Per-cell value for the LEGACY zoneData render path (used only when neither the
+-- runtime value maps nor GRLE info layers are available on this terrain).
+--
+-- REFINED: zoneData cells carry ONLY the biotic + compaction stamps that
+-- markBoomCells writes; N/P/K/pH/OM now live on the per-pixel value maps and are
+-- never written to a cell. Layers 1-6 therefore have no per-cell truth here and
+-- MUST return nil so the caller falls back to the field average. That fallback is
+-- also the correct answer for urgency, because getLayerColor computes it from
+-- getFieldUrgency rather than approximating it from nutrients the cell lacks.
+--
+-- Returning a fabricated value for those layers is not a cosmetic issue: the
+-- caller treats "non-nil" as the measured flag and draws the cell at full opacity.
+---@param cell table zoneData cell
+---@param layerIdx number active map layer
+---@param fieldEntry table|nil owning fieldData entry, required to gate disease
+local function getCellLayerValue(cell, layerIdx, fieldEntry)
+    if layerIdx == 7 then return cell.weedPressure
     elseif layerIdx == 8 then return cell.pestPressure
-    elseif layerIdx == 9 then return cell.diseasePressure
+    elseif layerIdx == 9 then
+        -- Discovery gate (merge item 3): this path does not flow through
+        -- _vmDisplayValues, so it needs its own gate or an unscouted field leaks
+        -- its disease here. Undiscovered paints the HEALTHY value, exactly as the
+        -- value-map producer does, so unscouted reads identical to clean.
+        if fieldEntry and not fieldEntry.diseaseDiscovered then
+            return (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- unscouted -> UNKNOWN tone, not clean
+        end
+        return cell.diseasePressure
     elseif layerIdx == 10 then return cell.compaction
     end
     return nil
 end
+
+-- Exported for the self-test suite; call sites keep using the local upvalue.
+SoilMapOverlay._getCellLayerValue = getCellLayerValue
 
 function SoilMapOverlay:updateSamplePoints(force)
     local now = (g_currentMission and g_currentMission.time) or g_time or 0
@@ -672,10 +833,11 @@ function SoilMapOverlay:updateSamplePoints(force)
                         end
                     elseif layerIdx >= 1 and layerIdx <= 10 then
                         -- zoneData per-cell path: standard maps, layers 1-10.
-                        -- Cells that have been measured (sprayer/harvester passed) show their
-                        -- real local value at full opacity. Unvisited cells fall back to the
-                        -- field-level average at half opacity so the map stays fully coloured
-                        -- but players can tell measured zones from estimated ones.
+                        -- Cells with real per-cell data (the weed/pest/disease/compaction
+                        -- stamps) show it at full opacity. Everything else, including every
+                        -- nutrient layer and urgency, falls back to the field-level average
+                        -- at half opacity, so the map stays fully coloured but players can
+                        -- tell measured zones from estimated ones.
                         local fieldEntry = self.soilSystem.fieldData and self.soilSystem.fieldData[farmlandId]
                         local zoneData = fieldEntry and fieldEntry.zoneData
                         local zone = SoilConstants.ZONE
@@ -691,7 +853,7 @@ function SoilMapOverlay:updateSamplePoints(force)
                                     local cellKey = tostring(cx * 10000 + cz)
                                     local cell = zoneData[cellKey]
                                     if cell then
-                                        local val = getCellLayerValue(cell, layerIdx)
+                                        local val = getCellLayerValue(cell, layerIdx, fieldEntry)
                                         if val then
                                             r, g, b = self:valueToLayerColor(layerIdx, val)
                                             a = 1.0   -- measured: full opacity
@@ -741,7 +903,27 @@ function SoilMapOverlay:onDraw(frame, mapElement, ingameMap, pageIndex)
     local mapX, mapY, mapWidth, mapHeight = self:getMapRenderBounds(frame, ingameMap)
     if mapX == nil or mapWidth == nil or mapHeight == nil then return end
 
-    -- PDA always uses polygon tiles (field-clamped, works without GRLE data)
+    -- REFINED primary path: engine density-map visualization overlay backed by
+    -- the per-pixel value maps (PF-quality). All 11 layers are DMV-backed.
+    if self:_pdaDrawDMV(ingameMap, mapX, mapY, mapWidth, mapHeight, layerIdx) then
+        self:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeight)
+        return
+    end
+
+    -- REFINED: when the DMV pipeline is driving this layer, NEVER fall through
+    -- to the legacy 10 m tiles - drawing them while the async overlay build is
+    -- pending was the "old grid flashes before the map appears" artifact
+    -- (Precision Farming shows nothing while its overlay generates, then the
+    -- finished per-pixel image). _pdaUsingDMV is set by the kick that
+    -- _pdaDrawDMV just performed, so this correctly covers first-open and
+    -- layer-switch frames.
+    if self._pdaUsingDMV then
+        self:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeight)
+        return
+    end
+
+    -- Legacy fallback: polygon tiles. Only reachable when the engine has no
+    -- DMV support or a layer has no per-pixel backing map on this terrain.
     self:updateSamplePoints(false)
 
     if #self.samplePoints > 0 then
@@ -1069,14 +1251,44 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 9 then
         -- ── Disease Pressure ────────────────────────────────────
-        local dp = math.floor((info.diseasePressure or 0) + 0.5)
-        addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
-        if info.fungicideActive then
-            addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
-        elseif dp >= 20 then
-            addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+        if info.shownDiseasePressure == nil then
+            -- Unscouted: no percentage, no fungicide hint (would leak the disease).
+            addRow("Disease Pressure", g_i18n:getText("sf_unscouted"), NEU[1], NEU[2], NEU[3])
         else
-            addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+            local dp = math.floor((info.shownDiseasePressure or 0) + 0.5)
+            addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
+            if info.fungicideActive then
+                addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+            elseif dp >= 20 then
+                addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            else
+                addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+            end
+        end
+
+    elseif layerIdx == 12 then
+        -- ── Organic certification standing ──────────────────────
+        local farmlandId = sel.farmlandId
+        local org = self:_organicStateForField(farmlandId)
+        local state = org and org.state
+        local CONV = SoilConstants.ORGANIC and SoilConstants.ORGANIC.STATE_CONVENTIONAL
+        local TRANS = SoilConstants.ORGANIC and SoilConstants.ORGANIC.STATE_TRANSITION
+        local CERT = SoilConstants.ORGANIC and SoilConstants.ORGANIC.STATE_CERTIFIED
+        if state == CERT then
+            local cr, cg, cb = self:organicCertifiedColor()
+            addRow(tr("sf_org_legend_certified", "Certified"),
+                tr("sf_org_tt_certified", "Organic certified"), cr, cg, cb)
+        elseif state == TRANS then
+            local trC, tgC, tbC = self:organicTransitionColor()
+            local needed = (org and org.transitionDaysNeeded) or 0
+            local accrued = (org and org.daysAccrued) or 0
+            local pct = (needed > 0) and math.floor(100 * math.min(1, accrued / needed) + 0.5) or 0
+            addRow(tr("sf_org_legend_transition", "Transitioning"),
+                string.format(tr("sf_org_tt_progress", "%d%% · %d / %d days"), pct, accrued, needed),
+                trC, tgC, tbC)
+        else
+            addRow(tr("sf_org_legend_conventional", "Conventional"),
+                tr("sf_org_tt_conventional", "Not in organic conversion"), NEU[1], NEU[2], NEU[3])
         end
 
     elseif layerIdx == 10 then
@@ -1377,6 +1589,21 @@ function SoilMapOverlay:drawLegend(panelX, bottomY, panelWidth)
             { c = FAIR, key = "sf_pda_map_legend_fair", label = "Fair" },
             { c = GOOD, key = "sf_pda_map_legend_good", label = "Good" },
         }
+        -- Disease layer: unscouted ground has its own reserved "Unscouted" state.
+        if (self.settings and self.settings.activeMapLayer) == 9 then
+            local ur, ug, ub = self:unknownColor()
+            table.insert(items, { c = { ur, ug, ub }, key = "sf_unscouted", label = "Unscouted" })
+        end
+        -- Organic status: kinds, not a quality ramp.
+        if (self.settings and self.settings.activeMapLayer) == 12 then
+            local tr, tg, tb = self:organicTransitionColor()
+            local cr, cg, cb = self:organicCertifiedColor()
+            items = {
+                { c = { 0.45, 0.45, 0.45 }, key = "sf_org_legend_conventional", label = "Conventional" },
+                { c = { tr, tg, tb }, key = "sf_org_legend_transition", label = "Transitioning" },
+                { c = { cr, cg, cb }, key = "sf_org_legend_certified", label = "Certified" },
+            }
+        end
         local colW   = barW / #items
         local dotCY  = legendY + (legendH - dotSz) * 0.5
         for i, item in ipairs(items) do
@@ -1389,22 +1616,81 @@ function SoilMapOverlay:drawLegend(panelX, bottomY, panelWidth)
             renderText(ix + dotSz + dotGapX, dotCY, textSz, tr(item.key, item.label))
         end
     else
-        -- Gradient bar with "Poor" / "Good" end labels
-        local steps = 40
+        -- REFINED: PF-style quantized class bar - 15 discrete swatches matching
+        -- the exact colour states the DMV map overlay renders, with the layer's
+        -- real value range as end labels (e.g. pH 5.0 → 7.5).
+        local layerIdx = self.settings and self.settings.activeMapLayer or 0
+
+        -- Organic status: discrete category chips (not a Poor→Good ramp).
+        if layerIdx == 12 then
+            local trC, tgC, tbC = self:organicTransitionColor()
+            local crC, cgC, cbC = self:organicCertifiedColor()
+            local items = {
+                { c = { 0.45, 0.45, 0.45 }, key = "sf_org_legend_conventional", label = "Conventional" },
+                { c = { trC, tgC, tbC }, key = "sf_org_legend_transition", label = "Transitioning" },
+                { c = { crC, cgC, cbC }, key = "sf_org_legend_certified", label = "Certified" },
+            }
+            local _, dotSz = getNormalizedScreenValues(0, 9)
+            local dotGapX, _ = getNormalizedScreenValues(4, 0)
+            local colW = barW / #items
+            local dotCY = legendY + (legendH - (dotSz or 0.01)) * 0.5
+            for i, item in ipairs(items) do
+                local ix = barX + (i - 1) * colW
+                drawFilledRect(ix, dotCY, dotSz, dotSz, item.c[1], item.c[2], item.c[3], 0.92)
+                self:drawThinBorder(ix, dotCY, dotSz, dotSz, 0, 0, 0, 0.5)
+                setTextBold(false)
+                setTextColor(0.72, 0.72, 0.72, 1)
+                setTextAlignment(RenderText.ALIGN_LEFT)
+                renderText(ix + dotSz + dotGapX, dotCY, textSz, tr(item.key, item.label))
+            end
+            return
+        end
+
+        local vmDef
+        local soilSys = self.soilSystem
+        if soilSys and soilSys.valueMaps then
+            local vmKeys = { [1]="nitrogen", [2]="phosphorus", [3]="potassium",
+                             [4]="pH", [5]="organicMatter", [6]="urgency",
+                             [7]="weedPressure", [8]="pestPressure",
+                             [9]="diseasePressure", [10]="compaction",
+                             [11]="yieldEfficiency", [12]="organicStatus" }
+            local key = vmKeys[layerIdx]
+            if key then
+                local entry = soilSys.valueMaps:getLayerEntry(key)
+                vmDef = entry and entry.def
+            end
+        end
+
+        local steps = vmDef and 15 or 40
         local stepW = barW / steps
+        local gapW  = vmDef and math.min(stepW * 0.12, 0.0012) or 0
         for i = 0, steps - 1 do
-            local r, g, b = healthGradient(i / (steps - 1))
-            drawFilledRect(barX + i * stepW, barY, stepW + 0.00001, barH, r, g, b, 0.92)
+            local r, g, b
+            if vmDef then
+                local semanticVal = vmDef.minVal + ((i + 1) / 15.0) * (vmDef.maxVal - vmDef.minVal)
+                r, g, b = self:valueToLayerColor(layerIdx, semanticVal)
+            else
+                r, g, b = healthGradient(i / (steps - 1))
+            end
+            drawFilledRect(barX + i * stepW, barY, stepW - gapW + 0.00001, barH, r, g, b, 0.92)
         end
         self:drawThinBorder(barX, barY, barW, barH, 0.25, 0.25, 0.25, 0.5)
 
         local labelY = legendY + (legendH - barH) * 0.5 - textSz * 1.1
         setTextBold(false)
         setTextColor(0.72, 0.72, 0.72, 1)
-        setTextAlignment(RenderText.ALIGN_LEFT)
-        renderText(barX, labelY, textSz, tr("sf_pda_map_legend_poor", "Poor"))
-        setTextAlignment(RenderText.ALIGN_RIGHT)
-        renderText(barX + barW, labelY, textSz, tr("sf_pda_map_legend_good", "Good"))
+        if vmDef then
+            local fmt = (layerIdx == 4 or layerIdx == 5) and "%.1f" or "%d"
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            renderText(barX, labelY, textSz, string.format(fmt, vmDef.minVal))
+            setTextAlignment(RenderText.ALIGN_RIGHT)
+            renderText(barX + barW, labelY, textSz, string.format(fmt, vmDef.maxVal))
+        else
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            renderText(barX, labelY, textSz, tr("sf_pda_map_legend_poor", "Poor"))
+            setTextAlignment(RenderText.ALIGN_RIGHT)
+            renderText(barX + barW, labelY, textSz, tr("sf_pda_map_legend_good", "Good"))
+        end
     end
 
     setTextColor(1, 1, 1, 1)
@@ -1453,10 +1739,52 @@ function SoilMapOverlay:statusColors()
     return SoilMapOverlay.C_POOR, SoilMapOverlay.C_FAIR, SoilMapOverlay.C_GOOD
 end
 
+-- Neutral "unscouted" tone for the disease layer's reserved UNKNOWN state.
+function SoilMapOverlay:unknownColor()
+    if self.settings and self.settings.colorblindMode then
+        return SoilMapOverlay.CB_UNKNOWN[1], SoilMapOverlay.CB_UNKNOWN[2], SoilMapOverlay.CB_UNKNOWN[3]
+    end
+    return SoilMapOverlay.C_UNKNOWN[1], SoilMapOverlay.C_UNKNOWN[2], SoilMapOverlay.C_UNKNOWN[3]
+end
+
+function SoilMapOverlay:organicTransitionColor()
+    if self.settings and self.settings.colorblindMode then
+        return SoilMapOverlay.CB_ORG_TRANS[1], SoilMapOverlay.CB_ORG_TRANS[2], SoilMapOverlay.CB_ORG_TRANS[3]
+    end
+    return SoilMapOverlay.C_ORG_TRANS[1], SoilMapOverlay.C_ORG_TRANS[2], SoilMapOverlay.C_ORG_TRANS[3]
+end
+
+function SoilMapOverlay:organicCertifiedColor()
+    if self.settings and self.settings.colorblindMode then
+        return SoilMapOverlay.CB_ORG_CERT[1], SoilMapOverlay.CB_ORG_CERT[2], SoilMapOverlay.CB_ORG_CERT[3]
+    end
+    return SoilMapOverlay.C_ORG_CERT[1], SoilMapOverlay.C_ORG_CERT[2], SoilMapOverlay.C_ORG_CERT[3]
+end
+
+--- Map organic semantic 0/1/2 (or interpolated DMV probe) to RGB. Conventional
+--- returns near-black; callers that need "untinted" should treat val < 0.5 as skip.
+function SoilMapOverlay:organicColorForValue(val)
+    val = tonumber(val) or 0
+    if val < 0.5 then
+        return 0.20, 0.20, 0.20
+    elseif val < 1.5 then
+        return self:organicTransitionColor()
+    end
+    return self:organicCertifiedColor()
+end
+
 -- Convert a raw decoded value (from the density map layer) to a gradient colour.
 ---@param layerIdx integer
 ---@param val      number
 function SoilMapOverlay:valueToLayerColor(layerIdx, val)
+    -- Unscouted disease marker: a negative sentinel colours as the neutral unknown
+    -- tone in either palette, never the pressure ramp.
+    if layerIdx == 9 and (val or 0) < 0 then
+        return self:unknownColor()
+    end
+    if layerIdx == 12 then
+        return self:organicColorForValue(val)
+    end
     if self.settings and self.settings.colorblindMode then
         local POOR, FAIR, GOOD = self:statusColors()
         local T = SoilConstants.STATUS_THRESHOLDS
@@ -1481,6 +1809,24 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
             if val >= 4.0     then return GOOD[1], GOOD[2], GOOD[3]
             elseif val >= 2.5 then return FAIR[1], FAIR[2], FAIR[3]
             else                   return POOR[1], POOR[2], POOR[3] end
+        elseif layerIdx == 6 then                      -- urgency: high = bad
+            if val > 66     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 33 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx >= 7 and layerIdx <= 9 then    -- pressures: high = bad
+            if val > 50     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 20 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 10 then                     -- compaction: high = bad
+            if val > 60     then return POOR[1], POOR[2], POOR[3]
+            elseif val > 20 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 11 then                     -- yield: high = good
+            if val < 55     then return POOR[1], POOR[2], POOR[3]
+            elseif val < 80 then return FAIR[1], FAIR[2], FAIR[3]
+            else                 return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 12 then
+            return self:organicColorForValue(val)
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end
@@ -1535,7 +1881,8 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             elseif v > 20 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 9 then
-            local v = info.diseasePressure or 0
+            if info.shownDiseasePressure == nil then return self:unknownColor() end
+            local v = info.shownDiseasePressure or 0
             if v > 50 then return POOR[1], POOR[2], POOR[3]
             elseif v > 20 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
@@ -1549,6 +1896,16 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             if v < 55 then return POOR[1], POOR[2], POOR[3]
             elseif v < 80 then return FAIR[1], FAIR[2], FAIR[3]
             else return GOOD[1], GOOD[2], GOOD[3] end
+        elseif layerIdx == 12 then
+            local org = self:_organicStateForField(farmlandId)
+            if org == nil or org.state == nil
+                or org.state == (SoilConstants.ORGANIC and SoilConstants.ORGANIC.STATE_CONVENTIONAL) then
+                return 0.35, 0.35, 0.35
+            elseif org.state == SoilConstants.ORGANIC.STATE_TRANSITION then
+                return self:organicTransitionColor()
+            else
+                return self:organicCertifiedColor()
+            end
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end
@@ -1563,12 +1920,35 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     elseif layerIdx == 6 then val = self.soilSystem:getFieldUrgency(farmlandId)
     elseif layerIdx == 7 then val = info.weedPressure  or 0
     elseif layerIdx == 8 then val = info.pestPressure  or 0
-    elseif layerIdx == 9 then val = info.diseasePressure or 0
+    elseif layerIdx == 9 then val = info.shownDiseasePressure or 0
     elseif layerIdx == 10 then val = info.compaction   or 0
     elseif layerIdx == 11 then val = info.yieldEfficiency or 0
+    elseif layerIdx == 12 then
+        local org = self:_organicStateForField(farmlandId)
+        if org == nil or org.state == nil
+            or org.state == (SoilConstants.ORGANIC and SoilConstants.ORGANIC.STATE_CONVENTIONAL) then
+            return 0.35, 0.35, 0.35
+        elseif org.state == SoilConstants.ORGANIC.STATE_TRANSITION then
+            return self:organicTransitionColor()
+        else
+            return self:organicCertifiedColor()
+        end
     else   val = 100 end
 
+    -- Unscouted disease shows the neutral unknown tone, never the pressure ramp.
+    if layerIdx == 9 and info.shownDiseasePressure == nil then
+        return self:unknownColor()
+    end
     return healthGradient(layerValueToT(layerIdx, val))
+end
+
+function SoilMapOverlay:_organicStateForField(fieldId)
+    local mgr = g_SoilFertilityManager or (g_currentMission and g_currentMission.soilFertilityManager)
+    local org = mgr and mgr.organic
+    if org == nil or org.getFieldOrganicState == nil or fieldId == nil then return nil end
+    local ok, st = pcall(function() return org:getFieldOrganicState(fieldId) end)
+    if ok then return st end
+    return nil
 end
 
 -- ── Minimap Overlay ───────────────────────────────────────
@@ -1626,7 +2006,7 @@ function SoilMapOverlay:updateMinimapCentroids(force)
                                 local cz   = math.floor(pt.z / zone.CELL_SIZE)
                                 local cell = zoneData[tostring(cx * 10000 + cz)]
                                 if cell then
-                                    local val = getCellLayerValue(cell, layerIdx)
+                                    local val = getCellLayerValue(cell, layerIdx, fieldEntry)
                                     if val then
                                         pr, pg, pb = self:valueToLayerColor(layerIdx, val)
                                     end

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<vehicle type="multipleItemPurchase" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../shared/xml/schema/vehicle.xsd">
+
+    <storeData>
+        <name>$l10n_sf_bigBag_boscalid_name</name>
+        <specs>
+            <capacity>2000</capacity>
+            <fillTypes>BOSCALID</fillTypes>
+            <weight ignore="true"/>
+        </specs>
+        <functions><function>$l10n_sf_bigBag_boscalid_function</function></functions>
+        <image>$data/objects/pallets/liquidTank/store_herbicideTankHelm.png</image>
+        <price>3700</price>
+        <allowLeasing>false</allowLeasing>
+        <canBeSold>false</canBeSold>
+        <rotation>0</rotation>
+        <shopHeight>2</shopHeight>
+        <brand>HELM</brand>
+        <category>ibc palletFertilizerHerbicide</category>
+        <financeCategory>PURCHASE_FERTILIZER</financeCategory>
+        <shopLoadingDelay initial="0.2" config="0.2"/>
+        <storeIconRendering><settings cameraXRot="-15" cameraYRot="25"/></storeIconRendering>
+        <vertexBufferMemoryUsage>512</vertexBufferMemoryUsage>
+        <indexBufferMemoryUsage>256</indexBufferMemoryUsage>
+        <textureMemoryUsage>65536</textureMemoryUsage>
+        <instanceVertexBufferMemoryUsage>0</instanceVertexBufferMemoryUsage>
+        <instanceIndexBufferMemoryUsage>0</instanceIndexBufferMemoryUsage>
+        <audioMemoryUsage>0</audioMemoryUsage>
+    </storeData>
+
+    <base>
+        <typeDesc>$l10n_typeDesc_pallet</typeDesc>
+        <filename>$data/objects/multiPurchaseItem/multiPurchaseItem.i3d</filename>
+        <size width="2.9" length="6.1" height="1.6" lengthOffset="0.1"/>
+        <components>
+            <component centerOfMass="0 0.1 0" solverIterationCount="10" mass="100"/>
+        </components>
+        <showInVehicleMenu>false</showInVehicleMenu>
+        <mapHotspot available="false"/>
+    </base>
+
+    <fillUnit>
+        <fillUnitConfigurations>
+            <fillUnitConfiguration>
+                <fillUnits>
+                    <fillUnit fillTypes="BOSCALID" capacity="2000"/>
+                </fillUnits>
+            </fillUnitConfiguration>
+        </fillUnitConfigurations>
+    </fillUnit>
+
+    <multipleItemPurchase filename="objects/liquidTank/boscalid/liquidTank_boscalid.xml" isVehicle="true">
+        <offsets>
+            <offset amount="2" offset="0.775 0 0"/>
+            <offset amount="3" offset="0.775 0 0.8"/>
+            <offset amount="5" offset="0.775 0 1.6"/>
+            <offset amount="7" offset="0.775 0 2.4"/>
+        </offsets>
+        <itemPositions>
+            <itemPosition position="0 0 0"         rotation="0 0 0"/>
+            <itemPosition position="-1.55 0 0"     rotation="0 0 0"/>
+            <itemPosition position="0 0 -1.55"     rotation="0 0 0"/>
+            <itemPosition position="-1.55 0 -1.55" rotation="0 0 0"/>
+            <itemPosition position="0 0 -3.1"      rotation="0 0 0"/>
+            <itemPosition position="-1.55 0 -3.1"  rotation="0 0 0"/>
+            <itemPosition position="0 0 -4.65"     rotation="0 0 0"/>
+            <itemPosition position="-1.55 0 -4.65" rotation="0 0 0"/>
+        </itemPositions>
+    </multipleItemPurchase>
+
+    <multipleItemPurchaseAmountConfigurations>
+        <multipleItemPurchaseAmountConfiguration name="1" price="0"/>
+        <multipleItemPurchaseAmountConfiguration name="2" price="3700"/>
+        <multipleItemPurchaseAmountConfiguration name="3" price="7400"/>
+        <multipleItemPurchaseAmountConfiguration name="4" price="11100"/>
+        <multipleItemPurchaseAmountConfiguration name="5" price="14800"/>
+        <multipleItemPurchaseAmountConfiguration name="6" price="18500"/>
+        <multipleItemPurchaseAmountConfiguration name="7" price="22200"/>
+        <multipleItemPurchaseAmountConfiguration name="8" price="25900"/>
+    </multipleItemPurchaseAmountConfigurations>
+
+</vehicle>

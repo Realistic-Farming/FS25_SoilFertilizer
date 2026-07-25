@@ -31,7 +31,7 @@ Vanilla FS25 soil is a single binary "fertilized" state with no depletion, no ro
 
 ## 5. Explicit non-goals
 - No Precision Farming integration, ever (detect-to-stand-down only).
-- Grass/hay is soil-aware (yield reacts to N/P/K + OM) but is NOT a full crop: it stays out of the weed/pest/disease model and the yield-% score. No crop parity promise.
+- Grass/hay is soil-aware (yield reacts to N/P/K + OM). The weed/pest/disease + yield-% rule is scoped to the land type (decision 2026-07-16): grass on a base-game MEADOW (no fieldId, no managed soil) stays out of those models, but grass grown on a real FIELD (has a fieldId, managed soil, can hold an organic cert) is a managed crop and participates in the disease + OM/organic models like any field crop. The field-grass parity build is tracked in ROADMAP; no parity promise for meadow grass.
 - No ownership of the wider economy. SoilFertilizer charges fertilizer cost only; income, tax, markets and depots are their own mods.
 
 ## 6. Success criteria

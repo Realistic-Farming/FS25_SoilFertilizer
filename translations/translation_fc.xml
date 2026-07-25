@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="[EN] Soil &amp; Fertilizer" eh="f31197fb" />
@@ -10,6 +10,18 @@
     <e k="sf_seasonal_effects_long" v="开启/关闭季节对土壤养分的影响（春季生长加成、秋季生长减缓）" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="降雨影响" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="开启/关闭降雨对土壤的影响（养分流失、酸碱度变化）" eh="de3b14b9" />
+    <e k="sf_ws_short" v="World Climate" />
+    <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
+    <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
+    <e k="sf_ws_1" v="Real sky only" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
+    <e k="sf_ws_blurb_4" v="Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." />
+    <e k="sf_ws_blurb_3" v="Normal: balanced seasonal rains for short months. Default living climate." />
+    <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
+    <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
+    <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
     <e k="sf_plowing_bonus_short" v="耕地增益" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="开启/关闭耕地带来的土壤肥力加成（提升氮元素与有机质含量）" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Residue Incorporation" eh="f4352cb5" />
@@ -1047,6 +1059,7 @@
     <e k="sf_report_rotation_bonus"   v="轮作增益" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="轮作状态：正常" />
+    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="土壤健康：最佳" />
     <e k="sf_report_rec_good"         v="良好" />
     <e k="sf_report_rec_fair"         v="一般" />
@@ -1150,5 +1163,81 @@
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
-    </elements>
+		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
+		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
+		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
+        <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
+    <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
+    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_name" v="IBC Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_function" v="Azoxystrobin fungicide (liquid)" />
+    <e k="sf_boscalid_title" v="Boscalid" />
+    <e k="sf_bigBag_boscalid_name" v="IBC Boscalid" />
+    <e k="sf_bigBag_boscalid_function" v="Boscalid fungicide (liquid)" />
+    <e k="sf_mancozeb_title" v="Mancozeb" />
+    <e k="sf_bigBag_mancozeb_name" v="IBC Mancozeb" />
+    <e k="sf_bigBag_mancozeb_function" v="Mancozeb fungicide (liquid)" />
+    <e k="sf_metalaxyl_title" v="Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_name" v="IBC Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_function" v="Metalaxyl fungicide (liquid)" />
+    <e k="sf_tebuconazole_title" v="Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
+    <e k="sf_treat_tank_tag" v="tank - spray" />
+    <e k="sf_treat_physical" v="%s is a sprayable product - buy the tank and spray the field" />
+    <e k="sf_sulfur_title" v="Sulfur" />
+    <e k="sf_bigBag_sulfur_name" v="IBC Sulfur" />
+    <e k="sf_bigBag_sulfur_function" v="Sulfur fungicide, organic-approved (liquid)" />
+    <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
+    <e k="sf_unscouted" v="未侦察" />
+<e k="sf_map_layer_organic_status" v="Organic Status" />
+    
+<e k="sf_layer_12" v="Organic Status" />
+    
+<e k="sf_org_legend_conventional" v="Conventional" />
+    
+<e k="sf_org_legend_transition" v="Transitioning" />
+    
+<e k="sf_org_legend_certified" v="Certified" />
+    
+<e k="sf_org_tt_conventional" v="Not in organic conversion" />
+    
+<e k="sf_org_tt_certified" v="Organic certified" />
+    
+    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
+<e k="sf_rp_status_unknown" v="Unknown" />
+    
+<e k="sf_rp_no_crop" v="-" />
+    
+<e k="sf_rp_no_history" v="No crop history yet" />
+    
+<e k="sf_rp_standing_unknown" v="Unknown" />
+    
+<e k="sf_rp_bonus_days" v="bonus %dd" />
+    
+<e k="sf_rp_title" v="Rotation Planner" />
+    
+<e k="sf_rp_open" v="Rotation Planner" />
+    
+<e k="sf_rp_farm_header" v="Farm standing" />
+    
+<e k="sf_rp_what_if" v="What if (next crop)" />
+    
+<e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
+    
+<e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
+    
+<e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
+    
+    <e k="sf_rp_no_fields" v="No fields" />
+    
+<e k="sf_rp_prev" v="Prev field" />
+    
+<e k="sf_rp_next" v="Next field" />
+    
+    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+</elements>
 </l10n>

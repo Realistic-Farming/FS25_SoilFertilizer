@@ -206,6 +206,9 @@ function SoilScoutDialog:_updateChemSelection()
         parts[#parts + 1] = string.format("%d%% %s %s", pct, tr("sf_treat_vs", "vs"), disName(self._disease))
     end
     parts[#parts + 1] = string.format("$%d/ha (~$%d)", chem.costPerHa or 0, total)
+    if SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[id] then
+        parts[#parts + 1] = tr("sf_treat_tank_tag", "tank - spray")
+    end
     setText(self.scoutSelChem, table.concat(parts, "  ·  ")
         .. string.format("   [%d/%d]", self._chemIdx, #self._chemList))
 end
@@ -220,6 +223,14 @@ function SoilScoutDialog:onClickApply()
     local sfm = g_SoilFertilityManager
     local id  = self._chemList and self._chemList[self._chemIdx]
     if not (sfm and sfm.soilSystem and self._fieldId and id) then return end
+
+    -- Physical fungicides are sprayed from a tank, not instant-applied from the menu.
+    if SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[id] then
+        setText(self.scoutHint, string.format(
+            tr("sf_treat_physical", "%s is a sprayable product - buy the tank and spray the field"),
+            chemName(id)))
+        return
+    end
 
     local ok, _, detail = sfm.soilSystem:applyNamedFungicide(self._fieldId, id, { charge = true })
     if not ok then return end

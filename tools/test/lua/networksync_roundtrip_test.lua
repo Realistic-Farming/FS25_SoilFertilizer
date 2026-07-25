@@ -4,7 +4,7 @@
 -- flattened. SoilDiseaseSystem is absent here, so disease severity defaults to 1.0
 -- (nil-guarded). Zone cells are intentionally NOT on the wire (overflow safety) and
 -- are reconstructed from the aggregate at apply time, so they are not asserted here.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/integrations/SoilNetworkSyncBridge.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/integrations/SoilNetworkSyncBridge.lua
 
 local B = SoilNetworkSyncBridge
 
@@ -20,6 +20,7 @@ do
       diseasePressure = 17.0, fungicideDaysLeft = 4, activeDisease = "septoria",
       dryDayCount = 6, burnDaysLeft = 2, coverageFraction = 0.5, compaction = 11.0,
       nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
+      organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
       -- zoneData present on the server but deliberately not serialized:
       zoneData = { ["3_4"] = { N = 50 } },
     },
@@ -62,6 +63,12 @@ do
   T.near("roundtrip: buffer[12]", b.nutrientBuffer[12], 4.5)
   T.near("roundtrip: buffer[3]", b.nutrientBuffer[3], 1.25)
 
+  T.ok("roundtrip: organic present", b.organic ~= nil)
+  T.eq("roundtrip: organic state", b.organic.state, SoilConstants.ORGANIC.STATE_CERTIFIED)
+  T.eq("roundtrip: organic startDay", b.organic.startDay, 100)
+  T.eq("roundtrip: organic certifiedDay", b.organic.certifiedDay, 220)
+  T.eq("roundtrip: organic breaches", b.organic.breaches, 2)
+
   -- Client-side scaffolding the rebuild always sets.
   T.ok("roundtrip: initialized", b.initialized == true)
   T.eq("roundtrip: coveredCellCount reset", b.coveredCellCount, 0)
@@ -82,6 +89,28 @@ do
   T.ok("multi: field 2 present", dst[2] ~= nil)
   T.near("multi: field 2 nitrogen", dst[2].nitrogen, 60)
   T.near("multi: field 1 pH", dst[1].pH, 6.0)
+end
+
+-- Organic certification: the enum survives, a plain conventional field never
+-- resurrects an organic sub-table (mirrors loadFieldState), and a breach-scarred
+-- conventional field keeps its lifetime breach count.
+do
+  local O = SoilConstants.ORGANIC
+  local src = {
+    [1] = { fieldArea = 1, nitrogen = 30, phosphorus = 30, potassium = 30, organicMatter = 3, pH = 6.2 },
+    [2] = { fieldArea = 1, nitrogen = 30, phosphorus = 30, potassium = 30, organicMatter = 3, pH = 6.2,
+            organic = { state = O.STATE_TRANSITION, startDay = 50, certifiedDay = 0, breaches = 0 } },
+    [3] = { fieldArea = 1, nitrogen = 30, phosphorus = 30, potassium = 30, organicMatter = 3, pH = 6.2,
+            organic = { state = O.STATE_CONVENTIONAL, startDay = 0, certifiedDay = 0, breaches = 3 } },
+  }
+  local dst = B.deserializeFields(B.serializeFields(src))
+  T.ok("organic: conventional field keeps no sub-table", dst[1].organic == nil)
+  T.ok("organic: transition field present", dst[2].organic ~= nil)
+  T.eq("organic: transition state", dst[2].organic.state, O.STATE_TRANSITION)
+  T.eq("organic: transition startDay", dst[2].organic.startDay, 50)
+  T.ok("organic: breached-conventional keeps sub-table (breaches>0)", dst[3].organic ~= nil)
+  T.eq("organic: breach count preserved", dst[3].organic.breaches, 3)
+  T.eq("organic: breached field stays conventional", dst[3].organic.state, O.STATE_CONVENTIONAL)
 end
 
 -- Empty strings deserialize back to nil (no phantom crop / disease).

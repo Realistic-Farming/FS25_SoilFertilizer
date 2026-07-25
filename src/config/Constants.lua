@@ -16,7 +16,27 @@ SoilConstants = {}
 -- ========================================
 SoilConstants.TIMING = {
     UPDATE_INTERVAL = 30000,     -- ms between periodic checks
-    FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in
+    FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in (already season-scaled at its read site by daysPerMonth; do NOT season-scale again, see DURATION)
+    MAX_DAILY_CATCHUP = 10,      -- cap on skipped days simulated in one catch-up pass
+}
+
+-- ========================================
+-- DURATION SCALING (SF-31 / #740)
+-- ========================================
+-- The absolute chemical day-counts (fungicide/herbicide/insecticide) are tuned
+-- against a reference season length. On a short 1-day-month save an absolute
+-- 35-day fungicide would cover ~3 game years (the #639/#740 problem), so at the
+-- application sites those counts pass through SoilDuration.seasonScaled(), which
+-- reads days-per-period from Time Guard's context and scales:
+--     effectiveDays = max(1, round(baseDays * daysPerPeriod / REFERENCE_DPP))
+-- A save at REFERENCE_DPP days-per-month is unchanged; shorter saves scale down.
+-- REFERENCE_DPP is the days-per-month the shipped duration constants were tuned
+-- against (Tyson's ruling, 2026-07-23). Time Guard absent -> the absolute count.
+-- EXCLUSIONS (already season-honest, must NOT double-scale): the organic
+-- TRANSITION_DAYS (year-normalised via Time Guard) and the fallow threshold
+-- (multiplied by daysPerMonth at its read site).
+SoilConstants.DURATION = {
+    REFERENCE_DPP = 3,   -- days-per-month the chemical durations were tuned at
 }
 
 -- ========================================
@@ -88,7 +108,13 @@ SoilConstants.FIELD_VARIATION = {
 SoilConstants.PLOWING = {
     MIN_DEPTH_FOR_PLOWING = 0.15,  -- Minimum working depth (meters) to qualify as deep plowing
     PEST_PRESSURE_REDUCTION    = 30,  -- Points removed from pest pressure on plowing
-    DISEASE_PRESSURE_REDUCTION = 40,  -- Points removed from disease pressure on plowing
+    -- #737 option D: was 40, which cleared roughly six years of disease accumulation
+    -- (~6.8 pts/year) in a single pass and pinned the pressure near zero for anyone
+    -- who ploughs at all. 18 clears about 2.6 years: a real reset, not an erase.
+    -- Holds the STRICT physical ordering the constants file documents, by how much
+    -- infected residue each implement buries:
+    --     plough 18  >  cultivator 15  >  strip-till 10 (residue left on the surface)
+    DISEASE_PRESSURE_REDUCTION = 18,
 }
 
 -- ========================================
@@ -113,7 +139,11 @@ SoilConstants.CULTIVATION = {
 --   • Pests: MORE effective than cultivator (deep knife disrupts soil larvae)
 --   • Disease: LESS than cultivator (residue left on surface → spore habitat)
 --   • No pH normalization (no soil layer inversion)
---   • Small OM boost in tilled strips (some sub-surface matter incorporated)
+--   • OM: modest net gain per pass - its residue incorporation (below) less its
+--     light oxidation (OM_DYNAMICS.OXIDATION.STRIP_TILL). The old separate OM_BOOST
+--     (+0.10/pass) was RETIRED into this single residue+oxidation gradient (#738), so
+--     strip-till has one gain term and one loss term like every other tillage type.
+--     Its generosity is preserved by its LOW oxidation (0.02), not a bloated gain.
 -- The RidgeTiller FS25 spec (processRidgeTillerArea / RIDGEFORMER work area)
 -- is completely separate from Cultivator.processCultivatorArea, so a dedicated
 -- hook is required.
@@ -121,8 +151,7 @@ SoilConstants.STRIP_TILL = {
     WEED_PRESSURE_REDUCTION    = 15,  -- pts; less than cultivator (partial surface coverage)
     PEST_PRESSURE_REDUCTION    = 12,  -- pts; more than cultivator (deep knife action)
     DISEASE_PRESSURE_REDUCTION = 10,  -- pts; less than cultivator (residue left in place)
-    OM_BOOST                   = 0.10, -- % OM increase per pass (tilled-strip incorporation)
-    -- No pH normalization - strip-till does not invert soil horizons
+    -- OM_BOOST retired into the residue+oxidation gradient (#738). No pH normalization.
 }
 
 -- ========================================
@@ -166,16 +195,16 @@ SoilConstants.RESIDUE_INCORPORATION = {
         K  = 1.8,    -- increased from 0.3
     },
     STRIP_TILL = {
-        OM = 0.05,
-        N  = 1.2,
-        P  = 0.4,
-        K  = 0.8,
+        OM = 0.05,   -- increased from 0.03 for game visibility
+        N  = 1.2,    -- increased from 0.2
+        P  = 0.4,    -- increased from 0.02
+        K  = 0.8,    -- increased from 0.15
     },
     DIRECT_DRILL = {
-        OM = 0.03,
-        N  = 0.6,
-        P  = 0.2,
-        K  = 0.4,
+        OM = 0.03,   -- increased from 0.02 for game visibility
+        N  = 0.6,    -- increased from 0.1
+        P  = 0.2,    -- increased from 0.01
+        K  = 0.4,    -- increased from 0.08
     },
 }
 
@@ -238,9 +267,34 @@ SoilConstants.FALLOW_RECOVERY = {
 -- Deep tillage (plowing) accelerates the loss by exposing buried humus to air.
 -- All on the 0-10 OM scale; per-day rates are month-normalised by the caller.
 SoilConstants.OM_DYNAMICS = {
-    DAILY_DECAY         = 0.005, -- passive humus oxidation, OM pts/day
-    DECAY_FLOOR         = 1.0,   -- passive decay never pushes OM below this (degraded mineral soil)
-    PLOW_OXIDATION_LOSS = 0.10,  -- OM lost per full plow pass (deep inversion aerates buried humus)
+    DAILY_DECAY = 0.005, -- passive humus oxidation, OM pts/day
+    DECAY_FLOOR = 1.0,   -- passive decay never pushes OM below this (degraded mineral soil)
+
+    -- #738 no-till OM: per-tillage OXIDATION gradient. OM burned per full pass by
+    -- disturbing/aerating buried humus. Monotone with soil disturbance:
+    --   plough (deep inversion) > cultivator (topsoil mix) > strip-till (knife bands)
+    --   > direct-drill (opener slot, none).
+    -- STEEP at the top on purpose: the plough's oxidation (0.14) approaches its own
+    -- residue burst (0.15), so a ploughed field nets near-flat and slowly mines OM
+    -- against daily decay, while a no-till field builds it. Together with the residue
+    -- incorporation gains and the no-till daily credit below, the SEASON OM trajectory
+    -- ranks direct-drill > strip-till > cultivator > plough (the #738 ruled ordering).
+    -- Magnitudes are XML-configurable and Agronomy-dial-scalable (Tyson's to tune).
+    OXIDATION = {
+        PLOW         = 0.14,  -- was the lone PLOW_OXIDATION_LOSS 0.10; steepened for the gradient
+        CULTIVATOR   = 0.06,
+        STRIP_TILL   = 0.02,
+        DIRECT_DRILL = 0.00,  -- opener disturbance does not aerate buried humus
+    },
+
+    -- #738 no-till seasonal credit: OM/day gained by a field under an ACTIVE crop
+    -- that was DRILLED INTO UNTILLED RESIDUE (no plough/cultivator/strip pass since the
+    -- last harvest) - the preserved residue mat slowly humifying. Applied on the daily
+    -- pass, fenced against the fallow OM recovery (only while a crop grows) so the two
+    -- never stack. Smaller than the daily decay it offsets, so a no-till field still
+    -- loses a little OM day to day but far less than a tilled one, and skips the
+    -- per-pass oxidation hit entirely - the season-long reason no-till builds carbon.
+    NO_TILL_DAILY_CREDIT = 0.004,
 }
 
 -- ========================================
@@ -320,6 +374,23 @@ SoilConstants.RAIN = {
     PHOSPHORUS_MULTIPLIER = 0.5,     -- phosphorus binds to soil (least mobile)
     PH_ACIDIFICATION = 0.1,          -- rain acidification multiplier
     MIN_RAIN_THRESHOLD = 0.1,        -- minimum rainScale to trigger effects
+
+    -- SCS-001 irrigation-driven leaching (reads SeasonalCropStress moisture, SF-side).
+    -- Sustained soil moisture (rain AND irrigation) costs nutrients, so irrigation is a
+    -- trade-off, not a free yield lever. Neutral (no effect) when SCS is absent. Numbers
+    -- are conservative + VISIBLE-first anchors; final values ride the Soil balance pass.
+    IRRIGATION_LEACH_THRESHOLD = 0.55,   -- SCS moisture (0-1) above which a non-rain field leaches
+    IRRIGATION_LEACH_SCALE     = 0.40,   -- how hard saturated irrigation drives leaching vs rain (<1 = gentler)
+    MOISTURE_LEACH_GAIN        = 0.50,   -- extra leaching from sustained moisture (amplifies the rain factor)
+    OM_LEACH_DAMPEN            = 0.50,   -- high organic matter (0-10) softens the moisture add (buffer)
+    IRRIGATION_LEACH_INTERVAL_MS = 30000,-- throttle for the no-rain irrigation leach pass (accumulated dt)
+    -- #740 filled-day irrigation: on a short-month FILLED-wet day SF supplies the
+    -- precipitation, so SCS's rain-reflecting moisture LEVEL is not counted (it would
+    -- double-count). Real irrigation is still counted, read as the irrigation-only RATE
+    -- (getIrrigationRate, moisture-gain per hour) and normalized to a 0-1 intensity
+    -- against this reference before driving leach. Matches SCS's default flowRatePerHour
+    -- (0.018); SF-side tunable, so it stays decoupled from SCS internals.
+    IRRIGATION_RATE_LEACH_REF  = 0.018,  -- irrigation rate (per-hour gain) that counts as full-intensity irrigation
 }
 
 -- ========================================
@@ -424,6 +495,10 @@ SoilConstants.AMEND_BURN = {
     -- the field costs only a small slice, so you have time to shut the sprayer off.
     LIME_MAX = 0.80,   -- lime/LIQUIDLIME on an established crop, fully built up
     OM_MAX   = 0.20,   -- organic amendment (slurry/manure/digestate) fully built up
+    -- Finished compost is gentler than fresh slurry/manure on an established crop: stabilized
+    -- humus carries no free salt or ammonia to scorch the canopy, so it caps well below OM_MAX.
+    -- Agronomic constant (true at every difficulty, not a spine dial) - Arissani, 2026-07-24.
+    COMPOST_MAX = 0.08,
 }
 
 SoilConstants.FERTILIZER_PROFILES = {
@@ -514,6 +589,11 @@ SoilConstants.ORGANIC = {
         LIME              = true,
         LIQUIDLIME        = true,
         GYPSUM            = true,
+        -- Organic-approved crop protection (OM-209): the mineral preventatives
+        -- allowed under organic rules. Their fungicide application does NOT breach
+        -- cert; the synthetic fungicides (not listed here) do. See onFungicideAppliedDirect.
+        SULFUR            = true,
+        COPPER_HYDROXIDE  = true,
     },
 }
 
@@ -537,6 +617,10 @@ SoilConstants.FERTILIZER_TYPES = {
     "LIQUIDLIME",
     -- Crop protection
     "INSECTICIDE", "FUNGICIDE",
+    -- Physical named fungicides (6-chemical kit): buyable tanks sprayed like FUNGICIDE
+    "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE",
+    -- Organic-approved preventatives (OM-209): same sprayed-tank path, organic-legal
+    "SULFUR", "COPPER_HYDROXIDE",
 }
 
 -- ========================================
@@ -918,6 +1002,16 @@ SoilConstants.SPRAYER_RATE = {
         -- (1.5 L/ha was pure active ingredient dose; 100-150 L/ha is field-realistic)
         INSECTICIDE = { value = 100.0, unit = "liquid" },
         FUNGICIDE   = { value = 100.0, unit = "liquid" },
+        -- Physical named fungicides (6-chemical kit) - same carrier rate as generic FUNGICIDE
+        PROPICONAZOLE = { value = 100.0, unit = "liquid" },
+        AZOXYSTROBIN  = { value = 100.0, unit = "liquid" },
+        BOSCALID      = { value = 100.0, unit = "liquid" },
+        MANCOZEB      = { value = 100.0, unit = "liquid" },
+        METALAXYL     = { value = 100.0, unit = "liquid" },
+        TEBUCONAZOLE  = { value = 100.0, unit = "liquid" },
+        -- Organic-approved preventatives (OM-209) - same carrier rate as generic FUNGICIDE
+        SULFUR           = { value = 100.0, unit = "liquid" },
+        COPPER_HYDROXIDE = { value = 100.0, unit = "liquid" },
         HERBICIDE   = { value = 100.0, unit = "liquid" },
         -- Fallback for unrecognized fill types
         DEFAULT           = { value =    93.5, unit = "liquid" },
@@ -1055,8 +1149,14 @@ SoilConstants.PEST_PRESSURE = {
     INSECTICIDE_DURATION_DAYS = 30,
 
     -- On harvest: pest pressure resets to this fraction of current value
-    -- (insects disperse when the host crop is removed)
-    HARVEST_RESET_FRACTION = 0.30,
+    -- (insects disperse when the host crop is removed).
+    -- #737 option D: was 0.30. Pest grows ~8.52 pts/year at the low tier, and with
+    -- an annual harvest the pre-harvest steady state is P = A / (1 - f), so at
+    -- f = 0.30 the field converged on 12.2 and could NEVER reach the first costing
+    -- tier at 20. At f = 0.60 the steady peak is 21.3, so a neglected field crosses
+    -- 20 over a couple of years and holds in the low band, while a harvest still
+    -- disperses well over a third: a real reset, not a no-op.
+    HARVEST_RESET_FRACTION = 0.60,
 
     -- Harvest yield penalty at each pressure tier
     YIELD_PENALTY_LOW    = 0.00,  -- 0-20:  none
@@ -1097,8 +1197,22 @@ SoilConstants.DISEASE_PRESSURE = {
     -- for DRY_DAYS_THRESHOLD consecutive days.
     -- NOTE: tracking consecutive dry days requires a new field: `field.dryDayCount`
     -- (integer, default 0). Increment each day without rain, reset to 0 on rain.
-    DRY_DAYS_THRESHOLD = 3,    -- after this many dry days, decay begins
-    DRY_DECAY_RATE     = 0.5,  -- pts/day removed during dry period
+    DRY_DAYS_THRESHOLD = 3,    -- after this many dry days, growth is DAMPED (see DRY_GROWTH_MULT)
+    DRY_DECAY_RATE     = 0.5,  -- pts/day removed once a real drought is reached
+
+    -- #737 option D: a dry spell used to REPLACE growth entirely (the decay branch was
+    -- an `elseif`, so any dry day past the threshold skipped the growth path and the
+    -- field only ever lost pressure). Combined with the plough reset that pinned disease
+    -- near zero permanently. Now a dry day inside the fungal window still grows, at a
+    -- damped rate, and outright decay waits for a genuine drought at a higher threshold.
+    -- The freeze-at-zero goes; the drought signal stays.
+    DRY_GROWTH_MULT        = 0.40,  -- dry-day growth as a fraction of the wet base rate
+    -- Multiplier on the climate's dry threshold at which decay takes over from damped
+    -- growth. Keeps the climate scaling intact: Temperate damps from 3 dry days and
+    -- decays from 6, Wet damps from 14 and decays from 28.
+    -- RULED (#737): the smallest value leaving a clear damped band before decay at every
+    -- climate is precisely the shape the ruling described. Confirmed, not merely tolerated.
+    DROUGHT_THRESHOLD_MULT = 2.0,
 
     -- Crop susceptibility multipliers (lowercased fruitDesc.name → multiplier)
     CROP_SUSCEPTIBILITY = {
@@ -1115,6 +1229,12 @@ SoilConstants.DISEASE_PRESSURE = {
     -- Fungicide fill type names → effectiveness multiplier
     FUNGICIDE_TYPES = {
         FUNGICIDE = 1.0,
+        -- Physical named fungicides (6-chemical kit). Base multiplier 1.0; the per-disease
+        -- control rate is applied at spray time in onFungicideAppliedDirect via the catalog.
+        PROPICONAZOLE = 1.0, AZOXYSTROBIN = 1.0, BOSCALID = 1.0,
+        MANCOZEB = 1.0, METALAXYL = 1.0, TEBUCONAZOLE = 1.0,
+        -- Organic-approved preventatives (OM-209): same base multiplier; catalog control at spray time
+        SULFUR = 1.0, COPPER_HYDROXIDE = 1.0,
     },
     -- Pressure points removed on a single full-field fungicide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.
@@ -1148,6 +1268,56 @@ SoilConstants.DISEASE_CLIMATE_MOISTURE = {
     [2] = { growthMult = 1.0,  rainBonusMult = 1.0,  dryThreshold = 3,  dryDecayMult = 1.0,  fungicideMult = 1.0  }, -- Temperate (baseline)
     [3] = { growthMult = 1.5,  rainBonusMult = 1.6,  dryThreshold = 6,  dryDecayMult = 0.5,  fungicideMult = 0.75 }, -- Humid
     [4] = { growthMult = 2.0,  rainBonusMult = 2.5,  dryThreshold = 14, dryDecayMult = 0.2,  fungicideMult = 0.6  }, -- Wet
+}
+
+-- ========================================
+-- CLIMATE PRECIPITATION PRESETS (#740)
+-- ========================================
+-- The `weatherSource` setting picks where SF's rain-driven modifiers (leaching, disease
+-- wet/dry, pest rain-bonus) read precipitation from. weatherSource == 1 = the true
+-- in-game weather (default, unchanged). 2/3/4 = these synthetic presets, which the game
+-- weather cannot: on short (e.g. 1-day) months the real weather is almost always dry, so
+-- the rain-driven effects rarely fire. A preset instead derives a per-day wet/dry from a
+-- SEEDED per-day roll against the season's rain probability, keeping the dry-day build-up
+-- and wet-day spike that disease/pest depend on.
+--   PROB[season]      : fraction of days that rain in that season (the seeded roll's threshold)
+--   INTENSITY[season] : the rainScale used on a wet day (drives leaching + wet-day effects)
+--   Seasons: 1=spring, 2=summer, 3=autumn, 4=winter (the engine's currentSeason is
+--            1-indexed; SeasonalCropStress normalizes the same 1-4 to its 0-based
+--            tables, so PROB[currentSeason] indexes correctly with NO offset).
+--   PROB[season] : the season's RAIN-DAY FRACTION (target fraction of days that rain).
+--   INTENSITY    : the rainScale a FILLED-wet day returns (one value per climate).
+-- The weatherSource setting now selects a CLIMATE BIAS (2=Arid/3=Normal/4=Wet) for the
+-- short-month FILL; 1 = the opt-out (pure real weather, no fill). #740 reshape: real
+-- weather stays primary and the fill only tops up the rain a compressed calendar skips.
+-- This only changes what SF's soil math ASSUMES; it never changes the game's visual
+-- weather. RULED by Arissani's balance pass 2026-07-25 (rain-day % -> fraction). All tunable.
+SoilConstants.CLIMATE_PRECIP = {
+    [2] = { -- Arid: dry summers, light rain
+        PROB      = { [1] = 0.20, [2] = 0.10, [3] = 0.18, [4] = 0.16 },
+        INTENSITY = 0.40,
+    },
+    [3] = { -- Normal / temperate (default climate bias)
+        PROB      = { [1] = 0.40, [2] = 0.20, [3] = 0.38, [4] = 0.32 },
+        INTENSITY = 0.55,
+    },
+    [4] = { -- Wet: frequent rain, wet winters
+        PROB      = { [1] = 0.65, [2] = 0.35, [3] = 0.62, [4] = 0.55 },
+        INTENSITY = 0.80,
+    },
+}
+
+-- #740 short-month FILL engagement (RULED by Arissani's balance pass 2026-07-25). The
+-- fill only engages as the month shortens: w = clamp((REF - dpm) / (REF - 1), 0, 1)^EXP,
+-- where dpm = daysPerPeriod (the calendar's days-per-month). w = 0 at/above SAMPLING_REFERENCE
+-- (byte-identical to real weather), rising to 1 at a 1-day month. It gates the wet-day
+-- FREQUENCY (how often a dry day is filled toward the season shortfall), never intensity.
+-- SAMPLING_REFERENCE is its OWN constant - deliberately NOT DURATION.REFERENCE_DPP (that is
+-- a chemical-duration reference; anchoring the fill on 3 would give common 3+ day saves zero
+-- fill). ENGAGEMENT_EXPONENT is the one tuning dial (feel: 10d ~0.05, 7d ~0.2, 4d ~0.5, 1d ~1).
+SoilConstants.SHORT_MONTH_FILL = {
+    SAMPLING_REFERENCE = 15,   -- days-per-month at/above which the fill is off (weather samples adequately)
+    ENGAGEMENT_EXPONENT = 2.5, -- curve steepness; higher = fill stays low until the month is very short
 }
 
 -- ========================================
@@ -1373,6 +1543,20 @@ SoilConstants.FUNGICIDE_ORDER = {
     "FLUDIOXONIL", "METALAXYL_M", "THIRAM", "CAPTAN",
 }
 
+-- Physical fungicides: the catalog chemicals that also ship as buyable, sprayable fill
+-- types (the 6-chemical kit + the sulfur/copper organic pair, OM-209). They stay in
+-- recommend()/the scout list so scouting still names them as the right control, but the
+-- menu/console INSTANT-apply paths reject them (you load the tank and spray instead).
+-- Spraying routes into the catalog control math via onFungicideAppliedDirect. This set is
+-- the single source of truth for "is physical". SULFUR/COPPER_HYDROXIDE are additionally
+-- the organic-legal pair (see ORGANIC.APPROVED_INPUTS); the six synthetics breach cert.
+SoilConstants.PHYSICAL_FUNGICIDE_ORDER = { "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE" }
+SoilConstants.PHYSICAL_FUNGICIDES = {
+    PROPICONAZOLE = true, AZOXYSTROBIN = true, BOSCALID = true,
+    MANCOZEB = true, METALAXYL = true, TEBUCONAZOLE = true,
+    SULFUR = true, COPPER_HYDROXIDE = true,
+}
+
 -- Treatment mechanics (timing, weather, disease-stage gating).
 SoilConstants.DISEASE_TREATMENT = {
     OUT_OF_WINDOW_MULT = 0.60,  -- effectiveness factor when applied outside the chemical's window
@@ -1414,6 +1598,19 @@ SoilConstants.CROP_FAMILY = {
     grass="forage", meadow="forage", miscanthus="forage", mint="forage",
     potato="root", sugarbeet="root", taro="root", peanut="root", peanuts="root", carrot="root",
     parsnip="root", beetroot="root", cotton="other",
+}
+
+-- Rotation-planner candidate pool (published contract, #739). The single source
+-- of truth for the curated crops the rotation surfaces project: a small set that
+-- always exercises the three rotation outcomes (a legume for Bonus, a neutral
+-- cereal for OK, plus the same-crop Fatigue row the caller adds). The field-detail
+-- dialog's Rotation Foresight and the rotation planner both read THIS pool, so the
+-- two surfaces can never disagree. Names are lowercase; getFruitTypeByName
+-- upper-cases internally so they resolve on any map. Blessed for external readers
+-- via SoilFertilitySystem:getRotationCandidatePool().
+SoilConstants.ROTATION_CANDIDATE_POOL = {
+    LEGUME  = { "soybean", "peas", "clover", "alfalfa" },
+    NEUTRAL = { "wheat", "barley", "maize", "canola" },
 }
 
 -- Rotation → disease pressure modifiers (multiply daily build-up).
@@ -1563,6 +1760,22 @@ SoilConstants.TUNING = {
     DEFAULT_OM = {2.0, 3.0, 4.5, 6.5, 9.0},     -- Starting organic matter (%); idx 3 lowered 6.0→4.5 (#632) so fields aren't uniformly rich
     RATE_MULT  = {0.25, 0.50, 1.0, 1.50, 2.0},  -- Depletion / efficiency multiplier
     ZERO_MULT  = {0.0,  0.50, 1.0, 1.50, 2.0},  -- Stress/effect multiplier (0 = disabled)
+}
+
+-- ========================================
+-- HARVEST CONTRACT UNDERWRITE (#741 / SF-29)
+-- ========================================
+-- Base-game harvest contracts only ever run on UNOWNED (neighbour) fields, which roll a
+-- poor soil profile and sit excluded from the daily sim. SF's yield modifier then cuts the
+-- delivered liters, so the contract's liters-based completion (anchored to a full-health
+-- expectation) never reaches 100% - a field can be fully harvested and still read ~32%
+-- (#741). The underwrite tops the contract's OWN completion accounting up to the vanilla
+-- expectation at delivery by dividing out SF's own yield modifier. It writes no soil, moves
+-- no farm money (the base game pays its own reward on success), and is capped at 1.0 so it
+-- can never exceed the vanilla amount. Composes cleanly with the RETAINED FieldSentry
+-- contract mask (orthogonal: the mask skips the daily sim, this corrects harvest accounting).
+SoilConstants.HARVEST_UNDERWRITE = {
+    ENABLED = true,   -- master switch for the #741 completability guarantee (server-side)
 }
 
 SoilLogger.info("Constants loaded")

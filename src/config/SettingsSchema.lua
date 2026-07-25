@@ -128,6 +128,18 @@ SettingsSchema.definitions = {
         uiId = "sf_rain_effects",
     },
     {
+        id = "weatherSource",
+        type = "number",
+        -- #740 climate bias for the short-month rain fill: 1=Real weather only (opt-out,
+        -- no fill), 2=Arid, 3=Normal, 4=Wet. Default Normal so short-month saves feel a
+        -- living climate automatically; at 15+ days-per-month the fill is off (byte-
+        -- identical to real weather), so normal-length saves are unaffected.
+        default = 3,
+        min = 1,
+        max = 4,
+        uiId = "sf_ws",
+    },
+    {
         id = "plowingBonus",
         type = "boolean",
         default = true,
@@ -218,9 +230,9 @@ SettingsSchema.definitions = {
     {
         id = "activeMapLayer",
         type = "number",
-        default = 0,  -- 0=Off, 1=N, 2=P, 3=K, 4=pH, 5=OM, 6=Urgency, 7=Weed, 8=Pest, 9=Disease, 10=Compaction
+        default = 0,  -- 0=Off, 1=N ... 12=Organic status
         min = 0,
-        max = 10,
+        max = 12,
         uiId = "sf_active_map_layer",
         localOnly = true,  -- per-player map view, not synced to server
     },

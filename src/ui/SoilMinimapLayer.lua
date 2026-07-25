@@ -165,12 +165,13 @@ local LAYER_FIELD_KEYS = {
     [3]  = "potassium",
     [4]  = "pH",
     [5]  = "organicMatter",
-    -- [6] = urgency: computed from N/P/K - no density map layer
-    [7]  = "weed",
+    [6]  = "urgency",          -- REFINED: mirrored onto its own value map
+    [7]  = "weed",             -- game foliage map first, weedPressure value map fallback
     [8]  = "pestPressure",
     [9]  = "diseasePressure",
     [10] = "compaction",
-    [11] = "yieldEfficiency",  -- field-uniform yield % (soilYield GRLE)
+    [11] = "yieldEfficiency",
+    [12] = "organicStatus",
 }
 
 -- Engine limit: 16 state colour entries per DMV overlay configuration.
@@ -238,6 +239,59 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
         end
     end
 
+    -- ── REFINED primary path: runtime per-pixel value maps (SoilValueMaps) ────
+    -- Available on every map at ~2 m/px, no GRLE authoring required.
+    local VM_KEYS = { nitrogen = true, phosphorus = true, potassium = true,
+                      pH = true, organicMatter = true, compaction = true,
+                      urgency = true, weedPressure = true, pestPressure = true,
+                      diseasePressure = true, yieldEfficiency = true,
+                      organicStatus = true }
+    -- Weed: when the terrain has no native weed foliage map, fall back to
+    -- the mirrored weedPressure value map so the layer still renders.
+    local vmFieldKey = (fieldKey == "weed") and "weedPressure" or fieldKey
+    local soilSys = self.soilSystem
+    if vmFieldKey and VM_KEYS[vmFieldKey] and soilSys and soilSys.vmAvailable and soilSys:vmAvailable() then
+        local bvm, firstCh, numCh, def = soilSys.valueMaps:getOverlayMapData(vmFieldKey)
+        if bvm then
+            local ovEntry = self:_getOrCreateOverlay(layerIdx)
+            if ovEntry then
+                local ov = ovEntry.ov
+                if not ovEntry.configured then
+                    setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, 0, 0, 0, 0, 0)
+                    for i = 1, GRLE_STATE_MAX do
+                        local r, g, b, a = 0, 0, 0, 0
+                        if layerIdx == 12 then
+                            if i == 8 then
+                                r, g, b = soilMapOverlay:organicTransitionColor()
+                                a = 1.0
+                            elseif i == 15 then
+                                r, g, b = soilMapOverlay:organicCertifiedColor()
+                                a = 1.0
+                            end
+                        else
+                            local semanticVal
+                            if layerIdx == 9 and i == 1 then
+                                semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1
+                            else
+                                semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                            end
+                            r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
+                            a = 1.0
+                        end
+                        setDensityMapVisualizationOverlayStateColor(ov, bvm, 0, 0, firstCh, numCh, i, r, g, b, a)
+                    end
+                    ovEntry.configured = true
+                    SoilLogger.info("SoilMinimapLayer: value-map overlay configured bvm=%s key=%s", tostring(bvm), tostring(fieldKey))
+                end
+                self._usingDensityLayers = true
+                generateDensityMapVisualizationOverlay(ov)
+                ovEntry.inFlight    = true
+                self._buildInFlight = true
+                return
+            end
+        end
+    end
+
     -- ── Per-pixel GRLE path (nutrients + pest/disease/compaction) ─────────────
     -- Each layer gets its own dedicated overlay so each overlay only ever has
     -- one GRLE handle registered - avoids the engine's 8-handle-per-overlay limit.
@@ -253,7 +307,12 @@ function SoilMinimapLayer:_startBuild(soilMapOverlay)
                 if not ovEntry.configured then
                     setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, 0, 0, 0, 0, 0)
                     for i = 1, GRLE_STATE_MAX do
-                        local semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        local semanticVal
+                        if layerIdx == 9 and i == 1 then
+                            semanticVal = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- disease state 1 = reserved UNKNOWN tone
+                        else
+                            semanticVal = def.minVal + (i / GRLE_STATE_MAX) * (def.maxVal - def.minVal)
+                        end
                         local r, g, b = soilMapOverlay:valueToLayerColor(layerIdx, semanticVal)
                         setDensityMapVisualizationOverlayStateColor(ov, handle, 0, 0, GRLE_FIRST_CH, GRLE_NUM_CH, i, r, g, b, 1.0)
                     end
@@ -289,12 +348,17 @@ function SoilMinimapLayer:draw(mapSelf)
     local layerIdx = self.settings and (self.settings.activeMapLayer or 0) or 0
 
     if not self._usingDensityLayers then
-        -- No GRLE density-map layers on this terrain - hand off to polygon centroid dots.
+        -- REFINED: the per-pixel value maps back every layer, so while the first
+        -- DMV build is still pending we show nothing (PF behaviour) instead of
+        -- flashing the legacy centroid dots. The dot handoff remains only for
+        -- the case where the per-pixel maps genuinely failed to initialize.
         local sfm = g_SoilFertilityManager
-        if sfm and sfm.soilMapOverlay then
+        local soilSys = sfm and sfm.soilSystem
+        local vmOk = soilSys and soilSys.vmAvailable and soilSys:vmAvailable()
+        if not vmOk and sfm and sfm.soilMapOverlay then
             sfm.soilMapOverlay:onDrawMinimap(mapSelf)
         end
-        -- Still show the layer indicator in the polygon fallback path
+        -- Still show the layer indicator while the overlay builds
         if layerIdx > 0 then
             local wx, wy = mapSelf:getPosition()
             self:drawLayerIndicator(wx, wy, mapSelf:getWidth(), mapSelf:getHeight(), layerIdx)
@@ -402,7 +466,7 @@ local LAYER_LABEL = {
     [1]  = "N",        [2]  = "P",      [3]  = "K",
     [4]  = "pH",       [5]  = "OM",     [6]  = "!",
     [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
-    [10] = "Compact",  [11] = "Yield",
+    [10] = "Compact",  [11] = "Yield",  [12] = "Organic",
 }
 -- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
 local LAYER_LABEL_COLOR = {
@@ -411,7 +475,7 @@ local LAYER_LABEL_COLOR = {
     [5]  = {0.60, 0.35, 0.10},  [6]  = {0.95, 0.25, 0.25},
     [7]  = {0.20, 0.70, 0.20},  [8]  = {0.85, 0.75, 0.10},
     [9]  = {0.80, 0.10, 0.80},  [10] = {0.55, 0.30, 0.10},
-    [11] = {0.35, 0.85, 0.45},
+    [11] = {0.35, 0.85, 0.45},  [12] = {0.28, 0.78, 0.38},
 }
 
 -- Short abbreviations worth showing in brackets after the full name. Only the

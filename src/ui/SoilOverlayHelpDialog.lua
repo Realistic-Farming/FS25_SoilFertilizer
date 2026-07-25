@@ -32,7 +32,7 @@ SoilOverlayHelpDialog.CONTENT = {
     { t="B", v="Dim cells are unsampled. Drive or walk the" },
     { t="B", v="field to record a soil reading there." },
     { t="S", v=" " },
-    { t="H", v="THE 11 MAP LAYERS" },
+    { t="H", v="THE 12 MAP LAYERS" },
     { t="B", v="1  Nitrogen (N)    Drops on every harvest." },
     { t="B", v="2  Phosphorus (P)  Slow-moving, long lasting." },
     { t="B", v="3  Potassium (K)   Key for root crops." },

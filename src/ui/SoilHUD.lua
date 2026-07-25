@@ -768,7 +768,7 @@ function SoilHUD:buildFieldInfoLines(info)
     end
     local weedPct    = math.floor((info.weedPressure    or 0) + 0.5)
     local pestPct    = math.floor((info.pestPressure    or 0) + 0.5)
-    local diseasePct = math.floor((info.diseasePressure or 0) + 0.5)
+    local diseasePct = math.floor((info.shownDiseasePressure or 0) + 0.5)  -- unscouted (nil) counts as 0: never leaks into the grade
     local compPct    = math.floor((info.compaction      or 0) + 0.5)
     -- Discovery gate: a named infection is UNKNOWN until scouted. While hidden we show a
     -- "? (scout to identify)" row and let neither the pressure %, the name, the soil grade,
@@ -1485,12 +1485,15 @@ function SoilHUD:drawPanel()
                     info.insecticideActive, px, cy, pw, s, fontMult)
             end
             if mgr.settings.diseasePressure and ((info.diseasePressure or 0) > 0 or info.fungicideActive) then
-                if info.activeDisease and not info.diseaseDiscovered then
-                    local unknownStr = (g_i18n:hasText("sf_hud_disease_unknown") and g_i18n:getText("sf_hud_disease_unknown"))
-                        or "? (scout to identify)"
+                if info.shownDiseasePressure == nil then
+                    -- Unscouted: the pressure row reads "Unscouted", identical for an
+                    -- unscouted infected field and an unscouted clean one (no % leaks).
+                    local unknownStr = (g_i18n:hasText("sf_unscouted") and g_i18n:getText("sf_unscouted"))
+                        or (g_i18n:hasText("sf_hud_disease_unknown") and g_i18n:getText("sf_hud_disease_unknown"))
+                        or "Unscouted"
                     cy = self:drawPressureRow("sf_hud_disease", 0, false, px, cy, pw, s, fontMult, unknownStr)
                 else
-                    cy = self:drawPressureRow("sf_hud_disease", info.diseasePressure or 0,
+                    cy = self:drawPressureRow("sf_hud_disease", info.shownDiseasePressure or 0,
                         info.fungicideActive, px, cy, pw, s, fontMult)
                 end
             end

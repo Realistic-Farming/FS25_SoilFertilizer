@@ -31,6 +31,9 @@ function SoilFertilitySystem.new(settings)
     self.updateInterval = SoilConstants.TIMING.UPDATE_INTERVAL
     self.isInitialized = false
     self.lastUpdateDay = 0
+    -- Monotonic day of the last processed daily pass, for skipped-day catch-up.
+    -- 0 means "not yet observed" so the first day-change never spuriously catches up.
+    self.lastUpdateMonotonicDay = 0
     self.hookManager = HookManager.new()
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -41,6 +44,9 @@ function SoilFertilitySystem.new(settings)
     self.hookManager:installSiloFillTypeHook()
     self.layerSystem  = SoilLayerSystem  and SoilLayerSystem.new()  or nil
     self.bundledMaps  = SoilBundledMaps  and SoilBundledMaps.new()  or nil
+    -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
+    -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
+    self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
 
     -- Per-day flag table for fertilizer application notifications (fieldId → game day last shown)
     -- Prevents notification spam since the sprayer hook fires every frame while active.
@@ -133,6 +139,15 @@ function SoilFertilitySystem:initialize()
         self.bundledMaps:initialize()
     end
 
+    -- REFINED: per-pixel value maps. Restores persisted sfSoilMap_*.grle files
+    -- from the savegame when present; otherwise creates blank maps that get
+    -- seeded from fieldData/zoneData after loadSoilData (see seedValueMaps).
+    if self.valueMaps then
+        local savegameDir = g_currentMission and g_currentMission.missionInfo
+                            and g_currentMission.missionInfo.savegameDirectory
+        self.valueMaps:initialize(savegameDir)
+    end
+
     -- Scan fields using real FieldManager (now runs with layerSystem ready)
     if g_fieldManager then
         self:scanFields()
@@ -200,6 +215,10 @@ function SoilFertilitySystem:delete()
     if self.bundledMaps then
         self.bundledMaps:delete()
         self.bundledMaps = nil
+    end
+    if self.valueMaps then
+        self.valueMaps:delete()
+        self.valueMaps = nil
     end
     self.fieldData = {}
     self.isInitialized = false
@@ -535,6 +554,12 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionCoverageCells    = {}
         harvestField.sessionLastProduct      = nil
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
+
+        -- #738 no-till OM: the crop is off the field. Fresh, untouched residue now covers
+        -- bare ground, so reset the tillage-since-harvest tracker and end the no-till
+        -- credit - fallow recovery governs OM until the next crop is sown/drilled.
+        harvestField.tilledSinceHarvest = false
+        harvestField.noTillActive       = false
         harvestField.sprayTrailPts           = nil
         harvestField.sownCrop                = nil  -- crop harvested; lastCrop now carries it (#661)
         -- frozenYieldModifier is NOT cleared here (#598): onHarvest fires per-cut, so
@@ -771,6 +796,13 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
         end
     end
 
+    -- #738 no-till OM: a crop drilled into UNTILLED residue (no plough/cultivator/strip
+    -- pass since the last harvest) is a no-till crop and accrues the daily OM credit while
+    -- it grows. A crop sown after any tillage pass is conventional (tilledSinceHarvest set
+    -- by those hooks, cleared at harvest). This is the agronomic definition of no-till -
+    -- you drill instead of tilling - so it needs no implement-type detection.
+    field.noTillActive = not field.tilledSinceHarvest
+
     local areaHa = area or 0.001
     local fieldAreaHa = field.fieldArea and field.fieldArea > 0 and field.fieldArea or 1.0
     local factor = areaHa / fieldAreaHa
@@ -812,30 +844,26 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
         SoilLogger.debug("Residue incorporation (sowing) field %d: +N%.4f +P%.4f +K%.4f (factor %.4f)",
             fieldId, dN, dP, dK, factor)
 
-        -- Local zoneData update for HUD/PDA visibility
+        -- REFINED: local per-pixel bump at the seeder position on the value maps
         local tx, tz = self._lastTillageX, self._lastTillageZ
         if tx and tz then
             local zone = SoilConstants.ZONE
-            local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
-            if not field.zoneData then field.zoneData = {} end
-            if not field.zoneData[cellKey] then
-                field.zoneData[cellKey] = {
-                    N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-                    pH = field.pH, OM = field.organicMatter,
-                    weedPressure = field.weedPressure, pestPressure = field.pestPressure,
-                    diseasePressure = field.diseasePressure, compaction = field.compaction
-                }
-            end
-            local cell = field.zoneData[cellKey]
             local cellFactor = areaHa / zone.CELL_AREA_HA
-            cell.N = math.min(limits.MAX, cell.N + ri.N * cellFactor)
-            cell.P = math.min(limits.MAX, cell.P + ri.P * cellFactor)
-            cell.K = math.min(limits.MAX, cell.K + ri.K * cellFactor)
-            cell.OM = math.min(limits.ORGANIC_MATTER_MAX, cell.OM + ri.OM * cellFactor)
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
 
-            -- Weed reduction per cell for direct drill
-            if self.settings.weedPressure and cell.weedPressure then
-                cell.weedPressure = math.max(0, cell.weedPressure - (cell.weedPressure * cellFactor))
+            -- Weed reduction per zone cell (pressures stay on the coarse grid)
+            if self.settings.weedPressure then
+                local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
+                if not field.zoneData then field.zoneData = {} end
+                local cell = field.zoneData[cellKey]
+                if cell and cell.weedPressure then
+                    cell.weedPressure = math.max(0, cell.weedPressure - (cell.weedPressure * cellFactor))
+                end
             end
         end
     end
@@ -870,6 +898,7 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
     field.sprayTrailPts           = nil
+    field._zoneBaseline           = nil   -- #735: re-snapshot the pre-spray baseline next session
     SoilLogger.debug("Session coverage reset: field %d (%s)", fieldId, reason or "?")
 end
 
@@ -896,30 +925,51 @@ function SoilFertilitySystem:_applyCropIncorporation(fieldId, field, profile, bi
     field.phosphorus = math.min(limits.MAX, (field.phosphorus or 0) + profile.P * scale)
     field.potassium  = math.min(limits.MAX, (field.potassium  or 0) + profile.K * scale)
 
-    -- Local zoneData cell update for HUD/PDA visibility (same pattern as residue).
+    -- REFINED: local per-pixel bump at the tillage position on the value maps
     local tx, tz = self._lastTillageX, self._lastTillageZ
     if tx and tz then
         local zone = SoilConstants.ZONE
-        local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
-        if not field.zoneData then field.zoneData = {} end
-        if not field.zoneData[cellKey] then
-            field.zoneData[cellKey] = {
-                N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-                pH = field.pH, OM = field.organicMatter,
-                weedPressure = field.weedPressure, pestPressure = field.pestPressure,
-                diseasePressure = field.diseasePressure, compaction = field.compaction
-            }
-        end
-        local cell = field.zoneData[cellKey]
         local cellScale = ((areaHa or 0) / zone.CELL_AREA_HA) * biomass
-        cell.OM = math.min(limits.ORGANIC_MATTER_MAX, (cell.OM or field.organicMatter) + profile.OM * cellScale)
-        cell.N  = math.min(limits.MAX, (cell.N or 0) + profile.N * cellScale)
-        cell.P  = math.min(limits.MAX, (cell.P or 0) + profile.P * cellScale)
-        cell.K  = math.min(limits.MAX, (cell.K or 0) + profile.K * cellScale)
+        self:vmLocalBump(tx, tz, {
+            organicMatter = profile.OM * cellScale,
+            nitrogen      = profile.N  * cellScale,
+            phosphorus    = profile.P  * cellScale,
+            potassium     = profile.K  * cellScale,
+        }, zone.CELL_SIZE * 0.5)
     end
 
     SoilLogger.debug("Crop incorporation field %d: +OM%.3f +N%.3f (biomass=%.2f factor=%.4f)",
         fieldId or -1, profile.OM * scale, profile.N * scale, biomass, factor)
+    return true
+end
+
+--- #738 no-till OM: apply a tillage pass's organic-matter OXIDATION loss (deep
+--- disturbance aerating buried humus). Shared by the plough/cultivator/strip-till
+--- hooks with each type's own gradient value. Reduces the field-average OM (floored
+--- at DECAY_FLOOR), and mirrors the loss positionally onto the OM value map at the
+--- pass location - the same scalar-uses-`factor`, VM-uses-`cellFactor` split the
+--- residue-incorporation writes use, degrading to scalar-only when no value map is
+--- present. Returns true if the field OM changed.
+---@param field table The field data table
+---@param oxid number OM lost per full pass (OM_DYNAMICS.OXIDATION.*)
+---@param factor number Field-fraction processed this tick (areaHa / fieldAreaHa)
+---@param areaHa number Area processed this tick, for the per-cell VM intensity
+---@return boolean changed
+function SoilFertilitySystem:_applyTillageOxidation(field, oxid, factor, areaHa)
+    if not oxid or oxid <= 0 or not field then return false end
+    local omDyn  = SoilConstants.OM_DYNAMICS
+    local floor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
+    local before = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+    local after  = math.max(floor, before - oxid * factor)
+    if after >= before then return false end
+    field.organicMatter = after
+    -- Positional loss on the OM value map (crop-incorporation precedent).
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    if tx and tz then
+        local zone = SoilConstants.ZONE
+        local cellFactor = areaHa / zone.CELL_AREA_HA
+        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * cellFactor) }, zone.CELL_SIZE * 0.5)
+    end
     return true
 end
 
@@ -965,19 +1015,23 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
     -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "plowing") then changed = true end
 
+    -- #738: this field has now been TILLED since the last harvest, so the next crop sown
+    -- into it is conventional, not no-till. Any crop currently growing is destroyed by the
+    -- pass, so its no-till credit ends here too.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     -- Plowing effects 1 & 2: OM oxidation loss and pH normalization (only if plowingBonus enabled)
     if self.settings.plowingBonus then
         -- Deep inversion exposes buried humus to air, oxidising it - plowing COSTS organic
         -- matter rather than adding it (#695, reversed from the old +0.5/pass bonus). Residue
         -- incorporation below (gated separately) can offset this when straw/green matter is
         -- actually worked in, so a residue-rich plow can still net positive.
-        local omDyn    = SoilConstants.OM_DYNAMICS
-        local omLoss   = (omDyn and omDyn.PLOW_OXIDATION_LOSS or 0) * factor
-        local omFloor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
-        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        local omAfter  = math.max(omFloor, omBefore - omLoss)
-        if omAfter < omBefore then
-            field.organicMatter = omAfter
+        -- #738: plough oxidation via the shared per-tillage gradient (positional VM
+        -- write + floored scalar). Steepest of the gradient - deep inversion burns the
+        -- most buried humus, so a residue-poor plough nets slightly negative on OM.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.PLOW, factor, areaHa) then
             changed = true
         end
 
@@ -1046,29 +1100,29 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
         SoilLogger.debug("Residue incorporation (plowing) field %d: +N%.4f +P%.4f +K%.4f (factor %.4f)",
             fieldId, dN, dP, dK, factor)
 
-        -- Local zoneData update for HUD/PDA visibility
+        -- REFINED: local per-pixel bump at the plow position on the value maps;
+        -- pressure reductions stay on the coarse zone grid.
         local tx, tz = self._lastTillageX, self._lastTillageZ
         if tx and tz then
             local zone = SoilConstants.ZONE
+            -- Cell-factor: area processed in THIS tick relative to one cell area (usually 0.01 ha)
+            local cellFactor = areaHa / zone.CELL_AREA_HA
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
+
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
             if not field.zoneData[cellKey] then
                 field.zoneData[cellKey] = {
-                    N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-                    pH = field.pH, OM = field.organicMatter,
                     weedPressure = field.weedPressure, pestPressure = field.pestPressure,
                     diseasePressure = field.diseasePressure, compaction = field.compaction
                 }
             end
             local cell = field.zoneData[cellKey]
-            -- Cell-factor: area processed in THIS tick relative to one cell area (usually 0.01 ha)
-            local cellFactor = areaHa / zone.CELL_AREA_HA
-            cell.N = math.min(limits.MAX, cell.N + ri.N * cellFactor)
-            cell.P = math.min(limits.MAX, cell.P + ri.P * cellFactor)
-            cell.K = math.min(limits.MAX, cell.K + ri.K * cellFactor)
-            cell.OM = math.min(limits.ORGANIC_MATTER_MAX, cell.OM + ri.OM * cellFactor)
-
-            -- Pressure reductions per cell
             if self.settings.weedPressure then
                 cell.weedPressure = math.max(0, (cell.weedPressure or field.weedPressure or 0) - (field.weedPressure or 0) * cellFactor)
             end
@@ -1146,6 +1200,11 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
     -- Tilling mixes the soil and ends the crop - void any pending amendment burn.
     if self:clearAmendmentBurn(field, fieldId, "cultivation") then changed = true end
 
+    -- #738: a cultivator pass counts as tillage - the next sown crop is conventional,
+    -- and any growing crop's no-till credit ends here.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     if self.settings.weedPressure and c.WEED_PRESSURE_REDUCTION and (field.weedPressure or 0) > 0 then
         local before = field.weedPressure
         local reduction = c.WEED_PRESSURE_REDUCTION * factor
@@ -1187,28 +1246,35 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
         SoilLogger.debug("Residue incorporation (cultivation) field %d: +N%.4f +P%.4f +K%.4f (factor %.4f)",
             fieldId, dN, dP, dK, factor)
 
-        -- Local zoneData update for HUD/PDA visibility
+        -- #738: cultivator oxidation (topsoil mixing aerates humus). Netted against the
+        -- residue gain above, cultivation still adds OM but less than strip-till/no-till.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.CULTIVATOR, factor, areaHa) then
+            changed = true
+        end
+
+        -- REFINED: local per-pixel bump at the cultivator position on the value
+        -- maps; pressure reductions stay on the coarse zone grid.
         local tx, tz = self._lastTillageX, self._lastTillageZ
         if tx and tz then
             local zone = SoilConstants.ZONE
+            local cellFactor = areaHa / zone.CELL_AREA_HA
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
+
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
             if not field.zoneData[cellKey] then
                 field.zoneData[cellKey] = {
-                    N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-                    pH = field.pH, OM = field.organicMatter,
                     weedPressure = field.weedPressure, pestPressure = field.pestPressure,
                     diseasePressure = field.diseasePressure, compaction = field.compaction
                 }
             end
             local cell = field.zoneData[cellKey]
-            local cellFactor = areaHa / zone.CELL_AREA_HA
-            cell.N = math.min(limits.MAX, cell.N + ri.N * cellFactor)
-            cell.P = math.min(limits.MAX, cell.P + ri.P * cellFactor)
-            cell.K = math.min(limits.MAX, cell.K + ri.K * cellFactor)
-            cell.OM = math.min(limits.ORGANIC_MATTER_MAX, cell.OM + ri.OM * cellFactor)
-
-            -- Pressure reductions per cell
             if self.settings.weedPressure and c.WEED_PRESSURE_REDUCTION then
                 cell.weedPressure = math.max(0, (cell.weedPressure or field.weedPressure or 0) - c.WEED_PRESSURE_REDUCTION * cellFactor)
             end
@@ -1314,6 +1380,11 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
     local st = SoilConstants.STRIP_TILL
     local changed = false
 
+    -- #738: strip-till is a (reduced) tillage pass. A crop drilled after it takes the
+    -- strip-till residue profile, not the no-till daily credit, so mark the field tilled.
+    field.tilledSinceHarvest = true
+    field.noTillActive       = false
+
     -- Partial weed suppression (only tilled strips are disrupted)
     if self.settings.weedPressure and (field.weedPressure or 0) > 0 then
         local before = field.weedPressure
@@ -1335,22 +1406,28 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
         changed = true
     end
 
-    -- Small OM boost from subsurface incorporation in tilled strips
-    if st.OM_BOOST and st.OM_BOOST > 0 then
-        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        local omAfter  = math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX,
-                                  omBefore + st.OM_BOOST * factor)
-        if omAfter > omBefore then
-            field.organicMatter = omAfter
-            changed = true
-        end
-    end
-
     -- Residue incorporation: strip-till knifes work only tilled strips (~30% of surface),
     -- so residue nutrient release is the smallest of all tillage types.
     if self.settings.residueIncorporation and SoilConstants.RESIDUE_INCORPORATION then
         local ri     = SoilConstants.RESIDUE_INCORPORATION.STRIP_TILL
         local limits = SoilConstants.NUTRIENT_LIMITS
+
+        -- #738: strip-till residue OM now lands on the field average too (previously only
+        -- the VM got it, while the retired OM_BOOST carried the scalar). One gain term.
+        local omBefore = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
+        local omAfter  = math.min(limits.ORGANIC_MATTER_MAX, omBefore + (ri.OM * factor))
+        if omAfter > omBefore then
+            field.organicMatter = omAfter
+            changed = true
+        end
+
+        -- #738: strip-till oxidation (lightest of the tilling types - only narrow knife
+        -- bands are disturbed). Netted with the residue gain, strip-till nets clearly
+        -- positive, second only to no-till on the season OM trajectory.
+        local omDyn = SoilConstants.OM_DYNAMICS
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.STRIP_TILL, factor, areaHa) then
+            changed = true
+        end
 
         local dN, dP, dK = ri.N * factor, ri.P * factor, ri.K * factor
         field.nitrogen   = math.min(limits.MAX, (field.nitrogen   or 0) + dN)
@@ -1364,23 +1441,24 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
         local tx, tz = self._lastTillageX, self._lastTillageZ
         if tx and tz then
             local zone = SoilConstants.ZONE
+            local cellFactor = areaHa / zone.CELL_AREA_HA
+            -- REFINED: local per-pixel bump at the strip-till position
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
+
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
             if not field.zoneData[cellKey] then
                 field.zoneData[cellKey] = {
-                    N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-                    pH = field.pH, OM = field.organicMatter,
                     weedPressure = field.weedPressure, pestPressure = field.pestPressure,
                     diseasePressure = field.diseasePressure, compaction = field.compaction
                 }
             end
             local cell = field.zoneData[cellKey]
-            local cellFactor = areaHa / zone.CELL_AREA_HA
-            cell.N = math.min(limits.MAX, cell.N + ri.N * cellFactor)
-            cell.P = math.min(limits.MAX, cell.P + ri.P * cellFactor)
-            cell.K = math.min(limits.MAX, cell.K + ri.K * cellFactor)
-            cell.OM = math.min(limits.ORGANIC_MATTER_MAX, cell.OM + ri.OM * cellFactor)
-
             -- Pressure reductions per cell for strip-till
             if self.settings.weedPressure then
                 cell.weedPressure = math.max(0, (cell.weedPressure or field.weedPressure or 0) - st.WEED_PRESSURE_REDUCTION * cellFactor)
@@ -1390,6 +1468,19 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
             end
             if self.settings.diseasePressure then
                 cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - st.DISEASE_PRESSURE_REDUCTION * cellFactor)
+            end
+            -- REFINED: mirror the tilled strip onto the per-pixel pressure maps
+            if self:vmAvailable() then
+                local halfCell = zone.CELL_SIZE * 0.5
+                if self.settings.weedPressure then
+                    self.valueMaps:writeValueAtWorld("weedPressure", tx, tz, cell.weedPressure, halfCell)
+                end
+                if self.settings.pestPressure then
+                    self.valueMaps:writeValueAtWorld("pestPressure", tx, tz, cell.pestPressure, halfCell)
+                end
+                if self.settings.diseasePressure then
+                    self.valueMaps:writeValueAtWorld("diseasePressure", tx, tz, cell.diseasePressure, halfCell)
+                end
             end
         end
     end
@@ -1444,7 +1535,7 @@ function SoilFertilitySystem:onHerbicideApplied(fieldId, effectiveness)
     -- it must equal the day count directly. Multiplying by daysPerPeriod made protection
     -- last DURATION_DAYS *months* - it never expired, so the HUD "protected" status stuck
     -- forever (#639). See HERBICIDE_DURATION_DAYS comment in Constants.lua.
-    field.herbicideDaysLeft = wp.HERBICIDE_DURATION_DAYS
+    field.herbicideDaysLeft = SoilDuration.seasonScaled(wp.HERBICIDE_DURATION_DAYS)
 
     self:log("[Herbicide] Field %d: weed pressure %.0f -> %.0f, protected for %d days",
         fieldId, before, field.weedPressure, field.herbicideDaysLeft)
@@ -1638,7 +1729,7 @@ function SoilFertilitySystem:onInsecticideApplied(fieldId, effectiveness)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = pp.INSECTICIDE_DURATION_DAYS
+        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
     end
 
     self:log("[Insecticide] Field %d: pest pressure %.0f -> %.0f, protected for %d days",
@@ -1678,7 +1769,7 @@ function SoilFertilitySystem:onFungicideApplied(fieldId, effectiveness)
     -- cm.fungicideMult still scales it (shorter in wet climates).
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(dp.FUNGICIDE_DURATION_DAYS * cm.fungicideMult)
+        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * cm.fungicideMult)
     end
 
     self:log("[Fungicide] Field %d: disease pressure %.0f -> %.0f, protected for %d days",
@@ -1708,11 +1799,125 @@ function SoilFertilitySystem:_currentDay()
             and g_currentMission.environment.currentDay) or 0
 end
 
+--- Monotonic day counter for ARITHMETIC (elapsed-day math). Unlike currentDay,
+--- which wraps within a season and is only safe for change-detection,
+--- currentMonotonicDay increases forever, so (now - last) is the true number of
+--- days that passed - the value a skipped-day catch-up needs. Falls back to
+--- currentDay when the field is unavailable.
+function SoilFertilitySystem:_currentMonotonicDay()
+    local env = g_currentMission and g_currentMission.environment
+    if env then
+        return env.currentMonotonicDay or env.currentDay or 0
+    end
+    return 0
+end
+
 --- Current season index (1=Spring 2=Summer 3=Fall 4=Winter), or nil if unavailable.
+--- The shipped FS25 engine returns currentSeason 1-4 (spring=1); this is the same value
+--- SeasonalCropStress reads and normalizes DOWN to its 0-based tables (WeatherIntegration
+--- subtracts 1 when in [1,4]). CLIMATE_PRECIP is likewise 1-indexed, so the raw value
+--- indexes it directly - NO offset (verified against SCS + SF's own shipped season use;
+--- this is the #740 build-gate "season-index catch", discharged). The 0-based fallback
+--- below only guards a hypothetical build that returns spring=0, so the climate can never
+--- land a season off or nil-index the table.
 ---@return number|nil
 function SoilFertilitySystem:_currentSeason()
-    return (g_currentMission and g_currentMission.environment
-            and g_currentMission.environment.currentSeason) or nil
+    local raw = g_currentMission and g_currentMission.environment
+                and g_currentMission.environment.currentSeason
+    if raw == nil then return nil end
+    if raw >= 1 and raw <= 4 then return raw end   -- shipped engine: 1-indexed (spring=1)
+    if raw == 0 then return 1 end                  -- fallback: a 0-based build's spring
+    return nil
+end
+
+--- #740: the rain scale SF's soil math should use. Real weather is ALWAYS primary. On a
+--- short month the compressed calendar oversamples the sky as dry, which starves the
+--- rain-driven modifiers (leaching, disease wet/dry, pest); the fill supplies the rain the
+--- calendar skipped, at the season's climate, ONLY as the month shortens, and never on a
+--- real rain day. weatherSource: 1 = opt-out (pure real weather, no fill); 2/3/4 = the
+--- climate bias (Arid/Normal/Wet) the fill uses. Sets self._rainWasFilled so applyRainEffects
+--- can apply the per-day precedence (a filled day is SF-supplied precipitation, so SCS's
+--- rain-reflecting moisture is not double-counted). Deterministic per day => MP-consistent.
+---@return number rainScale  (>= 0; > RAIN.MIN_RAIN_THRESHOLD counts as raining)
+function SoilFertilitySystem:getEffectiveRainScale()
+    -- Real weather (RealisticWeather-shaped when present) is primary and unchanged.
+    local env = g_currentMission and g_currentMission.environment
+    local real = 0
+    if env and env.weather and env.weather.getRainFallScale then
+        real = env.weather:getRainFallScale() or 0
+    end
+
+    local src = (self.settings and self.settings.weatherSource) or 1
+    if src == 1 then
+        -- Opt-out: pure real weather, no month-length fill at any calendar length.
+        self._rainWasFilled = false
+        return real
+    end
+
+    if real > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
+        -- Real rain day: primary, never overridden. The fill only tops up dry days.
+        self._rainWasFilled = false
+        return real
+    end
+
+    -- Dry real day: engage the fill only as the month shortens.
+    local dpm = (env and env.daysPerPeriod) or 1
+    local w = self:_fillWeight(dpm)
+    if w <= 0 then
+        -- At/above the sampling reference the fill is off => byte-identical to real (0).
+        self._rainWasFilled = false
+        return 0
+    end
+
+    -- w gates ENGAGEMENT frequency (how often a dry day is filled toward the season
+    -- shortfall), never intensity: a filled-wet day returns the FULL season intensity.
+    local filled = self:_syntheticRainScale(src, w)
+    self._rainWasFilled = (filled > SoilConstants.RAIN.MIN_RAIN_THRESHOLD)
+    return filled
+end
+
+--- #740 month-length engagement weight for the short-month fill. 0 at/above the sampling
+--- reference (weather samples adequately), rising to 1 as the month shortens.
+--- w = clamp((REF - dpm) / (REF - 1), 0, 1) ^ EXP. See SoilConstants.SHORT_MONTH_FILL.
+---@param daysPerMonth number  the calendar's days-per-period (days per in-game month)
+---@return number w  engagement weight in [0, 1]
+function SoilFertilitySystem:_fillWeight(daysPerMonth)
+    local fill = SoilConstants.SHORT_MONTH_FILL
+    local ref = (fill and fill.SAMPLING_REFERENCE) or 15
+    local exp = (fill and fill.ENGAGEMENT_EXPONENT) or 2.5
+    if not daysPerMonth or daysPerMonth >= ref then return 0 end
+    local t = (ref - daysPerMonth) / (ref - 1)
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    return t ^ exp
+end
+
+--- Synthetic per-day fill rain for a climate bias (#740). A seeded per-day roll against the
+--- season's rain-day fraction (scaled by the engagement weight w) decides wet vs dry; a wet
+--- day returns the climate's intensity, a dry day returns 0. Scaling the probability by w
+--- makes the filled wet-day fraction track the season climate (shortfall-targeting: real is
+--- ~0 on short months, so w*P approaches the season target as the month shrinks, and stays
+--- small on longer months where w is small, so no over-fill). The roll is a fract(sin(day))
+--- hash (NOT an affine LCG - see the per-field hash pitfall), keyed on the monotonic day so
+--- the whole map shares a day's weather and it is stable across a save/reload on the same day.
+---@param src number  climate bias (2=Arid, 3=Normal, 4=Wet)
+---@param w number     engagement weight in [0, 1] (nil => 1, the full climate)
+---@return number rainScale
+function SoilFertilitySystem:_syntheticRainScale(src, w)
+    local preset = SoilConstants.CLIMATE_PRECIP and SoilConstants.CLIMATE_PRECIP[src]
+    if not preset then return 0 end
+    local season = self:_currentSeason() or 2   -- default to summer if the env is unavailable
+    local baseProb = (preset.PROB and preset.PROB[season]) or 0
+    if baseProb <= 0 then return 0 end
+    local prob = baseProb * (w or 1)
+    if prob <= 0 then return 0 end
+    local env = g_currentMission and g_currentMission.environment
+    local day = (env and (env.currentMonotonicDay or env.currentDay)) or 0
+    local s    = math.sin(day * 12.9898 + 78.233) * 43758.5453
+    local roll = s - math.floor(s)   -- fractional part in [0, 1)
+    if roll < prob then
+        return preset.INTENSITY or 0.6   -- filled-wet day: full climate intensity
+    end
+    return 0   -- dry day
 end
 
 --- Locate the g_fieldManager field object for a farmland id (shared search pattern).
@@ -1762,11 +1967,9 @@ end
 ---@param season number|nil
 ---@return boolean isWet, boolean isCool
 function SoilFertilitySystem:_diseaseClimateNow(season)
-    local isWet = false
-    if g_currentMission and g_currentMission.environment and g_currentMission.environment.weather then
-        local rs = g_currentMission.environment.weather:getRainFallScale()
-        isWet = rs ~= nil and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
-    end
+    -- #740: real in-game rain, topped up by the short-month climate fill on dry days.
+    local rs = self:getEffectiveRainScale()
+    local isWet = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
     -- Cool proxy from season (summer = warm; spring/fall/winter = cool). Avoids depending
     -- on an unverified temperature API while still steering disease selection sensibly.
     local isCool = season ~= 2
@@ -2055,18 +2258,50 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
     local currentDay = env.currentDay or 0
     if currentDay ~= self.lastUpdateDay then
         self.lastUpdateDay = currentDay
-        self:updateDailySoil()
+        -- Skipped-day catch-up: currentDay only proves a NEW day, not how many
+        -- passed (it wraps within a season), so a sleep or time-skip across
+        -- several days used to collapse into a single daily pass and silently
+        -- drop the missing days' soil changes. The monotonic day gives the true
+        -- gap. Clamped so a huge jump (or a pre-tracking save whose monotonic day
+        -- has not been observed yet) can never stall the frame; the first
+        -- observation is always treated as one day.
+        local monoDay = self:_currentMonotonicDay()
+        local elapsed = 1
+        if self.lastUpdateMonotonicDay > 0 and monoDay > self.lastUpdateMonotonicDay then
+            elapsed = monoDay - self.lastUpdateMonotonicDay
+            local maxCatchup = (SoilConstants.TIMING and SoilConstants.TIMING.MAX_DAILY_CATCHUP) or 10
+            if elapsed > maxCatchup then elapsed = maxCatchup end
+        end
+        self.lastUpdateMonotonicDay = monoDay
+        self:updateDailySoil(elapsed)
         -- Advance organic transitions (uses the monotonic day internally).
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:onDayChanged()
         end
     end
 
-    -- Rain effects
-    if self.settings.rainEffects and env.weather then
-        local rainScale = env.weather:getRainFallScale()
+    -- Rain effects (+ SCS-001 irrigation-driven leaching)
+    -- #740: getEffectiveRainScale is the real weather, topped up by the short-month climate
+    -- fill on dry days (and it sets self._rainWasFilled for applyRainEffects' per-day
+    -- precedence); rainEffects stays the master on/off. Skipped-day catch-up replays the
+    -- landing day's fill roll (per-day deterministic hash, scaled by elapsed) - no worse
+    -- than the real-weather replay, and no new persisted state (CC-D, simple option).
+    if self.settings.rainEffects then
+        local rainScale = self:getEffectiveRainScale()
         if rainScale and rainScale > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then
+            -- Raining: per-frame leach (existing cadence), now moisture-aware per field.
             self:applyRainEffects(dt, rainScale)
+            self._irrigLeachAccumMs = 0
+        elseif g_currentMission and g_currentMission.cropStressManager then
+            -- No rain, but SeasonalCropStress is loaded: irrigation can still leach a
+            -- pivot-watered field. Throttled (accumulate dt, fire every interval) so this
+            -- never becomes a permanent per-frame full-field loop. Zero cost when SCS absent.
+            self._irrigLeachAccumMs = (self._irrigLeachAccumMs or 0) + dt
+            if self._irrigLeachAccumMs >= SoilConstants.RAIN.IRRIGATION_LEACH_INTERVAL_MS then
+                local accumDt = self._irrigLeachAccumMs
+                self._irrigLeachAccumMs = 0
+                self:applyRainEffects(accumDt, 0)  -- rainScale 0; per-field SCS moisture drives it
+            end
         end
     end
 end
@@ -2111,6 +2346,13 @@ function SoilFertilitySystem:update(dt)
         SoilNetworkEvents_UpdateSyncRetry(dt)
     end
 
+    -- REFINED: round-robin display-layer mirror. Keeps the per-pixel
+    -- weed/pest/disease/urgency/yield maps in step with the field-level
+    -- simulation values (herbicide passes, burn effects, nutrient changes
+    -- feeding urgency...) without touching every write site. A few fields
+    -- per tick, engine-side ops only when a value actually moved.
+    self:_vmMirrorDisplayTick(dt)
+
     -- =========================================================
     -- PHASE 4: Batched daily field processing
     -- =========================================================
@@ -2146,7 +2388,20 @@ function SoilFertilitySystem:update(dt)
                 local fid = list[cursor]
                 local fd  = self.fieldData[fid]
                 if fd then
-                    self:_processOneDailyField(fid, fd)
+                    -- REFINED: snapshot the field averages so every daily process
+                    -- (fallow recovery, seasonal shift, pressures, pH drift, OM
+                    -- decay...) is mirrored onto the per-pixel value maps as one
+                    -- uniform whole-field shift that preserves spatial variation.
+                    local vmSnap = self:_vmSnapshotField(fd)
+                    for _ = 1, (self._dailyBatchRepeat or 1) do
+                        self:_processOneDailyField(fid, fd)
+                    end
+                    self:_vmApplySnapshotDeltas(fid, fd, vmSnap)
+                    -- Display layers (pressures/urgency/yield) mirror immediately
+                    -- rather than waiting for the round-robin sweep to reach us
+                    if self:vmAvailable() then
+                        self:_vmMirrorDisplayField(fid, fd)
+                    end
                     processed = processed + 1
                 end
             end
@@ -2624,6 +2879,8 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         lastCrop3 = nil,
         rotationBonusDaysLeft = 0,
         lastHarvest = 0,
+        tilledSinceHarvest = false,  -- #738: any plough/cultivator/strip pass since last harvest
+        noTillActive = false,        -- #738: active crop drilled into untilled residue (daily OM credit)
         fertilizerApplied = 0,
         initialized = true,
         weedPressure = 0,
@@ -2688,6 +2945,8 @@ function SoilFertilitySystem:rerollAllFields()
             -- overlay / minimap reflect the re-rolled profile immediately.
             field.zoneData = {}
             self:_prePopulateZoneData(fieldId)
+            -- REFINED: repaint the per-pixel value maps with the re-rolled profile
+            self:vmSeedField(fieldId, true)
             count = count + 1
         end
     end
@@ -2728,6 +2987,8 @@ function SoilFertilitySystem:rerollUnownedFields()
                 -- new field average immediately (mirrors rerollAllFields).
                 field.zoneData = {}
                 self:_prePopulateZoneData(fieldId)
+                -- REFINED: repaint the per-pixel value maps with the re-rolled profile
+                self:vmSeedField(fieldId, true)
                 rerolled = rerolled + 1
             end
         end
@@ -2889,16 +3150,34 @@ function SoilFertilitySystem:refreshFieldOverlay(fieldId)
     if not field then return end
     field.zoneData = field.zoneData or {}
 
-    -- Overlay never built this session (no spray yet) → build it from the polygon, which
-    -- stamps every in-polygon cell with the current field-average values.
+    -- REFINED: an admin override sets the field-average, so repaint the field
+    -- polygon uniformly on the per-pixel value maps (per-pixel variation from
+    -- earlier partial passes is intentionally flattened, matching old behaviour).
+    if self:vmAvailable() then
+        local verts = self:_getFieldPolyVerts(fieldId, field)
+        if verts then
+            self.valueMaps:paintPolygon("nitrogen",      verts, field.nitrogen)
+            self.valueMaps:paintPolygon("phosphorus",    verts, field.phosphorus)
+            self.valueMaps:paintPolygon("potassium",     verts, field.potassium)
+            self.valueMaps:paintPolygon("pH",            verts, field.pH)
+            self.valueMaps:paintPolygon("organicMatter", verts, field.organicMatter)
+            -- Display layers repaint to the new field state too
+            local disp = self:_vmDisplayValues(field)
+            for key, v in pairs(disp) do
+                self.valueMaps:paintPolygon(key, verts, v)
+            end
+            field._vmDisp = disp
+            field._vmPend = nil   -- pending drifts are baked into the repaint
+            local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+            if minimapLayer then minimapLayer:markDirty() end
+        end
+    end
+
+    -- Legacy zoneData path (fallback overlay + old-save compatibility)
     if next(field.zoneData) == nil then
         self:_prePopulateZoneData(fieldId)
         return
     end
-
-    -- Overlay already exists → overwrite every cell so the whole field shows the new
-    -- uniform value (an admin override sets the field-average, so per-cell variation
-    -- from earlier partial passes is intentionally flattened).
     for _, cell in pairs(field.zoneData) do
         cell.N  = field.nitrogen
         cell.P  = field.phosphorus
@@ -2920,11 +3199,438 @@ function SoilFertilitySystem:prePopulateAllZoneData()
     SoilLogger.info("Zone data pre-population complete: %d field(s) processed", count)
 end
 
+-- =========================================================
+-- REFINED: per-pixel value map integration (SoilValueMaps)
+-- =========================================================
+
+-- fieldData keys mirrored into value maps (compaction has its own write path)
+local VM_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "pH", "organicMatter" }
+
+-- REFINED: field-level display layers rendered per-pixel. Values come from
+-- fieldData scalars / computed values; kept current by _vmMirrorDisplayTick.
+local VM_DISPLAY_KEYS = { "weedPressure", "pestPressure", "diseasePressure", "urgency", "yieldEfficiency" }
+
+-- Within-field seeding variation per layer (semantic units, +/-)
+local VM_SEED_SPREAD = {
+    nitrogen      = 6.0,
+    phosphorus    = 5.0,
+    potassium     = 5.0,
+    pH            = 0.18,
+    organicMatter = 0.5,
+    compaction    = 0,
+}
+
+--- True when the per-pixel value maps are usable.
+function SoilFertilitySystem:vmAvailable()
+    return self.valueMaps ~= nil and self.valueMaps.available
+end
+
+-- Seed this layer? Skips layers restored from savegame files (their pixel
+-- data is newer/finer than anything re-derivable from field averages).
+local function vmShouldSeed(vm, key, force)
+    if force then return true end
+    local entry = vm:getLayerEntry(key)
+    return entry ~= nil and not entry.loaded
+end
+
+--- Discovery gate for the display layers: an active infection stays invisible on
+--- EVERY painted surface (the disease map, the urgency map, and via the mirror
+--- the MP-synced client picture) until the field is scouted. Unscouted ground now
+--- paints a uniform UNKNOWN marker (the reserved DMV state 1), not clean green, so
+--- an unscouted infected field and an unscouted clean field are indistinguishable
+--- yet neither pretends to be healthy (Unscouted Indicator). Returns the UNKNOWN
+--- sentinel (< 0) for unscouted ground so the paint path floors it to UNKNOWN_RAW;
+--- callers that need a number clamp it to 0 (it never counts as trouble). When the
+--- disease system is OFF there is nothing to hide, so it falls back to clean (0).
+--- This protects the scouting economy the same way the disease HUD self-gates on
+--- diseaseDiscovered. Pest has no discovery concept, so it is not gated.
+function SoilFertilitySystem:_vmShownDiseasePressure(field)
+    if not field.diseaseDiscovered then
+        if self.settings and self.settings.diseasePressure then
+            return SoilValueMaps.UNKNOWN_VALUE   -- sentinel < 0 -> painted as UNKNOWN
+        end
+        return 0
+    end
+    return field.diseasePressure or 0
+end
+
+--- Cheap field-average urgency (mirrors getFieldUrgency without the full
+--- getFieldInfo status computation - used for per-frame display mirroring).
+function SoilFertilitySystem:_vmComputeUrgency(field)
+    local thresh = (SoilConstants.YIELD_SENSITIVITY and SoilConstants.YIELD_SENSITIVITY.OPTIMAL_THRESHOLD) or 70
+    local nDef = math.max(0, thresh - (field.nitrogen   or 0)) / thresh
+    local pDef = math.max(0, thresh - (field.phosphorus or 0)) / thresh
+    local kDef = math.max(0, thresh - (field.potassium  or 0)) / thresh
+    local phOpt = 6.5
+    local phMin = (SoilConstants.NUTRIENT_LIMITS and SoilConstants.NUTRIENT_LIMITS.PH_MIN) or 5.0
+    local phDef = math.max(0, phOpt - (field.pH or phOpt)) / (phOpt - phMin)
+    local weedDef    = (field.weedPressure    or 0) / 100
+    local pestDef    = (field.pestPressure    or 0) / 100
+    local diseaseDef = math.max(0, self:_vmShownDiseasePressure(field)) / 100
+    return math.min(100, ((nDef + pDef + kDef + phDef + weedDef + pestDef + diseaseDef) / 7) * 100)
+end
+
+--- Current semantic values of the five display layers for a field.
+function SoilFertilitySystem:_vmDisplayValues(field)
+    return {
+        weedPressure    = field.weedPressure    or 0,
+        pestPressure    = field.pestPressure    or 0,
+        diseasePressure = self:_vmShownDiseasePressure(field),
+        urgency         = self:_vmComputeUrgency(field),
+        yieldEfficiency = field.yieldEfficiency or 100,
+    }
+end
+
+--- Seed one field's polygon into the value maps.
+--- Priority: migrate the legacy per-cell zoneData when it carries nutrient
+--- values (old saves keep their sub-field detail), otherwise paint the field
+--- averages with Perlin within-field variation. Layers restored from the
+--- savegame files are left untouched (per-layer gating), so adding new
+--- layers to an existing refined save seeds only the missing ones.
+---@param force boolean|nil  Repaint even when a layer was loaded from savegame
+function SoilFertilitySystem:vmSeedField(fieldId, force)
+    if not self:vmAvailable() then return end
+    local field = self.fieldData[fieldId]
+    if not field then return end
+
+    local vm = self.valueMaps
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if not verts then return end
+
+    -- Migration path: old-save zoneData cells carry per-cell N values
+    local migrated = false
+    if not force and field.zoneData and next(field.zoneData) ~= nil
+       and vmShouldSeed(vm, "nitrogen", force) then
+        local zone = SoilConstants.ZONE
+        -- Only migrate when at least one cell differs from the field average -
+        -- uniform zoneData carries no information the seeded noise wouldn't.
+        for _, cell in pairs(field.zoneData) do
+            -- N==0 is the "pressure-only cell" placeholder, not a real reading
+            if cell.N and cell.N > 0 and math.abs(cell.N - (field.nitrogen or 0)) > 0.5 then
+                migrated = true
+                break
+            end
+        end
+        if migrated then
+            -- Base fill first so gaps between stamped cells are covered
+            for _, key in ipairs(VM_NUTRIENT_KEYS) do
+                if vmShouldSeed(vm, key, force) then
+                    vm:seedPolygon(key, verts, field[key]
+                        or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
+                end
+            end
+            -- Recover each legacy cell's world position by ENCODING grid
+            -- positions to keys, never DECODING the key. The legacy key
+            -- cx*10000+cz is not invertible once a coordinate is negative (cell
+            -- (2,-5) encodes to 19995 and a naive decode reads it back as
+            -- (1,9995)), and FS25 maps are origin-centred so roughly half of any
+            -- real field's cells carry a negative component. Decoding therefore
+            -- paints those cells at the wrong world position on first load of a
+            -- migrated save. Walking the field polygon and encoding each position
+            -- is always safe (position -> key is the same map the store used).
+            local half = zone.CELL_SIZE * 0.5
+            local cs   = zone.CELL_SIZE
+            local minX, maxX = verts[1].x, verts[1].x
+            local minZ, maxZ = verts[1].z, verts[1].z
+            for i = 2, #verts do
+                local vx, vz = verts[i].x, verts[i].z
+                if vx < minX then minX = vx end
+                if vx > maxX then maxX = vx end
+                if vz < minZ then minZ = vz end
+                if vz > maxZ then maxZ = vz end
+            end
+            local cxMin, cxMax = math.floor(minX / cs), math.floor(maxX / cs)
+            local czMin, czMax = math.floor(minZ / cs), math.floor(maxZ / cs)
+            local budget = 100000   -- safety valve against a degenerate bbox
+            for cx = cxMin, cxMax do
+                for cz = czMin, czMax do
+                    budget = budget - 1
+                    if budget < 0 then break end
+                    local cell = field.zoneData[tostring(cx * 10000 + cz)]
+                    if cell then
+                        local wx = (cx + 0.5) * cs
+                        local wz = (cz + 0.5) * cs
+                        if _isPointInPoly(wx, wz, verts) then
+                            if cell.N  and cell.N  > 0   then vm:writeValueAtWorld("nitrogen",      wx, wz, cell.N,  half) end
+                            if cell.P  and cell.P  > 0   then vm:writeValueAtWorld("phosphorus",    wx, wz, cell.P,  half) end
+                            if cell.K  and cell.K  > 0   then vm:writeValueAtWorld("potassium",     wx, wz, cell.K,  half) end
+                            if cell.pH and cell.pH > 5.0 then vm:writeValueAtWorld("pH",            wx, wz, cell.pH, half) end
+                            if cell.OM and cell.OM > 0   then vm:writeValueAtWorld("organicMatter", wx, wz, cell.OM, half) end
+                            if cell.compaction and cell.compaction > 0 and vmShouldSeed(vm, "compaction", force) then
+                                vm:writeValueAtWorld("compaction", wx, wz, cell.compaction, half)
+                            end
+                        end
+                    end
+                end
+                if budget < 0 then break end
+            end
+            SoilLogger.debug("ValueMaps: field %d migrated from zoneData cells", fieldId)
+        end
+    end
+
+    if not migrated then
+        for _, key in ipairs(VM_NUTRIENT_KEYS) do
+            if vmShouldSeed(vm, key, force) then
+                vm:seedPolygon(key, verts, field[key]
+                    or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
+            end
+        end
+        if (field.compaction or 0) > 0 and vmShouldSeed(vm, "compaction", force) then
+            vm:paintPolygon("compaction", verts, field.compaction)
+        end
+    end
+
+    -- REFINED display layers: uniform field paint (rawFloor keeps zero-pressure
+    -- fields visible as the "good" colour state). The mirror keeps them current.
+    local disp = self:_vmDisplayValues(field)
+    for _, key in ipairs(VM_DISPLAY_KEYS) do
+        if vmShouldSeed(vm, key, force) then
+            vm:paintPolygon(key, verts, disp[key])
+        end
+    end
+    field._vmDisp = disp   -- prime the mirror cache
+end
+
+--- Paint a field's organic certification state (0 conventional / 1 in-transition /
+--- 2 certified) into the ephemeral organicStatus value-map layer. Conventional
+--- encodes to a transparent DMV state, so a conventional field reads as no-data.
+--- Rebuilt from field.organic, never persisted; the value-map join sync carries it
+--- to clients. No-op when the value maps are unavailable.
+function SoilFertilitySystem:paintOrganicStatus(fieldId, field)
+    if not self:vmAvailable() then return end
+    field = field or (self.fieldData and self.fieldData[fieldId])
+    if not field then return end
+    local stateInt = 0
+    if field.organic and OrganicCertification then
+        stateInt = OrganicCertification.encodeState(field.organic.state)
+    end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if verts then
+        self.valueMaps:paintPolygon("organicStatus", verts, stateInt)
+    end
+end
+
+--- Seed ALL fields into the value maps. Called once after loadSoilData.
+--- Per-layer gating: layers restored from savegame files keep their pixels;
+--- only missing/new layers are painted.
+function SoilFertilitySystem:seedValueMaps(force)
+    if not self:vmAvailable() then return end
+    -- organicStatus is ephemeral (never persisted); rebuild it from each field's
+    -- organic state on every load so an already-certified field renders on first
+    -- load, even when the persisted layers were all restored and seeding is skipped.
+    for fieldId, field in pairs(self.fieldData) do
+        self:paintOrganicStatus(fieldId, field)
+    end
+    if self.valueMaps.loadedFromSave and not force then
+        SoilLogger.info("ValueMaps: all layers restored from savegame - seeding skipped")
+        return
+    end
+    local count = 0
+    for fieldId in pairs(self.fieldData) do
+        self:vmSeedField(fieldId, force)
+        count = count + 1
+    end
+    SoilLogger.info("ValueMaps: seeded %d field(s)%s", count, force and " (forced)" or "")
+end
+
+-- ── REFINED: display layer mirroring ─────────────────────
+
+-- Fields checked per mirror slice, and ms between slices.
+local VM_MIRROR_FIELDS_PER_TICK = 3
+local VM_MIRROR_INTERVAL_MS     = 250
+-- Minimum semantic change (units of 0-100) before an engine op is issued.
+local VM_MIRROR_EPSILON         = 0.5
+
+--- Mirror one field's display values onto the value maps as uniform
+--- whole-field shifts (preserves any local detail e.g. strip-till lanes).
+function SoilFertilitySystem:_vmMirrorDisplayField(fieldId, field)
+    local prev = field._vmDisp
+    if not prev then
+        prev = self:_vmDisplayValues(field)
+        field._vmDisp = prev
+        return
+    end
+    local cur = self:_vmDisplayValues(field)
+    local verts
+    local changed = false
+    for _, key in ipairs(VM_DISPLAY_KEYS) do
+        -- Unscouted<->scouted disease is a state switch (the UNKNOWN sentinel <-> a
+        -- real pressure), not a smooth delta, so repaint that field's disease layer
+        -- absolutely rather than applying a bogus raw delta across the reserved band.
+        if key == "diseasePressure" and (cur[key] < 0) ~= (prev[key] < 0) then
+            verts = verts or self:_getFieldPolyVerts(fieldId, field)
+            if not verts then return end
+            self.valueMaps:paintPolygon(key, verts, cur[key])
+            prev[key] = cur[key]
+            changed = true
+        else
+            local delta = cur[key] - prev[key]
+            if math.abs(delta) >= VM_MIRROR_EPSILON then
+                verts = verts or self:_getFieldPolyVerts(fieldId, field)
+                if not verts then return end
+                local applied = self.valueMaps:applyDeltaToPolygon(key, verts, delta)
+                if applied ~= 0 then
+                    prev[key] = prev[key] + applied
+                    changed = true
+                end
+            end
+        end
+    end
+    if changed then
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
+    end
+end
+
+--- Round-robin slice driven from update(dt).
+function SoilFertilitySystem:_vmMirrorDisplayTick(dt)
+    if not self:vmAvailable() then return end
+    if g_server == nil then return end   -- clients receive map sync, not local sim
+
+    self._vmMirrorTimer = (self._vmMirrorTimer or 0) + dt
+    if self._vmMirrorTimer < VM_MIRROR_INTERVAL_MS then return end
+    self._vmMirrorTimer = 0
+
+    if not self._vmMirrorList or self._vmMirrorCursor == nil
+       or self._vmMirrorCursor >= #self._vmMirrorList then
+        -- Rebuild the field id list and restart the sweep
+        local list = {}
+        for fieldId in pairs(self.fieldData) do list[#list + 1] = fieldId end
+        self._vmMirrorList   = list
+        self._vmMirrorCursor = 0
+    end
+
+    local list = self._vmMirrorList
+    local cursor = self._vmMirrorCursor
+    local n = #list
+    local slice = 0
+    while slice < VM_MIRROR_FIELDS_PER_TICK and cursor < n do
+        cursor = cursor + 1
+        slice = slice + 1
+        local fieldId = list[cursor]
+        local field = self.fieldData[fieldId]
+        if field then
+            self:_vmMirrorDisplayField(fieldId, field)
+        end
+    end
+    self._vmMirrorCursor = cursor
+end
+
+--- Snapshot the field-average nutrient values before a simulation step.
+function SoilFertilitySystem:_vmSnapshotField(field)
+    if not self:vmAvailable() then return nil end
+    return {
+        nitrogen      = field.nitrogen,
+        phosphorus    = field.phosphorus,
+        potassium     = field.potassium,
+        pH            = field.pH,
+        organicMatter = field.organicMatter,
+    }
+end
+
+--- Diff the field against a snapshot and queue the per-key deltas as uniform
+--- whole-field shifts on the value maps. Deltas below one raw map step
+--- accumulate in field._vmPend until they are large enough to apply, so slow
+--- daily drifts are never lost to quantisation.
+function SoilFertilitySystem:_vmApplySnapshotDeltas(fieldId, field, snap)
+    if not snap or not self:vmAvailable() then return end
+    for _, key in ipairs(VM_NUTRIENT_KEYS) do
+        local before = snap[key]
+        local after  = field[key]
+        if before ~= nil and after ~= nil and after ~= before then
+            self:_vmQueueFieldDelta(field, key, after - before)
+        end
+    end
+    self:_vmFlushFieldDeltas(fieldId, field)
+end
+
+function SoilFertilitySystem:_vmQueueFieldDelta(field, key, delta)
+    if delta == 0 then return end
+    if not field._vmPend then field._vmPend = {} end
+    field._vmPend[key] = (field._vmPend[key] or 0) + delta
+end
+
+function SoilFertilitySystem:_vmFlushFieldDeltas(fieldId, field)
+    local pend = field._vmPend
+    if not pend or not self:vmAvailable() then return end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if not verts then return end
+    for key, delta in pairs(pend) do
+        if delta ~= 0 then
+            local applied = self.valueMaps:applyDeltaToPolygon(key, verts, delta)
+            if applied ~= 0 then
+                pend[key] = delta - applied
+            end
+        end
+    end
+end
+
+--- Local read-modify-write bump around a work position (residue/amendment
+--- incorporation at the tillage tool). deltas = {nitrogen=dN, ...}.
+function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius)
+    if not worldX or not worldZ or not self:vmAvailable() then return end
+    for key, d in pairs(deltas) do
+        if d and d ~= 0 then
+            self.valueMaps:addValueAtWorld(key, worldX, worldZ, d, radius or 4.0)
+        end
+    end
+end
+
+--- Paint the sprayer's real boom strip into the value maps with the field's
+--- post-application averages (PF-style continuous work strips at map
+--- resolution instead of stamped 10 m cells).
+---@param fieldId    number
+---@param boomPoints table   Array of {x=,z=} spanning the boom (from getBoomCellPositions)
+---@param fillTypeName string  FERTILIZER_PROFILES key
+--- DEPRECATED (#735): this used to paint the boom strip with the field AVERAGE
+--- (field.nitrogen ...), which made a single uniform pass show a false low->high
+--- gradient (the reported bug: red where you started, green where you finished, because
+--- the average drifts up as you spray). The per-pixel painting now lives in markBoomCells,
+--- which applies the correct LOCAL dose to each cell exactly once. Kept as a safe no-op so
+--- the existing sprayer-hook call sites need no change; remove the calls in a later pass.
+function SoilFertilitySystem:paintBoomStrip(_fieldId, _boomPoints, _fillTypeName)
+    return
+end
+
+-- Finish the in-flight daily batch synchronously: process every field still past
+-- the cursor with the batch's current repeat count, then close it out. Called when
+-- a new day arrives before the async batch drained, so a field's daily pass is
+-- never abandoned (the stranded-tail bug). Rare (only under rapid time advance),
+-- so paying the remainder in one frame at the catch-up moment is acceptable.
+function SoilFertilitySystem:_drainDailyBatchSync()
+    local list = self._activeFieldList
+    if not list then
+        self._pendingDailyUpdate = false
+        return
+    end
+    local n          = #list
+    local cursor     = self._dailyBatchCursor or 0
+    local repeatDays = self._dailyBatchRepeat or 1
+    while cursor < n do
+        cursor = cursor + 1
+        local fid = list[cursor]
+        local fd  = self.fieldData[fid]
+        if fd then
+            local vmSnap = self:_vmSnapshotField(fd)
+            for _ = 1, repeatDays do
+                self:_processOneDailyField(fid, fd)
+            end
+            self:_vmApplySnapshotDeltas(fid, fd, vmSnap)
+            if self:vmAvailable() then
+                self:_vmMirrorDisplayField(fid, fd)
+            end
+        end
+    end
+    self._dailyBatchCursor   = n
+    self._pendingDailyUpdate = false
+    self.lastSeason          = self._dailyBatchSeason
+end
+
 -- Daily soil update - PHASE 4: converted to batch scheduler.
 -- Instead of processing every field synchronously on the day-rollover tick
 -- (which can stall for hundreds of ms on large maps), we queue work and
 -- drain it across multiple frames via the update(dt) batch loop.
-function SoilFertilitySystem:updateDailySoil()
+function SoilFertilitySystem:updateDailySoil(elapsedDays)
     if not self.settings.enabled or not self.settings.nutrientCycles then return end
 
     local currentDay = (g_currentMission and g_currentMission.environment and
@@ -2935,6 +3641,18 @@ function SoilFertilitySystem:updateDailySoil()
         SoilLogger.debug("[PERF-P4] Day %d batch already queued, skipping duplicate trigger", currentDay)
         return
     end
+
+    -- Stranding fix: if the PREVIOUS day's batch never finished draining before
+    -- this new day arrived (rapid time advance), finish its remaining fields now
+    -- instead of resetting the cursor and freezing that unprocessed tail forever.
+    if self._pendingDailyUpdate then
+        self:_drainDailyBatchSync()
+    end
+
+    -- Skipped-day catch-up: how many days this pass stands in for. Each active
+    -- field runs its daily logic this many times so missed days are applied
+    -- rather than silently dropped.
+    self._dailyBatchRepeat = math.max(1, math.floor(elapsedDays or 1))
 
     -- Snapshot current state for all per-field workers in this batch
     self._dailyBatchDay    = currentDay
@@ -2994,6 +3712,73 @@ function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
     field.weedPressure    = math.max(0, (field.weedPressure    or 0) - m.PRESSURE_DECAY * timeFactor)
     field.pestPressure    = math.max(0, (field.pestPressure    or 0) - m.PRESSURE_DECAY * timeFactor)
     field.diseasePressure = math.max(0, (field.diseasePressure or 0) - m.PRESSURE_DECAY * timeFactor)
+end
+
+-- Weed-factor sample offsets (metres) relative to the field centre. FieldState:update
+-- reads weed density at ONE point, so a single centre read misjudges a patchy field:
+-- a clean centre on an otherwise weedy field reported 0% while the minimap overlay
+-- (which reads the whole WeedSystem map) showed heavy weeds. Averaging
+-- the centre plus two rings gives a field-representative value from the SAME source, so
+-- withered-weed handling and the herbicide clamp below are unchanged.
+local WEED_SAMPLE_OFFSETS = {
+    { 0, 0 },
+    -- inner ring ~12 m
+    { 0, 12 }, { 8.5, 8.5 }, { 12, 0 }, { 8.5, -8.5 }, { 0, -12 }, { -8.5, -8.5 }, { -12, 0 }, { -8.5, 8.5 },
+    -- outer ring ~30 m
+    { 0, 30 }, { 21, 21 }, { 30, 0 }, { 21, -21 }, { 0, -30 }, { -21, -21 }, { -30, 0 }, { -21, 21 },
+}
+
+--- Average the game's weed factor across the field instead of reading a single centre
+--- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
+--- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
+--- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
+--- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
+--- field where every ring point is rejected this collapses to the old centre-only read.
+---@param fsField table   g_fieldManager field (has posX/posZ, farmland)
+---@param fieldId number
+function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
+    if not (fsField and fsField.posX and fsField.posZ) then return 0 end
+    if not self._fieldStateCache then self._fieldStateCache = {} end
+    if not self._fieldStateCache[fieldId] then
+        local cok, cfs = pcall(FieldState.new)
+        self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
+    end
+    local fs = self._fieldStateCache[fieldId]
+    if not fs then return 0 end
+
+    local nonCrops = (SoilConstants.YIELD_SENSITIVITY and
+        SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
+
+    -- Centre read gates the whole sample: only trust weed data when a managed
+    -- (non-forage) crop is actually present. Bare/UNKNOWN or grass/forage → skip.
+    local ok = pcall(function() fs:update(fsField.posX, fsField.posZ) end)
+    if not (ok and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN) then
+        return 0
+    end
+    local centreFruit = fs.fruitTypeIndex
+    local fruitDesc   = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(centreFruit)
+    local fruitName   = (fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)) or ""
+    if nonCrops[fruitName] then return 0 end
+
+    local sum   = fs.weedFactor or 0
+    local count = 1
+
+    for i = 2, #WEED_SAMPLE_OFFSETS do
+        local off    = WEED_SAMPLE_OFFSETS[i]
+        local px, pz = fsField.posX + off[1], fsField.posZ + off[2]
+        local pok = pcall(function() fs:update(px, pz) end)
+        if pok and fs.isValid and fs.fruitTypeIndex == centreFruit then
+            -- farmlandId is 0 until the engine populates it; treat 0/nil as "unknown,
+            -- accept" and only reject on a definite different-farmland reading.
+            local farmOk = (fs.farmlandId == nil) or (fs.farmlandId == 0) or (fs.farmlandId == fieldId)
+            if farmOk then
+                sum   = sum + (fs.weedFactor or 0)
+                count = count + 1
+            end
+        end
+    end
+
+    return sum / count
 end
 
 function SoilFertilitySystem:_processOneDailyField(fieldId, field)
@@ -3098,6 +3883,15 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         field.potassium     = math.min(limits.MAX, field.potassium     + recovery.potassium * timeFactor * tunFallow)
         field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
                                        field.organicMatter + recovery.organicMatter * timeFactor * tunFallow)
+    elseif field.noTillActive and omDyn and (omDyn.NO_TILL_DAILY_CREDIT or 0) > 0 then
+        -- #738 no-till OM: an ACTIVE crop drilled into untilled residue accrues a small
+        -- daily OM gain (the preserved residue mat humifying). Fenced against the fallow
+        -- recovery above via this elseif, so the two can never stack; applies only while a
+        -- crop grows (outside the fallow window). Smaller than the daily decay it offsets,
+        -- so no-till still drifts down slightly day to day but skips the per-pass tillage
+        -- oxidation entirely - the season-long reason no-till out-builds every tilled type.
+        field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
+                                       (field.organicMatter or 0) + omDyn.NO_TILL_DAILY_CREDIT * timeFactor)
     end
 
     -- ── Seasonal nitrogen shift ──────────────────────────────────────────────
@@ -3212,6 +4006,9 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- Sample FieldState.weedFactor from the game's weed density map.
             -- weedFactor: 0.0 = clean, 1.0 = fully weedy (matches FieldState default
             -- and getHarvestScaleMultiplier semantics - higher = more yield penalty).
+            -- Sample the game's weed factor across the field (multi-point average).
+            -- Grass/forage and bare fields skip inside the helper (returns 0), matching
+            -- the old centre-only guard. See _sampleFieldWeedFactor.
             local gameWeedFactor = 0.0
             if g_fieldManager and g_fieldManager.fields then
                 local fsField = g_fieldManager.fields[fieldId]
@@ -3224,32 +4021,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                         end
                     end
                 end
-                if fsField and fsField.posX and fsField.posZ then
-                    if not self._fieldStateCache then self._fieldStateCache = {} end
-                    if not self._fieldStateCache[fieldId] then
-                        local cok, cfs = pcall(FieldState.new)
-                        self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
-                    end
-                    local cachedFs = self._fieldStateCache[fieldId]
-                    local ok = cachedFs and pcall(function() cachedFs:update(fsField.posX, fsField.posZ) end)
-                    local fs = cachedFs
-                    -- Only trust weedFactor when a managed (non-forage) crop is present.
-                    -- Bare/plowed fields: fruitTypeIndex=UNKNOWN, weedFactor=0 → skip.
-                    -- Grass/forage crops: FS25 returns weedFactor=0 regardless of actual
-                    -- weed state (grass coverage is indistinguishable from weeds in the
-                    -- density map) → skip for NON_CROP_NAMES to avoid false 100%.
-                    if ok and fs and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
-                        local fruitDesc = g_fruitTypeManager and
-                            g_fruitTypeManager:getFruitTypeByIndex(fs.fruitTypeIndex)
-                        local fruitName = fruitDesc and fruitDesc.name and
-                            string.lower(fruitDesc.name) or ""
-                        local nonCrops = (SoilConstants.YIELD_SENSITIVITY and
-                            SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
-                        if not nonCrops[fruitName] then
-                            gameWeedFactor = fs.weedFactor
-                        end
-                    end
-                end
+                gameWeedFactor = self:_sampleFieldWeedFactor(fsField, fieldId)
             end
             -- When herbicide is active the game's density map still shows dying weeds for
             -- 1-2 days - reading it would overwrite the pressure reduction from onHerbicideApplied.
@@ -3333,10 +4105,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             end
 
             local rainBonus = 0
-            if g_currentMission and g_currentMission.environment and
-               g_currentMission.environment.weather then
-                local rs = g_currentMission.environment.weather:getRainFallScale()
-                if rs and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then rainBonus = pp.RAIN_BONUS end
+            do
+                -- #740: real rain, topped up by the short-month climate fill on dry days.
+                local rs = self:getEffectiveRainScale()
+                if rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD then rainBonus = pp.RAIN_BONUS end
             end
 
             local tunPest = getTuningMult(self.settings, "tuningPestGrowth", "ZERO_MULT")
@@ -3350,11 +4122,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
             or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
 
-        local isRaining = false
-        if g_currentMission and g_currentMission.environment and g_currentMission.environment.weather then
-            local rs = g_currentMission.environment.weather:getRainFallScale()
-            isRaining = rs ~= nil and rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
-        end
+        -- #740: real rain, topped up by the short-month climate fill - drives the wet/dry-day
+        -- cycle (dryDayCount) the disease model needs, which barely moves on short in-game months.
+        local rs = self:getEffectiveRainScale()
+        local isRaining = rs > SoilConstants.RAIN.MIN_RAIN_THRESHOLD
 
         if isRaining then
             field.dryDayCount = 0
@@ -3367,9 +4138,16 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         end
 
         local pressure = field.diseasePressure or 0
-        local dryThreshold = cm.dryThreshold * daysPerMonth
+        -- #737 option D: two thresholds, not one. Past dryThreshold a dry day still
+        -- grows disease, only damped (DRY_GROWTH_MULT). Outright decay waits for a
+        -- genuine drought at droughtThreshold. Previously the decay branch was an
+        -- `elseif` on dryThreshold, so any dry spell REPLACED growth rather than
+        -- slowing it and disease could never establish.
+        local dryThreshold     = cm.dryThreshold * daysPerMonth
+        local droughtThreshold = dryThreshold * (dp.DROUGHT_THRESHOLD_MULT or 2.0)
+        local dryDays          = field.dryDayCount or 0
 
-        if (field.dryDayCount or 0) >= dryThreshold then
+        if dryDays >= droughtThreshold then
             field.diseasePressure = math.max(0, pressure - dp.DRY_DECAY_RATE * cm.dryDecayMult * timeFactor)
         elseif (field.fungicideDaysLeft or 0) <= 0 then
             local baseRate
@@ -3402,7 +4180,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
             local rainBonus = isRaining and (dp.RAIN_BONUS * cm.rainBonusMult) or 0
             local tunDis = getTuningMult(self.settings, "tuningDiseaseGrowth", "ZERO_MULT")
-            field.diseasePressure = math.min(100, pressure + ((baseRate * cm.growthMult * seasonMult * cropMult * tunDis * diffMult * soilMult * rotMult) + rainBonus) * timeFactor)
+            -- Damp growth once the dry threshold is passed but before a real drought.
+            -- Applied to the base rate only: rainBonus is already zero on a dry day.
+            local dryMult = (dryDays >= dryThreshold) and (dp.DRY_GROWTH_MULT or 0.40) or 1.0
+            field.diseasePressure = math.min(100, pressure + ((baseRate * cm.growthMult * seasonMult * cropMult * tunDis * diffMult * soilMult * rotMult * dryMult) + rainBonus) * timeFactor)
         end
 
         -- Maintain the named active disease over the scalar pressure.
@@ -3495,8 +4276,14 @@ local RWE_LEACH_MULTIPLIERS = {
     crop_yield_bonus   = 0.85,
 }
 
+-- Nutrient leaching from sustained soil moisture. Driven by rain (rainScale > 0) and/or,
+-- when SeasonalCropStress is present, irrigation (SCS-001): a field's SCS moisture reads
+-- into the same leach factor, so watering is a trade-off rather than a free yield lever.
+-- Firewall: SF is the sole writer of its N/P/K; it only READS SCS moisture, never writes it.
+-- When SCS is absent (moisture nil) this is byte-identical to the original rain-only leach.
 function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     if not self.settings.enabled or not self.settings.rainEffects then return end
+    rainScale = rainScale or 0
 
     local rain = SoilConstants.RAIN
     local limits = SoilConstants.NUTRIENT_LIMITS
@@ -3509,22 +4296,97 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     end
 
     local tunRain = getTuningMult(self.settings, "tuningRainLeaching", "ZERO_MULT")
-    local leachFactor = rainScale * dt * rain.LEACH_BASE_FACTOR * rweMultiplier * tunRain
+    local baseFactor = dt * rain.LEACH_BASE_FACTOR * rweMultiplier * tunRain
+
+    -- SCS-001: bind the SCS moisture reader once. g_cropStressManager is per-mod scoped
+    -- and NOT visible from here; the reliable cross-mod handle is the mission bridge
+    -- g_currentMission.cropStressManager (mirrors our own mission.soilFertilityManager).
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    local moistThreshold = rain.IRRIGATION_LEACH_THRESHOLD
+    -- #740 per-day precedence (replaces the blanket preset guard): one precipitation
+    -- authority per day. A FILLED-wet day is SF-supplied precipitation (the fill topped up
+    -- a dry short-month sky), so SCS's rain-reflecting moisture LEVEL is NOT counted - part
+    -- of it reflects the real weather SF is now standing in for, and counting both would
+    -- double-count precipitation. Real IRRIGATION is still counted, read as the irrigation-
+    -- only RATE (getIrrigationRate) so a pivot-watered field still leaches on a filled day.
+    -- A REAL rain day (filledDay=false) keeps the full rain + SCS-moisture model unchanged,
+    -- so this is byte-identical whenever the fill is not engaged (opt-out / long months).
+    local filledDay = self._rainWasFilled == true
     local count = 0
 
     -- Iterate only owned fields (activeFieldIds set, Phase 1)
     for fieldId in pairs(self.activeFieldIds) do
         local field = self.fieldData[fieldId]
         if field then
-            field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
-            field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
-            field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-            field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
-            count = count + 1
+            -- REAL day: per-field SCS moisture LEVEL (0-1), the blended rain+irrigation total.
+            -- FILLED day: irrigation-only RATE (per-hour gain) instead, so rain moisture is
+            -- not double-counted. Both pcall-wrapped, neutral when SCS absent/errors.
+            local moisture = nil     -- SCS moisture level, used only on a REAL day
+            local irrigRate = nil    -- SCS irrigation-only rate, used only on a FILLED day
+            if csMgr then
+                if filledDay then
+                    local ok, r = pcall(csMgr.getIrrigationRate, csMgr, fieldId)
+                    if ok and type(r) == "number" then irrigRate = r end
+                else
+                    local ok, m = pcall(csMgr.getMoisture, csMgr, fieldId)
+                    if ok and type(m) == "number" then moisture = m end
+                end
+            end
+
+            -- Effective wetness driver: rain (or the fill), plus a sustained-water term.
+            -- On a REAL day that term is the SCS moisture level above the threshold (SCS-001);
+            -- on a FILLED day it is real irrigation only, normalized to a 0-1 intensity so the
+            -- units match. Irrigation is scaled gentler than rain (IRRIGATION_LEACH_SCALE).
+            local drive = rainScale
+            if not filledDay then
+                if moisture and moisture > moistThreshold then
+                    local irrigDrive = ((moisture - moistThreshold) / (1.0 - moistThreshold)) * rain.IRRIGATION_LEACH_SCALE
+                    if irrigDrive > drive then drive = irrigDrive end
+                end
+            else
+                if irrigRate and irrigRate > 0 then
+                    local irrigIntensity = irrigRate / (rain.IRRIGATION_RATE_LEACH_REF or 0.018)
+                    if irrigIntensity > 1 then irrigIntensity = 1 end
+                    local irrigDrive = irrigIntensity * rain.IRRIGATION_LEACH_SCALE
+                    if irrigDrive > drive then drive = irrigDrive end
+                end
+            end
+
+            if drive > 0 then
+                -- Sustained moisture amplifies leaching; high organic matter buffers it (OM 0-10).
+                -- Only on a REAL day: on a FILLED day SF is the precipitation authority, so the
+                -- rain-reflecting moisture amplification is dropped (left at 1.0).
+                local scsMoistureMult = 1.0
+                if moisture and not filledDay then
+                    local omBuffer = 1.0 - ((field.organicMatter or 0) / 10.0) * rain.OM_LEACH_DAMPEN
+                    if omBuffer < 0 then omBuffer = 0 end
+                    scsMoistureMult = 1.0 + moisture * rain.MOISTURE_LEACH_GAIN * omBuffer
+                end
+
+                local leachFactor = drive * baseFactor * scsMoistureMult
+                if leachFactor > 0 then
+                    field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
+                    field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
+                    field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                    field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
+                    -- REFINED: mirror leaching onto the value maps. Per-tick amounts are
+                    -- far below one raw map step, so they accumulate in field._vmPend and
+                    -- flush as a uniform polygon shift once large enough.
+                    if self:vmAvailable() then
+                        self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                        self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                        self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                        self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
+                        self:_vmFlushFieldDeltas(fieldId, field)
+                    end
+                    count = count + 1
+                end
+            end
         end
     end
 
-    SoilLogger.debug("[PERF-P1] Rain leach: %d active field(s), leachFactor=%.6f", count, leachFactor)
+    SoilLogger.debug("[PERF-P1] Leach: %d field(s), rainScale=%.3f baseFactor=%.9f%s",
+        count, rainScale, baseFactor, csMgr and " (SCS moisture-aware)" or "")
 end
 
 -- Update field nutrients after harvest
@@ -3636,14 +4498,15 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     field.phosphorus = math.max(limits.MIN, field.phosphorus - rates.P * factor * tunDepl)
     field.potassium  = math.max(limits.MIN, field.potassium  - rates.K * factor * tunDepl)
 
-    -- Deplete zone cells by the same absolute amount (harvest extracts uniformly across field)
-    if field.zoneData then
-        local dN, dP, dK = rates.N * factor, rates.P * factor, rates.K * factor
-        for _, cell in pairs(field.zoneData) do
-            cell.N = math.max(limits.MIN, cell.N - dN)
-            cell.P = math.max(limits.MIN, cell.P - dP)
-            cell.K = math.max(limits.MIN, cell.K - dK)
-        end
+    -- REFINED: mirror the harvest extraction onto the per-pixel value maps as a
+    -- uniform whole-field shift (engine-side polygon modifier op). Sub-step
+    -- amounts accumulate in field._vmPend so per-cut extraction is never lost
+    -- to the map's raw quantisation.
+    if self:vmAvailable() then
+        local tunD = getTuningMult(self.settings, "tuningNutrientDepletion", "RATE_MULT")
+        self:_vmQueueFieldDelta(field, "nitrogen",   -rates.N * factor * tunD)
+        self:_vmQueueFieldDelta(field, "phosphorus", -rates.P * factor * tunD)
+        self:_vmQueueFieldDelta(field, "potassium",  -rates.K * factor * tunD)
     end
 
     -- Step 4: Chopped straw/chaff adds organic matter.
@@ -3653,7 +4516,10 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     if sr > 0 and areaHa > 0 then
         local omGain = (areaHa / fieldAreaHa) * sr * SoilConstants.CHOPPED_STRAW.OM_RATE
         field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX, (field.organicMatter or 0) + omGain)
+        self:_vmQueueFieldDelta(field, "organicMatter", omGain)
     end
+
+    self:_vmFlushFieldDeltas(fieldId, field)
 
     field.lastCrop = fruitDesc.name
     field.lastHarvest = currentDay
@@ -3807,7 +4673,13 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                     -- perennial forage or a freshly-sown annual is standard practice, so skip it.
                     -- On an established crop it builds up over application time toward OM_MAX (#688).
                     if not burnExempt then
-                        self:applyAmendmentBurnSlice(field, (ab and ab.OM_MAX) or 0.20)
+                        -- Finished compost scorches an established crop far more gently than fresh
+                        -- slurry/manure - stabilized humus carries no free salt/ammonia to burn the
+                        -- canopy - so it caps at the lower COMPOST_MAX (agronomic constant, Arissani
+                        -- 2026-07-24). Seedling / short-cut sward stay exempt (handled above).
+                        local omCap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
+                                   or (ab and ab.OM_MAX) or 0.20
+                        self:applyAmendmentBurnSlice(field, omCap)
                         if not field._amendBurnNotified then
                             field._amendBurnNotified = true
                             self:showNotification(
@@ -3835,8 +4707,14 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         -- needed) so it works from the first pass and on dedicated servers.
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): a re-confirmation must never drop the field area below
+            -- the hectares already covered this session. A bogus small resolve (e.g. a wrong
+            -- farmland->field mapping on a multi-field parcel) would otherwise collapse the
+            -- denominator and pin Pass% at 100%, and skew per-ha rates + the compaction average.
+            -- No-op in the healthy path (session coverage <= true crop area).
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil  -- recompute the average denominator on the corrected area
             end
             field._farmlandAreaConfirmed = true
@@ -3904,6 +4782,18 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         -- Capture before-values for diagnostic logging (debug mode only).
         local dbgN0, dbgP0, dbgK0, dbgPH0 = field.nitrogen, field.phosphorus, field.potassium, field.pH
 
+        -- #735: snapshot the field's pre-spray baseline ONCE per session, BEFORE the
+        -- field-average update below mutates field.nitrogen. Lazily-created zoneData
+        -- cells seed from this uniform baseline instead of the running average, so a
+        -- uniform pass no longer paints a false low->high gradient across the field.
+        -- Cleared on session reset (harvest/tillage/day change) so it re-snapshots.
+        if field._zoneBaseline == nil then
+            field._zoneBaseline = {
+                N  = field.nitrogen,   P  = field.phosphorus,
+                K  = field.potassium,  OM = field.organicMatter,
+            }
+        end
+
         local tunFert = getTuningMult(self.settings, "tuningFertilizerEfficiency", "RATE_MULT")
         if entry.N then field.nitrogen   = math.min(limits.MAX, field.nitrogen   + entry.N * factor * tunFert) end
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor * tunFert) end
@@ -3911,17 +4801,31 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
-        -- pH bulk sync: lime raises pH field-wide so all cells track it uniformly.
-        -- N/P/K/OM are NOT bulk-synced - cells visited by the boom (markBoomCells)
-        -- get the updated field average written there, while unvisited pre-populated
-        -- cells keep their initial value. This creates spatial differentiation on the
-        -- overlay map: freshly-sprayed areas show higher nutrient values than areas
-        -- the boom hasn't reached yet.
-        if entry.pH and field.zoneData then
-            for _, cell in pairs(field.zoneData) do
-                cell.pH = math.max(limits.PH_MIN, math.min(limits.PH_MAX, cell.pH + entry.pH * factor))
-            end
+        -- #735: stash THIS tick's field-average nutrient delta so markBoomCells can paint
+        -- the boom's newly-covered cells with the correct LOCAL dose (each cell = its own
+        -- pre-spray value + the local application rate) instead of the drifting field
+        -- average. markBoomCells re-scales this per-field-average delta up to a per-cell
+        -- delta by (fieldArea / area-covered-this-tick) - see the paint there. Deltas
+        -- accumulate across VWW sections in the same tick (each calls applyFertilizer),
+        -- and reset when the tick or product changes; sessionCoverageCells (the dedup) is
+        -- itself reset on product change (#442) and session end, so a re-spray repaints.
+        local now = (g_currentMission and g_currentMission.time) or 0
+        if not field._sprayDose or field._sprayDose.time ~= now or field._sprayDose.product ~= fillType.name then
+            field._sprayDose = { dN = 0, dP = 0, dK = 0, dPH = 0, dOM = 0,
+                                 area = areaInHa, time = now, product = fillType.name }
         end
+        local sd = field._sprayDose
+        sd.area = areaInHa
+        if entry.N  then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
+        if entry.P  then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
+        if entry.K  then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
+        if entry.pH then sd.dPH = sd.dPH + entry.pH * factor * tunFert end
+        if entry.OM then sd.dOM = sd.dOM + entry.OM * factor * tunFert end
+
+        -- REFINED: no pH bulk sync. Like PF's lime map, only ground the boom has
+        -- actually passed over gets the new pH (paintBoomStrip / the dot write
+        -- below); unsprayed areas keep their old value on the per-pixel map.
+        -- The legacy zoneData bulk loop is gone with the zoneData nutrient path.
 
         -- Throttled per-field diagnostic (debug mode, lime types always logged; nutrients every 4 s).
         -- Validates that pH shift and nutrient deltas are agronomically sensible.
@@ -3955,13 +4859,32 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             end
         end
 
-        -- Write updated values to density map layers (per-pixel, at sprayer position).
-        -- No throttle - live updates paint a continuous trail on the minimap heatmap.
+        -- REFINED: per-pixel write at the sprayer position into the runtime value
+        -- maps (~2 m/px). The full boom-width strip is now painted per-cell by
+        -- markBoomCells (#735, correct local dose). This dot is the NARROW-TOOL
+        -- fallback only: tools whose span is under one cell yield no boom points, so
+        -- markBoomCells never runs and this dot is their sole per-pixel write. It
+        -- DEFERS whenever a boom paint happened in the last ~half second (a wide
+        -- sprayer), so it can't restamp the field average over the correct strip.
+        local sprayX = self._lastSprayX
+        local sprayZ = self._lastSprayZ
+        local boomRecent = field._vmBoomPaintTime ~= nil
+            and (now - field._vmBoomPaintTime) >= 0 and (now - field._vmBoomPaintTime) < 500
+        if sprayX and sprayZ and self:vmAvailable() and not boomRecent then
+            local vm = self.valueMaps
+            if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
+            if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
+            if entry.K  then vm:writeValueAtWorld("potassium",     sprayX, sprayZ, field.potassium,     2.5) end
+            if entry.pH then vm:writeValueAtWorld("pH",            sprayX, sprayZ, field.pH,            2.5) end
+            if entry.OM then vm:writeValueAtWorld("organicMatter", sprayX, sprayZ, field.organicMatter, 2.5) end
+            local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+            if minimapLayer then minimapLayer:markDirty() end
+        end
+
+        -- Legacy map-shipped GRLE layers (kept for maps that declare them)
         if self.layerSystem and self.layerSystem.available then
             local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
-                local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
-                if minimapLayer then minimapLayer:markDirty() end
                 if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
                 if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
                 if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
@@ -3970,45 +4893,22 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             end
         end
 
-        -- zoneData per-cell update for per-area PDA overlay coloring (standard maps)
-        local sprayX = self._lastSprayX
-        local sprayZ = self._lastSprayZ
-        if sprayX and sprayZ then
+        -- Per-cell pest/disease stamp (these pressures stay on the coarse zone
+        -- grid - they are field-level agronomy, not per-pixel soil chemistry).
+        if sprayX and sprayZ and (entry.pestReduction or entry.diseaseReduction) then
             local zone = SoilConstants.ZONE
-            local cx = math.floor(sprayX / zone.CELL_SIZE)
-            local cz = math.floor(sprayZ / zone.CELL_SIZE)
-            -- String key keeps save/load/runtime consistent: setXMLString requires a string,
-            -- and the load path (getXMLString) restores keys as strings. Using a number key
-            -- here caused "setXMLString: Expected String, Actual Number" errors on autosave
-            -- and also caused post-load lookups to miss (number key vs stored string key).
-            local cellKey = tostring(cx * 10000 + cz)
-
-            -- Coverage is now tracked from the sprayer hook with raw liters (pre-rateMultiplier)
-            -- so it is not called here. See HookManager:installSprayerAreaHook.
+            local cellKey = tostring(math.floor(sprayX / zone.CELL_SIZE) * 10000
+                                   + math.floor(sprayZ / zone.CELL_SIZE))
             if field.fieldArea and field.fieldArea > 0 then areaInHa = field.fieldArea end
-
-            -- Per-frame N/P/K/OM deltas (same formula as the field-average update above).
-            -- Captured here so new cells can be initialised with PRE-update field values and
-            -- then receive the delta once, preventing double-counting on first spray while
-            -- keeping existing cells live on every subsequent pass.
-            local dN  = entry.N  and (entry.N  * factor * tunFert) or 0
-            local dP  = entry.P  and (entry.P  * factor * tunFert) or 0
-            local dK  = entry.K  and (entry.K  * factor * tunFert) or 0
-            local dOM = entry.OM and (entry.OM * factor * tunFert) or 0
-
             if not field.zoneData then field.zoneData = {} end
             if not field.zoneData[cellKey] then
                 local zdCount = 0
                 for _ in pairs(field.zoneData) do zdCount = zdCount + 1 end
                 if zdCount < MAX_ZONE_CELLS then
+                    -- REFINED: this cell carries only biotic pressures + compaction now.
+                    -- N/P/K/pH/OM live on the per-pixel value maps, not on zoneData, so
+                    -- the #735 baseline nutrient seeding no longer applies here.
                     field.zoneData[cellKey] = {
-                        -- Pre-update values: the delta block below brings this cell to the
-                        -- same level as the field average without double-counting the delta.
-                        N  = math.max(limits.MIN, field.nitrogen      - dN),
-                        P  = math.max(limits.MIN, field.phosphorus    - dP),
-                        K  = math.max(limits.MIN, field.potassium     - dK),
-                        pH = field.pH,   -- pH already post-update via bulk sync above
-                        OM = math.max(0, field.organicMatter          - dOM),
                         weedPressure    = field.weedPressure,
                         pestPressure    = field.pestPressure,
                         diseasePressure = field.diseasePressure,
@@ -4017,21 +4917,26 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
                 end
             end
             local cell = field.zoneData[cellKey]
-            if not cell then return end
-
-            -- Apply N/P/K/OM delta to this specific cell so it tracks live nutrient levels
-            -- rather than a stale snapshot of the field average at first-application time.
-            -- pH is handled by the bulk sync above (applied to all cells uniformly).
-            -- Pest/disease are position-specific and handled separately below.
-            -- cellFactor note: must use areaInHa (not zone.CELL_AREA_HA) - see issue #205 Bug 2.
-            if dN  > 0 then cell.N  = math.min(limits.MAX,                cell.N  + dN)  end
-            if dP  > 0 then cell.P  = math.min(limits.MAX,                cell.P  + dP)  end
-            if dK  > 0 then cell.K  = math.min(limits.MAX,                cell.K  + dK)  end
-            if dOM > 0 then cell.OM = math.min(limits.ORGANIC_MATTER_MAX, cell.OM + dOM) end
-
-            local cellFactor = (liters / 1000.0) / areaInHa
-            if entry.pestReduction    then cell.pestPressure    = math.max(0, (cell.pestPressure    or field.pestPressure    or 0) - entry.pestReduction    * cellFactor) end
-            if entry.diseaseReduction then cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - entry.diseaseReduction * cellFactor) end
+            if cell then
+                local cellFactor = (liters / 1000.0) / areaInHa
+                if entry.pestReduction    then cell.pestPressure    = math.max(0, (cell.pestPressure    or field.pestPressure    or 0) - entry.pestReduction    * cellFactor) end
+                if entry.diseaseReduction then cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - entry.diseaseReduction * cellFactor) end
+                -- REFINED: mirror the local reduction onto the per-pixel display
+                -- maps so the sprayed strip shows on the pest/disease overlays.
+                if self:vmAvailable() then
+                    local half = zone.CELL_SIZE * 0.5
+                    if entry.pestReduction then
+                        self.valueMaps:writeValueAtWorld("pestPressure", sprayX, sprayZ, cell.pestPressure, half)
+                    end
+                    if entry.diseaseReduction then
+                        -- Discovery gate: a sprayed strip must not reveal
+                        -- undiscovered disease; paint the UNKNOWN marker until scouted.
+                        local shownDisease = SoilValueMaps.UNKNOWN_VALUE
+                        if field.diseaseDiscovered then shownDisease = cell.diseasePressure or 0 end
+                        self.valueMaps:writeValueAtWorld("diseasePressure", sprayX, sprayZ, shownDisease, half)
+                    end
+                end
+            end
         end
     end
 
@@ -4078,7 +4983,7 @@ function SoilFertilitySystem:onInsecticideAppliedIncremental(fieldId, reduction)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = pp.INSECTICIDE_DURATION_DAYS
+        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
     end
 
     -- Update per-cell pest pressure for existing zoneData entries only.
@@ -4110,7 +5015,7 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
     local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
     if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(dp.FUNGICIDE_DURATION_DAYS * (cm.fungicideMult or 1))
+        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * (cm.fungicideMult or 1))
     end
 
     -- Update per-cell disease pressure for existing zoneData entries only.
@@ -4203,6 +5108,15 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
 
     -- Fertilizer products: coverage is handled by markBoomCells (cell dedup).
     if updateFractions == false then return end
+
+    -- Liter-based coverage is a FALLBACK for applications with no boom position.
+    -- If the geometric path (markBoomCells) is already tracking this field this
+    -- session, defer to it: adding the liter estimate on top double-counts and pins
+    -- Pass% at 100% (#726). The call site enables this path with `not isFertilizer`,
+    -- on the old assumption that crop protection never has boom points; modern
+    -- sprayers and See & Spray DO provide them, so markBoomCells runs too. It stamps
+    -- sessionCoverageCells, so any cell means the geometric path owns coverage here.
+    if next(field.sessionCoverageCells or {}) ~= nil then return end
 
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
@@ -4312,6 +5226,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     if not field.zoneData             then field.zoneData             = {} end
 
     local seen = {}
+    local newCells  -- #735: cells first covered THIS call, painted below with the local spray dose
     for _, pt in ipairs(boomPoints) do
         local cx = math.floor(pt.x / zone.CELL_SIZE)
         local cz = math.floor(pt.z / zone.CELL_SIZE)
@@ -4337,6 +5252,10 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 -- and avoid suppressing sections that are still on their current pass.
                 if not field.sessionCoverageCells[cellKey] then
                     field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
+                    -- #735: newly covered this session - record its centre so the correct
+                    -- local nutrient dose is painted onto it exactly once (dedup by this set).
+                    if newCells == nil then newCells = {} end
+                    newCells[#newCells + 1] = { x = cellCx, z = cellCz }
                     if not overlayOnly then
                         field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
@@ -4355,9 +5274,11 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                     field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellArea)
                 end
 
-                -- ── Visual overlay (zoneData) ──────────────────────────────────────
-                -- Enforce cell cap: only affects sub-field visual detail, not coverage accuracy.
-                -- Use a tracked counter (field.zoneDataSize) instead of iterating pairs every tick.
+                -- ── Pressure zone stamp (zoneData) ─────────────────────────────────
+                -- REFINED: nutrient values now live on the per-pixel value maps
+                -- (paintBoomStrip / applyFertilizer); zoneData cells only carry the
+                -- field-level pressure/compaction stamps used by See&Spray and the
+                -- compaction rebuild. Cell cap unchanged.
                 local canWrite = true
                 if field.zoneData[cellKey] == nil then
                     if (field.zoneDataSize or 0) >= MAX_ZONE_CELLS then canWrite = false end
@@ -4365,21 +5286,45 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 if canWrite then
                     if field.zoneData[cellKey] == nil then
                         field.zoneDataSize = (field.zoneDataSize or 0) + 1
+                        field.zoneData[cellKey] = {}
                     end
-                    field.zoneData[cellKey] = {
-                        N  = field.nitrogen       or SoilConstants.FIELD_DEFAULTS.nitrogen,
-                        P  = field.phosphorus     or SoilConstants.FIELD_DEFAULTS.phosphorus,
-                        K  = field.potassium      or SoilConstants.FIELD_DEFAULTS.potassium,
-                        pH = field.pH             or SoilConstants.FIELD_DEFAULTS.pH,
-                        OM = field.organicMatter  or SoilConstants.FIELD_DEFAULTS.organicMatter,
-                        weedPressure    = field.weedPressure    or 0,
-                        pestPressure    = field.pestPressure    or 0,
-                        diseasePressure = field.diseasePressure or 0,
-                        compaction      = field.compaction      or 0,
-                    }
+                    local zc = field.zoneData[cellKey]
+                    zc.weedPressure    = field.weedPressure    or 0
+                    zc.pestPressure    = field.pestPressure    or 0
+                    zc.diseasePressure = field.diseasePressure or 0
+                    if zc.compaction == nil then zc.compaction = field.compaction or 0 end
                 end
             end
         end
+    end
+
+    -- #735: paint the correct LOCAL nutrient dose onto the cells first covered this call.
+    -- applyFertilizer stashed THIS tick's field-average delta (field._sprayDose); the true
+    -- per-cell dose is that average delta scaled up by fieldArea / area-covered-this-tick, so
+    -- one uniform pass raises every covered cell by the same amount (its own pre-spray value
+    -- + the dose) with no false low->high gradient, and the map still converges to the field
+    -- average once the whole field is covered. addValueAtWorld is a per-cell read-add-write and
+    -- each cell is painted once (sessionCoverageCells dedup), so consecutive frames over the
+    -- same ground never stack the delta. Replaces the old paintBoomStrip average stamp.
+    local sd  = field._sprayDose
+    local nowMs = (g_currentMission and g_currentMission.time) or 0
+    if sd and newCells and #newCells > 0 and self:vmAvailable()
+       and sd.time == nowMs and sd.area and sd.area > 0 then
+        local scale = sd.area / (#newCells * cellArea)
+        local vm = self.valueMaps
+        local r  = zone.CELL_SIZE * 0.5
+        for _, c in ipairs(newCells) do
+            if sd.dN  ~= 0 then vm:addValueAtWorld("nitrogen",      c.x, c.z, sd.dN  * scale, r) end
+            if sd.dP  ~= 0 then vm:addValueAtWorld("phosphorus",    c.x, c.z, sd.dP  * scale, r) end
+            if sd.dK  ~= 0 then vm:addValueAtWorld("potassium",     c.x, c.z, sd.dK  * scale, r) end
+            if sd.dPH ~= 0 then vm:addValueAtWorld("pH",            c.x, c.z, sd.dPH * scale, r) end
+            if sd.dOM ~= 0 then vm:addValueAtWorld("organicMatter", c.x, c.z, sd.dOM * scale, r) end
+        end
+        field._vmBoomPaintTime = nowMs
+        -- Consume so the second markBoomCells hook site in the same tick can't re-apply.
+        sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
     end
 
     -- Recompute fractions after all cells are processed.
@@ -4429,8 +5374,12 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         -- Prefer the arable crop-polygon area over the parcel (#719); mirrors applyFertilizer.
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors applyFertilizer. Never let a re-confirm drop the
+            -- field area below the hectares already covered this session (a bogus small resolve
+            -- would collapse the denominator and pin Pass% at 100%). No-op in the healthy path.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true
@@ -4463,7 +5412,7 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         local wasProtected = (field.herbicideDaysLeft or 0) > 0
         if (field.sessionCoverageFraction or 0) >= protThreshold then
             -- Duration is in in-game DAYS (decremented 1/game-day); see #639.
-            field.herbicideDaysLeft = SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS
+            field.herbicideDaysLeft = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
             -- Apply weed map state (visual browning) exactly once when protection is first granted.
             -- applyWeedMapState is server-only; guards inside it handle the nil-field case.
             if not wasProtected and g_server then
@@ -4514,8 +5463,12 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     if not field._farmlandAreaConfirmed or _isNewSession then
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors applyFertilizer / onHerbicideAppliedDirect. A re-confirm
+            -- must never drop the field area below the hectares already covered this session, or a
+            -- bogus small resolve would collapse the denominator and pin Pass% at 100%. No-op healthy.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true
@@ -4550,18 +5503,48 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     self:trackSprayerCoverage(fieldId, liters, "INSECTICIDE")
 end
 
-function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters)
+function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters, chemId)
+    -- Organic certification (OM-209): a synthetic fungicide on a transitioning or
+    -- certified field is a breach (full reset to conventional); the approved organic
+    -- pair (SULFUR / COPPER_HYDROXIDE, in ORGANIC.APPROVED_INPUTS) passes clean. This is
+    -- the fungicide analogue of the onFertilizerApplied breach check. chemId is the
+    -- upper-case fill type name, exactly what onInputApplied expects. It runs before the
+    -- disease-sim guard below so organic rules hold even when disease pressure is off, and
+    -- on the same server-authoritative apply path as the fertilizer breach.
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic and chemId then
+        g_SoilFertilityManager.organic:onInputApplied(fieldId, chemId)
+    end
+
     if not self.settings.diseasePressure then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- Physical named fungicide (6-chemical kit): scale this generic pass by the chemical's
+    -- control rate against the field's active disease (the catalog's per-disease matrix) and
+    -- record which chemical was used, so a sprayed AZOXYSTROBIN behaves like its catalog entry.
+    -- Generic FUNGICIDE never reaches here (it routes through the fertilizer path), so chemId
+    -- is always one of the six; the guard keeps it safe regardless.
+    local rateName = "FUNGICIDE"
+    if chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
+        rateName = chemId
+        field.lastFungicide = chemId
+        if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
+            local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
+            effectiveness = (effectiveness or 1.0) * control
+        end
+    end
 
     -- Confirm field area on first application (mirrors onInsecticideAppliedDirect / applyFertilizer)
     local _isNewSession = not next(field.sessionCoverageCells or {})
     if not field._farmlandAreaConfirmed or _isNewSession then
         local cropArea = self:_resolveCropAreaHa(fieldId)
         if cropArea then
-            if cropArea ~= field.fieldArea then
-                field.fieldArea = cropArea
+            -- Sanity floor (#726): mirrors the other direct spray paths. A re-confirm must never
+            -- drop the field area below the hectares already covered this session, or a bogus small
+            -- resolve would collapse the denominator and pin Pass% at 100%. No-op in the healthy path.
+            local resolvedArea = math.max(cropArea, field.sessionCoverageHa or 0)
+            if resolvedArea ~= field.fieldArea then
+                field.fieldArea = resolvedArea
                 field.compactionTotalCells = nil
             end
             field._farmlandAreaConfirmed = true
@@ -4575,7 +5558,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
 
     local areaInHa = field.fieldArea or 1.0
     if areaInHa <= 0 then areaInHa = 1.0 end
-    local targetRate = SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE.value
+    local targetRate = (SoilConstants.SPRAYER_RATE.BASE_RATES[rateName] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
     local targetVol = areaInHa * targetRate
     if targetVol <= 0 then return end
 
@@ -4593,7 +5576,14 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99993] = (field.nutrientBuffer[99993] or 0) + liters
-    self:trackSprayerCoverage(fieldId, liters, "FUNGICIDE")
+    -- Work Trail fix: tag coverage with the REAL chemical name (chemId), not the literal
+    -- "FUNGICIDE". The sprayer hook already tracked this pass under fillType.name
+    -- (e.g. "SULFUR"/"PROPICONAZOLE") via trackSprayerCoverage. Tagging "FUNGICIDE" here made
+    -- sessionLastProduct flip every tick, tripping the product-change reset (#442) that wipes
+    -- sessionCoverageCells + sprayTrailPts, so the work-trail overlay vanished the instant it drew.
+    -- Only the named physical fungicides hit this (generic FUNGICIDE's fill name IS "FUNGICIDE").
+    -- updateFractions=false: name-only, so this does not double-count the area already tracked.
+    self:trackSprayerCoverage(fieldId, liters, chemId or "FUNGICIDE", false)
 end
 
 --- Apply over-application burn penalty to a field.
@@ -4776,6 +5766,27 @@ function SoilFertilitySystem:projectRotation(fieldId, candidateCropName)
     }
 end
 
+--- Blessed crop-family lookup (#739). Public wrapper over SoilConstants.CROP_FAMILY
+--- so the rotation planner (and any other reader) resolves families through a stable
+--- contract instead of poking the internal table. Case-insensitive; returns the
+--- family string ("grain"/"pulse"/"oilseed"/"forage"/"root"/"other") or nil for an
+--- unknown crop.
+---@param cropName string|nil Fruit name (any case)
+---@return string|nil family
+function SoilFertilitySystem:getCropFamily(cropName)
+    if not cropName or cropName == "" then return nil end
+    return SoilConstants.CROP_FAMILY[cropName:lower()]
+end
+
+--- Blessed rotation-planner candidate pool (#739). Returns the same curated pool
+--- the field-detail dialog's Rotation Foresight uses, so the planner surface can
+--- never disagree with it. Shape: { LEGUME = {..names..}, NEUTRAL = {..names..} }
+--- (lowercase fruit names). The caller adds the same-crop "Fatigue" row itself.
+---@return table pool
+function SoilFertilitySystem:getRotationCandidatePool()
+    return SoilConstants.ROTATION_CANDIDATE_POOL
+end
+
 --- Get field info for display (HUD, console, etc)
 ---@param fieldId number The field ID to query
 ---@param x number|nil Optional world X coordinate for local cell lookup
@@ -4798,11 +5809,27 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
     local fromZoneCell = false
-    if x and z and field.zoneData then
+    if x and z and self:vmAvailable() then
+        -- REFINED: per-pixel reads from the runtime value maps (~2 m/px)
+        local vm = self.valueMaps
+        local vn  = vm:readValueAtWorld("nitrogen",      x, z)
+        local vp  = vm:readValueAtWorld("phosphorus",    x, z)
+        local vk  = vm:readValueAtWorld("potassium",     x, z)
+        local vph = vm:readValueAtWorld("pH",            x, z)
+        local vom = vm:readValueAtWorld("organicMatter", x, z)
+        if vn or vp or vk or vph or vom then
+            n  = vn  or n
+            p  = vp  or p
+            k  = vk  or k
+            ph = vph or ph
+            om = vom or om
+            fromZoneCell = true
+        end
+    elseif x and z and field.zoneData then
         local zone = SoilConstants.ZONE
         local cellKey = tostring(math.floor(x / zone.CELL_SIZE) * 10000 + math.floor(z / zone.CELL_SIZE))
         local cell = field.zoneData[cellKey]
-        if cell then
+        if cell and (cell.N or 0) > 0 then
             n  = cell.N  or n
             p  = cell.P  or p
             k  = cell.K  or k
@@ -4964,7 +5991,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         pH = ph,
         lastCrop = cropName,
         lastCrop2 = field.lastCrop2,
+        lastCrop3 = field.lastCrop3,  -- #739: third-back crop, already stored+synced, now published for the rotation planner
         rotationStatus = rotationStatus,
+        rotationBonusDaysLeft = field.rotationBonusDaysLeft or 0,  -- #739: remaining legume-bonus days, for the planner's timeline
         daysSinceHarvest = field.lastHarvest > 0 and (currentDay - field.lastHarvest) or 0,
         fertilizerApplied = field.fertilizerApplied or 0,
         yieldEfficiency = yieldEfficiency,
@@ -4976,6 +6005,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         activeDisease = field.activeDisease,  -- DISEASE_DEFS id of the named infection, or nil
         diseaseDiscovered = field.diseaseDiscovered or false,  -- discovery gate: false = named infection not yet scouted (HUD shows "?")
+        -- Scouting-gated display value: nil = unscouted (UI shows "Unscouted"); a
+        -- number once scouted. Disease-off shows the value (nothing to hide). The
+        -- RAW diseasePressure above stays ungated for the NPC roll and scouting.
+        shownDiseasePressure = (field.diseaseDiscovered or not (self.settings and self.settings.diseasePressure))
+            and (field.diseasePressure or 0) or nil,
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
@@ -5015,7 +6049,9 @@ function SoilFertilitySystem:getFieldUrgency(fieldId)
 
     local weedDef = (info.weedPressure or 0) / 100
     local pestDef = (info.pestPressure or 0) / 100
-    local diseaseDef = (info.diseasePressure or 0) / 100
+    -- Scouting-gated: unscouted disease (shownDiseasePressure nil) must not raise
+    -- urgency or it would leak what the honest disease layer hides.
+    local diseaseDef = (info.shownDiseasePressure or 0) / 100
 
     urgency = math.min(100, ((nDef + pDef + kDef + phDef + weedDef + pestDef + diseaseDef) / 7) * 100)
     return urgency
@@ -5072,6 +6108,8 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#sownCrop", field.sownCrop or "")
             setXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft", field.rotationBonusDaysLeft or 0)
             setXMLInt(xmlFile, fieldKey .. "#lastHarvest", field.lastHarvest or 0)
+            setXMLInt(xmlFile, fieldKey .. "#tilledSinceHarvest", field.tilledSinceHarvest and 1 or 0)  -- #738
+            setXMLInt(xmlFile, fieldKey .. "#noTillActive", field.noTillActive and 1 or 0)              -- #738
             setXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied", field.fertilizerApplied or 0)
             setXMLFloat(xmlFile, fieldKey .. "#weedPressure", field.weedPressure or 0)
             setXMLInt(xmlFile, fieldKey .. "#herbicideDaysLeft", field.herbicideDaysLeft or 0)
@@ -5184,6 +6222,8 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             sownCrop = getXMLString(xmlFile, fieldKey .. "#sownCrop"),
             rotationBonusDaysLeft = getXMLInt(xmlFile, fieldKey .. "#rotationBonusDaysLeft") or 0,
             lastHarvest = getXMLInt(xmlFile, fieldKey .. "#lastHarvest") or 0,
+            tilledSinceHarvest = (getXMLInt(xmlFile, fieldKey .. "#tilledSinceHarvest") or 0) == 1,  -- #738
+            noTillActive = (getXMLInt(xmlFile, fieldKey .. "#noTillActive") or 0) == 1,               -- #738
             fertilizerApplied = getXMLFloat(xmlFile, fieldKey .. "#fertilizerApplied") or 0,
             weedPressure = getXMLFloat(xmlFile, fieldKey .. "#weedPressure") or 0,
             herbicideDaysLeft = getXMLInt(xmlFile, fieldKey .. "#herbicideDaysLeft") or 0,
@@ -5635,14 +6675,18 @@ function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ, points)
     -- overshoot in #703.
     field.compaction = math.min(cp.MAX_COMPACTION, field.compactionSum / field.compactionTotalCells)
 
-    -- 3. Write per-pixel to compaction density map layer
-    if self.layerSystem and self.layerSystem.available then
-        -- Mark the minimap heatmap dirty so it regenerates and shows the new
-        -- compaction immediately. Without this the GRLE fills silently while
-        -- driving and only appears on the next spray/harvest/daily refresh.
+    -- 3. Write per-pixel compaction
+    do
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
-        self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        -- REFINED: runtime value map (~2 m/px) - crisp wheel-trail stamps
+        if self:vmAvailable() then
+            self.valueMaps:writeValueAtWorld("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        end
+        -- Legacy map-shipped GRLE layer (kept for maps that declare it)
+        if self.layerSystem and self.layerSystem.available then
+            self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        end
     end
 
     SoilLogger.debug("Compaction: field=%d cell=%s  %.0f→%.0f%%  avg=%.1f%%",
@@ -5688,11 +6732,16 @@ function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ, reliefP
     local tc = field.compactionTotalCells or 0
     field.compaction = tc > 0 and math.min(cp.MAX_COMPACTION, field.compactionSum / tc) or 0
 
-    -- Write per-pixel to compaction density map layer
-    if self.layerSystem and self.layerSystem.available then
+    -- Write per-pixel compaction relief
+    do
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
-        self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        if self:vmAvailable() then
+            self.valueMaps:writeValueAtWorld("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        end
+        if self.layerSystem and self.layerSystem.available then
+            self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
+        end
     end
 
     SoilLogger.debug("Subsoiler: field=%d cell=%s  %.0f→%.0f%%  avg=%.1f%%",
@@ -5733,6 +6782,13 @@ function SoilFertilitySystem:_applyCompactionDecay(field, reductionPoints)
         end
     end
     field.compaction = newAvg
+
+    -- REFINED: mirror the decay onto the per-pixel compaction map as a uniform
+    -- shift (additive approximation of the ratio fade; accumulates via _vmPend
+    -- so slow daily decay is not lost to raw quantisation).
+    if self:vmAvailable() then
+        self:_vmQueueFieldDelta(field, "compaction", -(oldAvg - newAvg))
+    end
     return true
 end
 

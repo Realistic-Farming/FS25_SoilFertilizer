@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Soil &amp; Fertilizer" eh="f31197fb" />
@@ -10,6 +10,18 @@
     <e k="sf_seasonal_effects_long" v="Enable/disable seasonal impact on soil nutrients (spring growth boost, fall slowdown)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Rain Effects" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Enable/disable rain impact on soil (nutrient leaching, pH changes)" eh="de3b14b9" />
+    <e k="sf_ws_short" v="World Climate" />
+    <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
+    <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
+    <e k="sf_ws_1" v="Real sky only" />
+    <e k="sf_ws_2" v="Arid" />
+    <e k="sf_ws_3" v="Normal" />
+    <e k="sf_ws_4" v="Wet" />
+    <e k="sf_ws_blurb_4" v="Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." />
+    <e k="sf_ws_blurb_3" v="Normal: balanced seasonal rains for short months. Default living climate." />
+    <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
+    <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
+    <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
     <e k="sf_plowing_bonus_short" v="Plowing Bonus" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Enable/disable plowing benefits to soil fertility (improved nitrogen and organic matter)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Residue Incorporation" eh="f4352cb5" />
@@ -1154,5 +1166,81 @@
         <e k="sf_multi_tank_short"             v="Multi-Tank Application" />
     <e k="sf_multi_tank_long"              v="Apply fertilizer to multiple tanks at once (front + rear)" />
     <e k="sf_desc_multiTankApplication"   v="When enabled, applying product also fills or drains secondary tanks proportionally" />
+    <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
+    <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
+    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_name" v="IBC Azoxystrobin" />
+    <e k="sf_bigBag_azoxystrobin_function" v="Azoxystrobin fungicide (liquid)" />
+    <e k="sf_boscalid_title" v="Boscalid" />
+    <e k="sf_bigBag_boscalid_name" v="IBC Boscalid" />
+    <e k="sf_bigBag_boscalid_function" v="Boscalid fungicide (liquid)" />
+    <e k="sf_mancozeb_title" v="Mancozeb" />
+    <e k="sf_bigBag_mancozeb_name" v="IBC Mancozeb" />
+    <e k="sf_bigBag_mancozeb_function" v="Mancozeb fungicide (liquid)" />
+    <e k="sf_metalaxyl_title" v="Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_name" v="IBC Metalaxyl" />
+    <e k="sf_bigBag_metalaxyl_function" v="Metalaxyl fungicide (liquid)" />
+    <e k="sf_tebuconazole_title" v="Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_name" v="IBC Tebuconazole" />
+    <e k="sf_bigBag_tebuconazole_function" v="Tebuconazole fungicide (liquid)" />
+    <e k="sf_treat_tank_tag" v="tank - spray" />
+    <e k="sf_treat_physical" v="%s is a sprayable product - buy the tank and spray the field" />
+    <e k="sf_sulfur_title" v="Sulfur" />
+    <e k="sf_bigBag_sulfur_name" v="IBC Sulfur" />
+    <e k="sf_bigBag_sulfur_function" v="Sulfur fungicide, organic-approved (liquid)" />
+    <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
+    <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
+    <e k="sf_unscouted" v="Unscouted" />
+<e k="sf_map_layer_organic_status" v="Organic Status" />
+    
+<e k="sf_layer_12" v="Organic Status" />
+    
+<e k="sf_org_legend_conventional" v="Conventional" />
+    
+<e k="sf_org_legend_transition" v="Transitioning" />
+    
+<e k="sf_org_legend_certified" v="Certified" />
+    
+<e k="sf_org_tt_conventional" v="Not in organic conversion" />
+    
+<e k="sf_org_tt_certified" v="Organic certified" />
+    
+    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
+<e k="sf_rp_status_unknown" v="Unknown" />
+    
+<e k="sf_rp_no_crop" v="-" />
+    
+<e k="sf_rp_no_history" v="No crop history yet" />
+    
+<e k="sf_rp_standing_unknown" v="Unknown" />
+    
+<e k="sf_rp_bonus_days" v="bonus %dd" />
+    
+<e k="sf_rp_title" v="Rotation Planner" />
+    
+<e k="sf_rp_open" v="Rotation Planner" />
+    
+<e k="sf_rp_farm_header" v="Farm standing" />
+    
+<e k="sf_rp_what_if" v="What if (next crop)" />
+    
+<e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
+    
+<e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
+    
+<e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
+    
+    <e k="sf_rp_no_fields" v="No fields" />
+    
+<e k="sf_rp_prev" v="Prev field" />
+    
+<e k="sf_rp_next" v="Next field" />
+    
+    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+
+    <!-- Harvest contract underwrite (#741) -->
+    <e k="sf_underwrite_notify" v="Harvest contract topped up on field %s: degraded soil compensated to the expected yield." />
 </elements>
 </l10n>

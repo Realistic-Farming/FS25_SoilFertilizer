@@ -34,8 +34,10 @@ local COLOR_DIM   = {0.60, 0.60, 0.60, 1.0}
 -- the mod's own rotation logic, so the preview can never disagree with what the
 -- player actually gets. Names are lowercase; getFruitTypeByName upper-cases
 -- internally so they resolve on any map (falling back to a title-cased label).
-local RF_LEGUME_CANDIDATES  = { "soybean", "peas", "clover", "alfalfa" }
-local RF_NEUTRAL_CANDIDATES = { "wheat", "barley", "maize", "canola" }
+-- Published pool (#739): both this dialog and the rotation planner read the same
+-- blessed constant, so the two surfaces can never disagree on the candidate set.
+local RF_LEGUME_CANDIDATES  = SoilConstants.ROTATION_CANDIDATE_POOL.LEGUME
+local RF_NEUTRAL_CANDIDATES = SoilConstants.ROTATION_CANDIDATE_POOL.NEUTRAL
 
 --- Curated 3-crop candidate set for the field's current crop.
 --- Returns { sameCrop, aLegume, aNeutralCereal } (entries may be nil when the
@@ -340,7 +342,8 @@ function SoilFieldDetailDialog:_populateData()
     -- Crop pressure
     self:_setPressure(self.detailWeed,    self.detailWeedStatus,    info.weedPressure    or 0, info.herbicideActive)
     self:_setPressure(self.detailPest,    self.detailPestStatus,    info.pestPressure    or 0, info.insecticideActive)
-    self:_setPressure(self.detailDisease, self.detailDiseaseStatus, info.diseasePressure or 0, info.fungicideActive)
+    -- Disease uses the scouting-gated value: nil (unscouted) renders "Unscouted".
+    self:_setPressure(self.detailDisease, self.detailDiseaseStatus, info.shownDiseasePressure, info.fungicideActive)
 
     -- History
     if self.detailLastCrop then
@@ -556,6 +559,12 @@ end
 ---@param activeProduct boolean   true if protection product active
 function SoilFieldDetailDialog:_setPressure(valueEl, statusEl, pressure, activeProduct)
     local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
+    if pressure == nil then
+        -- Unscouted disease: show "Unscouted", no percentage or severity (would leak).
+        if valueEl  then valueEl:setText(tr("sf_unscouted", "Unscouted")) end
+        if statusEl then statusEl:setText("") end
+        return
+    end
     if valueEl then
         valueEl:setText(string.format("%.0f%%", pressure))
     end

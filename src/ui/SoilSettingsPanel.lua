@@ -50,7 +50,9 @@ local CARD_H    = 0.32
 local CARD_Y    = CY_BOT + (CH - CARD_H) / 2
 
 -- Category page rows
-local ROW_H     = 0.036
+local ROW_H        = 0.036
+-- Taller row for the #740 world-climate picker (chips + wetness + blurb).
+local CLIMATE_ROW_H = 0.112
 local SEC_H     = 0.026
 local TOGGLE_W  = 0.048   -- single pill width
 local TOGGLE_H  = 0.026
@@ -114,7 +116,7 @@ local CATEGORIES = {
             },
             {
                 headerKey = "sf_panel_hdr_environment",
-                items     = { "seasonalEffects", "rainEffects", "plowingBonus", "residueIncorporation" }
+                items     = { "seasonalEffects", "rainEffects", "weatherSource", "plowingBonus", "residueIncorporation" }
             },
             {
                 headerKey = "sf_panel_hdr_crop_stress",
@@ -165,6 +167,7 @@ local MULTI_OPTS = {
     difficulty        = {"sf_diff_1", "sf_diff_2", "sf_diff_3"},
     replenishmentRate = {"sf_rr_1", "sf_rr_2", "sf_rr_3", "sf_rr_4", "sf_rr_5"},
     diseaseMoisture   = {"sf_dm_1", "sf_dm_2", "sf_dm_3", "sf_dm_4"},
+    weatherSource     = {"sf_ws_1", "sf_ws_2", "sf_ws_3", "sf_ws_4"},
     diseaseDifficulty = {"sf_disease_difficulty_1", "sf_disease_difficulty_2", "sf_disease_difficulty_3"},
     hudPosition       = {"sf_hud_pos_1", "sf_hud_pos_2", "sf_hud_pos_3",
                          "sf_hud_pos_4", "sf_hud_pos_5", "sf_hud_pos_6"},
@@ -174,7 +177,7 @@ local MULTI_OPTS = {
                          "sf_hud_trans_4", "sf_hud_trans_5"},
     activeMapLayer    = {"sf_layer_1", "sf_layer_2", "sf_layer_3", "sf_layer_4",
                          "sf_layer_5", "sf_layer_6", "sf_layer_7", "sf_layer_8",
-                         "sf_layer_9", "sf_layer_10", "sf_layer_11"},
+                         "sf_layer_9", "sf_layer_10", "sf_layer_11", "sf_layer_12"},
     overlayDensity    = {"sf_density_1", "sf_density_2", "sf_density_3"},
 }
 
@@ -189,6 +192,7 @@ local SETTING_DESCS = {
     replenishmentRate = "sf_desc_replenishmentRate",
     seasonalEffects   = "sf_desc_seasonalEffects",
     rainEffects       = "sf_desc_rainEffects",
+    weatherSource     = "sf_desc_weatherSource",
     plowingBonus      = "sf_desc_plowingBonus",
     residueIncorporation = "sf_desc_residueIncorporation",
     weedPressure      = "sf_desc_weedPressure",
@@ -761,6 +765,13 @@ end
 
 -- ── Scroll helpers ────────────────────────────────────────
 
+local function settingRowHeight(settingId)
+    if settingId == "weatherSource" then
+        return CLIMATE_ROW_H
+    end
+    return ROW_H
+end
+
 --- Total rendered height of all sections + items in a category (for scrollbar).
 function SoilSettingsPanel:_catContentHeight(cat)
     local h = 0
@@ -768,7 +779,7 @@ function SoilSettingsPanel:_catContentHeight(cat)
         h = h + SEC_H + 0.005
         for _, item in ipairs(sec.items) do
             if type(item) == "string" then
-                h = h + ROW_H
+                h = h + settingRowHeight(item)
             elseif type(item) == "table" then
                 h = h + ADMIN_ACT_H
             end
@@ -883,7 +894,8 @@ function SoilSettingsPanel:drawCategoryPage()
             local itemDef   = type(item) == "table"  and item or nil
 
             if settingId then
-                curY = curY - ROW_H
+                local rh = settingRowHeight(settingId)
+                curY = curY - rh
                 if curY < CY_BOT then break end
                 rowIdx = rowIdx + 1
                 if curY <= CY_TOP then
@@ -1476,14 +1488,22 @@ function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
     local def = SettingsSchema.byId[settingId]
     if not def then return end
 
+    -- #740: world climate gets a dedicated chip picker (farm-terms wetness preview).
+    if settingId == "weatherSource" then
+        self:drawClimateSettingRow(x, y, w, rowIdx, isAdmin)
+        return
+    end
+
+    local rh = ROW_H
+
     -- Alternating row background
     if rowIdx % 2 == 0 then
-        self:drawRect(x, y, w, ROW_H, C.row_alt)
+        self:drawRect(x, y, w, rh, C.row_alt)
     end
 
     -- Hover highlight (only on the left/label portion)
-    if self:hitTest(x, y, w, ROW_H, self.mouseX, self.mouseY) then
-        self:drawRect(x, y, w, ROW_H, C.row_hover)
+    if self:hitTest(x, y, w, rh, self.mouseX, self.mouseY) then
+        self:drawRect(x, y, w, rh, C.row_hover)
     end
 
     local locked = not def.localOnly and not isAdmin
@@ -1492,23 +1512,23 @@ function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
 
     -- Lock indicator
     if locked then
-        self:drawRect(x, y, 0.003, ROW_H, {0.88, 0.60, 0.18, 0.45})
+        self:drawRect(x, y, 0.003, rh, {0.88, 0.60, 0.18, 0.45})
     end
 
     -- Setting label
     local labelX = x + (locked and 0.010 or 0.008)
-    local labelY = y + ROW_H * 0.52
+    local labelY = y + rh * 0.52
     local labelText = tr(def.uiId .. "_short", settingId)
     self:drawText(labelX, labelY, TS_BODY, labelText, labelColor, RenderText.ALIGN_LEFT, not locked)
 
     -- Description
     local descKey = SETTING_DESCS[settingId]
     local desc = (descKey and tr(descKey)) or ""
-    self:drawText(labelX, y + ROW_H * 0.15, TS_TINY, desc, descColor, RenderText.ALIGN_LEFT, false)
+    self:drawText(labelX, y + rh * 0.15, TS_TINY, desc, descColor, RenderText.ALIGN_LEFT, false)
 
     -- Control (toggle or multi-select) on the right
     local ctrlX = x + w - 0.012
-    local ctrlY = y + (ROW_H - TOGGLE_H) / 2
+    local ctrlY = y + (rh - TOGGLE_H) / 2
 
     if def.type == "boolean" then
         self:drawToggleControl(ctrlX, ctrlY, settingId, locked)
@@ -1517,6 +1537,93 @@ function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
     end
 
     -- Row bottom divider
+    self:drawRect(x, y, w, 0.0005, C.divider, 0.35)
+end
+
+-- Wetness bars for climate chips (visual only; 1=real/opt-out flat, 2-4 = arid..wet).
+local CLIMATE_WETNESS = { 0, 1, 2, 3 }
+local CLIMATE_CHIP_COLORS = {
+    {0.55, 0.58, 0.62, 1.0}, -- real sky (neutral)
+    {0.78, 0.62, 0.28, 1.0}, -- arid
+    {0.35, 0.72, 0.48, 1.0}, -- normal
+    {0.28, 0.55, 0.88, 1.0}, -- wet
+}
+
+--- #740 creative climate picker: four chips with wetness preview + selected farm-terms blurb.
+function SoilSettingsPanel:drawClimateSettingRow(x, y, w, rowIdx, isAdmin)
+    local def = SettingsSchema.byId.weatherSource
+    if not def then return end
+    local rh = CLIMATE_ROW_H
+    local locked = not def.localOnly and not isAdmin
+
+    if rowIdx % 2 == 0 then
+        self:drawRect(x, y, w, rh, C.row_alt)
+    end
+    if locked then
+        self:drawRect(x, y, 0.003, rh, {0.88, 0.60, 0.18, 0.45})
+    end
+
+    local labelX = x + (locked and 0.010 or 0.008)
+    local labelColor = locked and C.lock_text or C.white
+    local descColor  = locked and {C.lock_text[1]*0.7, C.lock_text[2]*0.7, C.lock_text[3]*0.7, 1} or C.dim
+
+    self:drawText(labelX, y + rh - 0.018, TS_BODY,
+        tr("sf_ws_short", "World Climate"), labelColor, RenderText.ALIGN_LEFT, not locked)
+    self:drawText(labelX, y + rh - 0.032, TS_TINY,
+        tr("sf_desc_weatherSource", ""), descColor, RenderText.ALIGN_LEFT, false)
+    self:drawText(labelX, y + rh - 0.044, TS_TINY,
+        tr("sf_ws_world_note", "World setting - admin only in multiplayer; changes soil for everyone."),
+        locked and descColor or {0.88, 0.72, 0.35, 1.0}, RenderText.ALIGN_LEFT, false)
+
+    local val = self:getValue("weatherSource")
+    if val == nil then val = def.default or 3 end
+
+    local chipPad = 0.006
+    local chipW = (w - 0.016 - chipPad * 3) / 4
+    local chipH = 0.038
+    local chipY = y + 0.028
+    local chipX0 = x + 0.008
+
+    for i = 1, 4 do
+        local cx = chipX0 + (i - 1) * (chipW + chipPad)
+        local selected = (val == i)
+        local hover = not locked and self:hitTest(cx, chipY, chipW, chipH, self.mouseX, self.mouseY)
+        local accent = CLIMATE_CHIP_COLORS[i]
+        local bg = selected and {accent[1] * 0.35, accent[2] * 0.35, accent[3] * 0.35, 0.95}
+            or (hover and C.back_hover or {0.10, 0.11, 0.15, 0.92})
+        self:drawRect(cx, chipY, chipW, chipH, bg)
+        if selected then
+            self:drawRect(cx, chipY, chipW, 0.0022, accent)
+            self:drawRect(cx, chipY + chipH - 0.0022, chipW, 0.0022, accent)
+        end
+
+        -- Wetness preview bars (real sky = dashed flat line feel via zero fill + dim track)
+        local bars = CLIMATE_WETNESS[i] or 0
+        local barW = 0.008
+        local barGap = 0.003
+        local barMaxH = 0.014
+        local barsX = cx + chipW * 0.5 - (4 * barW + 3 * barGap) * 0.5
+        local barsY = chipY + chipH - 0.018
+        for b = 1, 4 do
+            local bx = barsX + (b - 1) * (barW + barGap)
+            local filled = (b <= bars)
+            local bh = barMaxH * (0.35 + 0.22 * b)
+            self:drawRect(bx, barsY, barW, bh, filled and accent or {0.22, 0.24, 0.28, 0.90})
+        end
+
+        local optKey = "sf_ws_" .. i
+        local optLabel = tr(optKey, tostring(i))
+        self:drawText(cx + chipW * 0.5, chipY + 0.004, TS_TINY,
+            optLabel, selected and C.white or C.dim, RenderText.ALIGN_CENTER, selected)
+
+        if not locked then
+            self:registerClick("climate_" .. i, cx, chipY, chipW, chipH,
+                { id = "weatherSource", value = i })
+        end
+    end
+
+    local blurb = tr("sf_ws_blurb_" .. tostring(val), "")
+    self:drawText(labelX, y + 0.008, TS_TINY, blurb, descColor, RenderText.ALIGN_LEFT, false)
     self:drawRect(x, y, w, 0.0005, C.divider, 0.35)
 end
 
@@ -1656,6 +1763,11 @@ function SoilSettingsPanel:handleClick(id, data)
 
     elseif id:sub(1, 10) == "toggle_on_" then
         if data then self:requestChange(data.id, true) end
+
+    elseif id:sub(1, 8) == "climate_" then
+        if data and data.id and data.value then
+            self:requestChange(data.id, data.value)
+        end
 
     elseif id:sub(1, 10) == "multi_prev" then
         if data then
