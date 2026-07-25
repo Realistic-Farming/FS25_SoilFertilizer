@@ -21,6 +21,7 @@
 - [ ] Lock the provisional module ids with Claude(A): `SoilFertilizer_Soil` (StateLedger) and `SoilFertilizer_Sync` (NetworkSync) before they ship in a release.
 
 ## Mid-term (this season)
+- [ ] Grass drying to hay + rotting when wet (#749): dry grass in sun / ted passes; rot loose grass and bales under long rain. Community request (Mankan81). Design path open (SF vs SCS vs dedicated surface); no build until owned.
 - [ ] ProStaff fertilizer discount bridge (silent, pcall-guarded read of `getFertilizerDiscount`) once scheduled. Not built today by decision (Point 8).
 - [ ] Decide whether `getFieldInfo` should expose FieldSentry state (isSleeping/isMeadow/contractMaskActive) instead of companions reading `g_currentMission.fieldSentry` directly.
 - [ ] Emit a clean disease-at-harvest signal (pathogen id + pressure) for an external diseased-food/mycotoxin model. Data already retained on fieldData at harvest; expose it deliberately.

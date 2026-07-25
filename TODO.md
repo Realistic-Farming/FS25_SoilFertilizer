@@ -13,6 +13,7 @@
 - [ ] None open from the audit. Track new ones from GitHub issues here.
 
 ## Features / enhancements
+- [ ] Grass drying to hay + rotting when wet (#749): community request (Mankan81). Dry grass in sun / ted passes; rot loose grass and bales if rain exposure too long. Similar idea to Ozz moisture mod. Tracked from GitHub; needs design path (SF vs SCS vs new surface) before build. Not started.
 - [x] Refined per-pixel value-map engine (WizardlyPayload's #736): adopted and folded into development (cd871bd7). Four merge-review fixes landed with it: migration coord fix, skipped-day batch-tail simulation, undiscovered-disease display-map gate, and the SoilMapOverlay semantic review. Per-cell spray now paints the value maps instead of the field average (#735). Our simulation kept on top of the storage engine.
 - [x] Organic certification multiplayer sync (81d7f9d8): state serialized on every field path, fixing the co-op client wipe. Backed by an ephemeral 3-state status-map layer painted at cert changes (a54098f1) and surfaced as map layer 12. Answers the ecosystem organic-cert MP-sync open call.
 - [x] No-till organic-matter dynamics (#738, f0f5aab8): per-tillage oxidation gradient + fenced no-till daily credit; the flat OM_BOOST retired.
