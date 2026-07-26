@@ -10,6 +10,7 @@
 - [ ] Decide whether getFieldInfo exposes FieldSentry state or companions keep reading `g_currentMission.fieldSentry`.
 
 ## Bugs
+- [x] 2026-07-26 bug sweep (54 total across ecosystem): SoilFertilizer bugs fixed and merged to main. See GitHub issues #748-#757 for individual tracking. All closed.
 - [ ] None open from the audit. Track new ones from GitHub issues here.
 
 ## Features / enhancements
