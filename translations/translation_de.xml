@@ -367,9 +367,9 @@
     <e k="sf_map_layer_ph" v="pH-Wert" eh="397dff20" />
     <e k="sf_map_layer_om" v="Organische Substanz" eh="6305f4bb" />
     <e k="sf_map_layer_urgency" v="Zustand" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="Unkrautdruck" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="Schädlingdruck" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="Krankheitsdruck" eh="2b805cc9" />
+    <e k="sf_map_layer_weed" v="Unkraut" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="Schädlinge" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="Krankheiten" eh="2b805cc9" />
     <e k="sf_map_layer_compaction" v="Verdichtung" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="Ertrag" eh="97345487" />
     <e k="sf_map_overlay_cycle" v="Umschalt+M: Bodenebene wechseln" eh="032fdac7" />
@@ -641,8 +641,8 @@
     <e k="sf_layer_6" v="Organische Substanz" eh="d2e254bc" />
     <e k="sf_layer_7" v="Zustand" eh="c94e3850" />
     <e k="sf_layer_8" v="Unkraut" eh="2b75024d" />
-    <e k="sf_layer_9" v="Schädling" eh="8f2aee79" />
-    <e k="sf_layer_10" v="Krankheit" eh="e7067a8c" />
+    <e k="sf_layer_9" v="Schädlinge" eh="8f2aee79" />
+    <e k="sf_layer_10" v="Krankheiten" eh="e7067a8c" />
     <e k="sf_layer_11" v="Verdichtung" eh="19cf3ee7" />
     <e k="sf_density_1" v="Niedrig" eh="28d0edd0" />
     <e k="sf_density_2" v="Mittel" eh="87f8a6ab" />
@@ -1126,17 +1126,17 @@
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
     <e k="sf_unscouted" v="Nicht erkundet" />
-    <e k="sf_map_layer_organic_status" v="Organische Substanz" />
     
     <!-- Bewirtschaftungsweise -->
-
-    <e k="sf_layer_12" v="Bewirtschaftungsweise" />
+    
     <e k="sf_org_legend_conventional" v="Konventionell" />
     <e k="sf_org_legend_transition" v="Umstellungphase" />
     <e k="sf_org_legend_certified" v="Ökologisch" />
     <e k="sf_org_tt_conventional" v="Konventionelle Bewirtschaftung." />
     <e k="sf_org_tt_certified" v="Ökologische Bewirtschaftung" />
     <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
+    <e k="sf_map_layer_organic_status" v="bewirtschaftungsweise" />
+    <e k="sf_layer_12" v="Bewirtschaftungsweise" />
 
     <!-- Fruchtfolge -->
 
