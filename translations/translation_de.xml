@@ -253,7 +253,7 @@
     <e k="helpLine_sf_gs_p3_levels_title" v="Drei Schwierigkeitsstufen" eh="52611188" />
     <e k="helpLine_sf_gs_p3_levels_text" v="Einfach (0,7x): 30% weniger Verarmung - gut für neue Spieler. Realistisch (1,0x): ausgewogen, kalibriert auf reale landwirtschaftliche Raten. Hardcore (1,5x): 50% mehr Verarmung - intensives Bodenmanagement erforderlich." eh="f4f1ea30" />
     <e k="helpLine_sf_gs_p3_access_title" v="Einstellungen ändern" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="Öffnen Sie die Einstellungen unter ESC &gt; Einstellungen &gt; Boden &amp; Dünger. Im Mehrspielermodus kann nur der Server-Admin die Simulationseinstellungen ändern. Alle HUD-Anzeigeoptionen gelten pro Spieler und werden nicht geteilt." eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_access_text" v="Öffne die Einstellungen mit der ESC-Taste &gt; Einstellungen &gt; Boden &amp; Dünger. Im Mehrspielermodus kann nur der Server-Admin die Simulationseinstellungen ändern. Alle HUD-Anzeigeoptionen gelten pro Spieler und werden nicht geteilt." eh="4ba9d860" />
 
     <e k="helpLine_sf_nu_p1_title" v="Stickstoff und Phosphor" eh="27d37372" />
     <e k="helpLine_sf_nu_p1_n_title" v="Stickstoff (N) - Skala 0 bis 100" eh="10a358f4" />
@@ -333,9 +333,10 @@
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
     <e k="sf_crop_rotation_short" v="Fruchtfolge" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="Fruchtfolgenbonus und Monokultur-Ermüdung aktivieren/deaktivieren (Leguminosensequenzen stellen Stickstoff wieder her; aufeinanderfolgende Saisons mit derselben Frucht erhöhen die Verarmung)" eh="958b4212" />
-    <e k="sf_gypsum_title" v="Gips (pH-)" eh="d66da34c" />
-    <e k="sf_compost_title" v="Kompost (Organisch)" eh="c3e2071a" />
+    <e k="sf_crop_rotation_long" v="Fruchtfolgebonus und Fruchtfolgeprobleme aktivieren/deaktivieren (Leguminosen können durch Stickstoffbindung den Stickstoffvorrat erhöhen; wiederholter Anbau derselben Kultur verstärkt den Nährstoffentzug)." eh="958b4212" />
+
+    <e k="sf_gypsum_title" v="Gips (pH-Senkung)" eh="d66da34c" />
+    <e k="sf_compost_title" v="Kompost (organische Substanz)" eh="c3e2071a" />
     <e k="sf_biosolids_title" v="Biosolids (N+P)" eh="f0c901dc" />
     <e k="sf_chicken_manure_title" v="Hühnermist (N+P)" eh="338128e2" />
     <e k="sf_pelletized_manure_title" v="Pelletierter Mist (NPK)" eh="c1b39b71" />
@@ -352,7 +353,7 @@
     <e k="sf_map_layer_k" v="Kalium" eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH-Wert" eh="397dff20" />
     <e k="sf_map_layer_om" v="Organische Substanz" eh="6305f4bb" />
-    <e k="sf_map_layer_urgency" v="Felddringlichkeit" eh="419ea5af" />
+    <e k="sf_map_layer_urgency" v="Handlungsbedarf" eh="419ea5af" />
     <e k="sf_map_layer_weed" v="Unkrautdruck" eh="53f8b936" />
     <e k="sf_map_layer_pest" v="Schädlingdruck" eh="18a7c2be" />
     <e k="sf_map_layer_disease" v="Krankheitsdruck" eh="2b805cc9" />
@@ -362,31 +363,31 @@
     <e k="sf_map_page_title" v="Bodenebenen" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Bodenkartenebene" eh="81332549" />
     <e k="sf_map_sidebar_label" v="Aktive Ebene" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="Wählen Sie, welcher Bodennährstoff auf der Karte angezeigt werden soll" eh="eb926e9a" />
+    <e k="sf_map_sidebar_tooltip" v="Wähle, welcher Bodennährstoff auf der Karte angezeigt werden soll" eh="eb926e9a" />
     <e k="sf_map_overlay_low" v="Niedrig" eh="28d0edd0" />
     <e k="sf_map_overlay_med" v="Mittel" eh="248c9511" />
     <e k="sf_map_overlay_high" v="Hoch" eh="655d20c1" />
 
-    <e k="sf_pda_screen_title" v="Boden &amp; Dünger" eh="f31197fb" />
+    <e k="sf_pda_screen_title" v="Feldmonitor" eh="f31197fb" />
     <e k="sf_pda_tab_map" v="Bodenkarte" eh="59f988b2" />
     <e k="sf_pda_tab_fields" v="Felder" eh="a4ca5edd" />
     <e k="sf_pda_tab_treatment" v="Behandlungsplan" eh="4ba012e2" />
     <e k="sf_pda_section_farm_overview" v="Hofübersicht" eh="47f2c19a" />
-    <e k="sf_pda_fields_tracked_label" v="Verfolgte Felder" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="Eigene Felder" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="Durchschn. Nährstoffe" eh="f06b2704" />
+    <e k="sf_pda_fields_tracked_label" v="Alle Felder" eh="c763e26e" />
+    <e k="sf_pda_fields_owned_label" v="Felder in Besitz" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="&#8960; Nährstoffe" eh="f06b2704" />
     <e k="sf_pda_avg_n_label" v="Stickstoff (N)" eh="25cee53b" />
     <e k="sf_pda_avg_p_label" v="Phosphor (P)" eh="75cb5cd6" />
     <e k="sf_pda_avg_k_label" v="Kalium (K)" eh="39797137" />
     <e k="sf_pda_avg_ph_label" v="pH-Wert" eh="0c85daad" />
     <e k="sf_pda_avg_om_label" v="Organische Substanz" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="Kulturdruck" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="Unkraut" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="Schädlinge" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="Krankheit" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="Benötigt Aufmerksamkeit" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="Dünger nötig" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="Gesamt benötigt Aufmerksamkeit" eh="b3ce2db9" />
+    <e k="sf_pda_section_pressure" v="Schadschwelle erreicht" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="Unkrautbefall" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="Schädlingsbefall" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="Krankheitsbefall" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="Handlungsbedarf" eh="80e48bc3" />
+    <e k="sf_pda_needs_fert_label" v="Düngung nötig" eh="fa9ded5e" />
+    <e k="sf_pda_total_urgent_label" v="Handlungsbedarf (gesamt)" eh="b3ce2db9" />
     <e k="sf_pda_no_data_left" v="Noch keine Felddaten." eh="ba71c6b1" />
     <e k="sf_pda_map_section_title" v="Bodenkartenebenen" eh="85d63132" />
     <e k="sf_pda_map_active_layer" v="Aktive Ebene" eh="f8a2c198" />
@@ -396,10 +397,10 @@
     <e k="sf_pda_map_layer_k_desc" v="Kaliumgehalt auf allen Feldern. Grün = gut, rot = verarmt." eh="a61d25b7" />
     <e k="sf_pda_map_layer_ph_desc" v="Boden-pH-Wert. Optimaler Bereich ist 6,5-7,0 (grün)." eh="ce7009e7" />
     <e k="sf_pda_map_layer_om_desc" v="Gehalt an organischer Substanz. Höher ist besser für die langfristige Fruchtbarkeit." eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="Kombinierte Behandlungsdringlichkeit. Rot = benötigt sofortige Aufmerksamkeit." eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="Unkrautdruck. Rot = hoher Befall, Herbizid ausbringen." eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="Schädlingsdruck. Rot = hoher Befall, Insektizid ausbringen." eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="Krankheitsdruck. Rot = aktiver Ausbruch, Fungizid ausbringen." eh="5d32d30a" />
+    <e k="sf_pda_map_layer_urgency_desc" v="Indikator für den Handlungsbedarf. Rot bedeutet die höchste Dringlichkeit. Kombination aus allen Faktoren." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="Unkrautdruck. Von Schadschwelle (Rot) überschritten bis Unkrautfrei (Grün)." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="Schädlingsdruck. Von Schadschwelle (Rot) überschritten bis ohne Schädlingsbefall (Grün)." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="Krankheitsdruck. Von Schadschwelle (Rot) überschritten bis ohne Pilzbefall (Grün)." eh="5d32d30a" />
     <e k="sf_pda_map_legend_title" v="Kartenlegende" eh="86448402" />
     <e k="sf_pda_map_legend_good" v="Gut" eh="0c6ad70b" />
     <e k="sf_pda_map_legend_fair" v="Mittel" eh="f7f20cf0" />
@@ -417,7 +418,7 @@
     <e k="sf_pda_help_github" v="DEIN FEEDBACK ZÄHLT! Wenn du Fehler findest, Vorschläge für neue Funktionen hast oder zum Code beitragen möchtest, besuche das Projekt auf GitHub. Du kannst jederzeit ein Issue oder einen Pull Request öffnen, um diesen Mod für alle zu verbessern. Danke fürs Testen!" eh="3a10b023" />
     <e k="sf_pda_help_note" v="Hinweis: Die Registerkarte für Bodenebenen auf der Kartenseite FUNKTIONIERT NICHT. Ich bin mir des Problems bewusst und arbeite an einer Lösung (was einige Zeit dauern kann)." eh="2d8f5dc7" />
     <e k="sf_pda_map_unavailable" v="Karten-Vorschau nicht verfügbar" eh="43983f81" />
-    <e k="sf_map_health_overall" v="Durchschn. Bodengesundheit" eh="5533cbe3" />
+    <e k="sf_map_health_overall" v="&#8960; Bodengesundheit" eh="5533cbe3" />
     <e k="sf_map_btn_report" v="Hofübersicht öffnen" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="Hilfe" eh="6a26f548" />
     <e k="sf_map_btn_cycle_layer" v="Ebene wechseln" eh="875dbf22" />
@@ -442,39 +443,39 @@
     <e k="sf_help_poor" v="Schlecht - Sofortige Behandlung erforderlich." eh="b287d206" />
     <e k="sf_pda_fields_section_title" v="Alle Felder" eh="48729e0b" />
     <e k="sf_pda_col_field" v="Feld" eh="6f16a5f8" />
-    <e k="sf_pda_col_n" v="N%" eh="30740562" />
-    <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="Filter: Alle Felder" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="Filter: Nur eigene" eh="258cb971" />
-    <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
-    <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
-    <e k="sf_pda_col_om" v="OS" eh="bfbebc07" />
+    <e k="sf_pda_col_n" v="Stickstoff" eh="30740562" />
+    <e k="sf_pda_col_p" v="Phosphor" eh="0a5e03bc" />
+    <e k="sf_pda_filter_all" v="alle Felder" eh="a46a8cb2" />
+    <e k="sf_pda_filter_owned" v="nur eigene Felder" eh="258cb971" />
+    <e k="sf_pda_col_k" v="Kalium" eh="43e4d0bf" />
+    <e k="sf_pda_col_ph" v="pH-Wert" eh="397dff20" />
+    <e k="sf_pda_col_om" v="Organische Substanz" eh="bfbebc07" />
     <e k="sf_pda_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_pda_no_fields" v="Noch keine Felddaten aufgezeichnet." eh="72265670" />
     <e k="sf_pda_status_good" v="Gut" eh="0c6ad70b" />
     <e k="sf_pda_status_fair" v="Mittel" eh="f7f20cf0" />
     <e k="sf_pda_status_poor" v="Schlecht" eh="0e94d017" />
     <e k="sf_pda_treatment_section_title" v="Behandlungsplan" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="Dringlichkeit" eh="c94e3850" />
+    <e k="sf_pda_col_priority" v="Zustand" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Bedarf" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Alle Felder sind in gutem Zustand." eh="fa985166" />
     <e k="sf_pda_treatment_hint" v="Die rechts aufgelisteten Felder benötigen Behandlung. Klicke auf eine Zeile, um empfohlene Mittel und geschätzte Mengen zu sehen." eh="5748d316" />
-    <e k="sf_pda_need_n" v="Stickstoff" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="Phosphor" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="Kalium" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="pH-Anpassung" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="Herbizid" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="Insektizid" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="Fungizid" eh="e8512698" />
+    <e k="sf_pda_need_n" v="benötigt Stickstoff" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="benötigt Phosphor" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="benötigt Kalium" eh="3a4edc67" />
+    <e k="sf_pda_need_ph" v="pH-Wert" eh="0570e9d2" />
+    <e k="sf_pda_need_weed" v="Herbizidbehandlung" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="Insektizidbehandlung" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="Fungizidbehandlung" eh="e8512698" />
     <e k="sf_pda_need_multiple" v="Mehrfach" eh="a0bf169f" />
     <e k="sf_pda_treatment_minor" v="Gering" eh="6fed0c37" />
-    <e k="sf_detail_title" v="Felddetails" eh="03b5acd7" />
+    <e k="sf_detail_title" v="Übersicht" eh="03b5acd7" />
     <e k="sf_detail_close" v="Schließen" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="Feld #" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="Dringlichkeit:" eh="9a83237c" />
-    <e k="sf_detail_section_nutrients" v="Bodennährstoffe" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="Kulturdruck" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="Fruchtfolgehistorie" eh="54c27499" />
+    <e k="sf_detail_field_label" v="Schlagnummer:" eh="228118ab" />
+    <e k="sf_detail_urgency_label" v="Zustand:" eh="9a83237c" />
+    <e k="sf_detail_section_nutrients" v="Nährstoffversorgung" eh="64377acf" />
+    <e k="sf_detail_section_pressure" v="Wirtschaftliche Schadschwelle" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="Anbauverlauf" eh="54c27499" />
     <e k="sf_detail_n_label" v="Stickstoff (N)" eh="25cee53b" />
     <e k="sf_detail_p_label" v="Phosphor (P)" eh="75cb5cd6" />
     <e k="sf_detail_k_label" v="Kalium (K)" eh="39797137" />
@@ -487,11 +488,11 @@
     <e k="sf_detail_rotation_label" v="Fruchtfolgestatus" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
-    <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
-    <e k="sf_rf_intro" v="[EN] If you plant next on this field:" eh="34964567" />
-    <e k="sf_rf_hint" v="[EN] Grow a crop on this field first to preview rotations." eh="817d250a" />
-    <e k="sf_rf_status_bonus" v="[EN] Bonus" eh="3c0ee4ba" />
-    <e k="sf_rf_status_ok" v="[EN] OK" eh="e0aa021e" />
+    <e k="sf_rf_section" v="Fruchtfolge (Vorschau)" eh="6f977043" />
+    <e k="sf_rf_intro" v="Wenn du als nächstes folgende Kultur anbaust:" eh="34964567" />
+    <e k="sf_rf_hint" v="Baue erst eine Kultur auf dem Feld an um eine Vorschau auf die Fruchtfolge zu erhalten." eh="817d250a" />
+    <e k="sf_rf_status_bonus" v="Bonus" eh="3c0ee4ba" />
+    <e k="sf_rf_status_ok" v="OK" eh="e0aa021e" />
     <e k="sf_rf_status_fatigue" v="[EN] Fatigue" eh="b5ff1b29" />
     <e k="sf_rf_effect_fatigue" v="[EN] x1.15 depletion" eh="5f05aded" />
     <e k="sf_rf_effect_nplus" v="[EN] +N" eh="fa91409a" />
@@ -503,7 +504,7 @@
     <e k="sf_treat_section_soil" v="Bodenverbesserung" eh="09e016e4" />
     <e k="sf_treat_section_fert" v="Nährstoffausbringung" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Pflanzenschutz" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="In der Kategorie 'Produkte' im Shop finden Sie spezialisierte Düngemittel." eh="540bff4d" />
+    <e k="sf_treat_hint" v="In der Kategorie 'Produkte' im Shop findest du spezialisierte Düngemittel." eh="540bff4d" />
     <e k="sf_treat_action_optimal" v="Optimal - Keine Aktion erforderlich." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="KALK oder FLÜSSIGKALK ausbringen, um den pH-Wert zu erhöhen." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="GIPS ausbringen, um den pH-Wert zu senken / Struktur zu verbessern." eh="4cb3f0dc" />
@@ -515,16 +516,16 @@
     <e k="sf_treat_action_p_fair" v="Mit Flüssig-MAP, Flüssig-DAP oder DAP (P) auffüllen." eh="0c99c3e8" />
     <e k="sf_treat_action_k_poor" v="KALI (Kalium) ausbringen." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="Mit Flüssig-Kalium oder Kalium (K) auffüllen." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="Sofort HERBIZID ausbringen." eh="625551c5" />
-    <e k="sf_treat_action_pest" v="Sofort INSEKTIZID ausbringen." eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="Sofort FUNGIZID ausbringen." eh="9228323a" />
-    <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_detail_yield_eff_label" v="Ertragseff." eh="2aa6bf08" />
+    <e k="sf_treat_action_weed" v="Herbizidbehandlung empfohlen." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="Insektizidbehandlung empfohlen." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="Fungizidbehandlung empfohlen." eh="9228323a" />
+    <e k="sf_detail_rotation_ok" v="Perfekt" eh="e0aa021e" />
+    <e k="sf_detail_yield_eff_label" v="Effizienz" eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="Leguminosen-Bonus (+N)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="Ermüdung (x1,15 Verarmung)" eh="522a6d93" />
+    <e k="sf_detail_rotation_bonus" v="Stickstofffixierung durch Leguminosen" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_fatigue" v="ungünstige Vorfrucht (1,15-fach erhöhter Nährstoffentzug)" eh="522a6d93" />
     <e k="sf_detail_no_field" v="Keine Daten verfügbar." eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="Nichts aufgezeichnet" eh="a4b5a996" />
+    <e k="sf_detail_no_crop" v="Keine Aufzeichnugen." eh="a4b5a996" />
 
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
     <e k="sf_hud_label_om" v="OS" eh="bfbebc07" />
@@ -533,8 +534,8 @@
     <e k="sf_hud_pass_coverage" v="Durchgang: %d%% (%s)" eh="531a10ef" />
     <e k="sf_hud_compaction" v="Verdichtung: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Ertrag: %d%%" eh="7b49cf24" />
-    <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
-		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
+    <e k="sf_hud_amend_burn" v="Einbuße durch Verätzungen: -%d%%" eh="34059aac" />
+		<e k="sf_hud_burn_risk" v="erhöhtes Verätzungsrisiko: Ja" eh="6f553cf3" />
 
     <e k="sf_sprayer_auto_on" v="AUSBRINGUNGSRATE ( AUTO: AN )" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="AUSBRINGUNGSRATE  AUTO: AUS [%s]" eh="848cc106" />
@@ -551,7 +552,7 @@
     <e k="sf_notify_init_delayed" v="Boden-Mod: Feldinitialisierung verzögert. Versuche alternative Methode..." eh="f8bd28f8" />
     <e k="sf_notify_init_success" v="Boden-Mod: Feldinitialisierung erfolgreich!" eh="46214360" />
     <e k="sf_notify_critical_title" v="Kritischer Pflegealarm" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="Feld %d benötigt sofortige Aufmerksamkeit! Dringlichkeit: %d%%" eh="171246aa" />
+    <e k="sf_notify_critical_body" v="Feld %d benötigt deine Aufmerksamkeit! Zustand: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Boden-Update" eh="4633156e" />
     <e k="sf_notify_treated_body" v="Feld %d vollständig mit %s behandelt" eh="585aa9b7" />
     <e k="sf_notify_burn_title" v="Düngerschäden" eh="ad8ed599" />
@@ -638,8 +639,8 @@
     <e k="sf_layer_3" v="Phosphor" eh="eb4f2688" />
     <e k="sf_layer_4" v="Kalium" eh="3a4edc67" />
     <e k="sf_layer_5" v="pH-Wert" eh="397dff20" />
-    <e k="sf_layer_6" v="Org. Substanz" eh="d2e254bc" />
-    <e k="sf_layer_7" v="Dringlichkeit" eh="c94e3850" />
+    <e k="sf_layer_6" v="Organische Substanz" eh="d2e254bc" />
+    <e k="sf_layer_7" v="Zustand" eh="c94e3850" />
     <e k="sf_layer_8" v="Unkraut" eh="2b75024d" />
     <e k="sf_layer_9" v="Schädling" eh="8f2aee79" />
     <e k="sf_layer_10" v="Krankheit" eh="e7067a8c" />
@@ -669,7 +670,7 @@
     <e k="sf_admin_list_fields_label" v="Alle Felder auflisten" eh="efeb1b25" />
     <e k="sf_admin_list_fields_desc" v="Alle Feldbodendaten in das Spiel-Log ausgeben" eh="c9fa812e" />
     <e k="sf_admin_field_set_state_label" v="Feldzustand festlegen" eh="5b0d7a31" />
-    <e k="sf_admin_field_set_state_desc" v="N, P, K, pH und OM Werte manuell anpassen" eh="a491e190" />
+    <e k="sf_admin_field_set_state_desc" v="N, P, K, pH und OS Werte manuell anpassen" eh="a491e190" />
     <e k="sf_admin_field_recover_label" v="Feld wiederherstellen" eh="e1c82ff0" />
     <e k="sf_admin_field_recover_desc" v="Aktuelles Feld auf sichere Standardwerte zurücksetzen" eh="68b687a2" />
     <e k="sf_infobox_title" v="Bodennährstoffe" eh="64377acf" />
@@ -681,33 +682,33 @@
     <e k="sf_fieldinfo_grade" v="Bodenqualität" eh="65d1be5f" />
     <e k="sf_fieldinfo_yield" v="Ertrag" eh="97345487" />
     <e k="sf_fieldinfo_rotation" v="Fruchtfolge" eh="f1a42bd4" />
-		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
-		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
-		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
+		<e k="sf_fieldinfo_disease" v="Krankheitsbefall" eh="a94ce36d" />
+		<e k="sf_fieldinfo_burn_risk" v="Verätzungsrisiko" eh="759e4661" />
+		<e k="sf_fieldinfo_sim_status" v="Simulation" eh="c39e57f0" />
     <e k="sf_fieldinfo_needs" v="Bedarf" eh="94d6125d" />
     <e k="sf_field" v="Feld" eh="6f16a5f8" />
     <e k="sf_no_field" v="Kein Feld ausgewählt" eh="717ff56f" />
     <e k="sf_overall_Good" v="Gut" eh="0c6ad70b" />
     <e k="sf_overall_Fair" v="Mittel" eh="f7f20cf0" />
     <e k="sf_overall_Poor" v="Schlecht" eh="0e94d017" />
-    <e k="sf_cell_report" v="Zellenbericht" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="Keine Zellendaten gefunden" eh="dc41c753" />
+    <e k="sf_cell_report" v="Parzellenbericht" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="Keine Parzellendaten gefunden" eh="dc41c753" />
     <e k="sf_cell_no_data" v="Keine Bodendaten an dieser Position" eh="5dfa58aa" />
     <e k="sf_field_avg" v="Felddurchschnitt" eh="e01500f8" />
     <e k="sf_cell" v="Zelle" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="Bodenzellen-Inspektion" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="Zellendetails" eh="6fc5243e" />
+    <e k="sf_cell_dialog_title" v="Bodenparzellen-Inspektion" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="Partzellendetails" eh="6fc5243e" />
     <e k="sf_cell_coord" v="Koordinaten" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="Klicken Sie auf die Karte, um eine Bodenzelle zu inspizieren" eh="fc9d240b" />
+    <e k="sf_cell_click_hint" v="Klicke auf die Karte, um eine Bodenparzelle zu untersuchen" eh="fc9d240b" />
     <!-- SMART-SYSTEME (Admin-Panel-Bereich) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart-Systeme" />
     <e k="sf_smart_sensor_short"         v="Smart-Sensor" />
     <e k="sf_smart_sensor_long"          v="Smart-Spray-Sensor-System aktivieren oder deaktivieren" />
     <e k="sf_desc_smartSensorEnabled"    v="Erlaubt Spielern die Smart-Sensor-Gestängesektionssteuerung auf Basis von Live-Bodendaten" />
     <!-- SMART-SENSOR-PANEL -->
-    <e k="sf_sensor_panel_title" v="SMART-SENSOREN" eh="33809906" />
-    <e k="sf_sensor_pest"        v="Schädlingssensor" />
-    <e k="sf_sensor_disease"     v="Krankheitssensor" />
+    <e k="sf_sensor_panel_title" v="SMARTSPRAYING-Sensorik" eh="33809906" />
+    <e k="sf_sensor_pest"        v="Schädlinge" />
+    <e k="sf_sensor_disease"     v="Krankheiten" />
     <e k="sf_sensor_nutrient"    v="Nährstoffsensor" />
     <e k="sf_sensor_state_on"    v="EIN" />
     <e k="sf_sensor_state_off"   v="AUS" />
@@ -744,12 +745,12 @@
 
     <!-- SMART-SENSOR-PANEL -->
     <!-- SEE-&-SPRAY-PANEL -->
-    <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" eh="a7e00bf0" />
+    <e k="sf_see_spray_panel_title" v="Punktuelle Unkrautbekämpfung" eh="a7e00bf0" />
     <e k="sf_see_spray_pest"        v="Schädlinge" />
-    <e k="sf_see_spray_disease"     v="Krankheit" />
+    <e k="sf_see_spray_disease"     v="Krankheiten" />
     <e k="sf_see_spray_weed"        v="Unkraut" />
     <e k="sf_see_spray_suppressed"  v="Alle Sektionen unterdrückt: kein Druck erkannt" />
-    <e k="sf_see_spray_protected" v="[EN] 0% (Protected)" eh="190bfadc" />
+    <e k="sf_see_spray_protected" v="0% (Schutzwirkung)" eh="190bfadc" />
     <!-- PANEL FÜR VARIABLE AUSBRINGMENGE -->
     <e k="sf_var_rate_panel_title" v="VARIABLE AUSBRINGMENGE" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. Rate" />
@@ -776,7 +777,7 @@
     <e k="sf_guide_p1_07" v="N   Stickstoff      Schnell verarmt. Bei jeder Ernte." eh="df28927d" />
     <e k="sf_guide_p1_08" v="P   Phosphor        Langsame Verarmung. Wurzelfrüchte." eh="651919e6" />
     <e k="sf_guide_p1_09" v="K   Kalium          Wurzelfrüchte entziehen besonders viel." eh="e23e2d33" />
-    <e k="sf_guide_p1_10" v="OM  Org. Substanz   Baut sich über viele Saisons langsam auf." eh="b235300c" />
+    <e k="sf_guide_p1_10" v="OS  Org. Substanz   Baut sich über viele Saisons langsam auf." eh="b235300c" />
     <e k="sf_guide_p1_11" v="pH  Bodenreaktion.  Zielbereich: 6.5 - 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="STATUSSTUFEN" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="GUT (grün)  Auf oder über dem Optimalwert der Frucht." eh="a081208f" />
@@ -812,7 +813,7 @@
     <e k="sf_guide_p1_43" v="[EN] Scout = Shift+K, Treatment = Shift+T." eh="74a97e3a" />
     <e k="sf_guide_p1_44" v="[EN] Rebind any of them in Options &gt; Controls &gt; Mods." eh="a800a99e" />
     <e k="sf_guide_p2_01" v="DIE NÄHRSTOFFBALKEN" eh="ad76f0e9" />
-    <e k="sf_guide_p2_02" v="Das HUD zeigt einen Balken pro Nährstoff: N P K OM pH." eh="b84d3955" />
+    <e k="sf_guide_p2_02" v="Das HUD zeigt einen Balken pro Nährstoff: N P K OS pH." eh="b84d3955" />
     <e k="sf_guide_p2_03" v="Der Balken füllt sich von links (0) nach rechts (100 = Maximum)." eh="fb617f3c" />
     <e k="sf_guide_p2_04" v="Die Balkenfarbe zeigt den Status auf einen Blick." eh="e07e4240" />
     <e k="sf_guide_p2_05" v="DIE DREI MARKIERUNGEN" eh="70556f5d" />
@@ -860,7 +861,7 @@
     <e k="sf_guide_p3_02" v="VERARMUNG  Ernte entzieht dem Boden N/P/K." eh="cc585bcd" />
     <e k="sf_guide_p3_03" v="Die Menge hängt von Fruchtart und Ertrag ab." eh="261e13ac" />
     <e k="sf_guide_p3_04" v="AUFFÜLLEN  Düngen Sie, um Nährstoffe wiederherzustellen." eh="91b11b7a" />
-    <e k="sf_guide_p3_05" v="BALANCE  pH und OM verändern sich langsam über die Zeit." eh="d6421178" />
+    <e k="sf_guide_p3_05" v="BALANCE  pH und OS verändern sich langsam über die Zeit." eh="d6421178" />
     <e k="sf_guide_p3_06" v="Das erfordert langfristiges Management." eh="7adc65a7" />
     <e k="sf_guide_p3_07" v="TÄGLICHE GEWOHNHEITEN" eh="9df55db7" />
     <e k="sf_guide_p3_08" v="1. Vor der Feldarbeit kurz ins HUD schauen." eh="73ebf080" />
@@ -869,8 +870,8 @@
     <e k="sf_guide_p3_11" v="4. Grüner Balken = weiterarbeiten, nichts nötig." eh="107f713e" />
     <e k="sf_guide_p3_12" v="WÖCHENTLICHE ROUTINE" eh="a303bfde" />
     <e k="sf_guide_p3_13" v="PDA &gt; Register Behandlungsplan öffnen." eh="2e03b237" />
-    <e k="sf_guide_p3_14" v="Felder sind nach Dringlichkeit sortiert (schlechteste zuerst)." eh="dece938b" />
-    <e k="sf_guide_p3_15" v="[EN] Work top-down - treat highest-priority fields first." eh="4df4bfda" />
+    <e k="sf_guide_p3_14" v="Felder sind nach Zustand sortiert (schlechtester zuerst)." eh="dece938b" />
+    <e k="sf_guide_p3_15" v="Arbeite von ioben nach unten. Behandle Felder mit hohen Zustands-Werten zuerst." eh="4df4bfda" />
     <e k="sf_guide_p3_16" v="Zeile anklicken, um die detaillierte Feldansicht zu öffnen." eh="147b8267" />
     <e k="sf_guide_p3_17" v="DEN BEHANDLUNGSPLAN LESEN" eh="ff6ee8e4" />
     <e k="sf_guide_p3_18" v="Prioritätswerte bewerten, wie weit jeder" eh="39d2360b" />
@@ -887,7 +888,7 @@
     <e k="sf_guide_p3_29" v="[EN] 1. Nitrogen is depleted - apply fertilizer soon." eh="42800253" />
     <e k="sf_guide_p3_30" v="2. Leguminosen (Soja, Klee) liefern kostenlosen N-" eh="75f466af" />
     <e k="sf_guide_p3_31" v="Bonus für die NÄCHSTE Saison automatisch." eh="80169436" />
-    <e k="sf_guide_p3_32" v="3. Mist oder Kompost nutzen, um OM langfristig aufzubauen." eh="dc25a4c7" />
+    <e k="sf_guide_p3_32" v="3. Mist oder Kompost nutzen, um OS langfristig aufzubauen." eh="dc25a4c7" />
     <e k="sf_guide_p3_33" v="SAISONALE HINWEISE" eh="bb392619" />
     <e k="sf_guide_p3_34" v="FRÜHLING  N-Bedarf erreicht den Höchstwert. Vor der Aussaat ausbringen." eh="b402526b" />
     <e k="sf_guide_p3_35" v="SOMMER  Schädlings- und Krankheitsdruck beobachten." eh="76b840ad" />
@@ -904,15 +905,15 @@
     <e k="sf_guide_p4_02" v="UAN-Lösung      Hoher N-Gehalt, schnell wirksame Flüssigkeit." eh="60baf1c0" />
     <e k="sf_guide_p4_03" v="Harnstoff       Hoher N-Gehalt, klassische feste Form." eh="7619f3d7" />
     <e k="sf_guide_p4_04" v="AMS             Stickstoff + kleiner Schwefelvorteil." eh="9430151c" />
-    <e k="sf_guide_p4_05" v="Mist            Mittleres N + großer OM-Schub." eh="36e4eeef" />
-    <e k="sf_guide_p4_06" v="Biosolids       N + P + großer OM-Schub." eh="70b8003e" />
-    <e k="sf_guide_p4_07" v="Gärrest         Mittleres N + leichter OM-Vorteil." eh="70740674" />
+    <e k="sf_guide_p4_05" v="Mist            Mittleres N + großer OS-Schub." eh="36e4eeef" />
+    <e k="sf_guide_p4_06" v="Biosolids       N + P + großer OS-Schub." eh="70b8003e" />
+    <e k="sf_guide_p4_07" v="Gärrest         Mittleres N + leichter OS-Vorteil." eh="70740674" />
     <e k="sf_guide_p4_08" v="PHOSPHOR-(P)-PRODUKTE" eh="b143a8c7" />
     <e k="sf_guide_p4_09" v="MAP             Hoher P-Gehalt, kleiner N-Anteil." eh="f7e3a5e4" />
     <e k="sf_guide_p4_10" v="DAP             Hoher P-Gehalt + Stickstoffmischung." eh="1674361e" />
     <e k="sf_guide_p4_11" v="Flüssig-MAP      Hoher P-Gehalt, schnellere Aufnahme." eh="59782949" />
     <e k="sf_guide_p4_12" v="Flüssig-DAP      Hoher P-Gehalt + N, flüssige Form." eh="6eb70f1d" />
-    <e k="sf_guide_p4_13" v="Biosolids       P + N + OM. Effizienter Mehrnährstoff." eh="7adb8104" />
+    <e k="sf_guide_p4_13" v="Biosolids       P + N + OS. Effizienter Mehrnährstoff." eh="7adb8104" />
     <e k="sf_guide_p4_14" v="KALIUM-(K)-PRODUKTE" eh="7a9f5cc7" />
     <e k="sf_guide_p4_15" v="Kalium          Hoher K-Gehalt, feste Form." eh="cb71f3a0" />
     <e k="sf_guide_p4_16" v="Flüssig-Kalium   Hoher K-Gehalt, flüssig. Schnellere Aufnahme." eh="0c3d2ad4" />
@@ -932,17 +933,17 @@
     <e k="sf_guide_p4_22" v="pH zu HOCH (alkalisch, über 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
     <e k="sf_guide_p4_24" v="Für vollständige Normalisierung 1-2 Saisons einplanen." eh="1f31526d" />
-    <e k="sf_guide_p4_25" v="ORGANISCHE SUBSTANZ (OM)" eh="4b06f65b" />
-    <e k="sf_guide_p4_26" v="Mist            Bester OM-Aufbauer. Fügt auch N hinzu." eh="99834812" />
-    <e k="sf_guide_p4_27" v="Kompost         Mittlere OM-Wirkung, gut ausgewogen." eh="d9b0e2f9" />
-    <e k="sf_guide_p4_28" v="Biosolids       OM + N + P. Sehr effizient." eh="ba425a0e" />
-    <e k="sf_guide_p4_29" v="Gärrest         Leichter OM-Vorteil." eh="73cd0835" />
-    <e k="sf_guide_p4_30" v="Brachland (blankes Feld) stellt OM langsam wieder her." eh="da732797" />
+    <e k="sf_guide_p4_25" v="ORGANISCHE SUBSTANZ (OS)" eh="4b06f65b" />
+    <e k="sf_guide_p4_26" v="Mist            Bester OS-Aufbauer. Fügt auch N hinzu." eh="99834812" />
+    <e k="sf_guide_p4_27" v="Kompost         Mittlere OS-Wirkung, gut ausgewogen." eh="d9b0e2f9" />
+    <e k="sf_guide_p4_28" v="Biosolids       OS + N + P. Sehr effizient." eh="ba425a0e" />
+    <e k="sf_guide_p4_29" v="Gärrest         Leichter OS-Vorteil." eh="73cd0835" />
+    <e k="sf_guide_p4_30" v="Brachland (blankes Feld) stellt OS langsam wieder her." eh="da732797" />
     <e k="sf_guide_p4_31" v="AUSBRINGTIPPS" eh="180e4a50" />
     <e k="sf_guide_p4_32" v="* Dünger laden und zuerst den Geisterbalken prüfen." eh="2126b07c" />
     <e k="sf_guide_p4_33" v="Er zeigt Ihr prognostiziertes Ergebnis vor dem Ausbringen." eh="7ee23768" />
     <e k="sf_guide_p4_34" v="* Flüssige Produkte wirken in der Regel schneller als feste." eh="a5b6f4a7" />
-    <e k="sf_guide_p4_35" v="[EN] * Manure improves OM AND adds N - very efficient." eh="18ca8c3e" />
+    <e k="sf_guide_p4_35" v="[EN] * Manure improves OS AND adds N - very efficient." eh="18ca8c3e" />
     <e k="sf_guide_p4_36" v="* Flüssigen N möglichst vor Regen ausbringen" eh="50d601b0" />
     <e k="sf_guide_p4_37" v="(Regen wäscht nach der Ausbringung einen Teil aus)." eh="c10189dd" />
     <e k="sf_guide_p4_38" v="* Fruchtziele für die geplante Kultur prüfen" eh="a3ccec1e" />
@@ -972,7 +973,7 @@
     <e k="sf_guide_p5_23" v="Stickstoff: Ja, möglichst jede Saison." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="Er verarmt bei jeder Ernte stark." eh="696ed55e" />
     <e k="sf_guide_p5_25" v="P und K: Meist reicht alle 2-3 Saisons." eh="0757cb47" />
-    <e k="sf_guide_p5_26" v="Organische OM: langfristig. Mist einmal pro Jahr zuführen." eh="78827593" />
+    <e k="sf_guide_p5_26" v="Organische Substanz: langfristig. Mist einmal pro Jahr zuführen." eh="78827593" />
     <e k="sf_guide_p5_27" v="pH: Nur eingreifen, wenn außerhalb 6.5-7.0." eh="373553dc" />
     <e k="sf_guide_p5_28" v="WIE FUNKTIONIEREN DIE SMART-SENSOR-SYSTEME?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="Smart-Sensor blockiert einzelne Gestängesektionen, wenn" eh="ec681a8d" />
@@ -997,19 +998,10 @@
     <e k="sf_guide_tab_3" v="ABLAUF" eh="7337e059" />
     <e k="sf_guide_tab_4" v="PRODUKTE" eh="d71bd8a0" />
     <e k="sf_guide_tab_5" v="FAQ" eh="a922ea47" />
-    <e k="sf_report_fields_tracked"   v="Verfolgte Felder:" />
-    <e k="sf_report_rotation_bonus"   v="Fruchtfolgebonus" />
-    <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
-    <e k="sf_report_rotation_ok"      v="Fruchtfolge: OK" />
-    <e k="sf_report_rotation_na" v="[EN] N/A" eh="382b0f51" />
-    <e k="sf_report_rec_optimal"      v="Bodengesundheit: Optimal" />
-    <e k="sf_report_rec_good"         v="Gut" />
-    <e k="sf_report_rec_fair"         v="Mittel" />
-    <e k="sf_report_rec_poor"         v="Schlecht" />
-    	<e k="sf_fieldsentry_asleep" v="Sim. schläft" eh="7d49241b" />
-    	<e k="sf_fs_reason_manual" v="manuell" eh="3c78b355" />
-    	<e k="sf_fs_reason_npc" v="NPC-Auftrag" eh="2e1a268b" />
-    	<e k="sf_fs_reason_deco" v="dekorativ" eh="8a817367" />
+    <e k="sf_fieldsentry_asleep" v="Sim. schläft" eh="7d49241b" />
+    <e k="sf_fs_reason_manual" v="manuell" eh="3c78b355" />
+    <e k="sf_fs_reason_npc" v="NPC-Auftrag" eh="2e1a268b" />
+    <e k="sf_fs_reason_deco" v="dekorativ" eh="8a817367" />
     <e k="input_SF_SCOUT" v="[EN] Scout Field for Disease" eh="34e6d14b" />
     <e k="sf_scout_no_field" v="[EN] Stand on a field to scout it." eh="2c33ecb7" />
     <e k="sf_scout_found" v="[EN] Field %d: %s detected (%d%% pressure). Best: %s" eh="d6af78b1" />
@@ -1108,7 +1100,7 @@
 		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
 		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
 		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
-        <e k="sf_propiconazole_title" v="Propiconazole" />
+    <e k="sf_propiconazole_title" v="Propiconazole" />
     <e k="sf_bigBag_propiconazole_name" v="IBC Propiconazole" />
     <e k="sf_bigBag_propiconazole_function" v="Propiconazole fungicide (liquid)" />
     <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
@@ -1135,52 +1127,68 @@
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
     <e k="sf_unscouted" v="Nicht erkundet" />
-<e k="sf_map_layer_organic_status" v="Organic Status" />
+<e k="sf_map_layer_organic_status" v="Organische Substanz" />
     
-<e k="sf_layer_12" v="Organic Status" />
+<e k="sf_layer_12" v="Organische Substanz" />
     
-<e k="sf_org_legend_conventional" v="Conventional" />
+<e k="sf_org_legend_conventional" v="Konventionell" />
     
-<e k="sf_org_legend_transition" v="Transitioning" />
+<e k="sf_org_legend_transition" v="Umstellung nach EU-Öko Richtlinie" />
     
-<e k="sf_org_legend_certified" v="Certified" />
+<e k="sf_org_legend_certified" v="Zertifiziert" />
     
-<e k="sf_org_tt_conventional" v="Not in organic conversion" />
+<e k="sf_org_tt_conventional" v="Nicht in Umstellung nach EU-Öko Richtlinie" />
     
-<e k="sf_org_tt_certified" v="Organic certified" />
+<e k="sf_org_tt_certified" v="Bio-Zertifikat" />
     
     <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
-<e k="sf_rp_status_unknown" v="Unknown" />
+
+    <!-- Fruchtfolge -->
+
+    <e k="sf_rp_bonus_days" v="bonus %dd" />
+    <e k="sf_rp_status_unknown" v="Unbekannt" />    
+    <e k="sf_rp_no_crop" v="-" />
+    <e k="sf_rp_no_history" v="Keine Daten." />
+    <e k="sf_rp_standing_unknown" v="Unknown" />
+    <e k="sf_rp_title" v="Auswertung deiner Fruchtfolge" />
+    <e k="sf_rp_open" v="Fruchtfolgeauswertung " />
+    <e k="sf_rp_farm_header" v="Hof-Übersicht" />
+    <e k="sf_rp_what_if" v="Wenn du als nächstes folgende Kultur anbaust:" />
+    <e k="sf_rp_hint" v="Die selben Informationen wie in der Fruchtfolgebewertung" />
+    <e k="sf_rp_hint_no_history" v="Baue erst eine Kultur auf dem Feld an, um eine Auswertung deiner Fruchtfolge zu erhalten." />
+    <e k="sf_rp_farm_summary" v="%d Felder - Ausgezeichnet %d - In Ordnung %d - Schlecht %d - Unbekannt %d" />
+    <e k="sf_rp_no_fields" v="Keine Felder" />    
+    <e k="sf_rp_prev" v="Vorheriges Feld" />
+    <e k="sf_rp_next" v="nächstes Feld" />
+    <e k="sf_rp_field_header" v="Feld %d  (%d von %d)" />
+    <e k="sf_report_fields_tracked"   v="Verfolgte Felder:" />
+    <e k="sf_report_rotation_bonus"   v="Fruchtfolgebonus" />
+    <e k="sf_report_rotation_fatigue" v="ungeeignete Vorfrucht" eh="7b173595" />
+    <e k="sf_report_rotation_ok"      v="Fruchtfolge: OK" />
+    <e k="sf_report_rotation_na" v="nicht verfügbar" eh="382b0f51" />
+    <e k="sf_report_rec_optimal"      v="Optimal" />
+    <e k="sf_report_rec_good"         v="Gut" />
+    <e k="sf_report_rec_fair"         v="Mittel" />
+    <e k="sf_report_rec_poor"         v="Schlecht" />
     
-<e k="sf_rp_no_crop" v="-" />
+    <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     
-<e k="sf_rp_no_history" v="No crop history yet" />
+    <e k="sf_rf_section" v="Bewertung deiner Fruchtfolge" eh="6f977043" />
+    <e k="sf_rf_intro" v="Wenn du als nächstes folgende Kultur anbaust:" eh="34964567" />
+    <e k="sf_rf_hint" v="Baue erst eine Kultur auf dem Feld an, um eine Bewertung deiner Fruchtfolge zu erhalten." eh="817d250a" />
+    <e k="sf_rf_status_bonus" v="als Vorfrucht hervorragend geeignet" eh="3c0ee4ba" />
+    <e k="sf_rf_status_ok" v="als Vorfrucht geeignet" eh="e0aa021e" />
+    <e k="sf_rf_status_fatigue" v="als Vorfrucht ungeeignet" eh="b5ff1b29" />
+    <e k="sf_rf_effect_fatigue" v="1,15-facher Nährstoffentzug" eh="5f05aded" />
+    <e k="sf_rf_effect_nplus" v="Stickstoffzufuhr" eh="fa91409a" />
+    <e k="sf_rf_effect_disease_down" v="geringe Krankheitsanfälligkeit" eh="f1375cc1" />
+    <e k="sf_rf_effect_disease_up" v="hohe Krankheitsanfälligkeit" eh="0417d38f" />
+    <e k="sf_rf_effect_neutral" v="unveränderte Krankheitsanfälligkeit" eh="66d22a5d" />
     
-<e k="sf_rp_standing_unknown" v="Unknown" />
-    
-<e k="sf_rp_bonus_days" v="bonus %dd" />
-    
-<e k="sf_rp_title" v="Rotation Planner" />
-    
-<e k="sf_rp_open" v="Rotation Planner" />
-    
-<e k="sf_rp_farm_header" v="Farm standing" />
-    
-<e k="sf_rp_what_if" v="What if (next crop)" />
-    
-<e k="sf_rp_hint" v="Same candidates as the field-detail foresight. Read-only; nothing is planted." />
-    
-<e k="sf_rp_hint_no_history" v="No crop history yet on this field. Grow a crop before comparing." />
-    
-<e k="sf_rp_farm_summary" v="%d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" />
-    
-    <e k="sf_rp_no_fields" v="No fields" />
-    
-<e k="sf_rp_prev" v="Prev field" />
-    
-<e k="sf_rp_next" v="Next field" />
-    
-    <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+    <e k="sf_detail_rotation_label" v="Fruchtfolgestatus" eh="83f7f522" />
+    <e k="sf_crop_rotation_short" v="Fruchtfolge" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="Fruchtfolgebonus und Fruchtfolgeprobleme aktivieren/deaktivieren (Leguminosen können durch Stickstoffbindung den Stickstoffvorrat erhöhen; wiederholter Anbau derselben Kultur verstärkt den Nährstoffentzug)." eh="958b4212" />
+
 </elements>
 
 
