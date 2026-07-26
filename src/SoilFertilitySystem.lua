@@ -553,6 +553,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionCoverageFraction = 0
         harvestField.sessionCoverageCells    = {}
         harvestField.sessionLastProduct      = nil
+        harvestField._geometricCoverageOwner = nil  -- #753
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
 
         -- #738 no-till OM: the crop is off the field. Fresh, untouched residue now covers
@@ -897,6 +898,7 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionCoverageCells    = {}
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
+    field._geometricCoverageOwner = nil  -- #753: re-detect geometric path each session
     field.sprayTrailPts           = nil
     field._zoneBaseline           = nil   -- #735: re-snapshot the pre-spray baseline next session
     SoilLogger.debug("Session coverage reset: field %d (%s)", fieldId, reason or "?")
@@ -3831,6 +3833,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
     field.sessionLastProduct      = nil
+    field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
 
     -- Clear the yield-modifier freeze from the previous harvest session (#598).
@@ -3999,6 +4002,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     field.sessionCoverageFraction = 0
                     field.sessionCoverageCells    = {}
                     field.sessionLastProduct      = nil
+                    field._geometricCoverageOwner = nil  -- #753
                     field.sprayTrailPts           = nil
                 end
             end
@@ -5101,6 +5105,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
         field.sessionCoverageHa       = 0
         field.sessionCoverageFraction = 0
         field.sessionCoverageCells    = {}
+        field._geometricCoverageOwner = nil  -- #753: re-detect geometric path for new product
         field.sprayTrailPts           = nil
     end
 
@@ -5110,13 +5115,12 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     if updateFractions == false then return end
 
     -- Liter-based coverage is a FALLBACK for applications with no boom position.
-    -- If the geometric path (markBoomCells) is already tracking this field this
-    -- session, defer to it: adding the liter estimate on top double-counts and pins
-    -- Pass% at 100% (#726). The call site enables this path with `not isFertilizer`,
-    -- on the old assumption that crop protection never has boom points; modern
-    -- sprayers and See & Spray DO provide them, so markBoomCells runs too. It stamps
-    -- sessionCoverageCells, so any cell means the geometric path owns coverage here.
-    if next(field.sessionCoverageCells or {}) ~= nil then return end
+    -- If the geometric path (markBoomCells) is actively tracking coverage for this
+    -- field (overlayOnly=false), defer to it: adding the liter estimate on top
+    -- double-counts and pins Pass% at 100% (#726). Use _geometricCoverageOwner
+    -- instead of sessionCoverageCells, because overlayOnly mode populates cells for
+    -- spray trail dedup but does NOT update coverage fractions (#753).
+    if field._geometricCoverageOwner then return end
 
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
@@ -5331,6 +5335,9 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     -- In overlayOnly mode the counters are owned by trackSprayerCoverage (liter-based);
     -- leave the fractions it set untouched so the pass% / ha display stays consistent.
     if not overlayOnly then
+        -- Mark this field as geometrically tracked so trackSprayerCoverage's guard knows
+        -- the cell-dedup path is actually updating coverage fractions (#753).
+        field._geometricCoverageOwner = true
         field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
         field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)
 

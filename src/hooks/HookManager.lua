@@ -1520,7 +1520,9 @@ function HookManager:installVariableRateHook()
             if sfm.settings and sfm.settings.variableRateEnabled == false then return end
 
             local sensorMgr = sfm.sensorManager
-            local vehicleId = sprayerSelf.id
+            -- Resolve vehicleId via rootVehicle for rate consistency (#754).
+            local _vrRoot = sprayerSelf.rootVehicle
+            local vehicleId = (_vrRoot and _vrRoot ~= sprayerSelf) and (_vrRoot.id or 0) or sprayerSelf.id
 
             if not sensorMgr:isVariableRateEnabled(vehicleId) then
                 sensorMgr:clearSectionRates(vehicleId)
@@ -2932,8 +2934,12 @@ function HookManager:installSprayerAreaHook()
                 -- onEndWorkAreaProcessing runs. liters (= wap.usage) already reflects the
                 -- multiplier; do NOT multiply again or nutrient gain would be multiplier².
                 -- Keep rateMultiplier lookup for burn-threshold check only.
+                -- Resolve via rootVehicle.id so separate tanker + boom setups match
+                -- (rate stored on root vehicle by getApplicatorVehicle, #754).
                 local rm = g_SoilFertilityManager.sprayerRateManager
-                local rateMultiplier = (rm ~= nil) and rm:getMultiplier(self.id) or 1.0
+                local _root = self.rootVehicle
+                local _rateVehId = (_root and _root ~= self) and (_root.id or 0) or (self.id or 0)
+                local rateMultiplier = (rm ~= nil) and rm:getMultiplier(_rateVehId) or 1.0
                 local effectiveLiters = liters
 
                 -- Section Control double-penalty fix (Issue #345):
@@ -2949,8 +2955,15 @@ function HookManager:installSprayerAreaHook()
                 -- boomPoints, so coverage must be tracked via the liter-based fallback
                 -- (updateFractions=true). Fertilizers use markBoomCells for spatial
                 -- deduplication and must pass false to avoid double-counting.
+                -- HOWEVER: dual-purpose products (fertilizer + crop protection, e.g.
+                -- PROPICONAZOLE) applied on sprayers without VWW sections hit a gap:
+                -- markBoomCells runs in overlayOnly mode (no coverage update) and
+                -- trackSprayerCoverage returns early (updateFractions=false). Force the
+                -- liter-based fallback for dual-purpose products so coverage tracks.
+                local _hasCropProt = herbEffectiveness or pestEffectiveness or diseaseEffectiveness
+                local _useLitCov = (not isFertilizer) or (isFertilizer and _hasCropProt)
                 if g_SoilFertilityManager.soilSystem then
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, not isFertilizer)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
@@ -5751,7 +5764,11 @@ function HookManager:installSprayerStartHook()
             if not spec or not spec.workAreaParameters then return end
             if not g_SoilFertilityManager or not g_SoilFertilityManager.sprayerRateManager then return end
 
-            local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(self.id or 0)
+            -- Resolve rate via rootVehicle.id so separate tanker + boom setups
+            -- (where self is the boom but rate was stored on the tractor) match.
+            local root = self.rootVehicle
+            local rateVehId = (root and root ~= self) and (root.id or 0) or (self.id or 0)
+            local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(rateVehId)
             if mult == 1.0 then return end
 
             local wap = spec.workAreaParameters
@@ -6647,7 +6664,51 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
         end
     end
 
-    if #xs < 2 then return nil end
+    if #xs < 2 then
+        -- Fallback for broadcast spreaders (e.g. Bredal K105): work area nodes are
+        -- co-located at the implement centre, giving a near-zero span.  Use the
+        -- implement's spec_sprayer.usageScale.workingWidth to generate a proper sweep
+        -- so coverage tracks correctly (#758).
+        local implWW = nil
+        local spec_s = vehicle.spec_sprayer
+        if spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth then
+            implWW = spec_s.usageScale.workingWidth
+        end
+        if not implWW and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+            for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
+                local obj = impl and impl.object
+                local iss = obj and obj.spec_sprayer
+                if iss and iss.usageScale and iss.usageScale.workingWidth then
+                    implWW = iss.usageScale.workingWidth
+                    break
+                end
+            end
+        end
+        if implWW and implWW > 0 then
+            local halfW = implWW * 0.5
+            local pts = {}
+            -- Detect travel direction from vehicle rotation; default east-west sweep.
+            local _, _, yRot = getWorldRotation(vehicle.rootNode)
+            if yRot and (math.abs(yRot) > math.pi * 0.25 and math.abs(yRot) < math.pi * 0.75) then
+                -- travelling roughly north-south: sweep along Z
+                local z = rootZ - halfW
+                while z <= rootZ + halfW + cellSize * 0.5 do
+                    table.insert(pts, {x = rootX, z = z})
+                    z = z + cellSize
+                end
+            else
+                -- default: sweep along X
+                local x = rootX - halfW
+                while x <= rootX + halfW + cellSize * 0.5 do
+                    table.insert(pts, {x = x, z = rootZ})
+                    x = x + cellSize
+                end
+            end
+            table.insert(pts, {x = rootX, z = rootZ})
+            return (#pts > 1) and pts or nil
+        end
+        return nil
+    end
 
     local minX, maxX = xs[1], xs[1]
     local minZ, maxZ = zs[1], zs[1]

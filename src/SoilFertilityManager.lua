@@ -931,29 +931,26 @@ local function scanImpls(root)
     return nil
 end
 
--- Returns the fertilizer applicator relevant for rate adjustment.
--- Checks the directly driven vehicle first; if that is not an applicator (e.g. a
--- tractor towing a spreader), scans the attacher-joint implement tree.
--- Mirrors the same logic in SoilHUD:getCurrentSprayer so both the HUD panel
--- and the key callbacks always agree on which vehicle the rate belongs to.
+-- Returns the vehicle that owns the sprayer rate for the current player.
+-- For rate adjustment, we always return the root vehicle (tractor) so the rate
+-- is stored on the vehicle the player is sitting in. This ensures the rate
+-- lookup in sprayer hooks (which run on individual sprayer implements and use
+-- rootVehicle.id) always finds the stored rate, even for separate tanker + boom
+-- setups where the tanker and boom are different vehicles with spec_sprayer.
+-- For self-propelled sprayers the root vehicle IS the sprayer, so no change.
 -- Uses scanImpls as a shared recursive helper (hoisted above).
 local function getApplicatorVehicle()
     local v = getPlayerVehicle()
     if not v then return nil end
 
-    -- Direct (self-propelled): liquid sprayer, air seeder, etc.
-    if SoilFertilityManager.isFertilizerApplicator(v) then
-        -- ALSO scan for an attached implement that carries the actual product
-        -- (e.g. the Vredo DLC VT7138 where the chassis has spec_sprayer but
-        --  the slurry tank + boom is an implement sub-entity). Prefer the
-        --  implement when one exists so fill-type resolution reads the correct
-        --  physical tank (LIQUIDMANURE, not LIQUIDFERTILIZER, #728).
-        local implement = scanImpls(v)
-        return implement or v
+    -- Always return the root vehicle so rate storage and lookup are on the same ID.
+    local root = v.rootVehicle
+    if root and root ~= v then
+        return root
     end
 
-    -- Pulled implement: walk the attacher-joint tree
-    return scanImpls(v)
+    -- Self-propelled: return self
+    return v
 end
 
 function SoilFertilityManager:onSprayerRateUpInput()

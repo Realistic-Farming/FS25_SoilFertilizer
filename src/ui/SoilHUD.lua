@@ -648,7 +648,10 @@ function SoilHUD:update(dt)
     self._cachedFillType = self:getSprayerFillType(sprayer)
     self._cachedProfile  = self._cachedFillType and SoilConstants.FERTILIZER_PROFILES[self._cachedFillType.name]
     local rm             = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
-    self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
+    -- Resolve rate via rootVehicle so separate tanker + boom setups match (#754).
+    local _sprRoot = sprayer and sprayer.rootVehicle
+    local _rateVehId = sprayer and ((_sprRoot and _sprRoot ~= sprayer) and (_sprRoot.id or 0) or sprayer.id) or 0
+    self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(_rateVehId) or 1.0
 
     -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
@@ -2058,7 +2061,9 @@ function SoilHUD:drawSprayerRatePanel()
 
     local s          = self.scale
     local steps      = SoilConstants.SPRAYER_RATE.STEPS
-    local currentIdx = rm:getIndex(sprayer.id)
+    local _sprRoot2 = sprayer.rootVehicle
+    local _rateVehId2 = (_sprRoot2 and _sprRoot2 ~= sprayer) and (_sprRoot2.id or 0) or sprayer.id
+    local currentIdx = rm:getIndex(_rateVehId2)
     local fontMult   = SoilConstants.HUD.FONT_SIZE_MULTIPLIERS[self.settings.hudFontSize or 2]
     local fillType   = self:getSprayerFillType(sprayer)
     local rateConfig = self:getRateConfig(fillType)
@@ -2094,7 +2099,7 @@ function SoilHUD:drawSprayerRatePanel()
     -- The toggle key is read live from the input binding. SF_TOGGLE_AUTO ships
     -- unbound, so if the player has not bound it we show no key hint at all.
     -- isAuto = auto rate mode active on this vehicle AND the setting is enabled
-    local isAuto = rm:getAutoMode(sprayer.id) and self.settings.autoRateControl
+    local isAuto = rm:getAutoMode(_rateVehId2) and self.settings.autoRateControl
     local autoKey = ""   -- stays empty until a real bound key is found below
     if g_inputDisplayManager ~= nil then
         local ok, helpElement = pcall(function()
