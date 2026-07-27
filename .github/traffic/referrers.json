@@ -5249,38 +5249,33 @@
   "2026-07-27": [
     {
       "referrer": "github.com",
-      "count": 1478,
-      "uniques": 349
+      "count": 1559,
+      "uniques": 354
     },
     {
       "referrer": "Google",
-      "count": 1124,
-      "uniques": 451
+      "count": 1131,
+      "uniques": 448
     },
     {
       "referrer": "youtube.com",
-      "count": 364,
-      "uniques": 184
+      "count": 344,
+      "uniques": 177
     },
     {
       "referrer": "Bing",
-      "count": 258,
-      "uniques": 114
+      "count": 251,
+      "uniques": 113
     },
     {
       "referrer": "kingmods.net",
-      "count": 193,
-      "uniques": 85
+      "count": 183,
+      "uniques": 87
     },
     {
       "referrer": "DuckDuckGo",
-      "count": 39,
-      "uniques": 9
-    },
-    {
-      "referrer": "yandex.ru",
-      "count": 33,
-      "uniques": 10
+      "count": 60,
+      "uniques": 12
     },
     {
       "referrer": "l.facebook.com",
@@ -5288,13 +5283,18 @@
       "uniques": 13
     },
     {
+      "referrer": "yandex.ru",
+      "count": 29,
+      "uniques": 8
+    },
+    {
       "referrer": "Yahoo",
-      "count": 28,
-      "uniques": 21
+      "count": 27,
+      "uniques": 20
     },
     {
       "referrer": "reddit.com",
-      "count": 20,
+      "count": 23,
       "uniques": 14
     }
   ]
