@@ -484,7 +484,7 @@
     <e k="sf_pda_treatment_minor" v="Gering" eh="6fed0c37" />
     <e k="sf_detail_title" v="Übersicht" eh="03b5acd7" />
     <e k="sf_detail_close" v="Schließen" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="Schlagnummer:" eh="228118ab" />
+    <e k="sf_detail_field_label" v="Schlagnummer: " eh="228118ab" />
     <e k="sf_detail_urgency_label" v="Zustand:" eh="9a83237c" />
     <e k="sf_detail_section_nutrients" v="Nährstoffversorgung" eh="64377acf" />
     <e k="sf_detail_section_pressure" v="Wirtschaftliche Schadschwelle" eh="a73974d0" />
@@ -1016,46 +1016,56 @@
     <e k="sf_disease_difficulty_1" v="[EN] Easy" eh="7f943921" />
     <e k="sf_disease_difficulty_2" v="[EN] Normal" eh="960b44c5" />
     <e k="sf_disease_difficulty_3" v="[EN] Hard" eh="36561831" />
-		<e k="sf_dis_septoria_tritici" v="[EN] Septoria Tritici Blotch" eh="1cad9da1" />
-		<e k="sf_dis_fhb" v="[EN] Fusarium Head Blight" eh="28a0c2d7" />
-		<e k="sf_dis_ergot" v="[EN] Ergot" eh="cb0a1a23" />
-		<e k="sf_dis_stripe_rust" v="[EN] Stripe Rust" eh="122c2fef" />
-		<e k="sf_dis_leaf_rust" v="[EN] Leaf Rust" eh="2f14f2ea" />
-		<e k="sf_dis_powdery_mildew" v="[EN] Powdery Mildew" eh="011040a3" />
-		<e k="sf_dis_tan_spot" v="[EN] Tan Spot" eh="5717aeec" />
-		<e k="sf_dis_net_blotch" v="[EN] Net Blotch" eh="7aec2b24" />
-		<e k="sf_dis_ramularia" v="[EN] Ramularia Leaf Spot" eh="8355d8f8" />
-		<e k="sf_dis_crown_rust" v="[EN] Crown Rust" eh="b9acaa43" />
-		<e k="sf_dis_leaf_blotch" v="[EN] Leaf Blotch" eh="1f5f784d" />
-		<e k="sf_dis_nclb" v="[EN] Northern Corn Leaf Blight" eh="a3525b71" />
-		<e k="sf_dis_common_rust" v="[EN] Common Rust" eh="5f826210" />
-		<e k="sf_dis_gray_leaf_spot" v="[EN] Gray Leaf Spot" eh="b36e5db8" />
-		<e k="sf_dis_sclerotinia_stem" v="[EN] Sclerotinia Stem Rot" eh="190c8937" />
-		<e k="sf_dis_sunflower_rust" v="[EN] Sunflower Rust" eh="34f2a2be" />
-		<e k="sf_dis_downy_mildew" v="[EN] Downy Mildew" eh="b221542a" />
-		<e k="sf_dis_late_blight" v="[EN] Late Blight" eh="1bc14339" />
-		<e k="sf_dis_early_blight" v="[EN] Early Blight" eh="7511a654" />
-		<e k="sf_dis_cercospora_leaf" v="[EN] Cercospora Leaf Spot" eh="1ef824d7" />
-		<e k="sf_dis_frogeye" v="[EN] Frogeye Leaf Spot" eh="1924760e" />
-		<e k="sf_dis_white_mold" v="[EN] White Mold" eh="d833fbf0" />
-		<e k="sf_dis_phytophthora_root" v="[EN] Phytophthora Root Rot" eh="aa360e1e" />
-		<e k="sf_dis_asian_rust" v="[EN] Asian Soybean Rust" eh="fec3aa67" />
-		<e k="sf_dis_ascochyta_blight" v="[EN] Ascochyta Blight" eh="48dc1517" />
-		<e k="sf_dis_bean_anthracnose" v="[EN] Bean Anthracnose" eh="bd03acec" />
-		<e k="sf_dis_root_rot" v="[EN] Root Rot" eh="0f98f939" />
-		<e k="sf_dis_verticillium_wilt" v="[EN] Verticillium Wilt" eh="ca6dee69" />
-		<e k="sf_dis_leaf_spot" v="[EN] Leaf Spot" eh="2087d91f" />
-		<e k="sf_dis_alfalfa_rust" v="[EN] Alfalfa Rust" eh="31879f81" />
-		<e k="sf_dis_clover_anthracnose" v="[EN] Clover Anthracnose" eh="ca929ac0" />
-		<e k="sf_dis_pasmo" v="[EN] Pasmo" eh="4d3166ae" />
-		<e k="sf_dis_anthracnose" v="[EN] Anthracnose" eh="d5ea8b42" />
-		<e k="sf_dis_rust" v="[EN] Rust" eh="f5e265d6" />
-		<e k="sf_dis_taro_leaf_blight" v="[EN] Taro Leaf Blight" eh="37240d66" />
-		<e k="sf_dis_corm_rot" v="[EN] Corm Rot" eh="e1f1b9c1" />
-		<e k="sf_dis_early_leaf_spot" v="[EN] Early Leaf Spot" eh="f887d13d" />
-		<e k="sf_dis_late_leaf_spot" v="[EN] Late Leaf Spot" eh="a012753f" />
-		<e k="sf_dis_peanut_rust" v="[EN] Peanut Rust" eh="5e46fad0" />
-		<e k="sf_dis_pod_rot" v="[EN] Sclerotinia Pod Rot" eh="244ed19f" />
+		<e k="sf_dis_septoria_tritici" v="Blattdürre (Septoria tritici)" eh="1cad9da1" />
+		<e k="sf_dis_fhb" v="Ährenfäule (Fusarium)" eh="28a0c2d7" />
+		<e k="sf_dis_ergot" v="Mutterkorn" eh="cb0a1a23" />
+		<e k="sf_dis_stripe_rust" v="Gelbrost (Puccinia striiformis)" eh="122c2fef" />
+		<e k="sf_dis_leaf_rust" v="Braunrost (Puccinia triticina)" eh="2f14f2ea" />
+		<e k="sf_dis_powdery_mildew" v="Echter Mehltau" eh="011040a3" />
+		<e k="sf_dis_tan_spot" v="Blattfleckenkrankheit (Drechslera tritici-repentis)" eh="5717aeec" />
+		<e k="sf_dis_net_blotch" v="Netzfleckenkrankheit (Drechslera teres)" eh="7aec2b24" />
+		<e k="sf_dis_ramularia" v="Ramularia-Blattflecken (Ramularia beticola)" eh="8355d8f8" />
+		<e k="sf_dis_crown_rust" v="Kronenrost (Puccinia coronata)" eh="b9acaa43" />
+		<e k="sf_dis_leaf_blotch" v="Septoria-Blattdürre (Septoria tritici)" eh="1f5f784d" />
+		<e k="sf_dis_nclb" v="Blattfleckenkrankheit (Setosphaeria turcica)" eh="a3525b71" />
+		<e k="sf_dis_common_rust" v="Maisrost (Puccinia sorghi)" eh="5f826210" />
+		<e k="sf_dis_gray_leaf_spot" v="- (Cercospora zeae-maydis)" eh="b36e5db8" />
+		<!-- <e k="sf_dis_gray_leaf_spot" v="- (Cercospora zeae-maydis)" eh="b36e5db8" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. However, it is likely that it will spread to this region as well due to climate change. It infests Corn.-->
+		<e k="sf_dis_sclerotinia_stem" v="Weißstängeligkeit (Sclerotinia sclerotiorum)" eh="190c8937" />
+		<e k="sf_dis_sunflower_rust" v="Sonnenblumenrost (Puccinia helianthi)" eh="34f2a2be" />
+		<e k="sf_dis_downy_mildew" v="Falscher Mehltau" eh="b221542a" />
+		<e k="sf_dis_late_blight" v="Krautfäule (Phytophthora infestans)" eh="1bc14339" />
+		<e k="sf_dis_early_blight" v="Dürrfleckenkrankheit (Alternaria solani)" eh="7511a654" />
+		<e k="sf_dis_cercospora_leaf" v="Cercospora-Blattfleckenkrankheit (Cercospora beticola)" eh="1ef824d7" />
+		<!-- <e k="sf_dis_frogeye" v="- (Cercospora sojina)" eh="1924760e" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. However, it is likely that it will spread to this region as well due to climate change. -->
+		<e k="sf_dis_white_mold" v="Weißstängeligkeit (Sclerotinia sclerotiorum)" eh="d833fbf0" />
+		<e k="sf_dis_phytophthora_root" v="- (Phytophthora)" eh="aa360e1e" />
+		<!-- <e k="sf_dis_phytophthora_root" v="- (Phytophthora)" eh="aa360e1e" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. However, it is likely that it will spread to this region as well due to climate change. -->
+		<e k="sf_dis_asian_rust" v="- (Phakopsora pachyrhizi)" eh="fec3aa67" />
+		<!-- <e k="sf_dis_asian_rust" v="- (Phakopsora pachyrhizi)" eh="fec3aa67" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. However, it is likely that it will spread to this region as well due to climate change. -->
+		<e k="sf_dis_ascochyta_blight" v="Blattflecken (Ascochyta)" eh="48dc1517" />
+		<e k="sf_dis_bean_anthracnose" v="Brennfleckenkrankheit (Olletotrichum lindemutheanum)" eh="bd03acec" />
+		<e k="sf_dis_root_rot" v="Wurzelfäule" eh="0f98f939" />
+		<e k="sf_dis_verticillium_wilt" v="- (Verticillium wilt)" eh="ca6dee69" />
+		<!-- <e k="sf_dis_verticillium_wilt" v="- (Verticillium wilt)" eh="ca6dee69" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests cotton. -->
+		<e k="sf_dis_leaf_spot" v="Blattfleckenkrankheit" eh="2087d91f" />
+		<e k="sf_dis_alfalfa_rust" v="- (Uromyces striatus)" eh="31879f81" />
+		<!-- <e k="sf_dis_alfalfa_rust" v="- (Uromyces striatus)" eh="31879f81" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. -->
+		<e k="sf_dis_clover_anthracnose" v="Südlicher Stängelbrenner (Colletotrichum trifolii )" eh="ca929ac0" />
+		<e k="sf_dis_pasmo" v="- (Septoria linicola)" eh="4d3166ae" />
+		<!-- <e k="sf_dis_pasmo" v="- (Septoria linicola)" eh="4d3166ae" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests flax. -->
+		<e k="sf_dis_anthracnose" v="Brennfleckenkrankheit" eh="d5ea8b42" />
+		<e k="sf_dis_rust" v="Rost" eh="f5e265d6" />
+		<e k="sf_dis_taro_leaf_blight" v="" eh="37240d66" />
+		<e k="sf_dis_corm_rot" v="Taro-Blattfäule (Phytophthora colocasiae)" eh="e1f1b9c1" />
+		<e k="sf_dis_early_leaf_spot" v="- (Cercospora arachidicola)" eh="f887d13d" /> 
+		<!-- <e k="sf_dis_early_leaf_spot" v="- (Cercospora arachidicola)" eh="f887d13d" />This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests peanuts. -->
+		<e k="sf_dis_late_leaf_spot" v="- (Cercosporidium personatum)" eh="a012753f" />
+		<!-- <e k="sf_dis_late_leaf_spot" v="- (Cercosporidium personatum)" eh="a012753f" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests peanuts. -->
+		<e k="sf_dis_peanut_rust" v="- (Puccinia arachidis)" eh="5e46fad0" />
+		<!-- <e k="sf_dis_peanut_rust" v="- (Puccinia arachidis)" eh="5e46fad0" />  This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests peanuts. -->
+		<e k="sf_dis_pod_rot" v="- (Phytophthora palmivora)" eh="244ed19f" />
+		<!-- <e k="sf_dis_pod_rot" v="- (Phytophthora palmivora)" eh="244ed19f" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. Seems to infest palms used for cacao production etc. -->
 		<e k="sf_chem_PROPICONAZOLE" v="[EN] Propiconazole" eh="920d7ec6" />
 		<e k="sf_chem_TEBUCONAZOLE" v="[EN] Tebuconazole" eh="3755d13c" />
 		<e k="sf_chem_PROTHIOCONAZOLE" v="[EN] Prothioconazole" eh="98cddda9" />
@@ -1084,18 +1094,18 @@
 		<e k="sf_treat_vs" v="[EN] vs" eh="f4842dcb" />
 		<e k="sf_treat_applied" v="[EN] Applied %s: %d%% control, -%d pressure, %d-day protection, $%d" eh="03a47259" />
 		<e k="sf_treat_sent_hint" v="[EN] Treatment requested." eh="93be50ad" />
-    <e k="sf_scout_title" v="[EN] Field Scout" eh="f2699e28" />
+    <e k="sf_scout_title" v="Feldbonitur" eh="f2699e28" />
     <e k="sf_scout_hint" v="[EN] Cycle to a fungicide, then Apply." eh="32fb84f4" />
     <e k="input_SF_TREATMENT" v="[EN] Open Soil Treatment Panel" eh="a14be056" />
-		<e k="sf_scout_tier_none" v="[EN] healthy" eh="741839f3" />
-		<e k="sf_scout_tier_mild" v="[EN] mild" eh="3cc4af7c" />
-		<e k="sf_scout_tier_moderate" v="[EN] moderate" eh="7f0217cd" />
-		<e k="sf_scout_tier_severe" v="[EN] severe" eh="e709e56a" />
-		<e k="sf_scout_pressure_label" v="[EN] Disease pressure" eh="49abd79e" />
+		<e k="sf_scout_tier_none" v="gesund" eh="741839f3" />
+		<e k="sf_scout_tier_mild" v="vereinzelt" eh="3cc4af7c" />
+		<e k="sf_scout_tier_moderate" v="" eh="vermehrtes Auftreten" />
+		<e k="sf_scout_tier_severe" v="großflächig" eh="e709e56a" />
+		<e k="sf_scout_pressure_label" v="kranke Pflanzen im Bestand" eh="49abd79e" />
 		<e k="sf_scout_budget" v="[EN] Budget" eh="822bead6" />
-		<e k="sf_scout_clean_title" v="[EN] No active disease" eh="6bc14095" />
-		<e k="sf_scout_clean_hint" v="[EN] Field looks healthy. You can still apply a preventative." eh="b81cdbda" />
-		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
+		<e k="sf_scout_clean_title" v="Kein Krankheit entdeckt." eh="6bc14095" />
+		<e k="sf_scout_clean_hint" v="Der Bestand sieht gesund aus. Du kannst aber präventive Maßnahemn durchführen." eh="b81cdbda" />
+		<e k="sf_scout_disabled" v="Krankheiten sind deaktiviert." eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
 		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
