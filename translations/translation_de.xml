@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
-    <e k="sf_section" v="Boden &amp; Dünger" eh="f31197fb" />
-    <e k="sf_enabled_short" v="Mod aktivieren" eh="cf7fea13" />
-    <e k="sf_enabled_long" v="Boden- &amp; Dünger-Mod aktivieren oder deaktivieren" eh="a891399a" />
+    <e k="sf_section" v="Realistische Böden &amp; Düngung" eh="f31197fb" />
+    <e k="sf_enabled_short" v="Mod aktiv" eh="cf7fea13" />
+    <e k="sf_enabled_long" v="Die Mod Realistische Böden &amp; Düngung aktivieren oder deaktivieren" eh="a891399a" />
     <e k="sf_debug_short" v="DEBUG-Modus" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="DEBUG-Modus ein-/ausschalten (zusätzliche Protokollierung)" eh="f6f20240" />
+    <e k="sf_debug_long" v="DEBUG-Modus ein-/ausschalten (zusätzliche Ausgaben in die Log-Datei)" eh="f6f20240" />
     <e k="sf_seasonal_effects_short" v="Jahreszeiten" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="Die Jahreszeit hat einen Einfluss auf die Bodennährstoffe.Frühjahrswachstumsschub und ein verlangsamtes Wachstum im Herbst" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="Regeneffekte" eh="a2a1758b" />
+    <e k="sf_seasonal_effects_long" v="Jahreszeiten beeinflussen den Stickstoffhaushalt deiner Pflanzen. Es werden nun realitätsnah ein Frühjahrswachstumsschub und ein verlangsamtes Wachstum im Herbst simuliert." eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="Auswaschung" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Auswirkungen von Niederschlag auf den Boden ein-/ausschalten (Nährstoffauswaschung, Änderungen pH-Wert)" eh="de3b14b9" />
     <e k="sf_ws_short" v="Auswirkung Niederschlag" />
     <e k="sf_desc_weatherSource" v="Anpassung der Auswirkung von Niederschlag auf den Boden. Standard ändert nichts. Trocken, Normal oder Nass passen die Bodenwerte unabhängig von der Wettervorhersage an und verändern die Feuchtigkeitswertew für den Boden." />
@@ -24,14 +24,14 @@
     <e k="sf_ws_world_note" v="Globale Einstellung - Admin-only im multiplayer; veränder Bodenwerte für jeden." />
     <e k="sf_plowing_bonus_short" v="Pflugbonus" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Pflugvorteile für Bodenfruchtbarkeit ein-/ausschalten (verbesserter Stickstoff und organische Substanz)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="Einarbeitung von Ernterückständen" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="Aktivieren/Deaktivieren der Nährstofffreisetzung aus Ernterückständen, die durch Bodenbearbeitungsgeräte in den Boden eingearbeitet wurden" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="Unkrautdruck" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="Dynamisches Unkrautwachstum und Ertragsauswirkungen aktivieren/deaktivieren" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="Schädlingsdruck" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="Insekten- und Schädlingsbefallssystem aktivieren/deaktivieren" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="Krankheitsdruck" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="Pilz- und Pflanzenkrankheitssystem aktivieren/deaktivieren" eh="9080edbc" />
+    <e k="sf_residue_incorporation_short" v="Ernterückstände" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="Aktiviert die Nährstofffreisetzung aus Ernterückständen, welche in den Boden eingearbeitet wurden" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="Unkraut" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="Unkraut konkurriert mit den Kulturpflanzen um Wasser und Nährstoffe und kann den Ertrag verringern" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="Schädlinge" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="Schädlinge können Pflanzen schädigen und bei starkem Befall den Ertrag reduzieren" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="Krankheiten" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="Ein Befall mit Krankheiten kann das Pflanzenwachstum beeinträchtigen und zu Ertragsverlusten führen" eh="9080edbc" />
     <e k="sf_compaction_short" v="Bodenverdichtung" eh="68734a56" />
     <e k="sf_compaction_long" v="Bodenverdichtungssystem durch schwere Fahrzeuge aktivieren/deaktivieren" eh="a0995ec5" />
     <e k="sf_fertility_short" v="Fruchtbarkeitssystem" eh="f7e27d58" />
@@ -49,8 +49,8 @@
     <e k="sf_notifications_long" v="Benachrichtigungen ein-/ausschalten" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="HUD anzeigen" eh="c94fd4d7" />
     <e k="sf_show_hud_long" v="Info-HUD ein-/ausblenden (F8 zum temporären Umschalten)" eh="4e2e11b6" />
-    <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
-    <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
+    <e k="sf_show_work_trail_short" v="Überfahrtsmarkierungen" eh="12a93dfa" />
+    <e k="sf_show_work_trail_long" v="Überfahrtsmarkierungen von Erntemaschinen und Feldspritzen anzeigen" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="Übersicht Pflanzenschutzspritze" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="Zeigt während der Nutzung einer Pflanzenschutzspritze eine detalierte Übersicht." eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="Übersicht Mähdrescher" eh="e4fd0c77" />
@@ -494,10 +494,10 @@
     <e k="sf_detail_k_label" v="Kalium (K)" eh="39797137" />
     <e k="sf_detail_ph_label" v="pH-Wert" eh="0c85daad" />
     <e k="sf_detail_om_label" v="Organische Substanz" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="Unkrautdruck" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="Schädlingdruck" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="Krankheitsdruck" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="Letzte Kultur" eh="ff41e5eb" />
+    <e k="sf_detail_weed_label" v="Unkraut" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="Schädlinge" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="Krankheiten" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="Vorfrucht" eh="ff41e5eb" />
 
     <e k="sf_treat_title" v="Empfohlene Maßnahmen" eh="0ccc3ee5" />
     <e k="sf_treat_section_soil" v="Bodenfruchtbarkeit" eh="09e016e4" />
@@ -562,71 +562,72 @@
     <e k="sf_notify_om_crop_title" v="Warnung Bodenverbesserung" eh="33228c86" />
     <e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="8a78f46a" />
 
-    <e k="sf_panel_cat_sim" v="Simulation" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="Hofmechanik, Schwierigkeit und Nährstoffkreisläufe" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="Anzeige &amp; HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="HUD-Erscheinungsbild, Farbthema, Position und Schriftgröße" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="Kartenoverlay" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="Aktive Overlay-Ebene in der PDA-Karte" eh="a5892aef" />
-    <e k="sf_panel_hdr_core" v="Kern-Systeme" eh="44a497a5" />
-    <e k="sf_panel_hdr_difficulty" v="Schwierigkeit" eh="7b29ca96" />
-    <e k="sf_panel_hdr_environment" v="Umwelt" eh="0ba29c6a" />
-    <e k="sf_panel_hdr_crop_stress" v="Kulturstress" eh="260167bb" />
-    <e k="sf_panel_hdr_visibility" v="Sichtbarkeit" eh="1729a56c" />
-    <e k="sf_panel_hdr_hud_style" v="HUD-Stil" eh="1d4a8cac" />
-    <e k="sf_panel_hdr_position" v="Position" eh="52f5e0bc" />
-    <e k="sf_panel_hdr_layer" v="Ebene" eh="359b71e8" />
-    <e k="sf_panel_hdr_performance" v="Leistung" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="Mod-Steuerung &amp; Schwierigkeit" eh="ae2e88fb" />
-    <e k="sf_panel_hdr_systems" v="Systeme" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="Aktionen &amp; Feldwerkzeuge" eh="f64ba1c9" />
+    <e k="sf_panel_cat_sim" v="Spielmechanik" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="Verändere den Einfluss von Feuchtigkeit, Niederschlag und den Jahreszeiten auf deine Böden." eh="3c584cdb" />
+    <e k="sf_panel_cat_display" v="Anzeige" eh="37b17394" />
+    <e k="sf_panel_cat_display_desc" v="Gestalte das HUD so wie du möchtstest: Größe, Farbschema und Position." eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="Overlay" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="Du bestimmst was du auf der Karte zu sehen bekommst." eh="a5892aef" />
+    <e k="sf_panel_hdr_core" v="Simulation" eh="44a497a5" />
+    <e k="sf_panel_hdr_difficulty" v="Schwierigkeitsgrad" eh="7b29ca96" />
+    <e k="sf_panel_hdr_environment" v="Umwelteinflüsse" eh="0ba29c6a" />
+    <e k="sf_panel_hdr_crop_stress" v="Wirtschaftliche Schadschwelle" eh="260167bb" />
+    <e k="sf_panel_hdr_visibility" v="HUD-Sichtbarkeit" eh="1729a56c" />
+    <e k="sf_panel_hdr_hud_style" v="Darstellung" eh="1d4a8cac" />
+    <e k="sf_panel_hdr_position" v="Layout" eh="52f5e0bc" />
+    <e k="sf_panel_hdr_layer" v="Darstellung" eh="359b71e8" />
+    <e k="sf_panel_hdr_performance" v="Grafik" eh="9446a98a" />
+    <e k="sf_panel_hdr_mod_ctrl" v="Zusätzliche Einstellungen" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_systems" v="Simulation" eh="d6856404" />
+    <e k="sf_panel_hdr_actions" v="Werkzeuge" eh="f64ba1c9" />
     <e k="sf_panel_hdr_hud_layout" v="HUD-Layout" eh="54e1930b" />
     <e k="sf_hud_enter_drag_label" v="Panels bewegen &amp; skalieren" eh="be34d24d" />
-    <e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="1d7b1dee" />
+    <e k="sf_hud_enter_drag_desc" v="Verschiebe das HUD um seine Position zu verändern, ziehe an den Ecken um die Größe zu ändern und drücke ESC oder Rechtsklick wenn du fertig bist." eh="1d7b1dee" />
 
-    <e k="sf_panel_admin_yes" v="Admin: JA" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="Admin: NEIN" eh="a9394f7b" />
-    <e k="sf_panel_multiplayer" v="Mehrspieler" eh="901a7320" />
+    <e k="sf_panel_admin_yes" v="Administrator" eh="4628842a" />
+    <e k="sf_panel_admin_no" v="kein Administrator" eh="a9394f7b" />
+    <e k="sf_panel_multiplayer" v="Multiplayer" eh="901a7320" />
     <e k="sf_panel_singleplayer" v="Einzelspieler" eh="da602601" />
     <e k="sf_panel_btn_back" v="&lt; Zurück" eh="36cf3e1f" />
-    <e k="sf_panel_btn_reset_cat" v="Kat. zurücksetzen" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="UMSCHALT+O zum Schließen" eh="254406e3" />
-    <e k="sf_panel_select_category" v="Wählen Sie eine Kategorie zum Konfigurieren" eh="a277d257" />
-    <e k="sf_panel_btn_configure" v="Konfigurieren >>" eh="a2cb3902" />
-    <e k="sf_panel_btn_open" v="Öffnen >>" eh="6624d17c" />
+    <e k="sf_panel_btn_reset_cat" v="Standardwerte wiederherstellen" eh="b66faa88" />
+    <e k="sf_panel_btn_close_hint" v="Zum Schließen, drücke SHIFT+O" eh="254406e3" />
+    <e k="sf_panel_select_category" v="Wähle eine Kategorie um Einstellungen anzupassen" eh="a277d257" />
+    <e k="sf_panel_btn_configure" v="Einstellungen" eh="a2cb3902" />
+    <e k="sf_panel_btn_open" v="Öffnen" eh="6624d17c" />
 
-    <e k="sf_desc_enabled" v="Den gesamten Mod aktivieren / deaktivieren" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="Zusätzliche Protokollierung zur Fehlersuche" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="Vollständige Bodenfruchtbarkeitsmodellierung" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="N/P/K-Verarmung und -Wiederherstellung verfolgen" eh="6eff80b3" />
-    <e k="sf_desc_fertilizerCosts" v="Reale In-Game-Kosten für Dünger" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="In-Game-Benachrichtigungen zum Bodenstatus" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="Boden-HUD-Overlay anzeigen" eh="fa8b9224" />
-    <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
-		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
-		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="HUD-Voreinstellungs-Ankerpunkt" eh="98c8bcea" />
-    <e k="sf_desc_hudColorTheme" v="Farbpalette für HUD-Elemente" eh="97271907" />
-    <e k="sf_desc_hudFontSize" v="HUD-Textgröße" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="HUD-Hintergrundtransparenz" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="Saisonbedingte Bodenveränderungen" eh="f515f484" />
+    <e k="sf_desc_enabled" v="Die Modifikation an- oder ausschalten" eh="895364cb" />
+    <e k="sf_desc_debugMode" v="Speichert nützliche Log-Daten für die Fehlersuche" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="realistische Simulation der Bodenfruchtbarkeit" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="Die Makronährstoffe in deinen Böden können sinken und wieder aufgefüllt werden." eh="6eff80b3" />
+    <e k="sf_desc_fertilizerCosts" v="realistische Düngerpreise" eh="1c197c9f" />
+    <e k="sf_desc_showNotifications" v="erhalte Benachrichtigungen über den Zustand deiner Böden" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="HUD anzeigen" eh="fa8b9224" />
+    <e k="sf_desc_showWorkTrail" v="zeige Überfahrtsmarkierungen von Erntemaschinen und Feldspritzen" eh="3a3da614" />
+		<e k="sf_desc_showSprayerInfoPanel" v="zeige das Feldspritzen-HUD wenn du ein entsprechende Maschine benutzt" eh="016b4402" />
+		<e k="sf_desc_showHarvesterPanel" v="zeige das Mähdrescher-HUD wenn du ein entsprechende Maschine benutzt" eh="b16a1726" />
+    <e k="sf_desc_hudPosition" v="Ausrichtung" eh="98c8bcea" />
+    <e k="sf_desc_hudColorTheme" v="Farbschema" eh="97271907" />
+    <e k="sf_desc_hudFontSize" v="Textgröße" eh="48a6fc15" />
+    <e k="sf_desc_hudTransparency" v="Hintergrundtransparenz" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="beeinflusst den Stickstoffhaushalt deiner Pflanzen" eh="f515f484" />
     <e k="sf_desc_rainEffects" v="Regen verursacht Nährstoffauswaschung" eh="82fec75d" />
     <e k="sf_desc_plowingBonus" v="Pflugbonus für Bodenwiederherstellung" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="Bodenbearbeitung setzt Nährstoffe aus Rückständen frei" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="Unkrautausbreitung verfolgen und bestrafen" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="Insektenbefall verfolgen" eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="Pilzkrankheiten verfolgen" eh="0858395f" />
-    <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" eh="97cb48de" />
-    <e k="sf_desc_compactionEnabled" v="Bodenverdichtung durch schwere Fahrzeuge" eh="a7d3a795" />
+    <!-- <e k="sf_desc_plowingBonus" v="Pflugbonus für Bodenwiederherstellung" eh="23522b97" /> clarification about what this feature does needed for correct translation-->
+    <e k="sf_desc_residueIncorporation" v="Bodenbearbeitung setzt Nährstoffe aus Ernterückständen frei" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="Unkraut konkurriert mit den Kulturpflanzen um Wasser und Nährstoffe und kann den Ertrag verringern." eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="Schädlinge können Pflanzen schädigen und bei starkem Befall den Ertrag reduzieren." eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="Ein Befall mit Krankheiten kann das Pflanzenwachstum beeinträchtigen und zu Ertragsverlusten führen." eh="0858395f" />
+    <e k="sf_desc_diseaseMoisture" v="Klimatische Bedingungen wie die Luftfeuchtigkeit haben einen Einfluss auf die Ausbreitung von Krankheiten und die Wirksamkeit von Fungiziden." eh="97cb48de" />
+    <e k="sf_desc_compactionEnabled" v="Der Boden wird durch schwere Geräte und Fahrzeuge verdichtet" eh="a7d3a795" />
     <e k="sf_desc_difficulty" v="Intensität des Nährstoffentzugs" eh="54a7902e" />
     <e k="sf_desc_replenishmentRate" v="Geschwindigkeit der Nährstoffwiederherstellung" eh="858d2b23" />
-    <e k="sf_desc_useImperialUnits" v="Imperiale Einheiten verwenden" eh="8ba3d81a" />
+    <e k="sf_desc_useImperialUnits" v="Einheiten werden in gal/ac und lb/ac dargestellt." eh="8ba3d81a" />
     <e k="sf_desc_autoRateControl" v="Intelligente Ausbringmengensteuerung" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="Vorteile und Nachteile der Fruchtfolge" eh="bb79b03a" />
-    <e k="sf_desc_activeMapLayer" v="Nährstoffebene in der PDA-Karte" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="Abtastpunktbudget (Niedrig=8k, Mittel=20k, Hoch=40k)" eh="42503763" />
-    <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" eh="2862b921" />
-    <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" eh="815e419e" />
+    <e k="sf_desc_cropRotation" v="Unterschiedliche Kulturen haben unterschiedliche Einflüsse auf die Folgekultur" eh="bb79b03a" />
+    <e k="sf_desc_activeMapLayer" v="Welche Information als Overlay auf der Minimap angezeigt wird" eh="3c01c599" />
+    <e k="sf_desc_overlayDensity" v="Darstellungsqualität des Overlay. Niedrig: 8k, Mittel: 20k oder Hoch: 40k" eh="42503763" />
+    <e k="sf_desc_colorblindMode" v="Orange- und Blautöne anstatt von Rot- und Grüntönen verwenden" eh="2862b921" />
+    <e k="sf_desc_showFieldInfoBox" v="Zeige die Informationen in der Standard-Feldinfo während du auf einem Feld stehst." eh="815e419e" />
 
     <e k="sf_rr_1" v="Sehr langsam (0.25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Langsam (0.5x)" eh="db69874d" />
@@ -648,10 +649,10 @@
     <e k="sf_density_2" v="Mittel" eh="87f8a6ab" />
     <e k="sf_density_3" v="Hoch" eh="655d20c1" />
 
-    <e k="sf_admin_save_label" v="Bodendaten speichern" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="Speicherung aller Bodendaten jetzt erzwingen" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="Alle Einstellungen zurücksetzen" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="Alle Einstellungen auf Standard zurücksetzen" eh="599b7454" />
+    <e k="sf_admin_save_label" v="speichern" eh="d4e9a279" />
+    <e k="sf_admin_save_desc" v="Alle Bodendaten speichern." eh="f365613a" />
+    <e k="sf_admin_reset_label" v="Einstellungen zurücksetzen" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="Setzt alle Einstellungen auf ihre Standardwerte zurück" eh="599b7454" />
     
     <e k="sf_panel_hdr_field_tools" v="Feldwerkzeuge" eh="2b250a56" />
     <e k="sf_nav_field_tools_label" v="Feldwerkzeuge" eh="2b250a56" />
@@ -762,7 +763,8 @@
         <!-- HUD-LAYOUT-ZIEHMODUS-SCHALTFLÄCHE -->
     <e k="sf_independent_panels_short" v="Freies Panel-Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Smart-System-Panels dürfen im Bearbeitungsmodus unabhängig positioniert werden" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="Jedes Panel im Shift+H-Bearbeitungsmodus frei ziehen. Panels mit der Schaltfläche - in der Titelleiste einklappen." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="69091cec" />
+    <e k="sf_desc_independentPanels" v="Jedes Panel im Shift+H-Bearbeitungsmodus frei ziehen. Panels mit der Schaltfläche - in der Titelleiste einklappen." eh="7c60edfc" />
+    <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="69091cec" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="da09523b" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="438cd61b" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="ab1d5b05" />
