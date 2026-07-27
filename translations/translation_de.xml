@@ -1066,29 +1066,36 @@
 		<!-- <e k="sf_dis_peanut_rust" v="- (Puccinia arachidis)" eh="5e46fad0" />  This fungus has not yet been sighted in Germany or anywhere else in Europe. It infests peanuts. -->
 		<e k="sf_dis_pod_rot" v="- (Phytophthora palmivora)" eh="244ed19f" />
 		<!-- <e k="sf_dis_pod_rot" v="- (Phytophthora palmivora)" eh="244ed19f" /> This fungus has not yet been sighted in Germany or anywhere else in Europe. Seems to infest palms used for cacao production etc. -->
-		<e k="sf_chem_PROPICONAZOLE" v="[EN] Propiconazole" eh="920d7ec6" />
-		<e k="sf_chem_TEBUCONAZOLE" v="[EN] Tebuconazole" eh="3755d13c" />
-		<e k="sf_chem_PROTHIOCONAZOLE" v="[EN] Prothioconazole" eh="98cddda9" />
-		<e k="sf_chem_FLUSILAZOLE" v="[EN] Flusilazole" eh="f79343a9" />
-		<e k="sf_chem_CYPROCONAZOLE" v="[EN] Cyproconazole" eh="220d4dca" />
-		<e k="sf_chem_DIFENOCONAZOLE" v="[EN] Difenoconazole" eh="6f2dce44" />
-		<e k="sf_chem_AZOXYSTROBIN" v="[EN] Azoxystrobin" eh="34160dda" />
-		<e k="sf_chem_PYRACLOSTROBIN" v="[EN] Pyraclostrobin" eh="b5f07095" />
-		<e k="sf_chem_TRIFLOXYSTROBIN" v="[EN] Trifloxystrobin" eh="9d00f6d7" />
-		<e k="sf_chem_BOSCALID" v="[EN] Boscalid" eh="5c0a4c40" />
-		<e k="sf_chem_PENTHIOPYRAD" v="[EN] Penthiopyrad" eh="f790ed1a" />
-		<e k="sf_chem_CHLOROTHALONIL" v="[EN] Chlorothalonil" eh="67688d75" />
-		<e k="sf_chem_MANCOZEB" v="[EN] Mancozeb" eh="5117fb39" />
-		<e k="sf_chem_MANEB" v="[EN] Maneb" eh="879fac4d" />
-		<e k="sf_chem_METALAXYL" v="[EN] Metalaxyl" eh="2c4598e3" />
-		<e k="sf_chem_FOSETYL_AL" v="[EN] Fosetyl-Al" eh="d292d7c7" />
-		<e k="sf_chem_THIOPHANATE_METHYL" v="[EN] Thiophanate-methyl" eh="46dd6b58" />
-		<e k="sf_chem_SULFUR" v="[EN] Sulfur" eh="529df3e8" />
-		<e k="sf_chem_COPPER_HYDROXIDE" v="[EN] Copper Hydroxide" eh="6b294851" />
-		<e k="sf_chem_FLUDIOXONIL" v="[EN] Fludioxonil" eh="d6448fdb" />
-		<e k="sf_chem_METALAXYL_M" v="[EN] Metalaxyl-M" eh="706a0ca9" />
-		<e k="sf_chem_THIRAM" v="[EN] Thiram" eh="63e2540c" />
-		<e k="sf_chem_CAPTAN" v="[EN] Captan" eh="dc89f49c" />
+		<e k="sf_chem_PROPICONAZOLE" v="Propiconazol" eh="920d7ec6" />
+    <e k="sf_chem_TEBUCONAZOLE" v="Tebuconazol" eh="3755d13c" />
+    <e k="sf_chem_PROTHIOCONAZOLE" v="Prothioconazol" eh="98cddda9" />
+    <e k="sf_chem_FLUSILAZOLE" v="Flusilazol" eh="f79343a9" />
+    <e k="sf_chem_CYPROCONAZOLE" v="Cyproconazol" eh="220d4dca" />
+    <e k="sf_chem_DIFENOCONAZOLE" v="Difenoconazol" eh="6f2dce44" />
+
+    <e k="sf_chem_AZOXYSTROBIN" v="Azoxystrobin" eh="34160dda" />
+    <e k="sf_chem_PYRACLOSTROBIN" v="Pyraclostrobin" eh="b5f07095" />
+    <e k="sf_chem_TRIFLOXYSTROBIN" v="Trifloxystrobin" eh="9d00f6d7" />
+
+    <e k="sf_chem_BOSCALID" v="Boscalid" eh="5c0a4c40" />
+    <e k="sf_chem_PENTHIOPYRAD" v="Penthiopyrad" eh="f790ed1a" />
+
+    <e k="sf_chem_CHLOROTHALONIL" v="Chlorthalonil" eh="67688d75" />
+    <e k="sf_chem_MANCOZEB" v="Mancozeb" eh="5117fb39" />
+    <e k="sf_chem_MANEB" v="Maneb" eh="879fac4d" />
+
+    <e k="sf_chem_METALAXYL" v="Metalaxyl" eh="2c4598e3" />
+    <e k="sf_chem_FOSETYL_AL" v="Fosetyl-Al" eh="d292d7c7" />
+    <e k="sf_chem_THIOPHANATE_METHYL" v="Thiophanat-methyl" eh="46dd6b58" />
+
+    <e k="sf_chem_SULFUR" v="Schwefel" eh="529df3e8" />
+    <e k="sf_chem_COPPER_HYDROXIDE" v="Kupferhydroxid" eh="6b294851" />
+
+    <e k="sf_chem_FLUDIOXONIL" v="Fludioxonil" eh="d6448fdb" />
+    <e k="sf_chem_METALAXYL_M" v="Metalaxyl-M" eh="706a0ca9" />
+    <e k="sf_chem_THIRAM" v="Thiram" eh="63e2540c" />
+    <e k="sf_chem_CAPTAN" v="Captan" eh="dc89f49c" />
+    
     <e k="sf_treat_cycle" v="[EN] Next Fungicide" eh="50e1cf57" />
     <e k="sf_treat_apply" v="[EN] Apply Fungicide" eh="66b90889" />
 		<e k="sf_treat_vs" v="[EN] vs" eh="f4842dcb" />
