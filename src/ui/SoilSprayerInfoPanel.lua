@@ -566,7 +566,9 @@ function SoilSprayerInfoPanel:draw()
 
     -- SF rate multiplier badge (top-right of title bar)
     if sprayer and g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager then
-        local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(sprayer.id or 0)
+        local _spRoot = sprayer.rootVehicle
+        local _spRateId = (_spRoot and _spRoot ~= sprayer) and (_spRoot.id or 0) or (sprayer.id or 0)
+        local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(_spRateId)
         local rateTxt = string.format("%.1fx", mult)
         local rateColor = (math.abs(mult - 1.0) < 0.01)
             and SoilSprayerInfoPanel.C_DIM

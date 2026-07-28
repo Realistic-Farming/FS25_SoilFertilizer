@@ -17,11 +17,13 @@
 
 ## Near-term (next release cycle)
 - [ ] Adopt NetworkSync v2 sub-module delta: add `onWriteDelta`/`onReadDelta` to SoilNetworkSyncBridge so only changed fields sync instead of the whole field map.
+- [!] 255 fill type cap (issue #755): Giants Engine hard cap, not our bug. 25 custom fill types + base game + DLC can exceed the limit. Design options: ship as-is, consolidate fill types, or degrade gracefully. See ecosystem ledger 2026-07-26 for recommendation (hybrid approach).
 - [~] Two-machine MP verification of all four bedrock bridges: reframed 2026-07-15 - the live two-machine test is out of scope (no dedicated-server budget). A single-machine network round-trip harness now covers serialization desync for every event/bridge; single-host smoke on top. Registration already confirmed in-game.
 - [ ] Lock the provisional module ids with Claude(A): `SoilFertilizer_Soil` (StateLedger) and `SoilFertilizer_Sync` (NetworkSync) before they ship in a release.
 
 ## Mid-term (this season)
 - [ ] ProStaff fertilizer discount bridge (silent, pcall-guarded read of `getFertilizerDiscount`) once scheduled. Not built today by decision (Point 8).
+- [ ] Grass drying / rotting (issue #749): feature request for hay drying and bale/loose grass rotting. On ROADMAP as mid-term. Design path: extend SF moisture system (moisture threshold for drying, moisture + time for rotting). See ecosystem ledger 2026-07-26. Needs Arissani design approval before build.
 - [ ] Decide whether `getFieldInfo` should expose FieldSentry state (isSleeping/isMeadow/contractMaskActive) instead of companions reading `g_currentMission.fieldSentry` directly.
 - [ ] Emit a clean disease-at-harvest signal (pathogen id + pressure) for an external diseased-food/mycotoxin model. Data already retained on fieldData at harvest; expose it deliberately.
 
