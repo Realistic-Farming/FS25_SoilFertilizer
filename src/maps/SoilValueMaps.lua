@@ -691,12 +691,26 @@ function SoilValueMaps:readSyncRow(key, gy)
     return row
 end
 
+--- Wipe an entire value-map layer to raw 0 ("no data"). Used before a layer
+--- resync so residual local paint cannot survive a server stream that only
+--- paints non-zero states into empty cells.
+function SoilValueMaps:clearLayer(key)
+    local entry = self.layers[key]
+    if not entry or not entry.modifier then return end
+    local m = entry.modifier
+    local half = self.terrainSize * 0.5
+    m:setParallelogramWorldCoords(
+        -half, -half, half, -half, -half, half,
+        DensityCoordType.POINT_POINT_POINT)
+    m:executeSet(0)
+end
+
 --- Apply one received sync row: paints stride-sized blocks with the state's
---- mid-range semantic value. State 0 = no data (skipped).
+--- mid-range semantic value. State 0 = no data and MUST clear residual paint
+--- (executeSet 0); skipping zeros left stale pixels that made checksums diverge.
 function SoilValueMaps:applySyncRow(key, gy, row)
     local entry = self.layers[key]
     if not entry then return end
-    local def = entry.def
     local m = entry.modifier
     local stride = self:getSyncStride()
     local mPerPx = self.terrainSize / self.resolution
@@ -707,19 +721,20 @@ function SoilValueMaps:applySyncRow(key, gy, row)
     local gx = 0
     local n = #row
     while gx < n do
-        local state = row[gx + 1]
+        local state = row[gx + 1] or 0
         -- Run-length: extend over identical neighbouring states for fewer modifier calls
         local runStart = gx
         while gx + 1 < n and row[gx + 2] == state do gx = gx + 1 end
-        if state and state > 0 then
-            local raw = state * 16 + 8   -- mid of the 16-raw band
-            local x1 = (runStart * stride) * mPerPx - half
-            local x2 = ((gx + 1) * stride) * mPerPx - half
-            m:setParallelogramWorldCoords(
-                x1, wz, x2, wz, x1, wz + blockM,
-                DensityCoordType.POINT_POINT_POINT)
-            m:executeSet(math.min(RAW_MAX, raw))
+        local raw = 0
+        if state > 0 then
+            raw = math.min(RAW_MAX, state * 16 + 8)   -- mid of the 16-raw band
         end
+        local x1 = (runStart * stride) * mPerPx - half
+        local x2 = ((gx + 1) * stride) * mPerPx - half
+        m:setParallelogramWorldCoords(
+            x1, wz, x2, wz, x1, wz + blockM,
+            DensityCoordType.POINT_POINT_POINT)
+        m:executeSet(raw)
         gx = gx + 1
     end
 end
