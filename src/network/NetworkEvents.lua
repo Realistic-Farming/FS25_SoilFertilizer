@@ -1864,6 +1864,13 @@ function SoilValueMapChunkEvent:run(connection)
     local def = SoilValueMaps.LAYER_DEFS[self.layerIdx]
     if not def then return end
 
+    -- First chunk of a layer (gyStart == 0): wipe residual local paint so the
+    -- server stream can converge. Without this, state-0 cells used to skip and
+    -- leftover pixels kept checksums permanently drifted.
+    if self.gyStart == 0 and vm.clearLayer then
+        vm:clearLayer(def.key)
+    end
+
     for i, row in ipairs(self.rows) do
         vm:applySyncRow(def.key, self.gyStart + (i - 1), row)
     end
@@ -1933,6 +1940,11 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     self:run(connection)
 end
 
+-- Per-layer client resync attempt counts for this session. Caps the storm when
+-- a layer still cannot converge after clear+reapply (e.g. transient race).
+local sfValueMapResyncAttempts = {}
+local SF_VALUE_MAP_RESYNC_MAX = 2
+
 function SoilValueMapChecksumEvent:run(connection)
     -- CLIENT ONLY: compare against the local maps; request a resync when a
     -- layer has drifted (tolerance covers coarse-grid quantisation noise).
@@ -1947,11 +1959,24 @@ function SoilValueMapChecksumEvent:run(connection)
             local sumDrift = math.abs(localSum - cs.sum)
             local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
             if sumDrift > tolerance then
-                SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync",
-                    def.key, localSum, cs.sum)
-                if g_client then
-                    g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
+                local attempts = sfValueMapResyncAttempts[layerIdx] or 0
+                if attempts >= SF_VALUE_MAP_RESYNC_MAX then
+                    if attempts == SF_VALUE_MAP_RESYNC_MAX then
+                        SoilLogger.warning(
+                            "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
+                            def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
+                        sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
+                    end
+                else
+                    sfValueMapResyncAttempts[layerIdx] = attempts + 1
+                    SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
+                        def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
+                    if g_client then
+                        g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
+                    end
                 end
+            else
+                sfValueMapResyncAttempts[layerIdx] = 0
             end
         end
     end
