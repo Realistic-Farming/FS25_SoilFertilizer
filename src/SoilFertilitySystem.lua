@@ -5281,8 +5281,26 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 -- ── Pressure zone stamp (zoneData) ─────────────────────────────────
                 -- REFINED: nutrient values now live on the per-pixel value maps
                 -- (paintBoomStrip / applyFertilizer); zoneData cells only carry the
-                -- field-level pressure/compaction stamps used by See&Spray and the
-                -- compaction rebuild. Cell cap unchanged.
+                -- pressure/compaction stamps used by See&Spray and the compaction
+                -- rebuild. Cell cap unchanged.
+                --
+                -- SEED ON CREATE, WRITE NOTHING ON UPDATE. An existing cell holds real
+                -- per-cell work this stamper knows nothing about, and re-stamping the
+                -- field average destroyed all of it on the next boom pass:
+                --   tillage reductions  - plough :1129-1135, cultivator :1281-1287,
+                --                         secondary tillage :1466-1472
+                --   treatment reductions- entry map :4926-4927, insecticide :5003,
+                --                         fungicide :5035, herbicide :5445
+                -- The treatment cases were the worst: the base-class sprayer hook calls
+                -- markBoomCells in the SAME invocation that applied the product, so a
+                -- per-cell reduction was erased before the pass finished.
+                -- Compaction already followed this rule; the three pressures now match it.
+                --
+                -- The DAILY weed propagation (:4056-4064) is deliberately untouched and
+                -- still re-syncs every cell to the field value once a day. That is
+                -- correct and must stay: weed's ground truth is the base-game density
+                -- map, so the cell is a mirror, and refreshing a mirror to match its
+                -- source is not the same operation as flattening it mid-pass.
                 local canWrite = true
                 if field.zoneData[cellKey] == nil then
                     if (field.zoneDataSize or 0) >= MAX_ZONE_CELLS then canWrite = false end
@@ -5293,10 +5311,10 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                         field.zoneData[cellKey] = {}
                     end
                     local zc = field.zoneData[cellKey]
-                    zc.weedPressure    = field.weedPressure    or 0
-                    zc.pestPressure    = field.pestPressure    or 0
-                    zc.diseasePressure = field.diseasePressure or 0
-                    if zc.compaction == nil then zc.compaction = field.compaction or 0 end
+                    if zc.weedPressure    == nil then zc.weedPressure    = field.weedPressure    or 0 end
+                    if zc.pestPressure    == nil then zc.pestPressure    = field.pestPressure    or 0 end
+                    if zc.diseasePressure == nil then zc.diseasePressure = field.diseasePressure or 0 end
+                    if zc.compaction      == nil then zc.compaction      = field.compaction      or 0 end
                 end
             end
         end

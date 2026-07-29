@@ -81,17 +81,55 @@ do
   local sys = newSys({
     [1] = {
       fieldArea = 2.0,
-      sessionCoverageHa = 0.5,                 -- geometric path already recorded 0.5 ha
+      sessionCoverageHa = 0.5,                  -- geometric path already recorded 0.5 ha
       sessionCoverageFraction = 0.25,
-      sessionCoverageCells = { ["c1"] = 123 },  -- markBoomCells stamped a cell -> geometric active
+      sessionCoverageCells = { ["c1"] = 123 },
+      _geometricCoverageOwner = true,           -- #753: markBoomCells owns the counter
     },
   })
   -- A huge liter estimate that WOULD saturate to 100% if it were counted here.
   sys:trackSprayerCoverage(1, 100000, "HERBICIDE", true)
-  T.eq("#726: liter path defers when geometric cells exist (fraction unchanged)",
+  T.eq("#726: liter path defers when the geometric path OWNS coverage (fraction unchanged)",
        sys.fieldData[1].sessionCoverageFraction, 0.25)
   T.near("#726: liter path leaves session ha untouched",
          sys.fieldData[1].sessionCoverageHa, 0.5)
+end
+
+-- ── #753: stamped cells alone are NOT the deferral signal ──
+-- overlayOnly mode fills sessionCoverageCells for spray-trail dedup while leaving
+-- the counter to the liter path, so the guard reads _geometricCoverageOwner rather
+-- than "are there cells". Cells without the owner flag must still track, otherwise
+-- an overlayOnly pass silently suppresses coverage accounting entirely.
+do
+  local sys = newSys({
+    [1] = {
+      fieldArea = 2.0,
+      sessionCoverageCells = { ["c1"] = 123 },  -- stamped by an overlayOnly pass
+    },
+  })
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)  -- 0.5 ha of a 2 ha field
+  T.near("#753: cells without the owner flag do NOT suppress the liter fallback",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
+end
+
+-- ── #753: a product change clears the owner flag so the new product re-detects ──
+do
+  local sys = newSys({
+    [1] = {
+      fieldArea = 2.0,
+      sessionLastProduct = "FERTILIZER",
+      sessionCoverageHa = 1.5,
+      sessionCoverageFraction = 0.75,
+      _geometricCoverageOwner = true,
+    },
+  })
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  T.ok("#753: switching product clears the geometric owner flag",
+       sys.fieldData[1]._geometricCoverageOwner == nil)
+  T.near("#753: the new product's session starts from the liter path, not the old total",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
 end
 
 do
