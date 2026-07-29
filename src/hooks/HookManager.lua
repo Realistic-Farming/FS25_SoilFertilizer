@@ -1477,6 +1477,7 @@ function HookManager:installVariableRateHook()
     local kFerts   = {}   -- K-only (POTASH, etc.)
     local npkFerts = {}   -- multi-nutrient (all N/P/K fertilizers)
     local omFerts  = {}   -- OM-primary (compost, manure, digestate - target organic matter)
+    local limeFerts = {}  -- pH-raising products (LIME, LIQUIDLIME)
 
     local profs = SoilConstants.FERTILIZER_PROFILES
     local omPrimarySet = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
@@ -1493,6 +1494,9 @@ function HookManager:installVariableRateHook()
             end
             if omPrimarySet and omPrimarySet[name] then
                 omFerts[name] = true
+            end
+            if prof.pH and prof.pH > 0 then
+                limeFerts[name] = true
             end
         end
     end
@@ -1547,15 +1551,16 @@ function HookManager:installVariableRateHook()
             if ft and ssNames[ft.name] then
                 return
             end
-            if not ft or (not npkFerts[ft.name] and not omFerts[ft.name]) then
+            if not ft or (not npkFerts[ft.name] and not omFerts[ft.name] and not limeFerts[ft.name]) then
                 sensorMgr:clearSectionRates(vehicleId)
                 return
             end
 
-            local isN   = nFerts[ft.name]  == true
-            local isP   = pFerts[ft.name]  == true
-            local isK   = kFerts[ft.name]  == true
-            local isOM  = omFerts[ft.name] == true
+            local isN    = nFerts[ft.name]   == true
+            local isP    = pFerts[ft.name]   == true
+            local isK    = kFerts[ft.name]   == true
+            local isOM   = omFerts[ft.name]  == true
+            local isLime = limeFerts[ft.name] == true
 
             -- Manual rate ceiling
             local rm = sfm.sprayerRateManager
@@ -1608,6 +1613,11 @@ function HookManager:installVariableRateHook()
                                 nutrientVal = readAt("phosphorus") or fd.phosphorus or target
                             elseif isK then
                                 nutrientVal = readAt("potassium") or fd.potassium or target
+                            elseif isLime then
+                                local cellPH = readAt("pH") or fd.pH
+                                local deficit = math.max(0, vrCfg.PH_OPTIMAL - cellPH) / (vrCfg.PH_OPTIMAL - vrCfg.PH_CURVE_FLOOR)
+                                if deficit > 1 then deficit = 1 end
+                                rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
                             else
                                 -- Complex NPK: use worst (lowest) of the three
                                 local n = readAt("nitrogen")   or fd.nitrogen   or target
@@ -1616,8 +1626,10 @@ function HookManager:installVariableRateHook()
                                 nutrientVal = math.min(n, p, k)
                             end
 
-                            local deficit = math.max(0, effTarget - nutrientVal) / effTarget
-                            rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                            if not isLime then
+                                local deficit = math.max(0, effTarget - nutrientVal) / effTarget
+                                rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                            end
                         end
                     end
 
@@ -2963,6 +2975,15 @@ function HookManager:installSprayerAreaHook()
                 local _hasCropProt = herbEffectiveness or pestEffectiveness or diseaseEffectiveness
                 local _useLitCov = (not isFertilizer) or (isFertilizer and _hasCropProt)
                 if g_SoilFertilityManager.soilSystem then
+                    local _vwwEarly = self.spec_variableWorkWidth
+                    local _hasVWWEarly = _vwwEarly and _vwwEarly.sections and #_vwwEarly.sections > 0
+                    -- F61: for non-VWW implements using liter-based coverage, clear stale
+                    -- _geometricCoverageOwner so a previous VWW session's guard does not
+                    -- block the liter path (line 5123 in trackSprayerCoverage).
+                    if not _hasVWWEarly and g_SoilFertilityManager.soilSystem.fieldData
+                       and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
+                        g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
+                    end
                     g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
                 end
 
@@ -3269,6 +3290,11 @@ function HookManager:installSprayerAreaHook()
                         -- protection products already did so in the trackSprayerCoverage call
                         -- above (updateFractions = not isFertilizer), so don't double-count.
                         if liters > 0 and isFertilizer then
+                            -- F61: clear stale geometric owner flag so the liter-based fallback
+                            -- is not blocked by a previous VWW session's guard (line 5123).
+                            if soilSys.fieldData and soilSys.fieldData[fieldId] then
+                                soilSys.fieldData[fieldId]._geometricCoverageOwner = nil
+                            end
                             soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true)
                         end
                     end

@@ -14,6 +14,26 @@ local SoilFertilitySystem_mt = Class(SoilFertilitySystem)
 
 local COVERAGE_MILESTONES = { 0.10, 0.25, 0.50, 0.75, 1.0 }
 
+-- CD-9: Mode of Action → FRAC group mapping for resistance tracking.
+-- Physical fungicides only (generic FUNGICIDE has no MOA).
+-- SULFUR and COPPER_HYDROXIDE are natural/bio (lower max resistance).
+local MODE_FOR_FILLTYPE = {
+    PROPICONAZOLE      = "3",   -- FRAC 3  (triazole)
+    TEBUCONAZOLE       = "3",   -- FRAC 3  (triazole)
+    AZOXYSTROBIN       = "11",  -- FRAC 11 (strobilurin)
+    BOSCALID           = "7",   -- FRAC 7  (SDHI)
+    MANCOZEB           = "M3",  -- FRAC M3 (dithiocarbamate)
+    METALAXYL          = "4",   -- FRAC 4  (phenylamide)
+    SULFUR             = "M2",  -- FRAC M2 (inorganic, natural)
+    COPPER_HYDROXIDE   = "M1",  -- FRAC M1 (inorganic, natural)
+}
+
+-- Set of natural/bio fungicide names (lower max resistance).
+local NATURAL_FUNGICIDE_NAMES = {
+    SULFUR = true,
+    COPPER_HYDROXIDE = true,
+}
+
 -- Resolve a 1-5 setting index to its TUNING LUT value.
 -- Falls back to the index-3 value (the baseline) if the LUT is missing.
 local function getTuningMult(settings, settingId, lutKey)
@@ -21,6 +41,31 @@ local function getTuningMult(settings, settingId, lutKey)
     local lut = SoilConstants.TUNING and SoilConstants.TUNING[lutKey]
     if lut then return lut[idx] or lut[3] or 1.0 end
     return 1.0
+end
+
+--- Invalidate cached polygon vertices for a field when farmland ownership or
+--- geometry may have changed (F61). Forces the next coverage calculation to
+--- re-resolve from the live g_fieldManager rather than using stale cached data.
+---@param field table   self.fieldData[fieldId]
+local function invalidatePolyVerts(field)
+    if field then
+        field._polyVerts = nil
+    end
+end
+
+-- CD-9: Lookup the FRAC group for a fungicide fill type name.
+-- Returns nil for generic FUNGICIDE (no MOA assigned).
+---@param fillTypeName string
+---@return string|nil
+function SoilFertilitySystem.getModeForFillType(fillTypeName)
+    return MODE_FOR_FILLTYPE[fillTypeName]
+end
+
+-- CD-9: True when the fill type is a natural/bio fungicide (lower max resistance).
+---@param fillTypeName string
+---@return boolean
+function SoilFertilitySystem.isNaturalFungicide(fillTypeName)
+    return NATURAL_FUNGICIDE_NAMES[fillTypeName] == true
 end
 
 function SoilFertilitySystem.new(settings)
@@ -741,9 +786,10 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
         return
     end
 
-    -- Field acquired - ensure data entry exists, then add to active set.
+    -- F61: invalidate cached poly verts so coverage re-resolves the polygon at next use
     local field = self:getOrCreateField(fieldId, true)
     if field then
+        invalidatePolyVerts(field)
         self:_addToActiveSet(fieldId)
         SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d - added to active set", fieldId, farmId)
     end
@@ -820,6 +866,17 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
         field.weedPressure = math.max(0, field.weedPressure - weedReduction)
         if factor > 0.01 then
             field.herbicideDaysLeft = 0
+        end
+        changed = true
+    end
+
+    -- CD-9: new crop planted → 50% resistance decay (partial reset).
+    -- Resistance never fully resets on planting; the half-life means a resistant
+    -- field stays somewhat resistant going into the new season.
+    if field.resistance then
+        for mode, val in pairs(field.resistance) do
+            field.resistance[mode] = val * 0.5
+            if field.resistance[mode] < 0.01 then field.resistance[mode] = 0 end
         end
         changed = true
     end
@@ -2895,6 +2952,7 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         activeDiseaseSeverity = 1.0,-- cached yield-severity multiplier for activeDisease
         diseaseDiscovered = false,  -- discovery gate: an active infection stays UNKNOWN in every scout report until deliberately scouted (or revealed by a future dog / ProStaff report)
         lastFungicide = nil,        -- last chemical applied (for resistance / UI flavor)
+        resistance = {},            -- CD-9: { [mode] = score 0..max } per-MOA resistance scores
         dryDayCount = 0,
         nutrientBuffer = {},  -- Tracks [fillTypeIndex] = litersApplied (reset daily)
         zoneData = {},        -- Sparse {cellKey → {N,P,K,pH,OM}} for per-area overlay
@@ -3850,6 +3908,20 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- Route through _applyCompactionDecay so the recovery sticks: shaving
             -- field.compaction alone was wiped by the next per-cell rewrite.
             self:_applyCompactionDecay(field, cp.NATURAL_DECAY_PER_DAY * timeFactor * tunComp)
+        end
+    end
+
+    -- ── CD-9: Per-MOA resistance daily decay ────────────────────────────────
+    -- Each unused month decays resistance scores by 15% (RESISTANCE_DECAY_MONTHLY).
+    -- Calendar-normalized: the per-day multiplier is DECAY^(1/daysPerPeriod) so the
+    -- monthly decay is identical on 1-day and 28-day months.
+    if SoilConstants.RESISTANCE and field.resistance then
+        local decayPerDay = SoilConstants.RESISTANCE.DECAY_MONTHLY ^ (1 / daysPerMonth)
+        for mode, val in pairs(field.resistance) do
+            if val > 0 then
+                field.resistance[mode] = val * decayPerDay
+                if field.resistance[mode] < 0.01 then field.resistance[mode] = 0 end
+            end
         end
     end
 
@@ -5559,6 +5631,24 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
         end
     end
 
+    -- CD-9: Per-MOA resistance build and effectiveness reduction
+    local mode = self.getModeForFillType(chemId)
+    if mode then
+        local isNatural = self.isNaturalFungicide(chemId)
+        local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
+        local isOrganic = field.organic ~= nil
+            and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
+                 or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
+        if not (isOrganic and not isNatural) then
+            field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
+                + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes)
+        end
+        local resistanceScore = field.resistance[mode] or 0
+        if resistanceScore > 0 then
+            effectiveness = (effectiveness or 1.0) * (1 - resistanceScore / maxRes)
+        end
+    end
+
     -- Confirm field area on first application (mirrors onInsecticideAppliedDirect / applyFertilizer)
     local _isNewSession = not next(field.sessionCoverageCells or {})
     if not field._farmlandAreaConfirmed or _isNewSession then
@@ -6145,6 +6235,16 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#activeDisease", field.activeDisease or "")
             setXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered", field.diseaseDiscovered and 1 or 0)
             setXMLString(xmlFile, fieldKey .. "#lastFungicide", field.lastFungicide or "")
+            -- CD-9: Serialize per-MOA resistance as comma-separated mode:score pairs
+            if field.resistance then
+                local parts = {}
+                for mode, val in pairs(field.resistance) do
+                    if val > 0 then parts[#parts + 1] = mode .. ":" .. val end
+                end
+                if #parts > 0 then
+                    setXMLString(xmlFile, fieldKey .. "#resistance", table.concat(parts, ","))
+                end
+            end
             setXMLInt(xmlFile, fieldKey .. "#dryDayCount", field.dryDayCount or 0)
             setXMLInt(xmlFile, fieldKey .. "#burnDaysLeft", field.burnDaysLeft or 0)
             setXMLInt(xmlFile, fieldKey .. "#lastAlertSeason", field.lastAlertSeason or 0)
@@ -6260,6 +6360,18 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             activeDiseaseSeverity = 1.0,
             diseaseDiscovered = (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1,
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
+            -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
+            resistance = (function()
+                local rt = {}
+                local raw = getXMLString(xmlFile, fieldKey .. "#resistance")
+                if raw then
+                    for part in raw:gmatch("([^,]+)") do
+                        local mode, score = part:match("^(.+):([%d.]+)$")
+                        if mode and score then rt[mode] = tonumber(score) or 0 end
+                    end
+                end
+                return rt
+            end)(),
             dryDayCount = getXMLInt(xmlFile, fieldKey .. "#dryDayCount") or 0,
             burnDaysLeft = getXMLInt(xmlFile, fieldKey .. "#burnDaysLeft") or 0,
             amendBurnPenalty = getXMLFloat(xmlFile, fieldKey .. "#amendBurnPenalty") or nil,
@@ -6457,6 +6569,14 @@ function SoilFertilitySystem:getSoilStateTable()
                 insecticideAppliedDay = self.insecticideAppliedDay[fieldId] or 0,
                 fungicideAppliedDay   = self.fungicideAppliedDay[fieldId] or 0,
             }
+            -- CD-9: Per-MOA resistance scores (saved only when populated).
+            if field.resistance and next(field.resistance) then
+                local rt = {}
+                for mode, val in pairs(field.resistance) do
+                    if val > 0 then rt[mode] = val end
+                end
+                if next(rt) then e.resistance = rt end
+            end
             -- Frozen yield only while a freeze is live (matches XML save).
             if field.frozenYieldModifier and field.frozenYieldFruitType then
                 e.frozenYieldModifier  = field.frozenYieldModifier
@@ -6535,6 +6655,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 activeDiseaseSeverity = 1.0,
                 diseaseDiscovered     = e.diseaseDiscovered or false,
                 lastFungicide         = e.lastFungicide,
+                resistance = (function() local rt = {}; if e.resistance and type(e.resistance) == "table" then for k, v in pairs(e.resistance) do rt[k] = v end end; return rt end)(),
                 dryDayCount           = e.dryDayCount or 0,
                 burnDaysLeft          = e.burnDaysLeft or 0,
                 amendBurnPenalty      = e.amendBurnPenalty,
