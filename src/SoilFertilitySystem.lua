@@ -5458,7 +5458,26 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     if not overlayOnly then
         -- Mark this field as geometrically tracked so trackSprayerCoverage's guard knows
         -- the cell-dedup path is actually updating coverage fractions (#753).
-        field._geometricCoverageOwner = true
+        --
+        -- F61 (VWW half of #650): claim ownership ONLY once at least one cell has
+        -- actually been accepted. Claiming unconditionally is what freezes coverage on a
+        -- multi-field farmland: _getFieldPolyVerts resolves the FIRST field polygon on the
+        -- farmland, so on the OTHER field every boom-cell centre fails _isPointInPoly and
+        -- nothing accrues -- yet the flag was still set, and the guard at :5226 then locked
+        -- out the liter fallback for the rest of the session. Coverage and Pass% sat at 0%
+        -- and the 80% PROTECTION_THRESHOLD never opened, which is the reported symptom.
+        --
+        -- Gating on the cell set makes the degradation correct instead: no accepted cells
+        -- means the geometric path is not tracking anything, so the liter fallback stays
+        -- available exactly as it does for a non-VWW implement. When the polygon IS right
+        -- the first accepted cell claims ownership on the same call as before, so the
+        -- healthy path is unchanged and there is still no double-count.
+        --
+        -- next() is O(1) and sessionCoverageCells is already cleared at every site that
+        -- clears _geometricCoverageOwner, so this needs no new state to keep in sync.
+        if next(field.sessionCoverageCells) ~= nil then
+            field._geometricCoverageOwner = true
+        end
         field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
         field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)
 
