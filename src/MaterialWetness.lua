@@ -174,6 +174,57 @@ MaterialWetness.BANDS = {
 }
 
 -- =========================================================
+-- Spoil counts (SF-45): a READER parameter, never a layer one
+-- =========================================================
+-- How many separate RAIN-DAYS ruin this material. The counts live HERE, in the
+-- reader, because the layer is material-blind and the collector is the thing that
+-- knows what fill type it just picked up. Putting the count in a layer would make
+-- every future material a store change instead of a table row - which is exactly
+-- the cost the foundation was built to avoid.
+--
+-- RULED 2026-07-31. Straw gets one day more than hay because its value is
+-- STRUCTURAL, not nutritive: a wetting that ruins feed still leaves usable bedding.
+MaterialWetness.SPOIL_RAIN_DAYS = {
+    GRASS_WINDROW    = 3,
+    DRYGRASS_WINDROW = 3,
+    STRAW            = 4,
+}
+
+---@return number|nil rainDays  nil = this material has no spoil rule
+function MaterialWetness.spoilRainDaysFor(fillTypeName)
+    if fillTypeName == nil then return nil end
+    return MaterialWetness.SPOIL_RAIN_DAYS[tostring(fillTypeName):upper()]
+end
+
+--- THE GOING-OFF VERDICT, derived at READ time from the Water Record.
+---
+--- `windowDays` is how far back to look. The hay member passes the material's own
+--- DAYS DOWN, so the question actually asked is "how many rain-days since this was
+--- cut", not "in some fixed recent window". Defaults to the record's full span.
+---
+--- REFUSAL HONESTY: when the record does not reach back across the whole window we
+--- report `known` short of `window` rather than answering from a partial history. A
+--- confident "not spoiled" built on three remembered days out of eight is a lie.
+---@return table { status, spoiled, waterDays, needed, known, window }
+function MaterialWetness:goingOffVerdict(fillTypeName, windowDays, throughDay)
+    local R = MaterialWetness.RESULT
+    local needed = MaterialWetness.spoilRainDaysFor(fillTypeName)
+    if needed == nil then return { status = R.REFUSAL } end
+
+    local window = math.max(1, math.floor(tonumber(windowDays) or MaterialWetness.WATER_RECORD_DAYS))
+    local waterDays, known = self:waterDaysInLast(window, throughDay)
+
+    return {
+        status    = (known >= window) and R.OK or R.REFUSAL,
+        spoiled   = waterDays >= needed,
+        waterDays = waterDays,
+        needed    = needed,
+        known     = known,
+        window    = window,
+    }
+end
+
+-- =========================================================
 -- Construction
 -- =========================================================
 

@@ -43,6 +43,30 @@ local RAW_NO_RECORD = 0
 local RAW_BORN      = 1
 local RAW_CEILING   = 255   -- SoilValueMaps.RAW_MAX; asserted against it at arm()
 
+-- [SF-45] THE TRACKED MATERIAL SET - the configuration that gates birth-by-
+-- observation. Engine fill-type NAMES, verified at source.
+--
+-- The layers themselves are material-blind by design, which is the whole point:
+-- adding a second crop to this programme costs ONE ENTRY here plus whatever numbers
+-- its own reader needs, and birth, ageing, condition, movement inheritance and the
+-- collector's refusal-honest read then cover it automatically. STRAW is that
+-- receipt - it joined for one line.
+--
+-- Any straw-specific MACHINERY (as opposed to a row) re-opens governance by
+-- definition. If you find yourself adding a branch here, stop.
+MaterialDown.TRACKED_MATERIALS = {
+    GRASS_WINDROW    = true,   -- cut grass, the foundation's first material
+    DRYGRASS_WINDROW = true,   -- hay: the cured form of that same swath
+    STRAW            = true,   -- [SF-45] the second crop, and its entire build
+}
+
+---@param fillTypeName string|nil  engine fill-type name
+---@return boolean tracked
+function MaterialDown.isTrackedMaterial(fillTypeName)
+    if fillTypeName == nil then return false end
+    return MaterialDown.TRACKED_MATERIALS[tostring(fillTypeName):upper()] == true
+end
+
 -- Land type under observed material. All four AGE IDENTICALLY in v1 - material
 -- lying out is weather, not soil simulation, which is exactly why sim-disabled
 -- ground still counts. The branch exists because the consuming members
@@ -263,9 +287,20 @@ end
 ---
 --- A machine we failed to observe leaves an UNRECORDED patch, which is a gap in
 --- knowledge, not a defect - the read refuses on raw 0 rather than guessing.
+--- [SF-45] `fillTypeName` gates the write against the tracked set. Passing a
+--- material that is not tracked REFUSES: chaff behind a combine is not a swath, and
+--- recording it would age something no member will ever read.
+---
+--- nil means the caller made no claim about the material, which is allowed and
+--- records. The observation hook always knows its fill type and will always pass
+--- one, so the gate bites where it matters; nil exists for callers that genuinely
+--- only know "material is here" and for the bench.
 ---@return boolean recorded
-function MaterialDown:noteMaterialAt(verts, fieldId)
+function MaterialDown:noteMaterialAt(verts, fieldId, fillTypeName)
     if not self:isArmed() or not verts or #verts < 3 then return false end
+    if fillTypeName ~= nil and not MaterialDown.isTrackedMaterial(fillTypeName) then
+        return false
+    end
     local landType = self:resolveLandType(fieldId)
     local ok = self.valueMaps:setPolygonWhere(
         MaterialDown.LAYER_KEY, verts, RAW_BORN, RAW_NO_RECORD, RAW_NO_RECORD)
@@ -296,10 +331,13 @@ end
 ---     pixel ever had, which is why readAverageOfPolygon is forbidden here.
 ---   * A source area with no record at all births today, correctly.
 ---@return boolean recorded
-function MaterialDown:noteMaterialMoved(srcVerts, dstVerts, fieldId)
+function MaterialDown:noteMaterialMoved(srcVerts, dstVerts, fieldId, fillTypeName)
     if not self:isArmed() or not dstVerts or #dstVerts < 3 then return false end
+    if fillTypeName ~= nil and not MaterialDown.isTrackedMaterial(fillTypeName) then
+        return false
+    end
     if not srcVerts or #srcVerts < 3 then
-        return self:noteMaterialAt(dstVerts, fieldId)
+        return self:noteMaterialAt(dstVerts, fieldId, fillTypeName)
     end
 
     local vm = self.valueMaps
