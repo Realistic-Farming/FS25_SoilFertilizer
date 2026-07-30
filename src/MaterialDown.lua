@@ -102,6 +102,12 @@ function MaterialDown.new()
     -- Object ledger MECHANISM (built here, consumed by the bale member later).
     -- Keyed on an OPAQUE OWNER TOKEN; enumerate-not-list. NO rows in v1.
     self.objects   = {}
+    -- [SF-49] Fields currently carrying a record, as a set. The sibling's drying
+    -- pass needs per-field geometry (soil class is a per-field property), and
+    -- probing every field on the map once a day to find the two that have a swath
+    -- on them is the wrong shape. Maintained by the same calls that write the layer,
+    -- so it costs nothing extra and cannot drift from the writes it mirrors.
+    self.activeFields = {}
     self.stoodDown = false   -- true once a fence refused; the layer is inert
     return self
 end
@@ -267,6 +273,7 @@ function MaterialDown:noteMaterialAt(verts, fieldId)
         self:_standDown("the aimed write was refused by the store (polygon ops unavailable)")
         return false
     end
+    self:markFieldActive(fieldId)
     return true, landType
 end
 
@@ -331,6 +338,7 @@ function MaterialDown:noteMaterialMoved(srcVerts, dstVerts, fieldId)
         self:_standDown("the aimed write was refused by the store (polygon ops unavailable)")
         return false
     end
+    self:markFieldActive(fieldId)
     return true
 end
 
@@ -339,7 +347,11 @@ end
 --- raw 0 lets BIRTH re-date the pixel as today, which launders age in the one
 --- direction the design forbids.
 ---@return boolean cleared
-function MaterialDown:noteMaterialGone(verts)
+--- `fieldId` is optional and only drops the field from the active set; pass it when
+--- the caller knows the field is now empty. Omitting it leaves the field active,
+--- which costs a few wasted drying calls but never loses a record - the forgiving
+--- direction.
+function MaterialDown:noteMaterialGone(verts, fieldId)
     if not self:isArmed() or not verts or #verts < 3 then return false end
     local ok = self.valueMaps:clearPolygonWhere(
         MaterialDown.LAYER_KEY, verts, RAW_BORN, RAW_CEILING)
@@ -347,6 +359,7 @@ function MaterialDown:noteMaterialGone(verts)
         self:_standDown("the filtered clear was refused by the store (polygon ops unavailable)")
         return false
     end
+    self:markFieldClear(fieldId)
     return true
 end
 
@@ -409,6 +422,28 @@ end
 -- this system never needs to understand what the owner is, and enumerate-not-list
 -- so no caller can take a reference to the live table and mutate it behind us.
 
+--- [SF-49] Iterate the fields that currently carry a record. Enumerate-not-list so
+--- no caller can take a reference to the live set and mutate it behind us.
+function MaterialDown:enumerateActiveFields(fn)
+    if type(fn) ~= "function" then return 0 end
+    local n = 0
+    for fieldId in pairs(self.activeFields) do
+        fn(fieldId)
+        n = n + 1
+    end
+    return n
+end
+
+function MaterialDown:markFieldActive(fieldId)
+    if fieldId == nil then return end
+    self.activeFields[fieldId] = true
+end
+
+function MaterialDown:markFieldClear(fieldId)
+    if fieldId == nil then return end
+    self.activeFields[fieldId] = nil
+end
+
 function MaterialDown:setObjectRecord(token, record)
     if token == nil then return false end
     self.objects[tostring(token)] = record
@@ -437,10 +472,13 @@ end
 function MaterialDown:serialize()
     local objects = {}
     for token, record in pairs(self.objects) do objects[token] = record end
+    local active = {}
+    for fieldId in pairs(self.activeFields) do active[#active + 1] = fieldId end
     return {
         schema                = 1,
         ageAppliedThroughDay  = self.ageAppliedThroughDay,
         objects               = objects,
+        activeFields          = active,
     }
 end
 
@@ -463,6 +501,14 @@ function MaterialDown:deserialize(data)
     if type(data.objects) == "table" then
         for token, record in pairs(data.objects) do
             if self.objects[token] == nil then self.objects[token] = record end
+        end
+    end
+
+    -- Merge, never replace: a field the running session already knows carries
+    -- material stays active even if the saved set predates it.
+    if type(data.activeFields) == "table" then
+        for _, fieldId in ipairs(data.activeFields) do
+            self.activeFields[fieldId] = true
         end
     end
     return true

@@ -84,6 +84,23 @@ SoilValueMaps.LAYER_DEFS = {
     -- executeSet(0) - which is total data loss, not churn. One flag cannot be
     -- half-set, so the coupling is structural rather than a convention to remember.
     { key = "materialAge",     file = "sfSoilMap_MA.grle",  minVal = 0,   maxVal = 254, serverOnly = true },
+    -- WHAT THE SKY DID (SF-49): material moisture, PERCENT WET BASIS, the condition
+    -- half of the ground-material foundation. Appends onto the machinery the sibling
+    -- built with no further contract change, exactly as its brief predicted.
+    --
+    -- Encoding is the ordinary linear one (60 pct -> raw 153, 40 pct -> raw 103).
+    -- The REFUSAL state reuses the store's OWN shipped sentinel pattern rather than a
+    -- parallel mechanism: unknownRaw lands in the reserved 16-31 band and rawFloor 32
+    -- keeps every real reading above it, so nothing can decode a refusal as a value.
+    -- Consequence worth knowing: readings below ~12.2 pct clamp to raw 32. Hay EMC
+    -- floors sit around there anyway, and the drying pass never aims below its EMC
+    -- ceiling, so the clamp is not reachable in practice - but it is real.
+    --
+    -- NAMING FENCE: this mod already ships advanceWetness driving COMPACTION from
+    -- rain, and SCS owns SOIL moisture. Three wetness quantities now exist, so every
+    -- key and getter here carries MATERIAL. advanceWetness is never touched.
+    { key = "materialWetness", file = "sfSoilMap_MW.grle",  minVal = 0,   maxVal = 100,
+      rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW, serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel
@@ -708,6 +725,37 @@ end
 -- delta's SIGN purely as an overflow guard (:583/:585); that is not a band a
 -- caller can choose.
 
+-- Shared band arithmetic for the two aimed-delta methods below.
+--
+-- INVARIANT (SF-49 #6): the engine-safety window is INTERSECTED with the caller's
+-- band, NEVER replaced. A caller band lying wholly outside the safe window is a
+-- NO-OP on both sides - not a clamp, not a wrap. Silently widening a caller's band
+-- back to the safe window would let a drying pass touch pixels the phase table
+-- deliberately excluded.
+--
+-- Returns addLow, addHigh (nil = no add) and edgeLow, edgeHigh (nil = no edge
+-- pass). The edge pass carries the pixels the add's guard had to exclude: they
+-- saturate at the top for a positive delta and floor at the bottom for a negative
+-- one, so a long step cannot leave a permanently frozen band at either end.
+local function aimedWindows(rawDelta, rawLow, rawHigh)
+    local addLow, addHigh, edgeLow, edgeHigh
+    if rawDelta > 0 then
+        addLow   = rawLow
+        addHigh  = math.min(rawHigh, RAW_MAX - rawDelta)
+        edgeLow  = math.max(rawLow,  RAW_MAX - rawDelta + 1)
+        edgeHigh = rawHigh
+    else
+        local mag = -rawDelta
+        addLow   = math.max(rawLow, RAW_MIN + mag)
+        addHigh  = rawHigh
+        edgeLow  = rawLow
+        edgeHigh = math.min(rawHigh, RAW_MIN + mag - 1)
+    end
+    if addLow  > addHigh  then addLow,  addHigh  = nil, nil end
+    if edgeLow > edgeHigh then edgeLow, edgeHigh = nil, nil end
+    return addLow, addHigh, edgeLow, edgeHigh
+end
+
 --- [SF-43 ask 1] Add `rawDelta` to every pixel of a layer whose CURRENT raw value
 --- lies inside the caller-aimed band [rawLow, rawHigh], then saturate the pixels
 --- the add's guard window had to exclude.
@@ -754,12 +802,13 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
             DensityCoordType.POINT_POINT_POINT)
     end
 
-    -- Pass 1: the add. The upper bound stops short of RAW_MAX - rawDelta so no
-    -- pixel can overflow past the ceiling and wrap into the raw-0 no-data sentinel.
-    local addHigh = math.min(rawHigh, RAW_MAX - rawDelta)
-    if addHigh >= rawLow then
+    local addLow, addHigh, satLow, satHigh = aimedWindows(rawDelta, rawLow, rawHigh)
+
+    -- Pass 1: the add. Its window stops short of RAW_MAX - rawDelta so no pixel can
+    -- overflow past the ceiling and wrap into the raw-0 no-data sentinel.
+    if addLow then
         coverWholeMap()
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, addHigh)
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, addLow, addHigh)
         local ok, err = pcall(function() m:executeAdd(rawDelta, filter) end)
         if not ok then
             self.hasExecuteAdd = false
@@ -776,14 +825,87 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
     -- window on this tick and on every tick after it, forever.
     -- At rawDelta 1 (the ordinary daily tick) this window is empty by construction,
     -- so the normal path really is ONE engine call.
-    local satLow  = math.max(rawLow,  RAW_MAX - rawDelta + 1)
-    local satHigh = math.min(rawHigh, RAW_MAX - 1)
-    if satLow <= satHigh then
+    if satLow then
         coverWholeMap()
         filter:setValueCompareParams(DensityValueCompareType.BETWEEN, satLow, satHigh)
         local okSat, errSat = pcall(function() m:executeSet(RAW_MAX, filter) end)
         if not okSat then
             SoilLogger.warning("SoilValueMaps: saturating pass failed on '%s' (%s)", key, tostring(errSat))
+        end
+    end
+
+    return rawDelta
+end
+
+--- [SF-49, the one new store ask] Apply `rawDelta` to the pixels of `verts` whose
+--- CURRENT raw lies in the caller-aimed band [rawLow, rawHigh]. The polygon sibling
+--- of applyRawDeltaToLayer, and the first method here that accepts a NEGATIVE delta
+--- under a caller band - which is what a multiplicative drying curve needs, since
+--- the engine write is additive and the curve is therefore a banded pass.
+---
+--- `opts.floorTo` / `opts.saturateTo` set where the edge pass parks the pixels the
+--- add's guard had to exclude. The floor matters for a layer with a reserved
+--- sentinel band: without it a drying step walks a low pixel straight down into the
+--- sentinel, where it stops being a value and starts reading as a REFUSAL.
+---
+--- Same fabrication fence as its sibling: never falls back to the block-walk.
+---@return number|nil rawApplied  nil = REFUSED, stand the layer down
+function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, rawHigh, opts)
+    if not self.available or not verts or #verts < 3 then return nil end
+    local entry = self.layers[key]
+    if not entry then return nil end
+
+    rawDelta = math.floor(tonumber(rawDelta) or 0)
+    if rawDelta == 0 then return 0 end
+    if rawDelta >  RAW_SPAN - 1 then rawDelta =  RAW_SPAN - 1 end
+    if rawDelta < -(RAW_SPAN - 1) then rawDelta = -(RAW_SPAN - 1) end
+
+    rawLow  = math.max(RAW_MIN, math.floor(tonumber(rawLow)  or RAW_MIN))
+    rawHigh = math.min(RAW_MAX, math.floor(tonumber(rawHigh) or RAW_MAX))
+    if rawLow > rawHigh then return 0 end
+
+    if not self.hasExecuteAdd then
+        SoilLogger.warning(
+            "SoilValueMaps: executeAdd unavailable - REFUSING the banded delta on '%s'. The block-walk " ..
+            "fallback would flatten the banded curve to a block average, so this layer stands down.", key)
+        return nil
+    end
+
+    opts = opts or {}
+    local edgeValue = (rawDelta > 0)
+        and math.min(RAW_MAX, math.floor(tonumber(opts.saturateTo) or RAW_MAX))
+        or  math.max(RAW_MIN, math.floor(tonumber(opts.floorTo)    or RAW_MIN))
+
+    local m      = entry.modifier
+    local filter = entry.filter
+    local addLow, addHigh, edgeLow, edgeHigh = aimedWindows(rawDelta, rawLow, rawHigh)
+
+    -- A caller band wholly outside the safe window is a NO-OP on both sides.
+    if addLow == nil and edgeLow == nil then return 0 end
+
+    if not setPolygonRegion(self, m, verts) then
+        SoilLogger.warning(
+            "SoilValueMaps: polygon ops unavailable - REFUSING the banded delta on '%s'. The block-walk " ..
+            "scales with area and degrades the banded curve to a block average.", key)
+        return nil
+    end
+
+    if addLow then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, addLow, addHigh)
+        local ok, err = pcall(function() m:executeAdd(rawDelta, filter) end)
+        if not ok then
+            self.hasExecuteAdd = false
+            SoilLogger.warning("SoilValueMaps: executeAdd failed on '%s' (%s) - layer stands down",
+                key, tostring(err))
+            return nil
+        end
+    end
+
+    if edgeLow then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, edgeLow, edgeHigh)
+        local okEdge, errEdge = pcall(function() m:executeSet(edgeValue, filter) end)
+        if not okEdge then
+            SoilLogger.warning("SoilValueMaps: edge pass failed on '%s' (%s)", key, tostring(errEdge))
         end
     end
 
@@ -877,6 +999,58 @@ function SoilValueMaps:hasAnyInBand(key, verts, rawLow, rawHigh)
     end)
     if not ok then return nil end
     return (pixels or 0) > 0
+end
+
+--- [SF-49] Average RAW value over a polygon, counting ONLY pixels inside the
+--- caller's band. The second use of the band parameter the aimed delta introduced.
+---
+--- This exists because readAverageOfPolygon below counts every WRITTEN pixel
+--- (`BETWEEN(RAW_MIN, RAW_MAX)`), which on a layer with a reserved sentinel band
+--- means the sentinel enters the sum as an ordinary number. On the wetness layer the
+--- sentinel decodes to roughly nine percent - bone dry - so a single refusing cell
+--- would quietly pull a mixed pickup toward FIT. The band lets the caller exclude it.
+---
+--- Returns the RAW mean, not a decoded value: the caller owns the meaning of raw on
+--- a layer whose low band is a sentinel rather than a small number.
+---@return number|nil rawAvg, number pixelCount
+function SoilValueMaps:readAverageRawInBand(key, verts, rawLow, rawHigh)
+    if not self.available or not verts or #verts < 3 then return nil, 0 end
+    local entry = self.layers[key]
+    if not entry then return nil, 0 end
+
+    rawLow  = math.max(RAW_MIN, math.floor(tonumber(rawLow)  or RAW_MIN))
+    rawHigh = math.min(RAW_MAX, math.floor(tonumber(rawHigh) or RAW_MAX))
+    if rawLow > rawHigh then return nil, 0 end
+
+    local m      = entry.modifier
+    local filter = entry.filter
+    filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, rawHigh)
+
+    local sum, pixels = 0, 0
+    if setPolygonRegion(self, m, verts) then
+        local ok, acc, n = pcall(function()
+            local a, cnt, _ = m:executeGet(filter)
+            return a, cnt
+        end)
+        if ok and n and n > 0 then sum, pixels = acc, n end
+    else
+        forEachPolyBlock(verts, 16, function(cx, cz, half)
+            m:setParallelogramWorldCoords(
+                cx - half, cz - half, cx + half, cz - half, cx - half, cz + half,
+                DensityCoordType.POINT_POINT_POINT)
+            local ok, acc, n = pcall(function()
+                local a, cnt, _ = m:executeGet(filter)
+                return a, cnt
+            end)
+            if ok and n and n > 0 then
+                sum = sum + acc
+                pixels = pixels + n
+            end
+        end)
+    end
+
+    if pixels <= 0 then return nil, 0 end
+    return sum / pixels, pixels
 end
 
 --- Average semantic value over a field polygon via engine-side executeGet.

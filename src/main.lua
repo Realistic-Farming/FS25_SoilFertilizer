@@ -55,6 +55,7 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
+source(modDirectory .. "src/MaterialWetness.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -199,6 +200,12 @@ local function loadedMission(mission, node)
             SoilMaterialDownBridge.registerLedger(md)
             SoilMaterialDownBridge.loadFallback(md)
             SoilMaterialDownBridge.registerAccruals(md)
+        end
+        -- [SF-49] The condition half registers into the slot the sibling reserved.
+        local mw = sfm and sfm.soilSystem and sfm.soilSystem.materialWetness
+        if mw then
+            SoilMaterialDownBridge.registerWaterLedger(mw)
+            SoilMaterialDownBridge.registerConditionAccrual(mw)
         end
     end
 

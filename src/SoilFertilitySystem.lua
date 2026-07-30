@@ -95,6 +95,8 @@ function SoilFertilitySystem.new(settings)
     -- [SF-43] MATERIAL DOWN. Created here beside the store it rides on; armed only
     -- after the store initializes, because arming asserts its layer keys resolved.
     self.materialDown = MaterialDown     and MaterialDown.new()     or nil
+    -- [SF-49] WHAT THE SKY DID. Rides the sibling's machinery; armed after it.
+    self.materialWetness = MaterialWetness and MaterialWetness.new() or nil
 
     -- Per-day flag table for fertilizer application notifications (fieldId → game day last shown)
     -- Prevents notification spam since the sprayer hook fires every frame while active.
@@ -203,6 +205,11 @@ function SoilFertilitySystem:initialize()
     -- system would look healthy while recording nothing at all.
     if self.materialDown then
         self.materialDown:arm(self.valueMaps)
+    end
+    -- [SF-49] Armed after the sibling: it depends on that system being live, not
+    -- merely present, and refuses to arm if it is not.
+    if self.materialWetness then
+        self.materialWetness:arm(self.valueMaps, self.materialDown, self)
     end
 
     -- Scan fields using real FieldManager (now runs with layerSystem ready)

@@ -106,12 +106,53 @@ function SoilMaterialDownBridge.registerAccruals(materialDown)
     return true
 end
 
+SoilMaterialDownBridge.ACCRUAL_CONDITION = "SoilFertilizer_MaterialWetness_condition"
+
+--- [SF-49] The condition accrual, registered into the slot the sibling reserved so
+--- it settles AFTER the age tick. The ordering is the point: a day's age must be
+--- settled before that day's weather is applied to it, or the two members disagree
+--- about what day it is.
+---
+--- firstPeriodPolicy = "skip" for the same stated reason as the sibling's pair - the
+--- scheduler's silent default is "prorate", which would retroactively wet or dry
+--- material that predates the layer.
+---@return boolean registered
+function SoilMaterialDownBridge.registerConditionAccrual(materialWetness)
+    if materialWetness == nil then return false end
+    if g_server == nil then return false end
+
+    local tg = getTimeGuard()
+    if tg == nil or tg.registerAccrual == nil then
+        SoilLogger.info("[MaterialWetness] Time Guard not detected - condition never accrues")
+        return false
+    end
+
+    local okReg = false
+    local ok, err = pcall(function()
+        okReg = tg:registerAccrual(SoilMaterialDownBridge.ACCRUAL_CONDITION, {
+            cadence           = "day",
+            flowClass         = "calendar",
+            firstPeriodPolicy = "skip",
+            priority          = SoilMaterialDownBridge.PRIORITY.CONDITION_ACCRUAL,
+            onSettle          = function(ctx) materialWetness:onConditionAccrual(ctx) end,
+        })
+    end)
+    if not ok or not okReg then
+        SoilLogger.warning("[MaterialWetness] Time Guard registration failed: %s", tostring(err))
+        return false
+    end
+    SoilLogger.info("[OK] MaterialWetness registered its condition accrual (skip, prio %d)",
+        SoilMaterialDownBridge.PRIORITY.CONDITION_ACCRUAL)
+    return true
+end
+
 function SoilMaterialDownBridge.unregisterAccruals()
     local tg = getTimeGuard()
     if tg == nil or tg.unregisterAccrual == nil then return end
     pcall(function()
         tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_AGE)
         tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_MAINTENANCE)
+        tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_CONDITION)
     end)
     SoilMaterialDownBridge.timeGuardActive = false
 end
@@ -177,6 +218,44 @@ function SoilMaterialDownBridge.registerLedger(materialDown)
     SoilMaterialDownBridge.ledgerActive = true
     SoilLogger.info("[OK] MaterialDown registered with StateLedger as '%s'",
         SoilMaterialDownBridge.MODULE_ID)
+    return true
+end
+
+-- [SF-49] The Water Record's own ledger module. ONE NOUN, PINNED: this string is a
+-- persistence key, so a later rename orphans every saved verdict.
+SoilMaterialDownBridge.WATER_MODULE_ID = "SoilFertilizer_MaterialWaterBook"
+SoilMaterialDownBridge.waterLedgerActive = false
+
+--- Register the Water Record sidecar. Merge-never-replace on the far side, for the
+--- same reason as the sibling's: an omitted block is indistinguishable from a new
+--- save, and a replace-on-nil would erase frozen verdicts that cannot be recomputed
+--- (the climate roll reads the CURRENT season, so a past day would change its answer).
+function SoilMaterialDownBridge.registerWaterLedger(materialWetness)
+    SoilMaterialDownBridge.waterLedgerActive = false
+    if materialWetness == nil then return false end
+    if g_server == nil then return false end
+
+    local ledger = getLedger()
+    if ledger == nil or ledger.registerModule == nil then
+        SoilLogger.info("[MaterialWetness] StateLedger not detected - the Water Record is session-only")
+        return false
+    end
+
+    local ok, err = pcall(function()
+        ledger:registerModule(SoilMaterialDownBridge.WATER_MODULE_ID, {
+            serialize   = function() return materialWetness:serialize() end,
+            deserialize = function(data)
+                if data ~= nil then materialWetness:deserialize(data) end
+            end,
+        })
+    end)
+    if not ok then
+        SoilLogger.warning("[MaterialWetness] StateLedger registration failed: %s", tostring(err))
+        return false
+    end
+    SoilMaterialDownBridge.waterLedgerActive = true
+    SoilLogger.info("[OK] MaterialWetness registered with StateLedger as '%s'",
+        SoilMaterialDownBridge.WATER_MODULE_ID)
     return true
 end
 
