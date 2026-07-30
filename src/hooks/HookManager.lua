@@ -18,6 +18,61 @@ function HookManager.new()
     return self
 end
 
+-- =========================================================
+-- Material birth geometry helpers
+-- =========================================================
+-- [SF-43/SF-44] These build polygon vertices from vehicle work areas for the
+-- birth observation hook. Called from the mower and combine hooks below.
+
+--- Build a bounding-box polygon from a vehicle's typed work areas. The polygon
+--- is the axis-aligned bounding rectangle of ALL work areas of the given type.
+--- Overestimates slightly (may include non-cut area at swath edges), but the
+--- RAW_NO_RECORD filter in setPolygonWhere makes it safe: unrecorded pixels
+--- get born, already-recorded pixels are untouched.
+---@param vehicle table  the vehicle (Mower, Combine, etc.)
+---@param areaType number  WorkAreaType constant (e.g. WorkAreaType.MOWER)
+---@return table|nil  flat vertex array {x1,z1, x2,z2, ...} or nil
+local function buildWorkAreaPolygon(vehicle, areaType)
+    local ok, workAreas = pcall(function()
+        return vehicle:getTypedWorkAreas(areaType)
+    end)
+    if not ok or not workAreas or #workAreas == 0 then return nil end
+
+    local minX, maxX, minZ, maxZ
+    for _, wa in ipairs(workAreas) do
+        if wa.start and wa.width and wa.height then
+            local xs, _, zs = getWorldTranslation(wa.start)
+            local xw, _, zw = getWorldTranslation(wa.width)
+            local xh, _, zh = getWorldTranslation(wa.height)
+            if xs and xw and xh then
+                -- Fourth corner of the parallelogram: width + height - start
+                local x4 = xw + xh - xs
+                local z4 = zw + zh - zs
+                for _, xv in ipairs({ xs, xw, xh, x4 }) do
+                    if minX == nil or xv < minX then minX = xv end
+                    if maxX == nil or xv > maxX then maxX = xv end
+                end
+                for _, zv in ipairs({ zs, zw, zh, z4 }) do
+                    if minZ == nil or zv < minZ then minZ = zv end
+                    if maxZ == nil or zv > maxZ then maxZ = zv end
+                end
+            end
+        end
+    end
+    if minX == nil then return nil end
+    return { minX, minZ, maxX, minZ, maxX, maxZ, minX, maxZ }
+end
+
+--- Resolve the windrow fill type name from a fruit type index.
+--- FS25 windrow fill types follow the pattern FRUITNAME_WINDROW.
+---@param fruitTypeIndex number
+---@return string|nil
+local function fruitTypeToWindrowName(fruitTypeIndex)
+    local ft = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    if not ft or not ft.name then return nil end
+    return tostring(ft.name):upper() .. "_WINDROW"
+end
+
 --- Helper to get field ID from world coordinates
 ---@param x number World X coordinate
 ---@param z number World Z coordinate
@@ -151,6 +206,10 @@ function HookManager:installAll(soilSystem)
     -- Mower yield hook (#696): windrow output scales with soil nutrients via conversionFactor
     local mowerYieldOk = self:installMowerYieldHook()
     if mowerYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Tedder hook (SF-44 "THE HAY BET"): hay drying acceleration + corrective queue
+    local tedderOk = self:installTedderHook()
+    if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
@@ -2184,11 +2243,14 @@ function HookManager:installHarvestHook()
             -- The crop is deposited on the ground rather than collected in the hopper.
             -- We still deplete nutrients (the soil grew the biomass regardless of collection method);
             -- updateFieldNutrients handles the liters=0 case via area-based estimation.
+            -- Field detection for nutrient depletion + straw birth.
+            -- NOTE: straw birth does NOT gate on nutrientCycles: a player who turns
+            -- nutrient cycling off should still get straw that remembers when it was
+            -- cut (Arissani ruling 2026-07-30). The birth uses the same detection.
             if combineSelf.isServer
                 and g_SoilFertilityManager
                 and g_SoilFertilityManager.soilSystem
                 and g_SoilFertilityManager.settings.enabled
-                and g_SoilFertilityManager.settings.nutrientCycles
                 and inputFruitType and inputFruitType > 0
                 and area and area > 0
             then
@@ -2263,14 +2325,39 @@ function HookManager:installHarvestHook()
                         fieldId, inputFruitType, area)
                 end)
 
+                -- [MATERIAL DOWN BIRTH] Record straw deposition when the combine
+                -- is in swath mode. Runs regardless of nutrientCycles — the straw
+                -- birth gate is `md:isArmed()`, not a settings toggle.
+                if detectedFieldId and detectedFieldId > 0 then
+                    pcall(function()
+                        local md = g_SoilFertilityManager.soilSystem.materialDown
+                        if not md or not md:isArmed() then return end
+
+                        -- Only record straw when the combine is depositing a swath
+                        local isSwath = false
+                        if combineSelf.getIsSwathActive then
+                            isSwath = combineSelf:getIsSwathActive()
+                        end
+                        if not isSwath then return end
+                        if not strawRatio or strawRatio <= 0 then return end
+
+                        -- Build polygon from the header's cutter work areas
+                        local waPoly = buildWorkAreaPolygon(combineSelf, WorkAreaType.CUTTER)
+                        if not waPoly then return end
+
+                        md:noteMaterialAt(waPoly, detectedFieldId, "STRAW")
+                        SoilLogger.debug("[HarvestHook] straw birth: field %d, area=%.1fm2",
+                            detectedFieldId, area or 0)
+                    end)
+                end
+
                 if not ok then
                     SoilLogger.error("Harvest hook (field detection) failed: %s", tostring(errMsg))
                 end
             else
-                SoilLogger.debug("Harvest hook: skipped (isServer=%s enabled=%s nutrientCycles=%s fruit=%s area=%s)",
+                SoilLogger.debug("Harvest hook: skipped (isServer=%s enabled=%s fruit=%s area=%s)",
                     tostring(combineSelf.isServer),
                     tostring(g_SoilFertilityManager and g_SoilFertilityManager.settings.enabled),
-                    tostring(g_SoilFertilityManager and g_SoilFertilityManager.settings.nutrientCycles),
                     tostring(inputFruitType), tostring(area))
             end
 
@@ -2546,8 +2633,7 @@ function HookManager:installMowerHook()
             if not mowerSelf.isServer then return end
             if not g_SoilFertilityManager
                or not g_SoilFertilityManager.soilSystem
-               or not g_SoilFertilityManager.settings.enabled
-               or not g_SoilFertilityManager.settings.nutrientCycles then
+               or not g_SoilFertilityManager.settings.enabled then
                 return
             end
 
@@ -2561,8 +2647,43 @@ function HookManager:installMowerHook()
             if area <= 0 then return end
 
             local fruitType = spec.workAreaParameters.lastInputFruitType
-
             if not fruitType or fruitType <= 0 then return end
+
+            -- [MATERIAL DOWN BIRTH] Record cut grass on the age layer. Runs regardless
+            -- of nutrientCycles: a player who turns nutrient cycling off should still
+            -- get hay that remembers when it was cut (Arissani ruling 2026-07-30).
+            -- The TRACKED_MATERIALS gate filters non-tracked crops automatically.
+            do
+                local md = g_SoilFertilityManager.soilSystem.materialDown
+                if md and md:isArmed() then
+                    local waPoly = buildWorkAreaPolygon(mowerSelf, WorkAreaType.MOWER)
+                    if waPoly then
+                        -- Polygon centre for field lookup (avoids header-vs-tractor offset)
+                        local cx, cz = 0, 0
+                        for i = 1, #waPoly, 2 do
+                            cx = cx + waPoly[i]
+                            cz = cz + waPoly[i + 1]
+                        end
+                        local n = #waPoly / 2
+                        cx, cz = cx / n, cz / n
+
+                        local fieldId = hookMgrRef:getFieldIdAtWorldPosition(cx, cz)
+                        if fieldId and fieldId > 0 then
+                            local fillTypeName = fruitTypeToWindrowName(fruitType)
+                            if fillTypeName then
+                                local ok = pcall(md.noteMaterialAt, md, waPoly, fieldId, fillTypeName)
+                                if ok then
+                                    SoilLogger.debug("[MowerHook] material birth: field %d, %s",
+                                        fieldId, fillTypeName)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- [NUTRIENT CYCLES] Existing nutrient depletion — gated on setting
+            if not g_SoilFertilityManager.settings.nutrientCycles then return end
 
             local success, errorMsg = pcall(function()
                 local x, _, z = getWorldTranslation(mowerSelf.rootNode)
@@ -2590,7 +2711,7 @@ function HookManager:installMowerHook()
     )
 
     self:register(Mower, "onEndWorkAreaProcessing", original, "Mower.onEndWorkAreaProcessing")
-    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) - forage crop nutrient tracking active")
+    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) - forage crop + material birth active")
     return true
 end
 
@@ -2685,6 +2806,116 @@ function HookManager:installMowerYieldHook()
     self:register(Mower, "onEndWorkAreaProcessing", origEnd, "Mower.onEndWorkAreaProcessing (forage yield restore)")
 
     SoilLogger.info("[OK] Mower yield hook installed - windrow forage output now scales with soil nutrients")
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e: Tedder (hay drying acceleration — SF-44 "THE HAY BET")
+-- =========================================================
+--- Instance-level delegating wrapper on Tedder.processTedderArea.
+--- Applies the hay bet's one-time drying delta and enqueues a
+--- corrective pass at end of frame. Never a class-level assignment
+--- (the brief rules it explicitly) — each existing tedder instance
+--- is patched at install time, and VehicleSystem.addVehicle is
+--- hooked to catch new spawns.
+---@return boolean success
+function HookManager:installTedderHook()
+    if not Tedder or type(Tedder.processTedderArea) ~= "function" then
+        SoilLogger.warning("[TedderHook] Tedder.processTedderArea not available - skipping")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    --- Build a bounding-box polygon from a single work area's
+    --- start/width/height nodes. Returns {minX,minZ, maxX,minZ,
+    --- maxX,maxZ, minX,maxZ} or nil.
+    local function singleWAPoly(workArea)
+        if not workArea
+           or not workArea.start
+           or not workArea.width
+           or not workArea.height then
+            return nil
+        end
+        local xs, _, zs = getWorldTranslation(workArea.start)
+        local xw, _, zw = getWorldTranslation(workArea.width)
+        local xh, _, zh = getWorldTranslation(workArea.height)
+        if not xs or not xw or not xh then return nil end
+        local x4 = xw + xh - xs
+        local z4 = zw + zh - zs
+        local minX = math.min(xs, xw, xh, x4)
+        local maxX = math.max(xs, xw, xh, x4)
+        local minZ = math.min(zs, zw, zh, z4)
+        local maxZ = math.max(zs, zw, zh, z4)
+        return { minX, minZ, maxX, minZ, maxX, maxZ, minX, maxZ }
+    end
+
+    --- Create a delegating wrapper for one tedder instance.
+    --- DELEGATES fully (superFunc first), then applies the
+    --- hay bet's drying delta and enqueues the correction pass.
+    local function makeWrapper(realFn)
+        return function(tedderSelf, workArea, dt)
+            -- DELEGATE fully: original processTedderArea first
+            local results = { realFn(tedderSelf, workArea, dt) }
+
+            -- HAY BET: apply drying delta + enqueue correction
+            -- Server only — no client-side material logic
+            if not tedderSelf.isServer then
+                return unpack(results)
+            end
+            if not g_SoilFertilityManager
+               or not g_SoilFertilityManager.soilSystem
+               or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            local hayBet = g_SoilFertilityManager.soilSystem.hayBet
+            if not hayBet or not hayBet:isArmed() then
+                return unpack(results)
+            end
+
+            local poly = singleWAPoly(workArea)
+            if not poly then return unpack(results) end
+
+            local ok = pcall(function()
+                hayBet:applyTedderDelta(poly)
+                hayBet:enqueueCorrection(poly)
+            end)
+            if not ok then
+                SoilLogger.warning("[TedderHook] hay bet apply failed for work area")
+            end
+
+            return unpack(results)
+        end
+    end
+
+    -- PATCH existing tedder instances (placed on map at load)
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            if vehicle.spec_tedder
+               and type(vehicle.processTedderArea) == "function" then
+                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
+                patchedCount = patchedCount + 1
+            end
+        end
+    end
+
+    -- HOOK VehicleSystem.addVehicle to patch future tedder spawns
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            if vehicle
+               and vehicle.spec_tedder
+               and type(vehicle.processTedderArea) == "function" then
+                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
+            end
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
     return true
 end
 

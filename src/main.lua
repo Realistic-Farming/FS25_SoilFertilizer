@@ -56,6 +56,7 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
+source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -206,6 +207,11 @@ local function loadedMission(mission, node)
         if mw then
             SoilMaterialDownBridge.registerWaterLedger(mw)
             SoilMaterialDownBridge.registerConditionAccrual(mw)
+        end
+        -- [SF-44] THE HAY BET: settle pass member, priority 10 (before age tick).
+        local hayBet = sfm and sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            SoilMaterialDownBridge.registerHayMember(hayBet)
         end
     end
 
@@ -598,6 +604,11 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
     if sfm then
         sfm:update(dt)
+        -- [SF-44] Drain the tedder's correction queue at end of frame
+        local hayBet = sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            hayBet:onUpdate()
+        end
         if sfm.sprayerInfoPanel then
             sfm.sprayerInfoPanel:update(dt)
         end

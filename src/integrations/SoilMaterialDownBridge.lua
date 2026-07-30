@@ -153,8 +153,52 @@ function SoilMaterialDownBridge.unregisterAccruals()
         tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_AGE)
         tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_MAINTENANCE)
         tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_CONDITION)
+        if SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER then
+            tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER)
+        end
     end)
     SoilMaterialDownBridge.timeGuardActive = false
+end
+
+-- =========================================================
+-- Hay Member (SF-44 — THE HAY BET)
+-- =========================================================
+
+SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER = "SoilFertilizer_HayBet_resolution"
+
+--- Register the hay member resolution on the MEMBER_RESOLUTION
+--- slot (priority 10, before the age tick). Called once per game
+--- day to run the settle pass — read condition, decide spoil, and
+--- (when the conversion confirm lands) convert grass to hay.
+---@param hayBet HayBet|nil
+---@return boolean registered
+function SoilMaterialDownBridge.registerHayMember(hayBet)
+    if hayBet == nil or not hayBet:isArmed() then return false end
+    if g_server == nil then return false end
+
+    local tg = getTimeGuard()
+    if tg == nil or tg.registerAccrual == nil then
+        SoilLogger.info("[HayBet] Time Guard not detected - settle pass never fires")
+        return false
+    end
+
+    local okReg = false
+    local ok, err = pcall(function()
+        okReg = tg:registerAccrual(SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER, {
+            cadence           = "day",
+            flowClass         = "calendar",
+            firstPeriodPolicy = "skip",
+            priority          = SoilMaterialDownBridge.PRIORITY.MEMBER_RESOLUTION,
+            onSettle          = function(ctx) hayBet:onSettle(ctx) end,
+        })
+    end)
+    if not ok or not okReg then
+        SoilLogger.warning("[HayBet] Time Guard registration failed: %s", tostring(err))
+        return false
+    end
+
+    SoilLogger.info("[OK] HayBet registered its day settle (prio %d)", SoilMaterialDownBridge.PRIORITY.MEMBER_RESOLUTION)
+    return true
 end
 
 -- =========================================================
