@@ -29,6 +29,12 @@ MaterialWetness.LAYER_KEY = "materialWetness"
 -- Encoding, mirroring the layer def. Asserted against the store at arm().
 local PCT_MIN, PCT_MAX = 0, 100
 local RAW_FLOOR        = 32   -- every real reading sits at or above this
+
+-- Exported for the members, which have to exclude the sentinel band on their own
+-- calls. It was file-local, so `MaterialWetness.RAW_FLOOR` in a member read nil and
+-- the band floor silently became 0 - the sentinel band INCLUDED, which is exactly the
+-- read trap SF-49's own comments warn about. One assignment closes it.
+MaterialWetness.RAW_FLOOR = RAW_FLOOR
 local SENTINEL_RAW     = 24   -- inside the reserved 16-31 band = REFUSAL
 
 -- Drying phase table. RULED 2026-07-31: points of moisture lost per day, wet basis,

@@ -200,6 +200,39 @@ function MaterialDown:_standDown(why)
     SoilLogger.warning("[MaterialDown] STANDING DOWN for this session: %s", tostring(why))
 end
 
+--- THE VERTEX SHAPE GATE, and it sits here rather than at the store on purpose.
+---
+--- Standing down is for a store that cannot do the work. It is NOT for a caller that
+--- asked badly, and those two used to be the same event: every refused aimed write
+--- assumed "polygon ops unavailable" and killed the layer for the session. So one
+--- caller passing a flat {x1,z1,...} array instead of {{x=,z=},...} cost the whole
+--- system, because indexing a number raises inside the store's pcall and the store
+--- read that as an engine verdict.
+---
+--- Checking the shape BEFORE the call keeps both behaviours honest: rubbish never
+--- reaches the store, and a refusal that comes back from a well-formed call really is
+--- the fabrication fence firing, which must still stand the system down.
+---@return boolean valid
+function MaterialDown._isValidPolygon(verts)
+    if type(verts) ~= "table" or #verts < 3 then return false end
+    for i = 1, #verts do
+        local v = verts[i]
+        if type(v) ~= "table" or type(v.x) ~= "number" or type(v.z) ~= "number" then
+            return false
+        end
+    end
+    return true
+end
+
+--- Refuse a malformed polygon loudly, without disarming anything.
+---@return boolean false, always
+function MaterialDown:_refuseShape(where)
+    SoilLogger.warning(
+        "[MaterialDown] %s got a malformed polygon (expected {{x=,z=},...}) and refused it. " ..
+        "The layer stays armed: this is a caller bug, not a store failure.", tostring(where))
+    return false
+end
+
 -- =========================================================
 -- The tick (Time Guard, day cadence)
 -- =========================================================
@@ -297,7 +330,10 @@ end
 --- only know "material is here" and for the bench.
 ---@return boolean recorded
 function MaterialDown:noteMaterialAt(verts, fieldId, fillTypeName)
-    if not self:isArmed() or not verts or #verts < 3 then return false end
+    if not self:isArmed() then return false end
+    if not MaterialDown._isValidPolygon(verts) then
+        return self:_refuseShape("noteMaterialAt")
+    end
     if fillTypeName ~= nil and not MaterialDown.isTrackedMaterial(fillTypeName) then
         return false
     end
@@ -332,11 +368,15 @@ end
 ---   * A source area with no record at all births today, correctly.
 ---@return boolean recorded
 function MaterialDown:noteMaterialMoved(srcVerts, dstVerts, fieldId, fillTypeName)
-    if not self:isArmed() or not dstVerts or #dstVerts < 3 then return false end
+    if not self:isArmed() then return false end
+    if not MaterialDown._isValidPolygon(dstVerts) then
+        return self:_refuseShape("noteMaterialMoved (destination)")
+    end
     if fillTypeName ~= nil and not MaterialDown.isTrackedMaterial(fillTypeName) then
         return false
     end
-    if not srcVerts or #srcVerts < 3 then
+    if not MaterialDown._isValidPolygon(srcVerts) then
+        -- No usable source area: a birth, correctly, not a laundering path.
         return self:noteMaterialAt(dstVerts, fieldId, fillTypeName)
     end
 
@@ -360,7 +400,7 @@ function MaterialDown:noteMaterialMoved(srcVerts, dstVerts, fieldId, fillTypeNam
                 local present = vm:hasAnyInBand(MaterialDown.LAYER_KEY, srcVerts, bandLowRaw, bandHighRaw)
                 if present == nil then
                     self:_standDown("the band probe was refused by the store (polygon ops unavailable)")
-                    return false
+        return false
                 end
                 if present then inheritRaw = bandLowRaw end
             end
@@ -390,7 +430,10 @@ end
 --- which costs a few wasted drying calls but never loses a record - the forgiving
 --- direction.
 function MaterialDown:noteMaterialGone(verts, fieldId)
-    if not self:isArmed() or not verts or #verts < 3 then return false end
+    if not self:isArmed() then return false end
+    if not MaterialDown._isValidPolygon(verts) then
+        return self:_refuseShape("noteMaterialGone")
+    end
     local ok = self.valueMaps:clearPolygonWhere(
         MaterialDown.LAYER_KEY, verts, RAW_BORN, RAW_CEILING)
     if not ok then

@@ -164,14 +164,14 @@ function SoilMaterialDownBridge.unregisterAccruals()
 end
 
 -- =========================================================
--- Hay Member (SF-44 — THE HAY BET)
+-- Hay Member (SF-44 - THE HAY BET)
 -- =========================================================
 
 SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER = "SoilFertilizer_HayBet_resolution"
 
 --- Register the hay member resolution on the MEMBER_RESOLUTION
 --- slot (priority 10, before the age tick). Called once per game
---- day to run the settle pass — read condition, decide spoil, and
+--- day to run the settle pass - read condition, decide spoil, and
 --- (when the conversion confirm lands) convert grass to hay.
 ---@param hayBet HayBet|nil
 ---@return boolean registered
@@ -205,7 +205,7 @@ function SoilMaterialDownBridge.registerHayMember(hayBet)
 end
 
 -- =========================================================
--- Yard Ladder (SF-46 — THE YARD LADDER)
+-- Yard Ladder (SF-46 - THE YARD LADDER)
 -- =========================================================
 
 SoilMaterialDownBridge.ACCRUAL_LADDER = "SoilFertilizer_YardLadder_pass"

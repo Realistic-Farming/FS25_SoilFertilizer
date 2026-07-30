@@ -520,8 +520,29 @@ end
 
 -- Apply a field polygon (array of {x=,z=}) as the modifier region.
 -- Returns true on success, false when polygon ops are unsupported.
+--
+-- A MALFORMED POLYGON IS A CALLER BUG, NOT AN ENGINE CAPABILITY VERDICT, and keeping
+-- those two apart is the whole point of the shape check below. This handler latches
+-- hasPolygonOps=false, and probePolygonSupport never re-probes once _polygonProbed is
+-- set, so anything that trips the latch takes EVERY aimed write in the mod down for
+-- the rest of the session: the age layer, the wetness layer, the yard ladder's reads.
+-- A caller passing a flat {x1,z1,...} array used to do exactly that, because indexing
+-- a number raises inside the pcall and the failure was read as "the engine has no
+-- polygon ops". Rubbish in, refuse the write, leave the capability alone.
 local function setPolygonRegion(self, modifier, verts)
     if not probePolygonSupport(self, modifier) then return false end
+
+    if type(verts) ~= "table" or #verts < 3 then return false end
+    for i = 1, #verts do
+        local v = verts[i]
+        if type(v) ~= "table" or type(v.x) ~= "number" or type(v.z) ~= "number" then
+            SoilLogger.warning(
+                "SoilValueMaps: REFUSING a malformed polygon (vertex %d is not {x=,z=}). " ..
+                "Engine polygon ops are left enabled; this is a caller bug, not a capability limit.", i)
+            return false
+        end
+    end
+
     local ok = pcall(function()
         modifier:clearPolygonPoints()
         for _, v in ipairs(verts) do
@@ -529,6 +550,8 @@ local function setPolygonRegion(self, modifier, verts)
         end
     end)
     if not ok then
+        -- The shape was good and the engine still refused, so this one really is a
+        -- capability verdict and the latch is correct.
         self.hasPolygonOps = false
         return false
     end

@@ -96,7 +96,7 @@ function HayBet:onSettle(ctx)
 
     -- [SF-49] The hay member reads the wetness layer to decide
     -- whether material is fit. A sentinel or refused condition
-    -- always blocks conversion — the conservative direction.
+    -- always blocks conversion - the conservative direction.
     md:enumerateActiveFields(function(fieldId)
         if type(fieldId) ~= "number" then return end
         pcall(function()
@@ -187,18 +187,32 @@ function HayBet:_getFieldPolygon(fieldId)
     if not ok or not field then return nil end
     local poly = field.polygon or (field.fieldPolygon and field.fieldPolygon.points)
     if not poly or #poly < 3 then return nil end
-    -- Convert {x,z, x,z, ...} table or {x,z,...} flat array
+
+    -- THE OUTPUT IS {{x=,z=}, ...}, NOT A FLAT ARRAY. Every store method reads v.x
+    -- and v.z; a flat array indexes a number inside the store's pcall, which used to
+    -- be mistaken for "the engine has no polygon ops" and latched every aimed write
+    -- in the mod off for the session. The store now refuses a malformed polygon
+    -- without latching, but the shape still has to be right for anything to be read
+    -- or written at all.
+    --
+    -- The source can arrive either way, so both are accepted and normalised here.
     local verts = {}
-    for i, p in ipairs(poly) do
-        if type(p) == "table" and p.x and p.z then
-            verts[#verts + 1] = p.x
-            verts[#verts + 1] = p.z
-        elseif type(p) == "number" and i % 2 == 1 then
-            -- Already flat
-            verts[i] = p
+    if type(poly[1]) == "table" then
+        for _, p in ipairs(poly) do
+            if type(p.x) == "number" and type(p.z) == "number" then
+                verts[#verts + 1] = { x = p.x, z = p.z }
+            end
+        end
+    else
+        for i = 1, #poly - 1, 2 do
+            local x, z = poly[i], poly[i + 1]
+            if type(x) == "number" and type(z) == "number" then
+                verts[#verts + 1] = { x = x, z = z }
+            end
         end
     end
-    if #verts < 6 then return nil end
+
+    if #verts < 3 then return nil end
     return verts
 end
 
@@ -209,10 +223,13 @@ end
 --- Apply the tedder's one-time drying delta to the condition
 --- layer over the given vertices. Clamps at the equilibrium
 --- floor; the sentinel band passes through untouched.
----@param verts table  flat vertex array {x1,z1, x2,z2, ...}
+---@param verts table  vertex array {{x=,z=}, ...}
 ---@return boolean applied
 function HayBet:applyTedderDelta(verts)
-    if not self:isArmed() or not verts or #verts < 6 then return false end
+    -- #verts is a COUNT OF VERTICES, not of numbers. The old guard read `< 6`, which
+    -- was correct for a flat {x1,z1,...} array and silently rejects every polygon
+    -- once the shape is {x=,z=} objects: a four-corner work area is length 4.
+    if not self:isArmed() or not verts or #verts < 3 then return false end
     local mw = self.materialWetness
     if not mw:isArmed() then return false end
 
@@ -233,19 +250,24 @@ function HayBet:applyTedderDelta(verts)
     local delta = currentRaw - targetRaw
     if delta <= 0 then return false end
 
+    -- SCOPED TO THE WORKED AREA, not the whole layer. applyRawDeltaToLayer walks
+    -- every pixel on the map, so the tedder was drying every swath in the world by
+    -- eight points each time it passed over one of them. The brief says "over the
+    -- worked area" and the polygon-banded call is the one that means it.
+    local applied = nil
     local ok = pcall(function()
-        mw.valueMaps:applyRawDeltaToLayer(
-            MaterialWetness.LAYER_KEY, -delta,
+        applied = mw.valueMaps:applyRawDeltaToPolygonBand(
+            MaterialWetness.LAYER_KEY, verts, -delta,
             MaterialWetness.RAW_FLOOR, SoilValueMaps.RAW_MAX - 1)
     end)
-    return ok == true
+    return ok and applied ~= nil
 end
 
 --- Enqueue a work area's vertex list for the end-of-frame
 --- corrective pass. The queue is drained by onUpdate.
----@param verts table  flat vertex array
+---@param verts table  vertex array {{x=,z=}, ...}
 function HayBet:enqueueCorrection(verts)
-    if not verts or #verts < 6 then return end
+    if not verts or #verts < 3 then return end
     self._correctionQueue[#self._correctionQueue + 1] = verts
 end
 
@@ -279,10 +301,12 @@ function HayBet:drainCorrectionQueue()
             -- Only correct if still wet (above fit)
             if condition.pct <= HayBet.FIT_PCT then return end
 
-            -- Convert hay back to grass
-            local sx, sz = verts[1], verts[2]
-            local wx, wz = verts[3], verts[4]
-            local hx, hz = verts[7], verts[8]
+            -- Convert hay back to grass. start / width / height corners, read off
+            -- the {x=,z=} vertices rather than a flat number pair.
+            local sx, sz = verts[1].x, verts[1].z
+            local wx, wz = verts[2].x, verts[2].z
+            local hx, hz = verts[4] and verts[4].x or verts[3].x,
+                           verts[4] and verts[4].z or verts[3].z
             DensityMapHeightUtil.changeFillTypeAtArea(
                 sx, sz, wx, wz, hx, hz, hayFT, grassFT)
             SoilLogger.debug("[HayBet] corrective: hay -> grass (condition=%.1f%%)",

@@ -29,9 +29,18 @@ end
 --- Overestimates slightly (may include non-cut area at swath edges), but the
 --- RAW_NO_RECORD filter in setPolygonWhere makes it safe: unrecorded pixels
 --- get born, already-recorded pixels are untouched.
+--- THE VERTEX SHAPE IS THE CONTRACT, and it is {x=,z=} objects, NOT a flat array.
+--- Everything downstream reads `v.x` and `v.z`: setPolygonRegion at
+--- SoilValueMaps.lua:527, isPointInPoly, and the field polygons
+--- SoilFertilitySystem:_getFieldPolyVerts builds. A flat {x1,z1,...} array does not
+--- merely fail to write, it INDEXES A NUMBER inside setPolygonRegion's pcall, and
+--- that handler treats any failure as "the engine has no polygon ops" and latches
+--- hasPolygonOps=false on the SHARED store for the rest of the session. One mown
+--- verge would have taken the age layer, the wetness layer and the yard ladder down
+--- together, with a single warning line to show for it.
 ---@param vehicle table  the vehicle (Mower, Combine, etc.)
 ---@param areaType number  WorkAreaType constant (e.g. WorkAreaType.MOWER)
----@return table|nil  flat vertex array {x1,z1, x2,z2, ...} or nil
+---@return table|nil  vertex array {{x=,z=}, ...} or nil
 local function buildWorkAreaPolygon(vehicle, areaType)
     local ok, workAreas = pcall(function()
         return vehicle:getTypedWorkAreas(areaType)
@@ -60,7 +69,12 @@ local function buildWorkAreaPolygon(vehicle, areaType)
         end
     end
     if minX == nil then return nil end
-    return { minX, minZ, maxX, minZ, maxX, maxZ, minX, maxZ }
+    return {
+        { x = minX, z = minZ },
+        { x = maxX, z = minZ },
+        { x = maxX, z = maxZ },
+        { x = minX, z = maxZ },
+    }
 end
 
 --- Resolve the windrow fill type name from a fruit type index.
@@ -2333,7 +2347,7 @@ function HookManager:installHarvestHook()
                 end)
 
                 -- [MATERIAL DOWN BIRTH] Record straw deposition when the combine
-                -- is in swath mode. Runs regardless of nutrientCycles — the straw
+                -- is in swath mode. Runs regardless of nutrientCycles - the straw
                 -- birth gate is `md:isArmed()`, not a settings toggle.
                 if detectedFieldId and detectedFieldId > 0 then
                     pcall(function()
@@ -2667,11 +2681,11 @@ function HookManager:installMowerHook()
                     if waPoly then
                         -- Polygon centre for field lookup (avoids header-vs-tractor offset)
                         local cx, cz = 0, 0
-                        for i = 1, #waPoly, 2 do
-                            cx = cx + waPoly[i]
-                            cz = cz + waPoly[i + 1]
+                        for _, v in ipairs(waPoly) do
+                            cx = cx + v.x
+                            cz = cz + v.z
                         end
-                        local n = #waPoly / 2
+                        local n = #waPoly
                         cx, cz = cx / n, cz / n
 
                         local fieldId = hookMgrRef:getFieldIdAtWorldPosition(cx, cz)
@@ -2689,7 +2703,7 @@ function HookManager:installMowerHook()
                 end
             end
 
-            -- [NUTRIENT CYCLES] Existing nutrient depletion — gated on setting
+            -- [NUTRIENT CYCLES] Existing nutrient depletion - gated on setting
             if not g_SoilFertilityManager.settings.nutrientCycles then return end
 
             local success, errorMsg = pcall(function()
@@ -2817,12 +2831,12 @@ function HookManager:installMowerYieldHook()
 end
 
 -- =========================================================
--- HOOK 1e: Tedder (hay drying acceleration — SF-44 "THE HAY BET")
+-- HOOK 1e: Tedder (hay drying acceleration - SF-44 "THE HAY BET")
 -- =========================================================
 --- Instance-level delegating wrapper on Tedder.processTedderArea.
 --- Applies the hay bet's one-time drying delta and enqueues a
 --- corrective pass at end of frame. Never a class-level assignment
---- (the brief rules it explicitly) — each existing tedder instance
+--- (the brief rules it explicitly) - each existing tedder instance
 --- is patched at install time, and VehicleSystem.addVehicle is
 --- hooked to catch new spawns.
 ---@return boolean success
@@ -2866,7 +2880,7 @@ function HookManager:installTedderHook()
             local results = { realFn(tedderSelf, workArea, dt) }
 
             -- HAY BET: apply drying delta + enqueue correction
-            -- Server only — no client-side material logic
+            -- Server only - no client-side material logic
             if not tedderSelf.isServer then
                 return unpack(results)
             end
