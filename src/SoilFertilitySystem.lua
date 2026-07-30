@@ -92,6 +92,9 @@ function SoilFertilitySystem.new(settings)
     -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
     -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
     self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
+    -- [SF-43] MATERIAL DOWN. Created here beside the store it rides on; armed only
+    -- after the store initializes, because arming asserts its layer keys resolved.
+    self.materialDown = MaterialDown     and MaterialDown.new()     or nil
 
     -- Per-day flag table for fertilizer application notifications (fieldId → game day last shown)
     -- Prevents notification spam since the sprayer hook fires every frame while active.
@@ -191,6 +194,15 @@ function SoilFertilitySystem:initialize()
         local savegameDir = g_currentMission and g_currentMission.missionInfo
                             and g_currentMission.missionInfo.savegameDirectory
         self.valueMaps:initialize(savegameDir)
+    end
+
+    -- [SF-43] BIND-TIME SELF-CHECK. Must run AFTER every candidate has loaded and
+    -- AFTER SoilValueMaps:initialize: the community fork declares the same
+    -- SoilValueMaps global with byte-identical filenames and none of our defs, and
+    -- every store method returns early SILENTLY on an unknown key. Without this the
+    -- system would look healthy while recording nothing at all.
+    if self.materialDown then
+        self.materialDown:arm(self.valueMaps)
     end
 
     -- Scan fields using real FieldManager (now runs with layerSystem ready)

@@ -1863,6 +1863,11 @@ function SoilValueMapChunkEvent:run(connection)
     if not vm then return end
     local def = SoilValueMaps.LAYER_DEFS[self.layerIdx]
     if not def then return end
+    -- [SF-43 ask 4] Defence in depth at the one call site that can destroy a layer.
+    -- The server never streams a serverOnly layer, but clearLayer immediately below
+    -- is a whole-map UNFILTERED executeSet(0), so a stray or malformed chunk must
+    -- not be able to reach it. Refuse rather than trust the sender.
+    if def.serverOnly == true then return end
 
     -- First chunk of a layer (gyStart == 0): wipe residual local paint so the
     -- server stream can converge. Without this, state-0 cells used to skip and
@@ -1876,7 +1881,11 @@ function SoilValueMapChunkEvent:run(connection)
     end
 
     if self.isLast then
-        SoilLogger.info("Client: value map sync complete (%d layers)", #SoilValueMaps.LAYER_DEFS)
+        local syncedLayers = 0
+        for _, d in ipairs(SoilValueMaps.LAYER_DEFS) do
+            if d.serverOnly ~= true then syncedLayers = syncedLayers + 1 end
+        end
+        SoilLogger.info("Client: value map sync complete (%d layers)", syncedLayers)
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
         local mapOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
@@ -1913,7 +1922,14 @@ function SoilValueMapChecksumEvent.emptyNew()
     return Event.new(SoilValueMapChecksumEvent_mt)
 end
 
---- checksums: array indexed by layerIdx of { sum = n, nonZero = n }
+--- checksums: DENSE array of { layerIdx = n, sum = n, nonZero = n }.
+---
+--- [SF-43 ask 4] Each entry CARRIES its layerIdx. This used to be a positional
+--- array whose position was read back as the LAYER_DEFS index, which meant skipping
+--- any layer would silently shift every checksum after it onto the wrong layer -
+--- the client would then "detect drift" on a layer that was fine and resync it
+--- forever. Carrying the index is the same shape the row-streaming work list below
+--- already uses, and it is what makes the sync opt-out safe to add at all.
 function SoilValueMapChecksumEvent.new(checksums)
     local self = SoilValueMapChecksumEvent.emptyNew()
     self.checksums = checksums or {}
@@ -1923,6 +1939,7 @@ end
 function SoilValueMapChecksumEvent:writeStream(streamId, connection)
     streamWriteUInt8(streamId, #self.checksums)
     for _, cs in ipairs(self.checksums) do
+        streamWriteUInt8(streamId, cs.layerIdx or 0)
         streamWriteInt32(streamId, cs.sum)
         streamWriteInt32(streamId, cs.nonZero)
     end
@@ -1933,8 +1950,9 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     self.checksums = {}
     for i = 1, count do
         self.checksums[i] = {
-            sum     = streamReadInt32(streamId),
-            nonZero = streamReadInt32(streamId),
+            layerIdx = streamReadUInt8(streamId),
+            sum      = streamReadInt32(streamId),
+            nonZero  = streamReadInt32(streamId),
         }
     end
     self:run(connection)
@@ -1952,8 +1970,13 @@ function SoilValueMapChecksumEvent:run(connection)
     local vm = sfGetValueMaps()
     if not vm then return end
 
-    for layerIdx, cs in ipairs(self.checksums) do
-        local def = SoilValueMaps.LAYER_DEFS[layerIdx]
+    for _, cs in ipairs(self.checksums) do
+        -- [SF-43 ask 4] Index comes from the entry, never from its position.
+        local layerIdx = cs.layerIdx
+        local def = layerIdx and SoilValueMaps.LAYER_DEFS[layerIdx]
+        -- A serverOnly layer was never allocated here, so it has nothing to compare
+        -- and must never be resynced. Defensive: the server does not send one.
+        if def and def.serverOnly == true then def = nil end
         if def then
             local localSum, localNonZero = sfComputeLayerChecksum(vm, def.key)
             local sumDrift = math.abs(localSum - cs.sum)
@@ -2034,7 +2057,9 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
     -- Build the (layerIdx, gyStart) work list
     local work = {}
     for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
-        if onlyLayerIdx == nil or layerIdx == onlyLayerIdx then
+        -- [SF-43 ask 4] A serverOnly layer is never streamed, not even on an
+        -- explicit single-layer resync request: the client has no such layer.
+        if def.serverOnly ~= true and (onlyLayerIdx == nil or layerIdx == onlyLayerIdx) then
             local gy = 0
             while gy < numRows do
                 work[#work + 1] = { layerIdx = layerIdx, key = def.key, gyStart = gy }
@@ -2053,11 +2078,16 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
         return SoilValueMapChunkEvent.new(item.layerIdx, item.gyStart, rows, isLast)
     end
 
+    -- [SF-43 ask 4] SKIP serverOnly layers entirely rather than sending a sentinel:
+    -- sfComputeLayerChecksum walks the whole sync grid, so a sentinel would still
+    -- pay the full cost per unsynced layer for a number nobody may act on.
     local function buildChecksums()
         local checksums = {}
-        for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
-            local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-            checksums[#checksums + 1] = { sum = sum, nonZero = nonZero }
+        for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+            if def.serverOnly ~= true then
+                local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
+                checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
+            end
         end
         return checksums
     end
@@ -2107,10 +2137,15 @@ function SoilNetworkEvents_BroadcastValueMapChecksums()
     if g_server == nil then return end
     local vm = sfGetValueMaps()
     if not vm then return end
+    -- [SF-43 ask 4] The broadcast twin of buildChecksums above: same skip, same
+    -- explicit layerIdx. These two must stay in lockstep - a divergence here is
+    -- exactly the positional bug the carried index was added to make impossible.
     local checksums = {}
-    for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
-        local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-        checksums[#checksums + 1] = { sum = sum, nonZero = nonZero }
+    for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        if def.serverOnly ~= true then
+            local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
+            checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
+        end
     end
     g_server:broadcastEvent(SoilValueMapChecksumEvent.new(checksums))
 end
