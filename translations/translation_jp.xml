@@ -1207,6 +1207,9 @@
 <e k="sf_rp_next" v="Next field" />
     
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+    <!-- Harvester panel yield estimate (SF-50) -->
+    <e k="sf_hud_tha" v="%.1f t/ha" />
+    <e k="sf_hud_yield_est_src" v="マップデータからの推定値" />
 </elements>
 
 

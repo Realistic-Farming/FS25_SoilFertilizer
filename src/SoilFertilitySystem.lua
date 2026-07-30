@@ -6186,6 +6186,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
         amendBurnRisk = self:isAmendmentBurnRisk(liveFruitTypeIndex, liveGrowthState),  -- (#684) true → liming/manuring NOW would scorch the crop
+        -- [SF50-C1] Growth state of the live crop, additive for the harvester panel's
+        -- yield estimate. nil when no live fruit is detected (bare/cut field), which the
+        -- consumer must read as honest absence, never as a substituted state. Already
+        -- computed above for amendBurnRisk; this only stops throwing it away.
+        growthState = liveGrowthState,
         nutrientBuffer          = field.nutrientBuffer or {},
         coverageFraction        = field.coverageFraction or 0,
         sessionCoverageFraction = field.sessionCoverageFraction or 0,
