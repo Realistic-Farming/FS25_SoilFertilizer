@@ -100,6 +100,9 @@ function SoilFertilitySystem.new(settings)
     -- [SF-44] THE HAY BET. The settle-pass member that reads condition and
     -- applies grass-to-hay conversion (once the bounced confirm lands).
     self.hayBet = HayBet and HayBet.new() or nil
+    -- [SF-46] THE YARD LADDER. Per-bale condition tracking on the shelter
+    -- ladder, ending in condemnation.
+    self.yardLadder = YardLadder and YardLadder.new() or nil
 
     -- Per-day flag table for fertilizer application notifications (fieldId → game day last shown)
     -- Prevents notification spam since the sprayer hook fires every frame while active.
@@ -217,6 +220,10 @@ function SoilFertilitySystem:initialize()
     -- [SF-44] Armed after the condition layer: depends on both sibling systems.
     if self.hayBet then
         self.hayBet:arm(self.materialDown, self.materialWetness)
+    end
+    -- [SF-46] Armed after HayBet; depends on all three sibling systems.
+    if self.yardLadder then
+        self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
     end
 
     -- Scan fields using real FieldManager (now runs with layerSystem ready)

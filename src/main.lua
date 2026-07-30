@@ -57,6 +57,7 @@ source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
 source(modDirectory .. "src/HayBet.lua")
+source(modDirectory .. "src/YardLadder.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -212,6 +213,11 @@ local function loadedMission(mission, node)
         local hayBet = sfm and sfm.soilSystem and sfm.soilSystem.hayBet
         if hayBet then
             SoilMaterialDownBridge.registerHayMember(hayBet)
+        end
+        -- [SF-46] THE YARD LADDER: bale condition ladder pass, priority 40.
+        local yardLadder = sfm and sfm.soilSystem and sfm.soilSystem.yardLadder
+        if yardLadder then
+            SoilMaterialDownBridge.registerLadderPass(yardLadder)
         end
     end
 

@@ -27,10 +27,10 @@ SoilMaterialDownBridge.ACCRUAL_MAINTENANCE = "SoilFertilizer_MaterialDown_mainte
 -- Settle order for the WHOLE ground-material package, fixed here so the sibling
 -- member registers into a known sequence instead of negotiating one later:
 --
---   10  member conversion / spoil resolution   (no registrant in v1; the slot exists)
+--   10  member conversion / spoil resolution   (SF-44 HayBet)
 --   20  THIS mod's age tick                    <- time exists before the day's weather
 --   30  the sibling's condition accrual (dry, wet, record)
---   40  publication / maintenance
+--   40  publication / maintenance              (SF-46's ladder pass rides this slot)
 --
 -- The ordering is the point: a day's age must be settled BEFORE the sibling applies
 -- that day's weather to it, or the two members disagree about what day it is.
@@ -38,7 +38,7 @@ SoilMaterialDownBridge.PRIORITY = {
     MEMBER_RESOLUTION = 10,
     AGE_TICK          = 20,
     CONDITION_ACCRUAL = 30,   -- reserved for the sibling; nothing registers it here
-    PUBLICATION       = 40,
+    PUBLICATION       = 40,   -- maintenance, and SF-46's ladder pass
 }
 
 SoilMaterialDownBridge.timeGuardActive = false
@@ -156,6 +156,9 @@ function SoilMaterialDownBridge.unregisterAccruals()
         if SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER then
             tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_HAY_MEMBER)
         end
+        if SoilMaterialDownBridge.ACCRUAL_LADDER then
+            tg:unregisterAccrual(SoilMaterialDownBridge.ACCRUAL_LADDER)
+        end
     end)
     SoilMaterialDownBridge.timeGuardActive = false
 end
@@ -198,6 +201,51 @@ function SoilMaterialDownBridge.registerHayMember(hayBet)
     end
 
     SoilLogger.info("[OK] HayBet registered its day settle (prio %d)", SoilMaterialDownBridge.PRIORITY.MEMBER_RESOLUTION)
+    return true
+end
+
+-- =========================================================
+-- Yard Ladder (SF-46 — THE YARD LADDER)
+-- =========================================================
+
+SoilMaterialDownBridge.ACCRUAL_LADDER = "SoilFertilizer_YardLadder_pass"
+
+--- Register the yard ladder's daily pass on the PUBLICATION slot
+--- (priority 40), the everything-else day accrual the brief names.
+--- Never the one-call age tick: this pass is linear in ledger rows
+--- and makes no engine pass, so it has no business sharing a slot
+--- with the whole-layer walk.
+---
+--- Accruals are keyed by NAME, so riding the same priority as the
+--- maintenance accrual is a shared slot, not a collision.
+---@param yardLadder YardLadder|nil
+---@return boolean registered
+function SoilMaterialDownBridge.registerLadderPass(yardLadder)
+    if yardLadder == nil or not yardLadder:isArmed() then return false end
+    if g_server == nil then return false end
+
+    local tg = getTimeGuard()
+    if tg == nil or tg.registerAccrual == nil then
+        SoilLogger.info("[YardLadder] Time Guard not detected - ladder pass never fires")
+        return false
+    end
+
+    local okReg = false
+    local ok, err = pcall(function()
+        okReg = tg:registerAccrual(SoilMaterialDownBridge.ACCRUAL_LADDER, {
+            cadence           = "day",
+            flowClass         = "calendar",
+            firstPeriodPolicy = "skip",
+            priority          = SoilMaterialDownBridge.PRIORITY.PUBLICATION,
+            onSettle          = function(ctx) yardLadder:onLadderPass(ctx) end,
+        })
+    end)
+    if not ok or not okReg then
+        SoilLogger.warning("[YardLadder] Time Guard registration failed: %s", tostring(err))
+        return false
+    end
+
+    SoilLogger.info("[OK] YardLadder registered its daily pass (prio %d)", SoilMaterialDownBridge.PRIORITY.PUBLICATION)
     return true
 end
 

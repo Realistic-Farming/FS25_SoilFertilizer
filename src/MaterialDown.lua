@@ -493,6 +493,27 @@ function MaterialDown:getObjectRecord(token)
     return self.objects[tostring(token)]
 end
 
+--- CREATE, the shape SF-46 specified as the mechanism's first consumer.
+---
+--- The difference from setObjectRecord is the whole point of having both: create
+--- REFUSES an existing token. An owner minting a token it believes is fresh must not
+--- be able to overwrite a row it cannot see, because the ledger is enumerate-not-list
+--- and a silent clobber there is unobservable until the save is already wrong.
+function MaterialDown:createObjectRecord(token, record)
+    if token == nil or record == nil then return false end
+    local key = tostring(token)
+    if self.objects[key] ~= nil then return false end
+    self.objects[key] = record
+    return true
+end
+
+function MaterialDown:removeObjectRecord(token)
+    if token == nil then return false end
+    if self.objects[tostring(token)] == nil then return false end
+    self.objects[tostring(token)] = nil
+    return true
+end
+
 function MaterialDown:enumerateObjects(fn)
     if type(fn) ~= "function" then return 0 end
     local n = 0

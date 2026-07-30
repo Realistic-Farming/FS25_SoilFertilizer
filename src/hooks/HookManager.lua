@@ -211,6 +211,13 @@ function HookManager:installAll(soilSystem)
     local tedderOk = self:installTedderHook()
     if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Bale birth and death hooks (SF-46 "THE YARD LADDER"): per-bale condition rows
+    local baleBirthOk = self:installBaleBirthHook()
+    if baleBirthOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    local baleDeleteOk = self:installBaleDeleteHook()
+    if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -2916,6 +2923,118 @@ function HookManager:installTedderHook()
     end
 
     SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1f: Bale birth and death (SF-46 "THE YARD LADDER")
+-- =========================================================
+-- Two hooks on Bale's own lifecycle, both on methods the LUADOC shows BaleManager
+-- calling on bale instances (Bale:register at BaleManager.md:154, Bale:delete inherited
+-- and shown at PackedBale.md:36).
+--
+-- CLASS-LEVEL ASSIGNMENT IS CORRECT HERE, and it is worth saying why, because the
+-- opposite is true two hooks up. The tedder hook must go on at instance level because
+-- SpecializationUtil.registerFunction copies the function pointer into each vehicle
+-- type's table, so a later class assignment patches a table nobody reads. A Bale is an
+-- Object, not a Vehicle: it has no specializations and instances resolve through the
+-- class table by metatable, so patching the class is what instances actually see.
+
+--- Resolve the yard ladder, or nil when it is not available to take an event.
+local function getArmedYardLadder()
+    local sfm = g_SoilFertilityManager
+    if sfm == nil or sfm.soilSystem == nil then return nil end
+    if sfm.settings == nil or not sfm.settings.enabled then return nil end
+    local yl = sfm.soilSystem.yardLadder
+    if yl == nil or not yl:isArmed() then return nil end
+    return yl
+end
+
+--- Hooks Bale.register for the yard ladder's per-bale condition rows. Catches every
+--- door a bale enters the world through: baler spawn, packed-bale unpacking, console
+--- creation, PlaceableObjectStorage retrieval, and savegame load.
+---@return boolean success
+function HookManager:installBaleBirthHook()
+    if Bale == nil or type(Bale.register) ~= "function" then
+        SoilLogger.warning("[BaleBirth] Bale.register not available - yard ladder birth hook skipped")
+        return false
+    end
+
+    local origRegister = Bale.register
+    Bale.register = function(baleSelf, ...)
+        -- DELEGATE FIRST, always. The bale must be fully registered before we read a
+        -- thing off it, and our failure must never be able to stop a bale existing.
+        local results = { origRegister(baleSelf, ...) }
+
+        local yl = getArmedYardLadder()
+        if yl ~= nil then
+            pcall(function()
+                local nodeId = baleSelf.nodeId
+                if nodeId == nil then return end
+
+                local ftName = "UNKNOWN"
+                if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
+                    local ftIdx = baleSelf:getFillType()
+                    if ftIdx ~= nil and ftIdx > 0 then
+                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+                        if ft ~= nil then ftName = ft.name end
+                    end
+                end
+
+                local fillLevel = 0
+                if baleSelf.getFillLevel ~= nil then
+                    fillLevel = baleSelf:getFillLevel() or 0
+                end
+
+                -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is
+                -- one third of the re-attach heuristic key, so a fill-level stand-in
+                -- would make the key drift every time a bale was partly used.
+                local capacity = fillLevel
+                if baleSelf.getCapacity ~= nil then
+                    capacity = baleSelf:getCapacity() or fillLevel
+                end
+
+                local farmId = 0
+                if baleSelf.getOwnerFarmId ~= nil then
+                    farmId = baleSelf:getOwnerFarmId() or 0
+                end
+
+                yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity)
+            end)
+        end
+
+        return unpack(results)
+    end
+
+    SoilLogger.info("[OK] Bale birth hook installed (Bale.register)")
+    return true
+end
+
+--- Hooks Bale.delete so a row dies with its bale. ONE door for every way a bale
+--- leaves: sale, feeding out, mixing, our own condemnation, RealisticWeather's
+--- deletion, and the engine bale cap. The brief lists those separately and notes the
+--- cap's internals are unexamined; hooking the single exit means we never had to
+--- examine them.
+---@return boolean success
+function HookManager:installBaleDeleteHook()
+    if Bale == nil or type(Bale.delete) ~= "function" then
+        SoilLogger.warning("[BaleDeath] Bale.delete not available - yard ladder rows will rely on the entityExists sweep")
+        return false
+    end
+
+    local origDelete = Bale.delete
+    Bale.delete = function(baleSelf, ...)
+        -- Read the node BEFORE delegating: after the base call the node is gone.
+        local yl = getArmedYardLadder()
+        if yl ~= nil then
+            pcall(function()
+                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId) end
+            end)
+        end
+        return origDelete(baleSelf, ...)
+    end
+
+    SoilLogger.info("[OK] Bale delete hook installed (Bale.delete)")
     return true
 end
 
