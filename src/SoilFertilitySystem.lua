@@ -278,8 +278,10 @@ end
 --- Pure yield-modifier calculation - the SINGLE source of truth for both the
 --- applied harvest reduction (computeYieldModifier) and the monitor's forecast
 --- (getFieldInfo.yieldEfficiency). Reads explicit N/P/K so callers control the
---- nutrient source; BOTH call sites pass FIELD-AVERAGE values, so the number the
---- monitor shows always equals the grain the combine actually receives.
+--- nutrient source; BOTH call sites pass FIELD-AVERAGE values, so OUR share of the
+--- reduction is identical on the applied and displayed paths. The monitor then
+--- additionally folds in SeasonalCropStress's upstream cut (SCS-002) before showing
+--- a number, because that cut reaches the same grain without passing through here.
 --- Read-only: never mutates field state. The amendment-burn one-shot is consumed
 --- by the real harvest path (computeYieldModifier), not here, so the display can
 --- evaluate it as often as it likes without clearing it.
@@ -431,6 +433,32 @@ function SoilFertilitySystem:_omYieldModifier(field)
     end
 end
 
+--- SCS-002 read: SeasonalCropStress's drought-stress yield keep-factor for a field.
+---
+--- SCS reduces yield on its OWN hook, UPSTREAM of ours: Cutter.processCutterArea
+--- scales spec.workAreaParameters.lastMultiplierArea, which the combine later turns
+--- into the fill delta our hopper hook modifies. The two therefore MULTIPLY, and a
+--- forecast that reports only our own modifier overstates the grain the player
+--- actually receives on any stressed field whenever SCS is installed.
+---
+--- DISPLAY USE ONLY. computeYieldModifier must never include this: SCS applies its
+--- own cut itself, and HarvestContractUnderwrite divides out exactly the value the
+--- hopper hook applied. Folding it into the applied path would double-charge the
+--- player and break the contract top-up in the same stroke.
+---
+--- Pull-only, pcall-guarded, neutral when absent - mirrors the SCS-001 moisture read
+--- in _applyRainLeaching. The function-type guard also keeps us neutral against an
+--- OLDER SCS that predates the getter, so the two mods version-skew safely.
+---@param fieldId number
+---@return number keep  Multiplier in [0,1]; 1.0 when SCS contributes no reduction
+function SoilFertilitySystem:_scsYieldKeepFactor(fieldId)
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    if not csMgr or type(csMgr.getYieldKeepFactor) ~= "function" then return 1.0 end
+    local ok, keep = pcall(csMgr.getYieldKeepFactor, csMgr, fieldId)
+    if ok and type(keep) == "number" and keep >= 0.0 and keep <= 1.0 then return keep end
+    return 1.0
+end
+
 --- Forage yield modifier for windrow-drop mowers (#696). Forage crops are gated out of
 --- _yieldModifierFromNutrients via NON_CROP_NAMES (correct - no yield % score for hay), so
 --- the mower path needs its own nutrient read. Uses the "tolerant" tier (matching
@@ -484,10 +512,12 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
     local cropName  = fruitDesc and (fruitDesc.name or "") or ""
 
-    -- Single source of truth: the applied reduction is driven by FIELD-AVERAGE
-    -- nutrients. getFieldInfo()'s monitor forecast calls this same helper with the
-    -- same field-average values, so the displayed "Yield eff." always equals the
-    -- grain the hopper actually receives.
+    -- Single source of truth for OUR reduction: driven by FIELD-AVERAGE nutrients.
+    -- getFieldInfo()'s monitor forecast calls this same helper with the same
+    -- field-average values, so SF's own share of the cut is identical on both paths.
+    -- The monitor additionally multiplies in SeasonalCropStress's keep-factor
+    -- (SCS-002) - deliberately NOT done here, because SCS applies that cut itself
+    -- upstream and HarvestContractUnderwrite inverts exactly what we return.
     local modifier = self:_yieldModifierFromNutrients(
         field, cropName, field.nitrogen, field.phosphorus, field.potassium, fieldId)
 
@@ -4303,8 +4333,9 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
     -- Refresh the field-uniform yield value painted into the soilYield layer.
     -- getFieldInfo returns the SAME field-average yield % shown on the Soil Monitor
-    -- and applied by the combine hook, so the map layer can never disagree with the
-    -- grain you harvest. No managed crop (fallow/grass) → 0 (renders empty).
+    -- (our modifier, plus any upstream ecosystem cut it folds in - see SCS-002), so
+    -- the map layer can never disagree with the monitor or with the grain you
+    -- harvest. No managed crop (fallow/grass) → 0 (renders empty).
     do
         local yinfo = self:getFieldInfo(fieldId)
         field.yieldEfficiency = (yinfo and yinfo.yieldEfficiency) or 0
@@ -6052,7 +6083,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local cropLowerInfo = cropName and string.lower(cropName) or ""
     local isNonCropField = nonCrops[cropLowerInfo]
 
-    -- Yield efficiency forecast - MUST equal the grain the combine actually receives.
+    -- Yield efficiency forecast - MUST equal the grain the combine actually receives,
+    -- which means OUR modifier AND any upstream reduction another ecosystem mod applies
+    -- to the same grain (currently SeasonalCropStress; folded in below as SCS-002).
     -- The applied reduction (computeYieldModifier) is driven by FIELD-AVERAGE nutrients
     -- and frozen for the duration of a harvest pass, so this forecast does the same:
     --   * during an active harvest of this crop -> return the frozen applied value, so
@@ -6076,6 +6109,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             local avgK = field.potassium  or SoilConstants.FIELD_DEFAULTS.potassium
             mod = self:_yieldModifierFromNutrients(field, cropName, avgN, avgP, avgK, nil)
         end
+        -- SCS-002: fold in SeasonalCropStress's own upstream drought cut so the number
+        -- the player reads is the COMBINED reduction, not just our share of it. Applies
+        -- to the frozen branch too - SCS's cut runs live during the pass regardless of
+        -- our freeze. Exactly 1.0 (byte-identical to before) when SCS is absent.
+        mod = mod * self:_scsYieldKeepFactor(fieldId)
         yieldEfficiency = math.floor(mod * 100 + 0.5)
     end
 

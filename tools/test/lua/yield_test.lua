@@ -105,3 +105,44 @@ do
   local m = sys:_yieldModifierFromNutrients({ compaction = 100 }, grassName, thresh, thresh, thresh, nil)
   T.near("yield: grass ignores compaction penalty", m, 1.0)
 end
+
+-- ── SCS-002: SeasonalCropStress keep-factor read ────────────────────────────
+-- _scsYieldKeepFactor is a DISPLAY-path read. It must be perfectly neutral when
+-- SCS is absent (the overwhelmingly common case) and must never let a broken or
+-- version-skewed sibling mod corrupt our forecast.
+do
+  local sys  = newSys()
+  local prev = g_currentMission
+
+  -- No mission at all → neutral.
+  g_currentMission = nil
+  T.near("scs: no mission → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+
+  -- Mission present, SCS not installed → neutral.
+  g_currentMission = {}
+  T.near("scs: SCS absent → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+
+  -- OLDER SCS that predates the getter → neutral (version-skew safety).
+  g_currentMission = { cropStressManager = {} }
+  T.near("scs: getter missing → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+
+  -- Getter throws → pcall swallows it, forecast unaffected.
+  g_currentMission = { cropStressManager = {
+    getYieldKeepFactor = function() error("boom") end } }
+  T.near("scs: getter errors → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+
+  -- Getter returns a non-number or an out-of-range value → rejected, not trusted.
+  g_currentMission = { cropStressManager = {
+    getYieldKeepFactor = function() return "nope" end } }
+  T.near("scs: non-numeric → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+  g_currentMission = { cropStressManager = {
+    getYieldKeepFactor = function() return 1.8 end } }
+  T.near("scs: out-of-range → 1.0", sys:_scsYieldKeepFactor(1), 1.0)
+
+  -- A healthy SCS value passes through untouched.
+  g_currentMission = { cropStressManager = {
+    getYieldKeepFactor = function() return 0.82 end } }
+  T.near("scs: valid keep-factor passes through", sys:_scsYieldKeepFactor(1), 0.82)
+
+  g_currentMission = prev
+end
