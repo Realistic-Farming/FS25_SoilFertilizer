@@ -2868,7 +2868,14 @@ function HookManager:installTedderHook()
         local maxX = math.max(xs, xw, xh, x4)
         local minZ = math.min(zs, zw, zh, z4)
         local maxZ = math.max(zs, zw, zh, z4)
-        return { minX, minZ, maxX, minZ, maxX, maxZ, minX, maxZ }
+        -- {x=,z=} objects, the store contract. See buildWorkAreaPolygon at the top of
+        -- this file for what a flat array costs.
+        return {
+            { x = minX, z = minZ },
+            { x = maxX, z = minZ },
+            { x = maxX, z = maxZ },
+            { x = minX, z = maxZ },
+        }
     end
 
     --- Create a delegating wrapper for one tedder instance.
