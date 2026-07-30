@@ -439,7 +439,10 @@ function SoilSettingsGUI:consoleCommandMaterialBench(fieldIdArg, iterArg)
     out[#out + 1] = string.format("  worst single call: %.3f ms", worst)
     out[#out + 1] = "  NOTE: cost is linear in FIELDS CARRYING MATERIAL, not flat across soil classes."
 
-    SoilLogger.info("%s", table.concat(out, "\n"))
+    -- The console echoes the return value, so log a COMPACT line rather than the
+    -- whole block: printing both put the same nine lines in the log twice.
+    SoilLogger.info("[family gate] field %d @%dpx: ageTick=%.3fms catchUp=%.3fms dryBand=%.3fms probe=%.3fms read=%.3fms",
+        fieldId, vm.resolution, rows[1].ms, rows[2].ms, rows[3].ms, rows[5].ms, rows[6].ms)
     return table.concat(out, "\n")
 end
 
