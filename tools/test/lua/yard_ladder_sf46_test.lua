@@ -383,3 +383,96 @@ T.ok("a dry day costs a fraction of a wet one", R.DRY_OUTDOOR * 5 < R.WET_OUTDOO
 -- and charges unverifiable cover at the roof rate rather than exempting it. If a
 -- three-state predicate ever lands, this is the assertion to come back to.
 T.eq("v1 ships two shelter rungs, outdoors and roof", R.ROOF_MULTIPLIER < 1 and 2 or 0, 2)
+
+-- ── THE BIRTH SAMPLE (RULED 2026-07-31) ───────────────────
+-- A bale is what the pickup ate, so its birth wetness is the LITRES-WEIGHTED average
+-- of everything that fed the chamber. These pin the two halves of the farmer's
+-- sentence the ruling is written in, and the refusal that survives it.
+
+local BALER_A, BALER_B = {}, {}
+
+local function sample(yl, baler, passes)
+  for _, p in ipairs(passes) do yl:noteBalerPickup(baler, p[1], p[2]) end
+  yl:closeBalerChamber(baler)
+  return yl:_takePendingBirth()
+end
+
+do
+  local yl = makeLadder()
+  local got = sample(yl, BALER_A, { {20, 100}, {80, 300} })
+  T.near("litres weight the mean, not pass count", got.pct, 65, 0.01)
+end
+
+-- ONE WET PATCH INSIDE A BIG DRY BALE IS NOT A WET BALE.
+do
+  local yl = makeLadder()
+  local got = sample(yl, BALER_A, { {90, 50}, {10, 950} })
+  T.near("a damp headland does not wet a dry bale", got.pct, 14.0, 0.01)
+end
+
+-- A BALE THAT IS MOSTLY WET IS.
+do
+  local yl = makeLadder()
+  local got = sample(yl, BALER_A, { {90, 900}, {10, 100} })
+  T.near("a mostly wet bale reads wet", got.pct, 82.0, 0.01)
+end
+
+-- REFUSAL HONESTY SURVIVES THE CLAUSE. An accumulator that read nothing hands over
+-- NOTHING, so the bale is born at zero and records no wetness. Not a wetness of zero.
+do
+  local yl = makeLadder()
+  local got = sample(yl, BALER_A, { {nil, 400}, {nil, 600} })
+  T.eq("a chamber that read nothing yields no sample", got, nil)
+end
+
+do
+  local yl = makeLadder()
+  yl:closeBalerChamber(BALER_A)
+  T.eq("a chamber that ate nothing yields no sample", yl:_takePendingBirth(), nil)
+end
+
+-- Unreadable litres are COUNTED but never averaged in: they must not drag the mean
+-- toward zero, because "we could not read it" is not "it was dry".
+do
+  local yl = makeLadder()
+  local got = sample(yl, BALER_A, { {40, 100}, {nil, 900} })
+  T.near("unreadable litres do not dilute the mean", got.pct, 40, 0.01)
+  T.eq("and the bale knows how much it cannot vouch for", got.unknownLitres, 900)
+  T.eq("and how much it can", got.knownLitres, 100)
+end
+
+-- Two balers in the same field do not pool into one bale.
+do
+  local yl = makeLadder()
+  yl:noteBalerPickup(BALER_A, 10, 100)
+  yl:noteBalerPickup(BALER_B, 90, 100)
+  yl:closeBalerChamber(BALER_A)
+  T.near("each baler keeps its own chamber", yl:_takePendingBirth().pct, 10, 0.01)
+  yl:closeBalerChamber(BALER_B)
+  T.near("and the second is untouched by the first", yl:_takePendingBirth().pct, 90, 0.01)
+end
+
+-- The chamber RESETS at close, or every later bale inherits the whole run.
+do
+  local yl = makeLadder()
+  sample(yl, BALER_A, { {10, 1000} })
+  local second = sample(yl, BALER_A, { {90, 100} })
+  T.near("a second bale does not inherit the first chamber", second.pct, 90, 0.01)
+end
+
+-- A non-zero pass with a non-positive quantity is not a pass.
+do
+  local yl = makeLadder()
+  yl:noteBalerPickup(BALER_A, 50, 0)
+  yl:noteBalerPickup(BALER_A, 50, -5)
+  yl:closeBalerChamber(BALER_A)
+  T.eq("zero and negative litres are ignored", yl:_takePendingBirth(), nil)
+end
+
+-- SINGLE USE. A bale entering through any other door (unpacking, console, storage,
+-- savegame load) must find nothing here and fall through to the ground read.
+do
+  local yl = makeLadder()
+  sample(yl, BALER_A, { {55, 100} })
+  T.eq("the pending sample is consumed exactly once", yl:_takePendingBirth(), nil)
+end

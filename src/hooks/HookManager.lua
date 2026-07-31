@@ -267,6 +267,10 @@ function HookManager:installAll(soilSystem)
     local baleDeleteOk = self:installBaleDeleteHook()
     if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
+    local balePickupOk = self:installBalerPickupHook()
+    if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -3195,6 +3199,113 @@ function HookManager:installBaleBirthHook()
     end
 
     SoilLogger.info("[OK] Bale birth hook installed (Bale.register)")
+    return true
+end
+
+--- Rectangle covering a baler pickup pass, expanded by the engine's own line radius.
+--- A work area resolves to a LINE plus a radius, not a point
+--- (DensityMapHeightUtil.getLineByArea, Baler.lua:1868), so the sample has to cover
+--- what the pass actually sweeps.
+---@return table|nil verts
+local function pickupPolygonFromWorkArea(workArea)
+    if workArea == nil or workArea.start == nil then return nil end
+    if DensityMapHeightUtil == nil or DensityMapHeightUtil.getLineByArea == nil then return nil end
+    local ok, lsx, _, lsz, lex, _, lez, lineRadius = pcall(
+        DensityMapHeightUtil.getLineByArea, workArea.start, workArea.width, workArea.height)
+    if not ok or lsx == nil or lex == nil or lsz == nil or lez == nil then return nil end
+
+    local r = tonumber(lineRadius) or 0
+    if r <= 0 then r = 0.5 end
+
+    local dx, dz = lex - lsx, lez - lsz
+    local len = math.sqrt(dx * dx + dz * dz)
+    if len < 0.001 then
+        return {
+            { x = lsx - r, z = lsz - r }, { x = lsx + r, z = lsz - r },
+            { x = lsx + r, z = lsz + r }, { x = lsx - r, z = lsz + r },
+        }
+    end
+
+    local px, pz = -dz / len * r, dx / len * r   -- perpendicular half-width
+    return {
+        { x = lsx + px, z = lsz + pz },
+        { x = lex + px, z = lez + pz },
+        { x = lex - px, z = lez - pz },
+        { x = lsx - px, z = lsz - pz },
+    }
+end
+
+--- THE BIRTH SAMPLE (RULED 2026-07-31). Samples the swath at the pickup and feeds the
+--- yard ladder a litres-weighted average, so a bale is born knowing what it ate. The
+--- rule, and why the accumulator is ours rather than the engine's, is in YardLadder.
+---@return boolean success
+function HookManager:installBalerPickupHook()
+    if Baler == nil or type(Baler.processBalerArea) ~= "function"
+        or type(Baler.createBale) ~= "function" then
+        SoilLogger.warning("[BalePickup] Baler.processBalerArea/createBale not available - birth sampling skipped")
+        return false
+    end
+
+    -- readCondition takes litres ONLY as a sanity gate: it refuses a non-positive
+    -- quantity (MaterialWetness.lua:753-754), and the percent it returns is a
+    -- mass-weighted mean over the cells that carry material, independent of the number
+    -- passed (:767-774). A pass's real litres are not knowable until the delegate has
+    -- run and eaten the material, so a positive probe stands in for the gate and the
+    -- real litres do the weighting afterwards.
+    local PROBE_LITRES = 1
+
+    local origProcess = Baler.processBalerArea
+    Baler.processBalerArea = function(balerSelf, workArea, ...)
+        -- THE SAMPLE HAS TO HAPPEN FIRST. Once the delegate returns, the material this
+        -- pass measured has been eaten and the layer reads NO_MATERIAL, which is
+        -- exactly why every baled bale recorded an unknown wetness before this clause.
+        --
+        -- SERVER ONLY, and that gate is OURS: processBalerArea is not server-gated by
+        -- the engine. Its only early-out is a client DISTANCE check (Baler.lua:1865),
+        -- and the engine's own accumulation at :1908 sits outside any isServer branch.
+        local pct, sampled = nil, false
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            local mw = yl.materialWetness
+            if mw ~= nil and mw:isArmed() then
+                pcall(function()
+                    local verts = pickupPolygonFromWorkArea(workArea)
+                    if verts == nil then return end
+                    sampled = true
+                    local c = mw:readCondition(verts, PROBE_LITRES)
+                    if c ~= nil and c.status == MaterialWetness.RESULT.OK then
+                        pct = c.pct
+                    end
+                end)
+            end
+        end
+
+        local pickedUpLiters, second = origProcess(balerSelf, workArea, ...)
+
+        if sampled and type(pickedUpLiters) == "number" and pickedUpLiters > 0 then
+            -- pickedUpLiters carries the engine's additive bonus, up to 5%
+            -- (Baler.lua:1894). Left in deliberately: it is a per-pass scale factor
+            -- that all but cancels in a ratio, and taking it out would mean inventing
+            -- a correction nobody ruled.
+            pcall(function() yl:noteBalerPickup(balerSelf, pct, pickedUpLiters) end)
+        end
+
+        return pickedUpLiters, second
+    end
+
+    local origCreate = Baler.createBale
+    Baler.createBale = function(balerSelf, ...)
+        -- Close the chamber BEFORE delegating. Bale.register fires SYNCHRONOUSLY
+        -- inside createBale (Baler.lua:1478-1490), and our Bale.register hook is what
+        -- consumes the pending sample.
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            pcall(function() yl:closeBalerChamber(balerSelf) end)
+        end
+        return origCreate(balerSelf, ...)
+    end
+
+    SoilLogger.info("[OK] Baler pickup hook installed (birth wetness sampled at the pickup)")
     return true
 end
 
