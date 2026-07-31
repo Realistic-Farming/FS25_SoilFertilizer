@@ -58,9 +58,13 @@ local function makeSky(opts)
       -- sections below measure the ladder rather than the birth handicap.
       return opts.read or { status = MaterialWetness.RESULT.OK, pct = 15 }
     end,
-    waterDaysInLast = function(_self, _n, _day)
+    -- Mirrors the real contract: "how many of the last n days brought water, and how
+    -- many of those n do I have a record for". It must scale with n, or a span test
+    -- silently measures the fixture instead of the code.
+    waterDaysInLast = function(_self, n, _day)
+      n = math.max(1, math.floor(tonumber(n) or 1))
       if opts.known == 0 then return 0, 0 end
-      return (opts.wet and 1 or 0), 1
+      return (opts.wet and n or 0), n
     end,
   }
 end
@@ -259,6 +263,55 @@ yl, md = makeLadder({ known = 0 })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
 T.eq("an unreachable day takes the dry rate, never the wet one", md:getObjectRecord("yl_1").condition, 1)
+
+-- ── 8b. A time skip charges the SPAN, not one day ─────────
+-- Found in game 2026-07-31: two bales left outdoors across roughly a simulated year
+-- via the tablet, still sitting there. The pass read ctx.monotonicDay and accrued a
+-- single day per settle, so a year-long skip cost one dry day. Both siblings already
+-- read ctx.boundariesCrossed (MaterialDown:264, MaterialWetness:472); this one did
+-- not, and nothing in the suite asked.
+
+local function passSpan(ladder, day, boundaries)
+  ladder:onLadderPass({ monotonicDay = day, boundariesCrossed = boundaries })
+end
+
+-- A hundred dry days is exactly the condemnation threshold at 1/day.
+yl, md = makeLadder({ wet = false })
+yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
+passSpan(yl, 110, 30)
+T.eq("thirty dry days cost thirty, not one", md:getObjectRecord("yl_1").condition, 30)
+
+-- The wet split comes from the Water Record over the whole span, in one read.
+yl, md = makeLadder({ wet = true })
+yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
+passSpan(yl, 110, 10)
+T.eq("a ten day span of wet days costs the wet rate throughout",
+     md:getObjectRecord("yl_1").condition, 10 * YardLadder.RATES.WET_OUTDOOR)
+
+-- Days the record cannot reach are DRY, never wet: neutral when absent, and the
+-- direction that cannot condemn a yard on evidence we do not have.
+yl, md = makeLadder({ known = 0 })
+yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
+passSpan(yl, 110, 50)
+T.eq("an unreachable span takes the dry rate for every day",
+     md:getObjectRecord("yl_1").condition, 50 * YardLadder.RATES.DRY_OUTDOOR)
+
+-- The headline: a skipped year must actually kill an unsheltered bale.
+local killed = false
+yl, md = makeLadder({ wet = false })
+yl:onBaleCreated(1, { setFillLevel = function() end, delete = function() killed = true end },
+                 "STRAW", 100, 1, 100)
+passSpan(yl, 400, 365)
+T.ok("a bale left outdoors for a skipped year is condemned", killed)
+T.eq("and its row is gone", md:getObjectRecord("yl_1"), nil)
+
+-- A missing or nonsense boundary count degrades to one day rather than zero, so a
+-- scheduler that omits it still ages the yard.
+yl, md = makeLadder({ wet = true })
+yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
+yl:onLadderPass({ monotonicDay = 110 })
+T.eq("no boundary count still charges one day",
+     md:getObjectRecord("yl_1").condition, YardLadder.RATES.WET_OUTDOOR)
 
 -- ── 9. Bands and condemnation ─────────────────────────────
 

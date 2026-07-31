@@ -77,6 +77,37 @@ local function buildWorkAreaPolygon(vehicle, areaType)
     }
 end
 
+--- Bounding box of ONE work area, as {x=,z=} vertices.
+---
+--- Same contract as buildWorkAreaPolygon above and for the same reasons; the
+--- difference is only that this takes a work area the engine already handed us rather
+--- than asking a vehicle for its typed set. Used by the tedder hook and the combine
+--- swath hook, both of which receive their work area as an argument.
+---@param workArea table
+---@return table|nil  {{x=,z=}, ...} or nil
+local function buildSingleWorkAreaPolygon(workArea)
+    if not workArea or not workArea.start or not workArea.width or not workArea.height then
+        return nil
+    end
+    local xs, _, zs = getWorldTranslation(workArea.start)
+    local xw, _, zw = getWorldTranslation(workArea.width)
+    local xh, _, zh = getWorldTranslation(workArea.height)
+    if not xs or not xw or not xh then return nil end
+
+    -- Fourth corner of the parallelogram: width + height - start.
+    local x4, z4 = xw + xh - xs, zw + zh - zs
+    local minX = math.min(xs, xw, xh, x4)
+    local maxX = math.max(xs, xw, xh, x4)
+    local minZ = math.min(zs, zw, zh, z4)
+    local maxZ = math.max(zs, zw, zh, z4)
+    return {
+        { x = minX, z = minZ },
+        { x = maxX, z = minZ },
+        { x = maxX, z = maxZ },
+        { x = minX, z = maxZ },
+    }
+end
+
 --- Resolve the windrow fill type name from a fruit type index.
 --- FS25 windrow fill types follow the pattern FRUITNAME_WINDROW.
 ---@param fruitTypeIndex number
@@ -224,6 +255,10 @@ function HookManager:installAll(soilSystem)
     -- Tedder hook (SF-44 "THE HAY BET"): hay drying acceleration + corrective queue
     local tedderOk = self:installTedderHook()
     if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Combine swath hook (SF-43/SF-45): straw birth on the age layer
+    local swathOk = self:installCombineSwathHook()
+    if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Bale birth and death hooks (SF-46 "THE YARD LADDER"): per-bale condition rows
     local baleBirthOk = self:installBaleBirthHook()
@@ -2346,31 +2381,22 @@ function HookManager:installHarvestHook()
                         fieldId, inputFruitType, area)
                 end)
 
-                -- [MATERIAL DOWN BIRTH] Record straw deposition when the combine
-                -- is in swath mode. Runs regardless of nutrientCycles - the straw
-                -- birth gate is `md:isArmed()`, not a settings toggle.
-                if detectedFieldId and detectedFieldId > 0 then
-                    pcall(function()
-                        local md = g_SoilFertilityManager.soilSystem.materialDown
-                        if not md or not md:isArmed() then return end
-
-                        -- Only record straw when the combine is depositing a swath
-                        local isSwath = false
-                        if combineSelf.getIsSwathActive then
-                            isSwath = combineSelf:getIsSwathActive()
-                        end
-                        if not isSwath then return end
-                        if not strawRatio or strawRatio <= 0 then return end
-
-                        -- Build polygon from the header's cutter work areas
-                        local waPoly = buildWorkAreaPolygon(combineSelf, WorkAreaType.CUTTER)
-                        if not waPoly then return end
-
-                        md:noteMaterialAt(waPoly, detectedFieldId, "STRAW")
-                        SoilLogger.debug("[HarvestHook] straw birth: field %d, area=%.1fm2",
-                            detectedFieldId, area or 0)
-                    end)
-                end
+                -- STRAW BIRTH DOES NOT LIVE HERE ANY MORE. It used to, and it could
+                -- never have fired, for two independent reasons:
+                --
+                --   1. It gated on `combineSelf:getIsSwathActive()`. THAT METHOD DOES
+                --      NOT EXIST, in the LUADOC, in lua-scripting, or in AI-reference.
+                --      The `if combineSelf.getIsSwathActive` guard around it was
+                --      therefore always false, the flag stayed false, and the block
+                --      returned every single time whatever the player had set.
+                --   2. It asked the COMBINE for `WorkAreaType.CUTTER` work areas. Those
+                --      belong to the cutter, a separate attached vehicle
+                --      (Cutter.md:483); a combine owns COMBINESWATH and COMBINECHOPPER
+                --      (Combine.md:1407). So the polygon would have been nil anyway.
+                --
+                -- Confirmed dead by a live harvest: the hook logged its field line
+                -- hundreds of times over a full wheat field and produced zero births.
+                -- See installCombineSwathHook for where this belongs.
 
                 if not ok then
                     SoilLogger.error("Harvest hook (field detection) failed: %s", tostring(errMsg))
@@ -2692,9 +2718,22 @@ function HookManager:installMowerHook()
                         if fieldId and fieldId > 0 then
                             local fillTypeName = fruitTypeToWindrowName(fruitType)
                             if fillTypeName then
-                                local ok = pcall(md.noteMaterialAt, md, waPoly, fieldId, fillTypeName)
-                                if ok then
+                                -- REPORT THE RESULT, NOT THE PCALL STATUS. pcall returns
+                                -- true whenever the call RAN, so the old line announced
+                                -- "material birth" for materials noteMaterialAt had just
+                                -- refused. Mowing a meadow printed a birth per work area
+                                -- per frame for a material that is not in the tracked set
+                                -- and was never recorded. A diagnostic that cannot say no
+                                -- is worse than none, because it is trusted.
+                                local ok, recorded = pcall(md.noteMaterialAt, md, waPoly, fieldId, fillTypeName)
+                                if not ok then
+                                    SoilLogger.warning("[MowerHook] material birth raised: field %d, %s",
+                                        fieldId, fillTypeName)
+                                elseif recorded then
                                     SoilLogger.debug("[MowerHook] material birth: field %d, %s",
+                                        fieldId, fillTypeName)
+                                else
+                                    SoilLogger.debug("[MowerHook] no record (not a tracked material): field %d, %s",
                                         fieldId, fillTypeName)
                                 end
                             end
@@ -2944,6 +2983,134 @@ function HookManager:installTedderHook()
     end
 
     SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e2: Combine swath (STRAW BIRTH, SF-43 / SF-45)
+-- =========================================================
+-- `Combine:processCombineSwathArea(workArea)` is the function that actually lays a
+-- swath, and hooking it is what makes straw birth self-gating: it is only ever in the
+-- call path when the combine is dropping material, so there is no swath flag to read
+-- and no phantom method to guess at. That is the same shape the mower hook has for
+-- grass, which is the one birth path that has always worked.
+--
+-- INSTANCE LEVEL, and this is the trap-3 case rather than the Bale case below.
+-- `SpecializationUtil.registerFunction(vehicleType, "processCombineSwathArea", ...)`
+-- at Combine.md:2823 copies the pointer into each vehicle type's table at
+-- registration, so assigning `Combine.processCombineSwathArea` here would patch a
+-- table nobody reads and the hook would silently never run.
+--
+-- THE RETURN VALUE IS THE EVIDENCE. The engine returns dropped litres
+-- (Combine.md:2692-2714), so a birth is recorded only when material actually landed.
+-- No litres, no record: that is a stronger gate than any flag, because it is the
+-- outcome rather than an intention.
+---@return boolean success
+function HookManager:installCombineSwathHook()
+    if not Combine or type(Combine.processCombineSwathArea) ~= "function" then
+        SoilLogger.warning("[SwathHook] Combine.processCombineSwathArea not available - straw birth skipped")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    --- The dropped material's own fill type, resolved exactly the way the engine
+    --- resolves it at Combine.md:2703-2706: fruit type from the drop fill type, then
+    --- that fruit's windrow fill type. Never hardcoded to STRAW, so the tracked-material
+    --- set stays the single place that decides what is recorded.
+    local function windrowFillTypeName(combineSelf)
+        local spec = combineSelf.spec_combine
+        local params = spec and spec.workAreaParameters
+        local dropFillType = params and params.dropFillType
+        if dropFillType == nil or g_fruitTypeManager == nil then return nil end
+
+        local fruitDesc = g_fruitTypeManager:getFruitTypeByFillTypeIndex(dropFillType)
+        if fruitDesc == nil or fruitDesc.index == nil then return nil end
+
+        local windrowIdx = g_fruitTypeManager:getWindrowFillTypeIndexByFruitTypeIndex(fruitDesc.index)
+        if windrowIdx == nil or g_fillTypeManager == nil then return nil end
+
+        local ft = g_fillTypeManager:getFillTypeByIndex(windrowIdx)
+        return ft and ft.name or nil
+    end
+
+    local function makeWrapper(realFn)
+        return function(combineSelf, workArea, ...)
+            -- DELEGATE FIRST, always, and forward every return: the engine's own
+            -- caller reads the dropped-litres value.
+            local results = { realFn(combineSelf, workArea, ...) }
+
+            if not combineSelf.isServer then return unpack(results) end
+
+            -- Nothing landed on the ground, so there is nothing to remember.
+            local droppedLiters = results[1]
+            if type(droppedLiters) ~= "number" or droppedLiters <= 0 then
+                return unpack(results)
+            end
+
+            if not g_SoilFertilityManager
+               or not g_SoilFertilityManager.soilSystem
+               or not g_SoilFertilityManager.settings
+               or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            -- Birth is NOT gated on nutrientCycles: a player who turns nutrient
+            -- cycling off should still get straw that remembers when it was cut
+            -- (Arissani ruling 2026-07-30).
+            local md = g_SoilFertilityManager.soilSystem.materialDown
+            if not md or not md:isArmed() then return unpack(results) end
+
+            pcall(function()
+                local poly = buildSingleWorkAreaPolygon(workArea)
+                if not poly then return end
+
+                local cx, cz = 0, 0
+                for _, v in ipairs(poly) do cx, cz = cx + v.x, cz + v.z end
+                cx, cz = cx / #poly, cz / #poly
+
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(cx, cz)
+                if not fieldId or fieldId <= 0 then return end
+
+                -- nil name is allowed through: noteMaterialAt records it as an
+                -- unnamed material rather than refusing, because the caller made no
+                -- claim to check. A NAMED but untracked material is refused there.
+                local name = windrowFillTypeName(combineSelf)
+                if md:noteMaterialAt(poly, fieldId, name) then
+                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL dropped",
+                        fieldId, tostring(name), droppedLiters)
+                end
+            end)
+
+            return unpack(results)
+        end
+    end
+
+    -- Patch combines already in the world.
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            if vehicle.spec_combine and type(vehicle.processCombineSwathArea) == "function" then
+                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
+                patchedCount = patchedCount + 1
+            end
+        end
+    end
+
+    -- And any that spawn later, the same way the tedder and harvest hooks do.
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            if vehicle and vehicle.spec_combine
+               and type(vehicle.processCombineSwathArea) == "function" then
+                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
+            end
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info("[OK] Combine swath hook installed (instance-level, %d existing combines patched)", patchedCount)
     return true
 end
 

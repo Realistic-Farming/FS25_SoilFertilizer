@@ -412,6 +412,17 @@ function YardLadder:onLadderPass(ctx)
     local day = ctx and tonumber(ctx.monotonicDay)
     if day == nil then return end
 
+    -- HOW MANY DAYS ACTUALLY PASSED, not how many settles fired.
+    --
+    -- A tablet time-skip crosses months in one settle. Both siblings already read
+    -- this: MaterialDown ages the layer by the full span and MaterialWetness applies
+    -- the whole weather window. This member did not, so it charged ONE day per skip
+    -- no matter how long the skip was, and a bale left in a yard survived a simulated
+    -- year at a cost of one dry day. Observed in game 2026-07-31: two bales outdoors
+    -- across roughly a year, still there, untouched.
+    local boundaries = math.floor(tonumber(ctx.boundariesCrossed) or 1)
+    if boundaries < 1 then boundaries = 1 end
+
     -- Collected first: condemnation mutates the ledger, and mutating a table while
     -- pairs() walks it is undefined in Lua 5.1.
     local due = {}
@@ -421,16 +432,35 @@ function YardLadder:onLadderPass(ctx)
         end
     end)
 
-    local wet = self:_isDayWet(day)
+    -- Split the crossed span into wet and dry days ONCE, from the Water Record, rather
+    -- than asking per bale. `waterDaysInLast` returns how many of the last N days
+    -- brought water and how many of those N it actually has a record for; days it
+    -- cannot reach count as DRY, which is the neutral-when-absent direction and is the
+    -- one that cannot condemn a yard on evidence we do not have.
+    local wetDays, dryDays = self:_splitSpan(boundaries, day)
+
     for _, item in ipairs(due) do
-        local ok, err = pcall(function() self:_processRow(item.token, item.row, day, wet) end)
+        local ok, err = pcall(function()
+            self:_processRow(item.token, item.row, day, wetDays, dryDays)
+        end)
         if not ok then
             SoilLogger.warning("[YardLadder] row %s failed its pass: %s", item.token, tostring(err))
         end
     end
 end
 
-function YardLadder:_processRow(token, row, day, dayIsWet)
+--- How many of the `span` days ending at `throughDay` were wet, and how many dry.
+---@return number wetDays, number dryDays
+function YardLadder:_splitSpan(span, throughDay)
+    local mw = self.materialWetness
+    if mw == nil or not mw:isArmed() then return 0, span end
+    local ok, count = pcall(mw.waterDaysInLast, mw, span, throughDay)
+    if not ok or type(count) ~= "number" then return 0, span end
+    if count > span then count = span end
+    return count, span - count
+end
+
+function YardLadder:_processRow(token, row, day, wetDays, dryDays)
     local live = self._live[token]
 
     -- Unattached: the row survived a save but no bale has claimed it back yet. It
@@ -466,7 +496,11 @@ function YardLadder:_processRow(token, row, day, dayIsWet)
     if moved then return end
 
     local R = YardLadder.RATES
-    local rate = dayIsWet and R.WET_OUTDOOR or R.DRY_OUTDOOR
+    -- The whole crossed span at once. SHELTER IS SAMPLED ONCE, HERE, and applied to
+    -- the span: we know where the bale is now and have no record of where it stood on
+    -- each skipped day. That is the same assumption the dwell check above already
+    -- makes, and the honest one, since a bale that had moved would have failed dwell.
+    local rate = (wetDays or 0) * R.WET_OUTDOOR + (dryDays or 0) * R.DRY_OUTDOOR
     local shelter = self:_shelterMultiplier(x, z)
     row.condition = (row.condition or 0) + rate * shelter
 
@@ -485,21 +519,6 @@ function YardLadder:_shelterMultiplier(x, z)
     -- no mask reads as outdoors.
     if sheltered == true then return YardLadder.RATES.ROOF_MULTIPLIER end
     return 1.0
-end
-
---- Was this day a wet one? The sky member's Water Record is the only source; there is
---- no documented per-day rainfall getter on Environment and this member does not
---- invent one.
----
---- known == 0 means the record does not reach back to that day. That is a refusal, and
---- a refusal is not a wet day: it takes the DRY rate, which is the neutral-when-absent
---- direction and cannot condemn a yard on missing evidence.
-function YardLadder:_isDayWet(day)
-    local mw = self.materialWetness
-    if mw == nil or not mw:isArmed() then return false end
-    local ok, count, known = pcall(mw.waterDaysInLast, mw, 1, day)
-    if not ok or known == nil or known < 1 then return false end
-    return (count or 0) > 0
 end
 
 function YardLadder:_isFermenting(bale)
