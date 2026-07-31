@@ -54,6 +54,10 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 -- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
+source(modDirectory .. "src/MaterialDown.lua")
+source(modDirectory .. "src/MaterialWetness.lua")
+source(modDirectory .. "src/HayBet.lua")
+source(modDirectory .. "src/YardLadder.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -100,6 +104,7 @@ source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
 source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 source(modDirectory .. "src/integrations/SoilStateLedgerBridge.lua")
+source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
 
@@ -184,6 +189,36 @@ local function loadedMission(mission, node)
     -- runs loadSoilData.
     if SoilStateLedgerBridge then
         SoilStateLedgerBridge.register(sfm)
+    end
+
+    -- [SF-43] MATERIAL DOWN's own two bridges. Registered here, alongside the ledger
+    -- above, so the sidecar's deserialize has fired before anything reads a
+    -- watermark, and so Time Guard has published its g_currentMission handle.
+    -- Both no-op when their mod is absent; the system stays inert rather than
+    -- minting a private clock or a second copy of the state.
+    if SoilMaterialDownBridge then
+        local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
+        if md then
+            SoilMaterialDownBridge.registerLedger(md)
+            SoilMaterialDownBridge.loadFallback(md)
+            SoilMaterialDownBridge.registerAccruals(md)
+        end
+        -- [SF-49] The condition half registers into the slot the sibling reserved.
+        local mw = sfm and sfm.soilSystem and sfm.soilSystem.materialWetness
+        if mw then
+            SoilMaterialDownBridge.registerWaterLedger(mw)
+            SoilMaterialDownBridge.registerConditionAccrual(mw)
+        end
+        -- [SF-44] THE HAY BET: settle pass member, priority 10 (before age tick).
+        local hayBet = sfm and sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            SoilMaterialDownBridge.registerHayMember(hayBet)
+        end
+        -- [SF-46] THE YARD LADDER: bale condition ladder pass, priority 40.
+        local yardLadder = sfm and sfm.soilSystem and sfm.soilSystem.yardLadder
+        if yardLadder then
+            SoilMaterialDownBridge.registerLadderPass(yardLadder)
+        end
     end
 
     -- FS25_MasterHUD: when present it drives our whole HUD draw stack through its
@@ -575,6 +610,11 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
     if sfm then
         sfm:update(dt)
+        -- [SF-44] Drain the tedder's correction queue at end of frame
+        local hayBet = sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            hayBet:onUpdate()
+        end
         if sfm.sprayerInfoPanel then
             sfm.sprayerInfoPanel:update(dt)
         end

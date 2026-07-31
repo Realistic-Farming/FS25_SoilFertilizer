@@ -241,3 +241,25 @@ do
   T.eq("sentryStatus: reason", d.reason, 5)
   T.eq("sentryStatus: seq", d.seq, 42)
 end
+
+-- ── SoilValueMapChecksumEvent (SF-43 ask 4): each entry CARRIES its layerIdx ──
+-- This was a positional array whose POSITION was read back as the LAYER_DEFS index.
+-- Skipping any layer (the serverOnly opt-out does exactly that) would then shift
+-- every later checksum onto the wrong layer, so a client would "detect drift" on a
+-- healthy layer and resync it forever. The gap below is the whole point: indices 3
+-- and 5 are sent with 4 missing, exactly as a skipped serverOnly layer produces.
+do
+  local sent = {
+    { layerIdx = 3, sum = 1200, nonZero = 340 },
+    { layerIdx = 5, sum = 77,   nonZero = 9   },
+  }
+  local d = rt("vmChecksum", SoilValueMapChecksumEvent.new(sent), SoilValueMapChecksumEvent)
+  T.eq("vmChecksum: entry count survives", #d.checksums, 2)
+  T.eq("vmChecksum: first layerIdx survives the gap", d.checksums[1].layerIdx, 3)
+  T.eq("vmChecksum: first sum",     d.checksums[1].sum,     1200)
+  T.eq("vmChecksum: first nonZero", d.checksums[1].nonZero, 340)
+  -- The assertion that matters: position 2 still says layer 5, not layer 4.
+  T.eq("vmChecksum: a skipped layer does not shift the next one", d.checksums[2].layerIdx, 5)
+  T.eq("vmChecksum: second sum",     d.checksums[2].sum,     77)
+  T.eq("vmChecksum: second nonZero", d.checksums[2].nonZero, 9)
+end

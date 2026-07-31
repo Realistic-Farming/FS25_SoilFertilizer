@@ -71,6 +71,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilAddCrop", "Add a custom crop to the tuning table (seeded from generic defaults): SoilAddCrop <name> (#717)", "consoleCommandAddCrop", self)
     -- REFINED: per-pixel value map debug commands
     addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
+    addConsoleCommand("SoilMaterialBench", "SF-43/49 family gate: time ms per engine call for the ground-material passes: SoilMaterialBench [fieldId] [iterations]", "consoleCommandMaterialBench", self)
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
@@ -319,6 +320,130 @@ function SoilSettingsGUI:consoleCommandVmStats()
     local vm, err = sfGetValueMapsForConsole()
     if not vm then return err end
     return vm:getDebugStats()
+end
+
+--- [SF-43 / SF-49 FAMILY GATE] Measure milliseconds per engine call for the
+--- ground-material passes, against a real field polygon, in-game.
+---
+--- The family gate is "milliseconds per engine call on the largest supported map",
+--- and no member of the package may be declared DONE until that number exists.
+--- Call COUNTS are asserted in the bench; this is the other half.
+---
+--- Non-destructive by construction: it REFUSES on a field that already carries
+--- material records, paints its own pixels, and clears them again afterwards. The
+--- two material layers hold no player data, so its scratch space is its own.
+---
+--- Timing uses getTimeSec() (seconds, float) - the pattern proven in the reference
+--- scripting corpus, `(endTime - startTime) * 1000` for milliseconds.
+function SoilSettingsGUI:consoleCommandMaterialBench(fieldIdArg, iterArg)
+    if g_server == nil then return "Material bench is server-only" end
+    if getTimeSec == nil then return "getTimeSec() unavailable on this build - cannot time" end
+
+    local vm, err = sfGetValueMapsForConsole()
+    if not vm then return err end
+    if vm.applyRawDeltaToPolygonBand == nil then
+        return "This SoilValueMaps has no SF-49 banded delta (community-fork collision?)"
+    end
+
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if soilSys == nil then return "Soil system not available" end
+
+    -- Resolve the field: explicit id, else the one under the player.
+    local fieldId = tonumber(fieldIdArg)
+    if fieldId == nil and soilSys.soilHUD ~= nil then
+        local ok, cur = pcall(function() return soilSys.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur end
+    end
+    if fieldId == nil then
+        return "No field: pass one (SoilMaterialBench <fieldId> [iterations]) or stand on a field"
+    end
+
+    local field = soilSys.fieldData and soilSys.fieldData[fieldId]
+    local okV, verts = pcall(function() return soilSys:_getFieldPolyVerts(fieldId, field) end)
+    if not okV or verts == nil or #verts < 3 then
+        return string.format("Field %s has no usable polygon", tostring(fieldId))
+    end
+
+    local AGE, WET = "materialAge", "materialWetness"
+    local RAW_MAX = SoilValueMaps.RAW_MAX
+
+    -- Never clobber real records.
+    local occupied = vm:hasAnyInBand(AGE, verts, 1, RAW_MAX)
+    if occupied == nil then return "Band probe refused (polygon ops unavailable) - cannot bench safely" end
+    if occupied then
+        return string.format("Field %d already carries material records - refusing to bench on it", fieldId)
+    end
+
+    local iterations = math.max(1, math.min(200, math.floor(tonumber(iterArg) or 10)))
+
+    local function timeIt(label, fn)
+        local t0 = getTimeSec()
+        for _ = 1, iterations do fn() end
+        local t1 = getTimeSec()
+        return { label = label, ms = ((t1 - t0) * 1000) / iterations }
+    end
+
+    -- Paint scratch pixels so every pass has real work to do.
+    vm:setPolygonWhere(AGE, verts, 1, 0, 0)
+    vm:setPolygonWhere(WET, verts, 153, 0, 0)   -- ~60 percent, the top phase band
+
+    local rows = {}
+    rows[#rows + 1] = timeIt("age tick (whole-layer +1, the daily call)", function()
+        vm:applyRawDeltaToLayer(AGE, 1, 1, RAW_MAX - 1)
+    end)
+    rows[#rows + 1] = timeIt("age catch-up (+30, add + saturating pass)", function()
+        vm:applyRawDeltaToLayer(AGE, 30, 1, RAW_MAX - 1)
+    end)
+    rows[#rows + 1] = timeIt("drying band (polygon, -64 raw)", function()
+        vm:applyRawDeltaToPolygonBand(WET, verts, -64, 32, RAW_MAX, { floorTo = 32 })
+    end)
+    rows[#rows + 1] = timeIt("rain add (polygon, +38 raw)", function()
+        vm:applyRawDeltaToPolygonBand(WET, verts, 38, 32, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("band probe (inheritance / presence)", function()
+        vm:hasAnyInBand(AGE, verts, 1, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("banded average (the collector's read)", function()
+        vm:readAverageRawInBand(WET, verts, 32, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("aimed write (birth / inheritance)", function()
+        vm:setPolygonWhere(AGE, verts, 1, 0, 0)
+    end)
+
+    -- Put the scratch space back.
+    vm:clearPolygonWhere(AGE, verts, 1, RAW_MAX)
+    vm:clearPolygonWhere(WET, verts, 1, RAW_MAX)
+
+    local out = {
+        string.format("MATERIAL FAMILY GATE - field %d, %d iteration(s), %dpx / %.0fm (%.1f m/px)",
+            fieldId, iterations, vm.resolution, vm.terrainSize, vm.terrainSize / vm.resolution),
+        string.format("  capability: executeAdd=%s polygonOps=%s",
+            tostring(vm.hasExecuteAdd), tostring(vm.hasPolygonOps)),
+    }
+    local worst = 0
+    for _, r in ipairs(rows) do
+        out[#out + 1] = string.format("  %-42s %7.3f ms/call", r.label, r.ms)
+        if r.ms > worst then worst = r.ms end
+    end
+
+    -- The projected daily bill, stating the LINEAR term rather than hiding it.
+    local activeFields = 0
+    local md = soilSys.materialDown
+    if md ~= nil and md.enumerateActiveFields ~= nil then
+        activeFields = md:enumerateActiveFields(function() end)
+    end
+    local perField = 3   -- three drying phase bands
+    out[#out + 1] = string.format(
+        "  daily bill: 1 age tick + 1 rain + (%d phases x %d field(s) with material) = %d call(s)",
+        perField, activeFields, 2 + perField * activeFields)
+    out[#out + 1] = string.format("  worst single call: %.3f ms", worst)
+    out[#out + 1] = "  NOTE: cost is linear in FIELDS CARRYING MATERIAL, not flat across soil classes."
+
+    -- The console echoes the return value, so log a COMPACT line rather than the
+    -- whole block: printing both put the same nine lines in the log twice.
+    SoilLogger.info("[family gate] field %d @%dpx: ageTick=%.3fms catchUp=%.3fms dryBand=%.3fms probe=%.3fms read=%.3fms",
+        fieldId, vm.resolution, rows[1].ms, rows[2].ms, rows[3].ms, rows[5].ms, rows[6].ms)
+    return table.concat(out, "\n")
 end
 
 function SoilSettingsGUI:consoleCommandVmRead(xArg, zArg)

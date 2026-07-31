@@ -1740,10 +1740,26 @@ SoilConstants.SEE_AND_SPRAY = {
 -- ========================================
 -- Per-section rate multiplier derived from the nutrient deficit at each section's soil cell.
 -- The manual rate setting acts as a ceiling; variable rate cannot exceed it.
+-- CD-9: Per-MOA disease resistance tuning values
+-- RESISTANCE_BUILD_PER_APPLICATION: fractional immunity gained per full-rate pass of one MOA
+-- RESISTANCE_DECAY_MONTHLY: multiplier applied per unused month (calendar-normalized)
+-- HYBRID_THRESHOLD: resistance level at which ≥2 modes triggers hybrid onset
+-- RESISTANCE_MAX_SYNTHETIC: ceiling for synthetic MOA scores (10 = 100% immunity)
+-- RESISTANCE_MAX_NATURAL: ceiling for natural/bio MOA scores (5 = 50% immunity)
+SoilConstants.RESISTANCE = {
+    BUILD_PER_APPLICATION = 0.05,
+    DECAY_MONTHLY         = 0.85,
+    HYBRID_THRESHOLD      = 0.7,
+    MAX_SYNTHETIC         = 10,
+    MAX_NATURAL           = 5,
+}
+
 SoilConstants.VARIABLE_RATE = {
     NUTRIENT_TARGET = 70,     -- "well stocked" level - same as Smart Sensor NUTRIENT_TARGET
     MIN_RATE        = 0.30,   -- minimum multiplier (field at or above target → light top-up pass)
     MAX_RATE        = 1.50,   -- maximum multiplier (completely depleted cell)
+    PH_OPTIMAL      = 6.5,   -- optimal pH target (reuse NUTRIENT_LIMITS.PH_OPTIMAL)
+    PH_CURVE_FLOOR  = 5.0,   -- max rate at pH <= floor (reuse NUTRIENT_LIMITS.PH_MIN)
 }
 
 -- ========================================

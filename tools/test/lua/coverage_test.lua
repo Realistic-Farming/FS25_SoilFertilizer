@@ -152,3 +152,43 @@ do
   end
   T.eq("FERTILIZER_PROFILES: all N/P/K/OM/pH values are numbers", bad, 0)
 end
+
+-- ── F61 (VWW half of #650): ownership is claimed only when a cell is ACCEPTED ──
+-- On a multi-field farmland _getFieldPolyVerts resolves the FIRST field's polygon, so a
+-- VWW sprayer on the OTHER field has every boom cell rejected by the containment test.
+-- markBoomCells used to set _geometricCoverageOwner regardless, which locked out the
+-- liter fallback for the rest of the session and froze Coverage/Pass% at 0%.
+do
+  local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
+  -- A polygon far from the boom points: every cell centre falls outside it.
+  sys._getFieldPolyVerts = function()
+    return { {x=1000, z=1000}, {x=1010, z=1000}, {x=1010, z=1010}, {x=1000, z=1010} }
+  end
+  sys:markBoomCells(1, { { x = 5, z = 5 }, { x = 15, z = 5 } }, false)
+
+  T.eq("F61: all cells rejected → geometric ownership NOT claimed",
+       sys.fieldData[1]._geometricCoverageOwner, nil)
+  T.near("F61: all cells rejected → no session ha accrued",
+         sys.fieldData[1].sessionCoverageHa or 0, 0)
+
+  -- The liter fallback must still be reachable, exactly as for a non-VWW implement.
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  T.near("F61: liter fallback still tracks after a fully-rejected geometric pass",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
+end
+
+-- The healthy path is unchanged: an accepted cell still claims ownership immediately,
+-- so the #726 double-count guard keeps working on a correctly-resolved polygon.
+do
+  local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
+  sys._getFieldPolyVerts = function()
+    return { {x=0, z=0}, {x=100, z=0}, {x=100, z=100}, {x=0, z=100} }
+  end
+  sys:markBoomCells(1, { { x = 5, z = 5 }, { x = 15, z = 5 } }, false)
+
+  T.eq("F61: an accepted cell still claims geometric ownership",
+       sys.fieldData[1]._geometricCoverageOwner, true)
+  T.ok("F61: accepted cells accrue session ha",
+       (sys.fieldData[1].sessionCoverageHa or 0) > 0)
+end

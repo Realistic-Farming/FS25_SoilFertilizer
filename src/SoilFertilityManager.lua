@@ -1259,6 +1259,14 @@ function SoilFertilityManager:saveSoilData()
     if self.soilSystem.valueMaps then
         self.soilSystem.valueMaps:saveToSavegame(savegamePath)
     end
+
+    -- [SF-43] MATERIAL DOWN's watermark + object sidecar. The age LAYER itself
+    -- persists natively as one of the .grle files just written; only the small
+    -- sidecar needs a home. No-ops when StateLedger is present (the ledger owns the
+    -- state then, so nothing writes it twice).
+    if SoilMaterialDownBridge and self.soilSystem.materialDown then
+        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown)
+    end
 end
 
 --- Load soil data from XML file
