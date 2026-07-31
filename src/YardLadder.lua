@@ -59,10 +59,56 @@ YardLadder.RATES = {
     DWELL_EPSILON   = 0.5,   -- metres, the stationary test
 }
 
--- The birth stub, indexed by the ENGINE'S OWN 1-based season (Season.SPRING is 1,
--- the same basis MaterialWetness:currentSeason1Based reads). Percent wetness, not
--- ladder units. Deleted when the hay member's ground read covers every birth.
-YardLadder.SEASONAL_BIRTH = { 65, 55, 70, 75 }
+-- THE BIRTH AXIS, RULED BY ARISSANI 2026-07-30. This is the mapping the first cut
+-- guessed at and this member refused to invent.
+--
+-- A bale made from FIT material is born at ZERO. The penalty is for how far ABOVE the
+-- safe-baling line the material was WHEN IT WAS BALED, which is the actual mistake a
+-- real farmer makes and the entire reason a fit line exists.
+--
+--   condition = max(0, wetnessPct - FIT_PCT) x PER_POINT_ABOVE_FIT
+--
+-- ONE POINT ABOVE THE LINE COSTS ONE WET-DAY EQUIVALENT, so the handicap is expressed
+-- in terms of the wet rate rather than as a second free-standing number: if the ladder
+-- is ever retuned the handicap follows it, which is what "wet-day equivalent" means.
+--
+-- Walking it against the ruled ladder, which is how the dial was set:
+--   baled at 20 -> 0    a full wet week to going off
+--   baled at 25 -> 30   going off inside two wet days
+--   baled at 27 -> 42   born already going off
+--   baled at 30 -> 60   condemned inside a week
+--
+-- Deliberately unforgiving: hay baled at 27 percent moulds within a week in a real
+-- yard, and a gentler curve would say baling wet costs almost nothing, which is false.
+-- Flagged as a DIAL rather than a derivation. If it plays too harsh it is one number.
+--
+-- The fit line itself is agronomy-fixed rather than taste: the published safe-baling
+-- line is 18 to 20 and 20 is the generous edge of safe. Read from the hay member so
+-- there is one fit line in the mod, not two.
+YardLadder.FIT_PCT_FALLBACK = 20
+
+function YardLadder.fitPct()
+    if HayBet ~= nil and type(HayBet.FIT_PCT) == "number" then return HayBet.FIT_PCT end
+    return YardLadder.FIT_PCT_FALLBACK
+end
+
+--- The ruled birth mapping. Wetness percent in, ladder units out.
+---
+--- A NIL WETNESS IS NOT A ZERO WETNESS, BUT IT IS A ZERO CONDITION. A bale we have no
+--- record for (bought, pre-existing on an upgraded save, or otherwise never watched)
+--- opens at zero, because a bale we cannot vouch for is not pre-condemned on a guess.
+--- That is this family's refusal-honesty rule pointed at its own birth event, and it
+--- is why the old seasonal table is gone: those four numbers were a WETNESS estimate
+--- and were never a condition.
+---@param wetnessPct number|nil
+---@return number condition
+function YardLadder.birthCondition(wetnessPct)
+    local pct = tonumber(wetnessPct)
+    if pct == nil then return 0 end
+    local over = pct - YardLadder.fitPct()
+    if over <= 0 then return 0 end
+    return over * YardLadder.RATES.WET_OUTDOOR
+end
 
 -- Condition bands. Names, not numbers, so a balance pass moves the edges without
 -- touching a consumer. Mirrors the sibling's BANDS convention.
@@ -214,14 +260,13 @@ function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId,
             tostring(farmId), tostring(fillTypeName), tostring(capacity), stranded)
     end
 
-    local wetnessPct, isStub = self:_birthWetness(nodeId, fillLevel)
+    local wetnessPct = self:_birthWetness(nodeId, fillLevel)
     local token = self:_mintToken()
 
     -- DATA ONLY. Nothing here may be a live reference or a scenegraph handle.
     local row = {
-        condition       = 0,          -- ladder units; see the birth-axis note at the top
-        birthWetnessPct = wetnessPct,
-        birthStub       = isStub,
+        condition       = YardLadder.birthCondition(wetnessPct),
+        birthWetnessPct = wetnessPct,   -- published in its own right, never the ladder
         farmId          = farmId or 0,
         fillTypeName    = fillTypeName or "UNKNOWN",
         capacity        = capacity or 0,
@@ -231,9 +276,9 @@ function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId,
     if not md:createObjectRecord(token, row) then return end
     self:_attach(token, nodeId, bale)
 
-    SoilLogger.debug("[YardLadder] birth %s node=%s farm=%s fill=%s cap=%s wetness=%.1f%s",
+    SoilLogger.debug("[YardLadder] birth %s node=%s farm=%s fill=%s cap=%s wetness=%s condition=%.1f",
         token, tostring(nodeId), tostring(farmId), tostring(fillTypeName), tostring(capacity),
-        wetnessPct or -1, isStub and " (stub)" or "")
+        wetnessPct ~= nil and string.format("%.1f", wetnessPct) or "unknown", row.condition)
 
     self:publishWetnessAtBaling(token, fillTypeName, wetnessPct)
 end
@@ -287,7 +332,7 @@ end
 
 --- The birth read. Ground band when the hay member and the sky member are both live,
 --- the seasonal stub otherwise.
----@return number|nil wetnessPct, boolean isStub
+---@return number|nil wetnessPct  nil means NO RECORD, which is not a wetness of zero
 function YardLadder:_birthWetness(nodeId, fillLevel)
     local mw = self.materialWetness
     if mw ~= nil and mw:isArmed()
@@ -306,14 +351,15 @@ function YardLadder:_birthWetness(nodeId, fillLevel)
             }
             local c = mw:readCondition(verts, fillLevel)
             if c ~= nil and c.status == MaterialWetness.RESULT.OK then
-                return c.pct, false
+                return c.pct
             end
-            -- REFUSAL PROPAGATES. A refused read is not a zero and not a default: it
-            -- falls through to the stub, which is a stated starting value rather than
-            -- an invented reading.
+            -- REFUSAL PROPAGATES, and now it propagates all the way out as NIL.
         end
     end
-    return self:_seasonalBirthWetness(), true
+    -- NO RECORD. Not a wetness of zero, not a seasonal guess: unknown. The caller
+    -- opens such a bale at zero condition, per the ruling, because a bale we cannot
+    -- vouch for must not be pre-condemned on an estimate.
+    return nil
 end
 
 --- Today, for stamping a birth. The accrual's ctx.monotonicDay is the authority on
@@ -326,14 +372,11 @@ function YardLadder:_today()
     return tonumber(day) or 0
 end
 
-function YardLadder:_seasonalBirthWetness()
-    local env = g_currentMission and g_currentMission.environment
-    local season = env and env.currentSeason
-    if type(season) == "number" and YardLadder.SEASONAL_BIRTH[season] ~= nil then
-        return YardLadder.SEASONAL_BIRTH[season]
-    end
-    return nil
-end
+-- The seasonal birth stub (spring 65 / summer 55 / autumn 70 / winter 75) is DELETED,
+-- not disabled. Its brief said "deleted when the hay member lands", the hay member has
+-- landed, and the birth-axis ruling settled what it was standing in for: those four
+-- numbers were a WETNESS estimate and were never a condition. A bale with no record
+-- opens at zero.
 
 -- =========================================================
 -- Death

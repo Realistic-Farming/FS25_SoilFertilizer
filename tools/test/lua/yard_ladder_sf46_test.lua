@@ -54,7 +54,9 @@ local function makeSky(opts)
     readCondition = function(_self, verts, litres)
       opts.sawLitres = litres
       opts.sawVerts  = verts
-      return opts.read or { status = MaterialWetness.RESULT.OK, pct = 30 }
+      -- Default: baled FIT, so a fixture bale opens at zero condition and the ladder
+      -- sections below measure the ladder rather than the birth handicap.
+      return opts.read or { status = MaterialWetness.RESULT.OK, pct = 15 }
     end,
     waterDaysInLast = function(_self, _n, _day)
       if opts.known == 0 then return 0, 0 end
@@ -110,26 +112,60 @@ T.ok("create refuses a token already present", not md2:createObjectRecord("yl_1"
 T.eq("and the original row is untouched", md2:getObjectRecord("yl_1").condition, 5)
 T.ok("set still overwrites, which is why both exist", md2:setObjectRecord("yl_1", { condition = 9 }))
 
--- ── 4. Birth wetness is RECORDED, never seeded into units ─
--- The horizons only hold if condition starts at zero. See the header.
+-- ── 4. THE BIRTH AXIS, ruled by Arissani 2026-07-30 ───────
+-- A bale made from FIT material opens at zero; the penalty is for how far ABOVE the
+-- safe-baling line the material was when it was baled. One point above the line costs
+-- one wet-day equivalent. These four rows are the ruling's own walk, so if the ladder
+-- is retuned without the handicap following it, this is where it shows.
 
-yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.OK, pct = 75 } })
+T.eq("baled at the fit line opens at zero", YardLadder.birthCondition(20), 0)
+T.eq("baled below the line is still zero, never negative", YardLadder.birthCondition(12), 0)
+T.eq("baled at 25 opens at thirty", YardLadder.birthCondition(25), 30)
+T.eq("baled at 27 is born already going off", YardLadder.birthCondition(27), 42)
+T.ok("and 27 really is past the going-off edge", YardLadder.birthCondition(27) >= YardLadder.RATES.GOING_OFF_AT)
+T.eq("baled at 30 opens at sixty", YardLadder.birthCondition(30), 60)
+T.ok("and 30 condemns inside a wet week",
+     YardLadder.birthCondition(30) + 7 * YardLadder.RATES.WET_OUTDOOR >= YardLadder.RATES.CONDEMN_AT)
+T.ok("a bale baled at 25 goes off inside two wet days",
+     YardLadder.birthCondition(25) + 2 * YardLadder.RATES.WET_OUTDOOR >= YardLadder.RATES.GOING_OFF_AT)
+
+-- The handicap is expressed as a wet-day equivalent, so it tracks the wet rate rather
+-- than standing beside it as a second number that can drift.
+T.eq("one point above the line is exactly one wet day",
+     YardLadder.birthCondition(YardLadder.fitPct() + 1), YardLadder.RATES.WET_OUTDOOR)
+
+-- The fit line is agronomy-fixed and there is ONE of them in the mod.
+T.eq("the fit line is 20 percent", YardLadder.fitPct(), 20)
+
+-- End to end through a birth: wetness is recorded in its own right AND drives the
+-- opening condition. Both, not either.
+yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.OK, pct = 25 } })
 yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100)
 local row = md:getObjectRecord("yl_1")
-T.eq("condition opens at zero", row.condition, 0)
-T.eq("and the wetness read is kept as its own quantity", row.birthWetnessPct, 75)
-T.ok("a ground read is not marked as a stub", not row.birthStub)
+T.eq("the wetness read is kept as its own quantity", row.birthWetnessPct, 25)
+T.eq("and it opens the ladder at the ruled handicap", row.condition, 30)
 
--- ── 5. A refused read falls to the stub, never to a value ─
--- Refusal propagates. It is not a zero and it is not a default reading.
+-- A bale baled dry is born clean even though its wetness is recorded.
+yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.OK, pct = 14 } })
+yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100)
+row = md:getObjectRecord("yl_1")
+T.eq("dry hay records its wetness", row.birthWetnessPct, 14)
+T.eq("and opens at zero", row.condition, 0)
 
-g_currentMission.environment.currentSeason = 4  -- winter, stub 75
+-- ── 5. A bale we cannot vouch for opens at ZERO ───────────
+-- Refusal propagates all the way out as nil. The old seasonal stub (65/55/70/75) was
+-- a WETNESS estimate and was never a condition, so it is deleted rather than disabled:
+-- a bought or pre-existing bale is not pre-condemned on a guess.
+
+g_currentMission.environment.currentSeason = 4   -- winter, the old stub's harshest cell
 yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.REFUSAL } })
 yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "STRAW", 100, 1, 100)
 row = md:getObjectRecord("yl_1")
-T.eq("a refusal does not become a wetness of zero", row.birthWetnessPct, 75)
-T.ok("and the row says plainly that it is a stub", row.birthStub)
-T.eq("a refused birth still opens condition at zero", row.condition, 0)
+T.eq("an unreadable birth records no wetness at all", row.birthWetnessPct, nil)
+T.eq("and is NOT a wetness of zero either", row.birthWetnessPct, nil)
+T.eq("and opens at zero condition", row.condition, 0)
+T.eq("the seasonal stub is gone, not merely unused", YardLadder.SEASONAL_BIRTH, nil)
+T.eq("an unknown wetness maps to zero condition", YardLadder.birthCondition(nil), 0)
 
 -- ── 6. Litres is passed, and it is the bale's own ─────────
 -- nil, zero or negative returns REFUSAL inside readCondition. Passing the wrong
