@@ -439,6 +439,14 @@ function YardLadder:onLadderPass(ctx)
     -- one that cannot condemn a yard on evidence we do not have.
     local wetDays, dryDays = self:_splitSpan(boundaries, day)
 
+    -- THE PASS SAYS IT RAN, and it has to. Every day pass in this family was silent:
+    -- the age tick, the condition accrual and this one all did their work and printed
+    -- nothing. So when two bales survived a skipped year there was no way to tell
+    -- "the pass never fired" from "it fired and the span was wrong" from "the days
+    -- never advanced". One line ends that ambiguity for good.
+    SoilLogger.debug("[YardLadder] pass: day=%d boundaries=%d wet=%d dry=%d rows=%d",
+        day, boundaries, wetDays, dryDays, #due)
+
     for _, item in ipairs(due) do
         local ok, err = pcall(function()
             self:_processRow(item.token, item.row, day, wetDays, dryDays)
@@ -502,7 +510,11 @@ function YardLadder:_processRow(token, row, day, wetDays, dryDays)
     -- makes, and the honest one, since a bale that had moved would have failed dwell.
     local rate = (wetDays or 0) * R.WET_OUTDOOR + (dryDays or 0) * R.DRY_OUTDOOR
     local shelter = self:_shelterMultiplier(x, z)
-    row.condition = (row.condition or 0) + rate * shelter
+    local before = row.condition or 0
+    row.condition = before + rate * shelter
+
+    SoilLogger.debug("[YardLadder] %s: %.1f -> %.1f (+%.1f, shelter x%.2f)",
+        token, before, row.condition, rate * shelter, shelter)
 
     if row.condition >= R.CONDEMN_AT then
         self:_condemn(token, row, live)
