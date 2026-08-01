@@ -52,14 +52,6 @@ SoilHUD.C_EDIT_HDL   = {0.20, 0.60, 1.00, 0.85}
 -- ── Field detection throttle ────────────────────────────
 SoilHUD.FIELD_DETECT_INTERVAL = 0.5   -- seconds between position queries
 
-SoilHUD.TEXT_OVERFLOW = {
-    SHRINK_THRESHOLD = 1.12, -- allow a small, readable amount of overshoot before scaling down
-    MIN_FONT_SCALE  = 0.82, -- keep text readable without becoming illegible
-    START_DELAY     = 0.75, -- wait before the marquee starts moving
-    PAUSE_DURATION  = 0.80, -- hold at each end before reversing
-    SCROLL_SPEED    = 0.045 -- width units per second; resolution-independent and scaled with text width
-}
-
 function SoilHUD.new(soilSystem, settings)
     local self = setmetatable({}, SoilHUD_mt)
 
@@ -135,9 +127,6 @@ function SoilHUD.new(soilSystem, settings)
 
     -- Single overlay handle
     self.fillOverlay = nil
-
-    -- Per-instance text marquee state so each HUD instance stays self-contained and MP-safe.
-    self._textScrollStates = {}
 
     -- Native FS25 InfoDisplay box (appears alongside base game FIELD INFO panel)
     self.fieldInfoBox = nil
@@ -1328,90 +1317,6 @@ function SoilHUD:draw()
 
 end
 
-function SoilHUD:measureTextWidth(size, text)
-    if text == nil or text == "" then return 0 end
-    if getTextWidth ~= nil then
-        local ok, width = pcall(getTextWidth, size, text)
-        if ok and width ~= nil then
-            return width
-        end
-    end
-    return string.len(text) * size * 0.55
-end
-
-function SoilHUD:renderAutoScrollText(x, y, size, text, maxWidth, align, r, g, b, a)
-    if text == nil or text == "" then return end
-
-    local mode = align or RenderText.ALIGN_LEFT
-    local safeMax = maxWidth and maxWidth > 0 and maxWidth or nil
-    local textWidth = self:measureTextWidth(size, text)
-
-    if safeMax == nil then
-        setTextColor(r, g, b, a)
-        setTextAlignment(mode)
-        renderText(x, y, size, text)
-        return
-    end
-
-    if textWidth <= safeMax then
-        setTextColor(r, g, b, a)
-        setTextAlignment(mode)
-        renderText(x, y, size, text)
-        return
-    end
-
-    local shrinkThreshold = SoilHUD.TEXT_OVERFLOW.SHRINK_THRESHOLD or 1.12
-    local minScale = SoilHUD.TEXT_OVERFLOW.MIN_FONT_SCALE or 0.82
-    if textWidth <= safeMax * shrinkThreshold then
-        local reducedSize = size * math.min(1.0, math.max(minScale, safeMax / textWidth))
-        local reducedWidth = self:measureTextWidth(reducedSize, text)
-        if reducedWidth <= safeMax then
-            setTextColor(r, g, b, a)
-            setTextAlignment(mode)
-            renderText(x, y, reducedSize, text)
-            return
-        end
-    end
-
-    local key = string.format("%s|%.6f|%.6f|%d", tostring(text), size, maxWidth, mode)
-    self._textScrollStates = self._textScrollStates or {}
-    self._textScrollStates[key] = self._textScrollStates[key] or { start = self.animTimer or 0 }
-
-    local scroll = SoilHUD.TEXT_OVERFLOW
-    local startDelay = scroll.START_DELAY or 0.75
-    local pause = scroll.PAUSE_DURATION or 0.80
-    local speed = scroll.SCROLL_SPEED or 0.045
-    local travel = math.max(0.01, textWidth - safeMax)
-    local moveDuration = math.max(1.4, travel / speed)
-    local cycle = startDelay + moveDuration + pause + moveDuration + pause
-    local elapsed = ((self.animTimer or 0) - (self._textScrollStates[key].start or 0)) % cycle
-    local phase = 0
-
-    if elapsed < startDelay then
-        phase = 0
-    elseif elapsed < startDelay + moveDuration then
-        phase = (elapsed - startDelay) / moveDuration * travel
-    elseif elapsed < startDelay + moveDuration + pause then
-        phase = travel
-    elseif elapsed < startDelay + moveDuration * 2 + pause then
-        local t = elapsed - (startDelay + moveDuration + pause)
-        phase = travel - (t / moveDuration) * travel
-    else
-        phase = 0
-    end
-
-    local drawX = x
-    if mode == RenderText.ALIGN_RIGHT then
-        drawX = x - safeMax
-    elseif mode == RenderText.ALIGN_CENTER then
-        drawX = x - safeMax * 0.5
-    end
-
-    setTextColor(r, g, b, a)
-    setTextAlignment(mode)
-    renderText(drawX - phase, y, size, text .. "    " .. text)
-end
-
 -- ── Main panel ───────────────────────────────────────────
 function SoilHUD:drawPanel()
     local s   = self.scale
@@ -1478,15 +1383,13 @@ function SoilHUD:drawPanel()
     -- Title + overall status badge
     setTextBold(true)
     setTextColor(1, 1, 1, 1)
-    self:renderAutoScrollText(tx, ty - 0.006*s, 0.012 * fontMult * s, g_i18n:getText("sf_hud_title"), math.max(0.02, pw * 0.48), RenderText.ALIGN_LEFT,
-        1, 1, 1, 1)
+    renderText(tx, ty - 0.006*s, 0.012 * fontMult * s, g_i18n:getText("sf_hud_title"))
 
     if info and not asleep then
         local statusLabel, statusCol = self:overallStatus(info)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(statusCol[1], statusCol[2], statusCol[3], 1.0)
-        self:renderAutoScrollText(px + pw - pad, ty - 0.006*s, 0.011 * fontMult * s, g_i18n:getText("sf_report_rec_" .. statusLabel:lower()),
-            math.max(0.02, pw * 0.42), RenderText.ALIGN_RIGHT, statusCol[1], statusCol[2], statusCol[3], 1.0)
+        renderText(px + pw - pad, ty - 0.006*s, 0.011 * fontMult * s, g_i18n:getText("sf_report_rec_" .. statusLabel:lower()))
     end
     setTextBold(false)
     setTextAlignment(RenderText.ALIGN_LEFT)
@@ -1499,13 +1402,13 @@ function SoilHUD:drawPanel()
     local cropText  = self._fmt_cropText
 
     cy = cy - SoilHUD.LINE_H * s
-    local fieldMaxW = math.max(0.020, pw - 0.040)
-    self:renderAutoScrollText(tx, cy, 0.010 * fontMult * s, fieldText or "", fieldMaxW, RenderText.ALIGN_LEFT,
-        SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    renderText(tx, cy, 0.010 * fontMult * s, fieldText or "")
     if cropText then
-        local cropMaxW = math.max(0.030, pw * 0.42)
-        self:renderAutoScrollText(px + pw - pad, cy, 0.010 * fontMult * s, cropText, cropMaxW, RenderText.ALIGN_RIGHT,
-            SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
+        setTextAlignment(RenderText.ALIGN_RIGHT)
+        setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
+        renderText(px + pw - pad, cy, 0.010 * fontMult * s, cropText)
+        setTextAlignment(RenderText.ALIGN_LEFT)
     end
 
     if asleep then
@@ -1517,9 +1420,8 @@ function SoilHUD:drawPanel()
         cy = cy - SoilHUD.LINE_H * s
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
-        self:renderAutoScrollText(px + pw * 0.5, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
-            g_i18n:getText("sf_hud_asleep"), math.max(0.02, pw * 0.76), RenderText.ALIGN_CENTER,
-            SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
+        renderText(px + pw * 0.5, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
+            g_i18n:getText("sf_hud_asleep"))
         setTextAlignment(RenderText.ALIGN_LEFT)
         cy = cy - pad * 0.8
         self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
@@ -1533,8 +1435,7 @@ function SoilHUD:drawPanel()
         self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
-        self:renderAutoScrollText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"),
-            math.max(0.02, pw * 0.28), RenderText.ALIGN_RIGHT, SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
+        renderText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"))
         setTextAlignment(RenderText.ALIGN_LEFT)
         cy = cy - pad * 0.8
     end
@@ -1565,11 +1466,9 @@ function SoilHUD:drawPanel()
         local omLabelX = tx
         local omValX   = tx + 0.018*s
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        self:renderAutoScrollText(omLabelX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"), math.max(0.02, pw * 0.36), RenderText.ALIGN_LEFT,
-            SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+        renderText(omLabelX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"))
         setTextColor(omCol[1], omCol[2], omCol[3], 1.0)
-        self:renderAutoScrollText(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "", math.max(0.02, pw * 0.26), RenderText.ALIGN_LEFT,
-            omCol[1], omCol[2], omCol[3], 1.0)
+        renderText(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
 
         -- Divider below pH/OM row
         cy = cy - SoilHUD.LINE_H * s
@@ -1617,8 +1516,7 @@ function SoilHUD:drawPanel()
                 setTextColor(cr, cg, cb, 1.0)
                 for _, line in ipairs(covLines) do
                     cy = cy - SoilHUD.LINE_H * s
-                    self:renderAutoScrollText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, line,
-                        math.max(0.02, pw - pad * 2), RenderText.ALIGN_LEFT, cr, cg, cb, 1.0)
+                    renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, line)
                 end
             end
 
@@ -1638,8 +1536,7 @@ function SoilHUD:drawPanel()
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
                 cy = cy - SoilHUD.LINE_H * s
-                self:renderAutoScrollText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText,
-                    math.max(0.02, pw - pad * 2), RenderText.ALIGN_LEFT, cr, cg, cb, 1.0)
+                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText)
             end
         end
 
@@ -1650,8 +1547,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(0.88, 0.25, 0.25, 1.0)  -- red: this is a penalty
             cy = cy - SoilHUD.LINE_H * s
-            self:renderAutoScrollText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText,
-                math.max(0.02, pw - pad * 2), RenderText.ALIGN_LEFT, 0.88, 0.25, 0.25, 1.0)
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText)
         end
 
         -- Amendment burn-risk row (#684) - heads-up that liming/manuring NOW would scorch the
@@ -1662,8 +1558,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(0.95, 0.62, 0.15, 1.0)  -- amber: a warning, not yet a penalty
             cy = cy - SoilHUD.LINE_H * s
-            self:renderAutoScrollText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnRiskText,
-                math.max(0.02, pw - pad * 2), RenderText.ALIGN_LEFT, 0.95, 0.62, 0.15, 1.0)
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnRiskText)
         end
 
         -- Yield efficiency summary (nil when no managed crop)
@@ -1681,8 +1576,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(yr, yg, yb, 1.0)
             cy = cy - SoilHUD.LINE_H * s
-            self:renderAutoScrollText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, yieldText,
-                math.max(0.02, pw - pad * 2), RenderText.ALIGN_LEFT, yr, yg, yb, 1.0)
+            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, yieldText)
         end
 
         -- Divider before hint
@@ -1697,11 +1591,9 @@ function SoilHUD:drawPanel()
     setTextAlignment(RenderText.ALIGN_CENTER)
     setTextColor(SoilHUD.C_HINT[1], SoilHUD.C_HINT[2], SoilHUD.C_HINT[3], SoilHUD.C_HINT[4])
     if self.editMode then
-        self:renderAutoScrollText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_edit"),
-            math.max(0.02, pw * 0.72), RenderText.ALIGN_CENTER, SoilHUD.C_HINT[1], SoilHUD.C_HINT[2], SoilHUD.C_HINT[3], SoilHUD.C_HINT[4])
+        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_edit"))
     else
-        self:renderAutoScrollText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_normal"),
-            math.max(0.02, pw * 0.72), RenderText.ALIGN_CENTER, SoilHUD.C_HINT[1], SoilHUD.C_HINT[2], SoilHUD.C_HINT[3], SoilHUD.C_HINT[4])
+        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_normal"))
     end
 
     -- Reset text state
@@ -1743,8 +1635,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     -- Label (N / P / K)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    self:renderAutoScrollText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, label,
-        math.max(0.02, pw * 0.12), RenderText.ALIGN_LEFT, SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    renderText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, label)
 
     -- Bar background + fill
     local barX = tx + 0.015*s
@@ -1841,9 +1732,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
             valStr = valStr .. string.format(" (+%d)", projPpm)
         end
     end
-    local valueMaxWidth = math.max(0.02, pw - 0.12)
-    self:renderAutoScrollText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr, valueMaxWidth, RenderText.ALIGN_LEFT,
-        displayCol[1], displayCol[2], displayCol[3], 1.0)
+    renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr)
 
     -- Status label
     setTextAlignment(RenderText.ALIGN_RIGHT)
@@ -1871,8 +1760,7 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     -- Label
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    self:renderAutoScrollText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"),
-        math.max(0.02, pw * 0.22), RenderText.ALIGN_LEFT, SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    renderText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"))
 
     local barX  = tx + 0.015*s
     local barY  = cy + (rowH - barH) * 0.5
@@ -1917,11 +1805,9 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
 
     -- Numeric value
     local valX = barX + barW + 0.006*s
-    local phValue = string.format("%.1f", pH)
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
-    self:renderAutoScrollText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
-        phValue, math.max(0.02, pw - 0.12), RenderText.ALIGN_LEFT,
-        pHCol[1], pHCol[2], pHCol[3], 1.0)
+    renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
+               string.format("%.1f", pH))
 
     -- Status text (right-aligned)
     local phStatus
@@ -1930,8 +1816,7 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     else phStatus = "Poor" end
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)
-    self:renderAutoScrollText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, phStatus,
-        math.max(0.02, pw * 0.18), RenderText.ALIGN_RIGHT, pHCol[1], pHCol[2], pHCol[3], 0.80)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, phStatus)
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
@@ -1957,12 +1842,10 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     -- of the bar + %, so neither the severity nor the name leaks on the free monitor.
     if hiddenText then
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        self:renderAutoScrollText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey),
-            math.max(0.02, pw * 0.38), RenderText.ALIGN_LEFT, SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+        renderText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey))
         setTextAlignment(RenderText.ALIGN_LEFT)
         setTextColor(SoilHUD.C_FAIR[1], SoilHUD.C_FAIR[2], SoilHUD.C_FAIR[3], 1.0)
-        self:renderAutoScrollText(tx + 0.038*s, cy + (rowH - textSize) * 0.5, textSize, hiddenText,
-            math.max(0.02, pw - 0.06), RenderText.ALIGN_LEFT, SoilHUD.C_FAIR[1], SoilHUD.C_FAIR[2], SoilHUD.C_FAIR[3], 1.0)
+        renderText(tx + 0.038*s, cy + (rowH - textSize) * 0.5, textSize, hiddenText)
         return cy
     end
 
@@ -1975,8 +1858,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
 
     -- Label - vertically centred in row
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    self:renderAutoScrollText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey), math.max(0.02, pw * 0.40), RenderText.ALIGN_LEFT,
-        SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    renderText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey))
 
     -- Bar - centred in row, horizontally aligned with nutrient bars
     local barX = tx + 0.038*s
@@ -1992,8 +1874,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     if isProtected then label = label .. " " .. g_i18n:getText("sf_hud_protected") end
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(col[1], col[2], col[3], 1.0)
-    self:renderAutoScrollText(barX + barW + 0.006*s, cy + (rowH - textSize) * 0.5, textSize, label, math.max(0.02, pw - (barX + barW + 0.012*s) - px), RenderText.ALIGN_LEFT,
-        col[1], col[2], col[3], 1.0)
+    renderText(barX + barW + 0.006*s, cy + (rowH - textSize) * 0.5, textSize, label)
 
     return cy
 end
