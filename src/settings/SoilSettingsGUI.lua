@@ -64,6 +64,8 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilMeadowField", "FieldSentry: flag/clear a field as meadow (grassland profile): SoilMeadowField <fieldId> [true|false] (#651)", "consoleCommandMeadowField", self)
     addConsoleCommand("SoilDecoField", "FieldSentry: flag/clear a field as decorative/fake (sim frozen): SoilDecoField <fieldId> [true|false] (#651)", "consoleCommandDecoField", self)
     addConsoleCommand("SoilScout", "Scout a field for disease: SoilScout [fieldId] (defaults to current field)", "consoleCommandScout", self)
+    addConsoleCommand("SoilResistance", "Show per-MOA fungicide resistance + CD-11 bands: SoilResistance [fieldId]", "consoleCommandResistance", self)
+    addConsoleCommand("SoilResistanceTest", "TEST the F66 per-pass meter: SoilResistanceTest [chemical] [passes] [fieldId]", "consoleCommandResistanceTest", self)
     addConsoleCommand("SoilTreat", "Apply a fungicide: SoilTreat <chemical> [fieldId]  (e.g. SoilTreat AZOXYSTROBIN)", "consoleCommandTreat", self)
     addConsoleCommand("SoilFungicides", "List fungicides, or recommendations for a disease: SoilFungicides [diseaseId]", "consoleCommandFungicides", self)
     addConsoleCommand("SoilSetDisease", "TEST: force disease on the current field: SoilSetDisease <pressure 0-100> [diseaseId]", "consoleCommandSetDisease", self)
@@ -534,6 +536,8 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilMeadowField <fieldId> [true|false] - FieldSentry: flag/clear a field as meadow (#651)")
     print("SoilDecoField <fieldId> [true|false] - FieldSentry: flag/clear a field as decorative/fake (#651)")
     print("SoilAddCrop <name> - Add a custom crop to the Crop Tuning Editor (#717)")
+    print("SoilResistance [fieldId] - Per-MOA fungicide resistance + CD-11 bands")
+    print("SoilResistanceTest [chemical] [passes] [fieldId] - TEST the F66 per-pass meter")
     print("==============================================")
     return "Type 'soilfertility' for more info"
 end
@@ -740,6 +744,183 @@ function SoilSettingsGUI:consoleCommandSetDisease(pressure, diseaseId)
         "TEST: Field %d set to %.0f%% pressure (disease=%s), hidden until scouted. "
         .. "Check the Soil Monitor (shows '?'), then run SoilScout %d (or the Scout hotkey) to reveal.",
         fid, dinfo.pressure or p or 0, tostring(dinfo.disease or "none"), fid)
+end
+
+-- ── CD-9 / CD-11 resistance console commands ─────────────────────────────
+--
+-- Debug-only English band labels. Deliberately NOT in ResistanceBands: the CD-11 contract
+-- ships band VALUES, and band LABEL strings are the presentation build's job to localize.
+local RESISTANCE_BAND_NAMES = {
+    [-1] = "UNKNOWN",
+    [0]  = "WORKING",
+    [1]  = "SLIPPING",
+    [2]  = "FINISHED",
+}
+
+-- Which chemicals share each FRAC mode, so the readout names jugs and not just codes.
+local function chemicalsForMode(mode)
+    local names = {}
+    for _, id in ipairs(SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}) do
+        if SoilFertilitySystem.getModeForFillType(id) == mode then names[#names + 1] = id end
+    end
+    return table.concat(names, ", ")
+end
+
+function SoilSettingsGUI:consoleCommandResistance(fieldId)
+    local sfm = g_SoilFertilityManager
+    if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
+    local soilSys = sfm.soilSystem
+    local fid = resolveDiseaseFieldId(fieldId)
+    if not fid then return "Usage: SoilResistance <fieldId>  (or stand on a field)" end
+
+    local field = soilSys.fieldData and soilSys.fieldData[fid]
+    if not field then return string.format("Field %d: no soil data", fid) end
+
+    local R = SoilConstants.RESISTANCE
+    local lines = {}
+    lines[#lines+1] = string.format("=== Resistance (CD-9) -- Field %d ===", fid)
+    lines[#lines+1] = string.format("Scouted: %s%s",
+        field.diseaseDiscovered and "YES" or "NO",
+        field.diseaseDiscovered and "" or "  <- bands are gated; everything reads UNKNOWN until you SoilScout")
+    lines[#lines+1] = string.format("Field area: %.2f ha", field.fieldArea or 0)
+    lines[#lines+1] = string.format("Picture: %s",
+        ResistanceBands.hasServerPicture() and "server/SP (raw scores local)" or "client (bands synced from server)")
+    lines[#lines+1] = ""
+    lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
+
+    -- Walk the FRAC modes the mod actually knows about, so a clean mode still shows.
+    local seen, modes = {}, {}
+    for _, id in ipairs(SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}) do
+        local m = SoilFertilitySystem.getModeForFillType(id)
+        if m and not seen[m] then seen[m] = true; modes[#modes + 1] = m end
+    end
+    table.sort(modes)
+
+    for _, mode in ipairs(modes) do
+        local ceiling = ResistanceBands.ceilingForMode(mode)
+        local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+        local ratio   = score / ceiling
+        local band    = soilSys:getResistanceBand(fid, mode)
+        -- The CD-9 penalty a spray of this mode would take right now.
+        local mult    = 1 - (score / ceiling)
+        lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
+            mode, score, ceiling, ratio * 100,
+            RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+    end
+
+    lines[#lines+1] = ""
+    lines[#lines+1] = string.format("One full-rate pass builds %.0f%% of a mode's ceiling (%d passes to saturate).",
+        R.BUILD_PER_APPLICATION * 100, math.floor(1 / R.BUILD_PER_APPLICATION))
+    lines[#lines+1] = "Bands: WORKING < 50% of ceiling, SLIPPING 50-99%, FINISHED at 100% (effectiveness x0.00)."
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
+end
+
+--- Drive the REAL spray path N full-rate passes' worth and report what the meter did.
+---
+--- This is the in-game form of F66's one-minute test. It calls onFungicideAppliedDirect the
+--- way the sprayer hook does -- many small per-boom-section slices rather than one big
+--- application -- because that call shape IS the bug: before the fix, a flat increment per
+--- call saturated a mode inside the first pass.
+function SoilSettingsGUI:consoleCommandResistanceTest(chemical, passes, fieldId)
+    local sfm = g_SoilFertilityManager
+    if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
+    local soilSys = sfm.soilSystem
+
+    if g_server == nil then
+        return "SoilResistanceTest is server/single-player only (a client cannot apply chemicals)."
+    end
+    if not (soilSys.settings and soilSys.settings.diseasePressure) then
+        return "Disease Pressure is OFF -- turn it on in settings or the spray path returns immediately."
+    end
+
+    local chem = (chemical and chemical ~= "") and string.upper(chemical) or "PROPICONAZOLE"
+    -- Three distinct answers, in this order, because they mean different things: a typo is
+    -- not the same as generic FUNGICIDE, which is a real sprayable fill type that simply
+    -- carries no mode of action and so can never build resistance.
+    local chemList = table.concat(SoilConstants.PHYSICAL_FUNGICIDE_ORDER, ", ")
+    if SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[chem] == nil then
+        return string.format("Unknown chemical '%s'. Try one of: %s", chem, chemList)
+    end
+    local mode = SoilFertilitySystem.getModeForFillType(chem)
+    if not mode then
+        return string.format("%s has no mode of action, so it builds no resistance. Use one of: %s",
+            chem, chemList)
+    end
+
+    local n = math.max(1, math.min(50, math.floor(tonumber(passes) or 1)))
+    local fid = resolveDiseaseFieldId(fieldId)
+    if not fid then return "Usage: SoilResistanceTest [chemical] [passes] <fieldId>  (or stand on a field)" end
+    local field = soilSys.fieldData and soilSys.fieldData[fid]
+    if not field then return string.format("Field %d: no soil data", fid) end
+
+    local R        = SoilConstants.RESISTANCE
+    local ceiling  = ResistanceBands.ceilingForMode(mode)
+    local areaHa   = field.fieldArea or 1.0
+    local rate     = (SoilConstants.SPRAYER_RATE.BASE_RATES[chem]
+                      or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
+    local passVol  = areaHa * rate
+    local SECTIONS = 200   -- stand-in for "1000+ times per spray pass"
+
+    local before   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+
+    -- A mode already at its ceiling CANNOT answer this question: the expected value clamps
+    -- to the ceiling too, so a broken meter and a working one produce the same number and
+    -- the test would report PASS either way. Refuse instead of returning a false clear --
+    -- and this is the LIKELY state on any save sprayed under the pre-F66 build, which is
+    -- exactly who reaches for this command first.
+    if before >= ceiling - 0.001 then
+        return string.format(
+            "=== F66 meter test -- Field %d, %s (FRAC %s) ===\n"
+            .. "INCONCLUSIVE: this mode is ALREADY at its ceiling (%.3f / %.1f).\n"
+            .. "A saturated mode cannot distinguish a working meter from a broken one --\n"
+            .. "both would end at the ceiling -- so no verdict is possible here.\n\n"
+            .. "This is the expected state on a field sprayed under the pre-F66 build; the\n"
+            .. "fix does not heal existing saves and decay is %.0f%% per in-game month.\n"
+            .. "Test a mode you have not burned (%s), or a fresh field.",
+            fid, chem, mode, before, ceiling,
+            (1 - R.DECAY_MONTHLY) * 100,
+            table.concat(SoilConstants.PHYSICAL_FUNGICIDE_ORDER, ", "))
+    end
+
+    for _ = 1, n do
+        for _ = 1, SECTIONS do
+            soilSys:onFungicideAppliedDirect(fid, 1.0, passVol / SECTIONS, chem)
+        end
+    end
+    local after    = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+
+    local expected = math.min(ceiling, before + R.BUILD_PER_APPLICATION * ceiling * n)
+    local ok       = math.abs(after - expected) < 0.01
+
+    local lines = {}
+    lines[#lines+1] = string.format("=== F66 meter test -- Field %d, %s (FRAC %s) ===", fid, chem, mode)
+    lines[#lines+1] = string.format("Field %.2f ha at %.0f L/ha -> one full-rate pass = %.0f L", areaHa, rate, passVol)
+    lines[#lines+1] = string.format("Sprayed %d pass(es) as %d boom-section calls each (%d calls total)",
+        n, SECTIONS, n * SECTIONS)
+    lines[#lines+1] = ""
+    lines[#lines+1] = string.format("  before:   %.3f / %.1f", before, ceiling)
+    lines[#lines+1] = string.format("  after:    %.3f / %.1f  (%.0f%% -- band %s)",
+        after, ceiling, (after / ceiling) * 100,
+        RESISTANCE_BAND_NAMES[soilSys:getResistanceBand(fid, mode)] or "?")
+    lines[#lines+1] = string.format("  expected: %.3f  (%d pass x %.0f%% of ceiling)",
+        expected, n, R.BUILD_PER_APPLICATION * 100)
+    lines[#lines+1] = ""
+    if ok then
+        lines[#lines+1] = "  RESULT: PASS -- the per-pass meter is live."
+        lines[#lines+1] = string.format("  Pre-F66 this would read %.3f (saturated) after ~20 calls, not %d passes.", ceiling, n)
+    else
+        lines[#lines+1] = "  RESULT: FAIL -- the meter is NOT metering. Report this."
+        if after >= ceiling - 0.001 then
+            lines[#lines+1] = "  The mode is pinned at its ceiling: this is exactly the F66 signature."
+        end
+    end
+    lines[#lines+1] = ""
+    lines[#lines+1] = "NOTE: real applications were made -- disease pressure dropped, and a synthetic"
+    lines[#lines+1] = "on a certified organic field counts as a breach. Use a throwaway field."
+    lines[#lines+1] = string.format("Run 'SoilResistance %d' for the full per-mode readout.", fid)
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
 end
 
 function SoilSettingsGUI:consoleCommandScout(fieldId)
