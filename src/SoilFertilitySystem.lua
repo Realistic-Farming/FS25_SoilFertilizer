@@ -5714,24 +5714,6 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
         end
     end
 
-    -- CD-9: Per-MOA resistance build and effectiveness reduction
-    local mode = self.getModeForFillType(chemId)
-    if mode then
-        local isNatural = self.isNaturalFungicide(chemId)
-        local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
-        local isOrganic = field.organic ~= nil
-            and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
-                 or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
-        if not (isOrganic and not isNatural) then
-            field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
-                + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes)
-        end
-        local resistanceScore = field.resistance[mode] or 0
-        if resistanceScore > 0 then
-            effectiveness = (effectiveness or 1.0) * (1 - resistanceScore / maxRes)
-        end
-    end
-
     -- Confirm field area on first application (mirrors onInsecticideAppliedDirect / applyFertilizer)
     local _isNewSession = not next(field.sessionCoverageCells or {})
     if not field._farmlandAreaConfirmed or _isNewSession then
@@ -5759,6 +5741,43 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     local targetRate = (SoilConstants.SPRAYER_RATE.BASE_RATES[rateName] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
     local targetVol = areaInHa * targetRate
     if targetVol <= 0 then return end
+
+    -- CD-9: Per-MOA resistance build and effectiveness reduction.
+    --
+    -- METERED PER PASS, NOT PER CALL (F66). This runs off an appended function on
+    -- Sprayer.onEndWorkAreaProcessing and is reached once per boom section per frame --
+    -- the hook's own comment measures that at "1000+ times per spray pass". A bare
+    -- increment therefore saturated a mode inside the first second of the first pass, and
+    -- since the penalty below is (1 - score/maxRes), a fungicide the player had just
+    -- bought dropped to zero effect partway through the pass he was spraying.
+    --
+    -- BUILD_PER_APPLICATION is a per-FULL-RATE-PASS figure (Constants.lua:1744), so it is
+    -- scaled by this call's share of a full-rate pass, exactly as every other consequence
+    -- in this function scales by liters / targetVol. One boom section contributes its own
+    -- slice and the slices across a whole pass sum to one application. Capped at 1.0 so a
+    -- single oversized call can never count as more than one pass. This restores the
+    -- dose_factor term the ratified CD-9 design specified.
+    --
+    -- It sits BELOW the field-area confirm deliberately: targetVol is the meter's
+    -- denominator, and before that confirm fieldArea can still be the 1.0 ha default,
+    -- which would collapse the denominator and re-create the saturation this fixes.
+    local mode = self.getModeForFillType(chemId)
+    if mode then
+        local isNatural = self.isNaturalFungicide(chemId)
+        local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
+        local isOrganic = field.organic ~= nil
+            and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
+                 or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
+        if not (isOrganic and not isNatural) then
+            local doseFactor = math.min(1.0, (liters or 0) / targetVol)
+            field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
+                + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * doseFactor)
+        end
+        local resistanceScore = field.resistance[mode] or 0
+        if resistanceScore > 0 then
+            effectiveness = (effectiveness or 1.0) * (1 - resistanceScore / maxRes)
+        end
+    end
 
     local effective = effectiveness or 1.0
     local baseRed = SoilConstants.DISEASE_PRESSURE.FUNGICIDE_PRESSURE_REDUCTION or 20
