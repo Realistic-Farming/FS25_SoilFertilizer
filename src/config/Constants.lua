@@ -1752,6 +1752,41 @@ SoilConstants.RESISTANCE = {
     HYBRID_THRESHOLD      = 0.7,
     MAX_SYNTHETIC         = 10,
     MAX_NATURAL           = 5,
+
+    -- CD-11: the BAND enum a client may see. Resistance is simulated as a raw score, but
+    -- a raw score is never rendered and (by default) never travels: the server computes a
+    -- band and the client reads only that. UNKNOWN is a first-class value, NOT an absence
+    -- -- an unscouted or unsynced field reads UNKNOWN and must never fall back to WORKING,
+    -- or a client renders "your fungicide is fine" about ground it has never looked at.
+    BANDS = {
+        UNKNOWN  = -1,   -- never scouted, or not yet synced. Distinct from every real band.
+        WORKING  = 0,    -- the chemical still does what the label says
+        SLIPPING = 1,    -- measurably weaker; rotate the mode of action
+        FINISHED = 2,    -- effectiveness is provably zero on this mode
+    },
+
+    -- Band cut points, as a FRACTION of the mode's own ceiling (MAX_SYNTHETIC /
+    -- MAX_NATURAL), so naturals and synthetics band on the same scale.
+    --
+    -- FINISHED is ANCHORED at 1.0 by the CD-11 SDS and is not a tuning knob: at ratio 1.0
+    -- the build's own penalty is (1 - score/maxRes) = 0, so the chemical is provably inert.
+    -- SLIPPING is the open tuning question the SDS left to engineering; it is a named
+    -- constant precisely so it can be retuned without touching the sync path.
+    BAND_CUT_SLIPPING = 0.5,
+    BAND_CUT_FINISHED = 1.0,
+
+    -- FRAC modes that cap at MAX_NATURAL rather than MAX_SYNTHETIC.
+    --
+    -- Keyed by MODE, not by chemical, because field.resistance is keyed by mode. (The
+    -- CD-11 brief's pseudocode calls isNaturalFungicide(mode); that cannot work -- it takes
+    -- a fill-type name like "SULFUR", so every mode returns false and a saturated natural
+    -- would band against the synthetic ceiling and read half-clean.)
+    --
+    -- Mirrors the natural entries of SoilFertilitySystem's MODE_FOR_FILLTYPE (SULFUR -> M2,
+    -- COPPER_HYDROXIDE -> M1). resistance_bands_cd11_test asserts the two agree, so adding
+    -- a natural chemical without updating this fails the suite rather than shipping a
+    -- silently wrong ceiling.
+    NATURAL_MODES = { M1 = true, M2 = true },
 }
 
 SoilConstants.VARIABLE_RATE = {

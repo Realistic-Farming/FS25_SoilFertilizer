@@ -64,6 +64,7 @@ source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- SoilFertilitySystem:computeYieldModifier at runtime; installed as a class hook by HookManager.
 source(modDirectory .. "src/HarvestContractUnderwrite.lua")
 source(modDirectory .. "src/OrganicCertification.lua")
+source(modDirectory .. "src/ResistanceBands.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")

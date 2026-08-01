@@ -68,6 +68,36 @@ function SoilFertilitySystem.isNaturalFungicide(fillTypeName)
     return NATURAL_FUNGICIDE_NAMES[fillTypeName] == true
 end
 
+-- CD-11: THE RESISTANCE READ SURFACE. The whole contract a presentation build consumes.
+--
+-- Returns a SoilConstants.RESISTANCE.BANDS value for a field's mode of action, resolved
+-- against whatever picture this machine has: the server and single player band their own
+-- raw score, a client reads only what the server sent. A raw score never leaves the server
+-- and no caller ever sees one.
+--
+-- ALWAYS returns a band, NEVER nil. Unscouted ground, an unsynced field, and an unknown
+-- field id all return BANDS.UNKNOWN, which callers must treat as distinct from every real
+-- band -- rendering it as WORKING would tell a player their fungicide is fine about ground
+-- nobody has looked at.
+---@param fieldId number
+---@param mode string   FRAC group ("3", "11", "M2", ...) from getModeForFillType
+---@return number       a SoilConstants.RESISTANCE.BANDS value
+function SoilFertilitySystem:getResistanceBand(fieldId, mode)
+    local field = self.fieldData and self.fieldData[fieldId]
+    return ResistanceBands.getBand(field, mode)
+end
+
+-- CD-11 convenience: the band for a CHEMICAL rather than a mode, since a player picks a
+-- jug off a shelf and not a FRAC group. Generic FUNGICIDE has no mode and reads UNKNOWN.
+---@param fieldId number
+---@param fillTypeName string   e.g. "PROPICONAZOLE"
+---@return number
+function SoilFertilitySystem:getResistanceBandForChemical(fieldId, fillTypeName)
+    local mode = SoilFertilitySystem.getModeForFillType(fillTypeName)
+    if not mode then return SoilConstants.RESISTANCE.BANDS.UNKNOWN end
+    return self:getResistanceBand(fieldId, mode)
+end
+
 function SoilFertilitySystem.new(settings)
     local self = setmetatable({}, SoilFertilitySystem_mt)
     self.settings = settings
