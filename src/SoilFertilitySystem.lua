@@ -68,6 +68,36 @@ function SoilFertilitySystem.isNaturalFungicide(fillTypeName)
     return NATURAL_FUNGICIDE_NAMES[fillTypeName] == true
 end
 
+-- CD-11: THE RESISTANCE READ SURFACE. The whole contract a presentation build consumes.
+--
+-- Returns a SoilConstants.RESISTANCE.BANDS value for a field's mode of action, resolved
+-- against whatever picture this machine has: the server and single player band their own
+-- raw score, a client reads only what the server sent. A raw score never leaves the server
+-- and no caller ever sees one.
+--
+-- ALWAYS returns a band, NEVER nil. Unscouted ground, an unsynced field, and an unknown
+-- field id all return BANDS.UNKNOWN, which callers must treat as distinct from every real
+-- band -- rendering it as WORKING would tell a player their fungicide is fine about ground
+-- nobody has looked at.
+---@param fieldId number
+---@param mode string   FRAC group ("3", "11", "M2", ...) from getModeForFillType
+---@return number       a SoilConstants.RESISTANCE.BANDS value
+function SoilFertilitySystem:getResistanceBand(fieldId, mode)
+    local field = self.fieldData and self.fieldData[fieldId]
+    return ResistanceBands.getBand(field, mode)
+end
+
+-- CD-11 convenience: the band for a CHEMICAL rather than a mode, since a player picks a
+-- jug off a shelf and not a FRAC group. Generic FUNGICIDE has no mode and reads UNKNOWN.
+---@param fieldId number
+---@param fillTypeName string   e.g. "PROPICONAZOLE"
+---@return number
+function SoilFertilitySystem:getResistanceBandForChemical(fieldId, fillTypeName)
+    local mode = SoilFertilitySystem.getModeForFillType(fillTypeName)
+    if not mode then return SoilConstants.RESISTANCE.BANDS.UNKNOWN end
+    return self:getResistanceBand(fieldId, mode)
+end
+
 function SoilFertilitySystem.new(settings)
     local self = setmetatable({}, SoilFertilitySystem_mt)
     self.settings = settings
@@ -2111,12 +2141,32 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
 
     if pressure < onset * 0.5 then
         -- Infection has effectively cleared - drop the name.
+        -- CD-10: if what cleared was a HYBRID, arm the re-onset cooldown so the field cannot
+        -- immediately breed another from the same still-burned modes.
+        if HybridStrains.isHybrid(field.activeDisease) then
+            local daysPerMonth = (g_currentMission and g_currentMission.environment
+                                  and g_currentMission.environment.daysPerPeriod) or 1
+            HybridStrains.beginCooldown(field, currentDay, daysPerMonth)
+        end
         field.activeDisease = nil
         field.activeDiseaseSeverity = 1.0
         return
     end
 
     if not field.activeDisease and pressure >= onset then
+        -- CD-10 PRE-PASS, ahead of the normal roll and short-circuiting it on a hit.
+        -- Runs AFTER this day's resistance decay (both live in _processOneDailyField, decay
+        -- first), so a mode that decayed below threshold today reads as ineligible today.
+        -- A hybrid is never reachable through selectDisease's weighted roll -- it is not in
+        -- DISEASE_REGISTRY or any per-crop candidate list -- so this is its only door.
+        local hybridId = HybridStrains.selectOnset(field, currentDay)
+        if hybridId then
+            field.activeDisease = hybridId
+            field.activeDiseaseSeverity = SoilDiseaseSystem.yieldSeverity(hybridId)
+            field.diseaseDiscovered = false  -- as unknown as any fresh infection until scouted
+            return
+        end
+
         local _, isCool = self:_diseaseClimateNow(season)
         local seed = fieldId * 1000 + (currentDay or 0)
         local picked = SoilDiseaseSystem.selectDisease(field.lastCrop, season, isRaining, isCool, seed)
@@ -5705,30 +5755,42 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- Generic FUNGICIDE never reaches here (it routes through the fertilizer path), so chemId
     -- is always one of the six; the guard keeps it safe regardless.
     local rateName = "FUNGICIDE"
-    if chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
+    -- CD-12: is this a tank mix? NIL MEANS BEHAVE EXACTLY AS BEFORE -- every branch below
+    -- collapses to the single-chemical path when it is.
+    local blendPartners = SoilBlends.getPartners(chemId)
+
+    if blendPartners then
+        -- The blend carries its own calibrated rate (the mean of its partners'), so the
+        -- meter denominator below is the blend's pass and not generic FUNGICIDE's.
+        rateName = chemId
+        field.lastFungicide = chemId
+        -- CONTROL: the MAX over partners, and it stays a SEPARATE STEP from the resistance
+        -- factor further down -- do not fuse them. SoilDiseaseSystem.effectiveness keys on
+        -- the disease's CATEGORY and returns 0 for a nil disease, and activeDisease is nil
+        -- below onset, which is exactly when a careful farmer sprays. So this only applies
+        -- when a disease is actually present.
+        if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
+            local best = 0
+            for _, partner in ipairs(blendPartners) do
+                local control = SoilDiseaseSystem.effectiveness(partner, field.activeDisease) or 0
+                if control > best then best = control end
+            end
+            -- CD-10 ruled control factor: against a HYBRID, a blend spanning two FRESH modes
+            -- earns full control while one fresh mode earns half. Without it, max-over-partners
+            -- composed with the hybrid's flat 0.25 category default means a two-chemical mix
+            -- answers a hybrid no better than one jug. No-op on ordinary diseases.
+            best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
+            effectiveness = (effectiveness or 1.0) * best
+        end
+    elseif chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
         rateName = chemId
         field.lastFungicide = chemId
         if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
             local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
+            -- CD-10: one jug spans one mode, so against a two-mode hybrid it earns half
+            -- control at best. This is the asymmetry that makes mixing worth doing.
+            control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
             effectiveness = (effectiveness or 1.0) * control
-        end
-    end
-
-    -- CD-9: Per-MOA resistance build and effectiveness reduction
-    local mode = self.getModeForFillType(chemId)
-    if mode then
-        local isNatural = self.isNaturalFungicide(chemId)
-        local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
-        local isOrganic = field.organic ~= nil
-            and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
-                 or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
-        if not (isOrganic and not isNatural) then
-            field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
-                + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes)
-        end
-        local resistanceScore = field.resistance[mode] or 0
-        if resistanceScore > 0 then
-            effectiveness = (effectiveness or 1.0) * (1 - resistanceScore / maxRes)
         end
     end
 
@@ -5759,6 +5821,73 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     local targetRate = (SoilConstants.SPRAYER_RATE.BASE_RATES[rateName] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
     local targetVol = areaInHa * targetRate
     if targetVol <= 0 then return end
+
+    -- CD-9: Per-MOA resistance build and effectiveness reduction.
+    --
+    -- METERED PER PASS, NOT PER CALL (F66). This runs off an appended function on
+    -- Sprayer.onEndWorkAreaProcessing and is reached once per boom section per frame --
+    -- the hook's own comment measures that at "1000+ times per spray pass". A bare
+    -- increment therefore saturated a mode inside the first second of the first pass, and
+    -- since the penalty below is (1 - score/maxRes), a fungicide the player had just
+    -- bought dropped to zero effect partway through the pass he was spraying.
+    --
+    -- BUILD_PER_APPLICATION is a per-FULL-RATE-PASS figure (Constants.lua:1744), so it is
+    -- scaled by this call's share of a full-rate pass, exactly as every other consequence
+    -- in this function scales by liters / targetVol. One boom section contributes its own
+    -- slice and the slices across a whole pass sum to one application. Capped at 1.0 so a
+    -- single oversized call can never count as more than one pass. This restores the
+    -- dose_factor term the ratified CD-9 design specified.
+    --
+    -- It sits BELOW the field-area confirm deliberately: targetVol is the meter's
+    -- denominator, and before that confirm fieldArea can still be the 1.0 ha default,
+    -- which would collapse the denominator and re-create the saturation this fixes.
+    -- CD-12: the partners this pass builds on. A single chemical is the one-element case and
+    -- collapses to exactly the arithmetic that shipped before blends existed.
+    local resistParts = blendPartners or { chemId }
+    local partnerCount = #resistParts
+
+    local isOrganicField = field.organic ~= nil
+        and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
+             or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
+    local doseFactor = math.min(1.0, (liters or 0) / targetVol)
+    local bestFactor = nil
+
+    for _, partner in ipairs(resistParts) do
+        local mode = self.getModeForFillType(partner)
+        if mode then
+            local isNatural = self.isNaturalFungicide(partner)
+            local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
+            -- THE ORGANIC GUARD IS EVALUATED PER PARTNER, never on the blend name:
+            -- isNaturalFungicide("BLEND_COPPER_HYDROXIDE_SULFUR") is false, which would
+            -- otherwise stop the all-organic blend building any resistance on an organic
+            -- field -- a free pass that the two chemicals alone do not get.
+            if not (isOrganicField and not isNatural) then
+                -- F68: the durability dial, and it belongs HERE on the build term. Putting it
+                -- on the ceiling does nothing -- the ceiling multiplies the build, divides
+                -- the penalty and scales the bands, so it cancels in all three. Multisite
+                -- naturals build a quarter as fast, which is the only place that difference
+                -- can actually land.
+                local buildRate = isNatural and SoilConstants.RESISTANCE.BUILD_RATE_NATURAL
+                                  or SoilConstants.RESISTANCE.BUILD_RATE_SYNTHETIC
+                -- Split across partners: two modes each carry half the selection pressure,
+                -- which IS the mechanism this system exists for. The divisor is the partner
+                -- count, so a future three-partner blend inherits the rule with no new
+                -- constant. Still metered per pass (F66) -- doseFactor is this call's share
+                -- of a full-rate pass.
+                field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
+                    + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * buildRate * doseFactor / partnerCount)
+            end
+            -- THE RESCUE, and it stays a SEPARATE STEP from the catalog control above: the
+            -- MAX over partners of each mode's remaining potency. When one mode is burned
+            -- out it contributes nothing and the other partner carries the pass.
+            local factor = 1 - ((field.resistance[mode] or 0) / maxRes)
+            if bestFactor == nil or factor > bestFactor then bestFactor = factor end
+        end
+    end
+
+    if bestFactor ~= nil and bestFactor < 1 then
+        effectiveness = (effectiveness or 1.0) * bestFactor
+    end
 
     local effective = effectiveness or 1.0
     local baseRed = SoilConstants.DISEASE_PRESSURE.FUNGICIDE_PRESSURE_REDUCTION or 20
@@ -6300,6 +6429,9 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- field-average nutrients) and applied a bonus day of fallow / nutrient drift every time
     -- you saved and reloaded (#665).
     setXMLInt(xmlFile, key .. "#lastUpdateDay", self.lastUpdateDay or 0)
+    -- F66 relief marker. Its presence means this save has already had the one-time
+    -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
+    setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
 
     for fieldId, field in pairs(self.fieldData) do
         if type(field) == "table" then
@@ -6330,6 +6462,12 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#activeDisease", field.activeDisease or "")
             setXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered", field.diseaseDiscovered and 1 or 0)
             setXMLString(xmlFile, fieldKey .. "#lastFungicide", field.lastFungicide or "")
+            -- CD-10 re-onset cooldown. Persisted because a cooldown a save-and-reload
+            -- defeats is not a cooldown -- it would silently do nothing. Server-side only;
+            -- clients never compute onset, so it is deliberately not synced.
+            if (field.hybridBlockedUntilDay or 0) > 0 then
+                setXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay", field.hybridBlockedUntilDay)
+            end
             -- CD-9: Serialize per-MOA resistance as comma-separated mode:score pairs
             if field.resistance then
                 local parts = {}
@@ -6422,6 +6560,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     local _curDay = (g_currentMission and g_currentMission.environment
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
+    self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
 
     while true do
         local fieldKey = string.format("%s.field(%d)", key, index)
@@ -6455,6 +6594,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             activeDiseaseSeverity = 1.0,
             diseaseDiscovered = (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1,
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
+            hybridBlockedUntilDay = getXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay"),
             -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
             resistance = (function()
                 local rt = {}
@@ -6530,6 +6670,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     end
 
     self:info("Loaded data for %d fields", index)
+    self:_endF66ResistanceRelief()
     -- GRLE minimap heatmap is populated per-pixel by sprayer events (updatePixelForField).
     -- Bulk AABB seeding at load would paint field bounding boxes onto the terrain texture,
     -- creating rectangular blobs that ignore field polygon shapes.  The SoilLayerInstaller
@@ -6557,8 +6698,49 @@ end
 -- raw scalars + zoneData are in place. Preserves the exact ordering the XML
 -- loader always used: coverage restore uses the SAVED fieldArea, THEN fieldArea
 -- is refreshed from the farmland, THEN compaction is rebuilt from that area.
+--- F66 RELIEF: arm (or stand down) the one-time resistance reset for this load.
+---
+--- CD-9 shipped 2026-07-29 with a resistance build that counted every boom section as a
+--- full application, so a mode saturated inside the first second of the first pass. The
+--- meter landed 2026-08-01 (b60677f8), but the damage is PERSISTED -- fields sit pegged at
+--- the ceiling, and at DECAY_MONTHLY that is roughly a year of game time to clear.
+---
+--- RULED (Arissani, 2026-08-01): the player never made that choice, the bug did, so the
+--- fields should not stay burned. Shape ruled by Tyson the same day: clear rather than
+--- rescale. Rescaling sounds gentler but the inflation factor is UNKNOWABLE -- it depended
+--- on boom width and framerate -- so any divisor would be invented. And only ~3 days
+--- separate the two builds, in which honest accrual could reach at most a pass or two out
+--- of ten. A wrong number is worse than a clean slate.
+---
+--- Runs from _finalizeLoadedField, which BOTH load paths funnel through, so the XML and
+--- StateLedger saves cannot diverge. The marker is written on every save from here on, so
+--- this can never fire twice on the same save.
+---@param alreadyDone boolean   true when the save carries the marker
+function SoilFertilitySystem:_beginF66ResistanceRelief(alreadyDone)
+    self._f66ReliefPending = not alreadyDone
+    self._f66ReliefCleared = 0
+end
+
+--- Log the outcome once, after a load has finished walking its fields.
+function SoilFertilitySystem:_endF66ResistanceRelief()
+    if not self._f66ReliefPending then return end
+    self._f66ReliefPending = false
+    if (self._f66ReliefCleared or 0) > 0 then
+        self:info("F66 relief: cleared stored fungicide resistance on %d field(s). "
+            .. "Those scores were inflated by the pre-2026-08-01 meter defect, not earned. "
+            .. "Resistance now builds correctly at one application per full-rate pass.",
+            self._f66ReliefCleared)
+    end
+end
+
 function SoilFertilitySystem:_finalizeLoadedField(fieldId, f)
     if type(f) ~= "table" then return end
+
+    -- F66 relief (see _beginF66ResistanceRelief). One-time, both load paths.
+    if self._f66ReliefPending and type(f.resistance) == "table" and next(f.resistance) ~= nil then
+        f.resistance = {}
+        self._f66ReliefCleared = (self._f66ReliefCleared or 0) + 1
+    end
 
     -- Restore DAILY coverage area from the saved fraction (saved fieldArea,
     -- before the farmland refresh below). Session coverage stays 0 on purpose
@@ -6626,7 +6808,7 @@ end
 -- save. StateLedger's serializer round-trips arbitrary nested tables.
 function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, fields = {} }
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -6654,6 +6836,7 @@ function SoilFertilitySystem:getSoilStateTable()
                 activeDisease         = field.activeDisease or "",
                 diseaseDiscovered     = field.diseaseDiscovered or false,
                 lastFungicide         = field.lastFungicide or "",
+                hybridBlockedUntilDay = field.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 dryDayCount           = field.dryDayCount or 0,
                 burnDaysLeft          = field.burnDaysLeft or 0,
                 lastAlertSeason       = field.lastAlertSeason or 0,
@@ -6721,6 +6904,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
         return 0
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
+    self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
 
     local count = 0
     local fields = data.fields or {}
@@ -6750,6 +6934,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 activeDiseaseSeverity = 1.0,
                 diseaseDiscovered     = e.diseaseDiscovered or false,
                 lastFungicide         = e.lastFungicide,
+                hybridBlockedUntilDay = e.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 resistance = (function() local rt = {}; if e.resistance and type(e.resistance) == "table" then for k, v in pairs(e.resistance) do rt[k] = v end end; return rt end)(),
                 dryDayCount           = e.dryDayCount or 0,
                 burnDaysLeft          = e.burnDaysLeft or 0,
@@ -6804,6 +6989,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
             count = count + 1
         end
     end
+    self:_endF66ResistanceRelief()
     return count
 end
 

@@ -435,6 +435,8 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local orgStart  = streamReadInt32(streamId)
         local orgCert   = streamReadInt32(streamId)
         local orgBreach = streamReadInt32(streamId)
+        -- CD-11 bands (consume unconditionally to keep the stream aligned)
+        local resBands  = ResistanceBands.readStream(streamId)
 
         -- Validate and sanitize field data
         local function validateNumber(value, min, max, default, name)
@@ -505,6 +507,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 self.fieldData[fieldId].lastCrop3 = nil
             end
             OrganicCertification.applyFieldOrganic(self.fieldData[fieldId], orgState, orgStart, orgCert, orgBreach)
+            ResistanceBands.applyFieldBands(self.fieldData[fieldId], resBands)
         end
     end
 
@@ -580,6 +583,9 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId, orgStart)
         streamWriteInt32(streamId, orgCert)
         streamWriteInt32(streamId, orgBreach)
+
+        -- CD-11: per-mode resistance bands (server-computed; never a raw score).
+        ResistanceBands.writeStream(streamId, field)
     end
 end
 
@@ -736,6 +742,9 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId, orgStart)
         streamWriteInt32(streamId, orgCert)
         streamWriteInt32(streamId, orgBreach)
+
+        -- CD-11: per-mode resistance bands (server-computed; never a raw score).
+        ResistanceBands.writeStream(streamId, field)
     end
 end
 
@@ -810,6 +819,8 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local orgStart  = streamReadInt32(streamId)
         local orgCert   = streamReadInt32(streamId)
         local orgBreach = streamReadInt32(streamId)
+        -- CD-11 bands (consume unconditionally to keep the stream aligned)
+        local resBands  = ResistanceBands.readStream(streamId)
 
         if type(fieldId) == "number" and fieldId >= 0 then
             self.batchFields[fieldId] = {
@@ -845,6 +856,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 initialized           = true,
             }
             OrganicCertification.applyFieldOrganic(self.batchFields[fieldId], orgState, orgStart, orgCert, orgBreach)
+            ResistanceBands.applyFieldBands(self.batchFields[fieldId], resBands)
         end
     end
 
@@ -1028,6 +1040,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local orgStart  = streamReadInt32(streamId)
     local orgCert   = streamReadInt32(streamId)
     local orgBreach = streamReadInt32(streamId)
+    local resBands  = ResistanceBands.readStream(streamId)
 
     -- Clamp all values to valid ranges
     self.field = {
@@ -1081,6 +1094,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
 
     -- Attach the synced organic state so run()'s field replace carries it.
     OrganicCertification.applyFieldOrganic(self.field, orgState, orgStart, orgCert, orgBreach)
+    ResistanceBands.applyFieldBands(self.field, resBands)
 
     self:run(connection)
 end
@@ -1140,6 +1154,11 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     streamWriteInt32(streamId, orgStart)
     streamWriteInt32(streamId, orgCert)
     streamWriteInt32(streamId, orgBreach)
+
+    -- CD-11: per-mode resistance BANDS, for the same reason organic rides along above --
+    -- run() replaces the client's field table wholesale, so a value that does not travel
+    -- is a value that gets wiped. Server-computed; a raw score never goes on the wire.
+    ResistanceBands.writeStream(streamId, self.field)
 end
 
 function SoilFieldUpdateEvent:run(connection)

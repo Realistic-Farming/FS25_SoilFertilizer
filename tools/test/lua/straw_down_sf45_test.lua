@@ -25,6 +25,10 @@ local POLY = { {x=0,z=0}, {x=10,z=0}, {x=10,z=10} }
 T.ok("STRAW is tracked",            MaterialDown.isTrackedMaterial("STRAW"))
 T.ok("cut grass is tracked",        MaterialDown.isTrackedMaterial("GRASS_WINDROW"))
 T.ok("hay is tracked",              MaterialDown.isTrackedMaterial("DRYGRASS_WINDROW"))
+-- RULED 2026-07-31. The gate is handed a name synthesized from the FRUIT type, so
+-- mowing a meadow arrives as MEADOW_WINDROW even though the engine drops
+-- GRASS_WINDROW. Gate-only: the name is never persisted. See MaterialDown.
+T.ok("cut meadow grass is tracked", MaterialDown.isTrackedMaterial("MEADOW_WINDROW"))
 -- Chaff comes off the same combine and is NOT a swath: recording it would age
 -- something no member will ever read.
 T.ok("chaff is not tracked",        not MaterialDown.isTrackedMaterial("CHAFF"))
@@ -69,6 +73,7 @@ T.eq("and writes nothing", #writes, 0)
 -- straw-specific write, ageing rule, or inheritance rule to test. That absence is
 -- the point of the brief.
 T.eq("straw needed exactly one set entry", MaterialDown.TRACKED_MATERIALS.STRAW, true)
+T.eq("meadow needed exactly one set entry", MaterialDown.TRACKED_MATERIALS.MEADOW_WINDROW, true)
 
 -- ── 3. The spoil count lives in the READER ────────────────
 T.eq("straw spoils at 4 rain-days", MaterialWetness.spoilRainDaysFor("STRAW"), 4)

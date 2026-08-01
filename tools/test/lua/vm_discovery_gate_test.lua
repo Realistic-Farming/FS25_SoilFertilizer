@@ -4,7 +4,7 @@
 -- picture), so the scouting economy still has something to sell. Scouting reveals
 -- it; pest has no discovery concept and is never gated.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function sys() return setmetatable({}, { __index = SoilFertilitySystem }) end
 local s = sys()

@@ -2,7 +2,7 @@
 -- Guards the one formula that the harvest path and the soil monitor both read (see the
 -- "yield is field-average, monitor mirrors it" project note). Expected values are derived
 -- from the constants so tuning changes don't false-fail the test - it checks the formula.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local ys     = SoilConstants.YIELD_SENSITIVITY
 local thresh = ys.OPTIMAL_THRESHOLD

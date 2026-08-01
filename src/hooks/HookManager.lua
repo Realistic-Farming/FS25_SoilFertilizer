@@ -267,6 +267,10 @@ function HookManager:installAll(soilSystem)
     local baleDeleteOk = self:installBaleDeleteHook()
     if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
+    local balePickupOk = self:installBalerPickupHook()
+    if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -520,6 +524,10 @@ function HookManager:registerCustomSprayTypes()
     -- "limed" state to the density map. Using LIQUIDFERTILIZER's ground type marks the field
     -- as "fertilized" only, leaving it unlimed from vanilla's perspective and reducing yield.
     local limeGroundType    = limeType and limeType.sprayGroundType or solidGroundType
+    -- CD-12: the crop-protection ground state, borrowed from generic FUNGICIDE (which DOES
+    -- have a vanilla entry). Blends must be given this explicitly -- see the branch below.
+    local fungicideType     = g_sprayTypeManager:getSprayTypeByName("FUNGICIDE")
+    local fungicideGroundType = (fungicideType and fungicideType.sprayGroundType) or liquidGroundType
 
     -- Direct rate-to-LPS conversion:  customLPS = customRate_L_ha / 36000
     --
@@ -551,6 +559,7 @@ function HookManager:registerCustomSprayTypes()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
                           "LIQUIDMANURE", "MANURE", "DIGESTATE" }
+    SoilBlends.appendNames(liquidNames)   -- CD-12: the 28 tank mixes are liquids too
     -- Granular/solid types → inherit visual from FERTILIZER
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
@@ -572,6 +581,12 @@ function HookManager:registerCustomSprayTypes()
             local groundType
             if name == "LIQUIDLIME" then
                 groundType = limeGroundType
+            elseif SoilBlends.isBlend(name) then
+                -- CD-12: PASSED EXPLICITLY, never left to the lookup below. A blend has no
+                -- vanilla spray type, so it would fall through to liquidGroundType -- the
+                -- FERTILISER ground state -- and spraying a tank mix would mark the field
+                -- as fertilised in vanilla's density map.
+                groundType = fungicideGroundType
             else
                 local existingST = g_sprayTypeManager:getSprayTypeByName(name)
                 groundType = (existingST and existingST.sprayGroundType) or liquidGroundType
@@ -667,6 +682,7 @@ function HookManager:installEffectTypeHook()
     self._effectLiquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                                 "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    SoilBlends.appendNames(self._effectLiquidNames)   -- CD-12
     self._effectFertIdx = fertIdx
     self._effectLiqIdx  = liqIdx
 
@@ -845,6 +861,7 @@ function HookManager:installSprayTypeEffectsHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    SoilBlends.appendNames(liquidNames)   -- CD-12
 
     -- Build name-lookup sets for fast membership tests
     local liquidNameSet = {}
@@ -1074,6 +1091,10 @@ function HookManager:installDensityMapSprayHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
                           "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    -- CD-12: THE DENSITY-MAP SPRAY-TYPE REMAP. Omitting a name here means updateSprayArea
+    -- gets an unrecognised index, writes nothing, and changedArea stays 0 -- the blend
+    -- would spray, drain and cost money while never touching ground state.
+    SoilBlends.appendNames(liquidNames)
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     -- LIQUIDLIME must remap to LIME so FSDensityMapUtil writes the lime ground state
@@ -3198,6 +3219,113 @@ function HookManager:installBaleBirthHook()
     return true
 end
 
+--- Rectangle covering a baler pickup pass, expanded by the engine's own line radius.
+--- A work area resolves to a LINE plus a radius, not a point
+--- (DensityMapHeightUtil.getLineByArea, Baler.lua:1868), so the sample has to cover
+--- what the pass actually sweeps.
+---@return table|nil verts
+local function pickupPolygonFromWorkArea(workArea)
+    if workArea == nil or workArea.start == nil then return nil end
+    if DensityMapHeightUtil == nil or DensityMapHeightUtil.getLineByArea == nil then return nil end
+    local ok, lsx, _, lsz, lex, _, lez, lineRadius = pcall(
+        DensityMapHeightUtil.getLineByArea, workArea.start, workArea.width, workArea.height)
+    if not ok or lsx == nil or lex == nil or lsz == nil or lez == nil then return nil end
+
+    local r = tonumber(lineRadius) or 0
+    if r <= 0 then r = 0.5 end
+
+    local dx, dz = lex - lsx, lez - lsz
+    local len = math.sqrt(dx * dx + dz * dz)
+    if len < 0.001 then
+        return {
+            { x = lsx - r, z = lsz - r }, { x = lsx + r, z = lsz - r },
+            { x = lsx + r, z = lsz + r }, { x = lsx - r, z = lsz + r },
+        }
+    end
+
+    local px, pz = -dz / len * r, dx / len * r   -- perpendicular half-width
+    return {
+        { x = lsx + px, z = lsz + pz },
+        { x = lex + px, z = lez + pz },
+        { x = lex - px, z = lez - pz },
+        { x = lsx - px, z = lsz - pz },
+    }
+end
+
+--- THE BIRTH SAMPLE (RULED 2026-07-31). Samples the swath at the pickup and feeds the
+--- yard ladder a litres-weighted average, so a bale is born knowing what it ate. The
+--- rule, and why the accumulator is ours rather than the engine's, is in YardLadder.
+---@return boolean success
+function HookManager:installBalerPickupHook()
+    if Baler == nil or type(Baler.processBalerArea) ~= "function"
+        or type(Baler.createBale) ~= "function" then
+        SoilLogger.warning("[BalePickup] Baler.processBalerArea/createBale not available - birth sampling skipped")
+        return false
+    end
+
+    -- readCondition takes litres ONLY as a sanity gate: it refuses a non-positive
+    -- quantity (MaterialWetness.lua:753-754), and the percent it returns is a
+    -- mass-weighted mean over the cells that carry material, independent of the number
+    -- passed (:767-774). A pass's real litres are not knowable until the delegate has
+    -- run and eaten the material, so a positive probe stands in for the gate and the
+    -- real litres do the weighting afterwards.
+    local PROBE_LITRES = 1
+
+    local origProcess = Baler.processBalerArea
+    Baler.processBalerArea = function(balerSelf, workArea, ...)
+        -- THE SAMPLE HAS TO HAPPEN FIRST. Once the delegate returns, the material this
+        -- pass measured has been eaten and the layer reads NO_MATERIAL, which is
+        -- exactly why every baled bale recorded an unknown wetness before this clause.
+        --
+        -- SERVER ONLY, and that gate is OURS: processBalerArea is not server-gated by
+        -- the engine. Its only early-out is a client DISTANCE check (Baler.lua:1865),
+        -- and the engine's own accumulation at :1908 sits outside any isServer branch.
+        local pct, sampled = nil, false
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            local mw = yl.materialWetness
+            if mw ~= nil and mw:isArmed() then
+                pcall(function()
+                    local verts = pickupPolygonFromWorkArea(workArea)
+                    if verts == nil then return end
+                    sampled = true
+                    local c = mw:readCondition(verts, PROBE_LITRES)
+                    if c ~= nil and c.status == MaterialWetness.RESULT.OK then
+                        pct = c.pct
+                    end
+                end)
+            end
+        end
+
+        local pickedUpLiters, second = origProcess(balerSelf, workArea, ...)
+
+        if sampled and type(pickedUpLiters) == "number" and pickedUpLiters > 0 then
+            -- pickedUpLiters carries the engine's additive bonus, up to 5%
+            -- (Baler.lua:1894). Left in deliberately: it is a per-pass scale factor
+            -- that all but cancels in a ratio, and taking it out would mean inventing
+            -- a correction nobody ruled.
+            pcall(function() yl:noteBalerPickup(balerSelf, pct, pickedUpLiters) end)
+        end
+
+        return pickedUpLiters, second
+    end
+
+    local origCreate = Baler.createBale
+    Baler.createBale = function(balerSelf, ...)
+        -- Close the chamber BEFORE delegating. Bale.register fires SYNCHRONOUSLY
+        -- inside createBale (Baler.lua:1478-1490), and our Bale.register hook is what
+        -- consumes the pending sample.
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            pcall(function() yl:closeBalerChamber(balerSelf) end)
+        end
+        return origCreate(balerSelf, ...)
+    end
+
+    SoilLogger.info("[OK] Baler pickup hook installed (birth wetness sampled at the pickup)")
+    return true
+end
+
 --- Hooks Bale.delete so a row dies with its bale. ONE door for every way a bale
 --- leaves: sale, feeding out, mixing, our own condemnation, RealisticWeather's
 --- deletion, and the engine bale cap. The brief lists those separately and notes the
@@ -5192,6 +5320,9 @@ function HookManager:installFillUnitHookEarly()
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
     local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
+    -- CD-12: prepended hook -- blends must exist BEFORE vanilla save restore, or a saved
+    -- tank holding one resolves to nothing on load.
+    SoilBlends.appendNames(liquidNames)
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base)
     local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject it into dedicated lime spreaders
@@ -5319,6 +5450,9 @@ function HookManager:installFillUnitHook()
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
     local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
+    -- CD-12. NOT the same hook as installFillUnitHookEarly: this later one has a category
+    -- safety net the early one lacks, so both need feeding.
+    SoilBlends.appendNames(liquidNames)
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base).
     local manureCompatNames = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject into dedicated lime spreaders.
@@ -5659,6 +5793,12 @@ HookManager.SILO_GROUPS = {
                                            "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE", "LIQUIDLIME" } },
 }
 
+-- CD-12: the 28 tank mixes are liquid-fertilizer-based like their partners. Found by base
+-- name rather than index so reordering the groups above cannot silently drop them.
+for _, group in ipairs(HookManager.SILO_GROUPS) do
+    if group.base == "LIQUIDFERTILIZER" then SoilBlends.appendNames(group.names) end
+end
+
 -- Resolve SILO_GROUPS names → { baseIdx, idxList } once (cached; re-resolves while empty
 -- to cover dedicated-server timing where fill types aren't registered yet at first call).
 function HookManager:getResolvedSiloGroups()
@@ -5935,6 +6075,7 @@ function HookManager:installPurchaseRefillHook()
         "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
         "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
     }
+    SoilBlends.appendNames(ALL_CUSTOM_NAMES)   -- CD-12
 
     -- Prices from Constants (already defined there)
     local PRICE_OVERRIDES = {}
@@ -6927,9 +7068,9 @@ function HookManager:installSprayerVisualEffectHook()
     -- runs AFTER processSprayerArea sets lastSprayTime → effectsVisible = true → effects start.
     local remap = {}
     if liqFertIdx then
-        for _, name in ipairs({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
+        for _, name in ipairs(SoilBlends.appendNames({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                                  "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
-                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }) do
+                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" })) do   -- CD-12
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = liqFertIdx end
         end

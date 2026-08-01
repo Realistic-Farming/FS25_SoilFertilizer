@@ -4,7 +4,7 @@
 -- flattened. SoilDiseaseSystem is absent here, so disease severity defaults to 1.0
 -- (nil-guarded). Zone cells are intentionally NOT on the wire (overflow safety) and
 -- are reconstructed from the aggregate at apply time, so they are not asserted here.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/integrations/SoilNetworkSyncBridge.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/integrations/SoilNetworkSyncBridge.lua
 
 local B = SoilNetworkSyncBridge
 
@@ -21,6 +21,10 @@ do
       dryDayCount = 6, burnDaysLeft = 2, coverageFraction = 0.5, compaction = 11.0,
       nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
       organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
+      -- CD-11: the discovery flag (previously dropped by this bridge) and the bands whose
+      -- gate reads it. M2 is natural, so 3.5 of ITS ceiling (5) is SLIPPING, not WORKING.
+      diseaseDiscovered = true,
+      resistance = { ["3"] = 10, ["M2"] = 3.5 },
       -- zoneData present on the server but deliberately not serialized:
       zoneData = { ["3_4"] = { N = 50 } },
     },
@@ -51,6 +55,14 @@ do
   T.eq("roundtrip: insecticideDaysLeft", b.insecticideDaysLeft, 1)
   T.near("roundtrip: diseasePressure", b.diseasePressure, 17.0)
   T.eq("roundtrip: fungicideDaysLeft", b.fungicideDaysLeft, 4)
+  -- CD-11: the discovery flag must survive this bridge's wholesale replace, or a scouted
+  -- field reverts to unscouted on the client and every band below reads UNKNOWN.
+  T.eq("roundtrip: diseaseDiscovered survives the bridge", b.diseaseDiscovered, true)
+  T.eq("roundtrip: CD-11 saturated synthetic band survives the bridge",
+       b.resistanceBands and b.resistanceBands["3"], SoilConstants.RESISTANCE.BANDS.FINISHED)
+  T.eq("roundtrip: CD-11 natural band survives on its OWN ceiling",
+       b.resistanceBands and b.resistanceBands["M2"], SoilConstants.RESISTANCE.BANDS.SLIPPING)
+  T.ok("roundtrip: no raw resistance score crossed the bridge", b.resistance == nil)
   T.eq("roundtrip: dryDayCount", b.dryDayCount, 6)
   T.eq("roundtrip: burnDaysLeft", b.burnDaysLeft, 2)
   T.near("roundtrip: coverageFraction", b.coverageFraction, 0.5)

@@ -96,7 +96,8 @@ end
 -- NetworkSync expects). arr[1] = field count, then per field:
 --   fieldId, <each SCALARS value>, lastCrop, lastCrop2, lastCrop3, activeDisease,
 --   bufferCount, bufferCount x (fillTypeIndex, amount),
---   organicState, organicStartDay, organicCertifiedDay, organicBreaches
+--   organicState, organicStartDay, organicCertifiedDay, organicBreaches,
+--   diseaseDiscovered, bandCount, bandCount x (fracMode, band)
 function SoilNetworkSyncBridge.serializeFields(fieldData)
     local arr = { 0 }   -- slot 1 reserved for the count
     local n = 0
@@ -130,6 +131,23 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
         arr[#arr + 1] = orgStart
         arr[#arr + 1] = orgCert
         arr[#arr + 1] = orgBreach
+
+        -- The scout/discovery flag. It was NOT carried here before CD-11, while
+        -- SoilFieldUpdateEvent has always sent it -- so _onReadState's wholesale replace
+        -- (:250) dropped it on every apply and a scouted field silently reverted to
+        -- unscouted on the client. Same defect class as the organic wipe above. CD-11's
+        -- band gate reads this flag, so without it every band below would arrive and
+        -- immediately read UNKNOWN.
+        arr[#arr + 1] = field.diseaseDiscovered and 1 or 0
+
+        -- CD-11 resistance bands, for exactly the reason organic sits above: this bridge's
+        -- whole-map apply rebuilds every client field, so anything it does not carry is
+        -- wiped within a second of arriving by any other path. The CD-11 brief names three
+        -- handlers; this bridge is the FOURTH, and omitting it would have made the bands
+        -- look like they synced and then silently vanish.
+        local bandFlat = ResistanceBands.encodeFieldBands(field)
+        arr[#arr + 1] = math.floor(#bandFlat / 2)
+        for _, v in ipairs(bandFlat) do arr[#arr + 1] = v end
     end
     arr[1] = n
     return arr
@@ -183,6 +201,18 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
         local orgCert   = tonumber(arr[i]) or 0; i = i + 1
         local orgBreach = tonumber(arr[i]) or 0; i = i + 1
         OrganicCertification.applyFieldOrganic(field, orgState, orgStart, orgCert, orgBreach)
+
+        -- Discovery flag, then CD-11 bands (same trailing order as serializeFields).
+        field.diseaseDiscovered = (tonumber(arr[i]) or 0) == 1; i = i + 1
+
+        local bandCount = tonumber(arr[i]) or 0; i = i + 1
+        if bandCount < 0 then bandCount = 0 end
+        local bandFlat = {}
+        for _ = 1, bandCount do
+            bandFlat[#bandFlat + 1] = arr[i]; i = i + 1
+            bandFlat[#bandFlat + 1] = arr[i]; i = i + 1
+        end
+        ResistanceBands.applyFieldBands(field, bandFlat)
 
         out[fieldId] = field
     end

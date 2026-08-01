@@ -15,7 +15,7 @@
 --   The DAILY weed propagation is a different function and is deliberately untouched,
 --   so it is not exercised here.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local CELL = SoilConstants.ZONE.CELL_SIZE
 

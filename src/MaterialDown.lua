@@ -58,7 +58,28 @@ MaterialDown.TRACKED_MATERIALS = {
     GRASS_WINDROW    = true,   -- cut grass, the foundation's first material
     DRYGRASS_WINDROW = true,   -- hay: the cured form of that same swath
     STRAW            = true,   -- [SF-45] the second crop, and its entire build
+    MEADOW_WINDROW   = true,   -- cut meadow grass (RULED 2026-07-31); see note below
 }
+
+-- NOTE ON MEADOW_WINDROW, because it is the one key here that is NOT an engine
+-- fill type name and a later reader will otherwise "correct" it back out.
+--
+-- FS25 ships exactly three windrow fill types: GRASS_WINDROW, DRYGRASS_WINDROW and
+-- a generic WINDROW. Mowing a meadow drops GRASS_WINDROW, by the converter at
+-- maps_fruitTypes.xml:61 (from="MEADOW" to="GRASS_WINDROW"). There is no
+-- MEADOW_WINDROW anywhere in the engine.
+--
+-- The birth gate never sees that fill type. It is handed a name SYNTHESIZED from
+-- the FRUIT type by fruitTypeToWindrowName (HookManager.lua:115-119), which builds
+-- FRUITNAME .. "_WINDROW", so mowing a meadow arrives here as "MEADOW_WINDROW".
+-- This row is what admits it. Without the row, meadow mowing is refused at birth,
+-- which is the 396-tracked-against-86-not-tracked split the live test produced.
+--
+-- This is SAFE because the name is used at the gate ONLY: noteMaterialAt tests it
+-- and then writes an age band to a material-blind layer, so "MEADOW_WINDROW" is
+-- never persisted and never read back. Spoilage (MaterialWetness) and the hay
+-- member resolve the material at COLLECTION time from the fill type actually
+-- picked up, which is the real GRASS_WINDROW and already has its rules.
 
 ---@param fillTypeName string|nil  engine fill-type name
 ---@return boolean tracked
