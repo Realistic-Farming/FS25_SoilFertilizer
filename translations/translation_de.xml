@@ -79,12 +79,12 @@
     <e k="sf_dm_2" v="Gemäßigt" eh="e8328062" />
     <e k="sf_dm_3" v="Feucht" eh="ccb2fc34" />
     <e k="sf_dm_4" v="Nass" eh="ae789b86" />
-    <e k="sf_auto_rate_short" v="Automatische Ausbringmenge" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="Erhöht oder reduziert die Ausbringmenge automatisch anhand des Bedarf des Feldes." eh="a9ca9f6b" />
+    <e k="sf_auto_rate_short" v="DoseControl" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="Passt die ausgebrachte Düngermenge automatisch an den aktuellen Nährstoffbedarf des Feldes an." eh="a9ca9f6b" />
     <e k="sf_hud_theme_1" v="Grün" eh="d382816a" />
     <e k="sf_hud_theme_2" v="Blau" eh="9594eec9" />
     <e k="sf_hud_theme_3" v="Bernstein" eh="88068e33" />
-    <e k="sf_hud_theme_4" v="Mono" eh="5d9b47bd" />
+    <e k="sf_hud_theme_4" v="Monochrome" eh="5d9b47bd" />
     <e k="sf_hud_font_size_short" v="HUD-Schriftgröße" eh="fd6ca64a" />
     <e k="sf_hud_font_size_long" v="HUD-Schriftgröße für eine bessere Lesbarkeit anpassen" eh="c338854f" />
     <e k="sf_hud_font_1" v="Klein" eh="2660064e" />
@@ -115,7 +115,7 @@
     <e k="input_SF_TOGGLE_CELL_MAP" v="Boden-Zellenkarte umschalten" eh="3a7e9b9d" />
     <e k="input_SF_RATE_UP" v="Ausbringmenge erhöhen" eh="6e601ef5" />
     <e k="input_SF_RATE_DOWN" v="Ausbringmenge verringern" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="Automatische Ausbringmenge umschalten" eh="a8642cf0" />
+    <e k="input_SF_TOGGLE_AUTO" v="DoseControl umschalten" eh="a8642cf0" />
     <e k="input_SF_CYCLE_MAP_LAYER" v="Bodenebene wechseln" eh="8e4a716c" />
     <e k="input_SF_SOIL_PDA" v="Boden-PDA öffnen" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Schädlingssensor umschalten" />
@@ -124,7 +124,7 @@
     <e k="input_SF_SEE_SPRAY_PEST"    v="See &amp; Spray: Schädlinge" />
     <e k="input_SF_SEE_SPRAY_DISEASE" v="See &amp; Spray: Krankheit" eh="a5e476a8" />
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Unkraut" />
-    <e k="input_SF_VARIABLE_RATE"     v="Variable Ausbringmenge umschalten" />
+    <e k="input_SF_VARIABLE_RATE"     v="SmartRate umschalten" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Minimap-Zoom wechseln" />
 
     <!-- general fertilizers -->
@@ -216,9 +216,9 @@
     <e k="sf_hud_fallow" v="Brachland" eh="eafe5913" />
 		<e k="sf_hud_meadow" v="Grünland" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="Stilllegung" eh="0af05a4e" />
-    <e k="sf_hud_weeds" v="Unkrautdruck" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="Schädlingsdruck" eh="2fed5101" />
-    <e k="sf_hud_disease" v="Krankheitsdruck" eh="e7067a8c" />
+    <e k="sf_hud_weeds" v="Unkraut" eh="0ec7e90d" />
+    <e k="sf_hud_pests" v="Schädling" eh="2fed5101" />
+    <e k="sf_hud_disease" v="Krankheit" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="Bestimme die Erkrankung zunächst." eh="a6fe3f43" />
     <e k="sf_hud_protected" v="(geschützt)" eh="8273211e" />
     <e k="sf_hud_yield" v="Ertrag" eh="97345487" />
@@ -399,7 +399,7 @@
     <e k="sf_pda_pest_label" v="Schädling" eh="8f2aee79" />
     <e k="sf_pda_disease_label" v="Krankheiten" eh="e7067a8c" />
     <e k="sf_pda_section_attention" v="Behandlungsempfehlungen" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="Düngung" eh="fa9ded5e" />
+    <e k="sf_pda_needs_fert_label" v="Düngung empfohlen" eh="fa9ded5e" />
     <e k="sf_pda_total_urgent_label" v="Behandlung empfohlen (gesamt)" eh="b3ce2db9" />
     <e k="sf_pda_no_data_left" v="Noch keine Felddaten." eh="ba71c6b1" />
     <e k="sf_pda_map_section_title" v="Bodenkartenebenen" eh="85d63132" />
@@ -477,9 +477,9 @@
     <e k="sf_pda_need_p" v="benötigt Phosphor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="benötigt Kalium" eh="3a4edc67" />
     <e k="sf_pda_need_ph" v="pH-Wert" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="Herbizidbehandlung" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="Insektizidbehandlung" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="Fungizidbehandlung" eh="e8512698" />
+    <e k="sf_pda_need_weed" v="Herbizid" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="Insektizid" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="Fungizid" eh="e8512698" />
     <e k="sf_pda_need_multiple" v="Mehrfach" eh="a0bf169f" />
     <e k="sf_pda_treatment_minor" v="Gering" eh="6fed0c37" />
     <e k="sf_detail_title" v="Übersicht" eh="03b5acd7" />
@@ -503,11 +503,11 @@
     <e k="sf_treat_section_soil" v="Bodenfruchtbarkeit" eh="09e016e4" />
     <e k="sf_treat_section_fert" v="Nährstoffversorgung" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Pflanzenschutz" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="Bei deinem lokalen Händler kannst du spezialisierte Düngemittel finden." eh="540bff4d" />
+    <e k="sf_treat_hint" v="Bei deinem lokalen Händler kannst du spezialisierte Dünger und Pflanzenschutzmittel finden." eh="540bff4d" />
     <e k="sf_treat_action_optimal" v="Optimal - Keine Aktion erforderlich." eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="KALK oder FLÜSSIGKALK ausbringen, um den pH-Wert zu erhöhen." eh="d1420b97" />
+    <e k="sf_treat_action_lime" v="Kalk (flüssig oder fest) ausbringen, um den pH-Wert zu erhöhen." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="GIPS ausbringen, um den pH-Wert zu senken / Struktur zu verbessern." eh="4cb3f0dc" />
-    <e k="sf_treat_action_om_low" v="MIST, KOMPOST einpflügen oder Stroh häckseln." eh="33ec544c" />
+    <e k="sf_treat_action_om_low" v="Mist oder Kompost einarbeiten. Strohmatte auf dem Feld belassen.." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Überwachen. Organische Zufuhr beibehalten." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="UAN32, HARNSTOFF oder FLÜSSIGAMMONIAK ausbringen." eh="ebc225b0" />
     <e k="sf_treat_action_n_fair" v="AMS oder STARTER-Dünger ausbringen." eh="dc8fbeba" />
@@ -515,9 +515,9 @@
     <e k="sf_treat_action_p_fair" v="Mit Flüssig-MAP, Flüssig-DAP oder DAP (P) auffüllen." eh="0c99c3e8" />
     <e k="sf_treat_action_k_poor" v="KALI (Kalium) ausbringen." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="Mit Flüssig-Kalium oder Kalium (K) auffüllen." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="Herbizidbehandlung empfohlen." eh="625551c5" />
-    <e k="sf_treat_action_pest" v="Insektizidbehandlung empfohlen." eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="Fungizidbehandlung empfohlen." eh="9228323a" />
+    <e k="sf_treat_action_weed" v="Behandlung mit Herbizid empfohlen." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="Behandlung mit Insektizid empfohlen." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="Behandlung mit Fungizid empfohlen." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="Perfekt" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="Effizienz" eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="Optimal" eh="cb61fef1" />
@@ -536,11 +536,11 @@
     <e k="sf_hud_amend_burn" v="Einbuße durch Verätzungen: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="erhöhtes Verätzungsrisiko: Ja" eh="6f553cf3" />
 
-    <e k="sf_sprayer_auto_on" v="AUSBRINGUNGSRATE ( AUTO: AN )" eh="099b5dac" />
-    <e k="sf_sprayer_auto_off" v="AUSBRINGUNGSRATE  AUTO: AUS [%s]" eh="848cc106" />
-    <e k="sf_sprayer_target" v="Ziel:" eh="31d43504" />
-    <e k="sf_sprayer_burn_guaranteed" v="VERBRENNUNGSRISIKO: GARANTIERT" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="VERBRENNUNGSRISIKO: MÖGLICH" eh="25b251b6" />
+    <e k="sf_sprayer_auto_on" v="Bedarfsgerechte Düngung aktiv" eh="099b5dac" />
+    <e k="sf_sprayer_auto_off" v="Bedarfsgerechte Düngung inaktiv [%s]" eh="848cc106" />
+    <e k="sf_sprayer_target" v="Angestrebte Menge:" eh="31d43504" />
+    <e k="sf_sprayer_burn_guaranteed" v="Verätzungen garantiert" eh="422601c4" />
+    <e k="sf_sprayer_burn_possible" v="Verätzungen möglich" eh="25b251b6" />
 
     <e k="sf_notify_welcome" v="Boden- &amp; Dünger-Mod aktiv | J = HUD | K = Bodenbericht | 'soilfertility' für Befehle" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Neuheiten in dieser Version:" eh="0b25f5c2" />
@@ -602,7 +602,7 @@
     <e k="sf_desc_fertilizerCosts" v="realistische Düngerpreise" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="erhalte Benachrichtigungen über den Zustand deiner Böden" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="HUD anzeigen" eh="fa8b9224" />
-    <e k="sf_desc_showWorkTrail" v="zeige Überfahrtsmarkierungen von Erntemaschinen und Feldspritzen" eh="3a3da614" />
+    <e k="sf_desc_showWorkTrail" v="zeige kleine Markierungen auf dem Feld, " eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="zeige das Feldspritzen-HUD wenn du ein entsprechende Maschine benutzt" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="zeige das Mähdrescher-HUD wenn du ein entsprechende Maschine benutzt" eh="b16a1726" />
     <e k="sf_desc_hudPosition" v="Ausrichtung" eh="98c8bcea" />
@@ -622,7 +622,7 @@
     <e k="sf_desc_difficulty" v="Intensität des Nährstoffentzugs" eh="54a7902e" />
     <e k="sf_desc_replenishmentRate" v="Geschwindigkeit der Nährstoffwiederherstellung" eh="858d2b23" />
     <e k="sf_desc_useImperialUnits" v="Einheiten werden in gal/ac und lb/ac dargestellt." eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="Intelligente Ausbringmengensteuerung" eh="bb4e5880" />
+    <e k="sf_desc_autoRateControl" v="DoseControl" eh="bb4e5880" />
     <e k="sf_desc_cropRotation" v="Unterschiedliche Kulturen haben unterschiedliche Einflüsse auf die Folgekultur" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Welche Information als Overlay auf der Minimap angezeigt wird" eh="3c01c599" />
     <e k="sf_desc_overlayDensity" v="Darstellungsqualität des Overlay. Niedrig: 8k, Mittel: 20k oder Hoch: 40k" eh="42503763" />
@@ -682,7 +682,7 @@
     <e k="sf_fieldinfo_grade" v="Bodenqualität" eh="65d1be5f" />
     <e k="sf_fieldinfo_yield" v="Ertrag" eh="97345487" />
     <e k="sf_fieldinfo_rotation" v="Fruchtfolge" eh="f1a42bd4" />
-		<e k="sf_fieldinfo_disease" v="Krankheitsbefall" eh="a94ce36d" />
+		<e k="sf_fieldinfo_disease" v="Krankheit" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="Verätzungsrisiko" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="Simulation" eh="c39e57f0" />
     <e k="sf_fieldinfo_needs" v="benötigt" eh="94d6125d" />
@@ -701,12 +701,12 @@
     <e k="sf_cell_coord" v="Koordinaten" eh="99171d3a" />
     <e k="sf_cell_click_hint" v="Klicke auf die Karte, um eine Bodenparzelle zu untersuchen" eh="fc9d240b" />
     <!-- SMART-SYSTEME (Admin-Panel-Bereich) -->
-    <e k="sf_panel_hdr_smart_systems"    v="Smart-Systeme" />
-    <e k="sf_smart_sensor_short"         v="Smart-Sensor" />
-    <e k="sf_smart_sensor_long"          v="Smart-Spray-Sensor-System aktivieren oder deaktivieren" />
+    <e k="sf_panel_hdr_smart_systems"    v="SMART-SPRAY System" />
+    <e k="sf_smart_sensor_short"         v="SMART-SPRAY Sensoren" />
+    <e k="sf_smart_sensor_long"          v="Intelligente Sensoren erkennen Unkraut, Krankheiten und Schädlinge während der Fahrt und ermöglichen eine teilflächenspezifische Behandlung." />
     <e k="sf_desc_smartSensorEnabled"    v="Erlaubt Spielern die Smart-Sensor-Gestängesektionssteuerung auf Basis von Live-Bodendaten" />
     <!-- SMART-SENSOR-PANEL -->
-    <e k="sf_sensor_panel_title" v="SMARTSPRAYING-Sensorik" eh="33809906" />
+    <e k="sf_sensor_panel_title" v="SMARTSPRAY-Sensoren" eh="33809906" />
     <e k="sf_sensor_pest"        v="Schädlinge" />
     <e k="sf_sensor_disease"     v="Krankheiten" />
     <e k="sf_sensor_nutrient"    v="Nährstoffsensor" />
@@ -721,27 +721,27 @@
     <e k="sf_nav_tuning_desc"             v="Simulationskonstanten feinabstimmen: Verarmungsraten, Stresswachstum, Start-Bodenwerte" />
     <e k="sf_nav_crop_tuning_label"       v="Crop Tuning Editor" />
     <e k="sf_nav_crop_tuning_desc"        v="Adjust per-crop N/P/K requirements; add crops via soilCropTuning.xml" />
-    <e k="sf_panel_hdr_smart_sensor_sys"   v="Smart-Sensor-System" />
-    <e k="sf_panel_hdr_see_spray_sys"      v="See-&amp;-Spray-System" />
-    <e k="sf_panel_hdr_var_rate_sys"       v="Variable-Rate-System" />
-    <e k="sf_see_and_spray_short"          v="See &amp; Spray" />
-    <e k="sf_see_and_spray_long"           v="See-&amp;-Spray-Präzisionssprühsystem aktivieren oder deaktivieren" />
-    <e k="sf_variable_rate_short"          v="Variable Ausbringmenge" />
-    <e k="sf_variable_rate_long"           v="Variable Ausbringmenge basierend auf Bodendefiziten aktivieren oder deaktivieren" />
+    <e k="sf_panel_hdr_smart_sensor_sys"   v="SMART-SPRAY-Sensoren" />
+    <e k="sf_panel_hdr_see_spray_sys"      v="SMART-SPRAY-Sensoren" />
+    <e k="sf_panel_hdr_var_rate_sys"       v="DoseControl" />
+    <e k="sf_see_and_spray_short"          v="SMART-SPRAY-Sensoren" />
+    <e k="sf_see_and_spray_long"           v="SMART-SPRAY-Sensoren aktivieren oder deaktivieren" />
+    <e k="sf_variable_rate_short"          v="SmartRate" />
+    <e k="sf_variable_rate_long"           v="Passt die Düngermenge innerhalb eines Feldes an unterschiedliche Ertragspotenziale und Nährstoffbedarfe einzelner Bereiche an." />
     <e k="sf_desc_seeAndSprayEnabled"      v="Gestängesektionen über Bereichen ohne Spritzbedarf unterdrücken" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
-    <e k="sf_config_seeSprayWeed"          v="See &amp; Spray: Unkraut" />
-    <e k="sf_config_seeSprayPest"          v="See &amp; Spray: Schädlinge" />
-    <e k="sf_config_seeSprayDisease"       v="See &amp; Spray: Krankheit" />
+    <e k="sf_config_seeSprayWeed"          v="SMART-SPRAY Sensor: Unkraut" />
+    <e k="sf_config_seeSprayPest"          v="SMART-SPRAY Sensor: Schädlinge" />
+    <e k="sf_config_seeSprayDisease"       v="SMART-SPRAY Sensor: Krankheiten" />
     <e k="sf_desc_variableRateEnabled"     v="Ausbringmenge pro Sektion basierend auf Bodennährstoffdefiziten anpassen" />
     <e k="sf_panel_hdr_field_boundary"     v="Feldgrenzenkontrolle" />
     <e k="sf_field_boundary_short"         v="Grenzenkontrolle" />
     <e k="sf_field_boundary_long"          v="Automatische Feldgrenzen-Sektionssteuerung aktivieren oder deaktivieren" />
     <e k="sf_desc_fieldBoundaryControl"    v="Schaltet Gestängesektionen automatisch ab, die außerhalb der Feldgrenzen liegen, und verhindert so Ausbringung außerhalb des Feldes." />
-    <e k="sf_panel_hdr_overlap_prev"      v="Überlappungsvermeidung" />
-    <e k="sf_overlap_prev_short"           v="Überlappungsvermeidung" />
-    <e k="sf_overlap_prev_long"            v="Dichtekartenbasierte Überlappungsvermeidung aktivieren oder deaktivieren" />
-    <e k="sf_desc_overlapPrevention"       v="Schaltet Gestängesektionen über bereits vollständig gedüngten Flächen automatisch ab und verhindert verschwenderische Doppelausbringung auf Überlappungen." />
+    <e k="sf_panel_hdr_overlap_prev"       v="Teilbreitenschaltung" />
+    <e k="sf_overlap_prev_short"           v="Teilbreitenschaltung" />
+    <e k="sf_overlap_prev_long"            v="Aktiviert die automatische Teilbreitenschaltung für Arbeitsgeräte mit Teilbreitensteuerung." />
+    <e k="sf_desc_overlapPrevention"       v="Verhindert Überlappungen und Fehlstellen bei der Ausbringung von Dünger und Pflanzenschutzmitteln." />
 
     <!-- SMART-SENSOR-PANEL -->
     <!-- SEE-&-SPRAY-PANEL -->
@@ -752,8 +752,8 @@
     <e k="sf_see_spray_suppressed"  v="Alle Sektionen unterdrückt: kein Druck erkannt" />
     <e k="sf_see_spray_protected" v="0% (Schutzwirkung)" eh="190bfadc" />
     <!-- PANEL FÜR VARIABLE AUSBRINGMENGE -->
-    <e k="sf_var_rate_panel_title" v="VARIABLE AUSBRINGMENGE" eh="799c3bf7" />
-    <e k="sf_var_rate_label"       v="Var. Rate" />
+    <e k="sf_var_rate_panel_title" v="SmartRate" eh="799c3bf7" />
+    <e k="sf_var_rate_label"       v="SmartRate" />
     <!-- EINGABEAKTIONEN -->
     <e k="action_SF_SENSOR_NUTRIENT"   v="SF: Nährstoffsensor umschalten" />
     <e k="action_SF_SEE_SPRAY_PEST"    v="SF: See &amp; Spray Schädlinge umschalten" />
@@ -1094,7 +1094,7 @@
 
     <e k="sf_treat_cycle" v="nächstes Fungizid" eh="50e1cf57" />
     <e k="sf_treat_apply" v="Fungizid anwenden" eh="66b90889" />
-		<e k="sf_treat_vs" v="gegen" eh="f4842dcb" />
+		<e k="sf_treat_vs" v="im Vergleich zu:" eh="f4842dcb" />
 		<e k="sf_treat_applied" v="[EN] Applied %s: %d%% control, -%d pressure, %d-day protection, $%d" eh="03a47259" />
 		<e k="sf_treat_sent_hint" v="Behandlung angefragt" eh="93be50ad" />
     <e k="sf_scout_title" v="Feldbonitur" eh="f2699e28" />
