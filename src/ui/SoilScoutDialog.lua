@@ -205,7 +205,7 @@ function SoilScoutDialog:_updateChemSelection()
         local pct = math.floor(SoilDiseaseSystem.effectiveness(id, self._disease) * 100 + 0.5)
         parts[#parts + 1] = string.format("%d%% %s %s", pct, tr("sf_treat_vs", "vs"), disName(self._disease))
     end
-    parts[#parts + 1] = string.format("$%d/ha (~$%d)", chem.costPerHa or 0, total)
+    parts[#parts + 1] = string.format("%s/ha (~%s)", UIHelper.formatCurrencyValue(chem.costPerHa or 0), UIHelper.formatCurrencyValue(total))
     if SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[id] then
         parts[#parts + 1] = tr("sf_treat_tank_tag", "tank - spray")
     end
@@ -237,9 +237,9 @@ function SoilScoutDialog:onClickApply()
     detail = detail or {}
     if detail.control ~= nil then
         setText(self.scoutHint, string.format(
-            tr("sf_treat_applied", "Applied %s: %d%% control, -%d pressure, %d-day protection, $%d"),
+            tr("sf_treat_applied", "Applied %s: %d%% control, -%d pressure, %d-day protection, %s"),
             chemName(id), math.floor((detail.control or 0) * 100 + 0.5),
-            math.floor(detail.reduction or 0), detail.protDays or 0, math.floor(detail.cost or 0)))
+            math.floor(detail.reduction or 0), detail.protDays or 0, UIHelper.formatCurrencyValue(math.floor(detail.cost or 0))))
     else
         setText(self.scoutHint, tr("sf_treat_sent_hint", "Treatment requested."))
     end

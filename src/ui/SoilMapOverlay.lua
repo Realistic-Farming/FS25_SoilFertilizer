@@ -1101,6 +1101,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     local ttPOOR, ttFAIR, ttGOOD = self:statusColors()
     local DIM = { 0.55, 0.55, 0.62 }
     local NEU = { 0.85, 0.85, 0.90 }
+    local ppmUnit = g_i18n:getText("sf_hud_unit_ppm")
 
     local function fmtV(s) return est and (s .. "~") or s end
     local function clrStatus(status)
@@ -1132,7 +1133,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = tr("sf_map_layer_k", "Potassium (K)") end
 
         local val = (nInfo.value or 0) * ppmMul
-        addRow(lbl, fmtV(string.format("%d ppm", math.floor(val + 0.5))), clrStatus(nInfo.status))
+        addRow(lbl, fmtV(string.format("%d %s", math.floor(val + 0.5), ppmUnit)), clrStatus(nInfo.status))
 
         local targKey = (layerIdx == 1) and "N" or (layerIdx == 2) and "P" or "K"
         local ct = info.cropTargets
@@ -1142,11 +1143,11 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
                 local target = ct[targKey].opt * ppmMul
                 local gap    = val - target
                 local crop   = cropTitle(info.lastCrop) or tr("sf_hud_fallow", "Crop")
-                addRow(targetLabel .. " (" .. crop .. ")", string.format("%d ppm", math.floor(target + 0.5)), NEU[1], NEU[2], NEU[3])
+                addRow(targetLabel .. " (" .. crop .. ")", string.format("%d %s", math.floor(target + 0.5), ppmUnit), NEU[1], NEU[2], NEU[3])
                 if gap >= 0 then
-                    addRow(gapLabel, string.format("+%d ppm", math.floor(gap + 0.5)), ttGOOD[1], ttGOOD[2], ttGOOD[3])
+                    addRow(gapLabel, string.format("+%d %s", math.floor(gap + 0.5), ppmUnit), ttGOOD[1], ttGOOD[2], ttGOOD[3])
                 else
-                    addRow(gapLabel, string.format("%d ppm needed", math.floor(-gap + 0.5)), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                    addRow(gapLabel, string.format("%d %s needed", math.floor(-gap + 0.5), ppmUnit), ttPOOR[1], ttPOOR[2], ttPOOR[3])
                 end
             else
                 local crop = cropTitle(info.lastCrop)
@@ -1364,8 +1365,9 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     setTextColor(0.65, 0.85, 1.0, 1.0)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_MIDDLE)
+    local fieldTitle = string.format(g_i18n:getText("sf_hud_field"), sel.farmlandId)
     renderText(bx + padX, titleY + titleH * 0.5, titSz,
-               string.format("Field %d  [%d, %d]", sel.farmlandId, sel.cellCX, sel.cellCZ))
+               fieldTitle .. string.format("  [%d, %d]", sel.cellCX, sel.cellCZ))
     setTextBold(false)
     drawFilledRect(bx + padX, titleY - bdrT, boxW - padX * 2, bdrT, 0.4, 0.65, 1.0, 0.3)
 
