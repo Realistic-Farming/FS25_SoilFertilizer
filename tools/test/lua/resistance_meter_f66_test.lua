@@ -118,7 +118,7 @@ do
   local field = newField()
   local sys   = newSys(field)
   spray(sys, "SULFUR", AREA_HA * RATE_NAT, 200)
-  T.near("F66: a natural full pass meters against MAX_NATURAL", field.resistance["M2"], BUILD * MAX_NAT, 1e-9)
+  T.near("F66: a natural full pass meters against MAX_NATURAL", field.resistance["M2"], BUILD * MAX_NAT * R.BUILD_RATE_NATURAL, 1e-9)
 end
 
 -- Each mode of action meters independently - PROPICONAZOLE and TEBUCONAZOLE share FRAC 3,
@@ -148,7 +148,7 @@ do
   spray(sys, "PROPICONAZOLE", FULL_PASS, 100)
   T.ok("F66: synthetic on a certified field builds no resistance", field.resistance["3"] == nil)
   spray(sys, "SULFUR", AREA_HA * RATE_NAT, 100)
-  T.near("F66: approved natural still builds on a certified field", field.resistance["M2"], BUILD * MAX_NAT, 1e-9)
+  T.near("F66: approved natural still builds on a certified field", field.resistance["M2"], BUILD * MAX_NAT * R.BUILD_RATE_NATURAL, 1e-9)
 end
 
 -- The penalty still bites: at the ceiling, effectiveness is zero and the pass reduces no

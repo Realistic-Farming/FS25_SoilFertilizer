@@ -194,7 +194,7 @@ do
   local field = newField()
   sprayPass(newSys(field), "BLEND_PROPICONAZOLE_SULFUR")
   T.near("blend: the natural partner halves against MAX_NATURAL",
-         field.resistance["M2"], BUILD * R.MAX_NATURAL / 2, 1e-9)
+         field.resistance["M2"], BUILD * R.MAX_NATURAL * R.BUILD_RATE_NATURAL / 2, 1e-9)
   T.near("blend: the synthetic partner halves against MAX_SYNTHETIC",
          field.resistance["3"], BUILD * R.MAX_SYNTHETIC / 2, 1e-9)
 end
@@ -206,9 +206,9 @@ do
   local field = newField({ organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED } })
   sprayPass(newSys(field), "BLEND_COPPER_HYDROXIDE_SULFUR")
   T.near("organic field: approved natural partner M1 still builds",
-         field.resistance["M1"], BUILD * R.MAX_NATURAL / 2, 1e-9)
+         field.resistance["M1"], BUILD * R.MAX_NATURAL * R.BUILD_RATE_NATURAL / 2, 1e-9)
   T.near("organic field: approved natural partner M2 still builds",
-         field.resistance["M2"], BUILD * R.MAX_NATURAL / 2, 1e-9)
+         field.resistance["M2"], BUILD * R.MAX_NATURAL * R.BUILD_RATE_NATURAL / 2, 1e-9)
 end
 
 do
@@ -216,7 +216,7 @@ do
   sprayPass(newSys(field), "BLEND_COPPER_HYDROXIDE_PROPICONAZOLE")
   T.ok("organic field: the SYNTHETIC partner builds nothing", field.resistance["3"] == nil)
   T.near("organic field: the approved partner still builds",
-         field.resistance["M1"], BUILD * R.MAX_NATURAL / 2, 1e-9)
+         field.resistance["M1"], BUILD * R.MAX_NATURAL * R.BUILD_RATE_NATURAL / 2, 1e-9)
 end
 
 -- ── THE RESCUE. When one mode is burned out it contributes nothing and the other partner

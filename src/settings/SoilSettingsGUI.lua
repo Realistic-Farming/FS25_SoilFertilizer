@@ -925,8 +925,12 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
     end
 
     lines[#lines+1] = ""
-    lines[#lines+1] = string.format("One full-rate pass builds %.0f%% of a mode's ceiling (%d passes to saturate).",
-        R.BUILD_PER_APPLICATION * 100, math.floor(1 / R.BUILD_PER_APPLICATION))
+    local synPct = R.BUILD_PER_APPLICATION * R.BUILD_RATE_SYNTHETIC
+    local natPct = R.BUILD_PER_APPLICATION * R.BUILD_RATE_NATURAL
+    lines[#lines+1] = string.format("A full-rate pass builds %.1f%% of ceiling for single-site synthetics (%d passes to saturate),",
+        synPct * 100, math.floor(1 / synPct))
+    lines[#lines+1] = string.format("and %.2f%% for the multisite naturals M1/M2 (%d passes) -- they resist far more slowly.",
+        natPct * 100, math.floor(1 / natPct))
     lines[#lines+1] = "Bands: WORKING < 50% of ceiling, SLIPPING 50-99%, FINISHED at 100% (effectiveness x0.00)."
     lines[#lines+1] = "======================================"
     return table.concat(lines, "\n")
@@ -1006,7 +1010,11 @@ function SoilSettingsGUI:consoleCommandResistanceTest(chemical, passes, fieldId)
     end
     local after    = (type(field.resistance) == "table" and field.resistance[mode]) or 0
 
-    local expected = math.min(ceiling, before + R.BUILD_PER_APPLICATION * ceiling * n)
+    -- F68: naturals build at a quarter rate, so the expected value must carry it or this
+    -- would report a false FAIL on every sulfur/copper test.
+    local buildRate = SoilFertilitySystem.isNaturalFungicide(chem)
+                      and R.BUILD_RATE_NATURAL or R.BUILD_RATE_SYNTHETIC
+    local expected = math.min(ceiling, before + R.BUILD_PER_APPLICATION * ceiling * buildRate * n)
     local ok       = math.abs(after - expected) < 0.01
 
     local lines = {}
@@ -1019,8 +1027,9 @@ function SoilSettingsGUI:consoleCommandResistanceTest(chemical, passes, fieldId)
     lines[#lines+1] = string.format("  after:    %.3f / %.1f  (%.0f%% -- band %s)",
         after, ceiling, (after / ceiling) * 100,
         RESISTANCE_BAND_NAMES[soilSys:getResistanceBand(fid, mode)] or "?")
-    lines[#lines+1] = string.format("  expected: %.3f  (%d pass x %.0f%% of ceiling)",
-        expected, n, R.BUILD_PER_APPLICATION * 100)
+    lines[#lines+1] = string.format("  expected: %.3f  (%d pass x %.2f%% of ceiling%s)",
+        expected, n, R.BUILD_PER_APPLICATION * buildRate * 100,
+        (buildRate ~= 1.0) and ", multisite natural at x" .. tostring(buildRate) or "")
     lines[#lines+1] = ""
     if ok then
         lines[#lines+1] = "  RESULT: PASS -- the per-pass meter is live."

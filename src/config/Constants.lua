@@ -1787,6 +1787,37 @@ SoilConstants.RESISTANCE = {
     -- a natural chemical without updating this fails the suite rather than shipping a
     -- silently wrong ceiling.
     NATURAL_MODES = { M1 = true, M2 = true },
+
+    -- F68: THE DURABILITY DIAL, and it has to live on the BUILD RATE rather than the ceiling.
+    --
+    -- MAX_NATURAL looks like it makes sulfur and copper more durable. It does not, and this
+    -- was certified at three sites: the ceiling MULTIPLIES the build, DIVIDES the penalty
+    -- (1 - score/maxRes) and SCALES the bands (a fraction of that same ceiling), so it
+    -- cancels in all three. Synthetic: 0.05 x 10 = 0.5 per pass into a ceiling of 10 = 20
+    -- passes. Natural: 0.05 x 5 = 0.25 into a ceiling of 5 = ALSO exactly 20 passes. The
+    -- penalty at pass N is 1 - 0.05N either way. Anyone tuning MAX_NATURAL to make sulfur
+    -- last longer would change nothing and believe they had -- which is worse than a missing
+    -- feature, because the constant reads like a dial.
+    --
+    -- So the real dial is here, applied to the BUILD TERM ONLY. The ceiling keeps its one
+    -- honest job: setting where FINISHED sits.
+    --
+    -- THE AGRONOMY: sulfur and copper are MULTISITE -- they attack the fungus at many
+    -- biochemical points at once, so it has to defeat all of them. FRAC grades the M-group
+    -- LOW resistance risk on decades of field use with almost no documented resistance. A
+    -- triazole hits ONE site, and a fungus picks one lock far faster than twelve.
+    --
+    -- AND THE FAIRNESS REASON, which is what re-graded F68 from LOW to MEDIUM: by CD-12's
+    -- own ruling an organic grower has exactly ONE legal mix, so he cannot rotate modes --
+    -- there is nothing to rotate to. Under the old arithmetic he burned out his only
+    -- chemistry at precisely the rate of a farmer hammering one synthetic by choice. The
+    -- system punished him identically for a decision he was never offered.
+    --
+    -- 0.25 gives roughly 80 full-rate passes to saturation against the synthetic's 20.
+    -- Ruled by Tyson 2026-08-01 on Claude(A)'s recommendation. This is the tuning knob:
+    -- raise it to burn naturals faster, lower it to make them nearer-permanent.
+    BUILD_RATE_NATURAL   = 0.25,
+    BUILD_RATE_SYNTHETIC = 1.0,
 }
 
 SoilConstants.VARIABLE_RATE = {

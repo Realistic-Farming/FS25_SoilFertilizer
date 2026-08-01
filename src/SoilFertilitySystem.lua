@@ -5834,13 +5834,20 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
             -- otherwise stop the all-organic blend building any resistance on an organic
             -- field -- a free pass that the two chemicals alone do not get.
             if not (isOrganicField and not isNatural) then
+                -- F68: the durability dial, and it belongs HERE on the build term. Putting it
+                -- on the ceiling does nothing -- the ceiling multiplies the build, divides
+                -- the penalty and scales the bands, so it cancels in all three. Multisite
+                -- naturals build a quarter as fast, which is the only place that difference
+                -- can actually land.
+                local buildRate = isNatural and SoilConstants.RESISTANCE.BUILD_RATE_NATURAL
+                                  or SoilConstants.RESISTANCE.BUILD_RATE_SYNTHETIC
                 -- Split across partners: two modes each carry half the selection pressure,
                 -- which IS the mechanism this system exists for. The divisor is the partner
                 -- count, so a future three-partner blend inherits the rule with no new
                 -- constant. Still metered per pass (F66) -- doseFactor is this call's share
                 -- of a full-rate pass.
                 field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
-                    + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * doseFactor / partnerCount)
+                    + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * buildRate * doseFactor / partnerCount)
             end
             -- THE RESCUE, and it stays a SEPARATE STEP from the catalog control above: the
             -- MAX over partners of each mode's remaining potency. When one mode is burned
@@ -6394,6 +6401,9 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- field-average nutrients) and applied a bonus day of fallow / nutrient drift every time
     -- you saved and reloaded (#665).
     setXMLInt(xmlFile, key .. "#lastUpdateDay", self.lastUpdateDay or 0)
+    -- F66 relief marker. Its presence means this save has already had the one-time
+    -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
+    setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
 
     for fieldId, field in pairs(self.fieldData) do
         if type(field) == "table" then
@@ -6516,6 +6526,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     local _curDay = (g_currentMission and g_currentMission.environment
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
+    self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
 
     while true do
         local fieldKey = string.format("%s.field(%d)", key, index)
@@ -6624,6 +6635,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     end
 
     self:info("Loaded data for %d fields", index)
+    self:_endF66ResistanceRelief()
     -- GRLE minimap heatmap is populated per-pixel by sprayer events (updatePixelForField).
     -- Bulk AABB seeding at load would paint field bounding boxes onto the terrain texture,
     -- creating rectangular blobs that ignore field polygon shapes.  The SoilLayerInstaller
@@ -6651,8 +6663,49 @@ end
 -- raw scalars + zoneData are in place. Preserves the exact ordering the XML
 -- loader always used: coverage restore uses the SAVED fieldArea, THEN fieldArea
 -- is refreshed from the farmland, THEN compaction is rebuilt from that area.
+--- F66 RELIEF: arm (or stand down) the one-time resistance reset for this load.
+---
+--- CD-9 shipped 2026-07-29 with a resistance build that counted every boom section as a
+--- full application, so a mode saturated inside the first second of the first pass. The
+--- meter landed 2026-08-01 (b60677f8), but the damage is PERSISTED -- fields sit pegged at
+--- the ceiling, and at DECAY_MONTHLY that is roughly a year of game time to clear.
+---
+--- RULED (Arissani, 2026-08-01): the player never made that choice, the bug did, so the
+--- fields should not stay burned. Shape ruled by Tyson the same day: clear rather than
+--- rescale. Rescaling sounds gentler but the inflation factor is UNKNOWABLE -- it depended
+--- on boom width and framerate -- so any divisor would be invented. And only ~3 days
+--- separate the two builds, in which honest accrual could reach at most a pass or two out
+--- of ten. A wrong number is worse than a clean slate.
+---
+--- Runs from _finalizeLoadedField, which BOTH load paths funnel through, so the XML and
+--- StateLedger saves cannot diverge. The marker is written on every save from here on, so
+--- this can never fire twice on the same save.
+---@param alreadyDone boolean   true when the save carries the marker
+function SoilFertilitySystem:_beginF66ResistanceRelief(alreadyDone)
+    self._f66ReliefPending = not alreadyDone
+    self._f66ReliefCleared = 0
+end
+
+--- Log the outcome once, after a load has finished walking its fields.
+function SoilFertilitySystem:_endF66ResistanceRelief()
+    if not self._f66ReliefPending then return end
+    self._f66ReliefPending = false
+    if (self._f66ReliefCleared or 0) > 0 then
+        self:info("F66 relief: cleared stored fungicide resistance on %d field(s). "
+            .. "Those scores were inflated by the pre-2026-08-01 meter defect, not earned. "
+            .. "Resistance now builds correctly at one application per full-rate pass.",
+            self._f66ReliefCleared)
+    end
+end
+
 function SoilFertilitySystem:_finalizeLoadedField(fieldId, f)
     if type(f) ~= "table" then return end
+
+    -- F66 relief (see _beginF66ResistanceRelief). One-time, both load paths.
+    if self._f66ReliefPending and type(f.resistance) == "table" and next(f.resistance) ~= nil then
+        f.resistance = {}
+        self._f66ReliefCleared = (self._f66ReliefCleared or 0) + 1
+    end
 
     -- Restore DAILY coverage area from the saved fraction (saved fieldArea,
     -- before the farmland refresh below). Session coverage stays 0 on purpose
@@ -6720,7 +6773,7 @@ end
 -- save. StateLedger's serializer round-trips arbitrary nested tables.
 function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, fields = {} }
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -6815,6 +6868,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
         return 0
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
+    self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
 
     local count = 0
     local fields = data.fields or {}
@@ -6898,6 +6952,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
             count = count + 1
         end
     end
+    self:_endF66ResistanceRelief()
     return count
 end
 

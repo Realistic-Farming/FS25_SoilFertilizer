@@ -111,8 +111,8 @@ do
     return SoilSettingsGUI.consoleCommandResistanceTest(SoilSettingsGUI, "SULFUR", "1", "1")
   end)
   T.ok("meter test: a natural also PASSes", out:find("RESULT: PASS") ~= nil)
-  T.near("meter test: natural built against MAX_NATURAL",
-         field.resistance["M2"], R.BUILD_PER_APPLICATION * R.MAX_NATURAL, 1e-6)
+  T.near("meter test: natural built against MAX_NATURAL at the F68 rate",
+         field.resistance["M2"], R.BUILD_PER_APPLICATION * R.MAX_NATURAL * R.BUILD_RATE_NATURAL, 1e-6)
 end
 
 -- THE ONE THAT MATTERS. A mode already at its ceiling cannot answer the question: expected
