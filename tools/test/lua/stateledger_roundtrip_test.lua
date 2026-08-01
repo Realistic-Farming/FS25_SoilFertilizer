@@ -3,7 +3,7 @@
 -- field, so the ledger save path equals the soilData.xml save path. g_farmlandManager and
 -- SoilDiseaseSystem are absent here, so the finalizer skips the fieldArea refresh and the
 -- disease-severity rebuild (both nil-guarded) - fieldArea therefore round-trips unchanged.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function newSys(fields)
   return setmetatable({

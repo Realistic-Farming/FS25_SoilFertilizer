@@ -9,7 +9,7 @@
 -- F66 relief: CD-9 shipped 2026-07-29 with a build that counted every boom section as a
 -- full application. The meter landed 2026-08-01, but the damage is PERSISTED. Arissani
 -- ruled the player should not stay burned by a choice the bug made for him.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R     = SoilConstants.RESISTANCE
 local BUILD = R.BUILD_PER_APPLICATION

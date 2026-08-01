@@ -6,7 +6,7 @@
 -- nemrod153 "radish decompaction reset the moment I started subsoiling" report.
 -- _applyCompactionDecay must fade compactionSum AND every zoneData cell so the recovery
 -- survives a later per-cell rewrite.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function sys()
   return setmetatable({ settings = {} }, { __index = SoilFertilitySystem })

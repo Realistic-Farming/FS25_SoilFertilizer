@@ -3,7 +3,7 @@
 -- These two are the IN-GAME verification tool for F66 and CD-11, which makes a crash or a
 -- wrong verdict in them worse than useless: it would send someone chasing a bug that is not
 -- there, or clear a bug that is. So they get exercised for real here rather than trusted.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/settings/SoilSettingsGUI.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/settings/SoilSettingsGUI.lua
 
 local R = SoilConstants.RESISTANCE
 local B = R.BANDS

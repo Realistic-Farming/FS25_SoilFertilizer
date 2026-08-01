@@ -69,6 +69,8 @@ source(modDirectory .. "src/SoilFertilitySystem.lua")
 source(modDirectory .. "src/HarvestContractUnderwrite.lua")
 source(modDirectory .. "src/OrganicCertification.lua")
 source(modDirectory .. "src/ResistanceBands.lua")
+-- CD-10: after ResistanceBands, whose ceilingForMode it uses for the threshold arithmetic.
+source(modDirectory .. "src/HybridStrains.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")

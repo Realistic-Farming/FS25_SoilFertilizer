@@ -2141,12 +2141,32 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
 
     if pressure < onset * 0.5 then
         -- Infection has effectively cleared - drop the name.
+        -- CD-10: if what cleared was a HYBRID, arm the re-onset cooldown so the field cannot
+        -- immediately breed another from the same still-burned modes.
+        if HybridStrains.isHybrid(field.activeDisease) then
+            local daysPerMonth = (g_currentMission and g_currentMission.environment
+                                  and g_currentMission.environment.daysPerPeriod) or 1
+            HybridStrains.beginCooldown(field, currentDay, daysPerMonth)
+        end
         field.activeDisease = nil
         field.activeDiseaseSeverity = 1.0
         return
     end
 
     if not field.activeDisease and pressure >= onset then
+        -- CD-10 PRE-PASS, ahead of the normal roll and short-circuiting it on a hit.
+        -- Runs AFTER this day's resistance decay (both live in _processOneDailyField, decay
+        -- first), so a mode that decayed below threshold today reads as ineligible today.
+        -- A hybrid is never reachable through selectDisease's weighted roll -- it is not in
+        -- DISEASE_REGISTRY or any per-crop candidate list -- so this is its only door.
+        local hybridId = HybridStrains.selectOnset(field, currentDay)
+        if hybridId then
+            field.activeDisease = hybridId
+            field.activeDiseaseSeverity = SoilDiseaseSystem.yieldSeverity(hybridId)
+            field.diseaseDiscovered = false  -- as unknown as any fresh infection until scouted
+            return
+        end
+
         local _, isCool = self:_diseaseClimateNow(season)
         local seed = fieldId * 1000 + (currentDay or 0)
         local picked = SoilDiseaseSystem.selectDisease(field.lastCrop, season, isRaining, isCool, seed)
@@ -5755,6 +5775,11 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
                 local control = SoilDiseaseSystem.effectiveness(partner, field.activeDisease) or 0
                 if control > best then best = control end
             end
+            -- CD-10 ruled control factor: against a HYBRID, a blend spanning two FRESH modes
+            -- earns full control while one fresh mode earns half. Without it, max-over-partners
+            -- composed with the hybrid's flat 0.25 category default means a two-chemical mix
+            -- answers a hybrid no better than one jug. No-op on ordinary diseases.
+            best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
             effectiveness = (effectiveness or 1.0) * best
         end
     elseif chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
@@ -5762,6 +5787,9 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
         field.lastFungicide = chemId
         if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
             local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
+            -- CD-10: one jug spans one mode, so against a two-mode hybrid it earns half
+            -- control at best. This is the asymmetry that makes mixing worth doing.
+            control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
             effectiveness = (effectiveness or 1.0) * control
         end
     end
@@ -6434,6 +6462,12 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLString(xmlFile, fieldKey .. "#activeDisease", field.activeDisease or "")
             setXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered", field.diseaseDiscovered and 1 or 0)
             setXMLString(xmlFile, fieldKey .. "#lastFungicide", field.lastFungicide or "")
+            -- CD-10 re-onset cooldown. Persisted because a cooldown a save-and-reload
+            -- defeats is not a cooldown -- it would silently do nothing. Server-side only;
+            -- clients never compute onset, so it is deliberately not synced.
+            if (field.hybridBlockedUntilDay or 0) > 0 then
+                setXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay", field.hybridBlockedUntilDay)
+            end
             -- CD-9: Serialize per-MOA resistance as comma-separated mode:score pairs
             if field.resistance then
                 local parts = {}
@@ -6560,6 +6594,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             activeDiseaseSeverity = 1.0,
             diseaseDiscovered = (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1,
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
+            hybridBlockedUntilDay = getXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay"),
             -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
             resistance = (function()
                 local rt = {}
@@ -6801,6 +6836,7 @@ function SoilFertilitySystem:getSoilStateTable()
                 activeDisease         = field.activeDisease or "",
                 diseaseDiscovered     = field.diseaseDiscovered or false,
                 lastFungicide         = field.lastFungicide or "",
+                hybridBlockedUntilDay = field.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 dryDayCount           = field.dryDayCount or 0,
                 burnDaysLeft          = field.burnDaysLeft or 0,
                 lastAlertSeason       = field.lastAlertSeason or 0,
@@ -6898,6 +6934,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 activeDiseaseSeverity = 1.0,
                 diseaseDiscovered     = e.diseaseDiscovered or false,
                 lastFungicide         = e.lastFungicide,
+                hybridBlockedUntilDay = e.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 resistance = (function() local rt = {}; if e.resistance and type(e.resistance) == "table" then for k, v in pairs(e.resistance) do rt[k] = v end end; return rt end)(),
                 dryDayCount           = e.dryDayCount or 0,
                 burnDaysLeft          = e.burnDaysLeft or 0,

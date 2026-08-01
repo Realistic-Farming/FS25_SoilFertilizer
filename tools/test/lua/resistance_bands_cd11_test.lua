@@ -6,7 +6,7 @@
 --   * the server bands, the client reads; a raw score never crosses the wire
 --   * UNKNOWN is a value, not an absence, and never degrades to WORKING
 --   * unscouted ground never publishes a band at all
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua
 
 local R  = SoilConstants.RESISTANCE
 local B  = R.BANDS

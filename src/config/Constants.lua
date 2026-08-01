@@ -1396,6 +1396,27 @@ SoilConstants.DISEASE_DEFS = {
     late_leaf_spot     = { cat="leaf_spot",       sci="Cercosporidium personatum",   cool=false, wet=true,  season={0.8,1.2,1.3}, yMin=0.15, yMax=0.40 },
     peanut_rust        = { cat="rust",            sci="Puccinia arachidis",          cool=false, wet=true,  season={0.9,1.2,1.2}, yMin=0.08, yMax=0.18 },
     pod_rot            = { cat="sclerotinia",     sci="Sclerotinia sclerotiorum",    cool=true,  wet=true,  season={1.0,1.0,1.3}, yMin=0.10, yMax=0.25 },
+
+    -- CD-10 HYBRID STRAINS. Reachable ONLY through the resistance-gated pre-pass in
+    -- _updateActiveDisease, never through selectDisease's weighted roll -- which is why this
+    -- id is deliberately absent from DISEASE_REGISTRY and every per-crop candidate list.
+    --
+    -- `cat` is a BRAND-NEW, EMPTY category on purpose. No physical fungicide's `eff` table
+    -- carries it, so every chemical falls through to DISEASE_DEFAULT_EFFECTIVENESS (0.25) --
+    -- a uniform ceiling rather than a hand-tuned scatter. That is the SDS 5.3 taste call, and
+    -- this build takes the uniform shape: it makes the hybrid's difficulty a property of the
+    -- RESISTANCE the player built rather than of a table someone balanced by feel.
+    --
+    -- `requiresModes` is the RULED CONTROL FACTOR's hook (2026-07-30, Arissani delegated).
+    -- Without it a blend would answer a hybrid no better than one fresh jug, because
+    -- max-over-partners control composed with a flat 0.25 default collapses to 0.25 either
+    -- way. Its presence is also the flag that the factor applies at all; ordinary diseases
+    -- carry no requiresModes and nothing about them changes.
+    --
+    -- COUNT IS ONE, and that is a flagged substitution: the hybrid count is one of Arissani's
+    -- four open CD-10 feel calls. The brief authorises building the stated default and saying
+    -- so. Adding more rows later is purely additive -- new ids, same mechanism.
+    resistant_complex  = { cat="resistant_complex", sci="Multi-resistant complex",   cool=false, wet=true,  season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
 }
 
 -- Crop → its candidate diseases (lowercased internal fruit name → list of DISEASE_DEFS ids).
@@ -1454,6 +1475,51 @@ SoilConstants.DISEASE_REGISTRY_DEFAULT = { "leaf_spot", "rust", "powdery_mildew"
 
 -- Effectiveness fallback for any (chemical, category) pair not explicitly listed.
 SoilConstants.DISEASE_DEFAULT_EFFECTIVENESS = 0.25
+
+-- ========================================
+-- CD-10 HYBRID STRAINS
+-- ========================================
+-- A field sprayed with the same one or two modes for long enough breeds an infection no
+-- single chemical answers well. RESISTANCE.HYBRID_THRESHOLD (0.7) is the eligibility
+-- fraction; these are the rest of the dials.
+SoilConstants.HYBRID = {
+    -- Candidacy weight per FRAC mode. Eligibility (3.2) decides which pairs QUALIFY;
+    -- candidacy decides which qualifying pair actually FIRES. Weighting by real FRAC risk
+    -- is not optional -- treating all mode-pairs as equal candidates was ruled out.
+    --
+    -- SINGLE-SITE modes are where resistance genuinely breeds: the fungus has one lock to
+    -- pick. MULTISITE modes weight to ZERO, and that zero is doing real work -- a pair
+    -- containing one is ELIGIBLE under the threshold arithmetic and still fires nothing,
+    -- which is exactly the "weight low or to zero" the brief calls for.
+    --
+    -- Note M3 MANCOZEB: it is multisite but SYNTHETIC, so unlike M1/M2 it builds at the full
+    -- rate and can genuinely reach the threshold. Zeroing it is a chemistry statement, not a
+    -- side effect of it being slow -- multisite chemistry does not select for cross-resistance.
+    --
+    -- THE CURVE IS A FLAGGED SUBSTITUTION: the exact weighting is one of Arissani's four open
+    -- CD-10 feel calls. This is the stated default shape, built per the brief's authorisation.
+    MODE_RISK = {
+        ["3"]  = 1.00,   -- DMI / triazole      - single-site, high risk
+        ["11"] = 1.00,   -- QoI / strobilurin   - single-site, high risk (notorious for it)
+        ["7"]  = 0.90,   -- SDHI                - single-site, high risk
+        ["4"]  = 0.80,   -- phenylamide         - single-site, high risk
+        M1     = 0.00,   -- copper   - MULTISITE, never a hybrid parent
+        M2     = 0.00,   -- sulfur   - MULTISITE, never a hybrid parent
+        M3     = 0.00,   -- mancozeb - MULTISITE, never a hybrid parent
+    },
+    -- Risk for a mode not listed above (a future chemical). Conservative: assume single-site
+    -- until someone says otherwise, because the failure direction that matters is a hybrid
+    -- that never fires, not one that fires slightly too readily.
+    DEFAULT_MODE_RISK = 0.75,
+
+    -- Re-onset cooldown after a hybrid clears, in CALENDAR MONTHS. Measured against
+    -- daysPerPeriod exactly as the resistance decay is, so it is one real month on a 1-day
+    -- month and on a 28-day month alike.
+    --
+    -- FLAGGED SUBSTITUTION: the length is another of Arissani's four open feel calls; one
+    -- month is the brief's stated default.
+    REONSET_COOLDOWN_MONTHS = 1,
+}
 
 -- Fungicide catalog. Menu-selectable chemicals (no physical fill type).
 --   group   : chemistry family (for UI grouping + resistance-rotation tracking)
