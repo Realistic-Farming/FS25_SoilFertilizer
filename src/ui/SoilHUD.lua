@@ -52,6 +52,14 @@ SoilHUD.C_EDIT_HDL   = {0.20, 0.60, 1.00, 0.85}
 -- ── Field detection throttle ────────────────────────────
 SoilHUD.FIELD_DETECT_INTERVAL = 0.5   -- seconds between position queries
 
+SoilHUD.TEXT_OVERFLOW = {
+    SHRINK_THRESHOLD = 1.12, -- allow a small, readable amount of overshoot before scaling down
+    MIN_FONT_SCALE  = 0.82, -- keep text readable without becoming illegible
+    START_DELAY     = 0.75, -- wait before the marquee starts moving
+    PAUSE_DURATION  = 0.80, -- hold at each end before reversing
+    SCROLL_SPEED    = 0.045 -- width units per second; resolution-independent and scaled with text width
+}
+
 function SoilHUD.new(soilSystem, settings)
     local self = setmetatable({}, SoilHUD_mt)
 
@@ -127,6 +135,9 @@ function SoilHUD.new(soilSystem, settings)
 
     -- Single overlay handle
     self.fillOverlay = nil
+
+    -- Per-instance text marquee state so each HUD instance stays self-contained and MP-safe.
+    self._textScrollStates = {}
 
     -- Native FS25 InfoDisplay box (appears alongside base game FIELD INFO panel)
     self.fieldInfoBox = nil
@@ -1335,28 +1346,70 @@ function SoilHUD:renderAutoScrollText(x, y, size, text, maxWidth, align, r, g, b
     local safeMax = maxWidth and maxWidth > 0 and maxWidth or nil
     local textWidth = self:measureTextWidth(size, text)
 
-    if safeMax == nil or textWidth <= safeMax then
+    if safeMax == nil then
         setTextColor(r, g, b, a)
         setTextAlignment(mode)
         renderText(x, y, size, text)
         return
     end
 
-    if self.animTimer == nil then self.animTimer = 0 end
+    if textWidth <= safeMax then
+        setTextColor(r, g, b, a)
+        setTextAlignment(mode)
+        renderText(x, y, size, text)
+        return
+    end
 
-    local repeated = text .. "    " .. text
-    local repeatWidth = self:measureTextWidth(size, repeated)
-    local speed = 0.10
-    local phase = (self.animTimer * speed) % (repeatWidth + 0.02)
+    local shrinkThreshold = SoilHUD.TEXT_OVERFLOW.SHRINK_THRESHOLD or 1.12
+    local minScale = SoilHUD.TEXT_OVERFLOW.MIN_FONT_SCALE or 0.82
+    if textWidth <= safeMax * shrinkThreshold then
+        local reducedSize = size * math.min(1.0, math.max(minScale, safeMax / textWidth))
+        local reducedWidth = self:measureTextWidth(reducedSize, text)
+        if reducedWidth <= safeMax then
+            setTextColor(r, g, b, a)
+            setTextAlignment(mode)
+            renderText(x, y, reducedSize, text)
+            return
+        end
+    end
+
+    local key = string.format("%s|%.6f|%.6f|%d", tostring(text), size, maxWidth, mode)
+    self._textScrollStates = self._textScrollStates or {}
+    self._textScrollStates[key] = self._textScrollStates[key] or { start = self.animTimer or 0 }
+
+    local scroll = SoilHUD.TEXT_OVERFLOW
+    local startDelay = scroll.START_DELAY or 0.75
+    local pause = scroll.PAUSE_DURATION or 0.80
+    local speed = scroll.SCROLL_SPEED or 0.045
+    local travel = math.max(0.01, textWidth - safeMax)
+    local moveDuration = math.max(1.4, travel / speed)
+    local cycle = startDelay + moveDuration + pause + moveDuration + pause
+    local elapsed = ((self.animTimer or 0) - (self._textScrollStates[key].start or 0)) % cycle
+    local phase = 0
+
+    if elapsed < startDelay then
+        phase = 0
+    elseif elapsed < startDelay + moveDuration then
+        phase = (elapsed - startDelay) / moveDuration * travel
+    elseif elapsed < startDelay + moveDuration + pause then
+        phase = travel
+    elseif elapsed < startDelay + moveDuration * 2 + pause then
+        local t = elapsed - (startDelay + moveDuration + pause)
+        phase = travel - (t / moveDuration) * travel
+    else
+        phase = 0
+    end
 
     local drawX = x
     if mode == RenderText.ALIGN_RIGHT then
-        drawX = x - maxWidth
+        drawX = x - safeMax
+    elseif mode == RenderText.ALIGN_CENTER then
+        drawX = x - safeMax * 0.5
     end
 
     setTextColor(r, g, b, a)
     setTextAlignment(mode)
-    renderText(drawX - phase, y, size, repeated)
+    renderText(drawX - phase, y, size, text .. "    " .. text)
 end
 
 -- ── Main panel ───────────────────────────────────────────
