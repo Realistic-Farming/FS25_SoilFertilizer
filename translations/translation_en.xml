@@ -209,6 +209,41 @@
     <e k="sf_hud_disease_unknown" v="? (scout to identify)" eh="a6fe3f43" />
     <e k="sf_hud_protected" v="(protected)" eh="8273211e" />
     <e k="sf_hud_yield" v="Yield" eh="97345487" />
+    <e k="sf_map_target" v="Target" />
+    <e k="sf_map_gap" v="Gap" />
+    <e k="sf_map_condition" v="Condition" />
+    <e k="sf_map_treatment" v="Treatment" />
+    <e k="sf_map_tip" v="Tip" />
+    <e k="sf_map_active" v="Active" />
+    <e k="sf_map_not_applied" v="Not applied" />
+    <e k="sf_map_not_needed" v="Not needed" />
+    <e k="sf_map_target_no_data" v="No data" />
+    <e k="sf_map_target_none" v="No crop planted" />
+    <e k="sf_map_ph_optimal" v="Optimal" />
+    <e k="sf_map_ph_none_needed" v="None needed" />
+    <e k="sf_map_ph_over_limed" v="Over-limed" />
+    <e k="sf_map_ph_normalize" v="Allow to normalize" />
+    <e k="sf_map_ph_severely_over_limed" v="Severely over-limed" />
+    <e k="sf_map_ph_apply_sulfur" v="Apply sulfur" />
+    <e k="sf_map_ph_slightly_acidic" v="Slightly acidic" />
+    <e k="sf_map_ph_apply_lime" v="Apply lime" />
+    <e k="sf_map_ph_very_acidic" v="Very acidic" />
+    <e k="sf_map_ph_apply_lime_urgent" v="Apply lime urgently" />
+    <e k="sf_map_om_healthy" v="Healthy - maintain with straw" />
+    <e k="sf_map_om_fair" v="Incorporate straw / manure" />
+    <e k="sf_map_om_low" v="Low - add manure or digestate" />
+    <e k="sf_map_balanced" v="Balanced" />
+    <e k="sf_map_limiting" v="Limiting" />
+    <e k="sf_map_crop" v="Crop" />
+    <e k="sf_map_weed_pressure" v="Weed Pressure" />
+    <e k="sf_map_herbicide" v="Herbicide" />
+    <e k="sf_map_pest_pressure" v="Pest Pressure" />
+    <e k="sf_map_insecticide" v="Insecticide" />
+    <e k="sf_map_disease_pressure" v="Disease Pressure" />
+    <e k="sf_map_fungicide" v="Fungicide" />
+    <e k="sf_map_compaction_ok" v="No action needed" />
+    <e k="sf_map_compaction_recommended" v="Subsoiling recommended" />
+    <e k="sf_map_compaction_urgent" v="Subsoiling urgent" />
     <e k="sf_hud_estYield" v="Est. Yield" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
     <e k="sf_hud_post_harvest" v="Post-harvest · Fertilize" eh="634de6fe" />

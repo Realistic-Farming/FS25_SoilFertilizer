@@ -280,6 +280,41 @@
     <e k="sf_hud_disease_unknown" v="Bestimme die Erkrankung zunächst." eh="a6fe3f43" />
     <e k="sf_hud_protected" v="(geschützt)" eh="8273211e" />
     <e k="sf_hud_yield" v="Ertrag" eh="97345487" />
+    <e k="sf_map_target" v="Bedarf" />
+    <e k="sf_map_gap" v="Differenz" />
+    <e k="sf_map_condition" v="Zustand" />
+    <e k="sf_map_treatment" v="Behandlung" />
+    <e k="sf_map_tip" v="Hinweis" />
+    <e k="sf_map_active" v="Aktiv" />
+    <e k="sf_map_not_applied" v="Nicht ausgebracht" />
+    <e k="sf_map_not_needed" v="Nicht nötig" />
+    <e k="sf_map_target_no_data" v="Keine Daten" />
+    <e k="sf_map_target_none" v="Kein Kultur angebaut" />
+    <e k="sf_map_ph_optimal" v="Optimal" />
+    <e k="sf_map_ph_none_needed" v="Kein Handlungsbedarf" />
+    <e k="sf_map_ph_over_limed" v="Überkalkt" />
+    <e k="sf_map_ph_normalize" v="Normalisierung erlauben" />
+    <e k="sf_map_ph_severely_over_limed" v="Stark überkalkt" />
+    <e k="sf_map_ph_apply_sulfur" v="Schwefel ausbringen" />
+    <e k="sf_map_ph_slightly_acidic" v="Leicht sauer" />
+    <e k="sf_map_ph_apply_lime" v="Kalk ausbringen" />
+    <e k="sf_map_ph_very_acidic" v="Sehr sauer" />
+    <e k="sf_map_ph_apply_lime_urgent" v="Dringend Kalk ausbringen" />
+    <e k="sf_map_om_healthy" v="Gesund - mit Stroh erhalten" />
+    <e k="sf_map_om_fair" v="Stroh / Mist einarbeiten" />
+    <e k="sf_map_om_low" v="Niedrig - Mist oder Kompost ausbringen" />
+    <e k="sf_map_balanced" v="Ausgewogen" />
+    <e k="sf_map_limiting" v="Begrenzend" />
+    <e k="sf_map_crop" v="Kultur" />
+    <e k="sf_map_weed_pressure" v="Unkraut" />
+    <e k="sf_map_herbicide" v="Herbizid" />
+    <e k="sf_map_pest_pressure" v="Schädlingsbefall" />
+    <e k="sf_map_insecticide" v="Insektizid" />
+    <e k="sf_map_disease_pressure" v="Krankheitsbefall" />
+    <e k="sf_map_fungicide" v="Fungizid" />
+    <e k="sf_map_compaction_ok" v="Kein Handlungsbedarf" />
+    <e k="sf_map_compaction_recommended" v="Bodenauflockerung empfohlen" />
+    <e k="sf_map_compaction_urgent" v="dringend Boden auflockern" />
     <e k="sf_hud_estYield" v="geschätzter Ertrag" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
     <e k="sf_hud_post_harvest" v="nach der Ernte: Düngen" eh="634de6fe" />
@@ -288,7 +323,7 @@
     <e k="sf_incompatibility_pf_title" v="Inkompatibilität erkannt" eh="89dbfc90" />
     <e k="sf_incompatibility_pf_text" v="Die Realistische Böden &amp; Düngung-Mod wurde für diesen Spielstand deaktiviert, weil das Precision Farming DLC aktiv ist. Beide Mods verwalten Bodennährstoffe und können nicht gleichzeitig genutzt werden. Um die Realistische Böden &amp; Düngung-Mod zu nutzen, deaktiviere einfach Precision Farming für diesen Spielstand im Mod-Auswahlbildschirm." eh="91dbcf1b" />
 
-    <e k="sf_treat_tank_tag" v="tank - spray" />
+    <e k="sf_treat_tank_tag" v="Füllung" />
     <e k="sf_treat_physical" v="%s ist ein Spritzmittel - kaufe das Mittel und bringe es mit einer Pflanzenschutzspritze aus." />
 
     <e k="helpLine_sf_nu_p4_title" v="Fruchtfolge" eh="def2c162" />
