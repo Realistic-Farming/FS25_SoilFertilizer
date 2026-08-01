@@ -1,5 +1,5 @@
 -- coverage_test.lua - spray-coverage accounting, incl. the #650 dry-spreader fix.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 -- Build a `self` that resolves SoilFertilitySystem methods (so self:method() works)
 -- without running .new() (which would pull in HookManager and the live game).

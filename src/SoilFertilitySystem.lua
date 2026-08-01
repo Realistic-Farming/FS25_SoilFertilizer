@@ -5735,7 +5735,29 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- Generic FUNGICIDE never reaches here (it routes through the fertilizer path), so chemId
     -- is always one of the six; the guard keeps it safe regardless.
     local rateName = "FUNGICIDE"
-    if chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
+    -- CD-12: is this a tank mix? NIL MEANS BEHAVE EXACTLY AS BEFORE -- every branch below
+    -- collapses to the single-chemical path when it is.
+    local blendPartners = SoilBlends.getPartners(chemId)
+
+    if blendPartners then
+        -- The blend carries its own calibrated rate (the mean of its partners'), so the
+        -- meter denominator below is the blend's pass and not generic FUNGICIDE's.
+        rateName = chemId
+        field.lastFungicide = chemId
+        -- CONTROL: the MAX over partners, and it stays a SEPARATE STEP from the resistance
+        -- factor further down -- do not fuse them. SoilDiseaseSystem.effectiveness keys on
+        -- the disease's CATEGORY and returns 0 for a nil disease, and activeDisease is nil
+        -- below onset, which is exactly when a careful farmer sprays. So this only applies
+        -- when a disease is actually present.
+        if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
+            local best = 0
+            for _, partner in ipairs(blendPartners) do
+                local control = SoilDiseaseSystem.effectiveness(partner, field.activeDisease) or 0
+                if control > best then best = control end
+            end
+            effectiveness = (effectiveness or 1.0) * best
+        end
+    elseif chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
         rateName = chemId
         field.lastFungicide = chemId
         if field.activeDisease and SoilDiseaseSystem and SoilDiseaseSystem.effectiveness then
@@ -5791,22 +5813,45 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- It sits BELOW the field-area confirm deliberately: targetVol is the meter's
     -- denominator, and before that confirm fieldArea can still be the 1.0 ha default,
     -- which would collapse the denominator and re-create the saturation this fixes.
-    local mode = self.getModeForFillType(chemId)
-    if mode then
-        local isNatural = self.isNaturalFungicide(chemId)
-        local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
-        local isOrganic = field.organic ~= nil
-            and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
-                 or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
-        if not (isOrganic and not isNatural) then
-            local doseFactor = math.min(1.0, (liters or 0) / targetVol)
-            field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
-                + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * doseFactor)
+    -- CD-12: the partners this pass builds on. A single chemical is the one-element case and
+    -- collapses to exactly the arithmetic that shipped before blends existed.
+    local resistParts = blendPartners or { chemId }
+    local partnerCount = #resistParts
+
+    local isOrganicField = field.organic ~= nil
+        and (field.organic.state == SoilConstants.ORGANIC.STATE_TRANSITION
+             or field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED)
+    local doseFactor = math.min(1.0, (liters or 0) / targetVol)
+    local bestFactor = nil
+
+    for _, partner in ipairs(resistParts) do
+        local mode = self.getModeForFillType(partner)
+        if mode then
+            local isNatural = self.isNaturalFungicide(partner)
+            local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
+            -- THE ORGANIC GUARD IS EVALUATED PER PARTNER, never on the blend name:
+            -- isNaturalFungicide("BLEND_COPPER_HYDROXIDE_SULFUR") is false, which would
+            -- otherwise stop the all-organic blend building any resistance on an organic
+            -- field -- a free pass that the two chemicals alone do not get.
+            if not (isOrganicField and not isNatural) then
+                -- Split across partners: two modes each carry half the selection pressure,
+                -- which IS the mechanism this system exists for. The divisor is the partner
+                -- count, so a future three-partner blend inherits the rule with no new
+                -- constant. Still metered per pass (F66) -- doseFactor is this call's share
+                -- of a full-rate pass.
+                field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
+                    + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * doseFactor / partnerCount)
+            end
+            -- THE RESCUE, and it stays a SEPARATE STEP from the catalog control above: the
+            -- MAX over partners of each mode's remaining potency. When one mode is burned
+            -- out it contributes nothing and the other partner carries the pass.
+            local factor = 1 - ((field.resistance[mode] or 0) / maxRes)
+            if bestFactor == nil or factor > bestFactor then bestFactor = factor end
         end
-        local resistanceScore = field.resistance[mode] or 0
-        if resistanceScore > 0 then
-            effectiveness = (effectiveness or 1.0) * (1 - resistanceScore / maxRes)
-        end
+    end
+
+    if bestFactor ~= nil and bestFactor < 1 then
+        effectiveness = (effectiveness or 1.0) * bestFactor
     end
 
     local effective = effectiveness or 1.0

@@ -7,7 +7,7 @@
 --   direct-drill > strip-till > cultivator > plough, with physical monotonicity
 --   (oxidation strictly tracks soil disturbance) preserved.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 local om = SoilConstants.OM_DYNAMICS
 local ri = SoilConstants.RESIDUE_INCORPORATION

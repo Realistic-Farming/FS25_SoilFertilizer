@@ -34,6 +34,10 @@ source(modDirectory .. "src/utils/Logger.lua")
 source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
+-- CD-12: must load immediately after Constants -- it reads PHYSICAL_FUNGICIDE_ORDER and
+-- writes the 28 derived blend registrations back into SoilConstants, so every later
+-- module (HookManager's spray lists, the fungicide path) sees a complete picture.
+source(modDirectory .. "src/config/SoilBlends.lua")
 source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")

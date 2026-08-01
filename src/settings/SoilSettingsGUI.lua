@@ -64,6 +64,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilMeadowField", "FieldSentry: flag/clear a field as meadow (grassland profile): SoilMeadowField <fieldId> [true|false] (#651)", "consoleCommandMeadowField", self)
     addConsoleCommand("SoilDecoField", "FieldSentry: flag/clear a field as decorative/fake (sim frozen): SoilDecoField <fieldId> [true|false] (#651)", "consoleCommandDecoField", self)
     addConsoleCommand("SoilScout", "Scout a field for disease: SoilScout [fieldId] (defaults to current field)", "consoleCommandScout", self)
+    addConsoleCommand("SoilBlendCheck", "CD-12: verify all 28 tank mixes registered correctly in the engine", "consoleCommandBlendCheck", self)
     addConsoleCommand("SoilResistance", "Show per-MOA fungicide resistance + CD-11 bands: SoilResistance [fieldId]", "consoleCommandResistance", self)
     addConsoleCommand("SoilResistanceTest", "TEST the F66 per-pass meter: SoilResistanceTest [chemical] [passes] [fieldId]", "consoleCommandResistanceTest", self)
     addConsoleCommand("SoilTreat", "Apply a fungicide: SoilTreat <chemical> [fieldId]  (e.g. SoilTreat AZOXYSTROBIN)", "consoleCommandTreat", self)
@@ -536,6 +537,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilMeadowField <fieldId> [true|false] - FieldSentry: flag/clear a field as meadow (#651)")
     print("SoilDecoField <fieldId> [true|false] - FieldSentry: flag/clear a field as decorative/fake (#651)")
     print("SoilAddCrop <name> - Add a custom crop to the Crop Tuning Editor (#717)")
+    print("SoilBlendCheck - CD-12: verify all 28 tank mixes registered in the engine")
     print("SoilResistance [fieldId] - Per-MOA fungicide resistance + CD-11 bands")
     print("SoilResistanceTest [chemical] [passes] [fieldId] - TEST the F66 per-pass meter")
     print("==============================================")
@@ -744,6 +746,120 @@ function SoilSettingsGUI:consoleCommandSetDisease(pressure, diseaseId)
         "TEST: Field %d set to %.0f%% pressure (disease=%s), hidden until scouted. "
         .. "Check the Soil Monitor (shows '?'), then run SoilScout %d (or the Scout hotkey) to reveal.",
         fid, dinfo.pressure or p or 0, tostring(dinfo.disease or "none"), fid)
+end
+
+-- ── CD-12: tank mix registration self-check ──────────────────────────────
+--
+-- Registration for a crop-protection fill type spans nine sites across two files, and
+-- MISSING ONE IS INVISIBLE IN GAME: an uncalibrated rate looks like it works, and a missed
+-- density-map remap means the blend sprays, drains the tank, costs the money and never
+-- writes ground state. None of that is observable on a bench -- the brief says so itself
+-- and assigns it to a person. This command is that person's instrument: it asks the live
+-- engine what actually got registered instead of asking the source what it intended.
+function SoilSettingsGUI:consoleCommandBlendCheck()
+    if not (g_fillTypeManager and g_sprayTypeManager) then
+        return "Fill/spray type managers unavailable - run this in a loaded savegame."
+    end
+
+    local RATES = SoilConstants.SPRAYER_RATE.BASE_RATES
+    local hm = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+               and g_SoilFertilityManager.soilSystem.hookManager
+
+    -- The resolved LIQUIDFERTILIZER silo group, so we test what the game holds rather than
+    -- the declaration we wrote.
+    local siloIdx = {}
+    if hm and hm.getResolvedSiloGroups then
+        local ok, groups = pcall(function() return hm:getResolvedSiloGroups() end)
+        if ok and groups then
+            for _, g in pairs(groups) do
+                for _, idx in ipairs(g.idxList or {}) do siloIdx[idx] = true end
+            end
+        end
+    end
+
+    local fungicideST = g_sprayTypeManager:getSprayTypeByName("FUNGICIDE")
+    local expectGround = fungicideST and fungicideST.sprayGroundType or nil
+
+    local counts = { fill = 0, spray = 0, rate = 0, gate = 0, ground = 0, silo = 0 }
+    local problems = {}
+    local total = #SoilBlends.ORDER
+
+    for _, name in ipairs(SoilBlends.ORDER) do
+        local ft = g_fillTypeManager:getFillTypeByName(name)
+        if ft then
+            counts.fill = counts.fill + 1
+            if siloIdx[ft.index] then counts.silo = counts.silo + 1
+            else problems[#problems + 1] = name .. ": not in the LIQUIDFERTILIZER silo group" end
+        else
+            problems[#problems + 1] = name .. ": NO FILL TYPE (fillTypes.xml did not register it)"
+        end
+
+        local st = g_sprayTypeManager:getSprayTypeByName(name)
+        if st then
+            counts.spray = counts.spray + 1
+            local want = (RATES[name] and RATES[name].value or 0) / 36000
+            if math.abs((st.litersPerSecond or 0) - want) < 1e-9 then
+                counts.rate = counts.rate + 1
+            else
+                problems[#problems + 1] = string.format("%s: LPS %.8f, expected %.8f (uncalibrated rate)",
+                    name, st.litersPerSecond or 0, want)
+            end
+            -- The ground-state trap: without an explicit crop-protection ground type a blend
+            -- falls through to the FERTILISER state and the field reads as fertilised.
+            if expectGround == nil or st.sprayGroundType == expectGround then
+                counts.ground = counts.ground + 1
+            else
+                problems[#problems + 1] = string.format("%s: ground type %s, expected FUNGICIDE's %s",
+                    name, tostring(st.sprayGroundType), tostring(expectGround))
+            end
+        else
+            problems[#problems + 1] = name .. ": NO SPRAY TYPE (would drain at a vanilla rate)"
+        end
+
+        if SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[name] then
+            counts.gate = counts.gate + 1
+        else
+            problems[#problems + 1] = name .. ": absent from FUNGICIDE_TYPES (sprays and does NOTHING)"
+        end
+    end
+
+    -- The negative requirements. A blend in either of these is actively harmful.
+    for _, name in ipairs(SoilBlends.ORDER) do
+        if SoilConstants.FERTILIZER_PROFILES[name] ~= nil then
+            problems[#problems + 1] = name .. ": IN FERTILIZER_PROFILES - would double-apply as fertiliser"
+        end
+        if SoilConstants.PHYSICAL_FUNGICIDES[name] ~= nil then
+            problems[#problems + 1] = name .. ": IN PHYSICAL_FUNGICIDES - catalog-keyed UI will nil-index"
+        end
+    end
+
+    local approved = 0
+    for _, name in ipairs(SoilBlends.ORDER) do
+        if SoilConstants.ORGANIC.APPROVED_INPUTS[name] then approved = approved + 1 end
+    end
+
+    local lines = {}
+    lines[#lines+1] = string.format("=== CD-12 tank mix registration -- %d blends ===", total)
+    lines[#lines+1] = string.format("  fill type registered   %d/%d", counts.fill, total)
+    lines[#lines+1] = string.format("  spray type registered  %d/%d", counts.spray, total)
+    lines[#lines+1] = string.format("  rate calibrated        %d/%d", counts.rate, total)
+    lines[#lines+1] = string.format("  crop-protection ground %d/%d", counts.ground, total)
+    lines[#lines+1] = string.format("  FUNGICIDE_TYPES gate   %d/%d", counts.gate, total)
+    lines[#lines+1] = string.format("  in liquid silo group   %d/%d", counts.silo, total)
+    lines[#lines+1] = string.format("  organically approved   %d/%d  (only the copper+sulfur pair should be)", approved, total)
+    lines[#lines+1] = ""
+
+    if #problems == 0 then
+        lines[#lines+1] = "  RESULT: PASS -- every blend is registered on every checked surface."
+        lines[#lines+1] = "  Still owed by hand: load one into a sprayer and spray it. Ground-state"
+        lines[#lines+1] = "  writing and boom/nozzle resolution cannot be checked from here."
+    else
+        lines[#lines+1] = string.format("  RESULT: FAIL -- %d problem(s):", #problems)
+        for i = 1, math.min(#problems, 20) do lines[#lines+1] = "    - " .. problems[i] end
+        if #problems > 20 then lines[#lines+1] = string.format("    ...and %d more", #problems - 20) end
+    end
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
 end
 
 -- ── CD-9 / CD-11 resistance console commands ─────────────────────────────

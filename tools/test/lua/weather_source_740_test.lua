@@ -10,7 +10,7 @@
 --   Runs the brief's spec-first bench bar (a-f) plus determinism, ordering, season-index,
 --   and safe-degrade coverage. RULED numbers: Arissani's balance pass 2026-07-25.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 local MIN = SoilConstants.RAIN.MIN_RAIN_THRESHOLD
 

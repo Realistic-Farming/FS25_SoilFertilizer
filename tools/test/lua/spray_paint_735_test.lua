@@ -7,7 +7,7 @@
 --   Guards the dose math, the once-per-cell dedup, the per-tick consume, and the guards
 --   that keep a stale or absent dose from painting.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 local CELL_HA = SoilConstants.ZONE.CELL_AREA_HA   -- 0.01 ha per 10 m cell
 

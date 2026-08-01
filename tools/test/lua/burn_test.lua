@@ -2,7 +2,7 @@
 -- Verifies applyBurnEffect docks a slice proportional to elapsed over-spray time,
 -- caps the total per pass, ignores sibling sections (dt==0), and does nothing on the
 -- first tick of a pass.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 local SR = SoilConstants.SPRAYER_RATE
 local GUARANTEED = SR.BURN_GUARANTEED_THRESHOLD       -- deterministic band (no math.random)

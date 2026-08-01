@@ -6,7 +6,7 @@
 -- position instead. This proves the negative-coord cell lands right, and NOT at
 -- the buggy decoded position.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SoilFertilitySystem.lua
 
 local CS = SoilConstants.ZONE.CELL_SIZE
 
