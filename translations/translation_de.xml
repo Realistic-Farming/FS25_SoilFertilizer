@@ -65,6 +65,8 @@
     <e k="sf_hud_pos_6" v="Benutzerdefiniert" eh="90589c47" />
     <e k="sf_hud_color_theme_short" v="HUD-Farbschema" eh="4a73f95b" />
     <e k="sf_hud_color_theme_long" v="Wähle das Farbschema für die Info-HUD" eh="3218bca6" />
+    <e k="sf_hud_color_theme_short" v="HUD-Farbschema" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="Wähle das Farbschema für die Info-HUD" eh="3218bca6" />
     <e k="sf_hud_color_1" v="Grün" eh="d382816a" />
     <e k="sf_hud_color_2" v="Blau" eh="9594eec9" />
     <e k="sf_hud_color_3" v="Bernstein" eh="88068e33" />
