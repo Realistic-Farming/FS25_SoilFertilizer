@@ -133,6 +133,11 @@ function SoilFertilitySystem.new(settings)
     -- [SF-46] THE YARD LADDER. Per-bale condition tracking on the shelter
     -- ladder, ending in condemnation.
     self.yardLadder = YardLadder and YardLadder.new() or nil
+    -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
+    -- cells that reveal the trouble's pattern where the player walked, on foot.
+    -- Armed after the value maps initialize; its own bridges register in
+    -- loadedMission.
+    self.spatialScouting = SpatialScouting and SpatialScouting.new() or nil
 
     -- Per-day flag table for fertilizer application notifications (fieldId → game day last shown)
     -- Prevents notification spam since the sprayer hook fires every frame while active.
@@ -254,6 +259,11 @@ function SoilFertilitySystem:initialize()
     -- [SF-46] Armed after HayBet; depends on all three sibling systems.
     if self.yardLadder then
         self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
+    end
+    -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
+    -- sample and writes it back for the display compose.
+    if self.spatialScouting then
+        self.spatialScouting:arm(self.valueMaps)
     end
 
     -- Scan fields using real FieldManager (now runs with layerSystem ready)
@@ -2516,6 +2526,17 @@ function SoilFertilitySystem:update(dt)
     -- Handle network sync retry for multiplayer clients
     if SoilNetworkEvents_UpdateSyncRetry then
         SoilNetworkEvents_UpdateSyncRetry(dt)
+    end
+
+    -- [SF-26] SPATIAL SCOUTING: server-side on-foot sampling. Cheap: iterates the
+    -- authoritative player list and only records a NEW cell on a field. The walk
+    -- only reveals for the farm the server's player record says the player owns.
+    if self.spatialScouting then
+        local day = g_currentMission and g_currentMission.environment
+            and g_currentMission.environment.currentDay
+        if day then
+            self.spatialScouting:onUpdate(day)
+        end
     end
 
     -- REFINED: round-robin display-layer mirror. Keeps the per-pixel

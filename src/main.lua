@@ -62,6 +62,12 @@ source(modDirectory .. "src/MaterialDown.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")
+-- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
+-- subsystems; armed by SoilFertilitySystem after the value maps initialize.
+source(modDirectory .. "src/SpatialScouting.lua")
+-- SF-38 THE HANDFUL READ: the frozen payload contract the Read the Dirt panel
+-- renders. Pure assembly; the kneel (SF-37) calls it after its reveal write.
+source(modDirectory .. "src/HandfulRead.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -112,6 +118,7 @@ source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 source(modDirectory .. "src/integrations/SoilStateLedgerBridge.lua")
 source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
+source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
 
@@ -225,6 +232,21 @@ local function loadedMission(mission, node)
         local yardLadder = sfm and sfm.soilSystem and sfm.soilSystem.yardLadder
         if yardLadder then
             SoilMaterialDownBridge.registerLadderPass(yardLadder)
+        end
+    end
+
+    -- [SF-26] SPATIAL SCOUTING's own bridges. Registered here alongside the
+    -- MaterialDown bridges so the ledger sidecar's deserialize has fired before
+    -- anything reads the mask, and so Time Guard has published its handle. All
+    -- three no-op when their mod is absent; the mask then lives in the
+    -- STANDALONE FALLBACK (session-transient, client-local).
+    if SoilScoutingBridge then
+        local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
+        if scouting then
+            SoilScoutingBridge.registerLedger(scouting)
+            SoilScoutingBridge.loadFallback(scouting)
+            SoilScoutingBridge.registerAccruals(scouting)
+            SoilScoutingBridge.registerSync(scouting)
         end
     end
 

@@ -1015,10 +1015,14 @@ function SoilFertilityManager:onScoutInput()
     -- Detect the field underfoot. detectCurrentFieldId() actively probes the player's
     -- world position (works even with the HUD hidden); cachedFieldId is the last frame's
     -- value as a fallback. (getCurrentFieldId never existed - that was the no-op bug.)
-    local fieldId = nil
+    -- [SF-37] It ALSO returns the spot x,z, which used to be discarded. Carry it
+    -- through ADDITIVELY: the field-level scout path below is byte-identical for a
+    -- caller with no spot, and the kneel (a per-cell reveal onto the walked mask)
+    -- fires only when a spot is resolved.
+    local fieldId, x, z = nil, nil, nil
     if self.soilHUD.detectCurrentFieldId then
-        local ok, cur = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
-        if ok then fieldId = cur end
+        local ok, cur, cx, cz = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur; x, z = cx, cz end
     end
     if (not fieldId or fieldId <= 0) and self.soilHUD.cachedFieldId then
         fieldId = self.soilHUD.cachedFieldId
@@ -1029,6 +1033,29 @@ function SoilFertilityManager:onScoutInput()
             g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_scout_no_field"), 3000)
         end
         return
+    end
+
+    -- [SF-37] THE KNEEL. When the player is on foot with a resolved spot, the
+    -- exact spot enters knowledge: ONE cell written onto the walked mask, server
+    -- authoritative. The client key press is a REQUEST (SoilKneelEvent carries
+    -- only x,z); on the host/SP the write is direct. The field-level scout fee
+    -- below still runs for every caller (the kneel is additive, not a
+    -- replacement) - it is what buys the whole field's pattern and the name.
+    if x ~= nil and z ~= nil and g_server ~= nil then
+        if self.soilSystem.spatialScouting and self.soilSystem.spatialScouting:isArmed() then
+            local day = g_currentMission and g_currentMission.environment
+                and g_currentMission.environment.currentDay
+            if day then
+                self.soilSystem.spatialScouting:revealCellAt(nil, x, z, day)
+            end
+        end
+    elseif x ~= nil and z ~= nil and g_client ~= nil and SoilKneelEvent then
+        local ok = pcall(function()
+            g_client:getServerConnection():sendEvent(SoilKneelEvent.new(x, z))
+        end)
+        if not ok then
+            SoilLogger.warning("[Kneel] failed to send SoilKneelEvent: %s", tostring(ok))
+        end
     end
 
     -- The Scout hotkey is a deliberate scout: reveal the field's disease so the flash
