@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Tanah &amp; Pupuk" eh="f31197fb" />
@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Hasil" eh="97345487" />
     <e k="sf_hud_estYield" v="Est. Hasil" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="Pasca-panen Â· Pupuk" eh="634de6fe" />
+    <e k="sf_hud_post_harvest" v="Pasca-panen · Pupuk" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Seret: pindah   Sudut: ubah ukuran   RMB/Shift+H: selesai" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: pindah/ubah ukuran" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
@@ -235,7 +235,7 @@
     <e k="helpLine_sf_ov_p1_intro_title" v="Pelacakan Tanah per Lahan" eh="8fe3248d" />
     <e k="helpLine_sf_ov_p1_intro_text" v="Setiap lahan secara independen melacak lima properti: Nitrogen (N), Fosfor (P), Kalium (K), Bahan Organik (OM), dan pH. Nilai disimpan dengan savegame Anda dan bertahan di seluruh sesi." eh="c30216e6" />
     <e k="helpLine_sf_ov_p1_flow_title" v="Siklus Nutrisi" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="Tanaman menyerap nutrisi saat panen. Pupuk, kotoran hewan, hÃ­gtrÃ¡gya, dan kapur memulihkannya. Mod ini melacak anggaran nutrisi yang realistis - apa yang diambil tanaman, harus Anda kembalikan." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="Tanaman menyerap nutrisi saat panen. Pupuk, kotoran hewan, hígtrágya, dan kapur memulihkannya. Mod ini melacak anggaran nutrisi yang realistis - apa yang diambil tanaman, harus Anda kembalikan." eh="418041f0" />
 
     <e k="helpLine_sf_ov_p2_title" v="Efek Lingkungan" eh="e139e84f" />
     <e k="helpLine_sf_ov_p2_rain_title" v="Hujan dan Pencucian" eh="33e0d8ea" />
@@ -265,19 +265,19 @@
     <!-- Category 3: Soil Nutrients -->
     <e k="helpLine_sf_nu_p1_title" v="Nitrogen dan Fosfor" eh="27d37372" />
     <e k="helpLine_sf_nu_p1_n_title" v="Nitrogen (N) - Skala 0 hingga 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="Nutrisi paling mobile - paling cepat habis dan tercuci berat saat hujan. Buruk: di bawah 30. Baik: di atas 50. Tingkatkan dengan: pupuk cair, UAN-32, UAN-28, amonia anhidrat, urea, AMS, kotoran hewan, atau hÃ­gtrÃ¡gya." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Nutrisi paling mobile - paling cepat habis dan tercuci berat saat hujan. Buruk: di bawah 30. Baik: di atas 50. Tingkatkan dengan: pupuk cair, UAN-32, UAN-28, amonia anhidrat, urea, AMS, kotoran hewan, atau hígtrágya." eh="58d62253" />
     <e k="helpLine_sf_nu_p1_p_title" v="Fosfor (P) - Skala 0 hingga 100" eh="979bba64" />
     <e k="helpLine_sf_nu_p1_p_text" v="Mengikat erat pada tanah dan tercuci sangat lambat. Berkurang terutama melalui panen. Canola memiliki permintaan P tertinggi. Buruk: di bawah 25. Baik: di atas 45. Tingkatkan dengan: MAP, DAP, pupuk starter, atau pupuk cair." eh="92c5ac66" />
 
     <e k="helpLine_sf_nu_p2_title" v="Kalium dan pH" eh="6bd92f25" />
     <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Skala 0 hingga 100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="Kritis untuk tanaman umbi dan akar. Kentang dan bit gula menghabiskan K secara berat setiap panen. Tercuci secara moderat saat hujan. Buruk: di bawah 20. Baik: di atas 40. Tingkatkan dengan: kalium (0-0-60), hÃ­gtrÃ¡gya, digestate, atau pupuk cair." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_k_text" v="Kritis untuk tanaman umbi dan akar. Kentang dan bit gula menghabiskan K secara berat setiap panen. Tercuci secara moderat saat hujan. Buruk: di bawah 20. Baik: di atas 40. Tingkatkan dengan: kalium (0-0-60), hígtrágya, digestate, atau pupuk cair." eh="7230fee4" />
     <e k="helpLine_sf_nu_p2_ph_title" v="pH - Skala 5.0 hingga 7.5" eh="944beca2" />
     <e k="helpLine_sf_nu_p2_ph_text" v="Kebanyakan tanaman tumbuh subur pada pH 6.5 hingga 7.0. Hujan perlahan mengasamkan tanah seiring waktu. pH tidak pulih dengan sendirinya - hanya kapur atau kapur cair yang meningkatkannya. Buruk: di bawah 5.5. Terapkan kapur jika pH turun sebelum penanaman berikutnya." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Bahan Organik" eh="6305f4bb" />
     <e k="helpLine_sf_nu_p3_om_title" v="Bahan Organik (OM) - Skala 0 hingga 10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="Meningkat sangat lambat dan tidak berkurang oleh panen. Buruk: di bawah 2.5. Baik: di atas 4.0. Tingkatkan dengan: kotoran hewan, hÃ­gtrÃ¡gya, digestate, kompos, biosolid, kotoran ayam, pupuk kandang pelet, atau dengan mencacah jerami kembali ke lahan." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_om_text" v="Meningkat sangat lambat dan tidak berkurang oleh panen. Buruk: di bawah 2.5. Baik: di atas 4.0. Tingkatkan dengan: kotoran hewan, hígtrágya, digestate, kompos, biosolid, kotoran ayam, pupuk kandang pelet, atau dengan mencacah jerami kembali ke lahan." eh="f9a02359" />
     <e k="helpLine_sf_nu_p3_fallow_title" v="Pemulihan Lahan Bera" eh="14133b0b" />
     <e k="helpLine_sf_nu_p3_fallow_text" v="Lahan yang dibiarkan tidak ditanami selama 7+ hari perlahan memulihkan nutrisi. Per hari: N +0.07, P +0.03, K +0.05, OM +0.01. Rotasi tanaman dan periode istirahat tetap memiliki nilai nyata dalam mod ini." eh="81fa82b3" />
 
@@ -808,7 +808,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -823,7 +823,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -971,13 +971,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -1017,9 +1017,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1266,7 +1266,8 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
-<e k="sf_experimental_short" v="Experimental Systems" />
+
+    <e k="sf_experimental_short" v="Experimental Systems" />
     <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
     <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
@@ -1274,4 +1275,3 @@
 
 
 </l10n>
-

@@ -1,15 +1,15 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
-    <e k="sf_section" v="í† ì–‘ ë° ë¹„ë£Œ" eh="f31197fb" />
-    <e k="sf_enabled_short" v="ëª¨ë“œ í™œì„±í™”" eh="cf7fea13" />
-    <e k="sf_enabled_long" v="í† ì–‘ ë° ë¹„ë£Œ ëª¨ë“œë¥¼ í™œì„±í™”í•˜ê±°ë‚˜ ë¹„í™œì„±í™”í•©ë‹ˆë‹¤" eh="a891399a" />
-    <e k="sf_debug_short" v="ë””ë²„ê·¸ ëª¨ë“œ" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="ë””ë²„ê·¸ ëª¨ë“œ í™œì„±í™”/ë¹„í™œì„±í™” (ì¶”ê°€ ë¡œê·¸ ê¸°ë¡)" eh="f6f20240" />
-    <e k="sf_seasonal_effects_short" v="ê³„ì ˆ íš¨ê³¼" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="í† ì–‘ ì˜ì–‘ë¶„ì— ëŒ€í•œ ê³„ì ˆì  ì˜í–¥ í™œì„±í™”/ë¹„í™œì„±í™” (ë´„ì²  ì„±ìž¥ ì´‰ì§„, ê°€ì„ì²  ì„±ìž¥ ë‘”í™”)" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="ê°•ìš° íš¨ê³¼" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="í† ì–‘ì— ëŒ€í•œ ê°•ìš° ì˜í–¥ í™œì„±í™”/ë¹„í™œì„±í™” (ì˜ì–‘ë¶„ ìš©íƒˆ, pH ë³€í™”)" eh="de3b14b9" />
+    <e k="sf_section" v="토양 및 비료" eh="f31197fb" />
+    <e k="sf_enabled_short" v="모드 활성화" eh="cf7fea13" />
+    <e k="sf_enabled_long" v="토양 및 비료 모드를 활성화하거나 비활성화합니다" eh="a891399a" />
+    <e k="sf_debug_short" v="디버그 모드" eh="2ddcdc76" />
+    <e k="sf_debug_long" v="디버그 모드 활성화/비활성화 (추가 로그 기록)" eh="f6f20240" />
+    <e k="sf_seasonal_effects_short" v="계절 효과" eh="c16ea608" />
+    <e k="sf_seasonal_effects_long" v="토양 영양분에 대한 계절적 영향 활성화/비활성화 (봄철 성장 촉진, 가을철 성장 둔화)" eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="강우 효과" eh="a2a1758b" />
+    <e k="sf_rain_effects_long" v="토양에 대한 강우 영향 활성화/비활성화 (영양분 용탈, pH 변화)" eh="de3b14b9" />
     <e k="sf_ws_short" v="World Climate" />
     <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
     <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
@@ -22,102 +22,102 @@
     <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
     <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
     <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
-    <e k="sf_plowing_bonus_short" v="ìŸê¸°ì§ˆ ë³´ë„ˆìŠ¤" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="í† ì–‘ ë¹„ì˜¥ë„ì— ëŒ€í•œ ìŸê¸°ì§ˆ í˜œíƒ í™œì„±í™”/ë¹„í™œì„±í™” (ì§ˆì†Œ ë° ìœ ê¸°ë¬¼ ê°œì„ )" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="ìž”ì‚¬ í˜¼ìž…" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="ê²½ìš´ ë„êµ¬(ê²½ìš´ê¸°, ìŸê¸° ë“±)ì— ì˜í•´ í† ì–‘ì— í˜¼ìž…ëœ ìž‘ë¬¼ ìž”ì‚¬ì˜ ì˜ì–‘ë¶„ ë°©ì¶œ í™œì„±í™”/ë¹„í™œì„±í™”" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="ìž¡ì´ˆ ë°œìƒ ì •ë„" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="ë™ì  ìž¡ì´ˆ ì„±ìž¥ ë° ìˆ˜í™•ëŸ‰ ì˜í–¥ í™œì„±í™”/ë¹„í™œì„±í™”" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="í•´ì¶© ë°œìƒ ì •ë„" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="ê³¤ì¶© ë° í•´ì¶© ë°œìƒ ì‹œìŠ¤í…œ í™œì„±í™”/ë¹„í™œì„±í™”" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="ë³‘í•´ ë°œìƒ ì •ë„" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="ê· ë¥˜ ë° ìž‘ë¬¼ ë³‘í•´ ì‹œìŠ¤í…œ í™œì„±í™”/ë¹„í™œì„±í™”" eh="9080edbc" />
-    <e k="sf_compaction_short" v="í† ì–‘ ì••ì¶•" eh="68734a56" />
-    <e k="sf_compaction_long" v="ëŒ€í˜• ì°¨ëŸ‰ì— ì˜í•œ í† ì–‘ ì••ì¶• ì‹œìŠ¤í…œ í™œì„±í™”/ë¹„í™œì„±í™”" eh="a0995ec5" />
-    <e k="sf_fertility_short" v="ë¹„ì˜¥ë„ ì‹œìŠ¤í…œ" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="ë™ì  í† ì–‘ ë¹„ì˜¥ë„ ì‹œìŠ¤í…œ í™œì„±í™”/ë¹„í™œì„±í™”" eh="ea074366" />
-    <e k="sf_nutrients_short" v="ì˜ì–‘ ìˆœí™˜" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="í˜„ì‹¤ì ì¸ ì˜ì–‘ë¶„ ê³ ê°ˆ ë° ë³´ì¶© í™œì„±í™”/ë¹„í™œì„±í™”" eh="dbe9c8ff" />
-    <e k="sf_difficulty_short" v="ë‚œì´ë„" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="ë‚œì´ë„ ì„¤ì •: ë‹¨ìˆœ, í˜„ì‹¤ì , í•˜ë“œì½”ì–´" eh="cfb758a4" />
-    <e k="sf_diff_1" v="ë‹¨ìˆœ" eh="1fbb1e39" />
-    <e k="sf_diff_2" v="í˜„ì‹¤ì " eh="408c999f" />
-    <e k="sf_diff_3" v="í•˜ë“œì½”ì–´" eh="1c800aa9" />
-    <e k="sf_fertilizer_cost_short" v="ë¹„ë£Œ ë¹„ìš©" eh="6870d88b" />
-    <e k="sf_fertilizer_cost_long" v="í˜„ì‹¤ì ì¸ ë¹„ë£Œ êµ¬ìž… ë¹„ìš© í™œì„±í™”/ë¹„í™œì„±í™”" eh="12b03fbb" />
-    <e k="sf_notifications_short" v="ì•Œë¦¼" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="í† ì–‘ ë° ë¹„ë£Œ ì•Œë¦¼ í™œì„±í™”/ë¹„í™œì„±í™”" eh="9a872f8f" />
-    <e k="sf_show_hud_short" v="HUD í‘œì‹œ" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="í† ì–‘ ì •ë³´ HUD ì˜¤ë²„ë ˆì´ í‘œì‹œ/ìˆ¨ê¸°ê¸° (F8 í‚¤ë¡œ ì¼ì‹œ ì „í™˜ ê°€ëŠ¥)" eh="4e2e11b6" />
+    <e k="sf_plowing_bonus_short" v="쟁기질 보너스" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="토양 비옥도에 대한 쟁기질 혜택 활성화/비활성화 (질소 및 유기물 개선)" eh="fe701c1c" />
+    <e k="sf_residue_incorporation_short" v="잔사 혼입" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="경운 도구(경운기, 쟁기 등)에 의해 토양에 혼입된 작물 잔사의 영양분 방출 활성화/비활성화" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="잡초 발생 정도" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="동적 잡초 성장 및 수확량 영향 활성화/비활성화" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="해충 발생 정도" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="곤충 및 해충 발생 시스템 활성화/비활성화" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="병해 발생 정도" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="균류 및 작물 병해 시스템 활성화/비활성화" eh="9080edbc" />
+    <e k="sf_compaction_short" v="토양 압축" eh="68734a56" />
+    <e k="sf_compaction_long" v="대형 차량에 의한 토양 압축 시스템 활성화/비활성화" eh="a0995ec5" />
+    <e k="sf_fertility_short" v="비옥도 시스템" eh="f7e27d58" />
+    <e k="sf_fertility_long" v="동적 토양 비옥도 시스템 활성화/비활성화" eh="ea074366" />
+    <e k="sf_nutrients_short" v="영양 순환" eh="ffab595d" />
+    <e k="sf_nutrients_long" v="현실적인 영양분 고갈 및 보충 활성화/비활성화" eh="dbe9c8ff" />
+    <e k="sf_difficulty_short" v="난이도" eh="7b29ca96" />
+    <e k="sf_difficulty_long" v="난이도 설정: 단순, 현실적, 하드코어" eh="cfb758a4" />
+    <e k="sf_diff_1" v="단순" eh="1fbb1e39" />
+    <e k="sf_diff_2" v="현실적" eh="408c999f" />
+    <e k="sf_diff_3" v="하드코어" eh="1c800aa9" />
+    <e k="sf_fertilizer_cost_short" v="비료 비용" eh="6870d88b" />
+    <e k="sf_fertilizer_cost_long" v="현실적인 비료 구입 비용 활성화/비활성화" eh="12b03fbb" />
+    <e k="sf_notifications_short" v="알림" eh="a274f4d4" />
+    <e k="sf_notifications_long" v="토양 및 비료 알림 활성화/비활성화" eh="9a872f8f" />
+    <e k="sf_show_hud_short" v="HUD 표시" eh="c94fd4d7" />
+    <e k="sf_show_hud_long" v="토양 정보 HUD 오버레이 표시/숨기기 (F8 키로 일시 전환 가능)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="[EN] Show/hide the sprayer nutrient info panel when driving a sprayer" eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
-    <e k="sf_hud_position_short" v="HUD ìœ„ì¹˜" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="í™”ë©´ì— í† ì–‘ ì •ë³´ HUDê°€ í‘œì‹œë  ìœ„ì¹˜ ì„ íƒ" eh="d7b9c109" />
-    <e k="sf_hud_pos_1" v="ìš°ì¸¡ ìƒë‹¨" eh="5f9f6784" />
-    <e k="sf_hud_pos_2" v="ì¢Œì¸¡ ìƒë‹¨" eh="ac71274a" />
-    <e k="sf_hud_pos_3" v="ìš°ì¸¡ í•˜ë‹¨" eh="4d297f5d" />
-    <e k="sf_hud_pos_4" v="ì¢Œì¸¡ í•˜ë‹¨" eh="7eb55425" />
-    <e k="sf_hud_pos_5" v="ìš°ì¸¡ ì¤‘ì•™" eh="d7afdc5a" />
-    <e k="sf_hud_pos_6" v="ì‚¬ìš©ìž ì •ì˜" eh="90589c47" />
-    <e k="sf_hud_color_theme_short" v="HUD ìƒ‰ìƒ í…Œë§ˆ" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="í† ì–‘ ì •ë³´ í‘œì‹œë¥¼ ìœ„í•œ ìƒ‰ìƒ êµ¬ì„± ì„ íƒ" eh="3218bca6" />
-    <e k="sf_hud_color_1" v="ì´ˆë¡" eh="d382816a" />
-    <e k="sf_hud_color_2" v="íŒŒëž‘" eh="9594eec9" />
-    <e k="sf_hud_color_3" v="í˜¸ë°•ìƒ‰" eh="88068e33" />
-    <e k="sf_hud_color_4" v="ë‹¨ìƒ‰" eh="5d9b47bd" />
-    <e k="sf_diff_short" v="ë‚œì´ë„" eh="7b29ca96" />
-    <e k="sf_diff_long" v="í† ì–‘ ê´€ë¦¬ ë‚œì´ë„ ìˆ˜ì¤€" eh="d6f4560c" />
-    <e k="sf_rr_short" v="ë³´ì¶© ì†ë„" eh="b363b336" />
-    <e k="sf_rr_long" v="ë¹„ë£Œê°€ í•„ë“œ ì˜ì–‘ë¶„ì„ ë³µêµ¬í•˜ëŠ” ì†ë„ (0.25x ë§¤ìš° ëŠë¦¼ ~ 2.0x ë§¤ìš° ë¹ ë¦„)" eh="afe78a6d" />
+    <e k="sf_hud_position_short" v="HUD 위치" eh="5ac371f2" />
+    <e k="sf_hud_position_long" v="화면에 토양 정보 HUD가 표시될 위치 선택" eh="d7b9c109" />
+    <e k="sf_hud_pos_1" v="우측 상단" eh="5f9f6784" />
+    <e k="sf_hud_pos_2" v="좌측 상단" eh="ac71274a" />
+    <e k="sf_hud_pos_3" v="우측 하단" eh="4d297f5d" />
+    <e k="sf_hud_pos_4" v="좌측 하단" eh="7eb55425" />
+    <e k="sf_hud_pos_5" v="우측 중앙" eh="d7afdc5a" />
+    <e k="sf_hud_pos_6" v="사용자 정의" eh="90589c47" />
+    <e k="sf_hud_color_theme_short" v="HUD 색상 테마" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="토양 정보 표시를 위한 색상 구성 선택" eh="3218bca6" />
+    <e k="sf_hud_color_1" v="초록" eh="d382816a" />
+    <e k="sf_hud_color_2" v="파랑" eh="9594eec9" />
+    <e k="sf_hud_color_3" v="호박색" eh="88068e33" />
+    <e k="sf_hud_color_4" v="단색" eh="5d9b47bd" />
+    <e k="sf_diff_short" v="난이도" eh="7b29ca96" />
+    <e k="sf_diff_long" v="토양 관리 난이도 수준" eh="d6f4560c" />
+    <e k="sf_rr_short" v="보충 속도" eh="b363b336" />
+    <e k="sf_rr_long" v="비료가 필드 영양분을 복구하는 속도 (0.25x 매우 느림 ~ 2.0x 매우 빠름)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
     <e k="sf_dm_2" v="[EN] Temperate" />
     <e k="sf_dm_3" v="[EN] Humid" />
     <e k="sf_dm_4" v="[EN] Wet" />
-    <e k="sf_auto_rate_short" v="ìžë™ ì‚´í¬ëŸ‰ ì œì–´" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="í•„ë“œ í•„ìš”ëŸ‰ì— ë”°ë¼ ë¹„ë£Œ ì‚´í¬ëŸ‰ì„ ìžë™ìœ¼ë¡œ ì¡°ì ˆí•©ë‹ˆë‹¤" eh="a9ca9f6b" />
-    <e k="sf_hud_theme_1" v="ì´ˆë¡" eh="d382816a" />
-    <e k="sf_hud_theme_2" v="íŒŒëž‘" eh="9594eec9" />
-    <e k="sf_hud_theme_3" v="í˜¸ë°•ìƒ‰" eh="88068e33" />
-    <e k="sf_hud_theme_4" v="ë‹¨ìƒ‰" eh="5d9b47bd" />
-    <e k="sf_hud_font_size_short" v="HUD ê¸€ìž í¬ê¸°" eh="fd6ca64a" />
-    <e k="sf_hud_font_size_long" v="ê°€ë…ì„±ì„ ìœ„í•´ í…ìŠ¤íŠ¸ í¬ê¸° ì¡°ì ˆ" eh="c338854f" />
-    <e k="sf_hud_font_1" v="ìž‘ê²Œ" eh="2660064e" />
-    <e k="sf_hud_font_2" v="ì¤‘ê°„" eh="87f8a6ab" />
-    <e k="sf_hud_font_3" v="í¬ê²Œ" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="HUD íˆ¬ëª…ë„" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="ë°°ê²½ íˆ¬ëª…ë„ ìˆ˜ì¤€ ì„¤ì • (íˆ¬ëª… ~ ë¶ˆíˆ¬ëª…)" eh="152e390a" />
-    <e k="sf_hud_trans_1" v="íˆ¬ëª…" eh="dc30bc0c" />
-    <e k="sf_hud_trans_2" v="ë°ê²Œ" eh="9914a0ce" />
-    <e k="sf_hud_trans_3" v="ì¤‘ê°„" eh="87f8a6ab" />
-    <e k="sf_hud_trans_4" v="ì–´ë‘¡ê²Œ" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="ë¶ˆíˆ¬ëª…" eh="e41480b6" />
-    <e k="sf_use_imperial_short" v="ì•¼ë“œíŒŒìš´ë“œë²• ë‹¨ìœ„" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="ì‚´í¬ëŸ‰ì„ gal/ac ë° lb/acë¡œ í‘œì‹œ (ë¹„í™œì„± ì‹œ L/ha ë° kg/ha)" eh="17efa489" />
-    <e k="sf_active_map_layer_short" v="í™œì„± ì§€ë„ ë ˆì´ì–´" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="PDA ì§€ë„ì— ì˜¤ë²„ë ˆì´ë¡œ í‘œì‹œë  ì˜ì–‘ë¶„ ë ˆì´ì–´" eh="d7755cc8" />
-    <e k="sf_overlay_density_short" v="ì§€ë„ ìƒì„¸ë„" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="PDA í† ì–‘ ì˜¤ë²„ë ˆì´ë¥¼ ìœ„í•œ ìƒ˜í”Œ ì§€ì  ìˆ˜ ì„¤ì •. ë‚®ìŒ = FPS í–¥ìƒ, ë†’ìŒ = ëŒ€í˜• ì§€ë„ì—ì„œ ë” ì´˜ì´˜í•œ í‘œì‹œ." eh="89215ce5" />
+    <e k="sf_auto_rate_short" v="자동 살포량 제어" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="필드 필요량에 따라 비료 살포량을 자동으로 조절합니다" eh="a9ca9f6b" />
+    <e k="sf_hud_theme_1" v="초록" eh="d382816a" />
+    <e k="sf_hud_theme_2" v="파랑" eh="9594eec9" />
+    <e k="sf_hud_theme_3" v="호박색" eh="88068e33" />
+    <e k="sf_hud_theme_4" v="단색" eh="5d9b47bd" />
+    <e k="sf_hud_font_size_short" v="HUD 글자 크기" eh="fd6ca64a" />
+    <e k="sf_hud_font_size_long" v="가독성을 위해 텍스트 크기 조절" eh="c338854f" />
+    <e k="sf_hud_font_1" v="작게" eh="2660064e" />
+    <e k="sf_hud_font_2" v="중간" eh="87f8a6ab" />
+    <e k="sf_hud_font_3" v="크게" eh="3a69b34c" />
+    <e k="sf_hud_transparency_short" v="HUD 투명도" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="배경 투명도 수준 설정 (투명 ~ 불투명)" eh="152e390a" />
+    <e k="sf_hud_trans_1" v="투명" eh="dc30bc0c" />
+    <e k="sf_hud_trans_2" v="밝게" eh="9914a0ce" />
+    <e k="sf_hud_trans_3" v="중간" eh="87f8a6ab" />
+    <e k="sf_hud_trans_4" v="어둡게" eh="a18366b2" />
+    <e k="sf_hud_trans_5" v="불투명" eh="e41480b6" />
+    <e k="sf_use_imperial_short" v="야드파운드법 단위" eh="ff2701ad" />
+    <e k="sf_use_imperial_long" v="살포량을 gal/ac 및 lb/ac로 표시 (비활성 시 L/ha 및 kg/ha)" eh="17efa489" />
+    <e k="sf_active_map_layer_short" v="활성 지도 레이어" eh="1861765f" />
+    <e k="sf_active_map_layer_long" v="PDA 지도에 오버레이로 표시될 영양분 레이어" eh="d7755cc8" />
+    <e k="sf_overlay_density_short" v="지도 상세도" eh="a525859a" />
+    <e k="sf_overlay_density_long" v="PDA 토양 오버레이를 위한 샘플 지점 수 설정. 낮음 = FPS 향상, 높음 = 대형 지도에서 더 촘촘한 표시." eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
     <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
     <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
-    <e k="input_SF_OPEN_SETTINGS" v="í† ì–‘ ì„¤ì • ì—´ê¸°" eh="2e31c0dd" />
-    <e k="sf_reset" v="í† ì–‘ ì„¤ì • ì´ˆê¸°í™”" eh="467bc2f5" />
-    <e k="input_SF_TOGGLE_HUD" v="í† ì–‘ HUD ì „í™˜" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="HUD ë“œëž˜ê·¸ ëª¨ë“œ" eh="cb2eb762" />
-    <e k="input_SF_SOIL_REPORT" v="í† ì–‘ ë³´ê³ ì„œ" eh="c33180ef" />
-    <e k="input_SF_TOGGLE_CELL_MAP" v="í† ì–‘ ì…€ ì§€ë„ ì „í™˜" eh="3a7e9b9d" />
-    <e k="input_SF_RATE_UP" v="ë¹„ë£Œ ì‚´í¬ëŸ‰ ì¦ê°€" eh="6e601ef5" />
-    <e k="input_SF_RATE_DOWN" v="ë¹„ë£Œ ì‚´í¬ëŸ‰ ê°ì†Œ" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="ìžë™ ì‚´í¬ëŸ‰ ì „í™˜" eh="a8642cf0" />
-    <e k="input_SF_CYCLE_MAP_LAYER" v="í† ì–‘ ì§€ë„ ë ˆì´ì–´ ìˆœí™˜" eh="8e4a716c" />
-    <e k="input_SF_SOIL_PDA" v="í† ì–‘ PDA ì—´ê¸°" eh="7d70f7b4" />
+    <e k="input_SF_OPEN_SETTINGS" v="토양 설정 열기" eh="2e31c0dd" />
+    <e k="sf_reset" v="토양 설정 초기화" eh="467bc2f5" />
+    <e k="input_SF_TOGGLE_HUD" v="토양 HUD 전환" eh="f0224a10" />
+    <e k="input_SF_HUD_DRAG" v="HUD 드래그 모드" eh="cb2eb762" />
+    <e k="input_SF_SOIL_REPORT" v="토양 보고서" eh="c33180ef" />
+    <e k="input_SF_TOGGLE_CELL_MAP" v="토양 셀 지도 전환" eh="3a7e9b9d" />
+    <e k="input_SF_RATE_UP" v="비료 살포량 증가" eh="6e601ef5" />
+    <e k="input_SF_RATE_DOWN" v="비료 살포량 감소" eh="30712026" />
+    <e k="input_SF_TOGGLE_AUTO" v="자동 살포량 전환" eh="a8642cf0" />
+    <e k="input_SF_CYCLE_MAP_LAYER" v="토양 지도 레이어 순환" eh="8e4a716c" />
+    <e k="input_SF_SOIL_PDA" v="토양 PDA 열기" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
@@ -126,383 +126,383 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_uan32_title" v="UAN 32 ë¹„ë£Œ (ì§ˆì†Œ)" eh="90913bb8" />
-    <e k="sf_uan28_title" v="UAN 28 ë¹„ë£Œ (ì§ˆì†Œ)" eh="9d902cd7" />
-    <e k="sf_anhydrous_title" v="ë¬´ìˆ˜ ì•”ëª¨ë‹ˆì•„ (ì§ˆì†Œ)" eh="3fc85c02" />
-    <e k="sf_starter_title" v="ìŠ¤íƒ€í„° ë¹„ë£Œ 10-34-0 (ì¸ì‚°)" eh="8c1a1ddc" />
-    <e k="sf_urea_title" v="ìš”ì†Œ 46-0-0 (ì§ˆì†Œ)" eh="659b3097" />
-    <e k="sf_an_title" v="ì§ˆì‚° ì•”ëª¨ëŠ„ 34.5-0-0 (ì§ˆì†Œ)" eh="29f6ee93" />
-    <e k="sf_ams_title" v="í™©ì‚° ì•”ëª¨ëŠ„ 21-0-0 (ì§ˆì†Œ)" eh="033d1845" />
-    <e k="sf_map_title" v="MAP ë¹„ë£Œ 11-52-0 (ì¸ì‚°)" eh="31aa2534" />
-    <e k="sf_dap_title" v="DAP ë¹„ë£Œ 18-46-0 (ì¸ì‚°)" eh="5030a80a" />
-    <e k="sf_potash_title" v="ì¹¼ë¦¬ 0-0-60 (ì¹¼ë¥¨)" eh="8db6c54c" />
+    <e k="sf_uan32_title" v="UAN 32 비료 (질소)" eh="90913bb8" />
+    <e k="sf_uan28_title" v="UAN 28 비료 (질소)" eh="9d902cd7" />
+    <e k="sf_anhydrous_title" v="무수 암모니아 (질소)" eh="3fc85c02" />
+    <e k="sf_starter_title" v="스타터 비료 10-34-0 (인산)" eh="8c1a1ddc" />
+    <e k="sf_urea_title" v="요소 46-0-0 (질소)" eh="659b3097" />
+    <e k="sf_an_title" v="질산 암모늄 34.5-0-0 (질소)" eh="29f6ee93" />
+    <e k="sf_ams_title" v="황산 암모늄 21-0-0 (질소)" eh="033d1845" />
+    <e k="sf_map_title" v="MAP 비료 11-52-0 (인산)" eh="31aa2534" />
+    <e k="sf_dap_title" v="DAP 비료 18-46-0 (인산)" eh="5030a80a" />
+    <e k="sf_potash_title" v="칼리 0-0-60 (칼륨)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="ì•¡ìƒ ìš”ì†Œ (ì§ˆì†Œ)" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="ì•¡ìƒ í™©ì‚° ì•”ëª¨ëŠ„ (ì§ˆì†Œ)" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="ì•¡ìƒ MAP (ì¸ì‚°)" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="ì•¡ìƒ DAP (ì¸ì‚°)" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="ì•¡ìƒ ì¹¼ë¦¬ (ì¹¼ë¥¨)" eh="72ac9fd3" />
-    <e k="sf_insecticide_title" v="ì‚´ì¶©ì œ" eh="5650eeef" />
-    <e k="sf_fungicide_title" v="ì‚´ê· ì œ" eh="e8512698" />
+    <e k="sf_liquid_urea_title" v="액상 요소 (질소)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="액상 황산 암모늄 (질소)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="액상 MAP (인산)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="액상 DAP (인산)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="액상 칼리 (칼륨)" eh="72ac9fd3" />
+    <e k="sf_insecticide_title" v="살충제" eh="5650eeef" />
+    <e k="sf_fungicide_title" v="살균제" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
-    <e k="sf_bigBag_anhydrous_name" v="IBC ë¬´ìˆ˜ ì•”ëª¨ë‹ˆì•„ 82-0-0" eh="fb09e6ce" />
+    <e k="sf_bigBag_anhydrous_name" v="IBC 무수 암모니아 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
-    <e k="sf_bigBag_urea_name" v="ë¹…ë°± ìš”ì†Œ 46-0-0" eh="8e8cbaae" />
+    <e k="sf_bigBag_urea_name" v="빅백 요소 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
-    <e k="sf_bigBag_an_name" v="ë¹…ë°± AN 34.5-0-0" eh="45f56f60" />
+    <e k="sf_bigBag_an_name" v="빅백 AN 34.5-0-0" eh="45f56f60" />
     <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
-    <e k="sf_bigBag_ams_name" v="ë¹…ë°± AMS 21-0-0-24S" eh="7f71ee68" />
+    <e k="sf_bigBag_ams_name" v="빅백 AMS 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) - +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
-    <e k="sf_bigBag_map_name" v="ë¹…ë°± MAP 11-52-0" eh="8a5a059b" />
+    <e k="sf_bigBag_map_name" v="빅백 MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) - +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
-    <e k="sf_bigBag_dap_name" v="ë¹…ë°± DAP 18-46-0" eh="fb4e9987" />
+    <e k="sf_bigBag_dap_name" v="빅백 DAP 18-46-0" eh="fb4e9987" />
     <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) - +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
-    <e k="sf_bigBag_potash_name" v="ë¹…ë°± ì¹¼ë¦¬ 0-0-60" eh="eb771556" />
+    <e k="sf_bigBag_potash_name" v="빅백 칼리 0-0-60" eh="eb771556" />
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
-    <e k="sf_bigBag_liquid_urea_name" v="IBC ì•¡ìƒ ìš”ì†Œ" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC 액상 요소" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="IBC ì•¡ìƒ AMS" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC 액상 AMS" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="IBC ì•¡ìƒ MAP" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC 액상 MAP" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="IBC ì•¡ìƒ DAP" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC 액상 DAP" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="IBC ì•¡ìƒ ì¹¼ë¦¬" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC 액상 칼리" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
-    <e k="sf_bigBag_starter_name" v="IBC ìŠ¤íƒ€í„° 10-34-0" eh="62b13bd1" />
-    <e k="sf_bigBag_insecticide_name" v="IBC ì‚´ì¶©ì œ" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="ì‚´ì¶©ì œ (ì•¡ì²´)" eh="09580f6b" />
-    <e k="sf_bigBag_fungicide_name" v="IBC ì‚´ê· ì œ" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="ì‚´ê· ì œ (ì•¡ì²´)" eh="745c34cb" />
+    <e k="sf_bigBag_starter_name" v="IBC 스타터 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_insecticide_name" v="IBC 살충제" eh="c8f0aabb" />
+    <e k="sf_bigBag_insecticide_function" v="살충제 (액체)" eh="09580f6b" />
+    <e k="sf_bigBag_fungicide_name" v="IBC 살균제" eh="2a1c78d4" />
+    <e k="sf_bigBag_fungicide_function" v="살균제 (액체)" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
-    <e k="sf_bigBag_gypsum_name" v="ë¹…ë°± ì„ê³ " eh="40fc8169" />
+    <e k="sf_bigBag_gypsum_name" v="빅백 석고" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
-    <e k="sf_bigBag_compost_name" v="ë¹…ë°± í‡´ë¹„" eh="14322c5d" />
+    <e k="sf_bigBag_compost_name" v="빅백 퇴비" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="ë¹…ë°± ë°”ì´ì˜¤ì†”ë¦¬ë“œ" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="빅백 바이오솔리드" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
-    <e k="sf_bigBag_chicken_manure_name" v="ë¹…ë°± ê³„ë¶„" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_name" v="빅백 계분" eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
-    <e k="sf_bigBag_pelletized_manure_name" v="ë¹…ë°± íŽ ë › í‡´ë¹„" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="빅백 펠렛 퇴비" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="ì•¡ìƒ ì„íšŒ íƒ±í¬" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="액상 석회 탱크" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
-    <e k="sf_hud_title" v="í† ì–‘ ëª¨ë‹ˆí„°" eh="f8cda642" />
-    <e k="sf_hud_field" v="í•„ë“œ %d" eh="08988997" />
-    <e k="sf_hud_noField" v="í•„ë“œì— ìž…ìž¥í•˜ì„¸ìš”" eh="62c55e9e" />
+    <e k="sf_hud_title" v="토양 모니터" eh="f8cda642" />
+    <e k="sf_hud_field" v="필드 %d" eh="08988997" />
+    <e k="sf_hud_noField" v="필드에 입장하세요" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
-    <e k="sf_hud_fallow" v="íœ´ê²½ì§€" eh="eafe5913" />
+    <e k="sf_hud_fallow" v="휴경지" eh="eafe5913" />
 		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="í•´ì¶©" eh="2fed5101" />
-    <e k="sf_hud_disease" v="ë³‘í•´" eh="e7067a8c" />
+    <e k="sf_hud_pests" v="해충" eh="2fed5101" />
+    <e k="sf_hud_disease" v="병해" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
-    <e k="sf_hud_protected" v="(ë³´í˜¸ë¨)" eh="8273211e" />
-    <e k="sf_hud_yield" v="ìˆ˜í™•ëŸ‰" eh="97345487" />
-    <e k="sf_hud_estYield" v="ì˜ˆìƒ ìˆ˜í™•ëŸ‰" eh="32a4135e" />
-    <e k="sf_hud_optimal" v="ìµœì " eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="ìˆ˜í™• í›„ Â· ë¹„ë£Œ ì‚´í¬ í•„ìš”" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="ë“œëž˜ê·¸: ì´ë™   ëª¨ì„œë¦¬: í¬ê¸° ì¡°ì ˆ   ìš°í´ë¦­/Shift+H: ì™„ë£Œ" eh="c3f1820c" />
-    <e k="sf_hud_hint_normal" v="Shift+H: ì´ë™/í¬ê¸° ì¡°ì ˆ" eh="f1d565b1" />
+    <e k="sf_hud_protected" v="(보호됨)" eh="8273211e" />
+    <e k="sf_hud_yield" v="수확량" eh="97345487" />
+    <e k="sf_hud_estYield" v="예상 수확량" eh="32a4135e" />
+    <e k="sf_hud_optimal" v="최적" eh="cb61fef1" />
+    <e k="sf_hud_post_harvest" v="수확 후 · 비료 살포 필요" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="드래그: 이동   모서리: 크기 조절   우클릭/Shift+H: 완료" eh="c3f1820c" />
+    <e k="sf_hud_hint_normal" v="Shift+H: 이동/크기 조절" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="Precision Farmingì´ í™œì„±í™”ë˜ì–´ ìžˆì–´ ì´ ì„¸ì´ë¸Œì—ì„œ Soil &amp; Fertilizerê°€ ë¹„í™œì„±í™”ë˜ì—ˆìŠµë‹ˆë‹¤. ë‘ ëª¨ë“œ ëª¨ë‘ í† ì–‘ ì–‘ë¶„ì„ ê´€ë¦¬í•˜ë¯€ë¡œ ë™ì‹œì— ì‹¤í–‰í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤. ì´ ëª¨ë“œë¥¼ ì‚­ì œí•  í•„ìš”ëŠ” ì—†ìŠµë‹ˆë‹¤. ëŒ€ì‹  Soil &amp; Fertilizerë¥¼ ì‚¬ìš©í•˜ë ¤ë©´ ëª¨ë“œ ì„ íƒ í™”ë©´ì—ì„œ ì´ ì„¸ì´ë¸Œì˜ Precision Farmingì„ ë¹„í™œì„±í™”í•˜ì„¸ìš”." eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Precision Farming이 활성화되어 있어 이 세이브에서 Soil &amp; Fertilizer가 비활성화되었습니다. 두 모드 모두 토양 양분을 관리하므로 동시에 실행할 수 없습니다. 이 모드를 삭제할 필요는 없습니다. 대신 Soil &amp; Fertilizer를 사용하려면 모드 선택 화면에서 이 세이브의 Precision Farming을 비활성화하세요." eh="91dbcf1b" />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
          ====================================================== -->
 
     <!-- Category titles -->
-    <e k="helpLine_sf_cat_overview" v="ê°œìš”" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="ì‹œìž‘í•˜ê¸°" eh="bf647454" />
-    <e k="helpLine_sf_cat_nutrients" v="í† ì–‘ ì˜ì–‘ë¶„" eh="64377acf" />
-    <e k="helpLine_sf_cat_fertilizers" v="ë¹„ë£Œ" eh="754d59bd" />
-    <e k="helpLine_sf_cat_hud" v="HUD ë° í† ì–‘ ë³´ê³ ì„œ" eh="655b1b40" />
-    <e k="helpLine_sf_cat_settings" v="ì„¤ì •" eh="f4f70727" />
-    <e k="helpLine_sf_cat_multiplayer" v="ë©€í‹°í”Œë ˆì´ì–´" eh="901a7320" />
+    <e k="helpLine_sf_cat_overview" v="개요" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="시작하기" eh="bf647454" />
+    <e k="helpLine_sf_cat_nutrients" v="토양 영양분" eh="64377acf" />
+    <e k="helpLine_sf_cat_fertilizers" v="비료" eh="754d59bd" />
+    <e k="helpLine_sf_cat_hud" v="HUD 및 토양 보고서" eh="655b1b40" />
+    <e k="helpLine_sf_cat_settings" v="설정" eh="f4f70727" />
+    <e k="helpLine_sf_cat_multiplayer" v="멀티플레이어" eh="901a7320" />
 
     <!-- Category 1: Overview -->
-    <e k="helpLine_sf_ov_p1_title" v="ê¸°ëŠ¥ ì„¤ëª…" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="í•„ë“œë³„ í† ì–‘ ì¶”ì " eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="ëª¨ë“  í•„ë“œëŠ” ì§ˆì†Œ(N), ì¸ì‚°(P), ì¹¼ë¥¨(K), ìœ ê¸°ë¬¼(OM), pHì˜ ë‹¤ì„¯ ê°€ì§€ ì†ì„±ì„ ë…ë¦½ì ìœ¼ë¡œ ì¶”ì í•©ë‹ˆë‹¤. ê°’ì€ ì„¸ì´ë¸Œê²Œìž„ì— ì €ìž¥ë˜ë©° ì„¸ì…˜ ê°„ì— ìœ ì§€ë©ë‹ˆë‹¤." eh="c30216e6" />
-    <e k="helpLine_sf_ov_p1_flow_title" v="ì˜ì–‘ ìˆœí™˜" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="ìž‘ë¬¼ì€ ìˆ˜í™• ì‹œ ì˜ì–‘ë¶„ì„ ì†Œëª¨í•©ë‹ˆë‹¤. ë¹„ë£Œ, í‡´ë¹„, ì•¡ë¹„, ì„íšŒë¡œ ì´ë¥¼ ë³´ì¶©í•´ì•¼ í•©ë‹ˆë‹¤. ì´ ëª¨ë“œëŠ” í˜„ì‹¤ì ì¸ ì˜ì–‘ ì˜ˆì‚°ì„ ì¶”ì í•˜ë¯€ë¡œ, ìž‘ë¬¼ì´ ê°€ì ¸ê°„ ë§Œí¼ ë‹¤ì‹œ ì±„ì›Œì£¼ì–´ì•¼ í•©ë‹ˆë‹¤." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_title" v="기능 설명" eh="46cbb25b" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="필드별 토양 추적" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="모든 필드는 질소(N), 인산(P), 칼륨(K), 유기물(OM), pH의 다섯 가지 속성을 독립적으로 추적합니다. 값은 세이브게임에 저장되며 세션 간에 유지됩니다." eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_flow_title" v="영양 순환" eh="15b0d408" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="작물은 수확 시 영양분을 소모합니다. 비료, 퇴비, 액비, 석회로 이를 보충해야 합니다. 이 모드는 현실적인 영양 예산을 추적하므로, 작물이 가져간 만큼 다시 채워주어야 합니다." eh="418041f0" />
 
-    <e k="helpLine_sf_ov_p2_title" v="í™˜ê²½ íš¨ê³¼" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="ê°•ìš°ì™€ ìš©íƒˆ" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="ë¹„ëŠ” ì§ˆì†Œë¥¼ ê°€ìž¥ ë§Žì´ ìš©íƒˆì‹œí‚¤ë©°, ê·¸ ë‹¤ìŒìœ¼ë¡œ ì¹¼ë¥¨, ì¸ì‚° ìˆœìž…ë‹ˆë‹¤. ë˜í•œ ì‹œê°„ì´ ì§€ë‚¨ì— ë”°ë¼ pHë¥¼ ì„œì„œížˆ ì‚°ì„±í™”ì‹œí‚µë‹ˆë‹¤. ê°•ìš° íš¨ê³¼ëŠ” ì„¤ì •ì—ì„œ ëŒ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="ê³„ì ˆê³¼ íœ´ê²½ì§€ íšŒë³µ" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="ë´„ì—ëŠ” í•˜ë£¨ì— +0.03 ì§ˆì†Œê°€ ì¶”ê°€ë©ë‹ˆë‹¤(ìƒë¬¼í•™ì  í™œë™). ê°€ì„ì—ëŠ” í•˜ë£¨ì— 0.02 ì§ˆì†Œê°€ ì œê±°ë©ë‹ˆë‹¤. 7ì¼ ì´ìƒ ìž‘ë¬¼ì„ ì‹¬ì§€ ì•Šì€ í•„ë“œëŠ” ìŠ¤ìŠ¤ë¡œ ì˜ì–‘ë¶„ì„ ì„œì„œížˆ íšŒë³µí•©ë‹ˆë‹¤." eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_title" v="환경 효과" eh="e139e84f" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="강우와 용탈" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="비는 질소를 가장 많이 용탈시키며, 그 다음으로 칼륨, 인산 순입니다. 또한 시간이 지남에 따라 pH를 서서히 산성화시킵니다. 강우 효과는 설정에서 끌 수 있습니다." eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="계절과 휴경지 회복" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="봄에는 하루에 +0.03 질소가 추가됩니다(생물학적 활동). 가을에는 하루에 0.02 질소가 제거됩니다. 7일 이상 작물을 심지 않은 필드는 스스로 영양분을 서서히 회복합니다." eh="e5ebb3b2" />
 
     <!-- Category 2: Getting Started -->
-    <e k="helpLine_sf_gs_p1_title" v="ì²« ë‹¨ê³„" eh="bdd0e0a7" />
-    <e k="helpLine_sf_gs_p1_hud_title" v="HUD ì—´ê¸° (J í‚¤)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="J í‚¤ë¥¼ ëˆŒëŸ¬ ì‹¤ì‹œê°„ í† ì–‘ ì˜¤ë²„ë ˆì´ë¥¼ ì „í™˜í•©ë‹ˆë‹¤. í˜„ìž¬ ìœ„ì¹˜í•œ í•„ë“œì˜ N, P, K, pH, OMì„ ë³´ì—¬ì¤ë‹ˆë‹¤. ì¢‹ìŒ / ë³´í†µ / ë‚˜ì¨ ìƒíƒœ í‘œì‹œë¥¼ í†µí•´ ì¦‰ì‹œ ê´€ë¦¬ê°€ í•„ìš”í•œ ë¶€ë¶„ì„ ì•Œ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="í† ì–‘ ë³´ê³ ì„œ ì—´ê¸° (K í‚¤)" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="K í‚¤ë¥¼ ëˆŒëŸ¬ ë†ìž¥ ì „ì²´ í† ì–‘ ë³´ê³ ì„œë¥¼ ì—½ë‹ˆë‹¤. ëª¨ë“  í•„ë“œê°€ ì˜ì–‘ ìƒíƒœì— ë”°ë¼ ìƒ‰ìƒë³„ë¡œ í‘œì‹œë˜ë©° ê¸´ê¸‰ë„ìˆœìœ¼ë¡œ ì •ë ¬ë©ë‹ˆë‹¤. ìƒì„¸ ì •ë³´ì™€ ê¶Œìž¥ ì‚¬í•­ì„ ë³´ë ¤ë©´ í–‰ ì˜†ì˜ í™”ì‚´í‘œë¥¼ í´ë¦­í•˜ì„¸ìš”." eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_title" v="첫 단계" eh="bdd0e0a7" />
+    <e k="helpLine_sf_gs_p1_hud_title" v="HUD 열기 (J 키)" eh="e1bdea72" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="J 키를 눌러 실시간 토양 오버레이를 전환합니다. 현재 위치한 필드의 N, P, K, pH, OM을 보여줍니다. 좋음 / 보통 / 나쁨 상태 표시를 통해 즉시 관리가 필요한 부분을 알 수 있습니다." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="토양 보고서 열기 (K 키)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="K 키를 눌러 농장 전체 토양 보고서를 엽니다. 모든 필드가 영양 상태에 따라 색상별로 표시되며 긴급도순으로 정렬됩니다. 상세 정보와 권장 사항을 보려면 행 옆의 화살표를 클릭하세요." eh="9a0d32a6" />
 
-    <e k="helpLine_sf_gs_p2_title" v="ë¹„ë£Œ ì‚´í¬ ë° ìˆ˜í™•" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="í•„ë“œ ë¹„ë£Œ ì‚´í¬" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="í‘œì¤€ ìŠ¤í”„ë ˆì´ì–´ë‚˜ ì‚´í¬ê¸°ë¥¼ ì‚¬ìš©í•˜ì—¬ ë¹„ë£Œë¥¼ ì‚´í¬í•˜ì„¸ìš”. ì´ ëª¨ë“œëŠ” ê¸°ë³¸ ê²Œìž„ì˜ ëª¨ë“  ìœ í˜•ê³¼ 9ê°€ì§€ ì»¤ìŠ¤í…€ ìœ í˜•(UAN-32, MAP, ì¹¼ë¦¬ ë“±)ì„ ì¸ì‹í•©ë‹ˆë‹¤. ìœ í˜•ë§ˆë‹¤ ë³´ì¶©í•˜ëŠ” ì˜ì–‘ë¶„ì´ ë‹¤ë¥´ë¯€ë¡œ ë¹„ë£Œ ì¹´í…Œê³ ë¦¬ì˜ í”„ë¡œí•„ì„ í™•ì¸í•˜ì„¸ìš”." eh="fe906e29" />
-    <e k="helpLine_sf_gs_p2_harvest_title" v="ìˆ˜í™•ì— ì˜í•œ ê³ ê°ˆ" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="ìˆ˜í™•í•  ë•Œë§ˆë‹¤ í•„ë“œì˜ ì˜ì–‘ë¶„ì´ ì œê±°ë©ë‹ˆë‹¤. ìš”êµ¬ëŸ‰ì´ ë§Žì€ ìž‘ë¬¼(ê°ìž, ì‚¬íƒ•ë¬´, ëŒ€ë‘)ì€ ê°€ë²¼ìš´ ìž‘ë¬¼(ë³´ë¦¬, ê·€ë¦¬)ë³´ë‹¤ í›¨ì”¬ ë” ë§Žì´ ê³ ê°ˆì‹œí‚µë‹ˆë‹¤. ìˆ˜í™• ì£¼ê¸°ë§ˆë‹¤ HUDë‚˜ ë³´ê³ ì„œë¥¼ ë‹¤ì‹œ í™•ì¸í•˜ì„¸ìš”." eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_title" v="비료 살포 및 수확" eh="1a52ac04" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="필드 비료 살포" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="표준 스프레이어나 살포기를 사용하여 비료를 살포하세요. 이 모드는 기본 게임의 모든 유형과 9가지 커스텀 유형(UAN-32, MAP, 칼리 등)을 인식합니다. 유형마다 보충하는 영양분이 다르므로 비료 카테고리의 프로필을 확인하세요." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_harvest_title" v="수확에 의한 고갈" eh="a67b6cb5" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="수확할 때마다 필드의 영양분이 제거됩니다. 요구량이 많은 작물(감자, 사탕무, 대두)은 가벼운 작물(보리, 귀리)보다 훨씬 더 많이 고갈시킵니다. 수확 주기마다 HUD나 보고서를 다시 확인하세요." eh="63f90ed4" />
 
-    <e k="helpLine_sf_gs_p3_title" v="ë‚œì´ë„" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="ì„¸ ê°€ì§€ ë‚œì´ë„ ìˆ˜ì¤€" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="ë‹¨ìˆœ(0.7x): ê³ ê°ˆëŸ‰ì´ 30% ì ì–´ ì´ˆë³´ìžì—ê²Œ ì í•©í•©ë‹ˆë‹¤. í˜„ì‹¤ì (1.0x): ì‹¤ì œ ë†ì—… ë¹„ìœ¨ì— ë§žì¶° ì¡°ì •ëœ ê· í˜• ìž¡ížŒ ìˆ˜ì¤€ìž…ë‹ˆë‹¤. í•˜ë“œì½”ì–´(1.5x): ê³ ê°ˆëŸ‰ì´ 50% ë§Žì•„ ì§‘ì¤‘ì ì¸ í† ì–‘ ê´€ë¦¬ê°€ í•„ìš”í•©ë‹ˆë‹¤." eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="ì„¤ì • ë³€ê²½" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="ESC > ì„¤ì • > í† ì–‘ ë° ë¹„ë£Œì—ì„œ ì„¤ì •ì„ ì—½ë‹ˆë‹¤. ë©€í‹°í”Œë ˆì´ì–´ì—ì„œëŠ” ì„œë²„ ê´€ë¦¬ìžë§Œ ì‹œë®¬ë ˆì´ì…˜ ì„¤ì •ì„ ë³€ê²½í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤. HUD í‘œì‹œ ì˜µì…˜ì€ í”Œë ˆì´ì–´ë³„ë¡œ ì„¤ì •ë˜ë©° ê³µìœ ë˜ì§€ ì•ŠìŠµë‹ˆë‹¤." eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_title" v="난이도" eh="7b29ca96" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="세 가지 난이도 수준" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="단순(0.7x): 고갈량이 30% 적어 초보자에게 적합합니다. 현실적(1.0x): 실제 농업 비율에 맞춰 조정된 균형 잡힌 수준입니다. 하드코어(1.5x): 고갈량이 50% 많아 집중적인 토양 관리가 필요합니다." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="설정 변경" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_access_text" v="ESC > 설정 > 토양 및 비료에서 설정을 엽니다. 멀티플레이어에서는 서버 관리자만 시뮬레이션 설정을 변경할 수 있습니다. HUD 표시 옵션은 플레이어별로 설정되며 공유되지 않습니다." eh="4ba9d860" />
 
     <!-- Category 3: Soil Nutrients -->
-    <e k="helpLine_sf_nu_p1_title" v="ì§ˆì†Œì™€ ì¸ì‚°" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="ì§ˆì†Œ (N) - ë²”ìœ„ 0 ~ 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="ì´ë™ì„±ì´ ê°€ìž¥ í° ì˜ì–‘ë¶„ìœ¼ë¡œ, ê°€ìž¥ ë¹¨ë¦¬ ê³ ê°ˆë˜ë©° ë¹„ì— ì˜í•œ ìš©íƒˆì´ ì‹¬í•©ë‹ˆë‹¤. ë‚˜ì¨: 30 ë¯¸ë§Œ. ì¢‹ìŒ: 50 ì´ìƒ. ì•¡ìƒ ë¹„ë£Œ, UAN-32, UAN-28, ë¬´ìˆ˜ ì•”ëª¨ë‹ˆì•„, ìš”ì†Œ, AMS, í‡´ë¹„, ì•¡ë¹„ ë“±ìœ¼ë¡œ ë†’ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="ì¸ì‚° (P) - ë²”ìœ„ 0 ~ 100" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="í† ì–‘ì— ë‹¨ë‹¨ížˆ ê²°í•©ë˜ì–´ ìš©íƒˆì´ ë§¤ìš° ëŠë¦½ë‹ˆë‹¤. ì£¼ë¡œ ìˆ˜í™•ì„ í†µí•´ ê³ ê°ˆë©ë‹ˆë‹¤. ì¹´ë†€ë¼ê°€ ì¸ì‚° ìš”êµ¬ëŸ‰ì´ ê°€ìž¥ ë†’ìŠµë‹ˆë‹¤. ë‚˜ì¨: 25 ë¯¸ë§Œ. ì¢‹ìŒ: 45 ì´ìƒ. MAP, DAP, ìŠ¤íƒ€í„° ë¹„ë£Œ, ì•¡ìƒ ë¹„ë£Œ ë“±ìœ¼ë¡œ ë†’ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_title" v="질소와 인산" eh="27d37372" />
+    <e k="helpLine_sf_nu_p1_n_title" v="질소 (N) - 범위 0 ~ 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="이동성이 가장 큰 영양분으로, 가장 빨리 고갈되며 비에 의한 용탈이 심합니다. 나쁨: 30 미만. 좋음: 50 이상. 액상 비료, UAN-32, UAN-28, 무수 암모니아, 요소, AMS, 퇴비, 액비 등으로 높일 수 있습니다." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="인산 (P) - 범위 0 ~ 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="토양에 단단히 결합되어 용탈이 매우 느립니다. 주로 수확을 통해 고갈됩니다. 카놀라가 인산 요구량이 가장 높습니다. 나쁨: 25 미만. 좋음: 45 이상. MAP, DAP, 스타터 비료, 액상 비료 등으로 높일 수 있습니다." eh="92c5ac66" />
 
-    <e k="helpLine_sf_nu_p2_title" v="ì¹¼ë¥¨ê³¼ pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="ì¹¼ë¥¨ (K) - ë²”ìœ„ 0 ~ 100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="ë¿Œë¦¬ ë° ê´´ê²½ ìž‘ë¬¼ì— ë§¤ìš° ì¤‘ìš”í•©ë‹ˆë‹¤. ê°ìžì™€ ì‚¬íƒ•ë¬´ëŠ” ìˆ˜í™• ì‹œ ì¹¼ë¥¨ì„ ëŒ€ëŸ‰ìœ¼ë¡œ ì†Œëª¨í•©ë‹ˆë‹¤. ë¹„ì— ì˜í•´ ì¤‘ê°„ ì •ë„ë¡œ ìš©íƒˆë©ë‹ˆë‹¤. ë‚˜ì¨: 20 ë¯¸ë§Œ. ì¢‹ìŒ: 40 ì´ìƒ. ì¹¼ë¦¬(0-0-60), ì•¡ë¹„, ì†Œí™”ì•¡, ì•¡ìƒ ë¹„ë£Œ ë“±ìœ¼ë¡œ ë†’ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - ë²”ìœ„ 5.0 ~ 7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="ëŒ€ë¶€ë¶„ì˜ ìž‘ë¬¼ì€ pH 6.5ì—ì„œ 7.0 ì‚¬ì´ì—ì„œ ê°€ìž¥ ìž˜ ìžëžë‹ˆë‹¤. ë¹„ëŠ” ì‹œê°„ì´ ì§€ë‚¨ì— ë”°ë¼ í† ì–‘ì„ ì„œì„œížˆ ì‚°ì„±í™”ì‹œí‚µë‹ˆë‹¤. pHëŠ” ìŠ¤ìŠ¤ë¡œ íšŒë³µë˜ì§€ ì•Šìœ¼ë©° ì„íšŒë‚˜ ì•¡ìƒ ì„íšŒë¡œë§Œ ë†’ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤. ë‚˜ì¨: 5.5 ë¯¸ë§Œ. ë‹¤ìŒ íŒŒì¢… ì „ì— pHê°€ ë‚®ë‹¤ë©´ ì„íšŒë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_title" v="칼륨과 pH" eh="6bd92f25" />
+    <e k="helpLine_sf_nu_p2_k_title" v="칼륨 (K) - 범위 0 ~ 100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="뿌리 및 괴경 작물에 매우 중요합니다. 감자와 사탕무는 수확 시 칼륨을 대량으로 소모합니다. 비에 의해 중간 정도로 용탈됩니다. 나쁨: 20 미만. 좋음: 40 이상. 칼리(0-0-60), 액비, 소화액, 액상 비료 등으로 높일 수 있습니다." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - 범위 5.0 ~ 7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="대부분의 작물은 pH 6.5에서 7.0 사이에서 가장 잘 자랍니다. 비는 시간이 지남에 따라 토양을 서서히 산성화시킵니다. pH는 스스로 회복되지 않으며 석회나 액상 석회로만 높일 수 있습니다. 나쁨: 5.5 미만. 다음 파종 전에 pH가 낮다면 석회를 살포하세요." eh="08e0aefd" />
 
-    <e k="helpLine_sf_nu_p3_title" v="ìœ ê¸°ë¬¼" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="ìœ ê¸°ë¬¼ (OM) - ë²”ìœ„ 0 ~ 10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="ë§¤ìš° ì²œì²œížˆ ìŒ“ì´ë©° ìˆ˜í™•ì— ì˜í•´ ê³ ê°ˆë˜ì§€ ì•ŠìŠµë‹ˆë‹¤. ë‚˜ì¨: 2.5 ë¯¸ë§Œ. ì¢‹ìŒ: 4.0 ì´ìƒ. í‡´ë¹„, ì•¡ë¹„, ì†Œí™”ì•¡, ì»´í¬ìŠ¤íŠ¸, ë°”ì´ì˜¤ì†”ë¦¬ë“œ, ê³„ë¶„, íŽ ë › í‡´ë¹„ë¥¼ ì‚´í¬í•˜ê±°ë‚˜ ë³ì§šì„ ì°ì–´ í•„ë“œì— ë‹¤ì‹œ ë„£ìŒìœ¼ë¡œì¨ ë†’ì¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="íœ´ê²½ì§€ íšŒë³µ" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="7ì¼ ì´ìƒ ìž‘ë¬¼ì„ ì‹¬ì§€ ì•Šì€ í•„ë“œëŠ” ì„œì„œížˆ ì˜ì–‘ë¶„ì„ íšŒë³µí•©ë‹ˆë‹¤. í•˜ë£¨ë‹¹: N +0.07, P +0.03, K +0.05, OM +0.01. ìž‘ë¬¼ ìˆœí™˜ê³¼ íœ´ì§€ê¸°ëŠ” ì´ ëª¨ë“œì—ì„œ ì‹¤ì œì ì¸ ê°€ì¹˜ê°€ ìžˆìŠµë‹ˆë‹¤." eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_title" v="유기물" eh="6305f4bb" />
+    <e k="helpLine_sf_nu_p3_om_title" v="유기물 (OM) - 범위 0 ~ 10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="매우 천천히 쌓이며 수확에 의해 고갈되지 않습니다. 나쁨: 2.5 미만. 좋음: 4.0 이상. 퇴비, 액비, 소화액, 컴포스트, 바이오솔리드, 계분, 펠렛 퇴비를 살포하거나 볏짚을 썰어 필드에 다시 넣음으로써 높일 수 있습니다." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="휴경지 회복" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="7일 이상 작물을 심지 않은 필드는 서서히 영양분을 회복합니다. 하루당: N +0.07, P +0.03, K +0.05, OM +0.01. 작물 순환과 휴지기는 이 모드에서 실제적인 가치가 있습니다." eh="81fa82b3" />
 
     <!-- Category 4: Fertilizers -->
-    <e k="helpLine_sf_fe_p1_title" v="ê¸°ë³¸ ê²Œìž„ ìœ í˜•" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="ì•¡ì²´, ê³ ì²´, í‡´ë¹„ ë° ì•¡ë¹„" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="ì•¡ìƒ ë¹„ë£ŒëŠ” ê· í˜• ìž¡ížŒ N+P+Kë¥¼ ì¶”ê°€í•©ë‹ˆë‹¤. ê³ ì²´ ë¹„ë£ŒëŠ” Nê³¼ P í•¨ëŸ‰ì´ ë†’ìŠµë‹ˆë‹¤. í‡´ë¹„ì™€ ì•¡ë¹„ëŠ” N, P, K ë° ìœ ê¸°ë¬¼ì„ ì¶”ê°€í•©ë‹ˆë‹¤. ì†Œí™”ì•¡(ë°”ì´ì˜¤ê°€ìŠ¤ ë¶€ì‚°ë¬¼)ì€ ì¹¼ë¥¨ í•¨ëŸ‰ì´ ë†’ê³  ìœ ê¸°ë¬¼ë„ ì¶”ê°€í•©ë‹ˆë‹¤. ëª¨ë‘ í‘œì¤€ ìž¥ë¹„ë¡œ ì‚´í¬ ê°€ëŠ¥í•©ë‹ˆë‹¤." eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="ì„íšŒ ë° pH êµì •" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="ì„íšŒëŠ” ê¸°ë³¸ ê²Œìž„ì˜ ìœ ì¼í•œ pH êµì • ìˆ˜ë‹¨ì´ë©° ì˜ì–‘ë¶„ì„ ì¶”ê°€í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤. ì»¤ìŠ¤í…€ ìœ í˜•ì¸ ì•¡ìƒ ì„íšŒì™€ ì„ê³ ë„ pHë¥¼ ë†’ìž…ë‹ˆë‹¤(ì„ê³ ëŠ” ì•½ê°„ì˜ ìœ ê¸°ë¬¼ë„ ì¶”ê°€). pHê°€ 6.0 ë¯¸ë§Œìœ¼ë¡œ ë–¨ì–´ì§€ë©´ ìž‘ë¬¼ ì„±ìž¥ì„ ìœ„í•´ ì‚´í¬í•˜ì„¸ìš”." eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_title" v="기본 게임 유형" eh="fd941c0d" />
+    <e k="helpLine_sf_fe_p1_base_title" v="액체, 고체, 퇴비 및 액비" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="액상 비료는 균형 잡힌 N+P+K를 추가합니다. 고체 비료는 N과 P 함량이 높습니다. 퇴비와 액비는 N, P, K 및 유기물을 추가합니다. 소화액(바이오가스 부산물)은 칼륨 함량이 높고 유기물도 추가합니다. 모두 표준 장비로 살포 가능합니다." eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="석회 및 pH 교정" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="석회는 기본 게임의 유일한 pH 교정 수단이며 영양분을 추가하지 않습니다. 커스텀 유형인 액상 석회와 석고도 pH를 높입니다(석고는 약간의 유기물도 추가). pH가 6.0 미만으로 떨어지면 작물 성장을 위해 살포하세요." eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="ì»¤ìŠ¤í…€ ì§ˆì†Œ ë° PK ê³µê¸‰ì›" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="ì§ˆì†Œ ê³µê¸‰ì› (ì»¤ìŠ¤í…€ ë¹…ë°±)" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32(32-0-0) ë° UAN-28(28-0-0)ì€ ì•¡ìƒ ì§ˆì†Œ ì†”ë£¨ì…˜ìž…ë‹ˆë‹¤. ë¬´ìˆ˜ ì•”ëª¨ë‹ˆì•„(82-0-0)ëŠ” ë¦¬í„°ë‹¹ ì§ˆì†Œ í•¨ëŸ‰ì´ ê°€ìž¥ ë†’ì€ ì œí’ˆìž…ë‹ˆë‹¤. ìš”ì†Œ(46-0-0) ë° AMS(21-0-0-24S)ëŠ” ê³ ì²´ ì•Œê°±ì´ í˜•íƒœìž…ë‹ˆë‹¤. ëª¨ë‘ ì§ˆì†Œ(N)ë§Œ ê³µê¸‰í•˜ë©° P, K, pHì—ëŠ” ì˜í–¥ì´ ì—†ìŠµë‹ˆë‹¤." eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="ì¸ì‚° ë° ì¹¼ë¥¨ ê³µê¸‰ì›" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP(11-52-0): ë¦¬í„°ë‹¹ ì¸ì‚° í•¨ëŸ‰ì´ ê°€ìž¥ ë†’ìŠµë‹ˆë‹¤. DAP(18-46-0): ë†’ì€ ì¸ì‚°ê³¼ ì•½ê°„ì˜ ì§ˆì†Œë¥¼ í•¨ìœ í•©ë‹ˆë‹¤. ì¹¼ë¦¬(0-0-60): ìˆœìˆ˜ ì¹¼ë¥¨. ìŠ¤íƒ€í„°(10-34-0): ê· í˜• ìž¡ížŒ N+Kì™€ í•¨ê»˜ ë†’ì€ ì¸ì‚°ì„ í•¨ìœ í•œ íŒŒì¢… ì‹œ ì‚´í¬ ì œí’ˆìž…ë‹ˆë‹¤. ëª¨ë‘ ìƒì ì—ì„œ ë¹…ë°±ìœ¼ë¡œ êµ¬ìž… ê°€ëŠ¥í•©ë‹ˆë‹¤." eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="커스텀 질소 및 PK 공급원" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="질소 공급원 (커스텀 빅백)" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32(32-0-0) 및 UAN-28(28-0-0)은 액상 질소 솔루션입니다. 무수 암모니아(82-0-0)는 리터당 질소 함량이 가장 높은 제품입니다. 요소(46-0-0) 및 AMS(21-0-0-24S)는 고체 알갱이 형태입니다. 모두 질소(N)만 공급하며 P, K, pH에는 영향이 없습니다." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="인산 및 칼륨 공급원" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP(11-52-0): 리터당 인산 함량이 가장 높습니다. DAP(18-46-0): 높은 인산과 약간의 질소를 함유합니다. 칼리(0-0-60): 순수 칼륨. 스타터(10-34-0): 균형 잡힌 N+K와 함께 높은 인산을 함유한 파종 시 살포 제품입니다. 모두 상점에서 빅백으로 구입 가능합니다." eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="ìœ ê¸°ë¬¼ ì œí’ˆ ë° ê³¼ë‹¤ ì‚´í¬ ìœ„í—˜" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="ìœ ê¸°ë¬¼ ë° ì™„íš¨ì„± ì œí’ˆ" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="ì»´í¬ìŠ¤íŠ¸ëŠ” ìœ ê¸°ë¬¼ ì¦ì§„ íš¨ê³¼ê°€ ê°€ìž¥ ê°•ë ¥í•©ë‹ˆë‹¤(1,000Lë‹¹ +0.12). ë°”ì´ì˜¤ì†”ë¦¬ë“œì™€ ê³„ë¶„ì€ N, P ë° ìœ ê¸°ë¬¼ì„ ì¶”ê°€í•©ë‹ˆë‹¤. íŽ ë › í‡´ë¹„ëŠ” ë†ì¶•ëœ ê· í˜• ìœ ê¸°ë¬¼ìž…ë‹ˆë‹¤. í˜¸í™˜ë˜ëŠ” ìž¥ë¹„ ëª¨ë“œê°€ ì„¤ì¹˜ëœ ê²½ìš° ì‚¬ìš©í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="ê³¼ë‹¤ ì‚´í¬ í”¼í•´ ìœ„í—˜" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="ê¸°ë³¸ ë¹„ìœ¨ì˜ 1.25ë°° ì´ìƒ ì‚´í¬ ì‹œ ë¹„ë£Œ í”¼í•´ ìœ„í—˜ì´ ìžˆìŠµë‹ˆë‹¤(-0.15 pH ë° -5 N). 1.50ë°° ì´ìƒì¸ ê²½ìš° ë§¤ í†µê³¼ ì‹œë§ˆë‹¤ í”¼í•´ê°€ í™•ì •ì ìœ¼ë¡œ ë°œìƒí•©ë‹ˆë‹¤(-0.30 pH ë° -12 N). ì°¨ëŸ‰ì—ì„œ SF ì‚´í¬ëŸ‰ ì¦ê°€/ê°ì†Œ í‚¤ë¥¼ ì‚¬ìš©í•˜ì—¬ ì‚´í¬ëŸ‰ì„ ì¡°ì ˆí•˜ì„¸ìš”." eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="유기물 제품 및 과다 살포 위험" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="유기물 및 완효성 제품" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="컴포스트는 유기물 증진 효과가 가장 강력합니다(1,000L당 +0.12). 바이오솔리드와 계분은 N, P 및 유기물을 추가합니다. 펠렛 퇴비는 농축된 균형 유기물입니다. 호환되는 장비 모드가 설치된 경우 사용할 수 있습니다." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="과다 살포 피해 위험" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="기본 비율의 1.25배 이상 살포 시 비료 피해 위험이 있습니다(-0.15 pH 및 -5 N). 1.50배 이상인 경우 매 통과 시마다 피해가 확정적으로 발생합니다(-0.30 pH 및 -12 N). 차량에서 SF 살포량 증가/감소 키를 사용하여 살포량을 조절하세요." eh="7bccc46a" />
 
     <!-- Category 5: HUD and Soil Report -->
-    <e k="helpLine_sf_hu_p1_title" v="í† ì–‘ HUD" eh="6522879b" />
-    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD ì „í™˜ (J í‚¤)" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="J í‚¤ë¥¼ ëˆŒëŸ¬ ì‹¤ì‹œê°„ í† ì–‘ ì˜¤ë²„ë ˆì´ë¥¼ í‘œì‹œí•˜ê±°ë‚˜ ìˆ¨ê¹ë‹ˆë‹¤. í˜„ìž¬ ìžˆëŠ” í•„ë“œë¥¼ ê°ì§€í•˜ì—¬ N, P, K, pH, OMì„ ë³´ì—¬ì¤ë‹ˆë‹¤. ìž¡ì´ˆ, í•´ì¶©, ë³‘í•´ ì„¤ì •ì´ í™œì„±í™”ëœ ê²½ìš° í•´ë‹¹ í•­ëª©ë„ íŒ¨ë„ í•˜ë‹¨ì— í‘œì‹œë©ë‹ˆë‹¤." eh="3dcb9bfe" />
-    <e k="helpLine_sf_hu_p1_status_title" v="ìƒíƒœ í™•ì¸ ë°©ë²•" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="ê° ì˜ì–‘ë¶„ì€ ì¢‹ìŒ(ì¡°ì¹˜ ë¶ˆí•„ìš”), ë³´í†µ(ê³§ ì²˜ë¦¬ ê³ ë ¤), ë‚˜ì¨(ì¡°ì¹˜ í•„ìš” - ìˆ˜í™•ëŸ‰ ì˜í–¥)ìœ¼ë¡œ í‘œì‹œë©ë‹ˆë‹¤. ì œëª© í‘œì‹œì¤„ì˜ ì „ì²´ ìƒíƒœ ë°°ì§€ëŠ” ìž¡ì´ˆ, í•´ì¶©, ë³‘í•´ë¥¼ í¬í•¨í•˜ì—¬ ê°€ìž¥ ìƒíƒœê°€ ì¢‹ì§€ ì•Šì€ í•­ëª©ì„ ë°˜ì˜í•©ë‹ˆë‹¤." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_title" v="토양 HUD" eh="6522879b" />
+    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD 전환 (J 키)" eh="402283ba" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="J 키를 눌러 실시간 토양 오버레이를 표시하거나 숨깁니다. 현재 있는 필드를 감지하여 N, P, K, pH, OM을 보여줍니다. 잡초, 해충, 병해 설정이 활성화된 경우 해당 항목도 패널 하단에 표시됩니다." eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_status_title" v="상태 확인 방법" eh="291c3aac" />
+    <e k="helpLine_sf_hu_p1_status_text" v="각 영양분은 좋음(조치 불필요), 보통(곧 처리 고려), 나쁨(조치 필요 - 수확량 영향)으로 표시됩니다. 제목 표시줄의 전체 상태 배지는 잡초, 해충, 병해를 포함하여 가장 상태가 좋지 않은 항목을 반영합니다." eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="í•„ë“œ ê±´ê°• ìœ„í˜‘" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="ìž¡ì´ˆ, í•´ì¶© ë° ë³‘í•´" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="ì„¸ ê°€ì§€ ë°œìƒ ì •ë„(0 ~ 100)ëŠ” í•„ë“œë³„ ìƒë¬¼í•™ì  ìœ„í˜‘ì„ ì¶”ì í•©ë‹ˆë‹¤. ë°©ì¹˜í•˜ë©´ ìˆ˜í™• ì‹œ ìˆ˜í™•ëŸ‰ì´ ê°ì†Œí•©ë‹ˆë‹¤: ìž¡ì´ˆ ìµœëŒ€ -30%, í•´ì¶© -20%, ë³‘í•´ -25%. HUDì˜ W, I, D í–‰ì€ ìƒ‰ìƒë³„ ì‹¬ê°ë„ë¥¼ ë³´ì—¬ì¤ë‹ˆë‹¤: ì´ˆë¡(ë‚®ìŒ), ë…¸ëž‘(ë³´í†µ), ë¹¨ê°•(ë†’ìŒ)." eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="ìœ„í˜‘ ì²˜ë¦¬" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="ì œì´ˆì œëŠ” ìž¡ì´ˆ ë°œìƒì„ ì¤„ì´ë©°, ëª¨ë“  ì¢…ë¥˜ì˜ ê²½ìš´ ìž‘ì—…ì€ ì´ë¥¼ 0ìœ¼ë¡œ ì´ˆê¸°í™”í•©ë‹ˆë‹¤. ì‚´ì¶©ì œëŠ” í•´ì¶© ë°œìƒì„ 25pt ì¤„ì´ê³  10ì¼ ë™ì•ˆ ìž¬ë°œìƒì„ ì–µì œí•©ë‹ˆë‹¤. ì‚´ê· ì œëŠ” ë³‘í•´ë¥¼ 20pt ì¤„ì´ê³  12ì¼ ë™ì•ˆ ì–µì œí•©ë‹ˆë‹¤. ê° ì‹œìŠ¤í…œì€ ì„¤ì •ì—ì„œ ëŒ ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="필드 건강 위협" eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="잡초, 해충 및 병해" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="세 가지 발생 정도(0 ~ 100)는 필드별 생물학적 위협을 추적합니다. 방치하면 수확 시 수확량이 감소합니다: 잡초 최대 -30%, 해충 -20%, 병해 -25%. HUD의 W, I, D 행은 색상별 심각도를 보여줍니다: 초록(낮음), 노랑(보통), 빨강(높음)." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="위협 처리" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="제초제는 잡초 발생을 줄이며, 모든 종류의 경운 작업은 이를 0으로 초기화합니다. 살충제는 해충 발생을 25pt 줄이고 10일 동안 재발생을 억제합니다. 살균제는 병해를 20pt 줄이고 12일 동안 억제합니다. 각 시스템은 설정에서 끌 수 있습니다." eh="4d65bdec" />
 
-    <e k="helpLine_sf_hu_p3_title" v="í† ì–‘ ë³´ê³ ì„œ" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="ë³´ê³ ì„œ ì—´ê¸° (K í‚¤)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="K í‚¤ë¥¼ ëˆŒëŸ¬ ë†ìž¥ ì „ì²´ í† ì–‘ ë³´ê³ ì„œë¥¼ ì—½ë‹ˆë‹¤. ìš”ì•½ ë§‰ëŒ€ì—ëŠ” ì¶”ì ëœ ì´ í•„ë“œ ìˆ˜, ë¹„ë£Œê°€ í•„ìš”í•œ í•„ë“œ ìˆ˜, ê°€ì¤‘ì¹˜ê°€ ì ìš©ëœ ë†ìž¥ ê±´ê°•ë„ ë°±ë¶„ìœ¨ì´ í‘œì‹œë©ë‹ˆë‹¤. í•„ë“œëŠ” ìƒíƒœê°€ ë‚˜ìœ ìˆœì„œëŒ€ë¡œ ì •ë ¬ë©ë‹ˆë‹¤." eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="í•„ë“œ ìƒì„¸ ë° ê¶Œìž¥ ì‚¬í•­" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="ì•„ë¬´ í–‰ì˜ í™”ì‚´í‘œë¥¼ í´ë¦­í•˜ì—¬ í•´ë‹¹ í•„ë“œì˜ ìƒì„¸ ë³´ê¸°ë¥¼ ì—½ë‹ˆë‹¤: ì˜ì–‘ë¶„ ìˆ˜ì¹˜, ìœ„í˜‘ ìˆ˜ì¤€, ìˆ˜í™•ëŸ‰ ì†ì‹¤ ì˜ˆì¸¡, ì²˜ë¦¬í•´ì•¼ í•  í•­ëª© ëª©ë¡ì´ í‘œì‹œë©ë‹ˆë‹¤. Backì´ë‚˜ Escape í‚¤ë¥¼ ëˆŒëŸ¬ í‘œë¡œ ëŒì•„ê°‘ë‹ˆë‹¤." eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_title" v="토양 보고서" eh="35fcce6c" />
+    <e k="helpLine_sf_hu_p3_open_title" v="보고서 열기 (K 키)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="K 키를 눌러 농장 전체 토양 보고서를 엽니다. 요약 막대에는 추적된 총 필드 수, 비료가 필요한 필드 수, 가중치가 적용된 농장 건강도 백분율이 표시됩니다. 필드는 상태가 나쁜 순서대로 정렬됩니다." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="필드 상세 및 권장 사항" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="아무 행의 화살표를 클릭하여 해당 필드의 상세 보기를 엽니다: 영양분 수치, 위협 수준, 수확량 손실 예측, 처리해야 할 항목 목록이 표시됩니다. Back이나 Escape 키를 눌러 표로 돌아갑니다." eh="38dd2c6d" />
 
     <!-- Category 6: Settings -->
-    <e k="helpLine_sf_se_p1_title" v="ì‹œë®¬ë ˆì´ì…˜ ì„¤ì •" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="ì„œë²„ ì„¤ì • (ë©€í‹°í”Œë ˆì´ì–´ì—ì„œëŠ” ê´€ë¦¬ìž ì „ìš©)" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="ë¹„ì˜¥ë„ ì‹œìŠ¤í…œ, ì˜ì–‘ ìˆœí™˜, ê³„ì ˆ íš¨ê³¼, ê°•ìš° íš¨ê³¼, ìŸê¸°ì§ˆ ë³´ë„ˆìŠ¤, ìž¡ì´ˆ/í•´ì¶©/ë³‘í•´, ë¹„ë£Œ ë¹„ìš©, ì•Œë¦¼, ìž‘ë¬¼ ìˆœí™˜, ìžë™ ì‚´í¬ëŸ‰ ì œì–´ ë“±ì„ ì„¤ì •í•©ë‹ˆë‹¤. ë©€í‹°í”Œë ˆì´ì–´ì—ì„œëŠ” ì„œë²„ ê´€ë¦¬ìžë§Œ ë³€ê²½í•  ìˆ˜ ìžˆìœ¼ë©° ëª¨ë“  í´ë¼ì´ì–¸íŠ¸ì— ì¦‰ì‹œ ë™ê¸°í™”ë©ë‹ˆë‹¤." eh="abca5e43" />
-    <e k="helpLine_sf_se_p1_diff_title" v="ë‚œì´ë„" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="ë‹¨ìˆœ(0.7x)ì€ ê³ ê°ˆëŸ‰ì„ 30% ì¤„ì—¬ì¤ë‹ˆë‹¤. í˜„ì‹¤ì (1.0x)ì€ ê¸°ë³¸ê°’ìž…ë‹ˆë‹¤. í•˜ë“œì½”ì–´(1.5x)ëŠ” ê³ ê°ˆëŸ‰ì„ 50% ëŠ˜ë ¤ ì§‘ì¤‘ì ì¸ ê´€ë¦¬ê°€ í•„ìš”í•˜ê²Œ í•©ë‹ˆë‹¤. ESC > ì„¤ì • > í† ì–‘ ë° ë¹„ë£Œì—ì„œ ì ‘ê·¼í•˜ì„¸ìš”." eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_title" v="시뮬레이션 설정" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="서버 설정 (멀티플레이어에서는 관리자 전용)" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="비옥도 시스템, 영양 순환, 계절 효과, 강우 효과, 쟁기질 보너스, 잡초/해충/병해, 비료 비용, 알림, 작물 순환, 자동 살포량 제어 등을 설정합니다. 멀티플레이어에서는 서버 관리자만 변경할 수 있으며 모든 클라이언트에 즉시 동기화됩니다." eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_diff_title" v="난이도" eh="7b29ca96" />
+    <e k="helpLine_sf_se_p1_diff_text" v="단순(0.7x)은 고갈량을 30% 줄여줍니다. 현실적(1.0x)은 기본값입니다. 하드코어(1.5x)는 고갈량을 50% 늘려 집중적인 관리가 필요하게 합니다. ESC > 설정 > 토양 및 비료에서 접근하세요." eh="ca93ca3e" />
 
-    <e k="helpLine_sf_se_p2_title" v="HUD ë° ì‚´í¬ëŸ‰ ì œì–´" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="í”Œë ˆì´ì–´ë³„ HUD ì˜µì…˜" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="ê° í”Œë ˆì´ì–´ëŠ” ìžì‹ ì˜ HUDë¥¼ ì¡°ì ˆí•  ìˆ˜ ìžˆìœ¼ë©° ì„œë²„ì— ë™ê¸°í™”ë˜ì§€ ì•ŠìŠµë‹ˆë‹¤. ì˜µì…˜: HUD í‘œì‹œ(ì¼œê¸°/ë„ê¸°), ìœ„ì¹˜(5ê°€ì§€ ì‚¬ì „ ì„¤ì • + ë“œëž˜ê·¸), ìƒ‰ìƒ í…Œë§ˆ(ì´ˆë¡/íŒŒëž‘/í˜¸ë°•ìƒ‰/ë‹¨ìƒ‰), ê¸€ìž í¬ê¸°, íˆ¬ëª…ë„, ì•¼ë“œíŒŒìš´ë“œë²• ë‹¨ìœ„." eh="f3934884" />
-    <e k="helpLine_sf_se_p2_rate_title" v="ìŠ¤í”„ë ˆì´ì–´ ì‚´í¬ëŸ‰ ì œì–´" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="ìŠ¤í”„ë ˆì´ì–´ë‚˜ ì‚´í¬ê¸° íƒ‘ìŠ¹ ì¤‘ SF ì‚´í¬ëŸ‰ ì¦ê°€(]) ë° ê°ì†Œ([) í‚¤ë¥¼ ì‚¬ìš©í•˜ì—¬ ì‚´í¬ëŸ‰ì„ 0.10ë°°ì—ì„œ 2.00ë°°ê¹Œì§€ ì¡°ì ˆí•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤. ìžë™ ì‚´í¬ëŸ‰ ì œì–´(Shift+L)ë¥¼ ì¼œë©´ ëª¨ë“œê°€ ìµœì  ì˜ì–‘ ìˆ˜ì¤€ì„ ëª©í‘œë¡œ ìžë™ ì¡°ì ˆí•˜ë©° í”¼í•´ ìœ„í—˜ì„ ë°©ì§€í•©ë‹ˆë‹¤." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_title" v="HUD 및 살포량 제어" eh="399f4910" />
+    <e k="helpLine_sf_se_p2_hud_title" v="플레이어별 HUD 옵션" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="각 플레이어는 자신의 HUD를 조절할 수 있으며 서버에 동기화되지 않습니다. 옵션: HUD 표시(켜기/끄기), 위치(5가지 사전 설정 + 드래그), 색상 테마(초록/파랑/호박색/단색), 글자 크기, 투명도, 야드파운드법 단위." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_rate_title" v="스프레이어 살포량 제어" eh="5ecdfa23" />
+    <e k="helpLine_sf_se_p2_rate_text" v="스프레이어나 살포기 탑승 중 SF 살포량 증가(]) 및 감소([) 키를 사용하여 살포량을 0.10배에서 2.00배까지 조절할 수 있습니다. 자동 살포량 제어(Shift+L)를 켜면 모드가 최적 영양 수준을 목표로 자동 조절하며 피해 위험을 방지합니다." eh="dd385e39" />
 
     <!-- Category 7: Multiplayer -->
-    <e k="helpLine_sf_mp_p1_title" v="ë©€í‹°í”Œë ˆì´ì–´ ìž‘ë™ ë°©ì‹" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="ì„œë²„ ê¶Œí•œ ì‹œë®¬ë ˆì´ì…˜" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="ëª¨ë“  í† ì–‘ ì‹œë®¬ë ˆì´ì…˜ì€ ì„œë²„ì—ì„œ ì‹¤í–‰ë©ë‹ˆë‹¤. í´ë¼ì´ì–¸íŠ¸ëŠ” ì ‘ì† ì‹œ ëª¨ë“  í•„ë“œ ë°ì´í„°ì™€ ì„¤ì •ì„ ë°›ìœ¼ë©°, ì„œë²„ê°€ ë¡œë”© ì¤‘ì¸ ê²½ìš° ìžë™ìœ¼ë¡œ ìž¬ì‹œë„í•©ë‹ˆë‹¤. HUD í‘œì‹œ ì„¤ì •ì€ í”Œë ˆì´ì–´ë³„ë¡œ ìœ ì§€ë˜ë©° ì„œë²„ì™€ ë™ê¸°í™”ë˜ì§€ ì•ŠìŠµë‹ˆë‹¤." eh="db72a3f9" />
-    <e k="helpLine_sf_mp_p1_ded_title" v="ì „ìš© ì„œë²„" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="ì „ìš© ì„œë²„ëŠ” HUDë‚˜ GUI ì˜¤ë²„í—¤ë“œ ì—†ì´ ì „ì²´ ì‹œë®¬ë ˆì´ì…˜ì„ ì‹¤í–‰í•©ë‹ˆë‹¤. ì½˜ì†” ëª…ë ¹(soilStatus, SoilSetDifficulty, SoilShowSettings ë“±)ì„ ì‚¬ìš©í•˜ì—¬ ì „ìš© ì„œë²„ì˜ ì„¤ì •ì„ ê´€ë¦¬í•˜ê³  í™•ì¸í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤." eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_title" v="멀티플레이어 작동 방식" eh="8a4ce30e" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="서버 권한 시뮬레이션" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="모든 토양 시뮬레이션은 서버에서 실행됩니다. 클라이언트는 접속 시 모든 필드 데이터와 설정을 받으며, 서버가 로딩 중인 경우 자동으로 재시도합니다. HUD 표시 설정은 플레이어별로 유지되며 서버와 동기화되지 않습니다." eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_ded_title" v="전용 서버" eh="4d3a45ba" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="전용 서버는 HUD나 GUI 오버헤드 없이 전체 시뮬레이션을 실행합니다. 콘솔 명령(soilStatus, SoilSetDifficulty, SoilShowSettings 등)을 사용하여 전용 서버의 설정을 관리하고 확인할 수 있습니다." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Compatibility and Workflow" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." />
     <e k="helpLine_sf_mp_p2_workflow_title" v="Changing Settings" />
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
-    <e k="sf_crop_rotation_short" v="ìž‘ë¬¼ ìˆœí™˜" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="ìž‘ë¬¼ ìˆœí™˜ ë³´ë„ˆìŠ¤ ë° ë‹¨ì¼ ìž‘ë¬¼ ì—°ìž‘ í”¼í•´ í™œì„±í™”/ë¹„í™œì„±í™” (ì½©ê³¼ ì‹ë¬¼ì€ ì§ˆì†Œ ë³µêµ¬, ë™ì¼ ìž‘ë¬¼ ì—°ìž‘ì€ ì˜ì–‘ë¶„ ì†Œëª¨ ì¦ê°€)" eh="958b4212" />
-    <e k="sf_gypsum_title" v="ì„ê³  (pH ì €í•˜)" eh="d66da34c" />
-    <e k="sf_compost_title" v="ì»´í¬ìŠ¤íŠ¸ (ìœ ê¸°ì§ˆ)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="ë°”ì´ì˜¤ì†”ë¦¬ë“œ (N+P)" eh="f0c901dc" />
-    <e k="sf_chicken_manure_title" v="ê³„ë¶„ (N+P)" eh="338128e2" />
-    <e k="sf_pelletized_manure_title" v="íŽ ë › í‡´ë¹„ (NPK)" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="ì•¡ìƒ ì„íšŒ (pH ìƒìŠ¹)" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="ìž‘ë¬¼ ìˆœí™˜" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="ìˆœí™˜ ë³´ë„ˆìŠ¤" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="ë¹„ì½©ê³¼ ìž‘ë¬¼ ë‹¤ìŒì— ì½©ê³¼ ìž‘ë¬¼(ëŒ€ë‘, ì™„ë‘ ë“±)ì„ ì‹¬ìœ¼ë©´ ë§¤ë…„ ë´„ 3ì¼ ë™ì•ˆ ë¬´ë£Œ ì§ˆì†Œ ë³´ì¶© íš¨ê³¼ë¥¼ ì–»ìŠµë‹ˆë‹¤." eh="e1fce95b" />
-    <e k="helpLine_sf_nu_p4_fatigue_title" v="ìž‘ë¬¼ ì—°ìž‘ í”¼í•´" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="ë™ì¼í•œ ìž‘ë¬¼ì„ 2ë…„ ì—°ì† ì‹¬ìœ¼ë©´ ì˜ì–‘ë¶„ ì¶”ì¶œëŸ‰ì´ 15% ì¦ê°€í•©ë‹ˆë‹¤. í† ì–‘ í”¼ë¡œë¥¼ í”¼í•˜ê¸° ìœ„í•´ ìž‘ë¬¼ì„ ìˆœí™˜í•˜ì„¸ìš”." eh="1613f3c6" />
+    <e k="sf_crop_rotation_short" v="작물 순환" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="작물 순환 보너스 및 단일 작물 연작 피해 활성화/비활성화 (콩과 식물은 질소 복구, 동일 작물 연작은 영양분 소모 증가)" eh="958b4212" />
+    <e k="sf_gypsum_title" v="석고 (pH 저하)" eh="d66da34c" />
+    <e k="sf_compost_title" v="컴포스트 (유기질)" eh="c3e2071a" />
+    <e k="sf_biosolids_title" v="바이오솔리드 (N+P)" eh="f0c901dc" />
+    <e k="sf_chicken_manure_title" v="계분 (N+P)" eh="338128e2" />
+    <e k="sf_pelletized_manure_title" v="펠렛 퇴비 (NPK)" eh="c1b39b71" />
+    <e k="sf_liquidlime_title" v="액상 석회 (pH 상승)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="작물 순환" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="순환 보너스" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="비콩과 작물 다음에 콩과 작물(대두, 완두 등)을 심으면 매년 봄 3일 동안 무료 질소 보충 효과를 얻습니다." eh="e1fce95b" />
+    <e k="helpLine_sf_nu_p4_fatigue_title" v="작물 연작 피해" eh="236a590c" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="동일한 작물을 2년 연속 심으면 영양분 추출량이 15% 증가합니다. 토양 피로를 피하기 위해 작물을 순환하세요." eh="1613f3c6" />
 
     <!-- Soil Map Overlay -->
-    <e k="sf_map_layer_off" v="í† ì–‘ ì§€ë„: ë”" eh="3e654ade" />
-    <e k="sf_map_layer_n" v="ì§ˆì†Œ" eh="1e9ef3ba" />
-    <e k="sf_map_layer_p" v="ì¸ì‚°" eh="eb4f2688" />
-    <e k="sf_map_layer_k" v="ì¹¼ë¥¨" eh="3a4edc67" />
+    <e k="sf_map_layer_off" v="토양 지도: 끔" eh="3e654ade" />
+    <e k="sf_map_layer_n" v="질소" eh="1e9ef3ba" />
+    <e k="sf_map_layer_p" v="인산" eh="eb4f2688" />
+    <e k="sf_map_layer_k" v="칼륨" eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
-    <e k="sf_map_layer_om" v="ìœ ê¸°ë¬¼" eh="6305f4bb" />
-    <e k="sf_map_layer_urgency" v="í•„ë“œ ê¸´ê¸‰ë„" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="ìž¡ì´ˆ ë°œìƒ ì •ë„" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="í•´ì¶© ë°œìƒ ì •ë„" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="ë³‘í•´ ë°œìƒ ì •ë„" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="ì••ì¶•ë„" eh="19cf3ee7" />
+    <e k="sf_map_layer_om" v="유기물" eh="6305f4bb" />
+    <e k="sf_map_layer_urgency" v="필드 긴급도" eh="419ea5af" />
+    <e k="sf_map_layer_weed" v="잡초 발생 정도" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="해충 발생 정도" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="병해 발생 정도" eh="2b805cc9" />
+    <e k="sf_map_layer_compaction" v="압축도" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
-    <e k="sf_map_overlay_cycle" v="Shift+M: í† ì–‘ ë ˆì´ì–´ ì „í™˜" eh="032fdac7" />
-    <e k="sf_map_page_title" v="í† ì–‘ ë ˆì´ì–´" eh="04a675fb" />
-    <e k="sf_map_sidebar_header" v="í† ì–‘ ì§€ë„ ë ˆì´ì–´" eh="81332549" />
-    <e k="sf_map_sidebar_label" v="í™œì„± ë ˆì´ì–´" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="ì§€ë„ì— í‘œì‹œí•  í† ì–‘ ì˜ì–‘ë¶„ ì„ íƒ" eh="eb926e9a" />
-    <e k="sf_map_overlay_low" v="ë‚®ìŒ" eh="28d0edd0" />
-    <e k="sf_map_overlay_med" v="ì¤‘ê°„" eh="248c9511" />
-    <e k="sf_map_overlay_high" v="ë†’ìŒ" eh="655d20c1" />
+    <e k="sf_map_overlay_cycle" v="Shift+M: 토양 레이어 전환" eh="032fdac7" />
+    <e k="sf_map_page_title" v="토양 레이어" eh="04a675fb" />
+    <e k="sf_map_sidebar_header" v="토양 지도 레이어" eh="81332549" />
+    <e k="sf_map_sidebar_label" v="활성 레이어" eh="f8a2c198" />
+    <e k="sf_map_sidebar_tooltip" v="지도에 표시할 토양 영양분 선택" eh="eb926e9a" />
+    <e k="sf_map_overlay_low" v="낮음" eh="28d0edd0" />
+    <e k="sf_map_overlay_med" v="중간" eh="248c9511" />
+    <e k="sf_map_overlay_high" v="높음" eh="655d20c1" />
 
     <!-- Soil PDA Screen -->
-    <e k="sf_pda_screen_title" v="í† ì–‘ ë° ë¹„ë£Œ" eh="f31197fb" />
-    <e k="sf_pda_tab_map" v="í† ì–‘ ì§€ë„" eh="59f988b2" />
-    <e k="sf_pda_tab_fields" v="í•„ë“œ" eh="a4ca5edd" />
-    <e k="sf_pda_tab_treatment" v="ì²˜ë¦¬ ê³„íš" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="ë†ìž¥ ê°œìš”" eh="47f2c19a" />
-    <e k="sf_pda_fields_tracked_label" v="ì¶”ì ëœ í•„ë“œ" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="ì†Œìœ í•œ í•„ë“œ" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="í‰ê·  ì˜ì–‘ë¶„" eh="f06b2704" />
-    <e k="sf_pda_avg_n_label" v="ì§ˆì†Œ (N)" eh="25cee53b" />
-    <e k="sf_pda_avg_p_label" v="ì¸ì‚° (P)" eh="75cb5cd6" />
-    <e k="sf_pda_avg_k_label" v="ì¹¼ë¥¨ (K)" eh="39797137" />
-    <e k="sf_pda_avg_ph_label" v="pH ìˆ˜ì¤€" eh="0c85daad" />
-    <e k="sf_pda_avg_om_label" v="ìœ ê¸°ë¬¼" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="ìž‘ë¬¼ ìœ„í˜‘" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="ìž¡ì´ˆ" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="í•´ì¶©" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="ë³‘í•´" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="ì£¼ì˜ í•„ìš”" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="ë¹„ë£Œ í•„ìš”" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="ê¸´ê¸‰ ì²˜ë¦¬ í•„ìš”" eh="b3ce2db9" />
-    <e k="sf_pda_no_data_left" v="ì•„ì§ í•„ë“œ ë°ì´í„°ê°€ ì—†ìŠµë‹ˆë‹¤." eh="ba71c6b1" />
+    <e k="sf_pda_screen_title" v="토양 및 비료" eh="f31197fb" />
+    <e k="sf_pda_tab_map" v="토양 지도" eh="59f988b2" />
+    <e k="sf_pda_tab_fields" v="필드" eh="a4ca5edd" />
+    <e k="sf_pda_tab_treatment" v="처리 계획" eh="4ba012e2" />
+    <e k="sf_pda_section_farm_overview" v="농장 개요" eh="47f2c19a" />
+    <e k="sf_pda_fields_tracked_label" v="추적된 필드" eh="c763e26e" />
+    <e k="sf_pda_fields_owned_label" v="소유한 필드" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="평균 영양분" eh="f06b2704" />
+    <e k="sf_pda_avg_n_label" v="질소 (N)" eh="25cee53b" />
+    <e k="sf_pda_avg_p_label" v="인산 (P)" eh="75cb5cd6" />
+    <e k="sf_pda_avg_k_label" v="칼륨 (K)" eh="39797137" />
+    <e k="sf_pda_avg_ph_label" v="pH 수준" eh="0c85daad" />
+    <e k="sf_pda_avg_om_label" v="유기물" eh="6305f4bb" />
+    <e k="sf_pda_section_pressure" v="작물 위협" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="잡초" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="해충" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="병해" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="주의 필요" eh="80e48bc3" />
+    <e k="sf_pda_needs_fert_label" v="비료 필요" eh="fa9ded5e" />
+    <e k="sf_pda_total_urgent_label" v="긴급 처리 필요" eh="b3ce2db9" />
+    <e k="sf_pda_no_data_left" v="아직 필드 데이터가 없습니다." eh="ba71c6b1" />
     <!-- Map Tab -->
-    <e k="sf_pda_map_section_title" v="í† ì–‘ ì§€ë„ ë ˆì´ì–´" eh="85d63132" />
-    <e k="sf_pda_map_active_layer" v="í™œì„± ë ˆì´ì–´" eh="f8a2c198" />
-    <e k="sf_pda_map_layer_off_desc" v="í™œì„±í™”ëœ í† ì–‘ ë ˆì´ì–´ê°€ ì—†ìŠµë‹ˆë‹¤. í‘œì‹œí•  ë ˆì´ì–´ë¥¼ ì„ íƒí•˜ì„¸ìš”." eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="ëª¨ë“  í•„ë“œì˜ ì§ˆì†Œ í•¨ëŸ‰ìž…ë‹ˆë‹¤. ì´ˆë¡ = ì¢‹ìŒ, ë¹¨ê°• = ê³ ê°ˆ." eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="ëª¨ë“  í•„ë“œì˜ ì¸ì‚° í•¨ëŸ‰ìž…ë‹ˆë‹¤. ì´ˆë¡ = ì¢‹ìŒ, ë¹¨ê°• = ê³ ê°ˆ." eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="ëª¨ë“  í•„ë“œì˜ ì¹¼ë¥¨ í•¨ëŸ‰ìž…ë‹ˆë‹¤. ì´ˆë¡ = ì¢‹ìŒ, ë¹¨ê°• = ê³ ê°ˆ." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="í† ì–‘ pH ìˆ˜ì¤€ìž…ë‹ˆë‹¤. ìµœì  ë²”ìœ„ëŠ” 6.5-7.0(ì´ˆë¡)ìž…ë‹ˆë‹¤." eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="ìœ ê¸°ë¬¼ í•¨ëŸ‰ìž…ë‹ˆë‹¤. ìž¥ê¸°ì ì¸ ë¹„ì˜¥ë„ë¥¼ ìœ„í•´ ë†’ì„ìˆ˜ë¡ ì¢‹ìŠµë‹ˆë‹¤." eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="ì¢…í•©ì ì¸ ì²˜ë¦¬ ê¸´ê¸‰ë„ìž…ë‹ˆë‹¤. ë¹¨ê°• = ì¦‰ê°ì ì¸ ì²˜ë¦¬ í•„ìš”." eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="ìž¡ì´ˆ ë°œìƒ ìˆ˜ì¤€ìž…ë‹ˆë‹¤. ë¹¨ê°• = ë°œìƒ ì‹¬í•¨, ì œì´ˆì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="í•´ì¶© ë°œìƒ ìˆ˜ì¤€ìž…ë‹ˆë‹¤. ë¹¨ê°• = ë°œìƒ ì‹¬í•¨, ì‚´ì¶©ì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="ë³‘í•´ ë°œìƒ ìˆ˜ì¤€ìž…ë‹ˆë‹¤. ë¹¨ê°• = ë³‘í•´ ë°œìƒ ì¤‘, ì‚´ê· ì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="5d32d30a" />
-    <e k="sf_pda_map_legend_title" v="ì§€ë„ ë²”ë¡€" eh="86448402" />
-    <e k="sf_pda_map_legend_good" v="ì¢‹ìŒ" eh="0c6ad70b" />
-    <e k="sf_pda_map_legend_fair" v="ë³´í†µ" eh="f7f20cf0" />
-    <e k="sf_pda_map_legend_poor" v="ë‚˜ì¨ / ë‚®ìŒ" eh="32aa75ff" />
-    <e k="sf_pda_map_legend_low" v="ë‚®ìŒ" eh="28d0edd0" />
-    <e k="sf_pda_map_legend_medium" v="ì¤‘ê°„" eh="87f8a6ab" />
-    <e k="sf_pda_map_legend_high" v="ë†’ìŒ" eh="655d20c1" />
-    <e k="sf_pda_map_legend_excess" v="ê³¼ë‹¤" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="ì§€ë„ì— í‘œì‹œí•  ë ˆì´ì–´ë¥¼ ì‚¬ì´ë“œë°”ì—ì„œ ì„ íƒí•˜ì„¸ìš”." eh="eee76c81" />
-    <e k="sf_pda_map_jump_hint" v="í•„ë“œë¥¼ í´ë¦­í•˜ë©´ ì§€ë„ì—ì„œ í•´ë‹¹ ìœ„ì¹˜ë¡œ ì´ë™í•©ë‹ˆë‹¤" eh="006d5371" />
-    <e k="sf_pda_map_native_hint" v="í† ì–‘ ë ˆì´ì–´ ì‹œê°í™” ìœ„ì¹˜ê°€ ë³€ê²½ë˜ì—ˆìŠµë‹ˆë‹¤! ì´ì œ ìˆœì • PDA ì§€ë„ ì‚¬ì´ë“œë°”(ESC > ì§€ë„)ì—ì„œ ëª¨ë“  í† ì–‘ ë ˆì´ì–´ì— ì§ì ‘ ì ‘ê·¼í•˜ê³  ì „í™˜í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤. ì‚¬ì´ë“œë°” ì ë“¤ ì¤‘ì—ì„œ 'í† ì–‘ ë ˆì´ì–´' ì¹´í…Œê³ ë¦¬ë¥¼ ì°¾ìœ¼ì„¸ìš”." eh="3210d828" />
-    <e k="sf_pda_map_open_btn" v="ê°œë°œìž ì°¸ê³ " eh="ef40b93f" />
-    <e k="sf_pda_btn_help" v="ë„ì›€ë§" eh="6a26f548" />
-    <e k="sf_pda_help_text" v="ì•ˆë…•í•˜ì„¸ìš”, ê°œë°œìžìž…ë‹ˆë‹¤! ë” ì›í™œí•œ ê²½í—˜ì„ ìœ„í•´ í† ì–‘ ì§€ë„ ë ˆì´ì–´ë¥¼ ìˆœì • PDA ì§€ë„(ESC > ì§€ë„)ë¡œ ì˜®ê²¼ìŠµë‹ˆë‹¤. ì´ì œ ì‚¬ì´ë“œë°”ì—ì„œ ë ˆì´ì–´ë¥¼ ì§ì ‘ ì„ íƒí•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤. PDA íŽ˜ì´ì§€ëŠ” ê³„ì† ë‹¤ë“¬ëŠ” ì¤‘ì´ë‹ˆ ì—…ë°ì´íŠ¸ë¥¼ ê¸°ëŒ€í•´ ì£¼ì„¸ìš”!" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="ì—¬ëŸ¬ë¶„ì˜ í”¼ë“œë°±ì´ ì¤‘ìš”í•©ë‹ˆë‹¤! ë²„ê·¸ë¥¼ ë°œê²¬í•˜ê±°ë‚˜ ìƒˆë¡œìš´ ê¸°ëŠ¥ì— ëŒ€í•œ ì œì•ˆì´ ìžˆê±°ë‚˜ ì½”ë“œì— ê¸°ì—¬í•˜ê³  ì‹¶ë‹¤ë©´ GitHub í”„ë¡œì íŠ¸ë¥¼ ë°©ë¬¸í•´ ì£¼ì„¸ìš”. ì–¸ì œë“ ì§€ Issueë‚˜ Pull Requestë¥¼ ì—´ì–´ ì´ ëª¨ë“œë¥¼ ë” ì¢‹ê²Œ ë§Œë“œëŠ” ë° ë™ì°¸í•˜ì‹¤ ìˆ˜ ìžˆìŠµë‹ˆë‹¤. í…ŒìŠ¤íŠ¸í•´ ì£¼ì…”ì„œ ê°ì‚¬í•©ë‹ˆë‹¤!" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="ì°¸ê³ : ì§€ë„ íŽ˜ì´ì§€ì˜ í† ì–‘ ë ˆì´ì–´ íƒ­ì´ í˜„ìž¬ ìž‘ë™í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤. ë¬¸ì œë¥¼ íŒŒì•…í•˜ê³  ìˆ˜ì •ì„ ì§„í–‰ ì¤‘ìž…ë‹ˆë‹¤(ì‹œê°„ì´ ì¢€ ê±¸ë¦´ ìˆ˜ ìžˆìŠµë‹ˆë‹¤)." eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="ì§€ë„ ë¯¸ë¦¬ë³´ê¸°ë¥¼ ì‚¬ìš©í•  ìˆ˜ ì—†ìŒ" eh="43983f81" />
-    <e k="sf_map_health_overall" v="í‰ê·  í† ì–‘ ê±´ê°•ë„" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="ë†ìž¥ ê°œìš” ì—´ê¸°" eh="6f0800e8" />
+    <e k="sf_pda_map_section_title" v="토양 지도 레이어" eh="85d63132" />
+    <e k="sf_pda_map_active_layer" v="활성 레이어" eh="f8a2c198" />
+    <e k="sf_pda_map_layer_off_desc" v="활성화된 토양 레이어가 없습니다. 표시할 레이어를 선택하세요." eh="3bd7e65a" />
+    <e k="sf_pda_map_layer_n_desc" v="모든 필드의 질소 함량입니다. 초록 = 좋음, 빨강 = 고갈." eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="모든 필드의 인산 함량입니다. 초록 = 좋음, 빨강 = 고갈." eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="모든 필드의 칼륨 함량입니다. 초록 = 좋음, 빨강 = 고갈." eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="토양 pH 수준입니다. 최적 범위는 6.5-7.0(초록)입니다." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="유기물 함량입니다. 장기적인 비옥도를 위해 높을수록 좋습니다." eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="종합적인 처리 긴급도입니다. 빨강 = 즉각적인 처리 필요." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="잡초 발생 수준입니다. 빨강 = 발생 심함, 제초제를 살포하세요." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="해충 발생 수준입니다. 빨강 = 발생 심함, 살충제를 살포하세요." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="병해 발생 수준입니다. 빨강 = 병해 발생 중, 살균제를 살포하세요." eh="5d32d30a" />
+    <e k="sf_pda_map_legend_title" v="지도 범례" eh="86448402" />
+    <e k="sf_pda_map_legend_good" v="좋음" eh="0c6ad70b" />
+    <e k="sf_pda_map_legend_fair" v="보통" eh="f7f20cf0" />
+    <e k="sf_pda_map_legend_poor" v="나쁨 / 낮음" eh="32aa75ff" />
+    <e k="sf_pda_map_legend_low" v="낮음" eh="28d0edd0" />
+    <e k="sf_pda_map_legend_medium" v="중간" eh="87f8a6ab" />
+    <e k="sf_pda_map_legend_high" v="높음" eh="655d20c1" />
+    <e k="sf_pda_map_legend_excess" v="과다" eh="d1d25b9f" />
+    <e k="sf_pda_map_instructions" v="지도에 표시할 레이어를 사이드바에서 선택하세요." eh="eee76c81" />
+    <e k="sf_pda_map_jump_hint" v="필드를 클릭하면 지도에서 해당 위치로 이동합니다" eh="006d5371" />
+    <e k="sf_pda_map_native_hint" v="토양 레이어 시각화 위치가 변경되었습니다! 이제 순정 PDA 지도 사이드바(ESC > 지도)에서 모든 토양 레이어에 직접 접근하고 전환할 수 있습니다. 사이드바 점들 중에서 '토양 레이어' 카테고리를 찾으세요." eh="3210d828" />
+    <e k="sf_pda_map_open_btn" v="개발자 참고" eh="ef40b93f" />
+    <e k="sf_pda_btn_help" v="도움말" eh="6a26f548" />
+    <e k="sf_pda_help_text" v="안녕하세요, 개발자입니다! 더 원활한 경험을 위해 토양 지도 레이어를 순정 PDA 지도(ESC > 지도)로 옮겼습니다. 이제 사이드바에서 레이어를 직접 선택할 수 있습니다. PDA 페이지는 계속 다듬는 중이니 업데이트를 기대해 주세요!" eh="67643ddd" />
+    <e k="sf_pda_help_github" v="여러분의 피드백이 중요합니다! 버그를 발견하거나 새로운 기능에 대한 제안이 있거나 코드에 기여하고 싶다면 GitHub 프로젝트를 방문해 주세요. 언제든지 Issue나 Pull Request를 열어 이 모드를 더 좋게 만드는 데 동참하실 수 있습니다. 테스트해 주셔서 감사합니다!" eh="3a10b023" />
+    <e k="sf_pda_help_note" v="참고: 지도 페이지의 토양 레이어 탭이 현재 작동하지 않습니다. 문제를 파악하고 수정을 진행 중입니다(시간이 좀 걸릴 수 있습니다)." eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="지도 미리보기를 사용할 수 없음" eh="43983f81" />
+    <e k="sf_map_health_overall" v="평균 토양 건강도" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="농장 개요 열기" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
-    <e k="sf_map_btn_cycle_layer" v="ë ˆì´ì–´ ì „í™˜" eh="875dbf22" />
-    <e k="sf_map_btn_treatment" v="ì²˜ë¦¬ ê³„íš" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="ì˜¤ë²„ë ˆì´ ë¹„í™œì„±í™”" eh="8e75dec5" />
-    <e k="sf_treat_action_ok" v="í™•ì¸" eh="e0aa021e" />
-    <e k="sf_help_title" v="í† ì–‘ ë¹ ë¥¸ ì°¸ì¡°" eh="8986bb6d" />
-    <e k="sf_help_nutrients_header" v="ì˜ì–‘ë¶„" eh="9aeb39bf" />
-    <e k="sf_help_n" v="N (ì§ˆì†Œ) - ë¹¨ë¦¬ ê³ ê°ˆë¨. UAN, ìš”ì†Œ, í‡´ë¹„ ë“±ì„ ì‚´í¬í•˜ì„¸ìš”." eh="f2d0c792" />
-    <e k="sf_help_p" v="P (ì¸ì‚°) - ì˜¤ëž˜ ì§€ì†ë¨. MAP ë˜ëŠ” DAPë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="fdfbd91e" />
-    <e k="sf_help_k" v="K (ì¹¼ë¥¨) - ì¹¼ë¦¬ë¥¼ ì‚´í¬í•˜ì„¸ìš”. ë¿Œë¦¬ì— ì¤‘ìš”í•©ë‹ˆë‹¤." eh="e0217634" />
-    <e k="sf_help_om" v="OM (ìœ ê¸°ë¬¼) - ì²œì²œížˆ ìŒ“ìž„. í‡´ë¹„/ì»´í¬ìŠ¤íŠ¸ë¥¼ ê°ˆì•„ì—Žìœ¼ì„¸ìš”." eh="a4e29617" />
-    <e k="sf_help_soil_header" v="í† ì–‘ í™”í•™" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = ì´ìƒì . &lt; 6.5 ì„íšŒ ì‚´í¬. > 7.5 ì„ê³  ì‚´í¬." eh="8929304d" />
-    <e k="sf_help_pressure_header" v="ìž‘ë¬¼ ìœ„í˜‘" eh="132b0f66" />
-    <e k="sf_help_weed" v="ìž¡ì´ˆ > 20% - ì œì´ˆì œ ì‚´í¬." eh="c8d890df" />
-    <e k="sf_help_pest" v="í•´ì¶© > 20% - ì‚´ì¶©ì œ ì‚´í¬." eh="f4932a05" />
-    <e k="sf_help_disease" v="ë³‘í•´ > 20% - ì‚´ê· ì œ ì‚´í¬." eh="1bfd0913" />
-    <e k="sf_help_status_header" v="ìƒíƒœ ìˆ˜ì¤€" eh="b081c2c6" />
-    <e k="sf_help_good" v="ì¢‹ìŒ - ì¡°ì¹˜ ë¶ˆí•„ìš”." eh="03910bec" />
-    <e k="sf_help_fair" v="ë³´í†µ - ëª¨ë‹ˆí„°ë§ / ì˜ˆë°©ì  ë³´ì¶©." eh="2922eb1c" />
-    <e k="sf_help_poor" v="ë‚˜ì¨ - ì¦‰ê°ì ì¸ ì²˜ë¦¬ í•„ìš”." eh="b287d206" />
+    <e k="sf_map_btn_cycle_layer" v="레이어 전환" eh="875dbf22" />
+    <e k="sf_map_btn_treatment" v="처리 계획" eh="4ba012e2" />
+    <e k="sf_map_btn_disable" v="오버레이 비활성화" eh="8e75dec5" />
+    <e k="sf_treat_action_ok" v="확인" eh="e0aa021e" />
+    <e k="sf_help_title" v="토양 빠른 참조" eh="8986bb6d" />
+    <e k="sf_help_nutrients_header" v="영양분" eh="9aeb39bf" />
+    <e k="sf_help_n" v="N (질소) - 빨리 고갈됨. UAN, 요소, 퇴비 등을 살포하세요." eh="f2d0c792" />
+    <e k="sf_help_p" v="P (인산) - 오래 지속됨. MAP 또는 DAP를 살포하세요." eh="fdfbd91e" />
+    <e k="sf_help_k" v="K (칼륨) - 칼리를 살포하세요. 뿌리에 중요합니다." eh="e0217634" />
+    <e k="sf_help_om" v="OM (유기물) - 천천히 쌓임. 퇴비/컴포스트를 갈아엎으세요." eh="a4e29617" />
+    <e k="sf_help_soil_header" v="토양 화학" eh="19c67ff5" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = 이상적. &lt; 6.5 석회 살포. > 7.5 석고 살포." eh="8929304d" />
+    <e k="sf_help_pressure_header" v="작물 위협" eh="132b0f66" />
+    <e k="sf_help_weed" v="잡초 > 20% - 제초제 살포." eh="c8d890df" />
+    <e k="sf_help_pest" v="해충 > 20% - 살충제 살포." eh="f4932a05" />
+    <e k="sf_help_disease" v="병해 > 20% - 살균제 살포." eh="1bfd0913" />
+    <e k="sf_help_status_header" v="상태 수준" eh="b081c2c6" />
+    <e k="sf_help_good" v="좋음 - 조치 불필요." eh="03910bec" />
+    <e k="sf_help_fair" v="보통 - 모니터링 / 예방적 보충." eh="2922eb1c" />
+    <e k="sf_help_poor" v="나쁨 - 즉각적인 처리 필요." eh="b287d206" />
     <!-- Fields Tab -->
-    <e k="sf_pda_fields_section_title" v="ëª¨ë“  í•„ë“œ" eh="48729e0b" />
-    <e k="sf_pda_col_field" v="í•„ë“œ" eh="6f16a5f8" />
-    <e k="sf_pda_col_n" v="ì§ˆì†Œ%" eh="30740562" />
-    <e k="sf_pda_col_p" v="ì¸ì‚°%" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="í•„í„°: ëª¨ë“  í•„ë“œ" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="í•„í„°: ì†Œìœ í•œ í•„ë“œë§Œ" eh="258cb971" />
-    <e k="sf_pda_col_k" v="ì¹¼ë¥¨%" eh="43e4d0bf" />
+    <e k="sf_pda_fields_section_title" v="모든 필드" eh="48729e0b" />
+    <e k="sf_pda_col_field" v="필드" eh="6f16a5f8" />
+    <e k="sf_pda_col_n" v="질소%" eh="30740562" />
+    <e k="sf_pda_col_p" v="인산%" eh="0a5e03bc" />
+    <e k="sf_pda_filter_all" v="필터: 모든 필드" eh="a46a8cb2" />
+    <e k="sf_pda_filter_owned" v="필터: 소유한 필드만" eh="258cb971" />
+    <e k="sf_pda_col_k" v="칼륨%" eh="43e4d0bf" />
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
-    <e k="sf_pda_col_om" v="ìœ ê¸°ë¬¼" eh="bfbebc07" />
-    <e k="sf_pda_col_status" v="ìƒíƒœ" eh="ec53a8c4" />
-    <e k="sf_pda_no_fields" v="ì•„ì§ ê¸°ë¡ëœ í•„ë“œ ë°ì´í„°ê°€ ì—†ìŠµë‹ˆë‹¤." eh="72265670" />
-    <e k="sf_pda_status_good" v="ì¢‹ìŒ" eh="0c6ad70b" />
-    <e k="sf_pda_status_fair" v="ë³´í†µ" eh="f7f20cf0" />
-    <e k="sf_pda_status_poor" v="ë‚˜ì¨" eh="0e94d017" />
+    <e k="sf_pda_col_om" v="유기물" eh="bfbebc07" />
+    <e k="sf_pda_col_status" v="상태" eh="ec53a8c4" />
+    <e k="sf_pda_no_fields" v="아직 기록된 필드 데이터가 없습니다." eh="72265670" />
+    <e k="sf_pda_status_good" v="좋음" eh="0c6ad70b" />
+    <e k="sf_pda_status_fair" v="보통" eh="f7f20cf0" />
+    <e k="sf_pda_status_poor" v="나쁨" eh="0e94d017" />
     <!-- Treatment Tab -->
-    <e k="sf_pda_treatment_section_title" v="ì²˜ë¦¬ ê³„íš" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="ê¸´ê¸‰ë„" eh="c94e3850" />
-    <e k="sf_pda_col_needs" v="í•„ìš” ì‚¬í•­" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="ëª¨ë“  í•„ë“œ ìƒíƒœê°€ ì–‘í˜¸í•©ë‹ˆë‹¤." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="ì˜¤ë¥¸ìª½ì— ë‚˜ì—´ëœ í•„ë“œëŠ” ì²˜ë¦¬ê°€ í•„ìš”í•©ë‹ˆë‹¤. í–‰ì„ í´ë¦­í•˜ì—¬ ê¶Œìž¥ ì œí’ˆê³¼ ì˜ˆìƒ ìˆ˜ëŸ‰ì„ í™•ì¸í•˜ì„¸ìš”." eh="5748d316" />
-    <e k="sf_pda_need_n" v="ì§ˆì†Œ" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="ì¸ì‚°" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="ì¹¼ë¥¨" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="pH ì¡°ì ˆ" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="ì œì´ˆì œ" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="ì‚´ì¶©ì œ" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="ì‚´ê· ì œ" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="ë³µí•©" eh="a0bf169f" />
-    <e k="sf_pda_treatment_minor" v="ê²½ë¯¸í•¨" eh="6fed0c37" />
+    <e k="sf_pda_treatment_section_title" v="처리 계획" eh="4ba012e2" />
+    <e k="sf_pda_col_priority" v="긴급도" eh="c94e3850" />
+    <e k="sf_pda_col_needs" v="필요 사항" eh="94d6125d" />
+    <e k="sf_pda_no_treatment" v="모든 필드 상태가 양호합니다." eh="fa985166" />
+    <e k="sf_pda_treatment_hint" v="오른쪽에 나열된 필드는 처리가 필요합니다. 행을 클릭하여 권장 제품과 예상 수량을 확인하세요." eh="5748d316" />
+    <e k="sf_pda_need_n" v="질소" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="인산" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="칼륨" eh="3a4edc67" />
+    <e k="sf_pda_need_ph" v="pH 조절" eh="0570e9d2" />
+    <e k="sf_pda_need_weed" v="제초제" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="살충제" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="살균제" eh="e8512698" />
+    <e k="sf_pda_need_multiple" v="복합" eh="a0bf169f" />
+    <e k="sf_pda_treatment_minor" v="경미함" eh="6fed0c37" />
     <!-- Field Detail Dialog -->
-    <e k="sf_detail_title" v="í•„ë“œ ìƒì„¸ ì •ë³´" eh="03b5acd7" />
-    <e k="sf_detail_close" v="ë‹«ê¸°" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="í•„ë“œ #" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="ê¸´ê¸‰ë„:" eh="9a83237c" />
-    <e k="sf_detail_section_nutrients" v="í† ì–‘ ì˜ì–‘ë¶„" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="ìž‘ë¬¼ ìœ„í˜‘" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="ìž‘ë¬¼ ì´ë ¥" eh="54c27499" />
-    <e k="sf_detail_n_label" v="ì§ˆì†Œ (N)" eh="25cee53b" />
-    <e k="sf_detail_p_label" v="ì¸ì‚° (P)" eh="75cb5cd6" />
-    <e k="sf_detail_k_label" v="ì¹¼ë¥¨ (K)" eh="39797137" />
-    <e k="sf_detail_ph_label" v="pH ìˆ˜ì¤€" eh="0c85daad" />
-    <e k="sf_detail_om_label" v="ìœ ê¸°ë¬¼" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="ìž¡ì´ˆ ë°œìƒ ì •ë„" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="í•´ì¶© ë°œìƒ ì •ë„" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="ë³‘í•´ ë°œìƒ ì •ë„" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="ì´ì „ ìž‘ë¬¼" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="ìˆœí™˜ ìƒíƒœ" eh="83f7f522" />
+    <e k="sf_detail_title" v="필드 상세 정보" eh="03b5acd7" />
+    <e k="sf_detail_close" v="닫기" eh="d3d2e617" />
+    <e k="sf_detail_field_label" v="필드 #" eh="228118ab" />
+    <e k="sf_detail_urgency_label" v="긴급도:" eh="9a83237c" />
+    <e k="sf_detail_section_nutrients" v="토양 영양분" eh="64377acf" />
+    <e k="sf_detail_section_pressure" v="작물 위협" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="작물 이력" eh="54c27499" />
+    <e k="sf_detail_n_label" v="질소 (N)" eh="25cee53b" />
+    <e k="sf_detail_p_label" v="인산 (P)" eh="75cb5cd6" />
+    <e k="sf_detail_k_label" v="칼륨 (K)" eh="39797137" />
+    <e k="sf_detail_ph_label" v="pH 수준" eh="0c85daad" />
+    <e k="sf_detail_om_label" v="유기물" eh="6305f4bb" />
+    <e k="sf_detail_weed_label" v="잡초 발생 정도" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="해충 발생 정도" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="병해 발생 정도" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="이전 작물" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="순환 상태" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -518,215 +518,215 @@
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
     <!-- Treatment Prescription Dialog -->
-    <e k="sf_treat_title" v="ì²˜ë¦¬ ì²˜ë°©ì „" eh="0ccc3ee5" />
-    <e k="sf_treat_section_soil" v="í† ì–‘ ê°œëŸ‰" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="ì˜ì–‘ë¶„ ì‚´í¬" eh="76521e8e" />
-    <e k="sf_treat_section_prot" v="ìž‘ë¬¼ ë³´í˜¸" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="íŠ¹ìˆ˜ ë¹„ë£ŒëŠ” ìƒì ì˜ 'ì œí’ˆ' ì„¹ì…˜ì„ ì°¸ì¡°í•˜ì„¸ìš”." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="ìµœì  - ì¡°ì¹˜ ë¶ˆí•„ìš”." eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="pHë¥¼ ë†’ì´ê¸° ìœ„í•´ ì„íšŒ ë˜ëŠ” ì•¡ìƒ ì„íšŒë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="d1420b97" />
-    <e k="sf_treat_action_gypsum" v="pHë¥¼ ë‚®ì¶”ê³  êµ¬ì¡°ë¥¼ ê°œì„ í•˜ê¸° ìœ„í•´ ì„ê³ ë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="4cb3f0dc" />
-    <e k="sf_treat_action_om_low" v="í‡´ë¹„, ì»´í¬ìŠ¤íŠ¸ë¥¼ ê°ˆì•„ì—Žê±°ë‚˜ ë³ì§šì„ ì¨ì„¸ìš”." eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="ëª¨ë‹ˆí„°ë§í•˜ì„¸ìš”. ìœ ê¸°ë¬¼ íˆ¬ìž…ì„ ìœ ì§€í•˜ì„¸ìš”." eh="ae3af748" />
-    <e k="sf_treat_action_n_poor" v="UAN32, ìš”ì†Œ ë˜ëŠ” ë¬´ìˆ˜ ì•”ëª¨ë‹ˆì•„ë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="ebc225b0" />
-    <e k="sf_treat_action_n_fair" v="AMS ë˜ëŠ” ìŠ¤íƒ€í„° ë¹„ë£Œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="MAP ë˜ëŠ” DAP(ì¸ì‚°)ë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="ec2d9afa" />
+    <e k="sf_treat_title" v="처리 처방전" eh="0ccc3ee5" />
+    <e k="sf_treat_section_soil" v="토양 개량" eh="09e016e4" />
+    <e k="sf_treat_section_fert" v="영양분 살포" eh="76521e8e" />
+    <e k="sf_treat_section_prot" v="작물 보호" eh="bd3fe9cd" />
+    <e k="sf_treat_hint" v="특수 비료는 상점의 '제품' 섹션을 참조하세요." eh="540bff4d" />
+    <e k="sf_treat_action_optimal" v="최적 - 조치 불필요." eh="4501a96b" />
+    <e k="sf_treat_action_lime" v="pH를 높이기 위해 석회 또는 액상 석회를 살포하세요." eh="d1420b97" />
+    <e k="sf_treat_action_gypsum" v="pH를 낮추고 구조를 개선하기 위해 석고를 살포하세요." eh="4cb3f0dc" />
+    <e k="sf_treat_action_om_low" v="퇴비, 컴포스트를 갈아엎거나 볏짚을 써세요." eh="33ec544c" />
+    <e k="sf_treat_action_om_fair" v="모니터링하세요. 유기물 투입을 유지하세요." eh="ae3af748" />
+    <e k="sf_treat_action_n_poor" v="UAN32, 요소 또는 무수 암모니아를 살포하세요." eh="ebc225b0" />
+    <e k="sf_treat_action_n_fair" v="AMS 또는 스타터 비료를 살포하세요." eh="dc8fbeba" />
+    <e k="sf_treat_action_p_poor" v="MAP 또는 DAP(인산)를 살포하세요." eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="ì¹¼ë¦¬(ì¹¼ë¥¨)ë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="칼리(칼륨)를 살포하세요." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="ì¦‰ì‹œ ì œì´ˆì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="625551c5" />
-    <e k="sf_treat_action_pest" v="ì¦‰ì‹œ ì‚´ì¶©ì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="ì¦‰ì‹œ ì‚´ê· ì œë¥¼ ì‚´í¬í•˜ì„¸ìš”." eh="9228323a" />
-    <e k="sf_detail_rotation_ok" v="í™•ì¸" eh="e0aa021e" />
+    <e k="sf_treat_action_weed" v="즉시 제초제를 살포하세요." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="즉시 살충제를 살포하세요." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="즉시 살균제를 살포하세요." eh="9228323a" />
+    <e k="sf_detail_rotation_ok" v="확인" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="ì½©ê³¼ ë³´ë„ˆìŠ¤ (+ì§ˆì†Œ)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="ì—°ìž‘ í”¼í•´ (1.15ë°° ì†Œëª¨)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="ë°ì´í„° ì—†ìŒ" eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="ê¸°ë¡ ì—†ìŒ" eh="a4b5a996" />
+    <e k="sf_detail_rotation_bonus" v="콩과 보너스 (+질소)" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_fatigue" v="연작 피해 (1.15배 소모)" eh="522a6d93" />
+    <e k="sf_detail_no_field" v="데이터 없음" eh="c6d95d5e" />
+    <e k="sf_detail_no_crop" v="기록 없음" eh="a4b5a996" />
 
     <!-- HUD labels -->
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
-    <e k="sf_hud_label_om" v="ìœ ê¸°ë¬¼" eh="bfbebc07" />
+    <e k="sf_hud_label_om" v="유기물" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
-    <e k="sf_hud_coverage" v="ë²”ìœ„: %d%% / %d%%" eh="d407bb6d" />
+    <e k="sf_hud_coverage" v="범위: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
-    <e k="sf_hud_compaction" v="ì••ì¶•ë„: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_compaction" v="압축도: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
 
     <!-- Sprayer rate HUD -->
-    <e k="sf_sprayer_auto_on" v="ì‚´í¬ëŸ‰ ( ìžë™: ì¼¬ )" eh="099b5dac" />
-    <e k="sf_sprayer_auto_off" v="ì‚´í¬ëŸ‰ ìžë™: ë” [%s]" eh="848cc106" />
-    <e k="sf_sprayer_target" v="ëª©í‘œ:" eh="31d43504" />
-    <e k="sf_sprayer_burn_guaranteed" v="ë¹„ë£Œ í”¼í•´ ìœ„í—˜: í™•ì •" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="ë¹„ë£Œ í”¼í•´ ìœ„í—˜: ê°€ëŠ¥ì„± ìžˆìŒ" eh="25b251b6" />
+    <e k="sf_sprayer_auto_on" v="살포량 ( 자동: 켬 )" eh="099b5dac" />
+    <e k="sf_sprayer_auto_off" v="살포량 자동: 끔 [%s]" eh="848cc106" />
+    <e k="sf_sprayer_target" v="목표:" eh="31d43504" />
+    <e k="sf_sprayer_burn_guaranteed" v="비료 피해 위험: 확정" eh="422601c4" />
+    <e k="sf_sprayer_burn_possible" v="비료 피해 위험: 가능성 있음" eh="25b251b6" />
 
     <!-- Notifications -->
-    <e k="sf_notify_welcome" v="í† ì–‘ ë° ë¹„ë£Œ ëª¨ë“œ í™œì„±í™” | Shift+Oë¡œ ì„¤ì • ì—´ê¸° | ëª…ë ¹ì–´ë¥¼ ë³´ë ¤ë©´ 'soilfertility' ìž…ë ¥" eh="d97e4139" />
-    <e k="sf_startup_dialog_version" v="ì´ë²ˆ ë²„ì „ì˜ ìƒˆë¡œìš´ ê¸°ëŠ¥:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="ì œ ëª¨ë“œë¥¼ ì‚¬ìš©í•´ ì£¼ì…”ì„œ ì •ë§ ê°ì‚¬í•©ë‹ˆë‹¤ &lt;3" eh="0f08d735" />
-    <e k="sf_startup_dialog_footer2" v="ë²„ê·¸ë¥¼ ë°œê²¬í•˜ì…¨ë‚˜ìš”? GitHubì— ë³´ê³ í•´ ì£¼ì„¸ìš”!" eh="728e2cf3" />
-    <e k="sf_startup_dialog_footer3" v="ì¦ê±°ìš´ ë†ì‚¬ë˜ì„¸ìš”! ê·¸ë¦¬ê³  ìžŠì§€ ë§ˆì„¸ìš”:" eh="aa38e511" />
-    <e k="sf_startup_dialog_footer4" v="í† ì–‘ì€ ëª¨ë“  ê²ƒì„ ê¸°ì–µí•©ë‹ˆë‹¤..." eh="1a3e5c35" />
-    <e k="sf_notify_init_delayed" v="í† ì–‘ ëª¨ë“œ: í•„ë“œ ì´ˆê¸°í™”ê°€ ì§€ì—°ë˜ê³  ìžˆìŠµë‹ˆë‹¤. ëŒ€ì²´ ë°©ë²•ì„ ì‹œë„í•©ë‹ˆë‹¤..." eh="f8bd28f8" />
-    <e k="sf_notify_init_success" v="í† ì–‘ ëª¨ë“œ: í•„ë“œ ì´ˆê¸°í™” ì„±ê³µ!" eh="46214360" />
-    <e k="sf_notify_critical_title" v="ê¸´ê¸‰ ê´€ë¦¬ ê²½ë³´" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="%dë²ˆ í•„ë“œì— ì¦‰ê°ì ì¸ ì¡°ì¹˜ê°€ í•„ìš”í•©ë‹ˆë‹¤! ê¸´ê¸‰ë„: %d%%" eh="171246aa" />
-    <e k="sf_notify_treated_title" v="í† ì–‘ ì—…ë°ì´íŠ¸" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="%dë²ˆ í•„ë“œ ì²˜ë¦¬ê°€ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤: %s" eh="585aa9b7" />
-    <e k="sf_notify_burn_title" v="ë¹„ë£Œ í”¼í•´" eh="ad8ed599" />
-    <e k="sf_notify_burn_body" v="%dë²ˆ í•„ë“œ: ê³¼ë‹¤ ì‚´í¬ í”¼í•´ ë°œìƒ (pH %.1f)" eh="cb731ee3" />
-    <e k="sf_notify_sync_error" v="í† ì–‘ ëª¨ë“œ: ë°ì´í„° ë™ê¸°í™” ë¬¸ì œê°€ ê°ì§€ë˜ì—ˆìŠµë‹ˆë‹¤. ì§€ì†ë  ê²½ìš° ë³´ê³ í•´ ì£¼ì„¸ìš”." eh="1a307946" />
+    <e k="sf_notify_welcome" v="토양 및 비료 모드 활성화 | Shift+O로 설정 열기 | 명령어를 보려면 'soilfertility' 입력" eh="d97e4139" />
+    <e k="sf_startup_dialog_version" v="이번 버전의 새로운 기능:" eh="0b25f5c2" />
+    <e k="sf_startup_dialog_footer" v="제 모드를 사용해 주셔서 정말 감사합니다 &lt;3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer2" v="버그를 발견하셨나요? GitHub에 보고해 주세요!" eh="728e2cf3" />
+    <e k="sf_startup_dialog_footer3" v="즐거운 농사되세요! 그리고 잊지 마세요:" eh="aa38e511" />
+    <e k="sf_startup_dialog_footer4" v="토양은 모든 것을 기억합니다..." eh="1a3e5c35" />
+    <e k="sf_notify_init_delayed" v="토양 모드: 필드 초기화가 지연되고 있습니다. 대체 방법을 시도합니다..." eh="f8bd28f8" />
+    <e k="sf_notify_init_success" v="토양 모드: 필드 초기화 성공!" eh="46214360" />
+    <e k="sf_notify_critical_title" v="긴급 관리 경보" eh="3f981d0c" />
+    <e k="sf_notify_critical_body" v="%d번 필드에 즉각적인 조치가 필요합니다! 긴급도: %d%%" eh="171246aa" />
+    <e k="sf_notify_treated_title" v="토양 업데이트" eh="4633156e" />
+    <e k="sf_notify_treated_body" v="%d번 필드 처리가 완료되었습니다: %s" eh="585aa9b7" />
+    <e k="sf_notify_burn_title" v="비료 피해" eh="ad8ed599" />
+    <e k="sf_notify_burn_body" v="%d번 필드: 과다 살포 피해 발생 (pH %.1f)" eh="cb731ee3" />
+    <e k="sf_notify_sync_error" v="토양 모드: 데이터 동기화 문제가 감지되었습니다. 지속될 경우 보고해 주세요." eh="1a307946" />
 		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
 
     <!-- Settings Panel -->
-    <e k="sf_panel_cat_sim" v="ì‹œë®¬ë ˆì´ì…˜" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="ë†ìž¥ ë©”ì»¤ë‹ˆì¦˜, ë‚œì´ë„ ë° ì˜ì–‘ ìˆœí™˜ ì„¤ì •" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="í‘œì‹œ ë° HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="HUD ì™¸í˜•, ìƒ‰ìƒ í…Œë§ˆ, ìœ„ì¹˜ ë° ê¸€ìž í¬ê¸° ì„¤ì •" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="ì§€ë„ ì˜¤ë²„ë ˆì´" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="PDA ì§€ë„ì— í‘œì‹œë  í™œì„± ì˜¤ë²„ë ˆì´ ë ˆì´ì–´ ì„¤ì •" eh="a5892aef" />
-    <e k="sf_panel_hdr_core" v="í•µì‹¬ ì‹œìŠ¤í…œ" eh="44a497a5" />
-    <e k="sf_panel_hdr_difficulty" v="ë‚œì´ë„" eh="7b29ca96" />
-    <e k="sf_panel_hdr_environment" v="í™˜ê²½" eh="0ba29c6a" />
-    <e k="sf_panel_hdr_crop_stress" v="ìž‘ë¬¼ ìŠ¤íŠ¸ë ˆìŠ¤" eh="260167bb" />
-    <e k="sf_panel_hdr_visibility" v="ê°€ì‹œì„±" eh="1729a56c" />
-    <e k="sf_panel_hdr_hud_style" v="HUD ìŠ¤íƒ€ì¼" eh="1d4a8cac" />
-    <e k="sf_panel_hdr_position" v="ìœ„ì¹˜" eh="52f5e0bc" />
-    <e k="sf_panel_hdr_layer" v="ë ˆì´ì–´" eh="359b71e8" />
-    <e k="sf_panel_hdr_performance" v="ì„±ëŠ¥" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="ëª¨ë“œ ì œì–´ ë° ë‚œì´ë„" eh="ae2e88fb" />
-    <e k="sf_panel_hdr_systems" v="ì‹œìŠ¤í…œ" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="ìž‘ì—… ë° í•„ë“œ ë„êµ¬" eh="f64ba1c9" />
+    <e k="sf_panel_cat_sim" v="시뮬레이션" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="농장 메커니즘, 난이도 및 영양 순환 설정" eh="3c584cdb" />
+    <e k="sf_panel_cat_display" v="표시 및 HUD" eh="37b17394" />
+    <e k="sf_panel_cat_display_desc" v="HUD 외형, 색상 테마, 위치 및 글자 크기 설정" eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="지도 오버레이" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="PDA 지도에 표시될 활성 오버레이 레이어 설정" eh="a5892aef" />
+    <e k="sf_panel_hdr_core" v="핵심 시스템" eh="44a497a5" />
+    <e k="sf_panel_hdr_difficulty" v="난이도" eh="7b29ca96" />
+    <e k="sf_panel_hdr_environment" v="환경" eh="0ba29c6a" />
+    <e k="sf_panel_hdr_crop_stress" v="작물 스트레스" eh="260167bb" />
+    <e k="sf_panel_hdr_visibility" v="가시성" eh="1729a56c" />
+    <e k="sf_panel_hdr_hud_style" v="HUD 스타일" eh="1d4a8cac" />
+    <e k="sf_panel_hdr_position" v="위치" eh="52f5e0bc" />
+    <e k="sf_panel_hdr_layer" v="레이어" eh="359b71e8" />
+    <e k="sf_panel_hdr_performance" v="성능" eh="9446a98a" />
+    <e k="sf_panel_hdr_mod_ctrl" v="모드 제어 및 난이도" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_systems" v="시스템" eh="d6856404" />
+    <e k="sf_panel_hdr_actions" v="작업 및 필드 도구" eh="f64ba1c9" />
 		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
 		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
 		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
 
     <!-- Settings Panel Chrome -->
-    <e k="sf_panel_admin_yes" v="ê´€ë¦¬ìž: ì˜ˆ" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="ê´€ë¦¬ìž: ì•„ë‹ˆìš”" eh="a9394f7b" />
-    <e k="sf_panel_multiplayer" v="ë©€í‹°í”Œë ˆì´ì–´" eh="901a7320" />
-    <e k="sf_panel_singleplayer" v="ì‹±ê¸€ í”Œë ˆì´ì–´" eh="da602601" />
-    <e k="sf_panel_btn_back" v="&lt; ë’¤ë¡œ" eh="36cf3e1f" />
-    <e k="sf_panel_btn_reset_cat" v="ì¹´í…Œê³ ë¦¬ ì´ˆê¸°í™”" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="SHIFT+Oë¥¼ ëˆŒëŸ¬ ë‹«ê¸°" eh="254406e3" />
-    <e k="sf_panel_select_category" v="ì„¤ì •í•  ì¹´í…Œê³ ë¦¬ë¥¼ ì„ íƒí•˜ì„¸ìš”" eh="a277d257" />
-    <e k="sf_panel_btn_configure" v="ì„¤ì •í•˜ê¸° >>" eh="a2cb3902" />
-    <e k="sf_panel_btn_open" v="ì—´ê¸° >>" eh="6624d17c" />
+    <e k="sf_panel_admin_yes" v="관리자: 예" eh="4628842a" />
+    <e k="sf_panel_admin_no" v="관리자: 아니요" eh="a9394f7b" />
+    <e k="sf_panel_multiplayer" v="멀티플레이어" eh="901a7320" />
+    <e k="sf_panel_singleplayer" v="싱글 플레이어" eh="da602601" />
+    <e k="sf_panel_btn_back" v="&lt; 뒤로" eh="36cf3e1f" />
+    <e k="sf_panel_btn_reset_cat" v="카테고리 초기화" eh="b66faa88" />
+    <e k="sf_panel_btn_close_hint" v="SHIFT+O를 눌러 닫기" eh="254406e3" />
+    <e k="sf_panel_select_category" v="설정할 카테고리를 선택하세요" eh="a277d257" />
+    <e k="sf_panel_btn_configure" v="설정하기 >>" eh="a2cb3902" />
+    <e k="sf_panel_btn_open" v="열기 >>" eh="6624d17c" />
 
     <!-- Settings Descriptions -->
-    <e k="sf_desc_enabled" v="ëª¨ë“œ ì „ì²´ë¥¼ í™œì„±í™” ë˜ëŠ” ë¹„í™œì„±í™”" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="ë¬¸ì œ í•´ê²°ì„ ìœ„í•œ ì¶”ê°€ ë¡œê·¸ ê¸°ë¡" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="ì „ì²´ í† ì–‘ ë¹„ì˜¥ë„ ëª¨ë¸ë§" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="N/P/K ê³ ê°ˆ ë° íšŒë³µ ì¶”ì " eh="6eff80b3" />
-    <e k="sf_desc_fertilizerCosts" v="ë¹„ë£Œì— ëŒ€í•œ ì‹¤ì œ ê²Œìž„ ë‚´ ë¹„ìš© ì ìš©" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="ê²Œìž„ ë‚´ í† ì–‘ ìƒíƒœ ì•Œë¦¼ í‘œì‹œ" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="í† ì–‘ HUD ì˜¤ë²„ë ˆì´ í‘œì‹œ" eh="fa8b9224" />
+    <e k="sf_desc_enabled" v="모드 전체를 활성화 또는 비활성화" eh="895364cb" />
+    <e k="sf_desc_debugMode" v="문제 해결을 위한 추가 로그 기록" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="전체 토양 비옥도 모델링" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="N/P/K 고갈 및 회복 추적" eh="6eff80b3" />
+    <e k="sf_desc_fertilizerCosts" v="비료에 대한 실제 게임 내 비용 적용" eh="1c197c9f" />
+    <e k="sf_desc_showNotifications" v="게임 내 토양 상태 알림 표시" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="토양 HUD 오버레이 표시" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="HUD ê³ ì • ìœ„ì¹˜ ì„¤ì •" eh="98c8bcea" />
-    <e k="sf_desc_hudColorTheme" v="HUD ìš”ì†Œì˜ ìƒ‰ìƒ êµ¬ì„±" eh="97271907" />
-    <e k="sf_desc_hudFontSize" v="HUD í…ìŠ¤íŠ¸ í¬ê¸°" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="HUD ë°°ê²½ íˆ¬ëª…ë„" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="ê³„ì ˆì— ë”°ë¥¸ í† ì–‘ ë³€í™”" eh="f515f484" />
-    <e k="sf_desc_rainEffects" v="ë¹„ë¡œ ì¸í•œ ì˜ì–‘ë¶„ ìš©íƒˆ ë°œìƒ" eh="82fec75d" />
-    <e k="sf_desc_plowingBonus" v="í† ì–‘ íšŒë³µì„ ìœ„í•œ ìŸê¸°ì§ˆ ë³´ë„ˆìŠ¤" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="ê²½ìš´ ìž‘ì—… ì‹œ ìž”ì‚¬ ì˜ì–‘ë¶„ ë°©ì¶œ" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="ìž¡ì´ˆ í™•ì‚° ì¶”ì  ë° ë¶ˆì´ìµ ë¶€ì—¬" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="ê³¤ì¶© í•´ì¶© ë°œìƒ ì¶”ì " eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="ê· ë¥˜ ìž‘ë¬¼ ë³‘í•´ ì¶”ì " eh="0858395f" />
+    <e k="sf_desc_hudPosition" v="HUD 고정 위치 설정" eh="98c8bcea" />
+    <e k="sf_desc_hudColorTheme" v="HUD 요소의 색상 구성" eh="97271907" />
+    <e k="sf_desc_hudFontSize" v="HUD 텍스트 크기" eh="48a6fc15" />
+    <e k="sf_desc_hudTransparency" v="HUD 배경 투명도" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="계절에 따른 토양 변화" eh="f515f484" />
+    <e k="sf_desc_rainEffects" v="비로 인한 영양분 용탈 발생" eh="82fec75d" />
+    <e k="sf_desc_plowingBonus" v="토양 회복을 위한 쟁기질 보너스" eh="23522b97" />
+    <e k="sf_desc_residueIncorporation" v="경운 작업 시 잔사 영양분 방출" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="잡초 확산 추적 및 불이익 부여" eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="곤충 해충 발생 추적" eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="균류 작물 병해 추적" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
-    <e k="sf_desc_compactionEnabled" v="ëŒ€í˜• ì°¨ëŸ‰ì— ì˜í•œ í† ì–‘ ì••ì¶•" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="ì˜ì–‘ë¶„ ì†Œëª¨ ê°•ë„ ìˆ˜ì¤€" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="ë¹„ë£Œ ì˜ì–‘ë¶„ ë³µêµ¬ ì†ë„" eh="858d2b23" />
-    <e k="sf_desc_useImperialUnits" v="ì•¼ë“œíŒŒìš´ë“œë²• ë‹¨ìœ„ ì‚¬ìš©" eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="ìŠ¤ë§ˆíŠ¸ ìŠ¤í”„ë ˆì´ì–´ ì‚´í¬ëŸ‰ ì¡°ì ˆ" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="ìž‘ë¬¼ ìˆœí™˜ í˜œíƒ ë° ë¶ˆì´ìµ" eh="bb79b03a" />
-    <e k="sf_desc_activeMapLayer" v="PDA ì§€ë„ì— í‘œì‹œë  ì˜ì–‘ë¶„ ë ˆì´ì–´" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="ìƒ˜í”Œ ì§€ì  ìˆ˜ (ë‚®ìŒ=8k, ì¤‘ê°„=20k, ë†’ìŒ=40k)" eh="42503763" />
+    <e k="sf_desc_compactionEnabled" v="대형 차량에 의한 토양 압축" eh="a7d3a795" />
+    <e k="sf_desc_difficulty" v="영양분 소모 강도 수준" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="비료 영양분 복구 속도" eh="858d2b23" />
+    <e k="sf_desc_useImperialUnits" v="야드파운드법 단위 사용" eh="8ba3d81a" />
+    <e k="sf_desc_autoRateControl" v="스마트 스프레이어 살포량 조절" eh="bb4e5880" />
+    <e k="sf_desc_cropRotation" v="작물 순환 혜택 및 불이익" eh="bb79b03a" />
+    <e k="sf_desc_activeMapLayer" v="PDA 지도에 표시될 영양분 레이어" eh="3c01c599" />
+    <e k="sf_desc_overlayDensity" v="샘플 지점 수 (낮음=8k, 중간=20k, 높음=40k)" eh="42503763" />
     <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
     <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
 
     <!-- Multi-option values -->
-    <e k="sf_rr_1" v="ë§¤ìš° ëŠë¦¼ (0.25x)" eh="b681a1b4" />
-    <e k="sf_rr_2" v="ëŠë¦¼ (0.5x)" eh="db69874d" />
-    <e k="sf_rr_3" v="ë³´í†µ (1.0x)" eh="930452c1" />
-    <e k="sf_rr_4" v="ë¹ ë¦„ (1.5x)" eh="4c8ebfdb" />
-    <e k="sf_rr_5" v="ë§¤ìš° ë¹ ë¦„ (2.0x)" eh="bd682dd5" />
-    <e k="sf_layer_1" v="ë”" eh="d15305d7" />
-    <e k="sf_layer_2" v="ì§ˆì†Œ" eh="1e9ef3ba" />
-    <e k="sf_layer_3" v="ì¸ì‚°" eh="eb4f2688" />
-    <e k="sf_layer_4" v="ì¹¼ë¥¨" eh="3a4edc67" />
+    <e k="sf_rr_1" v="매우 느림 (0.25x)" eh="b681a1b4" />
+    <e k="sf_rr_2" v="느림 (0.5x)" eh="db69874d" />
+    <e k="sf_rr_3" v="보통 (1.0x)" eh="930452c1" />
+    <e k="sf_rr_4" v="빠름 (1.5x)" eh="4c8ebfdb" />
+    <e k="sf_rr_5" v="매우 빠름 (2.0x)" eh="bd682dd5" />
+    <e k="sf_layer_1" v="끔" eh="d15305d7" />
+    <e k="sf_layer_2" v="질소" eh="1e9ef3ba" />
+    <e k="sf_layer_3" v="인산" eh="eb4f2688" />
+    <e k="sf_layer_4" v="칼륨" eh="3a4edc67" />
     <e k="sf_layer_5" v="pH" eh="397dff20" />
-    <e k="sf_layer_6" v="ìœ ê¸°ë¬¼" eh="d2e254bc" />
-    <e k="sf_layer_7" v="ê¸´ê¸‰ë„" eh="c94e3850" />
-    <e k="sf_layer_8" v="ìž¡ì´ˆ" eh="2b75024d" />
-    <e k="sf_layer_9" v="í•´ì¶©" eh="8f2aee79" />
-    <e k="sf_layer_10" v="ë³‘í•´" eh="e7067a8c" />
-    <e k="sf_layer_11" v="ì••ì¶•ë„" eh="19cf3ee7" />
-    <e k="sf_density_1" v="ë‚®ìŒ" eh="28d0edd0" />
-    <e k="sf_density_2" v="ì¤‘ê°„" eh="87f8a6ab" />
-    <e k="sf_density_3" v="ë†’ìŒ" eh="655d20c1" />
+    <e k="sf_layer_6" v="유기물" eh="d2e254bc" />
+    <e k="sf_layer_7" v="긴급도" eh="c94e3850" />
+    <e k="sf_layer_8" v="잡초" eh="2b75024d" />
+    <e k="sf_layer_9" v="해충" eh="8f2aee79" />
+    <e k="sf_layer_10" v="병해" eh="e7067a8c" />
+    <e k="sf_layer_11" v="압축도" eh="19cf3ee7" />
+    <e k="sf_density_1" v="낮음" eh="28d0edd0" />
+    <e k="sf_density_2" v="중간" eh="87f8a6ab" />
+    <e k="sf_density_3" v="높음" eh="655d20c1" />
 
     <!-- Admin action items -->
-    <e k="sf_admin_save_label" v="í† ì–‘ ë°ì´í„° ì €ìž¥" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="ì§€ê¸ˆ ëª¨ë“  í† ì–‘ ë°ì´í„° ê°•ì œ ì €ìž¥" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="ëª¨ë“  ì„¤ì • ì´ˆê¸°í™”" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="ëª¨ë“  ì„¤ì •ì„ ê¸°ë³¸ê°’ìœ¼ë¡œ ë³µêµ¬" eh="599b7454" />
+    <e k="sf_admin_save_label" v="토양 데이터 저장" eh="d4e9a279" />
+    <e k="sf_admin_save_desc" v="지금 모든 토양 데이터 강제 저장" eh="f365613a" />
+    <e k="sf_admin_reset_label" v="모든 설정 초기화" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="모든 설정을 기본값으로 복구" eh="599b7454" />
     
-    <e k="sf_panel_hdr_field_tools" v="í•„ë“œ ë„êµ¬" eh="2b250a56" />
-    <e k="sf_nav_field_tools_label" v="í•„ë“œ ë„êµ¬" eh="2b250a56" />
-    <e k="sf_nav_field_tools_desc" v="í•„ë“œ ìƒíƒœë¥¼ ê²€ì‚¬í•˜ê³  ìˆ˜ì •í•˜ê¸° ìœ„í•œ íŠ¹ì • ë„êµ¬ ì—´ê¸°" eh="360db19b" />
+    <e k="sf_panel_hdr_field_tools" v="필드 도구" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="필드 도구" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="필드 상태를 검사하고 수정하기 위한 특정 도구 열기" eh="360db19b" />
     
-    <e k="sf_panel_hdr_vehicle_tools" v="ì°¨ëŸ‰ ë„êµ¬" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_label" v="ì°¨ëŸ‰ ë„êµ¬" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_desc" v="ì—°ê²°ëœ ì°¨ëŸ‰ ë° ìž‘ì—…ê¸°ë¥¼ ìœ„í•œ íŠ¹ì • ë„êµ¬ ì—´ê¸°" eh="1a8b2100" />
-    <e k="sf_admin_drain_label" v="ì°¨ëŸ‰ íƒ±í¬ ë¹„ìš°ê¸°" eh="d216b101" />
-    <e k="sf_admin_drain_desc" v="ìŠ¤í”„ë ˆì´ì–´ ë° ìž‘ì—…ê¸° ë¹„ìš°ê¸° (50% í™˜ë¶ˆ)" eh="5e048a34" />
-    <e k="sf_admin_field_info_label" v="í˜„ìž¬ í•„ë“œ ì •ë³´" eh="5df500d6" />
-    <e k="sf_admin_field_info_desc" v="í˜„ìž¬ ìœ„ì¹˜í•œ í•„ë“œì˜ í† ì–‘ ë°ì´í„°" eh="b7e2a72d" />
-    <e k="sf_admin_field_forecast_label" v="í•„ë“œ ì˜ˆì¸¡" eh="1df41470" />
-    <e k="sf_admin_field_forecast_desc" v="í˜„ìž¬ ìœ„ì¹˜ í•„ë“œì˜ ìˆ˜í™•ëŸ‰ ì˜ˆì¸¡" eh="67e56b9d" />
-    <e k="sf_admin_list_fields_label" v="ëª¨ë“  í•„ë“œ ëª©ë¡" eh="efeb1b25" />
-    <e k="sf_admin_list_fields_desc" v="ëª¨ë“  í•„ë“œ í† ì–‘ ë°ì´í„°ë¥¼ ê²Œìž„ ë¡œê·¸ì— ê¸°ë¡" eh="c9fa812e" />
-    <e k="sf_admin_field_set_state_label" v="í•„ë“œ ìƒíƒœ ì„¤ì •" eh="5b0d7a31" />
-    <e k="sf_admin_field_set_state_desc" v="í˜„ìž¬ í•„ë“œì˜ N, P, K, pH, OM ê°’ì„ ìˆ˜ë™ìœ¼ë¡œ ìˆ˜ì •" eh="a491e190" />
-    <e k="sf_admin_field_recover_label" v="í•„ë“œ ë³µêµ¬" eh="e1c82ff0" />
-    <e k="sf_admin_field_recover_desc" v="í˜„ìž¬ í•„ë“œë¥¼ ê¸°ë³¸ ì•ˆì „ ê°’ìœ¼ë¡œ ìž¬ì„¤ì • (ì‹¤ìˆ˜ ìˆ˜ì •ìš©)" eh="68b687a2" />
-    <e k="sf_infobox_title" v="í† ì–‘ ì˜ì–‘ë¶„" eh="64377acf" />
-    <e k="sf_infobox_grade" v="í† ì–‘ ë“±ê¸‰" eh="65d1be5f" />
-    <e k="sf_infobox_needs" v="í•„ìš” ì‚¬í•­" eh="94d6125d" />
-    <e k="sf_infobox_fertilizer" v="ë¹„ë£Œ" eh="cd248829" />
+    <e k="sf_panel_hdr_vehicle_tools" v="차량 도구" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="차량 도구" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="연결된 차량 및 작업기를 위한 특정 도구 열기" eh="1a8b2100" />
+    <e k="sf_admin_drain_label" v="차량 탱크 비우기" eh="d216b101" />
+    <e k="sf_admin_drain_desc" v="스프레이어 및 작업기 비우기 (50% 환불)" eh="5e048a34" />
+    <e k="sf_admin_field_info_label" v="현재 필드 정보" eh="5df500d6" />
+    <e k="sf_admin_field_info_desc" v="현재 위치한 필드의 토양 데이터" eh="b7e2a72d" />
+    <e k="sf_admin_field_forecast_label" v="필드 예측" eh="1df41470" />
+    <e k="sf_admin_field_forecast_desc" v="현재 위치 필드의 수확량 예측" eh="67e56b9d" />
+    <e k="sf_admin_list_fields_label" v="모든 필드 목록" eh="efeb1b25" />
+    <e k="sf_admin_list_fields_desc" v="모든 필드 토양 데이터를 게임 로그에 기록" eh="c9fa812e" />
+    <e k="sf_admin_field_set_state_label" v="필드 상태 설정" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="현재 필드의 N, P, K, pH, OM 값을 수동으로 수정" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="필드 복구" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="현재 필드를 기본 안전 값으로 재설정 (실수 수정용)" eh="68b687a2" />
+    <e k="sf_infobox_title" v="토양 영양분" eh="64377acf" />
+    <e k="sf_infobox_grade" v="토양 등급" eh="65d1be5f" />
+    <e k="sf_infobox_needs" v="필요 사항" eh="94d6125d" />
+    <e k="sf_infobox_fertilizer" v="비료" eh="cd248829" />
 
     <!-- FIELD INFO BOX extension -->
-    <e k="sf_fieldinfo_box_title" v="í† ì–‘ ì˜ì–‘ë¶„" eh="64377acf" />
-    <e k="sf_fieldinfo_grade" v="í† ì–‘ ë“±ê¸‰" eh="65d1be5f" />
-    <e k="sf_fieldinfo_yield" v="ìˆ˜í™•ëŸ‰" eh="97345487" />
-    <e k="sf_fieldinfo_rotation" v="ìˆœí™˜" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_box_title" v="토양 영양분" eh="64377acf" />
+    <e k="sf_fieldinfo_grade" v="토양 등급" eh="65d1be5f" />
+    <e k="sf_fieldinfo_yield" v="수확량" eh="97345487" />
+    <e k="sf_fieldinfo_rotation" v="순환" eh="f1a42bd4" />
 		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
-    <e k="sf_fieldinfo_needs" v="í•„ìš” ì‚¬í•­" eh="94d6125d" />
-    <e k="sf_field" v="í•„ë“œ" eh="6f16a5f8" />
-    <e k="sf_no_field" v="ì„ íƒëœ í•„ë“œ ì—†ìŒ" eh="717ff56f" />
-    <e k="sf_overall_Good" v="ì¢‹ìŒ" eh="0c6ad70b" />
-    <e k="sf_overall_Fair" v="ë³´í†µ" eh="f7f20cf0" />
-    <e k="sf_overall_Poor" v="ë‚˜ì¨" eh="0e94d017" />
-    <e k="sf_cell_report" v="ì…€ ë³´ê³ ì„œ" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="ì…€ ë°ì´í„°ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŒ" eh="dc41c753" />
-    <e k="sf_cell_no_data" v="ì´ ìœ„ì¹˜ì— í† ì–‘ ë°ì´í„°ê°€ ì—†ìŠµë‹ˆë‹¤" eh="5dfa58aa" />
+    <e k="sf_fieldinfo_needs" v="필요 사항" eh="94d6125d" />
+    <e k="sf_field" v="필드" eh="6f16a5f8" />
+    <e k="sf_no_field" v="선택된 필드 없음" eh="717ff56f" />
+    <e k="sf_overall_Good" v="좋음" eh="0c6ad70b" />
+    <e k="sf_overall_Fair" v="보통" eh="f7f20cf0" />
+    <e k="sf_overall_Poor" v="나쁨" eh="0e94d017" />
+    <e k="sf_cell_report" v="셀 보고서" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="셀 데이터를 찾을 수 없음" eh="dc41c753" />
+    <e k="sf_cell_no_data" v="이 위치에 토양 데이터가 없습니다" eh="5dfa58aa" />
     <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
-    <e k="sf_cell" v="ì…€" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="í† ì–‘ ì…€ ì¡°ì‚¬" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="ì…€ ìƒì„¸ ì •ë³´" eh="6fc5243e" />
-    <e k="sf_cell_coord" v="ì¢Œí‘œ" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="ì§€ë„ë¥¼ í´ë¦­í•˜ì—¬ í† ì–‘ ì…€ì„ ì¡°ì‚¬í•˜ì„¸ìš”" eh="fc9d240b" />
+    <e k="sf_cell" v="셀" eh="1a66ab62" />
+    <e k="sf_cell_dialog_title" v="토양 셀 조사" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="셀 상세 정보" eh="6fc5243e" />
+    <e k="sf_cell_coord" v="좌표" eh="99171d3a" />
+    <e k="sf_cell_click_hint" v="지도를 클릭하여 토양 셀을 조사하세요" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
@@ -789,7 +789,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -804,7 +804,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -952,13 +952,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -998,9 +998,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1033,10 +1033,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
-    	<e k="sf_fieldsentry_asleep" v="ì‹œë®¬ ì •ì§€" eh="7d49241b" />
-    	<e k="sf_fs_reason_manual" v="ìˆ˜ë™" eh="3c78b355" />
-    	<e k="sf_fs_reason_npc" v="NPC ê³„ì•½" eh="2e1a268b" />
-    	<e k="sf_fs_reason_deco" v="ìž¥ì‹ìš©" eh="8a817367" />
+    	<e k="sf_fieldsentry_asleep" v="시뮬 정지" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="수동" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPC 계약" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="장식용" eh="8a817367" />
     <e k="input_SF_SCOUT" v="[EN] Scout Field for Disease" eh="34e6d14b" />
     <e k="sf_scout_no_field" v="[EN] Stand on a field to scout it." eh="2c33ecb7" />
     <e k="sf_scout_found" v="[EN] Field %d: %s detected (%d%% pressure). Best: %s" eh="d6af78b1" />
@@ -1161,7 +1161,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
-    <e k="sf_unscouted" v="ë¯¸ì¡°ì‚¬" />
+    <e k="sf_unscouted" v="미조사" />
 <e k="sf_map_layer_organic_status" v="Organic Status" />
     
 <e k="sf_layer_12" v="Organic Status" />
@@ -1210,7 +1210,7 @@
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
     <!-- Harvester panel yield estimate (SF-50) -->
     <e k="sf_hud_tha" v="%.1f t/ha" />
-    <e k="sf_hud_yield_est_src" v="ë§µ ë°ì´í„° ê¸°ë°˜ ì¶”ì •ì¹˜" />
+    <e k="sf_hud_yield_est_src" v="맵 데이터 기반 추정치" />
     <!-- CD-12 tank mix names (generated) -->
     <e k="sf_blend_azoxystrobin_boscalid_title" v="Azoxystrobin + Boscalid" />
     <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="Azoxystrobin + Copper Hydroxide" />
@@ -1247,7 +1247,8 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
-<e k="sf_experimental_short" v="Experimental Systems" />
+
+    <e k="sf_experimental_short" v="Experimental Systems" />
     <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
     <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
@@ -1255,4 +1256,3 @@
 
 
 </l10n>
-

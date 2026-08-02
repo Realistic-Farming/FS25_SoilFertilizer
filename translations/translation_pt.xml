@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Solo e Fertilizante" eh="f31197fb" />
@@ -9,7 +9,7 @@
     <e k="sf_seasonal_effects_short" v="Efeitos Sazonais" eh="c16ea608" />
     <e k="sf_seasonal_effects_long" v="Ativar/desativar impacto sazonal nos nutrientes do solo (impulso de crescimento na primavera, abrandamento no outono)" eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Efeitos da Chuva" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="Ativar/desativar impacto da chuva no solo (lixiviaÃ§Ã£o de nutrientes, mudanÃ§as de pH)" eh="de3b14b9" />
+    <e k="sf_rain_effects_long" v="Ativar/desativar impacto da chuva no solo (lixiviação de nutrientes, mudanças de pH)" eh="de3b14b9" />
     <e k="sf_ws_short" v="World Climate" />
     <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
     <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
@@ -22,41 +22,41 @@
     <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
     <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
     <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
-    <e k="sf_plowing_bonus_short" v="BÃ³nus de Lavoura" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="Ativar/desativar benefÃ­cios da lavoura para a fertilidade do solo (melhoria de nitrogÃ©nio e matÃ©ria orgÃ¢nica)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="IncorporaÃ§Ã£o de ResÃ­duos" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="Ativar/desativar a libertaÃ§Ã£o de nutrientes de resÃ­duos de culturas incorporados no solo por ferramentas de preparo (cultivadores, arados, strip-till, semeadores diretos)" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="PressÃ£o de Ervas Daninhas" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="Ativar/desativar o crescimento dinÃ¢mico de ervas daninhas e o impacto no rendimento" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="PressÃ£o de Pragas" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="Ativar/desativar o sistema de infestaÃ§Ã£o de insetos e pragas" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="PressÃ£o de DoenÃ§as" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="Ativar/desativar o sistema de doenÃ§as fÃºngicas e de culturas" eh="9080edbc" />
-    <e k="sf_compaction_short" v="CompactaÃ§Ã£o do Solo" eh="68734a56" />
-    <e k="sf_compaction_long" v="Ativar/desativar o sistema de compactaÃ§Ã£o do solo por veÃ­culos pesados" eh="a0995ec5" />
+    <e k="sf_plowing_bonus_short" v="Bónus de Lavoura" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="Ativar/desativar benefícios da lavoura para a fertilidade do solo (melhoria de nitrogénio e matéria orgânica)" eh="fe701c1c" />
+    <e k="sf_residue_incorporation_short" v="Incorporação de Resíduos" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="Ativar/desativar a libertação de nutrientes de resíduos de culturas incorporados no solo por ferramentas de preparo (cultivadores, arados, strip-till, semeadores diretos)" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="Pressão de Ervas Daninhas" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="Ativar/desativar o crescimento dinâmico de ervas daninhas e o impacto no rendimento" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="Pressão de Pragas" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="Ativar/desativar o sistema de infestação de insetos e pragas" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="Pressão de Doenças" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="Ativar/desativar o sistema de doenças fúngicas e de culturas" eh="9080edbc" />
+    <e k="sf_compaction_short" v="Compactação do Solo" eh="68734a56" />
+    <e k="sf_compaction_long" v="Ativar/desativar o sistema de compactação do solo por veículos pesados" eh="a0995ec5" />
     <e k="sf_fertility_short" v="Sistema de Fertilidade" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="Ativar/desativar o sistema dinÃ¢mico de fertilidade do solo" eh="ea074366" />
+    <e k="sf_fertility_long" v="Ativar/desativar o sistema dinâmico de fertilidade do solo" eh="ea074366" />
     <e k="sf_nutrients_short" v="Ciclos de Nutrientes" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="Ativar/desativar o esgotamento e reposiÃ§Ã£o realistas de nutrientes" eh="dbe9c8ff" />
+    <e k="sf_nutrients_long" v="Ativar/desativar o esgotamento e reposição realistas de nutrientes" eh="dbe9c8ff" />
     <e k="sf_difficulty_short" v="Dificuldade" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="Definir nÃ­vel de dificuldade: Simples, Realista, Hardcore" eh="cfb758a4" />
+    <e k="sf_difficulty_long" v="Definir nível de dificuldade: Simples, Realista, Hardcore" eh="cfb758a4" />
     <e k="sf_diff_1" v="Simples" eh="1fbb1e39" />
     <e k="sf_diff_2" v="Realista" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
     <e k="sf_fertilizer_cost_short" v="Custos de Fertilizante" eh="6870d88b" />
     <e k="sf_fertilizer_cost_long" v="Ativar/desativar custos realistas de compra de fertilizantes" eh="12b03fbb" />
-    <e k="sf_notifications_short" v="NotificaÃ§Ãµes" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="Ativar/desativar notificaÃ§Ãµes de solo e fertilizante" eh="9a872f8f" />
+    <e k="sf_notifications_short" v="Notificações" eh="a274f4d4" />
+    <e k="sf_notifications_long" v="Ativar/desativar notificações de solo e fertilizante" eh="9a872f8f" />
     <e k="sf_show_hud_short" v="Mostrar HUD" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="Mostrar/ocultar a sobreposiÃ§Ã£o do HUD de informaÃ§Ãµes do solo (F8 para alternar temporariamente)" eh="4e2e11b6" />
+    <e k="sf_show_hud_long" v="Mostrar/ocultar a sobreposição do HUD de informações do solo (F8 para alternar temporariamente)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="[EN] Show/hide the sprayer nutrient info panel when driving a sprayer" eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
-    <e k="sf_hud_position_short" v="PosiÃ§Ã£o do HUD" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="Escolha onde o HUD de informaÃ§Ãµes do solo aparece no ecrÃ£" eh="d7b9c109" />
+    <e k="sf_hud_position_short" v="Posição do HUD" eh="5ac371f2" />
+    <e k="sf_hud_position_long" v="Escolha onde o HUD de informações do solo aparece no ecrã" eh="d7b9c109" />
     <e k="sf_hud_pos_1" v="Canto Superior Direito" eh="5f9f6784" />
     <e k="sf_hud_pos_2" v="Canto Superior Esquerdo" eh="ac71274a" />
     <e k="sf_hud_pos_3" v="Canto Inferior Direito" eh="4d297f5d" />
@@ -64,58 +64,58 @@
     <e k="sf_hud_pos_5" v="Centro Direito" eh="d7afdc5a" />
     <e k="sf_hud_pos_6" v="Personalizado" eh="90589c47" />
     <e k="sf_hud_color_theme_short" v="Tema de Cores do HUD" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="Escolha o esquema de cores para a exibiÃ§Ã£o de informaÃ§Ãµes do solo" eh="3218bca6" />
+    <e k="sf_hud_color_theme_long" v="Escolha o esquema de cores para a exibição de informações do solo" eh="3218bca6" />
     <e k="sf_hud_color_1" v="Verde" eh="d382816a" />
     <e k="sf_hud_color_2" v="Azul" eh="9594eec9" />
-    <e k="sf_hud_color_3" v="Ã‚mbar" eh="88068e33" />
+    <e k="sf_hud_color_3" v="Âmbar" eh="88068e33" />
     <e k="sf_hud_color_4" v="Mono" eh="5d9b47bd" />
     <e k="sf_diff_short" v="Dificuldade" eh="7b29ca96" />
-    <e k="sf_diff_long" v="NÃ­vel de dificuldade de gestÃ£o do solo" eh="d6f4560c" />
-    <e k="sf_rr_short" v="Taxa de ReposiÃ§Ã£o" eh="b363b336" />
-    <e k="sf_rr_long" v="QuÃ£o rapidamente o fertilizante restaura os nutrientes do campo (0.25x Muito Lento a 2.0x Muito RÃ¡pido)" eh="afe78a6d" />
+    <e k="sf_diff_long" v="Nível de dificuldade de gestão do solo" eh="d6f4560c" />
+    <e k="sf_rr_short" v="Taxa de Reposição" eh="b363b336" />
+    <e k="sf_rr_long" v="Quão rapidamente o fertilizante restaura os nutrientes do campo (0.25x Muito Lento a 2.0x Muito Rápido)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
     <e k="sf_dm_2" v="[EN] Temperate" />
     <e k="sf_dm_3" v="[EN] Humid" />
     <e k="sf_dm_4" v="[EN] Wet" />
-    <e k="sf_auto_rate_short" v="Controlo automÃ¡tico de taxa" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="Ajusta automaticamente a taxa de aplicaÃ§Ã£o com base nas necessidades do campo" eh="a9ca9f6b" />
+    <e k="sf_auto_rate_short" v="Controlo automático de taxa" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="Ajusta automaticamente a taxa de aplicação com base nas necessidades do campo" eh="a9ca9f6b" />
     <e k="sf_hud_theme_1" v="Verde" eh="d382816a" />
     <e k="sf_hud_theme_2" v="Azul" eh="9594eec9" />
-    <e k="sf_hud_theme_3" v="Ã‚mbar" eh="88068e33" />
+    <e k="sf_hud_theme_3" v="Âmbar" eh="88068e33" />
     <e k="sf_hud_theme_4" v="Mono" eh="5d9b47bd" />
     <e k="sf_hud_font_size_short" v="Tamanho da Fonte do HUD" eh="fd6ca64a" />
     <e k="sf_hud_font_size_long" v="Ajustar o tamanho do texto para melhor legibilidade" eh="c338854f" />
     <e k="sf_hud_font_1" v="Pequeno" eh="2660064e" />
-    <e k="sf_hud_font_2" v="MÃ©dio" eh="87f8a6ab" />
+    <e k="sf_hud_font_2" v="Médio" eh="87f8a6ab" />
     <e k="sf_hud_font_3" v="Grande" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="TransparÃªncia do HUD" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="Definir nÃ­vel de transparÃªncia do fundo (Transparente = ver atravÃ©s, SÃ³lido = opaco)" eh="152e390a" />
+    <e k="sf_hud_transparency_short" v="Transparência do HUD" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="Definir nível de transparência do fundo (Transparente = ver através, Sólido = opaco)" eh="152e390a" />
     <e k="sf_hud_trans_1" v="Transparente" eh="dc30bc0c" />
     <e k="sf_hud_trans_2" v="Ligeira" eh="9914a0ce" />
-    <e k="sf_hud_trans_3" v="MÃ©dia" eh="87f8a6ab" />
+    <e k="sf_hud_trans_3" v="Média" eh="87f8a6ab" />
     <e k="sf_hud_trans_4" v="Escura" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="SÃ³lida" eh="e41480b6" />
+    <e k="sf_hud_trans_5" v="Sólida" eh="e41480b6" />
     <e k="sf_use_imperial_short" v="Unidades Imperiais" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="Mostrar taxas de aplicaÃ§Ã£o em gal/ac e lb/ac (desligado = L/ha e kg/ha)" eh="17efa489" />
+    <e k="sf_use_imperial_long" v="Mostrar taxas de aplicação em gal/ac e lb/ac (desligado = L/ha e kg/ha)" eh="17efa489" />
     <e k="sf_active_map_layer_short" v="Camada Ativa do Mapa" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="Camada de nutrientes mostrada como sobreposiÃ§Ã£o no mapa PDA" eh="d7755cc8" />
+    <e k="sf_active_map_layer_long" v="Camada de nutrientes mostrada como sobreposição no mapa PDA" eh="d7755cc8" />
     <e k="sf_overlay_density_short" v="Detalhe do Mapa" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="OrÃ§amento de pontos de amostragem para a sobreposiÃ§Ã£o de solo do PDA. Baixo = melhor FPS, Alto = cobertura total em mapas grandes." eh="89215ce5" />
+    <e k="sf_overlay_density_long" v="Orçamento de pontos de amostragem para a sobreposição de solo do PDA. Baixo = melhor FPS, Alto = cobertura total em mapas grandes." eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
     <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
     <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
-    <e k="input_SF_OPEN_SETTINGS" v="Abrir DefiniÃ§Ãµes do Solo" eh="2e31c0dd" />
-    <e k="sf_reset" v="Redefinir DefiniÃ§Ãµes do Solo" eh="467bc2f5" />
+    <e k="input_SF_OPEN_SETTINGS" v="Abrir Definições do Solo" eh="2e31c0dd" />
+    <e k="sf_reset" v="Redefinir Definições do Solo" eh="467bc2f5" />
     <e k="input_SF_TOGGLE_HUD" v="Alternar HUD do Solo" eh="f0224a10" />
     <e k="input_SF_HUD_DRAG" v="Modo de Arrastar HUD" eh="cb2eb762" />
-    <e k="input_SF_SOIL_REPORT" v="RelatÃ³rio do Solo" eh="c33180ef" />
-    <e k="input_SF_TOGGLE_CELL_MAP" v="Alternar Mapa de CÃ©lulas do Solo" eh="3a7e9b9d" />
+    <e k="input_SF_SOIL_REPORT" v="Relatório do Solo" eh="c33180ef" />
+    <e k="input_SF_TOGGLE_CELL_MAP" v="Alternar Mapa de Células do Solo" eh="3a7e9b9d" />
     <e k="input_SF_RATE_UP" v="Aumentar Taxa de Fertilizante" eh="6e601ef5" />
     <e k="input_SF_RATE_DOWN" v="Diminuir Taxa de Fertilizante" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="Alternar taxa automÃ¡tica" eh="a8642cf0" />
+    <e k="input_SF_TOGGLE_AUTO" v="Alternar taxa automática" eh="a8642cf0" />
         <e k="input_SF_CYCLE_MAP_LAYER" v="Ciclar Camada do Mapa do Solo" eh="8e4a716c" />
         <e k="input_SF_SOIL_PDA" v="Abrir PDA do Solo" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
@@ -128,27 +128,27 @@
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
     <e k="sf_uan32_title" v="Fertilizante UAN 32 (N)" eh="90913bb8" />
     <e k="sf_uan28_title" v="Fertilizante UAN 28 (N)" eh="9d902cd7" />
-    <e k="sf_anhydrous_title" v="AmÃ³nia Anidra (N)" eh="3fc85c02" />
+    <e k="sf_anhydrous_title" v="Amónia Anidra (N)" eh="3fc85c02" />
     <e k="sf_starter_title" v="Fertilizante Inicial 10-34-0 (P)" eh="8c1a1ddc" />
     <e k="sf_urea_title" v="Ureia 46-0-0 (N)" eh="659b3097" />
-    <e k="sf_an_title" v="Nitrato de AmÃ³nio 34.5-0-0 (N)" eh="29f6ee93" />
-    <e k="sf_ams_title" v="Sulfato de AmÃ³nio 21-0-0 (N)" eh="033d1845" />
+    <e k="sf_an_title" v="Nitrato de Amónio 34.5-0-0 (N)" eh="29f6ee93" />
+    <e k="sf_ams_title" v="Sulfato de Amónio 21-0-0 (N)" eh="033d1845" />
     <e k="sf_map_title" v="Fertilizante MAP 11-52-0 (P)" eh="31aa2534" />
     <e k="sf_dap_title" v="Fertilizante DAP 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Potassa 0-0-60 (K)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="Ureia LÃ­quida (N)" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="Sulfato de AmÃ³nio LÃ­quido (N)" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="MAP LÃ­quido (P)" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="DAP LÃ­quido (P)" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="Potassa LÃ­quida (K)" eh="72ac9fd3" />
+    <e k="sf_liquid_urea_title" v="Ureia Líquida (N)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="Sulfato de Amónio Líquido (N)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="MAP Líquido (P)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="DAP Líquido (P)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="Potassa Líquida (K)" eh="72ac9fd3" />
     <e k="sf_insecticide_title" v="Inseticida" eh="5650eeef" />
     <e k="sf_fungicide_title" v="Fungicide" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
-    <e k="sf_bigBag_anhydrous_name" v="IBC AmÃ³nia Anidra 82-0-0" eh="fb09e6ce" />
+    <e k="sf_bigBag_anhydrous_name" v="IBC Amónia Anidra 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
     <e k="sf_bigBag_urea_name" v="Big Bag Ureia 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
@@ -164,28 +164,28 @@
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
-    <e k="sf_bigBag_liquid_urea_name" v="IBC Ureia LÃ­quida" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC Ureia Líquida" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="IBC AMS LÃ­quido" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC AMS Líquido" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="IBC MAP LÃ­quido" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC MAP Líquido" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="IBC DAP LÃ­quido" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC DAP Líquido" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="IBC Potassa LÃ­quida" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC Potassa Líquida" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
     <e k="sf_bigBag_starter_name" v="IBC Starter 10-34-0" eh="62b13bd1" />
     <e k="sf_bigBag_insecticide_name" v="IBC Inseticida" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="Inseticida (lÃ­quido)" eh="09580f6b" />
+    <e k="sf_bigBag_insecticide_function" v="Inseticida (líquido)" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="IBC Fungicida" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="Fungicida (lÃ­quido)" eh="745c34cb" />
+    <e k="sf_bigBag_fungicide_function" v="Fungicida (líquido)" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
     <e k="sf_bigBag_gypsum_name" v="Big Bag Gesso" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
     <e k="sf_bigBag_compost_name" v="Big Bag Composto" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="Big Bag BiossÃ³lidos" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="Big Bag Biossólidos" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
     <e k="sf_bigBag_chicken_manure_name" v="Big Bag Estrume de Galinha" eh="cb60fddc" />
@@ -194,7 +194,7 @@
     <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Estrume Peletizado" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="DepÃ³sito de Cal LÃ­quida" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="Depósito de Cal Líquida" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
     <e k="sf_hud_title" v="MONITOR DE SOLO" eh="f8cda642" />
     <e k="sf_hud_field" v="Campo %d" eh="08988997" />
@@ -205,140 +205,140 @@
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
     <e k="sf_hud_pests" v="Pragas" eh="2fed5101" />
-    <e k="sf_hud_disease" v="DoenÃ§as" eh="e7067a8c" />
+    <e k="sf_hud_disease" v="Doenças" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
     <e k="sf_hud_protected" v="(protegido)" eh="8273211e" />
     <e k="sf_hud_yield" v="Rendimento" eh="97345487" />
     <e k="sf_hud_estYield" v="Rend. Est." eh="32a4135e" />
     <e k="sf_hud_optimal" v="Ideal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="PÃ³s-colheita Â· Fertilizar" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="Arrastar: mover   Canto: redimensionar   RMB/Shift+H: concluÃ­do" eh="c3f1820c" />
+    <e k="sf_hud_post_harvest" v="Pós-colheita · Fertilizar" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="Arrastar: mover   Canto: redimensionar   RMB/Shift+H: concluído" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: mover/redimensionar" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer foi desativado para este jogo guardado porque o Precision Farming estÃ¡ ativo. Os dois mods gerem os nutrientes do solo e nÃ£o podem funcionar ao mesmo tempo. NÃ£o precisas de eliminar este mod. Para usar antes o Soil &amp; Fertilizer, basta desativar o Precision Farming para este jogo guardado no ecrÃ£ de seleÃ§Ã£o de mods." eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer foi desativado para este jogo guardado porque o Precision Farming está ativo. Os dois mods gerem os nutrientes do solo e não podem funcionar ao mesmo tempo. Não precisas de eliminar este mod. Para usar antes o Soil &amp; Fertilizer, basta desativar o Precision Farming para este jogo guardado no ecrã de seleção de mods." eh="91dbcf1b" />
 
     <!-- ======================================================
          LINHAS DE AJUDA (ESC > Ajuda > Solo e Fertilizante Realista)
          ====================================================== -->
 
     <!-- Category titles -->
-    <e k="helpLine_sf_cat_overview" v="VisÃ£o Geral" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="ComeÃ§ar" eh="bf647454" />
+    <e k="helpLine_sf_cat_overview" v="Visão Geral" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="Começar" eh="bf647454" />
     <e k="helpLine_sf_cat_nutrients" v="Nutrientes do Solo" eh="64377acf" />
     <e k="helpLine_sf_cat_fertilizers" v="Fertilizantes" eh="754d59bd" />
-    <e k="helpLine_sf_cat_hud" v="HUD e RelatÃ³rio do Solo" eh="655b1b40" />
-    <e k="helpLine_sf_cat_settings" v="DefiniÃ§Ãµes" eh="f4f70727" />
+    <e k="helpLine_sf_cat_hud" v="HUD e Relatório do Solo" eh="655b1b40" />
+    <e k="helpLine_sf_cat_settings" v="Definições" eh="f4f70727" />
     <e k="helpLine_sf_cat_multiplayer" v="Multijogador" eh="901a7320" />
 
     <!-- Category 1: Overview -->
     <e k="helpLine_sf_ov_p1_title" v="O Que Faz" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="MonitorizaÃ§Ã£o de Solo por Campo" eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="Cada campo monitoriza independentemente cinco propriedades: NitrogÃ©nio (N), FÃ³sforo (P), PotÃ¡ssio (K), MatÃ©ria OrgÃ¢nica (OM) e pH. Os valores sÃ£o guardados no seu savegame e persistem entre sessÃµes." eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="Monitorização de Solo por Campo" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="Cada campo monitoriza independentemente cinco propriedades: Nitrogénio (N), Fósforo (P), Potássio (K), Matéria Orgânica (OM) e pH. Os valores são guardados no seu savegame e persistem entre sessões." eh="c30216e6" />
     <e k="helpLine_sf_ov_p1_flow_title" v="O Ciclo de Nutrientes" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="As culturas removem nutrientes na colheita. Fertilizantes, estrume, chorume e cal restauram-nos. O mod monitoriza um orÃ§amento realista de nutrientes - o que as culturas retiram, vocÃª deve repor." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="As culturas removem nutrientes na colheita. Fertilizantes, estrume, chorume e cal restauram-nos. O mod monitoriza um orçamento realista de nutrientes - o que as culturas retiram, você deve repor." eh="418041f0" />
 
     <e k="helpLine_sf_ov_p2_title" v="Efeitos Ambientais" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="Chuva e LixiviaÃ§Ã£o" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="A chuva lixivia o NitrogÃ©nio com mais intensidade, seguido do PotÃ¡ssio e do FÃ³sforo. TambÃ©m acidifica lentamente o pH ao longo do tempo. Os efeitos da chuva podem ser desativados nas DefiniÃ§Ãµes." eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="EstaÃ§Ãµes e RecuperaÃ§Ã£o de Pousio" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="A primavera adiciona +0,03 N por dia (atividade biolÃ³gica). O outono remove 0,02 N por dia. Campos deixados sem plantio por mais de 7 dias recuperam lentamente todos os nutrientes por conta prÃ³pria." eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="Chuva e Lixiviação" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="A chuva lixivia o Nitrogénio com mais intensidade, seguido do Potássio e do Fósforo. Também acidifica lentamente o pH ao longo do tempo. Os efeitos da chuva podem ser desativados nas Definições." eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="Estações e Recuperação de Pousio" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="A primavera adiciona +0,03 N por dia (atividade biológica). O outono remove 0,02 N por dia. Campos deixados sem plantio por mais de 7 dias recuperam lentamente todos os nutrientes por conta própria." eh="e5ebb3b2" />
 
     <!-- Category 2: Getting Started -->
     <e k="helpLine_sf_gs_p1_title" v="Os Seus Primeiros Passos" eh="bdd0e0a7" />
     <e k="helpLine_sf_gs_p1_hud_title" v="Abrir o HUD (tecla J)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="Pressione J para alternar a sobreposiÃ§Ã£o de solo em tempo real. Mostra N, P, K, pH e OM do campo onde se encontra. As etiquetas de estado Boa / RazoÃ¡vel / Fraca indicam o que necessita de atenÃ§Ã£o num relance." eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="Abrir o RelatÃ³rio do Solo (tecla K)" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="Pressione K para abrir o relatÃ³rio completo de solo da quinta. Cada campo Ã© listado com o estado de nutrientes codificado por cores, ordenado por urgÃªncia. Clique na seta em qualquer linha para uma vista detalhada com recomendaÃ§Ãµes." eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="Pressione J para alternar a sobreposição de solo em tempo real. Mostra N, P, K, pH e OM do campo onde se encontra. As etiquetas de estado Boa / Razoável / Fraca indicam o que necessita de atenção num relance." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="Abrir o Relatório do Solo (tecla K)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="Pressione K para abrir o relatório completo de solo da quinta. Cada campo é listado com o estado de nutrientes codificado por cores, ordenado por urgência. Clique na seta em qualquer linha para uma vista detalhada com recomendações." eh="9a0d32a6" />
 
     <e k="helpLine_sf_gs_p2_title" v="Fertilizar e Colher" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="FertilizaÃ§Ã£o de Campos" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="Aplique fertilizante com qualquer pulverizador ou distribuidor padrÃ£o. O mod reconhece todos os tipos base do jogo mais 9 tipos personalizados (UAN-32, MAP, Potassa, etc.). Cada tipo restaura diferentes nutrientes - veja a categoria Fertilizantes para os perfis completos." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="Fertilização de Campos" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="Aplique fertilizante com qualquer pulverizador ou distribuidor padrão. O mod reconhece todos os tipos base do jogo mais 9 tipos personalizados (UAN-32, MAP, Potassa, etc.). Cada tipo restaura diferentes nutrientes - veja a categoria Fertilizantes para os perfis completos." eh="fe906e29" />
     <e k="helpLine_sf_gs_p2_harvest_title" v="Esgotamento na Colheita" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="Cada colheita remove nutrientes do campo. Culturas exigentes (batata, beterraba sacarina, soja) esgotam significativamente mais do que culturas leves (cevada, aveia). Verifique novamente o HUD ou o relatÃ³rio de solo apÃ³s cada ciclo de colheita." eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="Cada colheita remove nutrientes do campo. Culturas exigentes (batata, beterraba sacarina, soja) esgotam significativamente mais do que culturas leves (cevada, aveia). Verifique novamente o HUD ou o relatório de solo após cada ciclo de colheita." eh="63f90ed4" />
 
     <e k="helpLine_sf_gs_p3_title" v="Dificuldade" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="TrÃªs NÃ­veis de Dificuldade" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="Simples (0,7x): 30% menos esgotamento - bom para novos jogadores. Realista (1,0x): equilibrado, calibrado para taxas agrÃ­colas reais. Hardcore (1,5x): 50% mais esgotamento - requer gestÃ£o intensiva do solo." eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="Alterar DefiniÃ§Ãµes" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="Abra as definiÃ§Ãµes em ESC > DefiniÃ§Ãµes > Solo e Fertilizante. No multijogador, apenas o administrador do servidor pode alterar as definiÃ§Ãµes de simulaÃ§Ã£o. Todas as opÃ§Ãµes de exibiÃ§Ã£o do HUD sÃ£o por jogador e nÃ£o sÃ£o partilhadas." eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="Três Níveis de Dificuldade" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="Simples (0,7x): 30% menos esgotamento - bom para novos jogadores. Realista (1,0x): equilibrado, calibrado para taxas agrícolas reais. Hardcore (1,5x): 50% mais esgotamento - requer gestão intensiva do solo." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="Alterar Definições" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_access_text" v="Abra as definições em ESC > Definições > Solo e Fertilizante. No multijogador, apenas o administrador do servidor pode alterar as definições de simulação. Todas as opções de exibição do HUD são por jogador e não são partilhadas." eh="4ba9d860" />
 
     <!-- Category 3: Soil Nutrients -->
-    <e k="helpLine_sf_nu_p1_title" v="NitrogÃ©nio e FÃ³sforo" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="NitrogÃ©nio (N) - Escala de 0 a 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="O nutriente mais mÃ³vel - esgota-se mais rÃ¡pido e lixivia-se intensamente com a chuva. Fraco: abaixo de 30. Bom: acima de 50. Aumente com: fertilizante lÃ­quido, UAN-32, UAN-28, amÃ³nia anidra, ureia, AMS, estrume ou chorume." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="FÃ³sforo (P) - Escala de 0 a 100" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="Liga-se fortemente ao solo e lixivia-se muito lentamente. Esgota-se principalmente atravÃ©s da colheita. A colza tem a maior exigÃªncia de P. Fraco: abaixo de 25. Bom: acima de 45. Aumente com: MAP, DAP, fertilizante inicial ou fertilizante lÃ­quido." eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_title" v="Nitrogénio e Fósforo" eh="27d37372" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Nitrogénio (N) - Escala de 0 a 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="O nutriente mais móvel - esgota-se mais rápido e lixivia-se intensamente com a chuva. Fraco: abaixo de 30. Bom: acima de 50. Aumente com: fertilizante líquido, UAN-32, UAN-28, amónia anidra, ureia, AMS, estrume ou chorume." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="Fósforo (P) - Escala de 0 a 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="Liga-se fortemente ao solo e lixivia-se muito lentamente. Esgota-se principalmente através da colheita. A colza tem a maior exigência de P. Fraco: abaixo de 25. Bom: acima de 45. Aumente com: MAP, DAP, fertilizante inicial ou fertilizante líquido." eh="92c5ac66" />
 
-    <e k="helpLine_sf_nu_p2_title" v="PotÃ¡ssio e pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="PotÃ¡ssio (K) - Escala de 0 a 100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="CrÃ­tico para culturas de raÃ­zes e tubÃ©rculos. A batata e a beterraba sacarina esgotam o K fortemente em cada colheita. Lixivia-se moderadamente com a chuva. Fraco: abaixo de 20. Bom: acima de 40. Aumente com: potassa (0-0-60), chorume, digestado ou fertilizante lÃ­quido." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_title" v="Potássio e pH" eh="6bd92f25" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Potássio (K) - Escala de 0 a 100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="Crítico para culturas de raízes e tubérculos. A batata e a beterraba sacarina esgotam o K fortemente em cada colheita. Lixivia-se moderadamente com a chuva. Fraco: abaixo de 20. Bom: acima de 40. Aumente com: potassa (0-0-60), chorume, digestado ou fertilizante líquido." eh="7230fee4" />
     <e k="helpLine_sf_nu_p2_ph_title" v="pH - Escala de 5,0 a 7,5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="A maioria das culturas prospera com pH entre 6,5 e 7,0. A chuva acidifica lentamente o solo ao longo do tempo. O pH nÃ£o recupera por si sÃ³ - apenas cal ou cal lÃ­quida o aumentam. Fraco: abaixo de 5,5. Aplique cal se o pH estiver a descer antes do prÃ³ximo plantio." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="A maioria das culturas prospera com pH entre 6,5 e 7,0. A chuva acidifica lentamente o solo ao longo do tempo. O pH não recupera por si só - apenas cal ou cal líquida o aumentam. Fraco: abaixo de 5,5. Aplique cal se o pH estiver a descer antes do próximo plantio." eh="08e0aefd" />
 
     <!-- Category 3: Organic Matter -->
-    <e k="helpLine_sf_nu_p3_title" v="MatÃ©ria OrgÃ¢nica" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="MatÃ©ria OrgÃ¢nica (OM) - Escala de 0 a 10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="ConstrÃ³i-se muito lentamente e nÃ£o Ã© esgotada pela colheita. Fraca: abaixo de 2,5. Boa: acima de 4,0. Aumente com: estrume, chorume, digestado, composto, biossÃ³lidos, cama de galinha, estrume peletizado ou triturando a palha de volta para o campo." eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="RecuperaÃ§Ã£o de Pousio" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="Um campo deixado sem plantio por mais de 7 dias recupera lentamente os nutrientes. Por dia: N +0,07, P +0,03, K +0,05, OM +0,01. A rotaÃ§Ã£o de culturas e os perÃ­odos de descanso ainda tÃªm valor real neste mod." eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_title" v="Matéria Orgânica" eh="6305f4bb" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Matéria Orgânica (OM) - Escala de 0 a 10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="Constrói-se muito lentamente e não é esgotada pela colheita. Fraca: abaixo de 2,5. Boa: acima de 4,0. Aumente com: estrume, chorume, digestado, composto, biossólidos, cama de galinha, estrume peletizado ou triturando a palha de volta para o campo." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="Recuperação de Pousio" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="Um campo deixado sem plantio por mais de 7 dias recupera lentamente os nutrientes. Por dia: N +0,07, P +0,03, K +0,05, OM +0,01. A rotação de culturas e os períodos de descanso ainda têm valor real neste mod." eh="81fa82b3" />
 
     <!-- Category 4: Fertilizers -->
     <e k="helpLine_sf_fe_p1_title" v="Tipos do Jogo Base" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="LÃ­quidos, SÃ³lidos, Estrume e Chorume" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="Fertilizante LÃ­quido adiciona N+P+K equilibrado. Fertilizante SÃ³lido Ã© mais rico em N e P. Estrume e Chorume adicionam N, P, K e MatÃ©ria OrgÃ¢nica. Digestado (subproduto do biogÃ¡s) Ã© rico em K e tambÃ©m adiciona OM. Todos aplicados com equipamento padrÃ£o." eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="Cal e CorreÃ§Ã£o de pH" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="A cal Ã© a Ãºnica correÃ§Ã£o de pH do jogo base - nÃ£o adiciona nutrientes. Tipos personalizados como Cal LÃ­quida e Gesso tambÃ©m aumentam o pH (o Gesso tambÃ©m adiciona OM menor). Aplique quando o pH descer abaixo de 6,0 para manter as culturas no seu intervalo ideal." eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_base_title" v="Líquidos, Sólidos, Estrume e Chorume" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="Fertilizante Líquido adiciona N+P+K equilibrado. Fertilizante Sólido é mais rico em N e P. Estrume e Chorume adicionam N, P, K e Matéria Orgânica. Digestado (subproduto do biogás) é rico em K e também adiciona OM. Todos aplicados com equipamento padrão." eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="Cal e Correção de pH" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="A cal é a única correção de pH do jogo base - não adiciona nutrientes. Tipos personalizados como Cal Líquida e Gesso também aumentam o pH (o Gesso também adiciona OM menor). Aplique quando o pH descer abaixo de 6,0 para manter as culturas no seu intervalo ideal." eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="Fontes Personalizadas de NitrogÃ©nio e PK" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="Fontes de NitrogÃ©nio (big bags personalizados)" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) e UAN-28 (28-0-0) sÃ£o soluÃ§Ãµes lÃ­quidas de nitrogÃ©nio. AmÃ³nia Anidra (82-0-0) Ã© o produto com maior teor de N por litro. Ureia (46-0-0) e AMS (21-0-0-24S) sÃ£o granulados secos. Todos sÃ£o apenas de N - sem efeito em P, K ou pH." eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="Fontes de FÃ³sforo e PotÃ¡ssio" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): maior P por litro. DAP (18-46-0): P elevado com algum N. Potassa (0-0-60): K puro. Starter (10-34-0): produto de alto P para aplicaÃ§Ã£o no sulco com N+K equilibrado. Todos disponÃ­veis como big bags comprÃ¡veis na loja." eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="Fontes Personalizadas de Nitrogénio e PK" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="Fontes de Nitrogénio (big bags personalizados)" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) e UAN-28 (28-0-0) são soluções líquidas de nitrogénio. Amónia Anidra (82-0-0) é o produto com maior teor de N por litro. Ureia (46-0-0) e AMS (21-0-0-24S) são granulados secos. Todos são apenas de N - sem efeito em P, K ou pH." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="Fontes de Fósforo e Potássio" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): maior P por litro. DAP (18-46-0): P elevado com algum N. Potassa (0-0-60): K puro. Starter (10-34-0): produto de alto P para aplicação no sulco com N+K equilibrado. Todos disponíveis como big bags compráveis na loja." eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="Produtos OrgÃ¢nicos e Risco de Queimadura" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="Produtos OrgÃ¢nicos e de LibertaÃ§Ã£o Lenta" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="O composto Ã© o construtor de OM mais forte (+0,12 por 1.000 L). BiossÃ³lidos e Cama de Galinha adicionam N, P e OM. Estrume Peletizado Ã© um orgÃ¢nico equilibrado concentrado. Todos sÃ£o tipos de enchimento personalizados disponÃ­veis quando mods de equipamentos compatÃ­veis estÃ£o instalados." eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="Risco de Queimadura por SobreaplicaÃ§Ã£o" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="Aplicar acima de 1,25x a taxa base corre o risco de queimadura por fertilizante (-0,15 pH e -5 N). A 1,50x ou superior, a queimadura Ã© garantida em cada passagem (-0,30 pH e -12 N). Use as teclas SF Rate Up / Rate Down no veÃ­culo para controlar a taxa de aplicaÃ§Ã£o." eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="Produtos Orgânicos e Risco de Queimadura" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="Produtos Orgânicos e de Libertação Lenta" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="O composto é o construtor de OM mais forte (+0,12 por 1.000 L). Biossólidos e Cama de Galinha adicionam N, P e OM. Estrume Peletizado é um orgânico equilibrado concentrado. Todos são tipos de enchimento personalizados disponíveis quando mods de equipamentos compatíveis estão instalados." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="Risco de Queimadura por Sobreaplicação" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="Aplicar acima de 1,25x a taxa base corre o risco de queimadura por fertilizante (-0,15 pH e -5 N). A 1,50x ou superior, a queimadura é garantida em cada passagem (-0,30 pH e -12 N). Use as teclas SF Rate Up / Rate Down no veículo para controlar a taxa de aplicação." eh="7bccc46a" />
 
     <!-- Category 5: HUD and Soil Report -->
     <e k="helpLine_sf_hu_p1_title" v="O HUD do Solo" eh="6522879b" />
     <e k="helpLine_sf_hu_p1_toggle_title" v="Alternar o HUD (tecla J)" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="Pressione J para mostrar ou ocultar a sobreposiÃ§Ã£o de solo em tempo real. Deteta o campo onde estÃ¡ e mostra N, P, K, pH e OM. Quando as definiÃ§Ãµes de Ervas Daninhas, Pragas ou DoenÃ§as estÃ£o ativadas, essas linhas aparecem na parte inferior do painel." eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="Pressione J para mostrar ou ocultar a sobreposição de solo em tempo real. Deteta o campo onde está e mostra N, P, K, pH e OM. Quando as definições de Ervas Daninhas, Pragas ou Doenças estão ativadas, essas linhas aparecem na parte inferior do painel." eh="3dcb9bfe" />
     <e k="helpLine_sf_hu_p1_status_title" v="Ler o Estado" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="Cada nutriente mostra Boa (nenhuma aÃ§Ã£o necessÃ¡ria), RazoÃ¡vel (considere tratar em breve) ou Fraca (aÃ§Ã£o necessÃ¡ria - rendimento afetado). O emblema geral na barra de tÃ­tulo reflete o pior valor de todas as dimensÃµes monitorizadas, incluindo ervas daninhas, pragas e doenÃ§as." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Cada nutriente mostra Boa (nenhuma ação necessária), Razoável (considere tratar em breve) ou Fraca (ação necessária - rendimento afetado). O emblema geral na barra de título reflete o pior valor de todas as dimensões monitorizadas, incluindo ervas daninhas, pragas e doenças." eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="PressÃµes de SaÃºde do Campo" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="Ervas Daninhas, Pragas e DoenÃ§as" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="TrÃªs pontuaÃ§Ãµes de pressÃ£o (0 a 100) monitorizam ameaÃ§as biolÃ³gicas por campo. Se nÃ£o forem controladas, reduzem o rendimento na colheita: Ervas daninhas atÃ© -30%, Pragas -20%, DoenÃ§as -25%. As linhas do HUD W, I e D mostram a gravidade codificada por cores: verde (baixa), amarelo (moderada), vermelho (alta)." eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="Tratamento de PressÃ£o" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="O herbicida reduz a pressÃ£o de ervas daninhas - qualquer preparo do solo tambÃ©m a redefine a zero. O inseticida reduz a pressÃ£o de pragas em 25 pontos e suprime o crescimento por 10 dias. O fungicida reduz a doenÃ§a em 20 pontos e suprime por 12 dias. Cada sistema pode ser desativado nas DefiniÃ§Ãµes." eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="Pressões de Saúde do Campo" eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="Ervas Daninhas, Pragas e Doenças" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="Três pontuações de pressão (0 a 100) monitorizam ameaças biológicas por campo. Se não forem controladas, reduzem o rendimento na colheita: Ervas daninhas até -30%, Pragas -20%, Doenças -25%. As linhas do HUD W, I e D mostram a gravidade codificada por cores: verde (baixa), amarelo (moderada), vermelho (alta)." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="Tratamento de Pressão" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="O herbicida reduz a pressão de ervas daninhas - qualquer preparo do solo também a redefine a zero. O inseticida reduz a pressão de pragas em 25 pontos e suprime o crescimento por 10 dias. O fungicida reduz a doença em 20 pontos e suprime por 12 dias. Cada sistema pode ser desativado nas Definições." eh="4d65bdec" />
 
-    <e k="helpLine_sf_hu_p3_title" v="O RelatÃ³rio do Solo" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="Abrir o RelatÃ³rio (tecla K)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="Pressione K para abrir o relatÃ³rio completo de solo da quinta. A barra de resumo mostra o total de campos monitorizados, quantos precisam de fertilizante e uma percentagem ponderada da SaÃºde da Quinta. Os campos sÃ£o ordenados por urgÃªncia - pior condiÃ§Ã£o primeiro." eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="Detalhe do Campo e RecomendaÃ§Ãµes" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="Clique na seta em qualquer linha para abrir a vista detalhada desse campo: valores de nutrientes, nÃ­veis de pressÃ£o, uma previsÃ£o de penalidade de rendimento e uma lista de recomendaÃ§Ãµes indicando exatamente o que aplicar. Pressione Voltar ou Escape para regressar Ã  tabela." eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_title" v="O Relatório do Solo" eh="35fcce6c" />
+    <e k="helpLine_sf_hu_p3_open_title" v="Abrir o Relatório (tecla K)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="Pressione K para abrir o relatório completo de solo da quinta. A barra de resumo mostra o total de campos monitorizados, quantos precisam de fertilizante e uma percentagem ponderada da Saúde da Quinta. Os campos são ordenados por urgência - pior condição primeiro." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="Detalhe do Campo e Recomendações" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="Clique na seta em qualquer linha para abrir a vista detalhada desse campo: valores de nutrientes, níveis de pressão, uma previsão de penalidade de rendimento e uma lista de recomendações indicando exatamente o que aplicar. Pressione Voltar ou Escape para regressar à tabela." eh="38dd2c6d" />
 
     <!-- Category 6: Settings -->
-    <e k="helpLine_sf_se_p1_title" v="DefiniÃ§Ãµes de SimulaÃ§Ã£o" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="DefiniÃ§Ãµes do Servidor (Apenas Admin no Multijogador)" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="Sistema de Fertilidade, Ciclos de Nutrientes, Efeitos Sazonais, Efeitos da Chuva, BÃ³nus de Lavoura, PressÃ£o de Ervas Daninhas/Pragas/DoenÃ§as, Custos de Fertilizante, NotificaÃ§Ãµes, RotaÃ§Ã£o de Culturas e Controlo de Taxa AutomÃ¡tica. No multijogador, apenas o administrador do servidor pode alterar estas opÃ§Ãµes. As alteraÃ§Ãµes sincronizam-se instantaneamente para todos os clientes." eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_title" v="Definições de Simulação" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="Definições do Servidor (Apenas Admin no Multijogador)" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="Sistema de Fertilidade, Ciclos de Nutrientes, Efeitos Sazonais, Efeitos da Chuva, Bónus de Lavoura, Pressão de Ervas Daninhas/Pragas/Doenças, Custos de Fertilizante, Notificações, Rotação de Culturas e Controlo de Taxa Automática. No multijogador, apenas o administrador do servidor pode alterar estas opções. As alterações sincronizam-se instantaneamente para todos os clientes." eh="abca5e43" />
     <e k="helpLine_sf_se_p1_diff_title" v="Dificuldade" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="Simples (0,7x) reduz o esgotamento em 30% para uma experiÃªncia relaxada. Realista (1,0x) Ã© o padrÃ£o equilibrado. Hardcore (1,5x) aumenta o esgotamento em 50% para gestÃ£o intensiva do solo. Acesso via ESC > DefiniÃ§Ãµes > Solo e Fertilizante." eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_diff_text" v="Simples (0,7x) reduz o esgotamento em 30% para uma experiência relaxada. Realista (1,0x) é o padrão equilibrado. Hardcore (1,5x) aumenta o esgotamento em 50% para gestão intensiva do solo. Acesso via ESC > Definições > Solo e Fertilizante." eh="ca93ca3e" />
 
     <e k="helpLine_sf_se_p2_title" v="HUD e Controlo de Taxa" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="OpÃ§Ãµes do HUD por Jogador" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="Cada jogador controla o seu prÃ³prio HUD - nÃ£o sincronizado com o servidor. OpÃ§Ãµes: Mostrar HUD (ligado/desligado), PosiÃ§Ã£o (5 predefiniÃ§Ãµes + arrastar), Tema de Cores (Verde / Azul / Ã‚mbar / Mono), Tamanho da Fonte (Pequeno / MÃ©dio / Grande), TransparÃªncia (25% a 100%), Unidades Imperiais (ligado/desligado)." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_hud_title" v="Opções do HUD por Jogador" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="Cada jogador controla o seu próprio HUD - não sincronizado com o servidor. Opções: Mostrar HUD (ligado/desligado), Posição (5 predefinições + arrastar), Tema de Cores (Verde / Azul / Âmbar / Mono), Tamanho da Fonte (Pequeno / Médio / Grande), Transparência (25% a 100%), Unidades Imperiais (ligado/desligado)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Controlo de Taxa do Pulverizador" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Enquanto estiver num pulverizador ou distribuidor, use SF Rate Up (]) e SF Rate Down ([) para ajustar a taxa de aplicaÃ§Ã£o de 0,10x a 2,00x. Alterne o Controlo de Taxa AutomÃ¡tica (Shift+L) para permitir que o mod atinja automaticamente os nÃ­veis ideais de nutrientes e evite o risco de queimadura." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Enquanto estiver num pulverizador ou distribuidor, use SF Rate Up (]) e SF Rate Down ([) para ajustar a taxa de aplicação de 0,10x a 2,00x. Alterne o Controlo de Taxa Automática (Shift+L) para permitir que o mod atinja automaticamente os níveis ideais de nutrientes e evite o risco de queimadura." eh="dd385e39" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="Como Funciona o Multijogador" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="SimulaÃ§Ã£o com Autoridade do Servidor" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="Toda a simulaÃ§Ã£o de solo corre no servidor. Os clientes recebem os dados e definiÃ§Ãµes completos do campo ao entrar, com tentativa automÃ¡tica se o servidor ainda estiver a carregar. As definiÃ§Ãµes de exibiÃ§Ã£o do HUD (posiÃ§ao, tema, tamanho) sÃ£o por jogador e nunca sÃ£o sincronizadas com o servidor." eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="Simulação com Autoridade do Servidor" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="Toda a simulação de solo corre no servidor. Os clientes recebem os dados e definições completos do campo ao entrar, com tentativa automática se o servidor ainda estiver a carregar. As definições de exibição do HUD (posiçao, tema, tamanho) são por jogador e nunca são sincronizadas com o servidor." eh="db72a3f9" />
     <e k="helpLine_sf_mp_p1_ded_title" v="Servidores Dedicados" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="Os servidores dedicados correm a simulaÃ§Ã£o completa sem qualquer sobrecarga de HUD ou GUI - isto Ã© esperado e normal. Use comandos de consola (soilStatus, SoilSetDifficulty, SoilShowSettings, etc.) para gerir e verificar as definiÃ§Ãµes num servidor dedicado." eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="Os servidores dedicados correm a simulação completa sem qualquer sobrecarga de HUD ou GUI - isto é esperado e normal. Use comandos de consola (soilStatus, SoilSetDifficulty, SoilShowSettings, etc.) para gerir e verificar as definições num servidor dedicado." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Compatibility and Workflow" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." />
@@ -346,32 +346,32 @@
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
 
-    <e k="sf_crop_rotation_short" v="RotaÃ§Ã£o de Culturas" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="Ativar/desativar bÃ³nus de rotaÃ§Ã£o de culturas e fadiga de monocultura (sequÃªncias de leguminosas restauram nitrogÃ©nio; Ã©pocas consecutivas com a mesma cultura aumentam o esgotamento)" eh="958b4212" />
+    <e k="sf_crop_rotation_short" v="Rotação de Culturas" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="Ativar/desativar bónus de rotação de culturas e fadiga de monocultura (sequências de leguminosas restauram nitrogénio; épocas consecutivas com a mesma cultura aumentam o esgotamento)" eh="958b4212" />
     <e k="sf_gypsum_title" v="Gesso (pH-)" eh="d66da34c" />
-    <e k="sf_compost_title" v="Composto (OrgÃ¢nico)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="BiossÃ³lidos (N+P)" eh="f0c901dc" />
+    <e k="sf_compost_title" v="Composto (Orgânico)" eh="c3e2071a" />
+    <e k="sf_biosolids_title" v="Biossólidos (N+P)" eh="f0c901dc" />
     <e k="sf_chicken_manure_title" v="Estrume de Galinha (N+P)" eh="338128e2" />
     <e k="sf_pelletized_manure_title" v="Estrume Peletizado (NPK)" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="Cal LÃ­quida (pH+)" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="RotaÃ§Ã£o de Culturas" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="BÃ³nus de RotaÃ§Ã£o" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="Cultivar uma leguminosa (soja, ervilha, feijÃ£o) apÃ³s uma nÃ£o-leguminosa adiciona um impulso gratuito de nitrogÃ©nio em cada primavera durante 3 dias." eh="e1fce95b" />
+    <e k="sf_liquidlime_title" v="Cal Líquida (pH+)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="Rotação de Culturas" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="Bónus de Rotação" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="Cultivar uma leguminosa (soja, ervilha, feijão) após uma não-leguminosa adiciona um impulso gratuito de nitrogénio em cada primavera durante 3 dias." eh="e1fce95b" />
     <e k="helpLine_sf_nu_p4_fatigue_title" v="Fadiga de Cultura" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="Plantar a mesma cultura duas estaÃ§Ãµes seguidas aumenta a extraÃ§Ã£o de nutrientes em 15%. Rode as culturas para evitar a fadiga do solo." eh="1613f3c6" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="Plantar a mesma cultura duas estações seguidas aumenta a extração de nutrientes em 15%. Rode as culturas para evitar a fadiga do solo." eh="1613f3c6" />
 
     <!-- Soil Map Overlay (SoilMapOverlay.lua) -->
     <e k="sf_map_layer_off" v="Mapa do Solo: Desligado" eh="3e654ade" />
-    <e k="sf_map_layer_n" v="NitrogÃ©nio" eh="1e9ef3ba" />
-    <e k="sf_map_layer_p" v="FÃ³sforo" eh="eb4f2688" />
-    <e k="sf_map_layer_k" v="PotÃ¡ssio" eh="3a4edc67" />
+    <e k="sf_map_layer_n" v="Nitrogénio" eh="1e9ef3ba" />
+    <e k="sf_map_layer_p" v="Fósforo" eh="eb4f2688" />
+    <e k="sf_map_layer_k" v="Potássio" eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
-    <e k="sf_map_layer_om" v="MatÃ©ria OrgÃ¢nica" eh="6305f4bb" />
-    <e k="sf_map_layer_urgency" v="UrgÃªncia do Campo" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="PressÃ£o de Ervas Daninhas" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="PressÃ£o de Pragas" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="PressÃ£o de DoenÃ§as" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="CompactaÃ§Ã£o" eh="19cf3ee7" />
+    <e k="sf_map_layer_om" v="Matéria Orgânica" eh="6305f4bb" />
+    <e k="sf_map_layer_urgency" v="Urgência do Campo" eh="419ea5af" />
+    <e k="sf_map_layer_weed" v="Pressão de Ervas Daninhas" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="Pressão de Pragas" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="Pressão de Doenças" eh="2b805cc9" />
+    <e k="sf_map_layer_compaction" v="Compactação" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
     <e k="sf_map_overlay_cycle" v="Shift+M: Ciclar Camada de Solo" eh="032fdac7" />
     <e k="sf_map_page_title" v="Camadas de Solo" eh="04a675fb" />
@@ -379,7 +379,7 @@
     <e k="sf_map_sidebar_label" v="Camada Ativa" eh="f8a2c198" />
     <e k="sf_map_sidebar_tooltip" v="Selecione qual nutriente do solo exibir no mapa" eh="eb926e9a" />
     <e k="sf_map_overlay_low" v="Baixa" eh="28d0edd0" />
-    <e k="sf_map_overlay_med" v="MÃ©dia" eh="248c9511" />
+    <e k="sf_map_overlay_med" v="Média" eh="248c9511" />
     <e k="sf_map_overlay_high" v="Alta" eh="655d20c1" />
 
     <!-- Soil PDA Screen (SoilPDAScreen.lua) -->
@@ -387,124 +387,124 @@
     <e k="sf_pda_tab_map" v="Mapa do Solo" eh="59f988b2" />
     <e k="sf_pda_tab_fields" v="Campos" eh="a4ca5edd" />
     <e k="sf_pda_tab_treatment" v="Plano de Tratamento" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="VisÃ£o Geral da Quinta" eh="47f2c19a" />
+    <e k="sf_pda_section_farm_overview" v="Visão Geral da Quinta" eh="47f2c19a" />
     <e k="sf_pda_fields_tracked_label" v="Campos Monitorizados" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="Campos PrÃ³prios" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="MÃ©dia de Nutrientes" eh="f06b2704" />
-    <e k="sf_pda_avg_n_label" v="NitrogÃ©nio (N)" eh="25cee53b" />
-    <e k="sf_pda_avg_p_label" v="FÃ³sforo (P)" eh="75cb5cd6" />
-    <e k="sf_pda_avg_k_label" v="PotÃ¡ssio (K)" eh="39797137" />
-    <e k="sf_pda_avg_ph_label" v="NÃ­vel de pH" eh="0c85daad" />
-    <e k="sf_pda_avg_om_label" v="MatÃ©ria OrgÃ¢nica" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="PressÃ£o na Cultura" eh="a73974d0" />
+    <e k="sf_pda_fields_owned_label" v="Campos Próprios" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="Média de Nutrientes" eh="f06b2704" />
+    <e k="sf_pda_avg_n_label" v="Nitrogénio (N)" eh="25cee53b" />
+    <e k="sf_pda_avg_p_label" v="Fósforo (P)" eh="75cb5cd6" />
+    <e k="sf_pda_avg_k_label" v="Potássio (K)" eh="39797137" />
+    <e k="sf_pda_avg_ph_label" v="Nível de pH" eh="0c85daad" />
+    <e k="sf_pda_avg_om_label" v="Matéria Orgânica" eh="6305f4bb" />
+    <e k="sf_pda_section_pressure" v="Pressão na Cultura" eh="a73974d0" />
     <e k="sf_pda_weed_label" v="Ervas Daninhas" eh="2b75024d" />
     <e k="sf_pda_pest_label" v="Pragas" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="DoenÃ§a" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="Necessita AtenÃ§Ã£o" eh="80e48bc3" />
+    <e k="sf_pda_disease_label" v="Doença" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="Necessita Atenção" eh="80e48bc3" />
     <e k="sf_pda_needs_fert_label" v="Necessita Fertilizante" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="Total que necessita atenÃ§Ã£o" eh="b3ce2db9" />
+    <e k="sf_pda_total_urgent_label" v="Total que necessita atenção" eh="b3ce2db9" />
     <e k="sf_pda_no_data_left" v="Ainda sem dados de campo." eh="ba71c6b1" />
     <!-- Map Tab -->
     <e k="sf_pda_map_section_title" v="Camadas do Mapa de Solo" eh="85d63132" />
     <e k="sf_pda_map_active_layer" v="Camada Ativa" eh="f8a2c198" />
     <e k="sf_pda_map_layer_off_desc" v="Nenhuma camada de solo ativa. Por favor, selecione uma camada para exibir." eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="ConteÃºdo de nitrogÃ©nio em todos os campos. Verde = bom, vermelho = esgotado." eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="ConteÃºdo de fÃ³sforo em todos os campos. Verde = bom, vermelho = esgotado." eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="ConteÃºdo de potÃ¡ssio em todos os campos. Verde = bom, vermelho = esgotado." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="NÃ­vel de pH do solo. O intervalo ideal Ã© 6,5-7,0 (verde)." eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="ConteÃºdo de matÃ©ria orgÃ¢nica. Quanto mais alto, melhor para a fertilidade a longo prazo." eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="UrgÃªncia de tratamento combinada. Vermelho = necessita de atenÃ§Ã£o imediata." eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="NÃ­vel de pressÃ£o de ervas daninhas. Vermelho = infestaÃ§Ã£o alta, aplique herbicida." eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="NÃ­vel de pressÃ£o de pragas. Vermelho = infestaÃ§Ã£o alta, aplique inseticida." eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="NÃ­vel de pressÃ£o de doenÃ§as. Vermelho = surto ativo, aplique fungicida." eh="5d32d30a" />
+    <e k="sf_pda_map_layer_n_desc" v="Conteúdo de nitrogénio em todos os campos. Verde = bom, vermelho = esgotado." eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="Conteúdo de fósforo em todos os campos. Verde = bom, vermelho = esgotado." eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="Conteúdo de potássio em todos os campos. Verde = bom, vermelho = esgotado." eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Nível de pH do solo. O intervalo ideal é 6,5-7,0 (verde)." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="Conteúdo de matéria orgânica. Quanto mais alto, melhor para a fertilidade a longo prazo." eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="Urgência de tratamento combinada. Vermelho = necessita de atenção imediata." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="Nível de pressão de ervas daninhas. Vermelho = infestação alta, aplique herbicida." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="Nível de pressão de pragas. Vermelho = infestação alta, aplique inseticida." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="Nível de pressão de doenças. Vermelho = surto ativo, aplique fungicida." eh="5d32d30a" />
     <e k="sf_pda_map_legend_title" v="Legenda do Mapa" eh="86448402" />
     <e k="sf_pda_map_legend_good" v="Boa" eh="0c6ad70b" />
-    <e k="sf_pda_map_legend_fair" v="RazoÃ¡vel" eh="f7f20cf0" />
+    <e k="sf_pda_map_legend_fair" v="Razoável" eh="f7f20cf0" />
     <e k="sf_pda_map_legend_poor" v="Fraca / Baixa" eh="32aa75ff" />
     <e k="sf_pda_map_legend_low" v="Baixa" eh="28d0edd0" />
-    <e k="sf_pda_map_legend_medium" v="MÃ©dia" eh="87f8a6ab" />
+    <e k="sf_pda_map_legend_medium" v="Média" eh="87f8a6ab" />
     <e k="sf_pda_map_legend_high" v="Alta" eh="655d20c1" />
     <e k="sf_pda_map_legend_excess" v="Excesso" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="Selecione uma camada na barra lateral para visualizÃ¡-la no mapa." eh="eee76c81" />
+    <e k="sf_pda_map_instructions" v="Selecione uma camada na barra lateral para visualizá-la no mapa." eh="eee76c81" />
     <e k="sf_pda_map_jump_hint" v="Clique num campo para saltar para ele no mapa" eh="006d5371" />
-    <e k="sf_pda_map_native_hint" v="A visualizaÃ§Ã£o da camada de solo mudou! Agora pode aceder e alternar todas as camadas de solo diretamente da barra lateral nativa do Mapa PDA (ESC > Mapa). Procure a categoria 'Camadas de Solo' nos pontos da barra lateral." eh="3210d828" />
+    <e k="sf_pda_map_native_hint" v="A visualização da camada de solo mudou! Agora pode aceder e alternar todas as camadas de solo diretamente da barra lateral nativa do Mapa PDA (ESC > Mapa). Procure a categoria 'Camadas de Solo' nos pontos da barra lateral." eh="3210d828" />
     <e k="sf_pda_map_open_btn" v="NOTA DEV" eh="ef40b93f" />
     <e k="sf_pda_btn_help" v="Ajuda" eh="6a26f548" />
-    <e k="sf_pda_help_text" v="OlÃ¡, sou o desenvolvedor! Movi as camadas do mapa de solo para o Mapa PDA nativo (ESC > Mapa) para uma experiÃªncia mais integrada. Agora pode selecionar camadas diretamente da barra lateral. A pÃ¡gina do PDA ainda estÃ¡ a ser aperfeiÃ§oada, por isso fique atento a mais atualizaÃ§Ãµes!" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="O SEU FEEDBACK IMPORTA! Se encontrar erros, tiver sugestÃµes para novas funcionalidades ou quiser contribuir para o cÃ³digo, visite o projeto no GitHub. Pode abrir um Issue ou um Pull Request a qualquer momento para ajudar a melhorar este mod para todos. Obrigado por testar!" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="Nota: O separador das camadas de solo na pÃ¡gina do mapa NÃƒO ESTÃ A FUNCIONAR. Estou ciente do problema e a trabalhar numa correÃ§Ã£o (que poderÃ¡ levar algum tempo)." eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="PrÃ©-visualizaÃ§Ã£o do mapa indisponÃ­vel" eh="43983f81" />
-    <e k="sf_map_health_overall" v="SaÃºde MÃ©dia do Solo" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="Abrir VisÃ£o Geral da Quinta" eh="6f0800e8" />
+    <e k="sf_pda_help_text" v="Olá, sou o desenvolvedor! Movi as camadas do mapa de solo para o Mapa PDA nativo (ESC > Mapa) para uma experiência mais integrada. Agora pode selecionar camadas diretamente da barra lateral. A página do PDA ainda está a ser aperfeiçoada, por isso fique atento a mais atualizações!" eh="67643ddd" />
+    <e k="sf_pda_help_github" v="O SEU FEEDBACK IMPORTA! Se encontrar erros, tiver sugestões para novas funcionalidades ou quiser contribuir para o código, visite o projeto no GitHub. Pode abrir um Issue ou um Pull Request a qualquer momento para ajudar a melhorar este mod para todos. Obrigado por testar!" eh="3a10b023" />
+    <e k="sf_pda_help_note" v="Nota: O separador das camadas de solo na página do mapa NÃO ESTÁ A FUNCIONAR. Estou ciente do problema e a trabalhar numa correção (que poderá levar algum tempo)." eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="Pré-visualização do mapa indisponível" eh="43983f81" />
+    <e k="sf_map_health_overall" v="Saúde Média do Solo" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="Abrir Visão Geral da Quinta" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
     <e k="sf_map_btn_cycle_layer" v="Ciclar Camada" eh="875dbf22" />
     <e k="sf_map_btn_treatment" v="Plano de Tratamento" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="Desativar SobreposiÃ§Ã£o" eh="8e75dec5" />
+    <e k="sf_map_btn_disable" v="Desativar Sobreposição" eh="8e75dec5" />
     <e k="sf_treat_action_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_help_title" v="ReferÃªncia RÃ¡pida do Solo" eh="8986bb6d" />
+    <e k="sf_help_title" v="Referência Rápida do Solo" eh="8986bb6d" />
     <e k="sf_help_nutrients_header" v="NUTRIENTES" eh="9aeb39bf" />
-    <e k="sf_help_n" v="N  (NitrogÃ©nio)    - Esgota-se rÃ¡pido. Aplique UAN, Ureia ou Estrume." eh="f2d0c792" />
-    <e k="sf_help_p" v="P  (FÃ³sforo)       - Longa duraÃ§Ã£o. Aplique MAP ou DAP." eh="fdfbd91e" />
-    <e k="sf_help_k" v="K  (PotÃ¡ssio)      - Aplique Potassa. Importante para raÃ­zes." eh="e0217634" />
-    <e k="sf_help_om" v="OM (MatÃ©ria Org.)  - ConstrÃ³i-se lentamente. Incorpore estrume/composto." eh="a4e29617" />
-    <e k="sf_help_soil_header" v="QUÃMICA DO SOLO" eh="19c67ff5" />
+    <e k="sf_help_n" v="N  (Nitrogénio)    - Esgota-se rápido. Aplique UAN, Ureia ou Estrume." eh="f2d0c792" />
+    <e k="sf_help_p" v="P  (Fósforo)       - Longa duração. Aplique MAP ou DAP." eh="fdfbd91e" />
+    <e k="sf_help_k" v="K  (Potássio)      - Aplique Potassa. Importante para raízes." eh="e0217634" />
+    <e k="sf_help_om" v="OM (Matéria Org.)  - Constrói-se lentamente. Incorpore estrume/composto." eh="a4e29617" />
+    <e k="sf_help_soil_header" v="QUÍMICA DO SOLO" eh="19c67ff5" />
     <e k="sf_help_ph" v="pH  6,5-7,0 = Ideal.  &lt; 6,5 aplique Cal.  > 7,5 aplique Gesso." eh="8929304d" />
-    <e k="sf_help_pressure_header" v="PRESSÃƒO NA CULTURA" eh="132b0f66" />
+    <e k="sf_help_pressure_header" v="PRESSÃO NA CULTURA" eh="132b0f66" />
     <e k="sf_help_weed" v="Ervas D. > 20% - Aplique Herbicida." eh="c8d890df" />
     <e k="sf_help_pest" v="Pragas   > 20% - Aplique Inseticida." eh="f4932a05" />
-    <e k="sf_help_disease" v="DoenÃ§a   > 20% - Aplique Fungicida." eh="1bfd0913" />
-    <e k="sf_help_status_header" v="NÃVEIS DE ESTADO" eh="b081c2c6" />
-    <e k="sf_help_good" v="Boa - Nenhuma aÃ§Ã£o necessÃ¡ria." eh="03910bec" />
-    <e k="sf_help_fair" v="RazoÃ¡vel - Monitorizar / reforÃ§o preventivo." eh="2922eb1c" />
-    <e k="sf_help_poor" v="Fraca - Tratamento imediato necessÃ¡rio." eh="b287d206" />
+    <e k="sf_help_disease" v="Doença   > 20% - Aplique Fungicida." eh="1bfd0913" />
+    <e k="sf_help_status_header" v="NÍVEIS DE ESTADO" eh="b081c2c6" />
+    <e k="sf_help_good" v="Boa - Nenhuma ação necessária." eh="03910bec" />
+    <e k="sf_help_fair" v="Razoável - Monitorizar / reforço preventivo." eh="2922eb1c" />
+    <e k="sf_help_poor" v="Fraca - Tratamento imediato necessário." eh="b287d206" />
     <!-- Fields Tab -->
     <e k="sf_pda_fields_section_title" v="Todos os Campos" eh="48729e0b" />
     <e k="sf_pda_col_field" v="Campo" eh="6f16a5f8" />
     <e k="sf_pda_col_n" v="N%" eh="30740562" />
     <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
     <e k="sf_pda_filter_all" v="Filtro: Todos os Campos" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="Filtro: Apenas PrÃ³prios" eh="258cb971" />
+    <e k="sf_pda_filter_owned" v="Filtro: Apenas Próprios" eh="258cb971" />
     <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
     <e k="sf_pda_col_om" v="OM" eh="bfbebc07" />
     <e k="sf_pda_col_status" v="Estado" eh="ec53a8c4" />
     <e k="sf_pda_no_fields" v="Ainda sem dados de campo registados." eh="72265670" />
     <e k="sf_pda_status_good" v="Boa" eh="0c6ad70b" />
-    <e k="sf_pda_status_fair" v="RazoÃ¡vel" eh="f7f20cf0" />
+    <e k="sf_pda_status_fair" v="Razoável" eh="f7f20cf0" />
     <e k="sf_pda_status_poor" v="Fraca" eh="0e94d017" />
     <!-- Treatment Tab -->
     <e k="sf_pda_treatment_section_title" v="Plano de Tratamento" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="UrgÃªncia" eh="c94e3850" />
+    <e k="sf_pda_col_priority" v="Urgência" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Necessidades" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="Todos os campos estÃ£o em boas condiÃ§Ãµes." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Os campos listados Ã  direita precisam de tratamento. Clique numa linha para ver os inputs recomendados e as quantidades estimadas." eh="5748d316" />
-    <e k="sf_pda_need_n" v="NitrogÃ©nio" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="FÃ³sforo" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="PotÃ¡ssio" eh="3a4edc67" />
+    <e k="sf_pda_no_treatment" v="Todos os campos estão em boas condições." eh="fa985166" />
+    <e k="sf_pda_treatment_hint" v="Os campos listados à direita precisam de tratamento. Clique numa linha para ver os inputs recomendados e as quantidades estimadas." eh="5748d316" />
+    <e k="sf_pda_need_n" v="Nitrogénio" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="Fósforo" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="Potássio" eh="3a4edc67" />
     <e k="sf_pda_need_ph" v="Ajustar pH" eh="0570e9d2" />
     <e k="sf_pda_need_weed" v="Herbicida" eh="1029736e" />
     <e k="sf_pda_need_pest" v="Inseticida" eh="5650eeef" />
     <e k="sf_pda_need_disease" v="Fungicida" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="MÃºltiplas" eh="a0bf169f" />
+    <e k="sf_pda_need_multiple" v="Múltiplas" eh="a0bf169f" />
     <e k="sf_pda_treatment_minor" v="Menor" eh="6fed0c37" />
     <!-- Field Detail Dialog (SoilFieldDetailDialog.lua) -->
     <e k="sf_detail_title" v="Detalhe do Campo" eh="03b5acd7" />
     <e k="sf_detail_close" v="Fechar" eh="d3d2e617" />
     <e k="sf_detail_field_label" v="Campo #" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="UrgÃªncia:" eh="9a83237c" />
+    <e k="sf_detail_urgency_label" v="Urgência:" eh="9a83237c" />
     <e k="sf_detail_section_nutrients" v="Nutrientes do Solo" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="PressÃ£o na Cultura" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="HistÃ³rico de Culturas" eh="54c27499" />
-    <e k="sf_detail_n_label" v="NitrogÃ©nio (N)" eh="25cee53b" />
-    <e k="sf_detail_p_label" v="FÃ³sforo (P)" eh="75cb5cd6" />
-    <e k="sf_detail_k_label" v="PotÃ¡ssio (K)" eh="39797137" />
-    <e k="sf_detail_ph_label" v="NÃ­vel de pH" eh="0c85daad" />
-    <e k="sf_detail_om_label" v="MatÃ©ria OrgÃ¢nica" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="PressÃ£o de Ervas Daninhas" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="PressÃ£o de Pragas" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="PressÃ£o de DoenÃ§as" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="Ãšltima Cultura" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="Estado da RotaÃ§Ã£o" eh="83f7f522" />
+    <e k="sf_detail_section_pressure" v="Pressão na Cultura" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="Histórico de Culturas" eh="54c27499" />
+    <e k="sf_detail_n_label" v="Nitrogénio (N)" eh="25cee53b" />
+    <e k="sf_detail_p_label" v="Fósforo (P)" eh="75cb5cd6" />
+    <e k="sf_detail_k_label" v="Potássio (K)" eh="39797137" />
+    <e k="sf_detail_ph_label" v="Nível de pH" eh="0c85daad" />
+    <e k="sf_detail_om_label" v="Matéria Orgânica" eh="6305f4bb" />
+    <e k="sf_detail_weed_label" v="Pressão de Ervas Daninhas" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="Pressão de Pragas" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="Pressão de Doenças" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="Última Cultura" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="Estado da Rotação" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -520,21 +520,21 @@
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
     <!-- Treatment Prescription Dialog (SoilTreatmentDialog.lua) -->
-    <e k="sf_treat_title" v="PrescriÃ§Ã£o de Tratamento" eh="0ccc3ee5" />
+    <e k="sf_treat_title" v="Prescrição de Tratamento" eh="0ccc3ee5" />
     <e k="sf_treat_section_soil" v="Melhoria do Solo" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="AplicaÃ§Ã£o de Nutrientes" eh="76521e8e" />
-    <e k="sf_treat_section_prot" v="ProteÃ§Ã£o da Cultura" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="Consulte a secÃ§Ã£o 'Produtos' da loja para fertilizantes especializados." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="Ideal - Nenhuma aÃ§Ã£o necessÃ¡ria." eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="Aplique CAL ou CAL LÃQUIDA para aumentar o pH." eh="d1420b97" />
+    <e k="sf_treat_section_fert" v="Aplicação de Nutrientes" eh="76521e8e" />
+    <e k="sf_treat_section_prot" v="Proteção da Cultura" eh="bd3fe9cd" />
+    <e k="sf_treat_hint" v="Consulte a secção 'Produtos' da loja para fertilizantes especializados." eh="540bff4d" />
+    <e k="sf_treat_action_optimal" v="Ideal - Nenhuma ação necessária." eh="4501a96b" />
+    <e k="sf_treat_action_lime" v="Aplique CAL ou CAL LÍQUIDA para aumentar o pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplique GESSO para baixar o pH / melhorar a estrutura." eh="4cb3f0dc" />
     <e k="sf_treat_action_om_low" v="Incorpore ESTRUME, COMPOSTO ou triture a palha." eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="Monitorizar. Manter entradas orgÃ¢nicas." eh="ae3af748" />
+    <e k="sf_treat_action_om_fair" v="Monitorizar. Manter entradas orgânicas." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Aplique UAN32, UREIA ou ANIDRA." eh="ebc225b0" />
     <e k="sf_treat_action_n_fair" v="Aplique AMS ou fertilizante STARTER." eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="Aplique MAP ou DAP (FÃ³sforo)." eh="ec2d9afa" />
+    <e k="sf_treat_action_p_poor" v="Aplique MAP ou DAP (Fósforo)." eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="Aplique POTASSA (PotÃ¡ssio)." eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="Aplique POTASSA (Potássio)." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
     <e k="sf_treat_action_weed" v="Aplique HERBICIDA imediatamente." eh="625551c5" />
     <e k="sf_treat_action_pest" v="Aplique INSETICIDA imediatamente." eh="f4db9a03" />
@@ -542,9 +542,9 @@
     <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="BÃ³nus de Leguminosa (+N)" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_bonus" v="Bónus de Leguminosa (+N)" eh="8ab86f6a" />
     <e k="sf_detail_rotation_fatigue" v="Fadiga (esgotamento x1.15)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="Dados indisponÃ­veis." eh="c6d95d5e" />
+    <e k="sf_detail_no_field" v="Dados indisponíveis." eh="c6d95d5e" />
     <e k="sf_detail_no_crop" v="Nenhum registado" eh="a4b5a996" />
 
     <!-- ======================================================
@@ -555,7 +555,7 @@
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Cobertura: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
-    <e k="sf_hud_compaction" v="CompactaÃ§Ã£o: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_compaction" v="Compactação: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
@@ -567,158 +567,158 @@
     <e k="sf_sprayer_auto_off" v="TAXA APL. AUTO: DESL [%s]" eh="848cc106" />
     <e k="sf_sprayer_target" v="Alvo:" eh="31d43504" />
     <e k="sf_sprayer_burn_guaranteed" v="RISCO QUEIMADURA: GARANTIDO" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="RISCO QUEIMADURA: POSSÃVEL" eh="25b251b6" />
+    <e k="sf_sprayer_burn_possible" v="RISCO QUEIMADURA: POSSÍVEL" eh="25b251b6" />
 
     <!-- ======================================================
-         NOTIFICAÃ‡Ã•ES
+         NOTIFICAÇÕES
          ====================================================== -->
-    <e k="sf_notify_welcome" v="Mod Solo e Fertilizante Ativo | Shift+O para abrir definiÃ§Ãµes | Digite 'soilfertility' para comandos" eh="d97e4139" />
-    <e k="sf_startup_dialog_version" v="O que hÃ¡ de novo nesta versÃ£o:" eh="0b25f5c2" />
+    <e k="sf_notify_welcome" v="Mod Solo e Fertilizante Ativo | Shift+O para abrir definições | Digite 'soilfertility' para comandos" eh="d97e4139" />
+    <e k="sf_startup_dialog_version" v="O que há de novo nesta versão:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Obrigado por usar o meu mod, significa muito para mim &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Encontrou um erro? Por favor, reporte no GitHub!" eh="728e2cf3" />
-    <e k="sf_startup_dialog_footer3" v="Boa agricultura e nÃ£o se esqueÃ§a:" eh="aa38e511" />
+    <e k="sf_startup_dialog_footer3" v="Boa agricultura e não se esqueça:" eh="aa38e511" />
     <e k="sf_startup_dialog_footer4" v="O seu solo lembra-se de tudo..." eh="1a3e5c35" />
-    <e k="sf_notify_init_delayed" v="Mod Solo: InicializaÃ§Ã£o de campo atrasada. Tentando mÃ©todo alternativo..." eh="f8bd28f8" />
-    <e k="sf_notify_init_success" v="Mod Solo: InicializaÃ§Ã£o de campo bem-sucedida!" eh="46214360" />
-    <e k="sf_notify_critical_title" v="Alerta de Cuidados CrÃ­ticos" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="Campo %d requer atenÃ§Ã£o imediata! UrgÃªncia: %d%%" eh="171246aa" />
-    <e k="sf_notify_treated_title" v="AtualizaÃ§Ã£o do Solo" eh="4633156e" />
+    <e k="sf_notify_init_delayed" v="Mod Solo: Inicialização de campo atrasada. Tentando método alternativo..." eh="f8bd28f8" />
+    <e k="sf_notify_init_success" v="Mod Solo: Inicialização de campo bem-sucedida!" eh="46214360" />
+    <e k="sf_notify_critical_title" v="Alerta de Cuidados Críticos" eh="3f981d0c" />
+    <e k="sf_notify_critical_body" v="Campo %d requer atenção imediata! Urgência: %d%%" eh="171246aa" />
+    <e k="sf_notify_treated_title" v="Atualização do Solo" eh="4633156e" />
     <e k="sf_notify_treated_body" v="Campo %d totalmente tratado com %s" eh="585aa9b7" />
     <e k="sf_notify_burn_title" v="Queimadura por Fertilizante" eh="ad8ed599" />
-    <e k="sf_notify_burn_body" v="Campo %d: danos por sobreaplicaÃ§Ã£o (pH %.1f)" eh="cb731ee3" />
-    <e k="sf_notify_sync_error" v="Mod Solo: detetado problema de sincronizaÃ§Ã£o de dados. Por favor reporte se persistir." eh="1a307946" />
+    <e k="sf_notify_burn_body" v="Campo %d: danos por sobreaplicação (pH %.1f)" eh="cb731ee3" />
+    <e k="sf_notify_sync_error" v="Mod Solo: detetado problema de sincronização de dados. Por favor reporte se persistir." eh="1a307946" />
 		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
 
     <!-- ======================================================
-         PAINEL DE DEFINIÃ‡Ã•ES - CATEGORIAS E CABEÃ‡ALHOS
+         PAINEL DE DEFINIÇÕES - CATEGORIAS E CABEÇALHOS
          ====================================================== -->
-    <e k="sf_panel_cat_sim" v="SimulaÃ§Ã£o" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="MecÃ¢nicas da quinta, dificuldade e ciclos de nutrientes" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="ExibiÃ§Ã£o e HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="AparÃªncia do HUD, tema de cores, posiÃ§Ã£o e tamanho da fonte" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="SobreposiÃ§Ã£o de Mapa" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="Camada de sobreposiÃ§Ã£o ativa mostrada no mapa PDA" eh="a5892aef" />
+    <e k="sf_panel_cat_sim" v="Simulação" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="Mecânicas da quinta, dificuldade e ciclos de nutrientes" eh="3c584cdb" />
+    <e k="sf_panel_cat_display" v="Exibição e HUD" eh="37b17394" />
+    <e k="sf_panel_cat_display_desc" v="Aparência do HUD, tema de cores, posição e tamanho da fonte" eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="Sobreposição de Mapa" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="Camada de sobreposição ativa mostrada no mapa PDA" eh="a5892aef" />
     <e k="sf_panel_hdr_core" v="Sistemas Principais" eh="44a497a5" />
     <e k="sf_panel_hdr_difficulty" v="Dificuldade" eh="7b29ca96" />
     <e k="sf_panel_hdr_environment" v="Ambiente" eh="0ba29c6a" />
     <e k="sf_panel_hdr_crop_stress" v="Stress da Cultura" eh="260167bb" />
     <e k="sf_panel_hdr_visibility" v="Visibilidade" eh="1729a56c" />
     <e k="sf_panel_hdr_hud_style" v="Estilo do HUD" eh="1d4a8cac" />
-    <e k="sf_panel_hdr_position" v="PosiÃ§Ã£o" eh="52f5e0bc" />
+    <e k="sf_panel_hdr_position" v="Posição" eh="52f5e0bc" />
     <e k="sf_panel_hdr_layer" v="Camada" eh="359b71e8" />
     <e k="sf_panel_hdr_performance" v="Desempenho" eh="9446a98a" />
     <e k="sf_panel_hdr_mod_ctrl" v="Controlo do Mod e Dificuldade" eh="ae2e88fb" />
     <e k="sf_panel_hdr_systems" v="Sistemas" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="AÃ§Ãµes e Ferramentas de Campo" eh="f64ba1c9" />
+    <e k="sf_panel_hdr_actions" v="Ações e Ferramentas de Campo" eh="f64ba1c9" />
 		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
 		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
 		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
 
     <!-- ======================================================
-         PAINEL DE DEFINIÃ‡Ã•ES - CHROME
+         PAINEL DE DEFINIÇÕES - CHROME
          ====================================================== -->
     <e k="sf_panel_admin_yes" v="Admin: SIM" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="Admin: NÃƒO" eh="a9394f7b" />
+    <e k="sf_panel_admin_no" v="Admin: NÃO" eh="a9394f7b" />
     <e k="sf_panel_multiplayer" v="Multijogador" eh="901a7320" />
     <e k="sf_panel_singleplayer" v="Um Jogador" eh="da602601" />
     <e k="sf_panel_btn_back" v="&lt; Voltar" eh="36cf3e1f" />
     <e k="sf_panel_btn_reset_cat" v="Redefinir Cat." eh="b66faa88" />
     <e k="sf_panel_btn_close_hint" v="SHIFT+O para fechar" eh="254406e3" />
-    <e k="sf_panel_select_category" v="Selecione uma categoria para configurar as definiÃ§Ãµes" eh="a277d257" />
+    <e k="sf_panel_select_category" v="Selecione uma categoria para configurar as definições" eh="a277d257" />
     <e k="sf_panel_btn_configure" v="Configurar >>" eh="a2cb3902" />
     <e k="sf_panel_btn_open" v="Abrir >>" eh="6624d17c" />
 
     <!-- ======================================================
-         PAINEL DE DEFINIÃ‡Ã•ES - DESCRIÃ‡Ã•ES DE DEFINIÃ‡Ã•ES
+         PAINEL DE DEFINIÇÕES - DESCRIÇÕES DE DEFINIÇÕES
          ====================================================== -->
     <e k="sf_desc_enabled" v="Ativar / desativar todo o mod" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="Registo extra para resoluÃ§Ã£o de problemas" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="ModelaÃ§Ã£o completa da fertilidade do solo" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="Monitorizar esgotamento e recuperaÃ§Ã£o de N/P/K" eh="6eff80b3" />
+    <e k="sf_desc_debugMode" v="Registo extra para resolução de problemas" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="Modelação completa da fertilidade do solo" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="Monitorizar esgotamento e recuperação de N/P/K" eh="6eff80b3" />
     <e k="sf_desc_fertilizerCosts" v="Custo real no jogo para fertilizantes" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="NotificaÃ§Ãµes de estado do solo no jogo" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="Mostrar a sobreposiÃ§Ã£o do HUD do solo" eh="fa8b9224" />
+    <e k="sf_desc_showNotifications" v="Notificações de estado do solo no jogo" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="Mostrar a sobreposição do HUD do solo" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="PosiÃ§Ã£o de ancoragem do HUD" eh="98c8bcea" />
+    <e k="sf_desc_hudPosition" v="Posição de ancoragem do HUD" eh="98c8bcea" />
     <e k="sf_desc_hudColorTheme" v="Paleta de cores para elementos do HUD" eh="97271907" />
     <e k="sf_desc_hudFontSize" v="Tamanho do texto do HUD" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="TransparÃªncia do fundo do HUD" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="MudanÃ§as de solo impulsionadas pela estaÃ§Ã£o" eh="f515f484" />
-    <e k="sf_desc_rainEffects" v="A chuva causa lixiviaÃ§Ã£o de nutrientes" eh="82fec75d" />
-    <e k="sf_desc_plowingBonus" v="BÃ³nus de arado para recuperaÃ§Ã£o do solo" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="O preparo liberta nutrientes dos resÃ­duos" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="Monitorizar e penalizar propagaÃ§Ã£o de ervas daninhas" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="Monitorizar infestaÃ§Ã£o de pragas de insetos" eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="Monitorizar doenÃ§as fÃºngicas das culturas" eh="0858395f" />
+    <e k="sf_desc_hudTransparency" v="Transparência do fundo do HUD" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="Mudanças de solo impulsionadas pela estação" eh="f515f484" />
+    <e k="sf_desc_rainEffects" v="A chuva causa lixiviação de nutrientes" eh="82fec75d" />
+    <e k="sf_desc_plowingBonus" v="Bónus de arado para recuperação do solo" eh="23522b97" />
+    <e k="sf_desc_residueIncorporation" v="O preparo liberta nutrientes dos resíduos" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="Monitorizar e penalizar propagação de ervas daninhas" eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="Monitorizar infestação de pragas de insetos" eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="Monitorizar doenças fúngicas das culturas" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
-    <e k="sf_desc_compactionEnabled" v="CompactaÃ§Ã£o do solo por veÃ­culos pesados" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="NÃ­vel de intensidade de drenagem de nutrientes" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="Velocidade de restauraÃ§Ã£o de nutrientes do fertilizante" eh="858d2b23" />
+    <e k="sf_desc_compactionEnabled" v="Compactação do solo por veículos pesados" eh="a7d3a795" />
+    <e k="sf_desc_difficulty" v="Nível de intensidade de drenagem de nutrientes" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="Velocidade de restauração de nutrientes do fertilizante" eh="858d2b23" />
     <e k="sf_desc_useImperialUnits" v="Usar unidades imperiais (toneladas/acre)" eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="Taxas de aplicaÃ§Ã£o de pulverizador inteligentes" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="BenefÃ­cios e penalidades de rotaÃ§Ã£o" eh="bb79b03a" />
+    <e k="sf_desc_autoRateControl" v="Taxas de aplicação de pulverizador inteligentes" eh="bb4e5880" />
+    <e k="sf_desc_cropRotation" v="Benefícios e penalidades de rotação" eh="bb79b03a" />
     <e k="sf_desc_activeMapLayer" v="Camada de nutrientes mostrada no mapa PDA" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="OrÃ§amento de pontos (Baixo=8k, MÃ©d=20k, Alto=40k)" eh="42503763" />
+    <e k="sf_desc_overlayDensity" v="Orçamento de pontos (Baixo=8k, Méd=20k, Alto=40k)" eh="42503763" />
     <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
     <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
 
     <!-- ======================================================
-         PAINEL DE DEFINIÃ‡Ã•ES - VALORES MULTI-OPÃ‡ÃƒO
+         PAINEL DE DEFINIÇÕES - VALORES MULTI-OPÇÃO
          ====================================================== -->
     <e k="sf_rr_1" v="Muito Lento (0,25x)" eh="b681a1b4" />
     <e k="sf_rr_2" v="Lento (0,5x)" eh="db69874d" />
     <e k="sf_rr_3" v="Normal (1,0x)" eh="930452c1" />
-    <e k="sf_rr_4" v="RÃ¡pido (1,5x)" eh="4c8ebfdb" />
-    <e k="sf_rr_5" v="Muito RÃ¡pido (2,0x)" eh="bd682dd5" />
+    <e k="sf_rr_4" v="Rápido (1,5x)" eh="4c8ebfdb" />
+    <e k="sf_rr_5" v="Muito Rápido (2,0x)" eh="bd682dd5" />
     <e k="sf_layer_1" v="Desligado" eh="d15305d7" />
-    <e k="sf_layer_2" v="NitrogÃ©nio" eh="1e9ef3ba" />
-    <e k="sf_layer_3" v="FÃ³sforo" eh="eb4f2688" />
-    <e k="sf_layer_4" v="PotÃ¡ssio" eh="3a4edc67" />
+    <e k="sf_layer_2" v="Nitrogénio" eh="1e9ef3ba" />
+    <e k="sf_layer_3" v="Fósforo" eh="eb4f2688" />
+    <e k="sf_layer_4" v="Potássio" eh="3a4edc67" />
     <e k="sf_layer_5" v="pH" eh="397dff20" />
-    <e k="sf_layer_6" v="Mat. OrgÃ¢nica" eh="d2e254bc" />
-    <e k="sf_layer_7" v="UrgÃªncia" eh="c94e3850" />
+    <e k="sf_layer_6" v="Mat. Orgânica" eh="d2e254bc" />
+    <e k="sf_layer_7" v="Urgência" eh="c94e3850" />
     <e k="sf_layer_8" v="Ervas Daninhas" eh="2b75024d" />
     <e k="sf_layer_9" v="Pragas" eh="8f2aee79" />
-    <e k="sf_layer_10" v="DoenÃ§a" eh="e7067a8c" />
-    <e k="sf_layer_11" v="CompactaÃ§Ã£o" eh="19cf3ee7" />
+    <e k="sf_layer_10" v="Doença" eh="e7067a8c" />
+    <e k="sf_layer_11" v="Compactação" eh="19cf3ee7" />
     <e k="sf_density_1" v="Baixo" eh="28d0edd0" />
-    <e k="sf_density_2" v="MÃ©dio" eh="87f8a6ab" />
+    <e k="sf_density_2" v="Médio" eh="87f8a6ab" />
     <e k="sf_density_3" v="Alto" eh="655d20c1" />
 
     <!-- ======================================================
-         PAINEL DE DEFINIÃ‡Ã•ES - ITENS DE AÃ‡ÃƒO ADMIN
+         PAINEL DE DEFINIÇÕES - ITENS DE AÇÃO ADMIN
          ====================================================== -->
     <e k="sf_admin_save_label" v="Guardar Dados do Solo" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="ForÃ§ar a gravaÃ§Ã£o de todos os dados do solo agora" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="Redefinir Todas as DefiniÃ§Ãµes" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="Restaurar todas as definiÃ§Ãµes para o padrÃ£o" eh="599b7454" />
+    <e k="sf_admin_save_desc" v="Forçar a gravação de todos os dados do solo agora" eh="f365613a" />
+    <e k="sf_admin_reset_label" v="Redefinir Todas as Definições" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="Restaurar todas as definições para o padrão" eh="599b7454" />
     
     <e k="sf_panel_hdr_field_tools" v="Ferramentas de Campo" eh="2b250a56" />
     <e k="sf_nav_field_tools_label" v="Ferramentas de Campo" eh="2b250a56" />
-    <e k="sf_nav_field_tools_desc" v="Abrir ferramentas especÃ­ficas para inspecionar e modificar estados de campo" eh="360db19b" />
+    <e k="sf_nav_field_tools_desc" v="Abrir ferramentas específicas para inspecionar e modificar estados de campo" eh="360db19b" />
     
-    <e k="sf_panel_hdr_vehicle_tools" v="Ferramentas de VeÃ­culo" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_label" v="Ferramentas de VeÃ­culo" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_desc" v="Abrir ferramentas especÃ­ficas para veÃ­culos e implementos ligados" eh="1a8b2100" />
-    <e k="sf_admin_drain_label" v="Esvaziar DepÃ³sitos do VeÃ­culo" eh="d216b101" />
+    <e k="sf_panel_hdr_vehicle_tools" v="Ferramentas de Veículo" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="Ferramentas de Veículo" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="Abrir ferramentas específicas para veículos e implementos ligados" eh="1a8b2100" />
+    <e k="sf_admin_drain_label" v="Esvaziar Depósitos do Veículo" eh="d216b101" />
     <e k="sf_admin_drain_desc" v="Esvaziar pulverizador + implementos (reembolso de 50%)" eh="5e048a34" />
     <e k="sf_admin_field_info_label" v="Info do Campo Atual" eh="5df500d6" />
-    <e k="sf_admin_field_info_desc" v="Dados do solo para o campo na sua posiÃ§Ã£o" eh="b7e2a72d" />
-    <e k="sf_admin_field_forecast_label" v="PrevisÃ£o do Campo" eh="1df41470" />
-    <e k="sf_admin_field_forecast_desc" v="PrevisÃ£o de rendimento para o campo na posiÃ§Ã£o" eh="67e56b9d" />
+    <e k="sf_admin_field_info_desc" v="Dados do solo para o campo na sua posição" eh="b7e2a72d" />
+    <e k="sf_admin_field_forecast_label" v="Previsão do Campo" eh="1df41470" />
+    <e k="sf_admin_field_forecast_desc" v="Previsão de rendimento para o campo na posição" eh="67e56b9d" />
     <e k="sf_admin_list_fields_label" v="Listar Todos os Campos" eh="efeb1b25" />
     <e k="sf_admin_list_fields_desc" v="Enviar todos os dados de solo de campos para o log do jogo" eh="c9fa812e" />
     <e k="sf_admin_field_set_state_label" v="Definir Estado do Campo" eh="5b0d7a31" />
     <e k="sf_admin_field_set_state_desc" v="Ajustar manualmente os valores de N, P, K, pH e OM para o campo atual" eh="a491e190" />
     <e k="sf_admin_field_recover_label" v="Recuperar Campo" eh="e1c82ff0" />
-    <e k="sf_admin_field_recover_desc" v="Redefinir o campo atual para os valores seguros padrÃ£o (corrigir erros)" eh="68b687a2" />
+    <e k="sf_admin_field_recover_desc" v="Redefinir o campo atual para os valores seguros padrão (corrigir erros)" eh="68b687a2" />
     <e k="sf_infobox_title" v="Nutrientes do Solo" eh="64377acf" />
-    <e k="sf_infobox_grade" v="ClassificaÃ§Ã£o do Solo" eh="65d1be5f" />
+    <e k="sf_infobox_grade" v="Classificação do Solo" eh="65d1be5f" />
     <e k="sf_infobox_needs" v="Necessidades" eh="94d6125d" />
     <e k="sf_infobox_fertilizer" v="Fertilizante" eh="cd248829" />
 
@@ -726,9 +726,9 @@
          FIELD INFO BOX (native FS25 FIELD INFO panel extension)
          ====================================================== -->
     <e k="sf_fieldinfo_box_title" v="Nutrientes do Solo" eh="64377acf" />
-    <e k="sf_fieldinfo_grade" v="ClassificaÃ§Ã£o do Solo" eh="65d1be5f" />
+    <e k="sf_fieldinfo_grade" v="Classificação do Solo" eh="65d1be5f" />
     <e k="sf_fieldinfo_yield" v="Rendimento" eh="97345487" />
-    <e k="sf_fieldinfo_rotation" v="RotaÃ§Ã£o" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_rotation" v="Rotação" eh="f1a42bd4" />
 		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
@@ -736,17 +736,17 @@
     <e k="sf_field" v="Campo" eh="6f16a5f8" />
     <e k="sf_no_field" v="Nenhum campo selecionado" eh="717ff56f" />
     <e k="sf_overall_Good" v="Boa" eh="0c6ad70b" />
-    <e k="sf_overall_Fair" v="RazoÃ¡vel" eh="f7f20cf0" />
+    <e k="sf_overall_Fair" v="Razoável" eh="f7f20cf0" />
     <e k="sf_overall_Poor" v="Fraca" eh="0e94d017" />
-    <e k="sf_cell_report" v="RelatÃ³rio de CÃ©lula" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="Sem dados de cÃ©lula" eh="dc41c753" />
-    <e k="sf_cell_no_data" v="Sem dados de solo nesta localizaÃ§Ã£o" eh="5dfa58aa" />
+    <e k="sf_cell_report" v="Relatório de Célula" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="Sem dados de célula" eh="dc41c753" />
+    <e k="sf_cell_no_data" v="Sem dados de solo nesta localização" eh="5dfa58aa" />
     <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
-    <e k="sf_cell" v="CÃ©lula" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="InspeÃ§Ã£o de CÃ©lula de Solo" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="Detalhes da CÃ©lula" eh="6fc5243e" />
+    <e k="sf_cell" v="Célula" eh="1a66ab62" />
+    <e k="sf_cell_dialog_title" v="Inspeção de Célula de Solo" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="Detalhes da Célula" eh="6fc5243e" />
     <e k="sf_cell_coord" v="Coordenadas" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="Clique no mapa para inspecionar uma cÃ©lula de solo" eh="fc9d240b" />
+    <e k="sf_cell_click_hint" v="Clique no mapa para inspecionar uma célula de solo" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
@@ -809,7 +809,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -824,7 +824,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -972,13 +972,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -1018,9 +1018,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1181,7 +1181,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
-    <e k="sf_unscouted" v="NÃ£o explorado" />
+    <e k="sf_unscouted" v="Não explorado" />
 <e k="sf_map_layer_organic_status" v="Organic Status" />
     
 <e k="sf_layer_12" v="Organic Status" />
@@ -1267,7 +1267,8 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
-<e k="sf_experimental_short" v="Experimental Systems" />
+
+    <e k="sf_experimental_short" v="Experimental Systems" />
     <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
     <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
@@ -1275,4 +1276,3 @@
 
 
 </l10n>
-

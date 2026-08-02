@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Bodem &amp; Meststoffen" eh="f31197fb" />
@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Opbrengst" eh="97345487" />
     <e k="sf_hud_estYield" v="Verw. opbrengst" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimaal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="Na de oogst Â· Bemesten" eh="634de6fe" />
+    <e k="sf_hud_post_harvest" v="Na de oogst · Bemesten" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Sleep: verplaats   Hoek: formaat   RMB/Shift+H: klaar" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: verplaats/formaat" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="Incompatibiliteit gedetecteerd" eh="89dbfc90" />
@@ -246,7 +246,7 @@
     <!-- Category 2: Getting Started -->
     <e k="helpLine_sf_gs_p1_title" v="Je eerste stappen" eh="bdd0e0a7" />
     <e k="helpLine_sf_gs_p1_hud_title" v="Open de HUD (J-toets)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="Druk op J om de live bodemoverlay in/uit te schakelen. Deze toont N, P, K, pH en OS voor het veld waarop je staat. De statuslabels Goed/Redelijk/Slecht vertellen je in Ã©Ã©n oogopslag wat aandacht nodig heeft." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="Druk op J om de live bodemoverlay in/uit te schakelen. Deze toont N, P, K, pH en OS voor het veld waarop je staat. De statuslabels Goed/Redelijk/Slecht vertellen je in één oogopslag wat aandacht nodig heeft." eh="53cef520" />
     <e k="helpLine_sf_gs_p1_report_title" v="Open het Bodemrapport (K-toets)" eh="e71446cd" />
     <e k="helpLine_sf_gs_p1_report_text" v="Druk op K om het volledige boerderijbodemrapport te openen. Elk veld wordt weergegeven met kleurgecodeerde voedingsstofstatus, gesorteerd op urgentie. Klik op de pijl bij een rij voor een gedetailleerde weergave met aanbevelingen." eh="9a0d32a6" />
 
@@ -273,7 +273,7 @@
     <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Schaal 0 tot 100" eh="2a16e8bc" />
     <e k="helpLine_sf_nu_p2_k_text" v="Cruciaal voor wortel- en knolgewassen. Aardappel en suikerbiet putten K zwaar uit bij elke oogst. Spoelt matig uit bij regen. Slecht: onder 20. Goed: boven 40. Verhogen met: kali (0-0-60), gier, digestaat of vloeibare meststof." eh="7230fee4" />
     <e k="helpLine_sf_nu_p2_ph_title" v="pH - Schaal 5,0 tot 7,5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="De meeste gewassen gedijen bij pH 6,5 tot 7,0. Regen verzuurt de bodem langzaam in de loop van de tijd. pH herstelt niet vanzelf - alleen kalk of vloeibare kalk verhoogt het. Slecht: onder 5,5. Breng kalk aan als de pH daalt vÃ³Ã³r de volgende aanplant." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="De meeste gewassen gedijen bij pH 6,5 tot 7,0. Regen verzuurt de bodem langzaam in de loop van de tijd. pH herstelt niet vanzelf - alleen kalk of vloeibare kalk verhoogt het. Slecht: onder 5,5. Breng kalk aan als de pH daalt vóór de volgende aanplant." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Organische stof" eh="6305f4bb" />
     <e k="helpLine_sf_nu_p3_om_title" v="Organische stof (OS) - Schaal 0 tot 10" eh="58f490f3" />
@@ -305,7 +305,7 @@
     <e k="helpLine_sf_hu_p1_toggle_title" v="HUD in-/uitschakelen (J-toets)" eh="402283ba" />
     <e k="helpLine_sf_hu_p1_toggle_text" v="Druk op J om de live bodemoverlay te tonen of te verbergen. Het detecteert het veld waarop je staat en toont N, P, K, pH en OS. Wanneer onkruid-, plaag- of ziekte-instellingen zijn ingeschakeld, verschijnen die rijen onderaan het paneel." eh="3dcb9bfe" />
     <e k="helpLine_sf_hu_p1_status_title" v="De status lezen" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="Elke voedingsstof toont Goed (geen actie nodig), Redelijk (overweeg binnenkort te behandelen) of Slecht (actie vereist - opbrengst wordt beÃ¯nvloed). Het algehele insigne in de titelbalk weerspiegelt de slechtste waarde over alle bijgehouden dimensies, inclusief onkruid, plaag en ziekte." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Elke voedingsstof toont Goed (geen actie nodig), Redelijk (overweeg binnenkort te behandelen) of Slecht (actie vereist - opbrengst wordt beïnvloed). Het algehele insigne in de titelbalk weerspiegelt de slechtste waarde over alle bijgehouden dimensies, inclusief onkruid, plaag en ziekte." eh="3b8c2c6e" />
 
     <e k="helpLine_sf_hu_p2_title" v="Drukfactoren op gewasbestand" eh="b4d35b30" />
     <e k="helpLine_sf_hu_p2_press_title" v="Onkruid, Plagen en Ziekten" eh="0a3fae00" />
@@ -521,7 +521,7 @@
     <!-- Treatment Prescription Dialog -->
     <e k="sf_treat_title" v="Behandelingsvoorschrift" eh="0ccc3ee5" />
     <e k="sf_treat_section_soil" v="Bodemverbetering" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="NutriÃ«ntentoepassing" eh="76521e8e" />
+    <e k="sf_treat_section_fert" v="Nutriëntentoepassing" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Gewasbescherming" eh="bd3fe9cd" />
     <e k="sf_treat_hint" v="Raadpleeg de sectie 'Producten' in de winkel voor gespecialiseerde meststoffen." eh="540bff4d" />
     <e k="sf_treat_action_optimal" v="Optimaal - Geen actie nodig." eh="4501a96b" />
@@ -644,8 +644,8 @@
     <e k="sf_desc_diseasePressure" v="Schimmelziekten bijhouden" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" eh="97cb48de" />
     <e k="sf_desc_compactionEnabled" v="Bodemverdichting door zware voertuigen" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="Intensiteitsniveau van nutriÃ«ntenafvoer" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="Snelheid van nutriÃ«ntenherstel door meststof" eh="858d2b23" />
+    <e k="sf_desc_difficulty" v="Intensiteitsniveau van nutriëntenafvoer" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="Snelheid van nutriëntenherstel door meststof" eh="858d2b23" />
     <e k="sf_desc_useImperialUnits" v="Imperiale eenheden gebruiken (US ton/acre)" eh="8ba3d81a" />
     <e k="sf_desc_autoRateControl" v="Slimme sproeierdosering" eh="bb4e5880" />
     <e k="sf_desc_cropRotation" v="Rotatievoordelen en -straffen" eh="bb79b03a" />
@@ -726,7 +726,7 @@
     <e k="sf_cell" v="Cel" eh="1a66ab62" />
     <e k="sf_cell_dialog_title" v="Bodemcel-inspectie" eh="7ce7fc03" />
     <e k="sf_cell_sidebar_header" v="Celdetails" eh="6fc5243e" />
-    <e k="sf_cell_coord" v="CoÃ¶rdinaten" eh="99171d3a" />
+    <e k="sf_cell_coord" v="Coördinaten" eh="99171d3a" />
     <e k="sf_cell_click_hint" v="Klik op de kaart om een bodemcel te inspecteren" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Slimme systemen" />
@@ -791,7 +791,7 @@
     <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="Vrije paneelindeling" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Slimme systeempanelen toestaan onafhankelijk te worden gepositioneerd in de bewerkingsmodus" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="Sleep elk paneel vrij via de Shift+H bewerkingsmodus. Klap panelen in met de âˆ’ knop in hun titelbalk." eh="7c60edfc" />
+    <e k="sf_desc_independentPanels" v="Sleep elk paneel vrij via de Shift+H bewerkingsmodus. Klap panelen in met de − knop in hun titelbalk." eh="7c60edfc" />
     <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="69091cec" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="da09523b" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="438cd61b" />
@@ -807,7 +807,7 @@
     <e k="sf_guide_p1_08" v="P   Fosfor           Langzame uitputting. Wortelgewassen." eh="651919e6" />
     <e k="sf_guide_p1_09" v="K   Kalium           Wortelgewassen putten dit zwaar uit." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="OS  Organische stof  Bouwt langzaam op over meerdere seizoenen." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="pH  Bodemzuurgraad.  Streefbereik: 6,5 â€“ 7,0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="pH  Bodemzuurgraad.  Streefbereik: 6,5 – 7,0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="STATUSNIVEAUS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="GOED (groen)   Op of boven het optimale doel van het gewas." eh="a081208f" />
     <e k="sf_guide_p1_14" v="Geen actie nodig dit seizoen." eh="58b36ac2" />
@@ -842,9 +842,9 @@
     <e k="sf_guide_p1_43" v="[EN] Scout = Shift+K, Treatment = Shift+T." eh="74a97e3a" />
     <e k="sf_guide_p1_44" v="[EN] Rebind any of them in Options &gt; Controls &gt; Mods." eh="a800a99e" />
     <e k="sf_guide_p2_01" v="DE VOEDINGSSTOFBALKEN" eh="ad76f0e9" />
-    <e k="sf_guide_p2_02" v="De HUD toont Ã©Ã©n balk per voedingsstof: N P K OS pH." eh="b84d3955" />
+    <e k="sf_guide_p2_02" v="De HUD toont één balk per voedingsstof: N P K OS pH." eh="b84d3955" />
     <e k="sf_guide_p2_03" v="Balk loopt van links (0) naar rechts (100 = maximum)." eh="fb617f3c" />
-    <e k="sf_guide_p2_04" v="Balkkleur toont de status in Ã©Ã©n oogopslag." eh="e07e4240" />
+    <e k="sf_guide_p2_04" v="Balkkleur toont de status in één oogopslag." eh="e07e4240" />
     <e k="sf_guide_p2_05" v="DE DRIE STREEPJEMARKERINGEN" eh="70556f5d" />
     <e k="sf_guide_p2_06" v="Elke balk heeft drie kleine verticale streepjemarkeringen." eh="65bb2211" />
     <e k="sf_guide_p2_07" v="[EN] ORANGE tick - Poor/Fair boundary." eh="5f9f1409" />
@@ -905,7 +905,7 @@
     <e k="sf_guide_p3_17" v="HET BEHANDELPLAN LEZEN" eh="ff6ee8e4" />
     <e k="sf_guide_p3_18" v="Prioriteitsscores wegen hoe ver onder het doel elke" eh="39d2360b" />
     <e k="sf_guide_p3_19" v="voedingsstof zit. Een veld dat rood staat op twee voedingsstoffen" eh="dc519211" />
-    <e k="sf_guide_p3_20" v="staat hoger dan Ã©Ã©n met een enkel redelijk niveau." eh="41d157db" />
+    <e k="sf_guide_p3_20" v="staat hoger dan één met een enkel redelijk niveau." eh="41d157db" />
     <e k="sf_guide_p3_21" v="CONTROLELIJST VOOR HET PLANTEN" eh="14b36869" />
     <e k="sf_guide_p3_22" v="[EN] 1. Check N level - depletes every harvest." eh="c5c2a681" />
     <e k="sf_guide_p3_23" v="Breng stikstof aan bij REDELIJK of SLECHT." eh="4c69f9f8" />
@@ -942,7 +942,7 @@
     <e k="sf_guide_p4_10" v="DAP            Hoog P + stikstofmengsel." eh="1674361e" />
     <e k="sf_guide_p4_11" v="Vloeibare MAP  Hoog P, snellere opname." eh="59782949" />
     <e k="sf_guide_p4_12" v="Vloeibare DAP  Hoog P + N, vloeibare vorm." eh="6eb70f1d" />
-    <e k="sf_guide_p4_13" v="Biogrondstoffen P + N + OS. EfficiÃ«nte multivoedinsstof." eh="7adb8104" />
+    <e k="sf_guide_p4_13" v="Biogrondstoffen P + N + OS. Efficiënte multivoedinsstof." eh="7adb8104" />
     <e k="sf_guide_p4_14" v="KALIUM (K) PRODUCTEN" eh="7a9f5cc7" />
     <e k="sf_guide_p4_15" v="Kali           Hoog K, vaste vorm." eh="cb71f3a0" />
     <e k="sf_guide_p4_16" v="Vloeibare kali Hoog K, vloeibaar. Snellere opname." eh="0c3d2ad4" />
@@ -955,17 +955,17 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="PH-CORRECTIE" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="Streefbereik: 6,5 â€“ 7,0 voor de meeste gewassen." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="Streefbereik: 6,5 – 7,0 voor de meeste gewassen." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="" eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="pH te LAAG (zuur, onder 6,5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="pH te HOOG (alkalisch, boven 7,5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="Laat 1â€“2 seizoenen toe voor volledige normalisatie." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="Laat 1–2 seizoenen toe voor volledige normalisatie." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="ORGANISCHE STOF (OS)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="Mest           Beste OS-opbouwer. Voegt ook N toe." eh="99834812" />
     <e k="sf_guide_p4_27" v="Compost        Matige OS, goed gebalanceerd." eh="d9b0e2f9" />
-    <e k="sf_guide_p4_28" v="Biogrondstoffen OS + N + P. Zeer efficiÃ«nt." eh="ba425a0e" />
+    <e k="sf_guide_p4_28" v="Biogrondstoffen OS + N + P. Zeer efficiënt." eh="ba425a0e" />
     <e k="sf_guide_p4_29" v="Digestaat      Licht OS-benefit." eh="73cd0835" />
     <e k="sf_guide_p4_30" v="Braak (kaal veld) herstelt OS langzaam in de loop van de tijd." eh="da732797" />
     <e k="sf_guide_p4_31" v="TOEPASSINGSTIPS" eh="180e4a50" />
@@ -1001,9 +1001,9 @@
     <e k="sf_guide_p5_22" v="MOET IK ELK SEIZOEN BEMESTEN?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="Stikstof: Ja, elk seizoen indien mogelijk." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="Het putt zwaar uit bij elke oogst." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="P en K: Eens per 2â€“3 seizoenen is doorgaans genoeg." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="P en K: Eens per 2–3 seizoenen is doorgaans genoeg." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="Organische OS: Langdurig. Eens per jaar mest toevoegen." eh="78827593" />
-    <e k="sf_guide_p5_27" v="pH: Alleen buiten het bereik van 6,5â€“7,0." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="pH: Alleen buiten het bereik van 6,5–7,0." eh="373553dc" />
     <e k="sf_guide_p5_28" v="HOE WERKEN DE SLIMME SENSORSYSTEMEN?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="Slimme sensor blokkeert individuele boomsecties wanneer" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="geen behoefte wordt gedetecteerd (geen plaag, ziekte of voedings-" eh="22de015a" />
@@ -1016,7 +1016,7 @@
     <e k="sf_guide_p5_37" v="Bodemgegevens zijn server-gezaghebbend." eh="e8c6a85e" />
     <e k="sf_guide_p5_38" v="Clients synchroniseren bij aansluiting. Instellingswijzigingen vereisen" eh="1d2473fd" />
     <e k="sf_guide_p5_39" v="beheerdersrechten in multiplayersessies." eh="a48c5146" />
-    <e k="sf_guide_p5_40" v="HOE BEÃNVLOEDT DE BODEM DE OPBRENGST?" eh="456d3c9f" />
+    <e k="sf_guide_p5_40" v="HOE BEÏNVLOEDT DE BODEM DE OPBRENGST?" eh="456d3c9f" />
     <e k="sf_guide_p5_41" v="[EN] GOOD soil: full yield - no penalty." eh="49e249c2" />
     <e k="sf_guide_p5_42" v="REDELIJKE bodem: ~5-15% opbrengstpenalty per voedingsstof." eh="bced6a1c" />
     <e k="sf_guide_p5_43" v="SLECHTE bodem: tot 40% penalty. Snel corrigeren." eh="244d5bf2" />
@@ -1250,7 +1250,8 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
-<e k="sf_experimental_short" v="Experimental Systems" />
+
+    <e k="sf_experimental_short" v="Experimental Systems" />
     <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
     <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
@@ -1258,4 +1259,3 @@
 
 
 </l10n>
-
