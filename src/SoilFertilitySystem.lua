@@ -3264,6 +3264,7 @@ function SoilFertilitySystem:_prePopulateZoneData(fieldId)
                 pestPressure = field.pestPressure or 0,
                 diseasePressure = field.diseasePressure or 0,
                 compaction = field.compaction or 0,
+                gx = cx, gz = cz,   -- [SF-19] grid coords (see pre-populate)
             }
         end
         return
@@ -3321,6 +3322,13 @@ function SoilFertilitySystem:_prePopulateZoneData(fieldId)
                         pestPressure = fPe,
                         diseasePressure = fD,
                         compaction = fC,
+                        -- [SF-19] GRID COORDS kept on the cell so the spatial
+                        -- pressure pass can recover world positions WITHOUT
+                        -- decoding the cell key (the key is not safely
+                        -- invertible for negative coordinates). Live grid
+                        -- arithmetic only.
+                        gx = cx2,
+                        gz = cz2,
                     }
                     count = count + 1
                 end
@@ -4398,6 +4406,16 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 
         -- Maintain the named active disease over the scalar pressure.
         self:_updateActiveDisease(fieldId, field, season, isRaining, currentDay)
+    end
+
+    -- [SF-19] VARIABLE PEST AND DISEASE PRESSURE: distribute the field-level
+    -- pressure onto the per-cell store with ORIGIN and SPREAD. Server-only
+    -- (the daily pass is server-authoritative), after the field aggregate is
+    -- settled. The field-level model is untouched; this adds only WHERE the
+    -- pressure lands and how it moves. Neutral when disabled or no cells.
+    if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED then
+        local poly = self:_getFieldPolyVerts(fieldId, field)
+        SpatialPressures:run(self, fieldId, field, currentDay, poly)
     end
 
     -- ── Burn warning countdown ───────────────────────────────────────────────
