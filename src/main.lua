@@ -65,6 +65,9 @@ source(modDirectory .. "src/YardLadder.lua")
 -- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
 -- subsystems; armed by SoilFertilitySystem after the value maps initialize.
 source(modDirectory .. "src/SpatialScouting.lua")
+-- SF-38 THE HANDFUL READ: the frozen payload contract the Read the Dirt panel
+-- renders. Pure assembly; the kneel (SF-37) calls it after its reveal write.
+source(modDirectory .. "src/HandfulRead.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
