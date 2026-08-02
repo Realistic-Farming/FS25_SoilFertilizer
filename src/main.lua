@@ -68,6 +68,10 @@ source(modDirectory .. "src/SpatialScouting.lua")
 -- SF-38 THE HANDFUL READ: the frozen payload contract the Read the Dirt panel
 -- renders. Pure assembly; the kneel (SF-37) calls it after its reveal write.
 source(modDirectory .. "src/HandfulRead.lua")
+-- SF-19 VARIABLE PEST AND DISEASE PRESSURE: spatial outbreak origin + spread.
+-- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
+-- daily pass.
+source(modDirectory .. "src/SpatialPressures.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
