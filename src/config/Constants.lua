@@ -1413,10 +1413,22 @@ SoilConstants.DISEASE_DEFS = {
     -- way. Its presence is also the flag that the factor applies at all; ordinary diseases
     -- carry no requiresModes and nothing about them changes.
     --
-    -- COUNT IS ONE, and that is a flagged substitution: the hybrid count is one of Arissani's
-    -- four open CD-10 feel calls. The brief authorises building the stated default and saying
-    -- so. Adding more rows later is purely additive -- new ids, same mechanism.
-    resistant_complex  = { cat="resistant_complex", sci="Multi-resistant complex",   cool=false, wet=true,  season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
+    -- COUNT IS SEVEN (ruled 2026-08-01): one resistant complex per crop family, plus the
+    -- default kept for unfamilied and modded crops. The rows differ ONLY in `sci`, the
+    -- display key, and the yield band; `cat` and `requiresModes` stay IDENTICAL on all
+    -- seven so the ruled control factor and isHybrid hold on every one.
+    --
+    -- The yield band is where families are allowed to differ because that is an agronomic
+    -- statement rather than a dial: a root crop's blight complex genuinely costs more than
+    -- a forage stand's leaf complex. The shipped 0.25 to 0.45 sits in the middle where it
+    -- should; root sits above it and forage below it, per the brief's own example.
+    resistant_complex          = { cat="resistant_complex", sci="Multi-resistant complex",       cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
+    resistant_complex_cereal   = { cat="resistant_complex", sci="Multi-resistant cereal complex",  cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_maize    = { cat="resistant_complex", sci="Multi-resistant maize complex",   cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_oilseed  = { cat="resistant_complex", sci="Multi-resistant oilseed complex", cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
+    resistant_complex_root     = { cat="resistant_complex", sci="Multi-resistant root complex",    cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.30, yMax=0.55, requiresModes=2 },
+    resistant_complex_pulse    = { cat="resistant_complex", sci="Multi-resistant pulse complex",   cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_forage   = { cat="resistant_complex", sci="Multi-resistant forage complex",  cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.15, yMax=0.30, requiresModes=2 },
 }
 
 -- Crop → its candidate diseases (lowercased internal fruit name → list of DISEASE_DEFS ids).
@@ -1472,6 +1484,45 @@ SoilConstants.DISEASE_REGISTRY = {
     peanuts     = { "early_leaf_spot", "late_leaf_spot", "peanut_rust", "pod_rot" },
 }
 SoilConstants.DISEASE_REGISTRY_DEFAULT = { "leaf_spot", "rust", "powdery_mildew" }
+
+-- Crop family for the CD-10 hybrid count ruling (2026-08-01): ONE resistant complex per
+-- crop family, the default kept for everything else. The family is the right unit because
+-- resistance breeds in a FIELD, across a rotation, through the disease pool a rotation
+-- shares. Mint and cotton are deliberately absent: a herb and a fibre crop are each their
+-- own world, and they fall to the default rather than to a bucket invented for them.
+-- Lowercase crop key -> family name; every DISEASE_REGISTRY key resolves here or to the
+-- default (the drift test in the CD-10 hybrid-family bench asserts exactly that).
+--
+-- NOTE THE NAME IS HYBRID_CROP_FAMILY, NOT CROP_FAMILY: that name is already a blessed
+-- rotation-planner contract at line ~1698 (getCropFamily, read by DiseaseSystem.rotationMult)
+-- with a DIFFERENT taxonomy (wheat=grain, maize=grain, mint=forage, cotton=other, peanut=root).
+-- The hybrid brief named its table CROP_FAMILY but that slot is taken; a second assignment
+-- of the same name would silently overwrite the rotation planner's table and change how it
+-- scores crop chains. This table carries the hybrid ruling's OWN taxonomy (cereal, maize,
+-- oilseed, root, pulse, forage) and is read only by HybridStrains.strainForPair.
+SoilConstants.HYBRID_CROP_FAMILY = {
+    -- cereal
+    wheat      = "cereal", barley = "cereal", oat = "cereal", rye = "cereal",
+    spelt      = "cereal", triticale = "cereal", greenrye = "cereal",
+    buckwheat  = "cereal", millet = "cereal",
+    -- maize
+    maize      = "maize", sorghum = "maize",
+    -- oilseed
+    canola     = "oilseed", sunflower = "oilseed", mustard = "oilseed",
+    linseed    = "oilseed", flax = "oilseed", poppy = "oilseed",
+    sesame     = "oilseed", safflower = "oilseed",
+    -- root
+    potato     = "root", sugarbeet = "root", taro = "root",
+    -- pulse
+    soybean    = "pulse", pea = "pulse", peas = "pulse", driedpeas = "pulse",
+    chickpea   = "pulse", chickpeas = "pulse", lentil = "pulse", lentils = "pulse",
+    greenbean  = "pulse", bean = "pulse", beans = "pulse", pintobean = "pulse",
+    pintobeans = "pulse", peanut = "pulse", peanuts = "pulse",
+    -- forage
+    alfalfa    = "forage", luzerne = "forage", clover = "forage",
+    whiteclover = "forage", redclover = "forage", grass = "forage",
+    meadow     = "forage", miscanthus = "forage",
+}
 
 -- Effectiveness fallback for any (chemical, category) pair not explicitly listed.
 SoilConstants.DISEASE_DEFAULT_EFFECTIVENESS = 0.25
