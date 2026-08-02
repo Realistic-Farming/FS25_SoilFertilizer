@@ -16,6 +16,7 @@
 - Baseline date: 2026-07-08 (updated 2026-07-25)
 
 ## Near-term (next release cycle)
+- [x] Spatial scouting walked mask (SF-26): on-foot walking reveals the trouble's pattern where you walked, per farm, fading after N in-game days. Server-authoritative sampling, per-farm storage in its own home, Time Guard aging, StateLedger persistence, NetworkSync delivery (each payload entry carries its own truth), and a read-time compose on the disease map that never touches the shared mirrors. Built on `development`; PR to main pending. Reading surface and the kneel/handful members build on top.
 - [ ] Adopt NetworkSync v2 sub-module delta: add `onWriteDelta`/`onReadDelta` to SoilNetworkSyncBridge so only changed fields sync instead of the whole field map.
 - [!] 255 fill type cap (issue #755): Giants Engine hard cap, not our bug. 25 custom fill types + base game + DLC can exceed the limit. Design options: ship as-is, consolidate fill types, or degrade gracefully. See ecosystem ledger 2026-07-26 for recommendation (hybrid approach).
 - [~] Two-machine MP verification of all four bedrock bridges: reframed 2026-07-15 - the live two-machine test is out of scope (no dedicated-server budget). A single-machine network round-trip harness now covers serialization desync for every event/bridge; single-host smoke on top. Registration already confirmed in-game.
