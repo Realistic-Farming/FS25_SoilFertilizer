@@ -23,7 +23,7 @@
 
 ## Mid-term (this season)
 - [ ] ProStaff fertilizer discount bridge (silent, pcall-guarded read of `getFertilizerDiscount`) once scheduled. Not built today by decision (Point 8).
-- [ ] Grass drying / rotting (issue #749): feature request for hay drying and bale/loose grass rotting. On ROADMAP as mid-term. Design path: extend SF moisture system (moisture threshold for drying, moisture + time for rotting). See ecosystem ledger 2026-07-26. Needs Arissani design approval before build.
+- [x] Grass drying / rotting (issue #749): shipped as the ground-material family (SF-43 to SF-49, IDs SF-42 superseded). MATERIAL DOWN records how long material lies out, WHAT THE SKY DID carries wetness and the water record, THE HAY BET converts by condition, STRAW DOWN covers the combine swath, THE YARD LADDER handles bale condition. Built on `development` and merged to main in PR #767. Reading surface (SF-48, Wizard lane) still deferred by ruling.
 - [ ] Decide whether `getFieldInfo` should expose FieldSentry state (isSleeping/isMeadow/contractMaskActive) instead of companions reading `g_currentMission.fieldSentry` directly.
 - [ ] Emit a clean disease-at-harvest signal (pathogen id + pressure) for an external diseased-food/mycotoxin model. Data already retained on fieldData at harvest; expose it deliberately.
 
