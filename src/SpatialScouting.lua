@@ -452,3 +452,76 @@ function SpatialScouting:onUpdate(currentDay)
     end
     return sampled
 end
+
+--- [SF-37] THE KNEEL: the active, precise reveal verb. One cell written to the
+--- walked mask, server-side, exactly like a walk but explicit. THE KNOWLEDGE
+--- SPLIT holds: only the disease-knowledge cell is written; soil facts are the
+--- player's own ground and need no reveal.
+---
+--- LAW 4: the client key press is a REQUEST, never a reported cell. The request
+--- carries the spot (x, z); the server resolves the FARM from the requesting
+--- player's record (via the connection, supplied by the event's run), samples
+--- the truth server-side at that spot, and writes. The farm is never taken from
+--- the wire.
+---@param connection table|nil the client connection (nil on the host/SP)
+---@param x number
+---@param z number
+---@param currentDay number
+---@return boolean written
+function SpatialScouting:revealCellAt(connection, x, z, currentDay)
+    if g_server == nil or not self:isArmed() then return false end
+    if x == nil or z == nil then return false end
+
+    -- Resolve the requesting player from the connection (LAW 4). On the host or
+    -- in SP the connection is nil and the local player is authoritative.
+    local player = nil
+    if connection ~= nil and g_currentMission and g_currentMission.playerSystem
+       and type(g_currentMission.playerSystem.getPlayerByConnection) == "function" then
+        local ok, p = pcall(function()
+            return g_currentMission.playerSystem:getPlayerByConnection(connection)
+        end)
+        if ok then player = p end
+    end
+    if player == nil then player = g_localPlayer end
+    if player == nil then return false end
+
+    -- The field is resolved SERVER-SIDE at the spot, never from the wire.
+    local fieldId
+    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
+        local ok, f = pcall(function() return g_fieldManager:getFieldAtWorldPosition(x, z) end)
+        if ok and f and f.farmland and f.farmland.id then fieldId = f.farmland.id end
+    end
+    if not fieldId and g_farmlandManager and type(g_farmlandManager.getFarmlandAtWorldPosition) == "function" then
+        local ok, land = pcall(function() return g_farmlandManager:getFarmlandAtWorldPosition(x, z) end)
+        if ok and land and land.id and land.id > 0 then fieldId = land.id end
+    end
+    if not fieldId then return false end   -- not on a field: nothing to reveal
+
+    -- Farm from the player record, exactly as the walk sampler does.
+    local farmId = player.farmId
+    if farmId == nil or farmId <= 0 then
+        if g_currentMission and type(g_currentMission.getFarmId) == "function" then
+            farmId = g_currentMission:getFarmId()
+        end
+    end
+    if farmId == nil or farmId <= 0 then farmId = 1 end
+
+    -- Sample the truth server-side at kneel time (LAW 3: sampled at reveal time).
+    local truth = 0
+    if self.valueMaps then
+        local v = self.valueMaps:readValueAtWorld("diseasePressure", x, z)
+        if v ~= nil then truth = v end
+    end
+    if truth <= 0 then
+        local field = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+            and g_SoilFertilityManager.soilSystem.fieldData and g_SoilFertilityManager.soilSystem.fieldData[fieldId]
+        if field and field.diseasePressure then truth = field.diseasePressure end
+    end
+
+    local key = SpatialScouting.cellKey(x, z)
+    local ok = self:noteWalk(farmId, fieldId, key, currentDay, truth, x, z)
+    if ok and SoilScoutingBridge and SoilScoutingBridge.markDirty then
+        SoilScoutingBridge.markDirty()
+    end
+    return ok
+end

@@ -1361,6 +1361,55 @@ function SoilScoutFieldEvent:run(connection)
     g_SoilFertilityManager.soilSystem:scoutField(self.fieldId)
 end
 
+-- ==========================================================================
+-- SoilKneelEvent (client -> server): a client knelt at a spot (the shipped
+-- Shift+K scout action with a resolved position). SF-37 THE KNEEL. The client
+-- key press is a REQUEST, never a reported cell (LAW 4): the event carries only
+-- the spot x,z; the server resolves the farm from the requesting player's
+-- record via the connection, samples the disease truth server-side, and writes
+-- ONE cell onto the walked mask (the exact same LAW 3 entry shape a walk fills
+-- passively). Nothing else changes: no field scout fee, no diseaseDiscovered
+-- write, no other state.
+-- ==========================================================================
+SoilKneelEvent = {}
+SoilKneelEvent_mt = Class(SoilKneelEvent, Event)
+
+InitEventClass(SoilKneelEvent, "SoilKneelEvent")
+
+function SoilKneelEvent.emptyNew()
+    return Event.new(SoilKneelEvent_mt)
+end
+
+function SoilKneelEvent.new(x, z)
+    local self = SoilKneelEvent.emptyNew()
+    self.x = x
+    self.z = z
+    return self
+end
+
+function SoilKneelEvent:readStream(streamId, connection)
+    self.x = streamReadFloat32(streamId)
+    self.z = streamReadFloat32(streamId)
+    self:run(connection)
+end
+
+function SoilKneelEvent:writeStream(streamId, _connection)
+    streamWriteFloat32(streamId, self.x or 0)
+    streamWriteFloat32(streamId, self.z or 0)
+end
+
+function SoilKneelEvent:run(connection)
+    -- SERVER ONLY: the kneel write is server-authoritative.
+    if g_server == nil then return end
+    local scouting = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.spatialScouting
+    if scouting == nil or not scouting:isArmed() then return end
+    local day = g_currentMission and g_currentMission.environment
+        and g_currentMission.environment.currentDay
+    if day == nil then return end
+    scouting:revealCellAt(connection, self.x, self.z, day)
+end
+
 -- ========================================
 -- HELPER FUNCTIONS
 -- ========================================
