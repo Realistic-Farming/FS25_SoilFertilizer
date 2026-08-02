@@ -47,7 +47,8 @@ end
 
 -- ── The hybrid row itself ────────────────────────────────────────────────────────────
 do
-  local id = H.strainForPair("3", "11")
+  local f = newField({ lastCrop = "wheat" })
+  local id = H.strainForPair(f, "3", "11")
   T.ok("a hybrid strain row exists", id ~= nil)
   local def = SoilConstants.DISEASE_DEFS[id]
   T.ok("it carries requiresModes (the control factor's hook)", def.requiresModes == 2)
@@ -230,7 +231,9 @@ end
 
 -- Clearing a hybrid arms the cooldown; clearing an ordinary disease does not.
 do
-  local f = newField({ activeDisease = H.strainForPair("3", "11"), diseasePressure = 0 })
+  local f = newField({ lastCrop = "wheat" })
+  f.activeDisease = H.strainForPair(f, "3", "11")
+  f.diseasePressure = 0
   local sys = newSys(f)
   sys:_updateActiveDisease(1, f, 1, false, 500)
   T.ok("clear: the hybrid name is dropped", f.activeDisease == nil)
@@ -243,7 +246,7 @@ end
 
 -- ── THE RULED CONTROL FACTOR, worked cases ───────────────────────────────────────────
 do
-  local id = H.strainForPair("3", "11")
+  local id = H.strainForPair(newField({ lastCrop = "wheat" }), "3", "11")
   local fresh = newField({ resistance = {} })
   local burned3 = newField({ resistance = { ["3"] = 10 } })
 
@@ -274,7 +277,7 @@ end
 -- And the factor actually reaches the spray path: against a hybrid, a two-mode blend must
 -- out-treat a single jug. That asymmetry IS the reason the factor was ruled.
 do
-  local id = H.strainForPair("3", "11")
+  local id = H.strainForPair(newField({ lastCrop = "wheat" }), "3", "11")
 
   local single = newField({ activeDisease = id, diseasePressure = 80 })
   local sysA = newSys(single)
@@ -297,4 +300,64 @@ do
   T.ok("a two-mode blend does substantially MORE -- the hybrid's whole reason",
        totalB > totalA * 1.5)
   T.near("...and the margin is the ruled factor, 1.0x against 0.5x", totalB / totalA, 2.0, 0.1)
+end
+
+-- ── CD-10 HYBRID FAMILY (2026-08-01 count ruling): one complex per crop family ──────
+do
+  -- BAR 1, the drift test: every DISEASE_REGISTRY key resolves to a family or explicitly
+  -- to the default. Fails the day someone adds a crop and forgets the table.
+  local fam = SoilConstants.HYBRID_CROP_FAMILY
+  local explicitDefault = { mint = true, cotton = true }
+  local total = 0
+  for crop in pairs(SoilConstants.DISEASE_REGISTRY) do
+    total = total + 1
+    T.ok("registry key resolves: " .. crop, fam[crop] ~= nil or explicitDefault[crop] == true)
+  end
+  T.ok("the registry was actually iterated", total > 0)
+
+  -- No invented family: every CROP_FAMILY value is one of the six ruled families.
+  local ruled = { cereal = true, maize = true, oilseed = true, root = true, pulse = true, forage = true }
+  for crop, family in pairs(fam) do
+    T.ok("family is ruled, not invented: " .. crop, ruled[family] == true)
+  end
+
+  -- BAR 2: deterministic. A hundred calls on one field return the same id.
+  local wheat = newField({ lastCrop = "wheat" })
+  local expected = H.strainForPair(wheat, "3", "11")
+  local same = true
+  for _ = 1, 100 do
+    if H.strainForPair(wheat, "3", "11") ~= expected then same = false break end
+  end
+  T.ok("strainForPair is deterministic across 100 calls", same)
+  T.eq("a wheat field breeds the cereal complex", expected, "resistant_complex_cereal")
+  T.eq("a potato field breeds the root complex", H.strainForPair(newField({ lastCrop = "potato" }), "3", "11"), "resistant_complex_root")
+  T.eq("a grass field breeds the forage complex", H.strainForPair(newField({ lastCrop = "grass" }), "3", "11"), "resistant_complex_forage")
+
+  -- BAR 3: an unfamilied crop returns the default, never nil.
+  T.eq("a modded crop falls to the default", H.strainForPair(newField({ lastCrop = "strawberry" }), "3", "11"), "resistant_complex")
+  T.eq("a nil-crop field falls to the default", H.strainForPair(newField({}), "3", "11"), "resistant_complex")
+  T.eq("a nil field falls to the default", H.strainForPair(nil, "3", "11"), "resistant_complex")
+
+  -- BAR 4: all seven ids carry requiresModes = 2 and cat = "resistant_complex".
+  local ids = {
+    "resistant_complex", "resistant_complex_cereal", "resistant_complex_maize",
+    "resistant_complex_oilseed", "resistant_complex_root", "resistant_complex_pulse",
+    "resistant_complex_forage",
+  }
+  for _, id in ipairs(ids) do
+    local def = SoilConstants.DISEASE_DEFS[id]
+    T.ok("row exists: " .. id, def ~= nil)
+    T.eq("requiresModes is 2 on " .. id, def.requiresModes, 2)
+    T.eq("cat is resistant_complex on " .. id, def.cat, "resistant_complex")
+    T.ok("isHybrid recognises " .. id, H.isHybrid(id))
+  end
+
+  -- BAR 5: a field that bred resistant_complex under 2.5 still reads as a hybrid.
+  T.ok("the 2.5 default id still reads as a hybrid", H.isHybrid("resistant_complex"))
+
+  -- The family is reached through the real onset pre-pass.
+  local sys = newSys(newField({ resistance = { ["3"] = 10, ["11"] = 10 }, lastCrop = "wheat" }))
+  local f = sys.fieldData[1]
+  sys:_updateActiveDisease(1, f, 1, false, 100)
+  T.eq("onset on wheat breeds the cereal complex", f.activeDisease, "resistant_complex_cereal")
 end

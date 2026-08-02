@@ -14,6 +14,8 @@
 - [ ] None open from the audit. Track new ones from GitHub issues here.
 
 ## Features / enhancements
+- [x] Ground-material family (SF-43 to SF-49, from #749): age layer + object ledger (SF-43), wetness + water record (SF-49), hay conversion + tedder hook (SF-44), straw swath (SF-45), bale condition ladder (SF-46). Merged to main in PR #767. Material birth wired at HookManager.lua:2749 and :3100. Reading surface (SF-48, Wizard) deferred by ruling.
+- [x] CD-9 disease resistance family: F66 per-pass meter fix, CD-11 resistance data contract (four sync paths), CD-12 tank mix (28 blends), F68 durability dial (BUILD_RATE_NATURAL 0.25), saturated-save relief, CD-10 hybrid strains. Merged to main in PR #772. CD-11 readout (Wizard) still pending.
 - [x] Refined per-pixel value-map engine (WizardlyPayload's #736): adopted and folded into development (cd871bd7). Four merge-review fixes landed with it: migration coord fix, skipped-day batch-tail simulation, undiscovered-disease display-map gate, and the SoilMapOverlay semantic review. Per-cell spray now paints the value maps instead of the field average (#735). Our simulation kept on top of the storage engine.
 - [x] Organic certification multiplayer sync (81d7f9d8): state serialized on every field path, fixing the co-op client wipe. Backed by an ephemeral 3-state status-map layer painted at cert changes (a54098f1) and surfaced as map layer 12. Answers the ecosystem organic-cert MP-sync open call.
 - [x] No-till organic-matter dynamics (#738, f0f5aab8): per-tillage oxidation gradient + fenced no-till daily credit; the flat OM_BOOST retired.

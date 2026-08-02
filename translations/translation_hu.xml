@@ -1232,6 +1232,13 @@
     <e k="sf_blend_propiconazole_sulfur_title" v="Propiconazole + Sulfur" />
     <e k="sf_blend_propiconazole_tebuconazole_title" v="Propiconazole + Tebuconazole" />
     <e k="sf_blend_sulfur_tebuconazole_title" v="Sulfur + Tebuconazole" />
+    <e k="sf_dis_resistant_complex" v="[EN] Multi-resistant complex" />
+    <e k="sf_dis_resistant_complex_cereal" v="[EN] Multi-resistant cereal complex" />
+    <e k="sf_dis_resistant_complex_maize" v="[EN] Multi-resistant maize complex" />
+    <e k="sf_dis_resistant_complex_oilseed" v="[EN] Multi-resistant oilseed complex" />
+    <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
+    <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
+    <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
 </elements>
 
 

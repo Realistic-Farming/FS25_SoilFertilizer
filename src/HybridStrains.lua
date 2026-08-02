@@ -139,15 +139,27 @@ function HybridStrains.isHybrid(diseaseId)
     return def ~= nil and def.requiresModes ~= nil
 end
 
---- The hybrid id a qualifying pair breeds. One row ships today (a flagged substitution --
---- the count is one of Arissani's open feel calls), so every pair maps to it. When more
---- rows land this is the only function that has to learn how to choose between them.
+--- The hybrid id a qualifying pair breeds. ONE resistant complex per crop family (the
+--- 2026-08-01 count ruling): resolve the field's current crop to its family and return
+--- resistant_complex_<family>; with no family, return the default resistant_complex.
+---
+--- THE EXPLICIT LOOKUP REPLACES THE OLD pairs() SCAN, and that replacement is a defect
+--- fix filed as F94. The scan was exact while exactly one row qualified and a coin toss
+--- at seven: Lua guarantees no pairs() iteration order, and two processes can iterate
+--- the same table differently, so a dedicated server and a joining client could pick
+--- DIFFERENT strains from identical data with nothing raised on either side. The lookup
+--- removes the non-determinism by construction and is cheaper than the scan.
+---@param field table
+---@param _m1 string
+---@param _m2 string
 ---@return string|nil
-function HybridStrains.strainForPair(_m1, _m2)
-    for id, def in pairs(SoilConstants.DISEASE_DEFS) do
-        if def.requiresModes ~= nil then return id end
+function HybridStrains.strainForPair(field, _m1, _m2)
+    local crop = field and field.lastCrop
+    if type(crop) == "string" and crop ~= "" then
+        local family = SoilConstants.HYBRID_CROP_FAMILY[string.lower(crop)]
+        if family ~= nil then return "resistant_complex_" .. family end
     end
-    return nil
+    return "resistant_complex"
 end
 
 --- THE PRE-PASS. Returns a hybrid disease id when this field should breed one, else nil.
@@ -164,7 +176,7 @@ function HybridStrains.selectOnset(field, currentDay)
     if HybridStrains.isInCooldown(field, currentDay) then return nil end
     local m1, m2 = HybridStrains.selectPair(field)
     if not m1 then return nil end
-    local id = HybridStrains.strainForPair(m1, m2)
+    local id = HybridStrains.strainForPair(field, m1, m2)
     if not id then return nil end
     return id, m1, m2
 end
