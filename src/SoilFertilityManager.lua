@@ -135,6 +135,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Guide dialog registered")
         end
 
+        -- Release gate dialog (opened from the version/changelog dialog)
+        if SoilReleaseDialog and g_gui then
+            SoilReleaseDialog.register(modDirectory)
+            SoilLogger.info("Soil Release dialog registered")
+        end
+
         -- Overlay help dialog (4th sidebar button on soil map)
         if SoilOverlayHelpDialog and g_gui then
             SoilOverlayHelpDialog.register(modDirectory)

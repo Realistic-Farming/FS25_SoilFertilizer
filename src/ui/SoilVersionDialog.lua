@@ -262,6 +262,13 @@ function SoilVersionDialog:onClickGuide()
     end
 end
 
+function SoilVersionDialog:onClickRelease()
+    g_gui:closeDialogByName("SoilVersionDialog")
+    if SoilReleaseDialog then
+        SoilReleaseDialog.show()
+    end
+end
+
 function SoilVersionDialog:onClickDontShowAgain()
     if g_SoilFertilityManager and self._version then
         g_SoilFertilityManager.lastSeenVersion = self._version

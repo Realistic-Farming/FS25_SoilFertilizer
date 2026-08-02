@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    Soil & Fertilizer - Release Gate Dialog
+    Shows which systems are STABLE vs experimental-LOCKED.
+    Content is built dynamically in Lua (BoxLayout + TextElements).
+    Controller: SoilReleaseDialog (src/ui/SoilReleaseDialog.lua)
+-->
+<GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
+  <GuiElement profile="newLayer"/>
+  <Bitmap profile="dialogFullscreenBg" id="dialogBg"/>
+
+  <GuiElement profile="sfRls_bg" id="dialogElement">
+
+    <ThreePartBitmap profile="fs25_dialogBgMiddle"/>
+    <ThreePartBitmap profile="fs25_dialogBgTop"/>
+    <ThreePartBitmap profile="fs25_dialogBgBottom"/>
+
+    <GuiElement profile="fs25_dialogContentContainer">
+
+      <!-- Title -->
+      <Text profile="fs25_dialogTitle" id="sfRls_title"
+            text="Release Gate" position="0px -28px"/>
+
+      <!-- Content box - Lua adds TextElements here dynamically -->
+      <GuiElement profile="sfRls_contentPanel" position="0px -66px">
+        <Bitmap profile="sfRls_contentBg" position="0px 0px"/>
+        <BoxLayout profile="sfRls_contentBox" id="sfRls_contentBox" position="0px -8px"/>
+      </GuiElement>
+
+    </GuiElement>
+
+    <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonOK" text="$l10n_sf_detail_close" onClick="onClickOk"/>
+    </BoxLayout>
+
+  </GuiElement>
+
+  <GUIProfiles>
+
+    <Profile name="sfRls_bg" extends="fs25_dialogBg">
+      <size value="720px 560px"/>
+    </Profile>
+
+    <!-- Content panel container -->
+    <Profile name="sfRls_contentPanel" extends="emptyPanel" with="anchorTopCenter">
+      <size value="660px 400px"/>
+    </Profile>
+    <Profile name="sfRls_contentBg" extends="baseReference" with="anchorTopCenter">
+      <size value="660px 400px"/>
+      <imageColor value="0.08 0.08 0.12 0.9"/>
+    </Profile>
+
+    <!-- Vertical BoxLayout - Lua adds TextElements here dynamically -->
+    <Profile name="sfRls_contentBox" extends="emptyPanel" with="anchorTopCenter">
+      <size value="620px 380px"/>
+      <flowDirection value="vertical"/>
+      <useFullVisibility value="false"/>
+      <alignmentX value="left"/>
+      <elementSpacing value="4px"/>
+    </Profile>
+
+    <!-- Section bar (=== Release gate ===): gold, bold -->
+    <Profile name="sfRls_section" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="620px 20px"/>
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="1 0.8 0.2 1"/>
+    </Profile>
+
+    <!-- Sub-header (Experimental systems: ... / Not yet released:): dim gold -->
+    <Profile name="sfRls_header" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="620px 18px"/>
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="0.85 0.75 0.30 0.95"/>
+    </Profile>
+
+    <!-- Body line: white -->
+    <Profile name="sfRls_body" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="620px 17px"/>
+      <textSize value="12px"/>
+      <textColor value="0.88 0.88 0.88 1"/>
+    </Profile>
+
+  </GUIProfiles>
+</GUI>

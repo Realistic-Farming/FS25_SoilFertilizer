@@ -1223,5 +1223,6 @@
     <e k="sf_experimental_long" v="Turn on experimental systems that are not released yet." />
     <e k="sf_desc_experimentalSystems" v="Off by default. Independent of difficulty. Use at your own risk." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
+<e k="sf_release_dialog_title" v="Release Gate" />
 </elements>
 </l10n>
