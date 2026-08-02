@@ -41,6 +41,10 @@ source(modDirectory .. "src/config/SoilBlends.lua")
 source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
+-- Release gate: which systems are released (STABLE) vs experimental (LOCKED).
+-- Orthogonal to difficulty; the lock set comes from Arissani's certification
+-- (2026-08-02). Loaded before Settings and SoilSettingsGUI, which consult it.
+source(modDirectory .. "src/ReleaseGate.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
 

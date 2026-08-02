@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
-    <e k="sf_section" v="土壌と肥料" eh="f31197fb" />
-    <e k="sf_enabled_short" v="Modを有効にする" eh="cf7fea13" />
-    <e k="sf_enabled_long" v="土壌・肥料Modの有効/無効を切り替えます" eh="a891399a" />
-    <e k="sf_debug_short" v="デバッグモード" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="デバッグモード（詳細ログ）の有効/無効を切り替えます" eh="f6f20240" />
-    <e k="sf_seasonal_effects_short" v="季節の影響" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="土壌養分への季節的な影響（春の成長促進、秋の停滞）を有効/無効にします" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="雨の影響" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="土壌への雨の影響（養分の流出、pHの変化）を有効/無効にします" eh="de3b14b9" />
+    <e k="sf_section" v="åœŸå£Œã¨è‚¥æ–™" eh="f31197fb" />
+    <e k="sf_enabled_short" v="Modã‚’æœ‰åŠ¹ã«ã™ã‚‹" eh="cf7fea13" />
+    <e k="sf_enabled_long" v="åœŸå£Œãƒ»è‚¥æ–™Modã®æœ‰åŠ¹/ç„¡åŠ¹ã‚’åˆ‡ã‚Šæ›¿ãˆã¾ã™" eh="a891399a" />
+    <e k="sf_debug_short" v="ãƒ‡ãƒãƒƒã‚°ãƒ¢ãƒ¼ãƒ‰" eh="2ddcdc76" />
+    <e k="sf_debug_long" v="ãƒ‡ãƒãƒƒã‚°ãƒ¢ãƒ¼ãƒ‰ï¼ˆè©³ç´°ãƒ­ã‚°ï¼‰ã®æœ‰åŠ¹/ç„¡åŠ¹ã‚’åˆ‡ã‚Šæ›¿ãˆã¾ã™" eh="f6f20240" />
+    <e k="sf_seasonal_effects_short" v="å­£ç¯€ã®å½±éŸ¿" eh="c16ea608" />
+    <e k="sf_seasonal_effects_long" v="åœŸå£Œé¤Šåˆ†ã¸ã®å­£ç¯€çš„ãªå½±éŸ¿ï¼ˆæ˜¥ã®æˆé•·ä¿ƒé€²ã€ç§‹ã®åœæ»žï¼‰ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="é›¨ã®å½±éŸ¿" eh="a2a1758b" />
+    <e k="sf_rain_effects_long" v="åœŸå£Œã¸ã®é›¨ã®å½±éŸ¿ï¼ˆé¤Šåˆ†ã®æµå‡ºã€pHã®å¤‰åŒ–ï¼‰ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="de3b14b9" />
     <e k="sf_ws_short" v="World Climate" />
     <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
     <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
@@ -22,102 +22,102 @@
     <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
     <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
     <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
-    <e k="sf_plowing_bonus_short" v="耕耘ボーナス" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="土壌肥沃度に対する耕耘のメリット（窒素と有機物の改善）を有効/無効にします" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="残渣のすき込み" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="耕耘器具（カルチベーター、プラウ、ストリップティル、直送ドリル）によって土壌に練り込まれた作物残渣からの養分放出を有効/無効にします" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="雑草圧" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="動的な雑草の成長と収量への影響を有効/無効にします" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="害虫圧" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="昆虫や害虫の発生システムを有効/無効にします" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="病害圧" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="菌類や作物の病害システムを有効/無効にします" eh="9080edbc" />
-    <e k="sf_compaction_short" v="土壌の踏み固め" eh="68734a56" />
-    <e k="sf_compaction_long" v="重量車両による土壌の踏み固めシステムを有効/無効にします" eh="a0995ec5" />
-    <e k="sf_fertility_short" v="肥沃度システム" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="動的な土壌肥沃度システムを有効/無効にします" eh="ea074366" />
-    <e k="sf_nutrients_short" v="養分サイクル" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="現実的な養分の枯渇と補充を有効/無効にします" eh="dbe9c8ff" />
-    <e k="sf_difficulty_short" v="難易度" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="難易度を設定します：簡易、リアル、ハードコア" eh="cfb758a4" />
-    <e k="sf_diff_1" v="簡易" eh="1fbb1e39" />
-    <e k="sf_diff_2" v="リアル" eh="408c999f" />
-    <e k="sf_diff_3" v="ハードコア" eh="1c800aa9" />
-    <e k="sf_fertilizer_cost_short" v="肥料コスト" eh="6870d88b" />
-    <e k="sf_fertilizer_cost_long" v="現実的な肥料購入コストを有効/無効にします" eh="12b03fbb" />
-    <e k="sf_notifications_short" v="通知" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="土壌と肥料に関する通知を有効/無効にします" eh="9a872f8f" />
-    <e k="sf_show_hud_short" v="HUDを表示" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="土壌情報HUDオーバーレイを表示/非表示にします（F8で一時的に切替）" eh="4e2e11b6" />
+    <e k="sf_plowing_bonus_short" v="è€•è€˜ãƒœãƒ¼ãƒŠã‚¹" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="åœŸå£Œè‚¥æ²ƒåº¦ã«å¯¾ã™ã‚‹è€•è€˜ã®ãƒ¡ãƒªãƒƒãƒˆï¼ˆçª’ç´ ã¨æœ‰æ©Ÿç‰©ã®æ”¹å–„ï¼‰ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="fe701c1c" />
+    <e k="sf_residue_incorporation_short" v="æ®‹æ¸£ã®ã™ãè¾¼ã¿" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="è€•è€˜å™¨å…·ï¼ˆã‚«ãƒ«ãƒãƒ™ãƒ¼ã‚¿ãƒ¼ã€ãƒ—ãƒ©ã‚¦ã€ã‚¹ãƒˆãƒªãƒƒãƒ—ãƒ†ã‚£ãƒ«ã€ç›´é€ãƒ‰ãƒªãƒ«ï¼‰ã«ã‚ˆã£ã¦åœŸå£Œã«ç·´ã‚Šè¾¼ã¾ã‚ŒãŸä½œç‰©æ®‹æ¸£ã‹ã‚‰ã®é¤Šåˆ†æ”¾å‡ºã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="é›‘è‰åœ§" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="å‹•çš„ãªé›‘è‰ã®æˆé•·ã¨åŽé‡ã¸ã®å½±éŸ¿ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="å®³è™«åœ§" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="æ˜†è™«ã‚„å®³è™«ã®ç™ºç”Ÿã‚·ã‚¹ãƒ†ãƒ ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="ç—…å®³åœ§" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="èŒé¡žã‚„ä½œç‰©ã®ç—…å®³ã‚·ã‚¹ãƒ†ãƒ ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="9080edbc" />
+    <e k="sf_compaction_short" v="åœŸå£Œã®è¸ã¿å›ºã‚" eh="68734a56" />
+    <e k="sf_compaction_long" v="é‡é‡è»Šä¸¡ã«ã‚ˆã‚‹åœŸå£Œã®è¸ã¿å›ºã‚ã‚·ã‚¹ãƒ†ãƒ ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="a0995ec5" />
+    <e k="sf_fertility_short" v="è‚¥æ²ƒåº¦ã‚·ã‚¹ãƒ†ãƒ " eh="f7e27d58" />
+    <e k="sf_fertility_long" v="å‹•çš„ãªåœŸå£Œè‚¥æ²ƒåº¦ã‚·ã‚¹ãƒ†ãƒ ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="ea074366" />
+    <e k="sf_nutrients_short" v="é¤Šåˆ†ã‚µã‚¤ã‚¯ãƒ«" eh="ffab595d" />
+    <e k="sf_nutrients_long" v="ç¾å®Ÿçš„ãªé¤Šåˆ†ã®æž¯æ¸‡ã¨è£œå……ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="dbe9c8ff" />
+    <e k="sf_difficulty_short" v="é›£æ˜“åº¦" eh="7b29ca96" />
+    <e k="sf_difficulty_long" v="é›£æ˜“åº¦ã‚’è¨­å®šã—ã¾ã™ï¼šç°¡æ˜“ã€ãƒªã‚¢ãƒ«ã€ãƒãƒ¼ãƒ‰ã‚³ã‚¢" eh="cfb758a4" />
+    <e k="sf_diff_1" v="ç°¡æ˜“" eh="1fbb1e39" />
+    <e k="sf_diff_2" v="ãƒªã‚¢ãƒ«" eh="408c999f" />
+    <e k="sf_diff_3" v="ãƒãƒ¼ãƒ‰ã‚³ã‚¢" eh="1c800aa9" />
+    <e k="sf_fertilizer_cost_short" v="è‚¥æ–™ã‚³ã‚¹ãƒˆ" eh="6870d88b" />
+    <e k="sf_fertilizer_cost_long" v="ç¾å®Ÿçš„ãªè‚¥æ–™è³¼å…¥ã‚³ã‚¹ãƒˆã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="12b03fbb" />
+    <e k="sf_notifications_short" v="é€šçŸ¥" eh="a274f4d4" />
+    <e k="sf_notifications_long" v="åœŸå£Œã¨è‚¥æ–™ã«é–¢ã™ã‚‹é€šçŸ¥ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™" eh="9a872f8f" />
+    <e k="sf_show_hud_short" v="HUDã‚’è¡¨ç¤º" eh="c94fd4d7" />
+    <e k="sf_show_hud_long" v="åœŸå£Œæƒ…å ±HUDã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ã‚’è¡¨ç¤º/éžè¡¨ç¤ºã«ã—ã¾ã™ï¼ˆF8ã§ä¸€æ™‚çš„ã«åˆ‡æ›¿ï¼‰" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="[EN] Show/hide the sprayer nutrient info panel when driving a sprayer" eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
-    <e k="sf_hud_position_short" v="HUDの位置" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="土壌情報HUDを画面のどこに表示するか選択します" eh="d7b9c109" />
-    <e k="sf_hud_pos_1" v="右上" eh="5f9f6784" />
-    <e k="sf_hud_pos_2" v="左上" eh="ac71274a" />
-    <e k="sf_hud_pos_3" v="右下" eh="4d297f5d" />
-    <e k="sf_hud_pos_4" v="左下" eh="7eb55425" />
-    <e k="sf_hud_pos_5" v="中央右" eh="d7afdc5a" />
-    <e k="sf_hud_pos_6" v="カスタム" eh="90589c47" />
-    <e k="sf_hud_color_theme_short" v="HUDカラーテーマ" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="土壌情報表示の配色を選択します" eh="3218bca6" />
-    <e k="sf_hud_color_1" v="グリーン" eh="d382816a" />
-    <e k="sf_hud_color_2" v="ブルー" eh="9594eec9" />
-    <e k="sf_hud_color_3" v="アンバー" eh="88068e33" />
-    <e k="sf_hud_color_4" v="モノ" eh="5d9b47bd" />
-		<e k="sf_diff_short" v="難易度" eh="7b29ca96" />
-		<e k="sf_diff_long" v="土壌管理の難易度レベル" eh="d6f4560c" />
-    <e k="sf_rr_short" v="補充率" eh="b363b336" />
-    <e k="sf_rr_long" v="肥料がフィールドの養分を回復する速さ（0.25x 極めて遅い 〜 2.0x 極めて速い）" eh="afe78a6d" />
+    <e k="sf_hud_position_short" v="HUDã®ä½ç½®" eh="5ac371f2" />
+    <e k="sf_hud_position_long" v="åœŸå£Œæƒ…å ±HUDã‚’ç”»é¢ã®ã©ã“ã«è¡¨ç¤ºã™ã‚‹ã‹é¸æŠžã—ã¾ã™" eh="d7b9c109" />
+    <e k="sf_hud_pos_1" v="å³ä¸Š" eh="5f9f6784" />
+    <e k="sf_hud_pos_2" v="å·¦ä¸Š" eh="ac71274a" />
+    <e k="sf_hud_pos_3" v="å³ä¸‹" eh="4d297f5d" />
+    <e k="sf_hud_pos_4" v="å·¦ä¸‹" eh="7eb55425" />
+    <e k="sf_hud_pos_5" v="ä¸­å¤®å³" eh="d7afdc5a" />
+    <e k="sf_hud_pos_6" v="ã‚«ã‚¹ã‚¿ãƒ " eh="90589c47" />
+    <e k="sf_hud_color_theme_short" v="HUDã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒž" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="åœŸå£Œæƒ…å ±è¡¨ç¤ºã®é…è‰²ã‚’é¸æŠžã—ã¾ã™" eh="3218bca6" />
+    <e k="sf_hud_color_1" v="ã‚°ãƒªãƒ¼ãƒ³" eh="d382816a" />
+    <e k="sf_hud_color_2" v="ãƒ–ãƒ«ãƒ¼" eh="9594eec9" />
+    <e k="sf_hud_color_3" v="ã‚¢ãƒ³ãƒãƒ¼" eh="88068e33" />
+    <e k="sf_hud_color_4" v="ãƒ¢ãƒŽ" eh="5d9b47bd" />
+		<e k="sf_diff_short" v="é›£æ˜“åº¦" eh="7b29ca96" />
+		<e k="sf_diff_long" v="åœŸå£Œç®¡ç†ã®é›£æ˜“åº¦ãƒ¬ãƒ™ãƒ«" eh="d6f4560c" />
+    <e k="sf_rr_short" v="è£œå……çŽ‡" eh="b363b336" />
+    <e k="sf_rr_long" v="è‚¥æ–™ãŒãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®é¤Šåˆ†ã‚’å›žå¾©ã™ã‚‹é€Ÿã•ï¼ˆ0.25x æ¥µã‚ã¦é…ã„ ã€œ 2.0x æ¥µã‚ã¦é€Ÿã„ï¼‰" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
     <e k="sf_dm_2" v="[EN] Temperate" />
     <e k="sf_dm_3" v="[EN] Humid" />
     <e k="sf_dm_4" v="[EN] Wet" />
-    <e k="sf_auto_rate_short" v="自動レート制御" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="圃場の状態に基づいて肥料散布量を自動調整します" eh="a9ca9f6b" />
-    <e k="sf_hud_theme_1" v="グリーン" eh="d382816a" />
-    <e k="sf_hud_theme_2" v="ブルー" eh="9594eec9" />
-    <e k="sf_hud_theme_3" v="アンバー" eh="88068e33" />
-    <e k="sf_hud_theme_4" v="モノ" eh="5d9b47bd" />
-    <e k="sf_hud_font_size_short" v="HUDフォントサイズ" eh="fd6ca64a" />
-    <e k="sf_hud_font_size_long" v="読みやすさを向上させるためにテキストサイズを調整します" eh="c338854f" />
-    <e k="sf_hud_font_1" v="小" eh="2660064e" />
-    <e k="sf_hud_font_2" v="中" eh="87f8a6ab" />
-    <e k="sf_hud_font_3" v="大" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="HUD透明度" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="背景の透明度を設定します（透明 〜 不透明）" eh="152e390a" />
-    <e k="sf_hud_trans_1" v="透明" eh="dc30bc0c" />
-    <e k="sf_hud_trans_2" v="明" eh="9914a0ce" />
-    <e k="sf_hud_trans_3" v="中" eh="87f8a6ab" />
-    <e k="sf_hud_trans_4" v="暗" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="不透明" eh="e41480b6" />
-    <e k="sf_use_imperial_short" v="ヤード・ポンド法" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="散布量を gal/ac および lb/ac で表示します（オフの場合は L/ha および kg/ha）" eh="17efa489" />
-    <e k="sf_active_map_layer_short" v="アクティブなマップレイヤー" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="PDAマップにオーバーレイ表示される養分レイヤー" eh="d7755cc8" />
-    <e k="sf_overlay_density_short" v="マップの詳細度" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="PDA土壌オーバーレイのサンプルポイント予算。低 = FPS向上、高 = 大規模マップでの網羅性向上。" eh="89215ce5" />
+    <e k="sf_auto_rate_short" v="è‡ªå‹•ãƒ¬ãƒ¼ãƒˆåˆ¶å¾¡" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="åœƒå ´ã®çŠ¶æ…‹ã«åŸºã¥ã„ã¦è‚¥æ–™æ•£å¸ƒé‡ã‚’è‡ªå‹•èª¿æ•´ã—ã¾ã™" eh="a9ca9f6b" />
+    <e k="sf_hud_theme_1" v="ã‚°ãƒªãƒ¼ãƒ³" eh="d382816a" />
+    <e k="sf_hud_theme_2" v="ãƒ–ãƒ«ãƒ¼" eh="9594eec9" />
+    <e k="sf_hud_theme_3" v="ã‚¢ãƒ³ãƒãƒ¼" eh="88068e33" />
+    <e k="sf_hud_theme_4" v="ãƒ¢ãƒŽ" eh="5d9b47bd" />
+    <e k="sf_hud_font_size_short" v="HUDãƒ•ã‚©ãƒ³ãƒˆã‚µã‚¤ã‚º" eh="fd6ca64a" />
+    <e k="sf_hud_font_size_long" v="èª­ã¿ã‚„ã™ã•ã‚’å‘ä¸Šã•ã›ã‚‹ãŸã‚ã«ãƒ†ã‚­ã‚¹ãƒˆã‚µã‚¤ã‚ºã‚’èª¿æ•´ã—ã¾ã™" eh="c338854f" />
+    <e k="sf_hud_font_1" v="å°" eh="2660064e" />
+    <e k="sf_hud_font_2" v="ä¸­" eh="87f8a6ab" />
+    <e k="sf_hud_font_3" v="å¤§" eh="3a69b34c" />
+    <e k="sf_hud_transparency_short" v="HUDé€æ˜Žåº¦" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="èƒŒæ™¯ã®é€æ˜Žåº¦ã‚’è¨­å®šã—ã¾ã™ï¼ˆé€æ˜Ž ã€œ ä¸é€æ˜Žï¼‰" eh="152e390a" />
+    <e k="sf_hud_trans_1" v="é€æ˜Ž" eh="dc30bc0c" />
+    <e k="sf_hud_trans_2" v="æ˜Ž" eh="9914a0ce" />
+    <e k="sf_hud_trans_3" v="ä¸­" eh="87f8a6ab" />
+    <e k="sf_hud_trans_4" v="æš—" eh="a18366b2" />
+    <e k="sf_hud_trans_5" v="ä¸é€æ˜Ž" eh="e41480b6" />
+    <e k="sf_use_imperial_short" v="ãƒ¤ãƒ¼ãƒ‰ãƒ»ãƒãƒ³ãƒ‰æ³•" eh="ff2701ad" />
+    <e k="sf_use_imperial_long" v="æ•£å¸ƒé‡ã‚’ gal/ac ãŠã‚ˆã³ lb/ac ã§è¡¨ç¤ºã—ã¾ã™ï¼ˆã‚ªãƒ•ã®å ´åˆã¯ L/ha ãŠã‚ˆã³ kg/haï¼‰" eh="17efa489" />
+    <e k="sf_active_map_layer_short" v="ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ãªãƒžãƒƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="1861765f" />
+    <e k="sf_active_map_layer_long" v="PDAãƒžãƒƒãƒ—ã«ã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤è¡¨ç¤ºã•ã‚Œã‚‹é¤Šåˆ†ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="d7755cc8" />
+    <e k="sf_overlay_density_short" v="ãƒžãƒƒãƒ—ã®è©³ç´°åº¦" eh="a525859a" />
+    <e k="sf_overlay_density_long" v="PDAåœŸå£Œã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ã®ã‚µãƒ³ãƒ—ãƒ«ãƒã‚¤ãƒ³ãƒˆäºˆç®—ã€‚ä½Ž = FPSå‘ä¸Šã€é«˜ = å¤§è¦æ¨¡ãƒžãƒƒãƒ—ã§ã®ç¶²ç¾…æ€§å‘ä¸Šã€‚" eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
     <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
     <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
-    <e k="input_SF_OPEN_SETTINGS" v="土壌設定を開く" eh="2e31c0dd" />
-    <e k="sf_reset" v="土壌設定をリセット" eh="467bc2f5" />
-    <e k="input_SF_TOGGLE_HUD" v="土壌HUDの切替" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="HUDドラッグモード" eh="cb2eb762" />
-    <e k="input_SF_SOIL_REPORT" v="土壌レポート" eh="c33180ef" />
-    <e k="input_SF_TOGGLE_CELL_MAP" v="土壌セルマップの切替" eh="3a7e9b9d" />
-    <e k="input_SF_RATE_UP" v="肥料レートを上げる" eh="6e601ef5" />
-    <e k="input_SF_RATE_DOWN" v="肥料レートを下げる" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="自動レート切替" eh="a8642cf0" />
-    <e k="input_SF_CYCLE_MAP_LAYER" v="土壌マップレイヤーの巡回" eh="8e4a716c" />
-    <e k="input_SF_SOIL_PDA" v="土壌PDAを開く" eh="7d70f7b4" />
+    <e k="input_SF_OPEN_SETTINGS" v="åœŸå£Œè¨­å®šã‚’é–‹ã" eh="2e31c0dd" />
+    <e k="sf_reset" v="åœŸå£Œè¨­å®šã‚’ãƒªã‚»ãƒƒãƒˆ" eh="467bc2f5" />
+    <e k="input_SF_TOGGLE_HUD" v="åœŸå£ŒHUDã®åˆ‡æ›¿" eh="f0224a10" />
+    <e k="input_SF_HUD_DRAG" v="HUDãƒ‰ãƒ©ãƒƒã‚°ãƒ¢ãƒ¼ãƒ‰" eh="cb2eb762" />
+    <e k="input_SF_SOIL_REPORT" v="åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆ" eh="c33180ef" />
+    <e k="input_SF_TOGGLE_CELL_MAP" v="åœŸå£Œã‚»ãƒ«ãƒžãƒƒãƒ—ã®åˆ‡æ›¿" eh="3a7e9b9d" />
+    <e k="input_SF_RATE_UP" v="è‚¥æ–™ãƒ¬ãƒ¼ãƒˆã‚’ä¸Šã’ã‚‹" eh="6e601ef5" />
+    <e k="input_SF_RATE_DOWN" v="è‚¥æ–™ãƒ¬ãƒ¼ãƒˆã‚’ä¸‹ã’ã‚‹" eh="30712026" />
+    <e k="input_SF_TOGGLE_AUTO" v="è‡ªå‹•ãƒ¬ãƒ¼ãƒˆåˆ‡æ›¿" eh="a8642cf0" />
+    <e k="input_SF_CYCLE_MAP_LAYER" v="åœŸå£Œãƒžãƒƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®å·¡å›ž" eh="8e4a716c" />
+    <e k="input_SF_SOIL_PDA" v="åœŸå£ŒPDAã‚’é–‹ã" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
@@ -126,218 +126,218 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_uan32_title" v="UAN 32 肥料 (N)" eh="90913bb8" />
-    <e k="sf_uan28_title" v="UAN 28 肥料 (N)" eh="9d902cd7" />
-    <e k="sf_anhydrous_title" v="無水アンモニア (N)" eh="3fc85c02" />
-    <e k="sf_starter_title" v="スターター肥料 10-34-0 (P)" eh="8c1a1ddc" />
-    <e k="sf_urea_title" v="尿素 46-0-0 (N)" eh="659b3097" />
-    <e k="sf_an_title" v="硝酸アンモニウム 34.5-0-0 (N)" eh="29f6ee93" />
-    <e k="sf_ams_title" v="硫酸アンモニウム 21-0-0 (N)" eh="033d1845" />
-    <e k="sf_map_title" v="MAP 肥料 11-52-0 (P)" eh="31aa2534" />
-    <e k="sf_dap_title" v="DAP 肥料 18-46-0 (P)" eh="5030a80a" />
-    <e k="sf_potash_title" v="塩化カリ 0-0-60 (K)" eh="8db6c54c" />
+    <e k="sf_uan32_title" v="UAN 32 è‚¥æ–™ (N)" eh="90913bb8" />
+    <e k="sf_uan28_title" v="UAN 28 è‚¥æ–™ (N)" eh="9d902cd7" />
+    <e k="sf_anhydrous_title" v="ç„¡æ°´ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¢ (N)" eh="3fc85c02" />
+    <e k="sf_starter_title" v="ã‚¹ã‚¿ãƒ¼ã‚¿ãƒ¼è‚¥æ–™ 10-34-0 (P)" eh="8c1a1ddc" />
+    <e k="sf_urea_title" v="å°¿ç´  46-0-0 (N)" eh="659b3097" />
+    <e k="sf_an_title" v="ç¡é…¸ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¦ãƒ  34.5-0-0 (N)" eh="29f6ee93" />
+    <e k="sf_ams_title" v="ç¡«é…¸ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¦ãƒ  21-0-0 (N)" eh="033d1845" />
+    <e k="sf_map_title" v="MAP è‚¥æ–™ 11-52-0 (P)" eh="31aa2534" />
+    <e k="sf_dap_title" v="DAP è‚¥æ–™ 18-46-0 (P)" eh="5030a80a" />
+    <e k="sf_potash_title" v="å¡©åŒ–ã‚«ãƒª 0-0-60 (K)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="液体尿素 (N)" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="液体硫酸アンモニウム (N)" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="液体 MAP (P)" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="液体 DAP (P)" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="液体塩化カリ (K)" eh="72ac9fd3" />
-    <e k="sf_insecticide_title" v="殺虫剤" eh="5650eeef" />
-    <e k="sf_fungicide_title" v="殺菌剤" eh="e8512698" />
+    <e k="sf_liquid_urea_title" v="æ¶²ä½“å°¿ç´  (N)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="æ¶²ä½“ç¡«é…¸ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¦ãƒ  (N)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="æ¶²ä½“ MAP (P)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="æ¶²ä½“ DAP (P)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="æ¶²ä½“å¡©åŒ–ã‚«ãƒª (K)" eh="72ac9fd3" />
+    <e k="sf_insecticide_title" v="æ®ºè™«å‰¤" eh="5650eeef" />
+    <e k="sf_fungicide_title" v="æ®ºèŒå‰¤" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
-    <e k="sf_bigBag_anhydrous_name" v="IBC 無水アンモニア 82-0-0" eh="fb09e6ce" />
+    <e k="sf_bigBag_anhydrous_name" v="IBC ç„¡æ°´ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¢ 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
-    <e k="sf_bigBag_urea_name" v="ビッグバッグ 尿素 46-0-0" eh="8e8cbaae" />
+    <e k="sf_bigBag_urea_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° å°¿ç´  46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
-    <e k="sf_bigBag_an_name" v="ビッグバッグ 硝安 34.5-0-0" eh="45f56f60" />
+    <e k="sf_bigBag_an_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° ç¡å®‰ 34.5-0-0" eh="45f56f60" />
     <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
-    <e k="sf_bigBag_ams_name" v="ビッグバッグ 硫安 21-0-0-24S" eh="7f71ee68" />
+    <e k="sf_bigBag_ams_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° ç¡«å®‰ 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) - +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
-    <e k="sf_bigBag_map_name" v="ビッグバッグ MAP 11-52-0" eh="8a5a059b" />
+    <e k="sf_bigBag_map_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) - +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
-    <e k="sf_bigBag_dap_name" v="ビッグバッグ DAP 18-46-0" eh="fb4e9987" />
+    <e k="sf_bigBag_dap_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° DAP 18-46-0" eh="fb4e9987" />
     <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) - +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
-    <e k="sf_bigBag_potash_name" v="ビッグバッグ 塩化カリ 0-0-60" eh="eb771556" />
+    <e k="sf_bigBag_potash_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° å¡©åŒ–ã‚«ãƒª 0-0-60" eh="eb771556" />
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
-    <e k="sf_bigBag_liquid_urea_name" v="IBC 液体尿素" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC æ¶²ä½“å°¿ç´ " eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="IBC 液体硫安" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC æ¶²ä½“ç¡«å®‰" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="IBC 液体 MAP" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC æ¶²ä½“ MAP" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="IBC 液体 DAP" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC æ¶²ä½“ DAP" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="IBC 液体塩化カリ" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC æ¶²ä½“å¡©åŒ–ã‚«ãƒª" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
-    <e k="sf_bigBag_starter_name" v="IBC スターター 10-34-0" eh="62b13bd1" />
-    <e k="sf_bigBag_insecticide_name" v="IBC 殺虫剤" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="殺虫剤（液体）" eh="09580f6b" />
-    <e k="sf_bigBag_fungicide_name" v="IBC 殺菌剤" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="殺菌剤（液体）" eh="745c34cb" />
+    <e k="sf_bigBag_starter_name" v="IBC ã‚¹ã‚¿ãƒ¼ã‚¿ãƒ¼ 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_insecticide_name" v="IBC æ®ºè™«å‰¤" eh="c8f0aabb" />
+    <e k="sf_bigBag_insecticide_function" v="æ®ºè™«å‰¤ï¼ˆæ¶²ä½“ï¼‰" eh="09580f6b" />
+    <e k="sf_bigBag_fungicide_name" v="IBC æ®ºèŒå‰¤" eh="2a1c78d4" />
+    <e k="sf_bigBag_fungicide_function" v="æ®ºèŒå‰¤ï¼ˆæ¶²ä½“ï¼‰" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
-    <e k="sf_bigBag_gypsum_name" v="ビッグバッグ 石膏" eh="40fc8169" />
+    <e k="sf_bigBag_gypsum_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° çŸ³è†" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
-    <e k="sf_bigBag_compost_name" v="ビッグバッグ 堆肥" eh="14322c5d" />
+    <e k="sf_bigBag_compost_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° å †è‚¥" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="ビッグバッグ バイオソリッド" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° ãƒã‚¤ã‚ªã‚½ãƒªãƒƒãƒ‰" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
-    <e k="sf_bigBag_chicken_manure_name" v="ビッグバッグ 鶏糞" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° é¶ç³ž" eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
-    <e k="sf_bigBag_pelletized_manure_name" v="ビッグバッグ ペレット堆肥" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="ãƒ“ãƒƒã‚°ãƒãƒƒã‚° ãƒšãƒ¬ãƒƒãƒˆå †è‚¥" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="液体石灰タンク" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="æ¶²ä½“çŸ³ç°ã‚¿ãƒ³ã‚¯" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
-    <e k="sf_hud_title" v="土壌モニター" eh="f8cda642" />
-    <e k="sf_hud_field" v="フィールド %d" eh="08988997" />
-    <e k="sf_hud_noField" v="フィールドに入ってください" eh="62c55e9e" />
+    <e k="sf_hud_title" v="åœŸå£Œãƒ¢ãƒ‹ã‚¿ãƒ¼" eh="f8cda642" />
+    <e k="sf_hud_field" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ %d" eh="08988997" />
+    <e k="sf_hud_noField" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã«å…¥ã£ã¦ãã ã•ã„" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
-    <e k="sf_hud_fallow" v="休耕" eh="eafe5913" />
+    <e k="sf_hud_fallow" v="ä¼‘è€•" eh="eafe5913" />
 		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="害虫" eh="2fed5101" />
-    <e k="sf_hud_disease" v="病害" eh="e7067a8c" />
+    <e k="sf_hud_pests" v="å®³è™«" eh="2fed5101" />
+    <e k="sf_hud_disease" v="ç—…å®³" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
-    <e k="sf_hud_protected" v="(保護済み)" eh="8273211e" />
-    <e k="sf_hud_yield" v="収量" eh="97345487" />
-    <e k="sf_hud_estYield" v="推定収量" eh="32a4135e" />
-    <e k="sf_hud_optimal" v="最適" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="収穫後 ・ 施肥が必要" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="ドラッグ: 移動   角: サイズ変更   右クリック/Shift+H: 完了" eh="c3f1820c" />
-    <e k="sf_hud_hint_normal" v="Shift+H: 移動/サイズ変更" eh="f1d565b1" />
+    <e k="sf_hud_protected" v="(ä¿è­·æ¸ˆã¿)" eh="8273211e" />
+    <e k="sf_hud_yield" v="åŽé‡" eh="97345487" />
+    <e k="sf_hud_estYield" v="æŽ¨å®šåŽé‡" eh="32a4135e" />
+    <e k="sf_hud_optimal" v="æœ€é©" eh="cb61fef1" />
+    <e k="sf_hud_post_harvest" v="åŽç©«å¾Œ ãƒ» æ–½è‚¥ãŒå¿…è¦" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="ãƒ‰ãƒ©ãƒƒã‚°: ç§»å‹•   è§’: ã‚µã‚¤ã‚ºå¤‰æ›´   å³ã‚¯ãƒªãƒƒã‚¯/Shift+H: å®Œäº†" eh="c3f1820c" />
+    <e k="sf_hud_hint_normal" v="Shift+H: ç§»å‹•/ã‚µã‚¤ã‚ºå¤‰æ›´" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="Precision Farming が有効なため、このセーブデータでは Soil &amp; Fertilizer が無効になりました。どちらのMODも土壌養分を管理するため、同時に使用することはできません。このMODを削除する必要はありません。代わりに Soil &amp; Fertilizer を使うには、MOD選択画面でこのセーブデータの Precision Farming を無効にしてください。" eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Precision Farming ãŒæœ‰åŠ¹ãªãŸã‚ã€ã“ã®ã‚»ãƒ¼ãƒ–ãƒ‡ãƒ¼ã‚¿ã§ã¯ Soil &amp; Fertilizer ãŒç„¡åŠ¹ã«ãªã‚Šã¾ã—ãŸã€‚ã©ã¡ã‚‰ã®MODã‚‚åœŸå£Œé¤Šåˆ†ã‚’ç®¡ç†ã™ã‚‹ãŸã‚ã€åŒæ™‚ã«ä½¿ç”¨ã™ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“ã€‚ã“ã®MODã‚’å‰Šé™¤ã™ã‚‹å¿…è¦ã¯ã‚ã‚Šã¾ã›ã‚“ã€‚ä»£ã‚ã‚Šã« Soil &amp; Fertilizer ã‚’ä½¿ã†ã«ã¯ã€MODé¸æŠžç”»é¢ã§ã“ã®ã‚»ãƒ¼ãƒ–ãƒ‡ãƒ¼ã‚¿ã® Precision Farming ã‚’ç„¡åŠ¹ã«ã—ã¦ãã ã•ã„ã€‚" eh="91dbcf1b" />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
          ====================================================== -->
 
     <!-- Category titles -->
-    <e k="helpLine_sf_cat_overview" v="概要" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="はじめに" eh="bf647454" />
-    <e k="helpLine_sf_cat_nutrients" v="土壌養分" eh="64377acf" />
-    <e k="helpLine_sf_cat_fertilizers" v="肥料" eh="754d59bd" />
-    <e k="helpLine_sf_cat_hud" v="HUDと土壌レポート" eh="655b1b40" />
-    <e k="helpLine_sf_cat_settings" v="設定" eh="f4f70727" />
-    <e k="helpLine_sf_cat_multiplayer" v="マルチプレイヤー" eh="901a7320" />
+    <e k="helpLine_sf_cat_overview" v="æ¦‚è¦" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="ã¯ã˜ã‚ã«" eh="bf647454" />
+    <e k="helpLine_sf_cat_nutrients" v="åœŸå£Œé¤Šåˆ†" eh="64377acf" />
+    <e k="helpLine_sf_cat_fertilizers" v="è‚¥æ–™" eh="754d59bd" />
+    <e k="helpLine_sf_cat_hud" v="HUDã¨åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆ" eh="655b1b40" />
+    <e k="helpLine_sf_cat_settings" v="è¨­å®š" eh="f4f70727" />
+    <e k="helpLine_sf_cat_multiplayer" v="ãƒžãƒ«ãƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="901a7320" />
 
     <!-- Category 1: Overview -->
-    <e k="helpLine_sf_ov_p1_title" v="Modの機能" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="フィールドごとの土壌追跡" eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="すべてのフィールドで、窒素 (N)、リン (P)、カリウム (K)、有機物 (OM)、および pH の 5 つの特性を個別に追跡します。値はセーブデータに保存され、セッションを跨いで保持されます。" eh="c30216e6" />
-    <e k="helpLine_sf_ov_p1_flow_title" v="養分サイクル" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="作物は収穫時に養分を消費します。肥料、堆肥、液肥、石灰によってこれらを回復させます。Mod は現実的な養分収支を追跡し、作物が取り出した分だけ補充する必要があります。" eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_title" v="Modã®æ©Ÿèƒ½" eh="46cbb25b" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã”ã¨ã®åœŸå£Œè¿½è·¡" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="ã™ã¹ã¦ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã§ã€çª’ç´  (N)ã€ãƒªãƒ³ (P)ã€ã‚«ãƒªã‚¦ãƒ  (K)ã€æœ‰æ©Ÿç‰© (OM)ã€ãŠã‚ˆã³ pH ã® 5 ã¤ã®ç‰¹æ€§ã‚’å€‹åˆ¥ã«è¿½è·¡ã—ã¾ã™ã€‚å€¤ã¯ã‚»ãƒ¼ãƒ–ãƒ‡ãƒ¼ã‚¿ã«ä¿å­˜ã•ã‚Œã€ã‚»ãƒƒã‚·ãƒ§ãƒ³ã‚’è·¨ã„ã§ä¿æŒã•ã‚Œã¾ã™ã€‚" eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_flow_title" v="é¤Šåˆ†ã‚µã‚¤ã‚¯ãƒ«" eh="15b0d408" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="ä½œç‰©ã¯åŽç©«æ™‚ã«é¤Šåˆ†ã‚’æ¶ˆè²»ã—ã¾ã™ã€‚è‚¥æ–™ã€å †è‚¥ã€æ¶²è‚¥ã€çŸ³ç°ã«ã‚ˆã£ã¦ã“ã‚Œã‚‰ã‚’å›žå¾©ã•ã›ã¾ã™ã€‚Mod ã¯ç¾å®Ÿçš„ãªé¤Šåˆ†åŽæ”¯ã‚’è¿½è·¡ã—ã€ä½œç‰©ãŒå–ã‚Šå‡ºã—ãŸåˆ†ã ã‘è£œå……ã™ã‚‹å¿…è¦ãŒã‚ã‚Šã¾ã™ã€‚" eh="418041f0" />
 
-    <e k="helpLine_sf_ov_p2_title" v="環境の影響" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="雨と流出" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="雨により窒素が最も激しく流出し、次いでカリウム、リンの順に影響を受けます。また、時間の経過とともに pH が徐々に酸性化します。雨の影響は設定でオフにできます。" eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="季節と休耕地の回復" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="春には生物活動により 1 日あたり +0.03 N 加算されます。秋には 1 日あたり 0.02 N 減少します。7 日以上作付けされていないフィールドは、徐々にすべての養分が自律回復します。" eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_title" v="ç’°å¢ƒã®å½±éŸ¿" eh="e139e84f" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="é›¨ã¨æµå‡º" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="é›¨ã«ã‚ˆã‚Šçª’ç´ ãŒæœ€ã‚‚æ¿€ã—ãæµå‡ºã—ã€æ¬¡ã„ã§ã‚«ãƒªã‚¦ãƒ ã€ãƒªãƒ³ã®é †ã«å½±éŸ¿ã‚’å—ã‘ã¾ã™ã€‚ã¾ãŸã€æ™‚é–“ã®çµŒéŽã¨ã¨ã‚‚ã« pH ãŒå¾ã€…ã«é…¸æ€§åŒ–ã—ã¾ã™ã€‚é›¨ã®å½±éŸ¿ã¯è¨­å®šã§ã‚ªãƒ•ã«ã§ãã¾ã™ã€‚" eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="å­£ç¯€ã¨ä¼‘è€•åœ°ã®å›žå¾©" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="æ˜¥ã«ã¯ç”Ÿç‰©æ´»å‹•ã«ã‚ˆã‚Š 1 æ—¥ã‚ãŸã‚Š +0.03 N åŠ ç®—ã•ã‚Œã¾ã™ã€‚ç§‹ã«ã¯ 1 æ—¥ã‚ãŸã‚Š 0.02 N æ¸›å°‘ã—ã¾ã™ã€‚7 æ—¥ä»¥ä¸Šä½œä»˜ã‘ã•ã‚Œã¦ã„ãªã„ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã¯ã€å¾ã€…ã«ã™ã¹ã¦ã®é¤Šåˆ†ãŒè‡ªå¾‹å›žå¾©ã—ã¾ã™ã€‚" eh="e5ebb3b2" />
 
     <!-- Category 2: Getting Started -->
-    <e k="helpLine_sf_gs_p1_title" v="最初のステップ" eh="bdd0e0a7" />
-    <e k="helpLine_sf_gs_p1_hud_title" v="HUD を開く (J キー)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="J キーでライブ土壌オーバーレイを切り替えます。現在立っているフィールドの N、P、K、pH、OM を表示します。「良好 / 普通 / 不良」のラベルで、何に注意が必要か一目でわかります。" eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="土壌レポートを開く (K キー)" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="K キーで農場全体の土壌レポートを開きます。すべてのフィールドが養分状態ごとに色分けされ、緊急度順にリストされます。各行の矢印をクリックすると、推奨事項を含む詳細ビューが表示されます。" eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_title" v="æœ€åˆã®ã‚¹ãƒ†ãƒƒãƒ—" eh="bdd0e0a7" />
+    <e k="helpLine_sf_gs_p1_hud_title" v="HUD ã‚’é–‹ã (J ã‚­ãƒ¼)" eh="e1bdea72" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="J ã‚­ãƒ¼ã§ãƒ©ã‚¤ãƒ–åœŸå£Œã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ã‚’åˆ‡ã‚Šæ›¿ãˆã¾ã™ã€‚ç¾åœ¨ç«‹ã£ã¦ã„ã‚‹ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã® Nã€Pã€Kã€pHã€OM ã‚’è¡¨ç¤ºã—ã¾ã™ã€‚ã€Œè‰¯å¥½ / æ™®é€š / ä¸è‰¯ã€ã®ãƒ©ãƒ™ãƒ«ã§ã€ä½•ã«æ³¨æ„ãŒå¿…è¦ã‹ä¸€ç›®ã§ã‚ã‹ã‚Šã¾ã™ã€‚" eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆã‚’é–‹ã (K ã‚­ãƒ¼)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="K ã‚­ãƒ¼ã§è¾²å ´å…¨ä½“ã®åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆã‚’é–‹ãã¾ã™ã€‚ã™ã¹ã¦ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãŒé¤Šåˆ†çŠ¶æ…‹ã”ã¨ã«è‰²åˆ†ã‘ã•ã‚Œã€ç·Šæ€¥åº¦é †ã«ãƒªã‚¹ãƒˆã•ã‚Œã¾ã™ã€‚å„è¡Œã®çŸ¢å°ã‚’ã‚¯ãƒªãƒƒã‚¯ã™ã‚‹ã¨ã€æŽ¨å¥¨äº‹é …ã‚’å«ã‚€è©³ç´°ãƒ“ãƒ¥ãƒ¼ãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚" eh="9a0d32a6" />
 
-    <e k="helpLine_sf_gs_p2_title" v="施肥と収穫" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="フィールドへの施肥" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="標準のスプレイヤーやスプレッダーで肥料を散布します。Mod はバニラの肥料に加え、9 つのカスタムタイプ（UAN-32、MAP、塩化カリなど）を認識します。タイプごとに回復する養分が異なります。" eh="fe906e29" />
-    <e k="helpLine_sf_gs_p2_harvest_title" v="収穫による消耗" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="収穫ごとにフィールドから養分が取り除かれます。要求量の多い作物（ジャガイモ、テンサイ、大豆）は、軽い作物（大麦、オーツ麦）よりも大幅に養分を消費します。収穫ごとにレポートを確認しましょう。" eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_title" v="æ–½è‚¥ã¨åŽç©«" eh="1a52ac04" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã¸ã®æ–½è‚¥" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="æ¨™æº–ã®ã‚¹ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚„ã‚¹ãƒ—ãƒ¬ãƒƒãƒ€ãƒ¼ã§è‚¥æ–™ã‚’æ•£å¸ƒã—ã¾ã™ã€‚Mod ã¯ãƒãƒ‹ãƒ©ã®è‚¥æ–™ã«åŠ ãˆã€9 ã¤ã®ã‚«ã‚¹ã‚¿ãƒ ã‚¿ã‚¤ãƒ—ï¼ˆUAN-32ã€MAPã€å¡©åŒ–ã‚«ãƒªãªã©ï¼‰ã‚’èªè­˜ã—ã¾ã™ã€‚ã‚¿ã‚¤ãƒ—ã”ã¨ã«å›žå¾©ã™ã‚‹é¤Šåˆ†ãŒç•°ãªã‚Šã¾ã™ã€‚" eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_harvest_title" v="åŽç©«ã«ã‚ˆã‚‹æ¶ˆè€—" eh="a67b6cb5" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="åŽç©«ã”ã¨ã«ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‹ã‚‰é¤Šåˆ†ãŒå–ã‚Šé™¤ã‹ã‚Œã¾ã™ã€‚è¦æ±‚é‡ã®å¤šã„ä½œç‰©ï¼ˆã‚¸ãƒ£ã‚¬ã‚¤ãƒ¢ã€ãƒ†ãƒ³ã‚µã‚¤ã€å¤§è±†ï¼‰ã¯ã€è»½ã„ä½œç‰©ï¼ˆå¤§éº¦ã€ã‚ªãƒ¼ãƒ„éº¦ï¼‰ã‚ˆã‚Šã‚‚å¤§å¹…ã«é¤Šåˆ†ã‚’æ¶ˆè²»ã—ã¾ã™ã€‚åŽç©«ã”ã¨ã«ãƒ¬ãƒãƒ¼ãƒˆã‚’ç¢ºèªã—ã¾ã—ã‚‡ã†ã€‚" eh="63f90ed4" />
 
-    <e k="helpLine_sf_gs_p3_title" v="難易度" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="3 つの難易度レベル" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="簡易 (0.7x): 消耗が 30% 減少。リアル (1.0x): 現実の農業レートに調整。ハードコア (1.5x): 消耗が 50% 増加し、集中的な土壌管理が必要になります。" eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="設定の変更" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="ESC > 設定 > 土壌と肥料から設定を開きます。マルチプレイヤーでは、サーバー管理者のみがシミュレーション設定を変更できます。HUD の表示オプションは各プレイヤーごとに設定可能です。" eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_title" v="é›£æ˜“åº¦" eh="7b29ca96" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="3 ã¤ã®é›£æ˜“åº¦ãƒ¬ãƒ™ãƒ«" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="ç°¡æ˜“ (0.7x): æ¶ˆè€—ãŒ 30% æ¸›å°‘ã€‚ãƒªã‚¢ãƒ« (1.0x): ç¾å®Ÿã®è¾²æ¥­ãƒ¬ãƒ¼ãƒˆã«èª¿æ•´ã€‚ãƒãƒ¼ãƒ‰ã‚³ã‚¢ (1.5x): æ¶ˆè€—ãŒ 50% å¢—åŠ ã—ã€é›†ä¸­çš„ãªåœŸå£Œç®¡ç†ãŒå¿…è¦ã«ãªã‚Šã¾ã™ã€‚" eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="è¨­å®šã®å¤‰æ›´" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_access_text" v="ESC > è¨­å®š > åœŸå£Œã¨è‚¥æ–™ã‹ã‚‰è¨­å®šã‚’é–‹ãã¾ã™ã€‚ãƒžãƒ«ãƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã§ã¯ã€ã‚µãƒ¼ãƒãƒ¼ç®¡ç†è€…ã®ã¿ãŒã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³è¨­å®šã‚’å¤‰æ›´ã§ãã¾ã™ã€‚HUD ã®è¡¨ç¤ºã‚ªãƒ—ã‚·ãƒ§ãƒ³ã¯å„ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã”ã¨ã«è¨­å®šå¯èƒ½ã§ã™ã€‚" eh="4ba9d860" />
 
     <!-- Category 3: Soil Nutrients -->
-    <e k="helpLine_sf_nu_p1_title" v="窒素とリン" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="窒素 (N) - スケール 0 〜 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="最も移動しやすい養分で、消耗が速く雨による流出も激しいです。不良: 30 未満。良好: 50 以上。液体肥料、UAN-32、尿素、無水アンモニア、堆肥などで補給します。" eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="リン (P) - スケール 0 〜 100" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="土壌に強く結合し、流出は非常に緩やかです。主に収穫によって減少します。キャノーラは最もリンを要求します。不良: 25 未満。良好: 45 以上。MAP、DAP、スターター肥料などで補給します。" eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_title" v="çª’ç´ ã¨ãƒªãƒ³" eh="27d37372" />
+    <e k="helpLine_sf_nu_p1_n_title" v="çª’ç´  (N) - ã‚¹ã‚±ãƒ¼ãƒ« 0 ã€œ 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="æœ€ã‚‚ç§»å‹•ã—ã‚„ã™ã„é¤Šåˆ†ã§ã€æ¶ˆè€—ãŒé€Ÿãé›¨ã«ã‚ˆã‚‹æµå‡ºã‚‚æ¿€ã—ã„ã§ã™ã€‚ä¸è‰¯: 30 æœªæº€ã€‚è‰¯å¥½: 50 ä»¥ä¸Šã€‚æ¶²ä½“è‚¥æ–™ã€UAN-32ã€å°¿ç´ ã€ç„¡æ°´ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¢ã€å †è‚¥ãªã©ã§è£œçµ¦ã—ã¾ã™ã€‚" eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="ãƒªãƒ³ (P) - ã‚¹ã‚±ãƒ¼ãƒ« 0 ã€œ 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="åœŸå£Œã«å¼·ãçµåˆã—ã€æµå‡ºã¯éžå¸¸ã«ç·©ã‚„ã‹ã§ã™ã€‚ä¸»ã«åŽç©«ã«ã‚ˆã£ã¦æ¸›å°‘ã—ã¾ã™ã€‚ã‚­ãƒ£ãƒŽãƒ¼ãƒ©ã¯æœ€ã‚‚ãƒªãƒ³ã‚’è¦æ±‚ã—ã¾ã™ã€‚ä¸è‰¯: 25 æœªæº€ã€‚è‰¯å¥½: 45 ä»¥ä¸Šã€‚MAPã€DAPã€ã‚¹ã‚¿ãƒ¼ã‚¿ãƒ¼è‚¥æ–™ãªã©ã§è£œçµ¦ã—ã¾ã™ã€‚" eh="92c5ac66" />
 
-    <e k="helpLine_sf_nu_p2_title" v="カリウムと pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="カリウム (K) - スケール 0 〜 100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="根菜類に不可欠です。ジャガイモやテンサイは収穫ごとに大量の K を消費します。雨で適度に流出します。不良: 20 未満。良好: 40 以上。塩化カリ、液肥、液体肥料などで補給します。" eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - スケール 5.0 〜 7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="ほとんどの作物は pH 6.5 〜 7.0 でよく育ちます。雨は時間をかけて土壌を酸性化させます。pH は自然には回復しません。石灰や液体石灰のみが pH を上昇させます。不良: 5.5 未満。" eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_title" v="ã‚«ãƒªã‚¦ãƒ ã¨ pH" eh="6bd92f25" />
+    <e k="helpLine_sf_nu_p2_k_title" v="ã‚«ãƒªã‚¦ãƒ  (K) - ã‚¹ã‚±ãƒ¼ãƒ« 0 ã€œ 100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="æ ¹èœé¡žã«ä¸å¯æ¬ ã§ã™ã€‚ã‚¸ãƒ£ã‚¬ã‚¤ãƒ¢ã‚„ãƒ†ãƒ³ã‚µã‚¤ã¯åŽç©«ã”ã¨ã«å¤§é‡ã® K ã‚’æ¶ˆè²»ã—ã¾ã™ã€‚é›¨ã§é©åº¦ã«æµå‡ºã—ã¾ã™ã€‚ä¸è‰¯: 20 æœªæº€ã€‚è‰¯å¥½: 40 ä»¥ä¸Šã€‚å¡©åŒ–ã‚«ãƒªã€æ¶²è‚¥ã€æ¶²ä½“è‚¥æ–™ãªã©ã§è£œçµ¦ã—ã¾ã™ã€‚" eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - ã‚¹ã‚±ãƒ¼ãƒ« 5.0 ã€œ 7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="ã»ã¨ã‚“ã©ã®ä½œç‰©ã¯ pH 6.5 ã€œ 7.0 ã§ã‚ˆãè‚²ã¡ã¾ã™ã€‚é›¨ã¯æ™‚é–“ã‚’ã‹ã‘ã¦åœŸå£Œã‚’é…¸æ€§åŒ–ã•ã›ã¾ã™ã€‚pH ã¯è‡ªç„¶ã«ã¯å›žå¾©ã—ã¾ã›ã‚“ã€‚çŸ³ç°ã‚„æ¶²ä½“çŸ³ç°ã®ã¿ãŒ pH ã‚’ä¸Šæ˜‡ã•ã›ã¾ã™ã€‚ä¸è‰¯: 5.5 æœªæº€ã€‚" eh="08e0aefd" />
 
-    <e k="helpLine_sf_nu_p3_title" v="有機物" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="有機物 (OM) - スケール 0 〜 10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="蓄積は非常に遅く、収穫では減少しません。不良: 2.5 未満。良好: 4.0 以上。堆肥、液肥、バイオソリッド、鶏糞、または藁をフィールドに漉き込むことで増加します。" eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="休耕による回復" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="7 日以上作付けされていないフィールドは養分を回復します。1 日あたり: N +0.07, P +0.03, K +0.05, OM +0.01。輪作や休耕期間はこの Mod において実利的な価値があります。" eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_title" v="æœ‰æ©Ÿç‰©" eh="6305f4bb" />
+    <e k="helpLine_sf_nu_p3_om_title" v="æœ‰æ©Ÿç‰© (OM) - ã‚¹ã‚±ãƒ¼ãƒ« 0 ã€œ 10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="è“„ç©ã¯éžå¸¸ã«é…ãã€åŽç©«ã§ã¯æ¸›å°‘ã—ã¾ã›ã‚“ã€‚ä¸è‰¯: 2.5 æœªæº€ã€‚è‰¯å¥½: 4.0 ä»¥ä¸Šã€‚å †è‚¥ã€æ¶²è‚¥ã€ãƒã‚¤ã‚ªã‚½ãƒªãƒƒãƒ‰ã€é¶ç³žã€ã¾ãŸã¯è—ã‚’ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã«æ¼‰ãè¾¼ã‚€ã“ã¨ã§å¢—åŠ ã—ã¾ã™ã€‚" eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="ä¼‘è€•ã«ã‚ˆã‚‹å›žå¾©" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="7 æ—¥ä»¥ä¸Šä½œä»˜ã‘ã•ã‚Œã¦ã„ãªã„ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã¯é¤Šåˆ†ã‚’å›žå¾©ã—ã¾ã™ã€‚1 æ—¥ã‚ãŸã‚Š: N +0.07, P +0.03, K +0.05, OM +0.01ã€‚è¼ªä½œã‚„ä¼‘è€•æœŸé–“ã¯ã“ã® Mod ã«ãŠã„ã¦å®Ÿåˆ©çš„ãªä¾¡å€¤ãŒã‚ã‚Šã¾ã™ã€‚" eh="81fa82b3" />
 
     <!-- Category 4: Fertilizers -->
-    <e k="helpLine_sf_fe_p1_title" v="バニラの肥料" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="液体、固形、堆肥、液肥" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="液体肥料はバランス良く NPK を追加します。固形肥料は N と P が高めです。堆肥と液肥は NPK に加え有機物を追加します。消化液は K が豊富で、有機物も追加します。" eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="石灰と pH 矯正" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="石灰はバニラで唯一の pH 矯正手段であり、養分は追加しません。カスタムの液体石灰や石膏も pH を上昇させます。pH が 6.0 を下回ったら、最適な範囲を保つために散布してください。" eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_title" v="ãƒãƒ‹ãƒ©ã®è‚¥æ–™" eh="fd941c0d" />
+    <e k="helpLine_sf_fe_p1_base_title" v="æ¶²ä½“ã€å›ºå½¢ã€å †è‚¥ã€æ¶²è‚¥" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="æ¶²ä½“è‚¥æ–™ã¯ãƒãƒ©ãƒ³ã‚¹è‰¯ã NPK ã‚’è¿½åŠ ã—ã¾ã™ã€‚å›ºå½¢è‚¥æ–™ã¯ N ã¨ P ãŒé«˜ã‚ã§ã™ã€‚å †è‚¥ã¨æ¶²è‚¥ã¯ NPK ã«åŠ ãˆæœ‰æ©Ÿç‰©ã‚’è¿½åŠ ã—ã¾ã™ã€‚æ¶ˆåŒ–æ¶²ã¯ K ãŒè±Šå¯Œã§ã€æœ‰æ©Ÿç‰©ã‚‚è¿½åŠ ã—ã¾ã™ã€‚" eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="çŸ³ç°ã¨ pH çŸ¯æ­£" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="çŸ³ç°ã¯ãƒãƒ‹ãƒ©ã§å”¯ä¸€ã® pH çŸ¯æ­£æ‰‹æ®µã§ã‚ã‚Šã€é¤Šåˆ†ã¯è¿½åŠ ã—ã¾ã›ã‚“ã€‚ã‚«ã‚¹ã‚¿ãƒ ã®æ¶²ä½“çŸ³ç°ã‚„çŸ³è†ã‚‚ pH ã‚’ä¸Šæ˜‡ã•ã›ã¾ã™ã€‚pH ãŒ 6.0 ã‚’ä¸‹å›žã£ãŸã‚‰ã€æœ€é©ãªç¯„å›²ã‚’ä¿ã¤ãŸã‚ã«æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="カスタムの窒素・リン・カリ源" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="窒素源（カスタムビッグバッグ）" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 と UAN-28 は液体窒素溶液です。無水アンモニアは 1L あたりの N 含有量が最大です。尿素と AMS は乾燥顆粒です。これらは窒素 (N) のみを含み、P、K、pH には影響しません。" eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="リン・カリウム源" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP: リン含有量が最大。DAP: 高リンで少量の窒素を含む。塩化カリ: 純粋なカリウム。スターター: N と K のバランスが取れた高リン製品。これらはショップでビッグバッグとして購入できます。" eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="ã‚«ã‚¹ã‚¿ãƒ ã®çª’ç´ ãƒ»ãƒªãƒ³ãƒ»ã‚«ãƒªæº" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="çª’ç´ æºï¼ˆã‚«ã‚¹ã‚¿ãƒ ãƒ“ãƒƒã‚°ãƒãƒƒã‚°ï¼‰" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 ã¨ UAN-28 ã¯æ¶²ä½“çª’ç´ æº¶æ¶²ã§ã™ã€‚ç„¡æ°´ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¢ã¯ 1L ã‚ãŸã‚Šã® N å«æœ‰é‡ãŒæœ€å¤§ã§ã™ã€‚å°¿ç´ ã¨ AMS ã¯ä¹¾ç‡¥é¡†ç²’ã§ã™ã€‚ã“ã‚Œã‚‰ã¯çª’ç´  (N) ã®ã¿ã‚’å«ã¿ã€Pã€Kã€pH ã«ã¯å½±éŸ¿ã—ã¾ã›ã‚“ã€‚" eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="ãƒªãƒ³ãƒ»ã‚«ãƒªã‚¦ãƒ æº" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP: ãƒªãƒ³å«æœ‰é‡ãŒæœ€å¤§ã€‚DAP: é«˜ãƒªãƒ³ã§å°‘é‡ã®çª’ç´ ã‚’å«ã‚€ã€‚å¡©åŒ–ã‚«ãƒª: ç´”ç²‹ãªã‚«ãƒªã‚¦ãƒ ã€‚ã‚¹ã‚¿ãƒ¼ã‚¿ãƒ¼: N ã¨ K ã®ãƒãƒ©ãƒ³ã‚¹ãŒå–ã‚ŒãŸé«˜ãƒªãƒ³è£½å“ã€‚ã“ã‚Œã‚‰ã¯ã‚·ãƒ§ãƒƒãƒ—ã§ãƒ“ãƒƒã‚°ãƒãƒƒã‚°ã¨ã—ã¦è³¼å…¥ã§ãã¾ã™ã€‚" eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="有機製品と肥料焼けのリスク" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="有機・緩効性肥料" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="堆肥は最強の有機物供給源です。バイオソリッドと鶏糞は N、P、有機物を追加します。ペレット堆肥は濃縮されたバランスの良い有機肥料です。これらは対応する Mod 導入時に利用可能です。" eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="過剰散布による肥料焼け" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="基準の 1.25 倍を超えて散布すると肥料焼けのリスクがあります。1.50 倍以上では、散布のたびにダメージ（pH -0.30, N -12）が確定します。車両内のレート調整キーで散布量を管理してください。" eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="æœ‰æ©Ÿè£½å“ã¨è‚¥æ–™ç„¼ã‘ã®ãƒªã‚¹ã‚¯" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="æœ‰æ©Ÿãƒ»ç·©åŠ¹æ€§è‚¥æ–™" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="å †è‚¥ã¯æœ€å¼·ã®æœ‰æ©Ÿç‰©ä¾›çµ¦æºã§ã™ã€‚ãƒã‚¤ã‚ªã‚½ãƒªãƒƒãƒ‰ã¨é¶ç³žã¯ Nã€Pã€æœ‰æ©Ÿç‰©ã‚’è¿½åŠ ã—ã¾ã™ã€‚ãƒšãƒ¬ãƒƒãƒˆå †è‚¥ã¯æ¿ƒç¸®ã•ã‚ŒãŸãƒãƒ©ãƒ³ã‚¹ã®è‰¯ã„æœ‰æ©Ÿè‚¥æ–™ã§ã™ã€‚ã“ã‚Œã‚‰ã¯å¯¾å¿œã™ã‚‹ Mod å°Žå…¥æ™‚ã«åˆ©ç”¨å¯èƒ½ã§ã™ã€‚" eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="éŽå‰°æ•£å¸ƒã«ã‚ˆã‚‹è‚¥æ–™ç„¼ã‘" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="åŸºæº–ã® 1.25 å€ã‚’è¶…ãˆã¦æ•£å¸ƒã™ã‚‹ã¨è‚¥æ–™ç„¼ã‘ã®ãƒªã‚¹ã‚¯ãŒã‚ã‚Šã¾ã™ã€‚1.50 å€ä»¥ä¸Šã§ã¯ã€æ•£å¸ƒã®ãŸã³ã«ãƒ€ãƒ¡ãƒ¼ã‚¸ï¼ˆpH -0.30, N -12ï¼‰ãŒç¢ºå®šã—ã¾ã™ã€‚è»Šä¸¡å†…ã®ãƒ¬ãƒ¼ãƒˆèª¿æ•´ã‚­ãƒ¼ã§æ•£å¸ƒé‡ã‚’ç®¡ç†ã—ã¦ãã ã•ã„ã€‚" eh="7bccc46a" />
 
     <!-- Category 5: HUD and Soil Report -->
-    <e k="helpLine_sf_hu_p1_title" v="土壌 HUD" eh="6522879b" />
-    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD の切り替え (J キー)" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="J キーで土壌オーバーレイの表示/非表示を切り替えます。現在地のフィールドを検出し、N、P、K、pH、OM を表示します。雑草、害虫、病害設定が有効な場合、それらもパネル下部に表示されます。" eh="3dcb9bfe" />
-    <e k="helpLine_sf_hu_p1_status_title" v="ステータスの読み方" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="各養分は「良好（対応不要）、普通（早期対処を推奨）、不良（要対応・収量影響あり）」を表示します。タイトルバーの総合バッジは、追跡項目の中で最も悪い値を反映します。" eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_title" v="åœŸå£Œ HUD" eh="6522879b" />
+    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD ã®åˆ‡ã‚Šæ›¿ãˆ (J ã‚­ãƒ¼)" eh="402283ba" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="J ã‚­ãƒ¼ã§åœŸå£Œã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ã®è¡¨ç¤º/éžè¡¨ç¤ºã‚’åˆ‡ã‚Šæ›¿ãˆã¾ã™ã€‚ç¾åœ¨åœ°ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‚’æ¤œå‡ºã—ã€Nã€Pã€Kã€pHã€OM ã‚’è¡¨ç¤ºã—ã¾ã™ã€‚é›‘è‰ã€å®³è™«ã€ç—…å®³è¨­å®šãŒæœ‰åŠ¹ãªå ´åˆã€ãã‚Œã‚‰ã‚‚ãƒ‘ãƒãƒ«ä¸‹éƒ¨ã«è¡¨ç¤ºã•ã‚Œã¾ã™ã€‚" eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_status_title" v="ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã®èª­ã¿æ–¹" eh="291c3aac" />
+    <e k="helpLine_sf_hu_p1_status_text" v="å„é¤Šåˆ†ã¯ã€Œè‰¯å¥½ï¼ˆå¯¾å¿œä¸è¦ï¼‰ã€æ™®é€šï¼ˆæ—©æœŸå¯¾å‡¦ã‚’æŽ¨å¥¨ï¼‰ã€ä¸è‰¯ï¼ˆè¦å¯¾å¿œãƒ»åŽé‡å½±éŸ¿ã‚ã‚Šï¼‰ã€ã‚’è¡¨ç¤ºã—ã¾ã™ã€‚ã‚¿ã‚¤ãƒˆãƒ«ãƒãƒ¼ã®ç·åˆãƒãƒƒã‚¸ã¯ã€è¿½è·¡é …ç›®ã®ä¸­ã§æœ€ã‚‚æ‚ªã„å€¤ã‚’åæ˜ ã—ã¾ã™ã€‚" eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="フィールドの不利益要素" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="雑草、害虫、および病害" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="0 〜 100 のスコアで作物への脅威を追跡します。放置すると収量が低下します：雑草 最大 -30%、害虫 -20%、病害 -25%。HUD 行の W、I、D は深刻度を色（緑、黄、赤）で示します。" eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="脅威の処理" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="除草剤は雑草を減らし、耕耘も値をゼロにします。殺虫剤は害虫圧を 25 下げ、10 日間抑制します。殺菌剤は病害を 20 下げ、12 日間抑制します。各システムは設定でオフにできます。" eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®ä¸åˆ©ç›Šè¦ç´ " eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="é›‘è‰ã€å®³è™«ã€ãŠã‚ˆã³ç—…å®³" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="0 ã€œ 100 ã®ã‚¹ã‚³ã‚¢ã§ä½œç‰©ã¸ã®è„…å¨ã‚’è¿½è·¡ã—ã¾ã™ã€‚æ”¾ç½®ã™ã‚‹ã¨åŽé‡ãŒä½Žä¸‹ã—ã¾ã™ï¼šé›‘è‰ æœ€å¤§ -30%ã€å®³è™« -20%ã€ç—…å®³ -25%ã€‚HUD è¡Œã® Wã€Iã€D ã¯æ·±åˆ»åº¦ã‚’è‰²ï¼ˆç·‘ã€é»„ã€èµ¤ï¼‰ã§ç¤ºã—ã¾ã™ã€‚" eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="è„…å¨ã®å‡¦ç†" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="é™¤è‰å‰¤ã¯é›‘è‰ã‚’æ¸›ã‚‰ã—ã€è€•è€˜ã‚‚å€¤ã‚’ã‚¼ãƒ­ã«ã—ã¾ã™ã€‚æ®ºè™«å‰¤ã¯å®³è™«åœ§ã‚’ 25 ä¸‹ã’ã€10 æ—¥é–“æŠ‘åˆ¶ã—ã¾ã™ã€‚æ®ºèŒå‰¤ã¯ç—…å®³ã‚’ 20 ä¸‹ã’ã€12 æ—¥é–“æŠ‘åˆ¶ã—ã¾ã™ã€‚å„ã‚·ã‚¹ãƒ†ãƒ ã¯è¨­å®šã§ã‚ªãƒ•ã«ã§ãã¾ã™ã€‚" eh="4d65bdec" />
 
-    <e k="helpLine_sf_hu_p3_title" v="土壌レポート" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="レポートを開く (K キー)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="K キーで農場全体の土壌レポートを開きます。サマリーバーには追跡フィールド数、要施肥数、加重平均された農場健全度が表示されます。緊急度の高い順に並べ替えられます。" eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="フィールド詳細と推奨事項" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="各行の矢印をクリックすると、そのフィールドの詳細（養分値、各種圧力、収量減少予測、具体的な推奨散布リスト）が表示されます。Back または Escape で一覧に戻ります。" eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_title" v="åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆ" eh="35fcce6c" />
+    <e k="helpLine_sf_hu_p3_open_title" v="ãƒ¬ãƒãƒ¼ãƒˆã‚’é–‹ã (K ã‚­ãƒ¼)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="K ã‚­ãƒ¼ã§è¾²å ´å…¨ä½“ã®åœŸå£Œãƒ¬ãƒãƒ¼ãƒˆã‚’é–‹ãã¾ã™ã€‚ã‚µãƒžãƒªãƒ¼ãƒãƒ¼ã«ã¯è¿½è·¡ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æ•°ã€è¦æ–½è‚¥æ•°ã€åŠ é‡å¹³å‡ã•ã‚ŒãŸè¾²å ´å¥å…¨åº¦ãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚ç·Šæ€¥åº¦ã®é«˜ã„é †ã«ä¸¦ã¹æ›¿ãˆã‚‰ã‚Œã¾ã™ã€‚" eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰è©³ç´°ã¨æŽ¨å¥¨äº‹é …" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="å„è¡Œã®çŸ¢å°ã‚’ã‚¯ãƒªãƒƒã‚¯ã™ã‚‹ã¨ã€ãã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®è©³ç´°ï¼ˆé¤Šåˆ†å€¤ã€å„ç¨®åœ§åŠ›ã€åŽé‡æ¸›å°‘äºˆæ¸¬ã€å…·ä½“çš„ãªæŽ¨å¥¨æ•£å¸ƒãƒªã‚¹ãƒˆï¼‰ãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚Back ã¾ãŸã¯ Escape ã§ä¸€è¦§ã«æˆ»ã‚Šã¾ã™ã€‚" eh="38dd2c6d" />
 
     <!-- Category 6: Settings -->
-    <e k="helpLine_sf_se_p1_title" v="シミュレーション設定" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="サーバー設定（マルチ時は管理者のみ）" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="肥沃度システム、養分サイクル、季節・雨の影響、耕耘ボーナス、各種圧力、肥料コスト、輪作、自動レート制御などが含まれます。マルチでは管理者のみ変更可能で、全員に即時反映されます。" eh="abca5e43" />
-    <e k="helpLine_sf_se_p1_diff_title" v="難易度" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="簡易 (0.7x) は消耗を 30% 抑え、リラックスしてプレイできます。リアル (1.0x) は標準設定です。ハードコア (1.5x) は消耗が 50% 増え、過酷な管理が求められます。" eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_title" v="ã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³è¨­å®š" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="ã‚µãƒ¼ãƒãƒ¼è¨­å®šï¼ˆãƒžãƒ«ãƒæ™‚ã¯ç®¡ç†è€…ã®ã¿ï¼‰" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="è‚¥æ²ƒåº¦ã‚·ã‚¹ãƒ†ãƒ ã€é¤Šåˆ†ã‚µã‚¤ã‚¯ãƒ«ã€å­£ç¯€ãƒ»é›¨ã®å½±éŸ¿ã€è€•è€˜ãƒœãƒ¼ãƒŠã‚¹ã€å„ç¨®åœ§åŠ›ã€è‚¥æ–™ã‚³ã‚¹ãƒˆã€è¼ªä½œã€è‡ªå‹•ãƒ¬ãƒ¼ãƒˆåˆ¶å¾¡ãªã©ãŒå«ã¾ã‚Œã¾ã™ã€‚ãƒžãƒ«ãƒã§ã¯ç®¡ç†è€…ã®ã¿å¤‰æ›´å¯èƒ½ã§ã€å…¨å“¡ã«å³æ™‚åæ˜ ã•ã‚Œã¾ã™ã€‚" eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_diff_title" v="é›£æ˜“åº¦" eh="7b29ca96" />
+    <e k="helpLine_sf_se_p1_diff_text" v="ç°¡æ˜“ (0.7x) ã¯æ¶ˆè€—ã‚’ 30% æŠ‘ãˆã€ãƒªãƒ©ãƒƒã‚¯ã‚¹ã—ã¦ãƒ—ãƒ¬ã‚¤ã§ãã¾ã™ã€‚ãƒªã‚¢ãƒ« (1.0x) ã¯æ¨™æº–è¨­å®šã§ã™ã€‚ãƒãƒ¼ãƒ‰ã‚³ã‚¢ (1.5x) ã¯æ¶ˆè€—ãŒ 50% å¢—ãˆã€éŽé…·ãªç®¡ç†ãŒæ±‚ã‚ã‚‰ã‚Œã¾ã™ã€‚" eh="ca93ca3e" />
 
-    <e k="helpLine_sf_se_p2_title" v="HUD とレート制御" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="プレイヤーごとの HUD オプション" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="HUD 設定は各プレイヤーで管理され、サーバーには同期されません。表示の有無、位置、配色（グリーン/ブルー/アンバー/モノ）、フォントサイズ、透明度、単位系が設定可能です。" eh="f3934884" />
-    <e k="helpLine_sf_se_p2_rate_title" v="スプレイヤー散布量制御" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="スプレイヤー等に乗車中、SFレート上げ（]）と下げ（[）で散布量を 0.10x 〜 2.00x の範囲で調整できます。自動レート制御（Shift+L）を有効にすると、Mod が最適な量を自動で狙います。" eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_title" v="HUD ã¨ãƒ¬ãƒ¼ãƒˆåˆ¶å¾¡" eh="399f4910" />
+    <e k="helpLine_sf_se_p2_hud_title" v="ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã”ã¨ã® HUD ã‚ªãƒ—ã‚·ãƒ§ãƒ³" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="HUD è¨­å®šã¯å„ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã§ç®¡ç†ã•ã‚Œã€ã‚µãƒ¼ãƒãƒ¼ã«ã¯åŒæœŸã•ã‚Œã¾ã›ã‚“ã€‚è¡¨ç¤ºã®æœ‰ç„¡ã€ä½ç½®ã€é…è‰²ï¼ˆã‚°ãƒªãƒ¼ãƒ³/ãƒ–ãƒ«ãƒ¼/ã‚¢ãƒ³ãƒãƒ¼/ãƒ¢ãƒŽï¼‰ã€ãƒ•ã‚©ãƒ³ãƒˆã‚µã‚¤ã‚ºã€é€æ˜Žåº¦ã€å˜ä½ç³»ãŒè¨­å®šå¯èƒ½ã§ã™ã€‚" eh="f3934884" />
+    <e k="helpLine_sf_se_p2_rate_title" v="ã‚¹ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼æ•£å¸ƒé‡åˆ¶å¾¡" eh="5ecdfa23" />
+    <e k="helpLine_sf_se_p2_rate_text" v="ã‚¹ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ç­‰ã«ä¹—è»Šä¸­ã€SFãƒ¬ãƒ¼ãƒˆä¸Šã’ï¼ˆ]ï¼‰ã¨ä¸‹ã’ï¼ˆ[ï¼‰ã§æ•£å¸ƒé‡ã‚’ 0.10x ã€œ 2.00x ã®ç¯„å›²ã§èª¿æ•´ã§ãã¾ã™ã€‚è‡ªå‹•ãƒ¬ãƒ¼ãƒˆåˆ¶å¾¡ï¼ˆShift+Lï¼‰ã‚’æœ‰åŠ¹ã«ã™ã‚‹ã¨ã€Mod ãŒæœ€é©ãªé‡ã‚’è‡ªå‹•ã§ç‹™ã„ã¾ã™ã€‚" eh="dd385e39" />
 
     <!-- Category 7: Multiplayer -->
-    <e k="helpLine_sf_mp_p1_title" v="マルチプレイヤーの仕組み" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="サーバー主導のシミュレーション" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="すべての土壌シミュレーションはサーバー上で実行されます。クライアントは参加時に完全なデータと設定を受信します。HUD 設定はプレイヤー固有であり、サーバーとは同期されません。" eh="db72a3f9" />
-    <e k="helpLine_sf_mp_p1_ded_title" v="専用サーバー (Dedi)" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="専用サーバーは HUD や GUI のオーバーヘッドなしで全シミュレーションを実行します。これは正常な動作です。管理にはコンソールコマンド（soilStatus など）を使用してください。" eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_title" v="ãƒžãƒ«ãƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ä»•çµ„ã¿" eh="8a4ce30e" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="ã‚µãƒ¼ãƒãƒ¼ä¸»å°Žã®ã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="ã™ã¹ã¦ã®åœŸå£Œã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ã¯ã‚µãƒ¼ãƒãƒ¼ä¸Šã§å®Ÿè¡Œã•ã‚Œã¾ã™ã€‚ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆã¯å‚åŠ æ™‚ã«å®Œå…¨ãªãƒ‡ãƒ¼ã‚¿ã¨è¨­å®šã‚’å—ä¿¡ã—ã¾ã™ã€‚HUD è¨­å®šã¯ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼å›ºæœ‰ã§ã‚ã‚Šã€ã‚µãƒ¼ãƒãƒ¼ã¨ã¯åŒæœŸã•ã‚Œã¾ã›ã‚“ã€‚" eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_ded_title" v="å°‚ç”¨ã‚µãƒ¼ãƒãƒ¼ (Dedi)" eh="4d3a45ba" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="å°‚ç”¨ã‚µãƒ¼ãƒãƒ¼ã¯ HUD ã‚„ GUI ã®ã‚ªãƒ¼ãƒãƒ¼ãƒ˜ãƒƒãƒ‰ãªã—ã§å…¨ã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å®Ÿè¡Œã—ã¾ã™ã€‚ã“ã‚Œã¯æ­£å¸¸ãªå‹•ä½œã§ã™ã€‚ç®¡ç†ã«ã¯ã‚³ãƒ³ã‚½ãƒ¼ãƒ«ã‚³ãƒžãƒ³ãƒ‰ï¼ˆsoilStatus ãªã©ï¼‰ã‚’ä½¿ç”¨ã—ã¦ãã ã•ã„ã€‚" eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Compatibility and Workflow" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." />
@@ -345,165 +345,165 @@
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
 
-    <e k="sf_crop_rotation_short" v="輪作" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="輪作ボーナスと連作障害を有効/無効にします（マメ科の後に窒素が回復し、同作物の連作で消耗が増加します）" eh="958b4212" />
-    <e k="sf_gypsum_title" v="石膏 (pH-)" eh="d66da34c" />
-    <e k="sf_compost_title" v="堆肥 (有機)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="バイオソリッド (N+P)" eh="f0c901dc" />
-    <e k="sf_chicken_manure_title" v="鶏糞 (N+P)" eh="338128e2" />
-    <e k="sf_pelletized_manure_title" v="ペレット堆肥 (NPK)" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="液体石灰 (pH+)" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="輪作" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="輪作ボーナス" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="マメ科作物（大豆、エンドウ、インゲンなど）を非マメ科の後に栽培すると、毎春 3 日間、無料の窒素ブーストが得られます。" eh="e1fce95b" />
-    <e k="helpLine_sf_nu_p4_fatigue_title" v="連作障害" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="同じ作物を 2 シーズン連続で植えると、養分の抽出量が 15% 増加します。土壌の疲弊を避けるために輪作を行いましょう。" eh="1613f3c6" />
+    <e k="sf_crop_rotation_short" v="è¼ªä½œ" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="è¼ªä½œãƒœãƒ¼ãƒŠã‚¹ã¨é€£ä½œéšœå®³ã‚’æœ‰åŠ¹/ç„¡åŠ¹ã«ã—ã¾ã™ï¼ˆãƒžãƒ¡ç§‘ã®å¾Œã«çª’ç´ ãŒå›žå¾©ã—ã€åŒä½œç‰©ã®é€£ä½œã§æ¶ˆè€—ãŒå¢—åŠ ã—ã¾ã™ï¼‰" eh="958b4212" />
+    <e k="sf_gypsum_title" v="çŸ³è† (pH-)" eh="d66da34c" />
+    <e k="sf_compost_title" v="å †è‚¥ (æœ‰æ©Ÿ)" eh="c3e2071a" />
+    <e k="sf_biosolids_title" v="ãƒã‚¤ã‚ªã‚½ãƒªãƒƒãƒ‰ (N+P)" eh="f0c901dc" />
+    <e k="sf_chicken_manure_title" v="é¶ç³ž (N+P)" eh="338128e2" />
+    <e k="sf_pelletized_manure_title" v="ãƒšãƒ¬ãƒƒãƒˆå †è‚¥ (NPK)" eh="c1b39b71" />
+    <e k="sf_liquidlime_title" v="æ¶²ä½“çŸ³ç° (pH+)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="è¼ªä½œ" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="è¼ªä½œãƒœãƒ¼ãƒŠã‚¹" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="ãƒžãƒ¡ç§‘ä½œç‰©ï¼ˆå¤§è±†ã€ã‚¨ãƒ³ãƒ‰ã‚¦ã€ã‚¤ãƒ³ã‚²ãƒ³ãªã©ï¼‰ã‚’éžãƒžãƒ¡ç§‘ã®å¾Œã«æ ½åŸ¹ã™ã‚‹ã¨ã€æ¯Žæ˜¥ 3 æ—¥é–“ã€ç„¡æ–™ã®çª’ç´ ãƒ–ãƒ¼ã‚¹ãƒˆãŒå¾—ã‚‰ã‚Œã¾ã™ã€‚" eh="e1fce95b" />
+    <e k="helpLine_sf_nu_p4_fatigue_title" v="é€£ä½œéšœå®³" eh="236a590c" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="åŒã˜ä½œç‰©ã‚’ 2 ã‚·ãƒ¼ã‚ºãƒ³é€£ç¶šã§æ¤ãˆã‚‹ã¨ã€é¤Šåˆ†ã®æŠ½å‡ºé‡ãŒ 15% å¢—åŠ ã—ã¾ã™ã€‚åœŸå£Œã®ç–²å¼Šã‚’é¿ã‘ã‚‹ãŸã‚ã«è¼ªä½œã‚’è¡Œã„ã¾ã—ã‚‡ã†ã€‚" eh="1613f3c6" />
 
     <!-- Soil Map Overlay (SoilMapOverlay.lua) -->
-    <e k="sf_map_layer_off" v="土壌マップ: オフ" eh="3e654ade" />
-    <e k="sf_map_layer_n" v="窒素" eh="1e9ef3ba" />
-    <e k="sf_map_layer_p" v="リン" eh="eb4f2688" />
-    <e k="sf_map_layer_k" v="カリウム" eh="3a4edc67" />
+    <e k="sf_map_layer_off" v="åœŸå£Œãƒžãƒƒãƒ—: ã‚ªãƒ•" eh="3e654ade" />
+    <e k="sf_map_layer_n" v="çª’ç´ " eh="1e9ef3ba" />
+    <e k="sf_map_layer_p" v="ãƒªãƒ³" eh="eb4f2688" />
+    <e k="sf_map_layer_k" v="ã‚«ãƒªã‚¦ãƒ " eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
-    <e k="sf_map_layer_om" v="有機物" eh="6305f4bb" />
-    <e k="sf_map_layer_urgency" v="対応優先度" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="雑草圧" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="害虫圧" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="病害圧" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="踏み固め" eh="19cf3ee7" />
+    <e k="sf_map_layer_om" v="æœ‰æ©Ÿç‰©" eh="6305f4bb" />
+    <e k="sf_map_layer_urgency" v="å¯¾å¿œå„ªå…ˆåº¦" eh="419ea5af" />
+    <e k="sf_map_layer_weed" v="é›‘è‰åœ§" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="å®³è™«åœ§" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="ç—…å®³åœ§" eh="2b805cc9" />
+    <e k="sf_map_layer_compaction" v="è¸ã¿å›ºã‚" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
-    <e k="sf_map_overlay_cycle" v="Shift+M: 土壌レイヤー切替" eh="032fdac7" />
-    <e k="sf_map_page_title" v="土壌レイヤー" eh="04a675fb" />
-    <e k="sf_map_sidebar_header" v="土壌マップレイヤー" eh="81332549" />
-    <e k="sf_map_sidebar_label" v="アクティブレイヤー" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="マップに表示する土壌養分を選択します" eh="eb926e9a" />
-    <e k="sf_map_overlay_low" v="低" eh="28d0edd0" />
-    <e k="sf_map_overlay_med" v="中" eh="248c9511" />
-    <e k="sf_map_overlay_high" v="高" eh="655d20c1" />
+    <e k="sf_map_overlay_cycle" v="Shift+M: åœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼åˆ‡æ›¿" eh="032fdac7" />
+    <e k="sf_map_page_title" v="åœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="04a675fb" />
+    <e k="sf_map_sidebar_header" v="åœŸå£Œãƒžãƒƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="81332549" />
+    <e k="sf_map_sidebar_label" v="ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="f8a2c198" />
+    <e k="sf_map_sidebar_tooltip" v="ãƒžãƒƒãƒ—ã«è¡¨ç¤ºã™ã‚‹åœŸå£Œé¤Šåˆ†ã‚’é¸æŠžã—ã¾ã™" eh="eb926e9a" />
+    <e k="sf_map_overlay_low" v="ä½Ž" eh="28d0edd0" />
+    <e k="sf_map_overlay_med" v="ä¸­" eh="248c9511" />
+    <e k="sf_map_overlay_high" v="é«˜" eh="655d20c1" />
 
     <!-- Soil PDA Screen (SoilPDAScreen.lua) -->
-    <e k="sf_pda_screen_title" v="土壌と肥料" eh="f31197fb" />
-    <e k="sf_pda_tab_map" v="土壌マップ" eh="59f988b2" />
-    <e k="sf_pda_tab_fields" v="フィールド" eh="a4ca5edd" />
-    <e k="sf_pda_tab_treatment" v="施肥・処理計画" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="農場概要" eh="47f2c19a" />
-    <e k="sf_pda_fields_tracked_label" v="追跡フィールド数" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="所有フィールド数" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="平均養分" eh="f06b2704" />
-    <e k="sf_pda_avg_n_label" v="窒素 (N)" eh="25cee53b" />
-    <e k="sf_pda_avg_p_label" v="リン (P)" eh="75cb5cd6" />
-    <e k="sf_pda_avg_k_label" v="カリウム (K)" eh="39797137" />
-    <e k="sf_pda_avg_ph_label" v="pH レベル" eh="0c85daad" />
-    <e k="sf_pda_avg_om_label" v="有機物" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="作物へのストレス" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="雑草" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="害虫" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="病害" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="要対応" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="要施肥" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="要対応の合計" eh="b3ce2db9" />
-    <e k="sf_pda_no_data_left" v="フィールドデータがありません。" eh="ba71c6b1" />
+    <e k="sf_pda_screen_title" v="åœŸå£Œã¨è‚¥æ–™" eh="f31197fb" />
+    <e k="sf_pda_tab_map" v="åœŸå£Œãƒžãƒƒãƒ—" eh="59f988b2" />
+    <e k="sf_pda_tab_fields" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰" eh="a4ca5edd" />
+    <e k="sf_pda_tab_treatment" v="æ–½è‚¥ãƒ»å‡¦ç†è¨ˆç”»" eh="4ba012e2" />
+    <e k="sf_pda_section_farm_overview" v="è¾²å ´æ¦‚è¦" eh="47f2c19a" />
+    <e k="sf_pda_fields_tracked_label" v="è¿½è·¡ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æ•°" eh="c763e26e" />
+    <e k="sf_pda_fields_owned_label" v="æ‰€æœ‰ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æ•°" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="å¹³å‡é¤Šåˆ†" eh="f06b2704" />
+    <e k="sf_pda_avg_n_label" v="çª’ç´  (N)" eh="25cee53b" />
+    <e k="sf_pda_avg_p_label" v="ãƒªãƒ³ (P)" eh="75cb5cd6" />
+    <e k="sf_pda_avg_k_label" v="ã‚«ãƒªã‚¦ãƒ  (K)" eh="39797137" />
+    <e k="sf_pda_avg_ph_label" v="pH ãƒ¬ãƒ™ãƒ«" eh="0c85daad" />
+    <e k="sf_pda_avg_om_label" v="æœ‰æ©Ÿç‰©" eh="6305f4bb" />
+    <e k="sf_pda_section_pressure" v="ä½œç‰©ã¸ã®ã‚¹ãƒˆãƒ¬ã‚¹" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="é›‘è‰" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="å®³è™«" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="ç—…å®³" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="è¦å¯¾å¿œ" eh="80e48bc3" />
+    <e k="sf_pda_needs_fert_label" v="è¦æ–½è‚¥" eh="fa9ded5e" />
+    <e k="sf_pda_total_urgent_label" v="è¦å¯¾å¿œã®åˆè¨ˆ" eh="b3ce2db9" />
+    <e k="sf_pda_no_data_left" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãƒ‡ãƒ¼ã‚¿ãŒã‚ã‚Šã¾ã›ã‚“ã€‚" eh="ba71c6b1" />
     <!-- Map Tab -->
-    <e k="sf_pda_map_section_title" v="土壌マップレイヤー" eh="85d63132" />
-    <e k="sf_pda_map_active_layer" v="アクティブレイヤー" eh="f8a2c198" />
-    <e k="sf_pda_map_layer_off_desc" v="アクティブな土壌レイヤーはありません。表示するレイヤーを選択してください。" eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="全フィールドの窒素含有量。緑 = 良好、赤 = 枯渇。" eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="全フィールドのリン含有量。緑 = 良好、赤 = 枯渇。" eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="全フィールドのカリウム含有量。緑 = 良好、赤 = 枯渇。" eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="土壌の pH レベル。最適な範囲は 6.5-7.0 (緑) です。" eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="有機物含有量。高いほど長期的な肥沃度に有利です。" eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="総合的な処理の緊急度。赤 = 即時の対応が必要。" eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="雑草の発生レベル。赤 = 高密度、除草剤が必要です。" eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="害虫の発生レベル。赤 = 高密度、殺虫剤が必要です。" eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="病害の発生レベル。赤 = 流行中、殺菌剤が必要です。" eh="5d32d30a" />
-    <e k="sf_pda_map_legend_title" v="マップ凡例" eh="86448402" />
-    <e k="sf_pda_map_legend_good" v="良好" eh="0c6ad70b" />
-    <e k="sf_pda_map_legend_fair" v="普通" eh="f7f20cf0" />
-    <e k="sf_pda_map_legend_poor" v="不良 / 低" eh="32aa75ff" />
-    <e k="sf_pda_map_legend_low" v="低" eh="28d0edd0" />
-    <e k="sf_pda_map_legend_medium" v="中" eh="87f8a6ab" />
-    <e k="sf_pda_map_legend_high" v="高" eh="655d20c1" />
-    <e k="sf_pda_map_legend_excess" v="過剰" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="サイドバーでレイヤーを選択してマップに表示します。" eh="eee76c81" />
-    <e k="sf_pda_map_jump_hint" v="フィールドをクリックしてマップ上をジャンプ" eh="006d5371" />
-    <e k="sf_pda_map_native_hint" v="土壌レイヤーの視覚化機能が移動しました！バニラの PDA マップサイドバー (ESC > マップ) から直接すべての土壌レイヤーにアクセスし、切り替えることができます。サイドバーのドットの中にある「土壌レイヤー」カテゴリを探してください。" eh="3210d828" />
-    <e k="sf_pda_map_open_btn" v="開発ノート" eh="ef40b93f" />
-    <e k="sf_pda_btn_help" v="ヘルプ" eh="6a26f548" />
-    <e k="sf_pda_help_text" v="こんにちは、開発者です！よりシームレスな体験のために、土壌マップレイヤーをバニラの PDA マップ (ESC > マップ) に移動しました。サイドバーから直接レイヤーを選択できるようになりました。PDA ページはまだ調整中ですので、今後のアップデートをお楽しみに！" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="皆様のフィードバックが重要です！バグに遭遇した場合や、新機能の提案、コードへの貢献を希望される場合は、GitHub のプロジェクトページをご覧ください。Issue や Pull Request はいつでも歓迎しています。テストへのご協力ありがとうございます！" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="注：マップページの土壌レイヤータブは現在機能していません。この問題を把握しており、修正に取り組んでいます（時間がかかる場合があります）。" eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="マッププレビュー利用不可" eh="43983f81" />
-    <e k="sf_map_health_overall" v="平均土壌健全度" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="農場概要を開く" eh="6f0800e8" />
+    <e k="sf_pda_map_section_title" v="åœŸå£Œãƒžãƒƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="85d63132" />
+    <e k="sf_pda_map_active_layer" v="ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="f8a2c198" />
+    <e k="sf_pda_map_layer_off_desc" v="ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ãªåœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼ã¯ã‚ã‚Šã¾ã›ã‚“ã€‚è¡¨ç¤ºã™ã‚‹ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’é¸æŠžã—ã¦ãã ã•ã„ã€‚" eh="3bd7e65a" />
+    <e k="sf_pda_map_layer_n_desc" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®çª’ç´ å«æœ‰é‡ã€‚ç·‘ = è‰¯å¥½ã€èµ¤ = æž¯æ¸‡ã€‚" eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®ãƒªãƒ³å«æœ‰é‡ã€‚ç·‘ = è‰¯å¥½ã€èµ¤ = æž¯æ¸‡ã€‚" eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®ã‚«ãƒªã‚¦ãƒ å«æœ‰é‡ã€‚ç·‘ = è‰¯å¥½ã€èµ¤ = æž¯æ¸‡ã€‚" eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="åœŸå£Œã® pH ãƒ¬ãƒ™ãƒ«ã€‚æœ€é©ãªç¯„å›²ã¯ 6.5-7.0 (ç·‘) ã§ã™ã€‚" eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="æœ‰æ©Ÿç‰©å«æœ‰é‡ã€‚é«˜ã„ã»ã©é•·æœŸçš„ãªè‚¥æ²ƒåº¦ã«æœ‰åˆ©ã§ã™ã€‚" eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="ç·åˆçš„ãªå‡¦ç†ã®ç·Šæ€¥åº¦ã€‚èµ¤ = å³æ™‚ã®å¯¾å¿œãŒå¿…è¦ã€‚" eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="é›‘è‰ã®ç™ºç”Ÿãƒ¬ãƒ™ãƒ«ã€‚èµ¤ = é«˜å¯†åº¦ã€é™¤è‰å‰¤ãŒå¿…è¦ã§ã™ã€‚" eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="å®³è™«ã®ç™ºç”Ÿãƒ¬ãƒ™ãƒ«ã€‚èµ¤ = é«˜å¯†åº¦ã€æ®ºè™«å‰¤ãŒå¿…è¦ã§ã™ã€‚" eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="ç—…å®³ã®ç™ºç”Ÿãƒ¬ãƒ™ãƒ«ã€‚èµ¤ = æµè¡Œä¸­ã€æ®ºèŒå‰¤ãŒå¿…è¦ã§ã™ã€‚" eh="5d32d30a" />
+    <e k="sf_pda_map_legend_title" v="ãƒžãƒƒãƒ—å‡¡ä¾‹" eh="86448402" />
+    <e k="sf_pda_map_legend_good" v="è‰¯å¥½" eh="0c6ad70b" />
+    <e k="sf_pda_map_legend_fair" v="æ™®é€š" eh="f7f20cf0" />
+    <e k="sf_pda_map_legend_poor" v="ä¸è‰¯ / ä½Ž" eh="32aa75ff" />
+    <e k="sf_pda_map_legend_low" v="ä½Ž" eh="28d0edd0" />
+    <e k="sf_pda_map_legend_medium" v="ä¸­" eh="87f8a6ab" />
+    <e k="sf_pda_map_legend_high" v="é«˜" eh="655d20c1" />
+    <e k="sf_pda_map_legend_excess" v="éŽå‰°" eh="d1d25b9f" />
+    <e k="sf_pda_map_instructions" v="ã‚µã‚¤ãƒ‰ãƒãƒ¼ã§ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’é¸æŠžã—ã¦ãƒžãƒƒãƒ—ã«è¡¨ç¤ºã—ã¾ã™ã€‚" eh="eee76c81" />
+    <e k="sf_pda_map_jump_hint" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦ãƒžãƒƒãƒ—ä¸Šã‚’ã‚¸ãƒ£ãƒ³ãƒ—" eh="006d5371" />
+    <e k="sf_pda_map_native_hint" v="åœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼ã®è¦–è¦šåŒ–æ©Ÿèƒ½ãŒç§»å‹•ã—ã¾ã—ãŸï¼ãƒãƒ‹ãƒ©ã® PDA ãƒžãƒƒãƒ—ã‚µã‚¤ãƒ‰ãƒãƒ¼ (ESC > ãƒžãƒƒãƒ—) ã‹ã‚‰ç›´æŽ¥ã™ã¹ã¦ã®åœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼ã«ã‚¢ã‚¯ã‚»ã‚¹ã—ã€åˆ‡ã‚Šæ›¿ãˆã‚‹ã“ã¨ãŒã§ãã¾ã™ã€‚ã‚µã‚¤ãƒ‰ãƒãƒ¼ã®ãƒ‰ãƒƒãƒˆã®ä¸­ã«ã‚ã‚‹ã€ŒåœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼ã€ã‚«ãƒ†ã‚´ãƒªã‚’æŽ¢ã—ã¦ãã ã•ã„ã€‚" eh="3210d828" />
+    <e k="sf_pda_map_open_btn" v="é–‹ç™ºãƒŽãƒ¼ãƒˆ" eh="ef40b93f" />
+    <e k="sf_pda_btn_help" v="ãƒ˜ãƒ«ãƒ—" eh="6a26f548" />
+    <e k="sf_pda_help_text" v="ã“ã‚“ã«ã¡ã¯ã€é–‹ç™ºè€…ã§ã™ï¼ã‚ˆã‚Šã‚·ãƒ¼ãƒ ãƒ¬ã‚¹ãªä½“é¨“ã®ãŸã‚ã«ã€åœŸå£Œãƒžãƒƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’ãƒãƒ‹ãƒ©ã® PDA ãƒžãƒƒãƒ— (ESC > ãƒžãƒƒãƒ—) ã«ç§»å‹•ã—ã¾ã—ãŸã€‚ã‚µã‚¤ãƒ‰ãƒãƒ¼ã‹ã‚‰ç›´æŽ¥ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’é¸æŠžã§ãã‚‹ã‚ˆã†ã«ãªã‚Šã¾ã—ãŸã€‚PDA ãƒšãƒ¼ã‚¸ã¯ã¾ã èª¿æ•´ä¸­ã§ã™ã®ã§ã€ä»Šå¾Œã®ã‚¢ãƒƒãƒ—ãƒ‡ãƒ¼ãƒˆã‚’ãŠæ¥½ã—ã¿ã«ï¼" eh="67643ddd" />
+    <e k="sf_pda_help_github" v="çš†æ§˜ã®ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ãŒé‡è¦ã§ã™ï¼ãƒã‚°ã«é­é‡ã—ãŸå ´åˆã‚„ã€æ–°æ©Ÿèƒ½ã®ææ¡ˆã€ã‚³ãƒ¼ãƒ‰ã¸ã®è²¢çŒ®ã‚’å¸Œæœ›ã•ã‚Œã‚‹å ´åˆã¯ã€GitHub ã®ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆãƒšãƒ¼ã‚¸ã‚’ã”è¦§ãã ã•ã„ã€‚Issue ã‚„ Pull Request ã¯ã„ã¤ã§ã‚‚æ­“è¿Žã—ã¦ã„ã¾ã™ã€‚ãƒ†ã‚¹ãƒˆã¸ã®ã”å”åŠ›ã‚ã‚ŠãŒã¨ã†ã”ã–ã„ã¾ã™ï¼" eh="3a10b023" />
+    <e k="sf_pda_help_note" v="æ³¨ï¼šãƒžãƒƒãƒ—ãƒšãƒ¼ã‚¸ã®åœŸå£Œãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚¿ãƒ–ã¯ç¾åœ¨æ©Ÿèƒ½ã—ã¦ã„ã¾ã›ã‚“ã€‚ã“ã®å•é¡Œã‚’æŠŠæ¡ã—ã¦ãŠã‚Šã€ä¿®æ­£ã«å–ã‚Šçµ„ã‚“ã§ã„ã¾ã™ï¼ˆæ™‚é–“ãŒã‹ã‹ã‚‹å ´åˆãŒã‚ã‚Šã¾ã™ï¼‰ã€‚" eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="ãƒžãƒƒãƒ—ãƒ—ãƒ¬ãƒ“ãƒ¥ãƒ¼åˆ©ç”¨ä¸å¯" eh="43983f81" />
+    <e k="sf_map_health_overall" v="å¹³å‡åœŸå£Œå¥å…¨åº¦" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="è¾²å ´æ¦‚è¦ã‚’é–‹ã" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
-    <e k="sf_map_btn_cycle_layer" v="レイヤー切替" eh="875dbf22" />
-    <e k="sf_map_btn_treatment" v="施肥計画" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="オーバーレイ無効" eh="8e75dec5" />
+    <e k="sf_map_btn_cycle_layer" v="ãƒ¬ã‚¤ãƒ¤ãƒ¼åˆ‡æ›¿" eh="875dbf22" />
+    <e k="sf_map_btn_treatment" v="æ–½è‚¥è¨ˆç”»" eh="4ba012e2" />
+    <e k="sf_map_btn_disable" v="ã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ç„¡åŠ¹" eh="8e75dec5" />
     <e k="sf_treat_action_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_help_title" v="土壌クイックリファレンス" eh="8986bb6d" />
-    <e k="sf_help_nutrients_header" v="主要養分" eh="9aeb39bf" />
-    <e k="sf_help_n" v="N (窒素)     - 消耗が速い。UAN、尿素、または堆肥を散布。" eh="f2d0c792" />
-    <e k="sf_help_p" v="P (リン)     - 長持ち。MAP または DAP を散布。" eh="fdfbd91e" />
-    <e k="sf_help_k" v="K (カリウム)   - 塩化カリを散布。根の成長に重要。" eh="e0217634" />
-    <e k="sf_help_om" v="OM (有機物) - 蓄積が遅い。堆肥や液肥を漉き込む。" eh="a4e29617" />
-    <e k="sf_help_soil_header" v="土壌化学" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = 理想。 6.5未満なら石灰。 7.5超なら石膏。" eh="8929304d" />
-    <e k="sf_help_pressure_header" v="作物へのストレス" eh="132b0f66" />
-    <e k="sf_help_weed" v="雑草    > 20% - 除草剤を散布。" eh="c8d890df" />
-    <e k="sf_help_pest" v="害虫    > 20% - 殺虫剤を散布。" eh="f4932a05" />
-    <e k="sf_help_disease" v="病害    > 20% - 殺菌剤を散布。" eh="1bfd0913" />
-    <e k="sf_help_status_header" v="ステータスレベル" eh="b081c2c6" />
-    <e k="sf_help_good" v="良好 - 対応不要。" eh="03910bec" />
-    <e k="sf_help_fair" v="普通 - 監視または予防的な追肥。" eh="2922eb1c" />
-    <e k="sf_help_poor" v="不良 - 即時の処理が必要。" eh="b287d206" />
+    <e k="sf_help_title" v="åœŸå£Œã‚¯ã‚¤ãƒƒã‚¯ãƒªãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹" eh="8986bb6d" />
+    <e k="sf_help_nutrients_header" v="ä¸»è¦é¤Šåˆ†" eh="9aeb39bf" />
+    <e k="sf_help_n" v="N (çª’ç´ )     - æ¶ˆè€—ãŒé€Ÿã„ã€‚UANã€å°¿ç´ ã€ã¾ãŸã¯å †è‚¥ã‚’æ•£å¸ƒã€‚" eh="f2d0c792" />
+    <e k="sf_help_p" v="P (ãƒªãƒ³)     - é•·æŒã¡ã€‚MAP ã¾ãŸã¯ DAP ã‚’æ•£å¸ƒã€‚" eh="fdfbd91e" />
+    <e k="sf_help_k" v="K (ã‚«ãƒªã‚¦ãƒ )   - å¡©åŒ–ã‚«ãƒªã‚’æ•£å¸ƒã€‚æ ¹ã®æˆé•·ã«é‡è¦ã€‚" eh="e0217634" />
+    <e k="sf_help_om" v="OM (æœ‰æ©Ÿç‰©) - è“„ç©ãŒé…ã„ã€‚å †è‚¥ã‚„æ¶²è‚¥ã‚’æ¼‰ãè¾¼ã‚€ã€‚" eh="a4e29617" />
+    <e k="sf_help_soil_header" v="åœŸå£ŒåŒ–å­¦" eh="19c67ff5" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = ç†æƒ³ã€‚ 6.5æœªæº€ãªã‚‰çŸ³ç°ã€‚ 7.5è¶…ãªã‚‰çŸ³è†ã€‚" eh="8929304d" />
+    <e k="sf_help_pressure_header" v="ä½œç‰©ã¸ã®ã‚¹ãƒˆãƒ¬ã‚¹" eh="132b0f66" />
+    <e k="sf_help_weed" v="é›‘è‰    > 20% - é™¤è‰å‰¤ã‚’æ•£å¸ƒã€‚" eh="c8d890df" />
+    <e k="sf_help_pest" v="å®³è™«    > 20% - æ®ºè™«å‰¤ã‚’æ•£å¸ƒã€‚" eh="f4932a05" />
+    <e k="sf_help_disease" v="ç—…å®³    > 20% - æ®ºèŒå‰¤ã‚’æ•£å¸ƒã€‚" eh="1bfd0913" />
+    <e k="sf_help_status_header" v="ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãƒ¬ãƒ™ãƒ«" eh="b081c2c6" />
+    <e k="sf_help_good" v="è‰¯å¥½ - å¯¾å¿œä¸è¦ã€‚" eh="03910bec" />
+    <e k="sf_help_fair" v="æ™®é€š - ç›£è¦–ã¾ãŸã¯äºˆé˜²çš„ãªè¿½è‚¥ã€‚" eh="2922eb1c" />
+    <e k="sf_help_poor" v="ä¸è‰¯ - å³æ™‚ã®å‡¦ç†ãŒå¿…è¦ã€‚" eh="b287d206" />
     <!-- Fields Tab -->
-    <e k="sf_pda_fields_section_title" v="全フィールド" eh="48729e0b" />
-    <e k="sf_pda_col_field" v="フィールド" eh="6f16a5f8" />
+    <e k="sf_pda_fields_section_title" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰" eh="48729e0b" />
+    <e k="sf_pda_col_field" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰" eh="6f16a5f8" />
     <e k="sf_pda_col_n" v="N%" eh="30740562" />
     <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="フィルター: 全フィールド" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="フィルター: 所有のみ" eh="258cb971" />
+    <e k="sf_pda_filter_all" v="ãƒ•ã‚£ãƒ«ã‚¿ãƒ¼: å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰" eh="a46a8cb2" />
+    <e k="sf_pda_filter_owned" v="ãƒ•ã‚£ãƒ«ã‚¿ãƒ¼: æ‰€æœ‰ã®ã¿" eh="258cb971" />
     <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
     <e k="sf_pda_col_om" v="OM" eh="bfbebc07" />
-    <e k="sf_pda_col_status" v="状態" eh="ec53a8c4" />
-    <e k="sf_pda_no_fields" v="フィールドデータがまだ記録されていません。" eh="72265670" />
-    <e k="sf_pda_status_good" v="良好" eh="0c6ad70b" />
-    <e k="sf_pda_status_fair" v="普通" eh="f7f20cf0" />
-    <e k="sf_pda_status_poor" v="不良" eh="0e94d017" />
+    <e k="sf_pda_col_status" v="çŠ¶æ…‹" eh="ec53a8c4" />
+    <e k="sf_pda_no_fields" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãƒ‡ãƒ¼ã‚¿ãŒã¾ã è¨˜éŒ²ã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚" eh="72265670" />
+    <e k="sf_pda_status_good" v="è‰¯å¥½" eh="0c6ad70b" />
+    <e k="sf_pda_status_fair" v="æ™®é€š" eh="f7f20cf0" />
+    <e k="sf_pda_status_poor" v="ä¸è‰¯" eh="0e94d017" />
     <!-- Treatment Tab -->
-    <e k="sf_pda_treatment_section_title" v="施肥・処理計画" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="緊急度" eh="c94e3850" />
-    <e k="sf_pda_col_needs" v="必要項目" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="すべてのフィールドが良好な状態です。" eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="右側にリストされているフィールドは処理が必要です。行をクリックすると、推奨される投入物と推定数量が表示されます。" eh="5748d316" />
-    <e k="sf_pda_need_n" v="窒素" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="リン" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="カリウム" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="pH 調整" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="除草剤" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="殺虫剤" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="殺菌剤" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="複数項目" eh="a0bf169f" />
-    <e k="sf_pda_treatment_minor" v="軽微" eh="6fed0c37" />
+    <e k="sf_pda_treatment_section_title" v="æ–½è‚¥ãƒ»å‡¦ç†è¨ˆç”»" eh="4ba012e2" />
+    <e k="sf_pda_col_priority" v="ç·Šæ€¥åº¦" eh="c94e3850" />
+    <e k="sf_pda_col_needs" v="å¿…è¦é …ç›®" eh="94d6125d" />
+    <e k="sf_pda_no_treatment" v="ã™ã¹ã¦ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãŒè‰¯å¥½ãªçŠ¶æ…‹ã§ã™ã€‚" eh="fa985166" />
+    <e k="sf_pda_treatment_hint" v="å³å´ã«ãƒªã‚¹ãƒˆã•ã‚Œã¦ã„ã‚‹ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã¯å‡¦ç†ãŒå¿…è¦ã§ã™ã€‚è¡Œã‚’ã‚¯ãƒªãƒƒã‚¯ã™ã‚‹ã¨ã€æŽ¨å¥¨ã•ã‚Œã‚‹æŠ•å…¥ç‰©ã¨æŽ¨å®šæ•°é‡ãŒè¡¨ç¤ºã•ã‚Œã¾ã™ã€‚" eh="5748d316" />
+    <e k="sf_pda_need_n" v="çª’ç´ " eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="ãƒªãƒ³" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="ã‚«ãƒªã‚¦ãƒ " eh="3a4edc67" />
+    <e k="sf_pda_need_ph" v="pH èª¿æ•´" eh="0570e9d2" />
+    <e k="sf_pda_need_weed" v="é™¤è‰å‰¤" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="æ®ºè™«å‰¤" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="æ®ºèŒå‰¤" eh="e8512698" />
+    <e k="sf_pda_need_multiple" v="è¤‡æ•°é …ç›®" eh="a0bf169f" />
+    <e k="sf_pda_treatment_minor" v="è»½å¾®" eh="6fed0c37" />
     <!-- Field Detail Dialog (SoilFieldDetailDialog.lua) -->
-    <e k="sf_detail_title" v="フィールド詳細" eh="03b5acd7" />
-    <e k="sf_detail_close" v="閉じる" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="フィールド #" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="緊急度:" eh="9a83237c" />
-    <e k="sf_detail_section_nutrients" v="土壌養分" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="作物へのストレス" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="作付履歴" eh="54c27499" />
-    <e k="sf_detail_n_label" v="窒素 (N)" eh="25cee53b" />
-    <e k="sf_detail_p_label" v="リン (P)" eh="75cb5cd6" />
-    <e k="sf_detail_k_label" v="カリウム (K)" eh="39797137" />
-    <e k="sf_detail_ph_label" v="pH レベル" eh="0c85daad" />
-    <e k="sf_detail_om_label" v="有機物" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="雑草圧" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="害虫圧" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="病害圧" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="前作" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="輪作ステータス" eh="83f7f522" />
+    <e k="sf_detail_title" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰è©³ç´°" eh="03b5acd7" />
+    <e k="sf_detail_close" v="é–‰ã˜ã‚‹" eh="d3d2e617" />
+    <e k="sf_detail_field_label" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ #" eh="228118ab" />
+    <e k="sf_detail_urgency_label" v="ç·Šæ€¥åº¦:" eh="9a83237c" />
+    <e k="sf_detail_section_nutrients" v="åœŸå£Œé¤Šåˆ†" eh="64377acf" />
+    <e k="sf_detail_section_pressure" v="ä½œç‰©ã¸ã®ã‚¹ãƒˆãƒ¬ã‚¹" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="ä½œä»˜å±¥æ­´" eh="54c27499" />
+    <e k="sf_detail_n_label" v="çª’ç´  (N)" eh="25cee53b" />
+    <e k="sf_detail_p_label" v="ãƒªãƒ³ (P)" eh="75cb5cd6" />
+    <e k="sf_detail_k_label" v="ã‚«ãƒªã‚¦ãƒ  (K)" eh="39797137" />
+    <e k="sf_detail_ph_label" v="pH ãƒ¬ãƒ™ãƒ«" eh="0c85daad" />
+    <e k="sf_detail_om_label" v="æœ‰æ©Ÿç‰©" eh="6305f4bb" />
+    <e k="sf_detail_weed_label" v="é›‘è‰åœ§" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="å®³è™«åœ§" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="ç—…å®³åœ§" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="å‰ä½œ" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="è¼ªä½œã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -519,213 +519,213 @@
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
     <!-- Treatment Prescription Dialog (SoilTreatmentDialog.lua) -->
-    <e k="sf_treat_title" v="処方箋" eh="0ccc3ee5" />
-    <e k="sf_treat_section_soil" v="土壌改良" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="養分散布" eh="76521e8e" />
-    <e k="sf_treat_section_prot" v="作物保護" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="特殊な肥料についてはショップの「製品」セクションを参照してください。" eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="最適 - 対応は不要です。" eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="石灰または液体石灰を散布して pH を上げてください。" eh="d1420b97" />
-    <e k="sf_treat_action_gypsum" v="石膏を散布して pH を下げ、土壌構造を改善してください。" eh="4cb3f0dc" />
-    <e k="sf_treat_action_om_low" v="堆肥、液肥を漉き込むか、藁を細断して残してください。" eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="監視を続け、有機物の投入を維持してください。" eh="ae3af748" />
-    <e k="sf_treat_action_n_poor" v="UAN32、尿素、または無水アンモニアを散布してください。" eh="ebc225b0" />
-    <e k="sf_treat_action_n_fair" v="AMS またはスターター肥料を散布してください。" eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="MAP または DAP (リン酸) を散布してください。" eh="ec2d9afa" />
+    <e k="sf_treat_title" v="å‡¦æ–¹ç®‹" eh="0ccc3ee5" />
+    <e k="sf_treat_section_soil" v="åœŸå£Œæ”¹è‰¯" eh="09e016e4" />
+    <e k="sf_treat_section_fert" v="é¤Šåˆ†æ•£å¸ƒ" eh="76521e8e" />
+    <e k="sf_treat_section_prot" v="ä½œç‰©ä¿è­·" eh="bd3fe9cd" />
+    <e k="sf_treat_hint" v="ç‰¹æ®Šãªè‚¥æ–™ã«ã¤ã„ã¦ã¯ã‚·ãƒ§ãƒƒãƒ—ã®ã€Œè£½å“ã€ã‚»ã‚¯ã‚·ãƒ§ãƒ³ã‚’å‚ç…§ã—ã¦ãã ã•ã„ã€‚" eh="540bff4d" />
+    <e k="sf_treat_action_optimal" v="æœ€é© - å¯¾å¿œã¯ä¸è¦ã§ã™ã€‚" eh="4501a96b" />
+    <e k="sf_treat_action_lime" v="çŸ³ç°ã¾ãŸã¯æ¶²ä½“çŸ³ç°ã‚’æ•£å¸ƒã—ã¦ pH ã‚’ä¸Šã’ã¦ãã ã•ã„ã€‚" eh="d1420b97" />
+    <e k="sf_treat_action_gypsum" v="çŸ³è†ã‚’æ•£å¸ƒã—ã¦ pH ã‚’ä¸‹ã’ã€åœŸå£Œæ§‹é€ ã‚’æ”¹å–„ã—ã¦ãã ã•ã„ã€‚" eh="4cb3f0dc" />
+    <e k="sf_treat_action_om_low" v="å †è‚¥ã€æ¶²è‚¥ã‚’æ¼‰ãè¾¼ã‚€ã‹ã€è—ã‚’ç´°æ–­ã—ã¦æ®‹ã—ã¦ãã ã•ã„ã€‚" eh="33ec544c" />
+    <e k="sf_treat_action_om_fair" v="ç›£è¦–ã‚’ç¶šã‘ã€æœ‰æ©Ÿç‰©ã®æŠ•å…¥ã‚’ç¶­æŒã—ã¦ãã ã•ã„ã€‚" eh="ae3af748" />
+    <e k="sf_treat_action_n_poor" v="UAN32ã€å°¿ç´ ã€ã¾ãŸã¯ç„¡æ°´ã‚¢ãƒ³ãƒ¢ãƒ‹ã‚¢ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="ebc225b0" />
+    <e k="sf_treat_action_n_fair" v="AMS ã¾ãŸã¯ã‚¹ã‚¿ãƒ¼ã‚¿ãƒ¼è‚¥æ–™ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="dc8fbeba" />
+    <e k="sf_treat_action_p_poor" v="MAP ã¾ãŸã¯ DAP (ãƒªãƒ³é…¸) ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="塩化カリ (カリウム) を散布してください。" eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="å¡©åŒ–ã‚«ãƒª (ã‚«ãƒªã‚¦ãƒ ) ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="直ちに除草剤を散布してください。" eh="625551c5" />
-    <e k="sf_treat_action_pest" v="直ちに殺虫剤を散布してください。" eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="直ちに殺菌剤を散布してください。" eh="9228323a" />
-    <e k="sf_detail_rotation_ok" v="良好" eh="e0aa021e" />
+    <e k="sf_treat_action_weed" v="ç›´ã¡ã«é™¤è‰å‰¤ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="625551c5" />
+    <e k="sf_treat_action_pest" v="ç›´ã¡ã«æ®ºè™«å‰¤ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="ç›´ã¡ã«æ®ºèŒå‰¤ã‚’æ•£å¸ƒã—ã¦ãã ã•ã„ã€‚" eh="9228323a" />
+    <e k="sf_detail_rotation_ok" v="è‰¯å¥½" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="マメ科ボーナス (+N)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="連作障害 (消耗 1.15倍)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="データなし。" eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="記録なし" eh="a4b5a996" />
+    <e k="sf_detail_rotation_bonus" v="ãƒžãƒ¡ç§‘ãƒœãƒ¼ãƒŠã‚¹ (+N)" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_fatigue" v="é€£ä½œéšœå®³ (æ¶ˆè€— 1.15å€)" eh="522a6d93" />
+    <e k="sf_detail_no_field" v="ãƒ‡ãƒ¼ã‚¿ãªã—ã€‚" eh="c6d95d5e" />
+    <e k="sf_detail_no_crop" v="è¨˜éŒ²ãªã—" eh="a4b5a996" />
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
-    <e k="sf_hud_label_om" v="有機物" eh="bfbebc07" />
+    <e k="sf_hud_label_om" v="æœ‰æ©Ÿç‰©" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
-    <e k="sf_hud_coverage" v="被覆率: %d%% / %d%%" eh="d407bb6d" />
+    <e k="sf_hud_coverage" v="è¢«è¦†çŽ‡: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
-    <e k="sf_hud_compaction" v="踏み固め: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_compaction" v="è¸ã¿å›ºã‚: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
     
-    <!-- 散布レート HUD -->
-    <e k="sf_sprayer_auto_on" v="散布レート (自動: オン)" eh="099b5dac" />
-    <e k="sf_sprayer_auto_off" v="散布レート 自動: オフ [%s]" eh="848cc106" />
-    <e k="sf_sprayer_target" v="目標:" eh="31d43504" />
-    <e k="sf_sprayer_burn_guaranteed" v="肥料焼けリスク: 確定" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="肥料焼けリスク: 可能性あり" eh="25b251b6" />
+    <!-- æ•£å¸ƒãƒ¬ãƒ¼ãƒˆ HUD -->
+    <e k="sf_sprayer_auto_on" v="æ•£å¸ƒãƒ¬ãƒ¼ãƒˆ (è‡ªå‹•: ã‚ªãƒ³)" eh="099b5dac" />
+    <e k="sf_sprayer_auto_off" v="æ•£å¸ƒãƒ¬ãƒ¼ãƒˆ è‡ªå‹•: ã‚ªãƒ• [%s]" eh="848cc106" />
+    <e k="sf_sprayer_target" v="ç›®æ¨™:" eh="31d43504" />
+    <e k="sf_sprayer_burn_guaranteed" v="è‚¥æ–™ç„¼ã‘ãƒªã‚¹ã‚¯: ç¢ºå®š" eh="422601c4" />
+    <e k="sf_sprayer_burn_possible" v="è‚¥æ–™ç„¼ã‘ãƒªã‚¹ã‚¯: å¯èƒ½æ€§ã‚ã‚Š" eh="25b251b6" />
     
-    <!-- 通知 -->
-    <e k="sf_notify_welcome" v="土壌・肥料Mod 有効 | Shift+O で設定 | 'soilfertility' でコマンド一覧" eh="d97e4139" />
-    <e k="sf_startup_dialog_version" v="このバージョンの新機能:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Mod をご利用いただきありがとうございます。とても励みになります &lt;3" eh="0f08d735" />
-    <e k="sf_startup_dialog_footer2" v="バグを発見しましたか？ GitHub で報告をお願いします！" eh="728e2cf3" />
-    <e k="sf_startup_dialog_footer3" v="楽しい農業を！ そして忘れないでください：" eh="aa38e511" />
-    <e k="sf_startup_dialog_footer4" v="土壌はすべてを覚えています..." eh="1a3e5c35" />
-    <e k="sf_notify_init_delayed" v="土壌Mod: フィールド初期化が遅延しています。代替方法を試行中..." eh="f8bd28f8" />
-    <e k="sf_notify_init_success" v="土壌Mod: フィールドの初期化に成功しました！" eh="46214360" />
-    <e k="sf_notify_critical_title" v="緊急ケア警告" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="フィールド %d に即時の対応が必要です！緊急度: %d%%" eh="171246aa" />
-    <e k="sf_notify_treated_title" v="土壌アップデート" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="フィールド %d は %s で完全に処理されました" eh="585aa9b7" />
-    <e k="sf_notify_burn_title" v="肥料焼け" eh="ad8ed599" />
-    <e k="sf_notify_burn_body" v="フィールド %d: 過剰散布によるダメージ (pH %.1f)" eh="cb731ee3" />
-    <e k="sf_notify_sync_error" v="土壌Mod: データ同期の問題を検出しました。続くようであれば報告してください。" eh="1a307946" />
+    <!-- é€šçŸ¥ -->
+    <e k="sf_notify_welcome" v="åœŸå£Œãƒ»è‚¥æ–™Mod æœ‰åŠ¹ | Shift+O ã§è¨­å®š | 'soilfertility' ã§ã‚³ãƒžãƒ³ãƒ‰ä¸€è¦§" eh="d97e4139" />
+    <e k="sf_startup_dialog_version" v="ã“ã®ãƒãƒ¼ã‚¸ãƒ§ãƒ³ã®æ–°æ©Ÿèƒ½:" eh="0b25f5c2" />
+    <e k="sf_startup_dialog_footer" v="Mod ã‚’ã”åˆ©ç”¨ã„ãŸã ãã‚ã‚ŠãŒã¨ã†ã”ã–ã„ã¾ã™ã€‚ã¨ã¦ã‚‚åŠ±ã¿ã«ãªã‚Šã¾ã™ &lt;3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer2" v="ãƒã‚°ã‚’ç™ºè¦‹ã—ã¾ã—ãŸã‹ï¼Ÿ GitHub ã§å ±å‘Šã‚’ãŠé¡˜ã„ã—ã¾ã™ï¼" eh="728e2cf3" />
+    <e k="sf_startup_dialog_footer3" v="æ¥½ã—ã„è¾²æ¥­ã‚’ï¼ ãã—ã¦å¿˜ã‚Œãªã„ã§ãã ã•ã„ï¼š" eh="aa38e511" />
+    <e k="sf_startup_dialog_footer4" v="åœŸå£Œã¯ã™ã¹ã¦ã‚’è¦šãˆã¦ã„ã¾ã™..." eh="1a3e5c35" />
+    <e k="sf_notify_init_delayed" v="åœŸå£ŒMod: ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰åˆæœŸåŒ–ãŒé…å»¶ã—ã¦ã„ã¾ã™ã€‚ä»£æ›¿æ–¹æ³•ã‚’è©¦è¡Œä¸­..." eh="f8bd28f8" />
+    <e k="sf_notify_init_success" v="åœŸå£ŒMod: ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®åˆæœŸåŒ–ã«æˆåŠŸã—ã¾ã—ãŸï¼" eh="46214360" />
+    <e k="sf_notify_critical_title" v="ç·Šæ€¥ã‚±ã‚¢è­¦å‘Š" eh="3f981d0c" />
+    <e k="sf_notify_critical_body" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ %d ã«å³æ™‚ã®å¯¾å¿œãŒå¿…è¦ã§ã™ï¼ç·Šæ€¥åº¦: %d%%" eh="171246aa" />
+    <e k="sf_notify_treated_title" v="åœŸå£Œã‚¢ãƒƒãƒ—ãƒ‡ãƒ¼ãƒˆ" eh="4633156e" />
+    <e k="sf_notify_treated_body" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ %d ã¯ %s ã§å®Œå…¨ã«å‡¦ç†ã•ã‚Œã¾ã—ãŸ" eh="585aa9b7" />
+    <e k="sf_notify_burn_title" v="è‚¥æ–™ç„¼ã‘" eh="ad8ed599" />
+    <e k="sf_notify_burn_body" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ %d: éŽå‰°æ•£å¸ƒã«ã‚ˆã‚‹ãƒ€ãƒ¡ãƒ¼ã‚¸ (pH %.1f)" eh="cb731ee3" />
+    <e k="sf_notify_sync_error" v="åœŸå£ŒMod: ãƒ‡ãƒ¼ã‚¿åŒæœŸã®å•é¡Œã‚’æ¤œå‡ºã—ã¾ã—ãŸã€‚ç¶šãã‚ˆã†ã§ã‚ã‚Œã°å ±å‘Šã—ã¦ãã ã•ã„ã€‚" eh="1a307946" />
 		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
     
-    <!-- 設定パネルカテゴリ -->
-    <e k="sf_panel_cat_sim" v="シミュレーション" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="農場メカニクス、難易度、および養分サイクル" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="表示と HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="HUD の見た目、カラーテーマ、位置、およびフォントサイズ" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="マップオーバーレイ" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="PDA マップに表示されるアクティブなレイヤー" eh="a5892aef" />
-    <e k="sf_panel_hdr_core" v="コアシステム" eh="44a497a5" />
-    <e k="sf_panel_hdr_difficulty" v="難易度" eh="7b29ca96" />
-    <e k="sf_panel_hdr_environment" v="環境" eh="0ba29c6a" />
-    <e k="sf_panel_hdr_crop_stress" v="作物のストレス" eh="260167bb" />
-    <e k="sf_panel_hdr_visibility" v="表示設定" eh="1729a56c" />
-    <e k="sf_panel_hdr_hud_style" v="HUD スタイル" eh="1d4a8cac" />
-    <e k="sf_panel_hdr_position" v="位置" eh="52f5e0bc" />
-    <e k="sf_panel_hdr_layer" v="レイヤー" eh="359b71e8" />
-    <e k="sf_panel_hdr_performance" v="パフォーマンス" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="Mod制御と難易度" eh="ae2e88fb" />
-    <e k="sf_panel_hdr_systems" v="システム" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="アクションとツール" eh="f64ba1c9" />
+    <!-- è¨­å®šãƒ‘ãƒãƒ«ã‚«ãƒ†ã‚´ãƒª -->
+    <e k="sf_panel_cat_sim" v="ã‚·ãƒŸãƒ¥ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="è¾²å ´ãƒ¡ã‚«ãƒ‹ã‚¯ã‚¹ã€é›£æ˜“åº¦ã€ãŠã‚ˆã³é¤Šåˆ†ã‚µã‚¤ã‚¯ãƒ«" eh="3c584cdb" />
+    <e k="sf_panel_cat_display" v="è¡¨ç¤ºã¨ HUD" eh="37b17394" />
+    <e k="sf_panel_cat_display_desc" v="HUD ã®è¦‹ãŸç›®ã€ã‚«ãƒ©ãƒ¼ãƒ†ãƒ¼ãƒžã€ä½ç½®ã€ãŠã‚ˆã³ãƒ•ã‚©ãƒ³ãƒˆã‚µã‚¤ã‚º" eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="ãƒžãƒƒãƒ—ã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="PDA ãƒžãƒƒãƒ—ã«è¡¨ç¤ºã•ã‚Œã‚‹ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ãªãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="a5892aef" />
+    <e k="sf_panel_hdr_core" v="ã‚³ã‚¢ã‚·ã‚¹ãƒ†ãƒ " eh="44a497a5" />
+    <e k="sf_panel_hdr_difficulty" v="é›£æ˜“åº¦" eh="7b29ca96" />
+    <e k="sf_panel_hdr_environment" v="ç’°å¢ƒ" eh="0ba29c6a" />
+    <e k="sf_panel_hdr_crop_stress" v="ä½œç‰©ã®ã‚¹ãƒˆãƒ¬ã‚¹" eh="260167bb" />
+    <e k="sf_panel_hdr_visibility" v="è¡¨ç¤ºè¨­å®š" eh="1729a56c" />
+    <e k="sf_panel_hdr_hud_style" v="HUD ã‚¹ã‚¿ã‚¤ãƒ«" eh="1d4a8cac" />
+    <e k="sf_panel_hdr_position" v="ä½ç½®" eh="52f5e0bc" />
+    <e k="sf_panel_hdr_layer" v="ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="359b71e8" />
+    <e k="sf_panel_hdr_performance" v="ãƒ‘ãƒ•ã‚©ãƒ¼ãƒžãƒ³ã‚¹" eh="9446a98a" />
+    <e k="sf_panel_hdr_mod_ctrl" v="Modåˆ¶å¾¡ã¨é›£æ˜“åº¦" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_systems" v="ã‚·ã‚¹ãƒ†ãƒ " eh="d6856404" />
+    <e k="sf_panel_hdr_actions" v="ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã¨ãƒ„ãƒ¼ãƒ«" eh="f64ba1c9" />
 		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
 		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
 		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
     
-    <!-- パネル Chrome -->
-    <e k="sf_panel_admin_yes" v="管理者: はい" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="管理者: いいえ" eh="a9394f7b" />
-    <e k="sf_panel_multiplayer" v="マルチプレイヤー" eh="901a7320" />
-    <e k="sf_panel_singleplayer" v="シングルプレイヤー" eh="da602601" />
-    <e k="sf_panel_btn_back" v="&lt; 戻る" eh="36cf3e1f" />
-    <e k="sf_panel_btn_reset_cat" v="カテゴリリセット" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="SHIFT+O で閉じる" eh="254406e3" />
-    <e k="sf_panel_select_category" v="設定するカテゴリを選択してください" eh="a277d257" />
-    <e k="sf_panel_btn_configure" v="設定する &gt;&gt;" eh="a2cb3902" />
-    <e k="sf_panel_btn_open" v="開く &gt;&gt;" eh="6624d17c" />
+    <!-- ãƒ‘ãƒãƒ« Chrome -->
+    <e k="sf_panel_admin_yes" v="ç®¡ç†è€…: ã¯ã„" eh="4628842a" />
+    <e k="sf_panel_admin_no" v="ç®¡ç†è€…: ã„ã„ãˆ" eh="a9394f7b" />
+    <e k="sf_panel_multiplayer" v="ãƒžãƒ«ãƒãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="901a7320" />
+    <e k="sf_panel_singleplayer" v="ã‚·ãƒ³ã‚°ãƒ«ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="da602601" />
+    <e k="sf_panel_btn_back" v="&lt; æˆ»ã‚‹" eh="36cf3e1f" />
+    <e k="sf_panel_btn_reset_cat" v="ã‚«ãƒ†ã‚´ãƒªãƒªã‚»ãƒƒãƒˆ" eh="b66faa88" />
+    <e k="sf_panel_btn_close_hint" v="SHIFT+O ã§é–‰ã˜ã‚‹" eh="254406e3" />
+    <e k="sf_panel_select_category" v="è¨­å®šã™ã‚‹ã‚«ãƒ†ã‚´ãƒªã‚’é¸æŠžã—ã¦ãã ã•ã„" eh="a277d257" />
+    <e k="sf_panel_btn_configure" v="è¨­å®šã™ã‚‹ &gt;&gt;" eh="a2cb3902" />
+    <e k="sf_panel_btn_open" v="é–‹ã &gt;&gt;" eh="6624d17c" />
     
-    <!-- 設定の説明 -->
-    <e k="sf_desc_enabled" v="Mod 全体の有効/無効を切り替えます" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="トラブルシューティング用の詳細ログを出力します" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="土壌肥沃度の完全なモデリング" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="窒素/リン/カリの消耗と回復を追跡します" eh="6eff80b3" />
-    <e k="sf_desc_fertilizerCosts" v="ゲーム内での現実的な肥料購入コスト" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="ゲーム内での土壌ステータス通知" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="土壌 HUD オーバーレイを表示します" eh="fa8b9224" />
+    <!-- è¨­å®šã®èª¬æ˜Ž -->
+    <e k="sf_desc_enabled" v="Mod å…¨ä½“ã®æœ‰åŠ¹/ç„¡åŠ¹ã‚’åˆ‡ã‚Šæ›¿ãˆã¾ã™" eh="895364cb" />
+    <e k="sf_desc_debugMode" v="ãƒˆãƒ©ãƒ–ãƒ«ã‚·ãƒ¥ãƒ¼ãƒ†ã‚£ãƒ³ã‚°ç”¨ã®è©³ç´°ãƒ­ã‚°ã‚’å‡ºåŠ›ã—ã¾ã™" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="åœŸå£Œè‚¥æ²ƒåº¦ã®å®Œå…¨ãªãƒ¢ãƒ‡ãƒªãƒ³ã‚°" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="çª’ç´ /ãƒªãƒ³/ã‚«ãƒªã®æ¶ˆè€—ã¨å›žå¾©ã‚’è¿½è·¡ã—ã¾ã™" eh="6eff80b3" />
+    <e k="sf_desc_fertilizerCosts" v="ã‚²ãƒ¼ãƒ å†…ã§ã®ç¾å®Ÿçš„ãªè‚¥æ–™è³¼å…¥ã‚³ã‚¹ãƒˆ" eh="1c197c9f" />
+    <e k="sf_desc_showNotifications" v="ã‚²ãƒ¼ãƒ å†…ã§ã®åœŸå£Œã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹é€šçŸ¥" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="åœŸå£Œ HUD ã‚ªãƒ¼ãƒãƒ¼ãƒ¬ã‚¤ã‚’è¡¨ç¤ºã—ã¾ã™" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="HUD のプリセット固定位置" eh="98c8bcea" />
-    <e k="sf_desc_hudColorTheme" v="HUD エレメントの配色パレット" eh="97271907" />
-    <e k="sf_desc_hudFontSize" v="HUD のテキストサイズ" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="HUD 背景の透明度" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="季節による土壌の変化" eh="f515f484" />
-    <e k="sf_desc_rainEffects" v="雨による養分の流出" eh="82fec75d" />
-    <e k="sf_desc_plowingBonus" v="土壌回復に対する耕耘ボーナス" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="耕耘による残渣からの養分放出" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="雑草の広がりを追跡し、収量に反映させます" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="害虫の発生を追跡します" eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="菌類による作物の病害を追跡します" eh="0858395f" />
+    <e k="sf_desc_hudPosition" v="HUD ã®ãƒ—ãƒªã‚»ãƒƒãƒˆå›ºå®šä½ç½®" eh="98c8bcea" />
+    <e k="sf_desc_hudColorTheme" v="HUD ã‚¨ãƒ¬ãƒ¡ãƒ³ãƒˆã®é…è‰²ãƒ‘ãƒ¬ãƒƒãƒˆ" eh="97271907" />
+    <e k="sf_desc_hudFontSize" v="HUD ã®ãƒ†ã‚­ã‚¹ãƒˆã‚µã‚¤ã‚º" eh="48a6fc15" />
+    <e k="sf_desc_hudTransparency" v="HUD èƒŒæ™¯ã®é€æ˜Žåº¦" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="å­£ç¯€ã«ã‚ˆã‚‹åœŸå£Œã®å¤‰åŒ–" eh="f515f484" />
+    <e k="sf_desc_rainEffects" v="é›¨ã«ã‚ˆã‚‹é¤Šåˆ†ã®æµå‡º" eh="82fec75d" />
+    <e k="sf_desc_plowingBonus" v="åœŸå£Œå›žå¾©ã«å¯¾ã™ã‚‹è€•è€˜ãƒœãƒ¼ãƒŠã‚¹" eh="23522b97" />
+    <e k="sf_desc_residueIncorporation" v="è€•è€˜ã«ã‚ˆã‚‹æ®‹æ¸£ã‹ã‚‰ã®é¤Šåˆ†æ”¾å‡º" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="é›‘è‰ã®åºƒãŒã‚Šã‚’è¿½è·¡ã—ã€åŽé‡ã«åæ˜ ã•ã›ã¾ã™" eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="å®³è™«ã®ç™ºç”Ÿã‚’è¿½è·¡ã—ã¾ã™" eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="èŒé¡žã«ã‚ˆã‚‹ä½œç‰©ã®ç—…å®³ã‚’è¿½è·¡ã—ã¾ã™" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
-    <e k="sf_desc_compactionEnabled" v="重量車両による土壌の踏み固め" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="養分消耗の激しさのレベル" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="肥料による養分回復の速さ" eh="858d2b23" />
-    <e k="sf_desc_useImperialUnits" v="ヤード・ポンド法を使用します" eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="スプレイヤーのインテリジェント散布レート" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="輪作によるメリットとデメリット" eh="bb79b03a" />
-    <e k="sf_desc_activeMapLayer" v="PDA マップに表示する養分レイヤー" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="サンプルポイント予算 (低=8k, 中=20k, 高=40k)" eh="42503763" />
+    <e k="sf_desc_compactionEnabled" v="é‡é‡è»Šä¸¡ã«ã‚ˆã‚‹åœŸå£Œã®è¸ã¿å›ºã‚" eh="a7d3a795" />
+    <e k="sf_desc_difficulty" v="é¤Šåˆ†æ¶ˆè€—ã®æ¿€ã—ã•ã®ãƒ¬ãƒ™ãƒ«" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="è‚¥æ–™ã«ã‚ˆã‚‹é¤Šåˆ†å›žå¾©ã®é€Ÿã•" eh="858d2b23" />
+    <e k="sf_desc_useImperialUnits" v="ãƒ¤ãƒ¼ãƒ‰ãƒ»ãƒãƒ³ãƒ‰æ³•ã‚’ä½¿ç”¨ã—ã¾ã™" eh="8ba3d81a" />
+    <e k="sf_desc_autoRateControl" v="ã‚¹ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ã‚¤ãƒ³ãƒ†ãƒªã‚¸ã‚§ãƒ³ãƒˆæ•£å¸ƒãƒ¬ãƒ¼ãƒˆ" eh="bb4e5880" />
+    <e k="sf_desc_cropRotation" v="è¼ªä½œã«ã‚ˆã‚‹ãƒ¡ãƒªãƒƒãƒˆã¨ãƒ‡ãƒ¡ãƒªãƒƒãƒˆ" eh="bb79b03a" />
+    <e k="sf_desc_activeMapLayer" v="PDA ãƒžãƒƒãƒ—ã«è¡¨ç¤ºã™ã‚‹é¤Šåˆ†ãƒ¬ã‚¤ãƒ¤ãƒ¼" eh="3c01c599" />
+    <e k="sf_desc_overlayDensity" v="ã‚µãƒ³ãƒ—ãƒ«ãƒã‚¤ãƒ³ãƒˆäºˆç®— (ä½Ž=8k, ä¸­=20k, é«˜=40k)" eh="42503763" />
     <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
     <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
 
-    <!-- 多肢選択値 -->
-    <e k="sf_rr_1" v="極めて遅い (0.25x)" eh="b681a1b4" />
-    <e k="sf_rr_2" v="遅い (0.5x)" eh="db69874d" />
-    <e k="sf_rr_3" v="標準 (1.0x)" eh="930452c1" />
-    <e k="sf_rr_4" v="速い (1.5x)" eh="4c8ebfdb" />
-    <e k="sf_rr_5" v="極めて速い (2.0x)" eh="bd682dd5" />
-    <e k="sf_layer_1" v="オフ" eh="d15305d7" />
-    <e k="sf_layer_2" v="窒素" eh="1e9ef3ba" />
-    <e k="sf_layer_3" v="リン" eh="eb4f2688" />
-    <e k="sf_layer_4" v="カリウム" eh="3a4edc67" />
+    <!-- å¤šè‚¢é¸æŠžå€¤ -->
+    <e k="sf_rr_1" v="æ¥µã‚ã¦é…ã„ (0.25x)" eh="b681a1b4" />
+    <e k="sf_rr_2" v="é…ã„ (0.5x)" eh="db69874d" />
+    <e k="sf_rr_3" v="æ¨™æº– (1.0x)" eh="930452c1" />
+    <e k="sf_rr_4" v="é€Ÿã„ (1.5x)" eh="4c8ebfdb" />
+    <e k="sf_rr_5" v="æ¥µã‚ã¦é€Ÿã„ (2.0x)" eh="bd682dd5" />
+    <e k="sf_layer_1" v="ã‚ªãƒ•" eh="d15305d7" />
+    <e k="sf_layer_2" v="çª’ç´ " eh="1e9ef3ba" />
+    <e k="sf_layer_3" v="ãƒªãƒ³" eh="eb4f2688" />
+    <e k="sf_layer_4" v="ã‚«ãƒªã‚¦ãƒ " eh="3a4edc67" />
     <e k="sf_layer_5" v="pH" eh="397dff20" />
-    <e k="sf_layer_6" v="有機物" eh="d2e254bc" />
-    <e k="sf_layer_7" v="対応優先度" eh="c94e3850" />
-    <e k="sf_layer_8" v="雑草" eh="2b75024d" />
-    <e k="sf_layer_9" v="害虫" eh="8f2aee79" />
-    <e k="sf_layer_10" v="病害" eh="e7067a8c" />
-    <e k="sf_layer_11" v="踏み固め" eh="19cf3ee7" />
-    <e k="sf_density_1" v="低" eh="28d0edd0" />
-    <e k="sf_density_2" v="中" eh="87f8a6ab" />
-    <e k="sf_density_3" v="高" eh="655d20c1" />
+    <e k="sf_layer_6" v="æœ‰æ©Ÿç‰©" eh="d2e254bc" />
+    <e k="sf_layer_7" v="å¯¾å¿œå„ªå…ˆåº¦" eh="c94e3850" />
+    <e k="sf_layer_8" v="é›‘è‰" eh="2b75024d" />
+    <e k="sf_layer_9" v="å®³è™«" eh="8f2aee79" />
+    <e k="sf_layer_10" v="ç—…å®³" eh="e7067a8c" />
+    <e k="sf_layer_11" v="è¸ã¿å›ºã‚" eh="19cf3ee7" />
+    <e k="sf_density_1" v="ä½Ž" eh="28d0edd0" />
+    <e k="sf_density_2" v="ä¸­" eh="87f8a6ab" />
+    <e k="sf_density_3" v="é«˜" eh="655d20c1" />
 
-   <!-- 管理者アクション -->
-    <e k="sf_admin_save_label" v="土壌データの保存" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="今すぐ全土壌データを強制保存します" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="全設定のリセット" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="すべての設定をデフォルトに戻します" eh="599b7454" />
-    <e k="sf_panel_hdr_field_tools" v="フィールドツール" eh="2b250a56" />
-    <e k="sf_nav_field_tools_label" v="フィールドツール" eh="2b250a56" />
-    <e k="sf_nav_field_tools_desc" v="フィールドの状態を検査・修正するための専用ツールを開きます" eh="360db19b" />
-    <e k="sf_panel_hdr_vehicle_tools" v="車両ツール" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_label" v="車両ツール" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_desc" v="接続されている車両やアタッチメント用の専用ツールを開きます" eh="1a8b2100" />
-    <e k="sf_admin_drain_label" v="車両タンクを空にする" eh="d216b101" />
-    <e k="sf_admin_drain_desc" v="スプレイヤー等を空にする (50% 返金)" eh="5e048a34" />
-    <e k="sf_admin_field_info_label" v="現在地のフィールド情報" eh="5df500d6" />
-    <e k="sf_admin_field_info_desc" v="現在立っている位置の土壌データ" eh="b7e2a72d" />
-    <e k="sf_admin_field_forecast_label" v="フィールド収量予測" eh="1df41470" />
-    <e k="sf_admin_field_forecast_desc" v="現在地のフィールドの収量予測" eh="67e56b9d" />
-    <e k="sf_admin_list_fields_label" v="全フィールド一覧" eh="efeb1b25" />
-    <e k="sf_admin_list_fields_desc" v="全フィールドの土壌データをログに出力します" eh="c9fa812e" />
-    <e k="sf_admin_field_set_state_label" v="フィールド状態の設定" eh="5b0d7a31" />
-    <e k="sf_admin_field_set_state_desc" v="現在のフィールドの N, P, K, pH, OM 値を手動調整します" eh="a491e190" />
-    <e k="sf_admin_field_recover_label" v="フィールドの復旧" eh="e1c82ff0" />
-    <e k="sf_admin_field_recover_desc" v="現在のフィールドを安全なデフォルト値にリセットします" eh="68b687a2" />
-    <e k="sf_infobox_title" v="土壌養分" eh="64377acf" />
-    <e k="sf_infobox_grade" v="土壌グレード" eh="65d1be5f" />
-    <e k="sf_infobox_needs" v="必要項目" eh="94d6125d" />
-    <e k="sf_infobox_fertilizer" v="肥料" eh="cd248829" />
+   <!-- ç®¡ç†è€…ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ -->
+    <e k="sf_admin_save_label" v="åœŸå£Œãƒ‡ãƒ¼ã‚¿ã®ä¿å­˜" eh="d4e9a279" />
+    <e k="sf_admin_save_desc" v="ä»Šã™ãå…¨åœŸå£Œãƒ‡ãƒ¼ã‚¿ã‚’å¼·åˆ¶ä¿å­˜ã—ã¾ã™" eh="f365613a" />
+    <e k="sf_admin_reset_label" v="å…¨è¨­å®šã®ãƒªã‚»ãƒƒãƒˆ" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="ã™ã¹ã¦ã®è¨­å®šã‚’ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã«æˆ»ã—ã¾ã™" eh="599b7454" />
+    <e k="sf_panel_hdr_field_tools" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãƒ„ãƒ¼ãƒ«" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãƒ„ãƒ¼ãƒ«" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®çŠ¶æ…‹ã‚’æ¤œæŸ»ãƒ»ä¿®æ­£ã™ã‚‹ãŸã‚ã®å°‚ç”¨ãƒ„ãƒ¼ãƒ«ã‚’é–‹ãã¾ã™" eh="360db19b" />
+    <e k="sf_panel_hdr_vehicle_tools" v="è»Šä¸¡ãƒ„ãƒ¼ãƒ«" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="è»Šä¸¡ãƒ„ãƒ¼ãƒ«" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="æŽ¥ç¶šã•ã‚Œã¦ã„ã‚‹è»Šä¸¡ã‚„ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆç”¨ã®å°‚ç”¨ãƒ„ãƒ¼ãƒ«ã‚’é–‹ãã¾ã™" eh="1a8b2100" />
+    <e k="sf_admin_drain_label" v="è»Šä¸¡ã‚¿ãƒ³ã‚¯ã‚’ç©ºã«ã™ã‚‹" eh="d216b101" />
+    <e k="sf_admin_drain_desc" v="ã‚¹ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ç­‰ã‚’ç©ºã«ã™ã‚‹ (50% è¿”é‡‘)" eh="5e048a34" />
+    <e k="sf_admin_field_info_label" v="ç¾åœ¨åœ°ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æƒ…å ±" eh="5df500d6" />
+    <e k="sf_admin_field_info_desc" v="ç¾åœ¨ç«‹ã£ã¦ã„ã‚‹ä½ç½®ã®åœŸå£Œãƒ‡ãƒ¼ã‚¿" eh="b7e2a72d" />
+    <e k="sf_admin_field_forecast_label" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰åŽé‡äºˆæ¸¬" eh="1df41470" />
+    <e k="sf_admin_field_forecast_desc" v="ç¾åœ¨åœ°ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®åŽé‡äºˆæ¸¬" eh="67e56b9d" />
+    <e k="sf_admin_list_fields_label" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ä¸€è¦§" eh="efeb1b25" />
+    <e k="sf_admin_list_fields_desc" v="å…¨ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®åœŸå£Œãƒ‡ãƒ¼ã‚¿ã‚’ãƒ­ã‚°ã«å‡ºåŠ›ã—ã¾ã™" eh="c9fa812e" />
+    <e k="sf_admin_field_set_state_label" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰çŠ¶æ…‹ã®è¨­å®š" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="ç¾åœ¨ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã® N, P, K, pH, OM å€¤ã‚’æ‰‹å‹•èª¿æ•´ã—ã¾ã™" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®å¾©æ—§" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="ç¾åœ¨ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‚’å®‰å…¨ãªãƒ‡ãƒ•ã‚©ãƒ«ãƒˆå€¤ã«ãƒªã‚»ãƒƒãƒˆã—ã¾ã™" eh="68b687a2" />
+    <e k="sf_infobox_title" v="åœŸå£Œé¤Šåˆ†" eh="64377acf" />
+    <e k="sf_infobox_grade" v="åœŸå£Œã‚°ãƒ¬ãƒ¼ãƒ‰" eh="65d1be5f" />
+    <e k="sf_infobox_needs" v="å¿…è¦é …ç›®" eh="94d6125d" />
+    <e k="sf_infobox_fertilizer" v="è‚¥æ–™" eh="cd248829" />
 
     <!-- ======================================================
-         フィールド情報ボックス (バニラのフィールドパネル拡張)
+         ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æƒ…å ±ãƒœãƒƒã‚¯ã‚¹ (ãƒãƒ‹ãƒ©ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ãƒ‘ãƒãƒ«æ‹¡å¼µ)
          ====================================================== -->
-    <e k="sf_fieldinfo_box_title" v="土壌養分" eh="64377acf" />
-    <e k="sf_fieldinfo_grade" v="土壌グレード" eh="65d1be5f" />
-    <e k="sf_fieldinfo_yield" v="収量" eh="97345487" />
-    <e k="sf_fieldinfo_rotation" v="輪作" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_box_title" v="åœŸå£Œé¤Šåˆ†" eh="64377acf" />
+    <e k="sf_fieldinfo_grade" v="åœŸå£Œã‚°ãƒ¬ãƒ¼ãƒ‰" eh="65d1be5f" />
+    <e k="sf_fieldinfo_yield" v="åŽé‡" eh="97345487" />
+    <e k="sf_fieldinfo_rotation" v="è¼ªä½œ" eh="f1a42bd4" />
 		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
-    <e k="sf_fieldinfo_needs" v="必要項目" eh="94d6125d" />
-    <e k="sf_field" v="フィールド" eh="6f16a5f8" />
-    <e k="sf_no_field" v="フィールド未選択" eh="717ff56f" />
-    <e k="sf_overall_Good" v="良好" eh="0c6ad70b" />
-    <e k="sf_overall_Fair" v="普通" eh="f7f20cf0" />
-    <e k="sf_overall_Poor" v="不良" eh="0e94d017" />
-    <e k="sf_cell_report" v="セルレポート" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="セルデータなし" eh="dc41c753" />
-    <e k="sf_cell_no_data" v="この場所には土壌データがありません" eh="5dfa58aa" />
+    <e k="sf_fieldinfo_needs" v="å¿…è¦é …ç›®" eh="94d6125d" />
+    <e k="sf_field" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰" eh="6f16a5f8" />
+    <e k="sf_no_field" v="ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰æœªé¸æŠž" eh="717ff56f" />
+    <e k="sf_overall_Good" v="è‰¯å¥½" eh="0c6ad70b" />
+    <e k="sf_overall_Fair" v="æ™®é€š" eh="f7f20cf0" />
+    <e k="sf_overall_Poor" v="ä¸è‰¯" eh="0e94d017" />
+    <e k="sf_cell_report" v="ã‚»ãƒ«ãƒ¬ãƒãƒ¼ãƒˆ" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="ã‚»ãƒ«ãƒ‡ãƒ¼ã‚¿ãªã—" eh="dc41c753" />
+    <e k="sf_cell_no_data" v="ã“ã®å ´æ‰€ã«ã¯åœŸå£Œãƒ‡ãƒ¼ã‚¿ãŒã‚ã‚Šã¾ã›ã‚“" eh="5dfa58aa" />
     <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
-    <e k="sf_cell" v="セル" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="土壌セル検査" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="セル詳細" eh="6fc5243e" />
-    <e k="sf_cell_coord" v="座標" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="マップをクリックして土壌セルを検査します" eh="fc9d240b" />
+    <e k="sf_cell" v="ã‚»ãƒ«" eh="1a66ab62" />
+    <e k="sf_cell_dialog_title" v="åœŸå£Œã‚»ãƒ«æ¤œæŸ»" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="ã‚»ãƒ«è©³ç´°" eh="6fc5243e" />
+    <e k="sf_cell_coord" v="åº§æ¨™" eh="99171d3a" />
+    <e k="sf_cell_click_hint" v="ãƒžãƒƒãƒ—ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ã¦åœŸå£Œã‚»ãƒ«ã‚’æ¤œæŸ»ã—ã¾ã™" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
@@ -788,7 +788,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -803,7 +803,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -951,13 +951,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -997,9 +997,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1032,10 +1032,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
-    	<e k="sf_fieldsentry_asleep" v="シム休止" eh="7d49241b" />
-    	<e k="sf_fs_reason_manual" v="手動" eh="3c78b355" />
-    	<e k="sf_fs_reason_npc" v="NPC契約" eh="2e1a268b" />
-    	<e k="sf_fs_reason_deco" v="装飾用" eh="8a817367" />
+    	<e k="sf_fieldsentry_asleep" v="ã‚·ãƒ ä¼‘æ­¢" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="æ‰‹å‹•" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="NPCå¥‘ç´„" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="è£…é£¾ç”¨" eh="8a817367" />
     <e k="input_SF_SCOUT" v="[EN] Scout Field for Disease" eh="34e6d14b" />
     <e k="sf_scout_no_field" v="[EN] Stand on a field to scout it." eh="2c33ecb7" />
     <e k="sf_scout_found" v="[EN] Field %d: %s detected (%d%% pressure). Best: %s" eh="d6af78b1" />
@@ -1160,7 +1160,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
-    <e k="sf_unscouted" v="未調査" />
+    <e k="sf_unscouted" v="æœªèª¿æŸ»" />
 <e k="sf_map_layer_organic_status" v="Organic Status" />
     
 <e k="sf_layer_12" v="Organic Status" />
@@ -1209,7 +1209,7 @@
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
     <!-- Harvester panel yield estimate (SF-50) -->
     <e k="sf_hud_tha" v="%.1f t/ha" />
-    <e k="sf_hud_yield_est_src" v="マップデータからの推定値" />
+    <e k="sf_hud_yield_est_src" v="ãƒžãƒƒãƒ—ãƒ‡ãƒ¼ã‚¿ã‹ã‚‰ã®æŽ¨å®šå€¤" />
     <!-- CD-12 tank mix names (generated) -->
     <e k="sf_blend_azoxystrobin_boscalid_title" v="Azoxystrobin + Boscalid" />
     <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="Azoxystrobin + Copper Hydroxide" />
@@ -1246,7 +1246,12 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
+<e k="sf_experimental_short" v="Experimental Systems" />
+    <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
+    <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
+    <e k="sf_panel_hdr_experimental" v="Experimental" />
 </elements>
 
 
 </l10n>
+

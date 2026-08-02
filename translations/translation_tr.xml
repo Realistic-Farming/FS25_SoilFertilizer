@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
-    <e k="sf_section" v="Toprak &amp; Gübre" eh="f31197fb" />
-    <e k="sf_enabled_short" v="Modu Etkinleştir" eh="cf7fea13" />
-    <e k="sf_enabled_long" v="Toprak ve gübre modunu etkinleştirin veya devre dışı bırakın" eh="a891399a" />
+    <e k="sf_section" v="Toprak &amp; GÃ¼bre" eh="f31197fb" />
+    <e k="sf_enabled_short" v="Modu EtkinleÅŸtir" eh="cf7fea13" />
+    <e k="sf_enabled_long" v="Toprak ve gÃ¼bre modunu etkinleÅŸtirin veya devre dÄ±ÅŸÄ± bÄ±rakÄ±n" eh="a891399a" />
     <e k="sf_debug_short" v="DEBUG Modu" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="Hata ayıklama modunu etkinleştir/devre dışı bırak (ekstra günlük kaydı)" eh="f6f20240" />
+    <e k="sf_debug_long" v="Hata ayÄ±klama modunu etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak (ekstra gÃ¼nlÃ¼k kaydÄ±)" eh="f6f20240" />
     <e k="sf_seasonal_effects_short" v="Mevsimsel Etkiler" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="Mevsimlerin toprak besin maddeleri üzerindeki etkisini etkinleştir/devre dışı bırak (bahar büyüme desteği, sonbahar yavaşlaması)" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="Yağmur Etkileri" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="Yağmurun toprak üzerindeki etkisini etkinleştir/devre dışı bırak (besin yıkanması, pH değişiklikleri)" eh="de3b14b9" />
+    <e k="sf_seasonal_effects_long" v="Mevsimlerin toprak besin maddeleri Ã¼zerindeki etkisini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak (bahar bÃ¼yÃ¼me desteÄŸi, sonbahar yavaÅŸlamasÄ±)" eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="YaÄŸmur Etkileri" eh="a2a1758b" />
+    <e k="sf_rain_effects_long" v="YaÄŸmurun toprak Ã¼zerindeki etkisini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak (besin yÄ±kanmasÄ±, pH deÄŸiÅŸiklikleri)" eh="de3b14b9" />
     <e k="sf_ws_short" v="World Climate" />
     <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
     <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
@@ -22,33 +22,33 @@
     <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
     <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
     <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
-    <e k="sf_plowing_bonus_short" v="Sürme Bonusu" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="Toprak verimliliğine sürme faydalarını etkinleştir/devre dışı bırak (iyileştirilmiş azot ve organik madde)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="Anız Karıştırma" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="Toprak işleme aletleri (kültivatörler, pulluklar, şeritvari işleme, doğrudan ekim makineleri) tarafından toprağa karıştırılan ürün artıklarından besin salınımını etkinleştir/devre dışı bırak" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="Yabancı Ot Baskısı" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="Dinamik yabancı ot büyümesini ve verim etkisini etkinleştir/devre dışı bırak" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="Zararlı Baskısı" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="Böcek ve zararlı istilası sistemini etkinleştir/devre dışı bırak" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="Hastalık Baskısı" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="Mantar ve ürün hastalığı sistemini etkinleştir/devre dışı bırak" eh="9080edbc" />
-    <e k="sf_compaction_short" v="Toprak Sıkışması" eh="68734a56" />
-    <e k="sf_compaction_long" v="Ağır vasıta toprak sıkışması sistemini etkinleştir/devre dışı bırak" eh="a0995ec5" />
+    <e k="sf_plowing_bonus_short" v="SÃ¼rme Bonusu" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="Toprak verimliliÄŸine sÃ¼rme faydalarÄ±nÄ± etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak (iyileÅŸtirilmiÅŸ azot ve organik madde)" eh="fe701c1c" />
+    <e k="sf_residue_incorporation_short" v="AnÄ±z KarÄ±ÅŸtÄ±rma" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="Toprak iÅŸleme aletleri (kÃ¼ltivatÃ¶rler, pulluklar, ÅŸeritvari iÅŸleme, doÄŸrudan ekim makineleri) tarafÄ±ndan topraÄŸa karÄ±ÅŸtÄ±rÄ±lan Ã¼rÃ¼n artÄ±klarÄ±ndan besin salÄ±nÄ±mÄ±nÄ± etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="YabancÄ± Ot BaskÄ±sÄ±" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="Dinamik yabancÄ± ot bÃ¼yÃ¼mesini ve verim etkisini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="ZararlÄ± BaskÄ±sÄ±" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="BÃ¶cek ve zararlÄ± istilasÄ± sistemini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="HastalÄ±k BaskÄ±sÄ±" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="Mantar ve Ã¼rÃ¼n hastalÄ±ÄŸÄ± sistemini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="9080edbc" />
+    <e k="sf_compaction_short" v="Toprak SÄ±kÄ±ÅŸmasÄ±" eh="68734a56" />
+    <e k="sf_compaction_long" v="AÄŸÄ±r vasÄ±ta toprak sÄ±kÄ±ÅŸmasÄ± sistemini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="a0995ec5" />
     <e k="sf_fertility_short" v="Verimlilik Sistemi" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="Dinamik toprak verimliliği sistemini etkinleştir/devre dışı bırak" eh="ea074366" />
-    <e k="sf_nutrients_short" v="Besin Döngüleri" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="Gerçekçi besin tükenmesi ve ikmali sistemini etkinleştir/devre dışı bırak" eh="dbe9c8ff" />
+    <e k="sf_fertility_long" v="Dinamik toprak verimliliÄŸi sistemini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="ea074366" />
+    <e k="sf_nutrients_short" v="Besin DÃ¶ngÃ¼leri" eh="ffab595d" />
+    <e k="sf_nutrients_long" v="GerÃ§ekÃ§i besin tÃ¼kenmesi ve ikmali sistemini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="dbe9c8ff" />
     <e k="sf_difficulty_short" v="Zorluk" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="Zorluk seviyesini ayarlayın: Basit, Gerçekçi, Hardcore" eh="cfb758a4" />
+    <e k="sf_difficulty_long" v="Zorluk seviyesini ayarlayÄ±n: Basit, GerÃ§ekÃ§i, Hardcore" eh="cfb758a4" />
     <e k="sf_diff_1" v="Basit" eh="1fbb1e39" />
-    <e k="sf_diff_2" v="Gerçekçi" eh="408c999f" />
+    <e k="sf_diff_2" v="GerÃ§ekÃ§i" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_fertilizer_cost_short" v="Gübre Maliyetleri" eh="6870d88b" />
-    <e k="sf_fertilizer_cost_long" v="Gerçekçi gübre satın alma maliyetlerini etkinleştir/devre dışı bırak" eh="12b03fbb" />
+    <e k="sf_fertilizer_cost_short" v="GÃ¼bre Maliyetleri" eh="6870d88b" />
+    <e k="sf_fertilizer_cost_long" v="GerÃ§ekÃ§i gÃ¼bre satÄ±n alma maliyetlerini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="12b03fbb" />
     <e k="sf_notifications_short" v="Bildirimler" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="Toprak ve gübre bildirimlerini etkinleştir/devre dışı bırak" eh="9a872f8f" />
-    <e k="sf_show_hud_short" v="HUD'ı Göster" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="Toprak bilgisi HUD katmanını göster/gizle (Geçici olarak değiştirmek için F8)" eh="4e2e11b6" />
+    <e k="sf_notifications_long" v="Toprak ve gÃ¼bre bildirimlerini etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak" eh="9a872f8f" />
+    <e k="sf_show_hud_short" v="HUD'Ä± GÃ¶ster" eh="c94fd4d7" />
+    <e k="sf_show_hud_long" v="Toprak bilgisi HUD katmanÄ±nÄ± gÃ¶ster/gizle (GeÃ§ici olarak deÄŸiÅŸtirmek iÃ§in F8)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
@@ -56,68 +56,68 @@
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
     <e k="sf_hud_position_short" v="HUD Konumu" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="Toprak bilgisi HUD'ının ekranda nerede görüneceğini seçin" eh="d7b9c109" />
-    <e k="sf_hud_pos_1" v="Sağ Üst" eh="5f9f6784" />
-    <e k="sf_hud_pos_2" v="Sol Üst" eh="ac71274a" />
-    <e k="sf_hud_pos_3" v="Sağ Alt" eh="4d297f5d" />
+    <e k="sf_hud_position_long" v="Toprak bilgisi HUD'Ä±nÄ±n ekranda nerede gÃ¶rÃ¼neceÄŸini seÃ§in" eh="d7b9c109" />
+    <e k="sf_hud_pos_1" v="SaÄŸ Ãœst" eh="5f9f6784" />
+    <e k="sf_hud_pos_2" v="Sol Ãœst" eh="ac71274a" />
+    <e k="sf_hud_pos_3" v="SaÄŸ Alt" eh="4d297f5d" />
     <e k="sf_hud_pos_4" v="Sol Alt" eh="7eb55425" />
-    <e k="sf_hud_pos_5" v="Sağ Orta" eh="d7afdc5a" />
-    <e k="sf_hud_pos_6" v="Özel" eh="90589c47" />
-    <e k="sf_hud_color_theme_short" v="HUD Renk Teması" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="Toprak bilgisi ekranı için renk şemasını seçin" eh="3218bca6" />
-    <e k="sf_hud_color_1" v="Yeşil" eh="d382816a" />
+    <e k="sf_hud_pos_5" v="SaÄŸ Orta" eh="d7afdc5a" />
+    <e k="sf_hud_pos_6" v="Ã–zel" eh="90589c47" />
+    <e k="sf_hud_color_theme_short" v="HUD Renk TemasÄ±" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="Toprak bilgisi ekranÄ± iÃ§in renk ÅŸemasÄ±nÄ± seÃ§in" eh="3218bca6" />
+    <e k="sf_hud_color_1" v="YeÅŸil" eh="d382816a" />
     <e k="sf_hud_color_2" v="Mavi" eh="9594eec9" />
     <e k="sf_hud_color_3" v="Kehribar" eh="88068e33" />
     <e k="sf_hud_color_4" v="Mono" eh="5d9b47bd" />
     <e k="sf_diff_short" v="Zorluk" eh="7b29ca96" />
-    <e k="sf_diff_long" v="Toprak yönetimi zorluk seviyesi" eh="d6f4560c" />
-    <e k="sf_rr_short" v="İkmal Oranı" eh="b363b336" />
-    <e k="sf_rr_long" v="Gübre tarladaki besinleri ne kadar hızlı geri kazandırır (0.25x Çok Yavaş - 2.0x Çok Hızlı)" eh="afe78a6d" />
+    <e k="sf_diff_long" v="Toprak yÃ¶netimi zorluk seviyesi" eh="d6f4560c" />
+    <e k="sf_rr_short" v="Ä°kmal OranÄ±" eh="b363b336" />
+    <e k="sf_rr_long" v="GÃ¼bre tarladaki besinleri ne kadar hÄ±zlÄ± geri kazandÄ±rÄ±r (0.25x Ã‡ok YavaÅŸ - 2.0x Ã‡ok HÄ±zlÄ±)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
     <e k="sf_dm_2" v="[EN] Temperate" />
     <e k="sf_dm_3" v="[EN] Humid" />
     <e k="sf_dm_4" v="[EN] Wet" />
-    <e k="sf_auto_rate_short" v="Otomatik Oran Kontrolü" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="Tarla ihtiyaçlarına göre gübre uygulama oranını otomatik olarak ayarlar" eh="a9ca9f6b" />
-    <e k="sf_hud_theme_1" v="Yeşil" eh="d382816a" />
+    <e k="sf_auto_rate_short" v="Otomatik Oran KontrolÃ¼" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="Tarla ihtiyaÃ§larÄ±na gÃ¶re gÃ¼bre uygulama oranÄ±nÄ± otomatik olarak ayarlar" eh="a9ca9f6b" />
+    <e k="sf_hud_theme_1" v="YeÅŸil" eh="d382816a" />
     <e k="sf_hud_theme_2" v="Mavi" eh="9594eec9" />
     <e k="sf_hud_theme_3" v="Kehribar" eh="88068e33" />
     <e k="sf_hud_theme_4" v="Mono" eh="5d9b47bd" />
-    <e k="sf_hud_font_size_short" v="HUD Yazı Tipi Boyutu" eh="fd6ca64a" />
-    <e k="sf_hud_font_size_long" v="Daha iyi okunabilirlik için metin boyutunu ayarlayın" eh="c338854f" />
-    <e k="sf_hud_font_1" v="Küçük" eh="2660064e" />
+    <e k="sf_hud_font_size_short" v="HUD YazÄ± Tipi Boyutu" eh="fd6ca64a" />
+    <e k="sf_hud_font_size_long" v="Daha iyi okunabilirlik iÃ§in metin boyutunu ayarlayÄ±n" eh="c338854f" />
+    <e k="sf_hud_font_1" v="KÃ¼Ã§Ã¼k" eh="2660064e" />
     <e k="sf_hud_font_2" v="Orta" eh="87f8a6ab" />
-    <e k="sf_hud_font_3" v="Büyük" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="HUD Şeffaflığı" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="Arka plan şeffaflık seviyesini ayarlayın (Şeffaf = saydam, Katı = opak)" eh="152e390a" />
-    <e k="sf_hud_trans_1" v="Şeffaf" eh="dc30bc0c" />
+    <e k="sf_hud_font_3" v="BÃ¼yÃ¼k" eh="3a69b34c" />
+    <e k="sf_hud_transparency_short" v="HUD ÅžeffaflÄ±ÄŸÄ±" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="Arka plan ÅŸeffaflÄ±k seviyesini ayarlayÄ±n (Åžeffaf = saydam, KatÄ± = opak)" eh="152e390a" />
+    <e k="sf_hud_trans_1" v="Åžeffaf" eh="dc30bc0c" />
     <e k="sf_hud_trans_2" v="Hafif" eh="9914a0ce" />
     <e k="sf_hud_trans_3" v="Orta" eh="87f8a6ab" />
     <e k="sf_hud_trans_4" v="Koyu" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="Katı" eh="e41480b6" />
-    <e k="sf_use_imperial_short" v="İngiliz Birimleri" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="Uygulama oranlarını gal/ac ve lb/ac cinsinden göster (kapalı = L/ha ve kg/ha)" eh="17efa489" />
-    <e k="sf_active_map_layer_short" v="Aktif Harita Katmanı" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="PDA haritasında katman olarak gösterilen besin katmanı" eh="d7755cc8" />
-    <e k="sf_overlay_density_short" v="Harita Detayı" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="PDA toprak katmanı için örnek nokta bütçesi. Düşük = daha iyi FPS, Yüksek = büyük haritalarda tam kapsam." eh="89215ce5" />
+    <e k="sf_hud_trans_5" v="KatÄ±" eh="e41480b6" />
+    <e k="sf_use_imperial_short" v="Ä°ngiliz Birimleri" eh="ff2701ad" />
+    <e k="sf_use_imperial_long" v="Uygulama oranlarÄ±nÄ± gal/ac ve lb/ac cinsinden gÃ¶ster (kapalÄ± = L/ha ve kg/ha)" eh="17efa489" />
+    <e k="sf_active_map_layer_short" v="Aktif Harita KatmanÄ±" eh="1861765f" />
+    <e k="sf_active_map_layer_long" v="PDA haritasÄ±nda katman olarak gÃ¶sterilen besin katmanÄ±" eh="d7755cc8" />
+    <e k="sf_overlay_density_short" v="Harita DetayÄ±" eh="a525859a" />
+    <e k="sf_overlay_density_long" v="PDA toprak katmanÄ± iÃ§in Ã¶rnek nokta bÃ¼tÃ§esi. DÃ¼ÅŸÃ¼k = daha iyi FPS, YÃ¼ksek = bÃ¼yÃ¼k haritalarda tam kapsam." eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
     <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
     <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
-    <e k="input_SF_OPEN_SETTINGS" v="Toprak Ayarlarını Aç" eh="2e31c0dd" />
-    <e k="sf_reset" v="Toprak Ayarlarını Sıfırla" eh="467bc2f5" />
-    <e k="input_SF_TOGGLE_HUD" v="Toprak HUD'ını Aç/Kapat" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="HUD Sürükleme Modu" eh="cb2eb762" />
+    <e k="input_SF_OPEN_SETTINGS" v="Toprak AyarlarÄ±nÄ± AÃ§" eh="2e31c0dd" />
+    <e k="sf_reset" v="Toprak AyarlarÄ±nÄ± SÄ±fÄ±rla" eh="467bc2f5" />
+    <e k="input_SF_TOGGLE_HUD" v="Toprak HUD'Ä±nÄ± AÃ§/Kapat" eh="f0224a10" />
+    <e k="input_SF_HUD_DRAG" v="HUD SÃ¼rÃ¼kleme Modu" eh="cb2eb762" />
     <e k="input_SF_SOIL_REPORT" v="Toprak Raporu" eh="c33180ef" />
-    <e k="input_SF_TOGGLE_CELL_MAP" v="Toprak Hücre Haritasını Aç/Kapat" eh="3a7e9b9d" />
-    <e k="input_SF_RATE_UP" v="Gübre Oranını Artır" eh="6e601ef5" />
-    <e k="input_SF_RATE_DOWN" v="Gübre Oranını Azalt" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="Otomatik Oranı Aç/Kapat" eh="a8642cf0" />
-    <e k="input_SF_CYCLE_MAP_LAYER" v="Toprak Harita Katmanını Değiştir" eh="8e4a716c" />
-    <e k="input_SF_SOIL_PDA" v="Toprak PDA'sını Aç" eh="7d70f7b4" />
+    <e k="input_SF_TOGGLE_CELL_MAP" v="Toprak HÃ¼cre HaritasÄ±nÄ± AÃ§/Kapat" eh="3a7e9b9d" />
+    <e k="input_SF_RATE_UP" v="GÃ¼bre OranÄ±nÄ± ArtÄ±r" eh="6e601ef5" />
+    <e k="input_SF_RATE_DOWN" v="GÃ¼bre OranÄ±nÄ± Azalt" eh="30712026" />
+    <e k="input_SF_TOGGLE_AUTO" v="Otomatik OranÄ± AÃ§/Kapat" eh="a8642cf0" />
+    <e k="input_SF_CYCLE_MAP_LAYER" v="Toprak Harita KatmanÄ±nÄ± DeÄŸiÅŸtir" eh="8e4a716c" />
+    <e k="input_SF_SOIL_PDA" v="Toprak PDA'sÄ±nÄ± AÃ§" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
@@ -126,31 +126,31 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_uan32_title" v="UAN 32 Gübresi (N)" eh="90913bb8" />
-    <e k="sf_uan28_title" v="UAN 28 Gübresi (N)" eh="9d902cd7" />
+    <e k="sf_uan32_title" v="UAN 32 GÃ¼bresi (N)" eh="90913bb8" />
+    <e k="sf_uan28_title" v="UAN 28 GÃ¼bresi (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Anhidre Amonyak (N)" eh="3fc85c02" />
-    <e k="sf_starter_title" v="Başlangıç Gübresi 10-34-0 (P)" eh="8c1a1ddc" />
-    <e k="sf_urea_title" v="Üre 46-0-0 (N)" eh="659b3097" />
+    <e k="sf_starter_title" v="BaÅŸlangÄ±Ã§ GÃ¼bresi 10-34-0 (P)" eh="8c1a1ddc" />
+    <e k="sf_urea_title" v="Ãœre 46-0-0 (N)" eh="659b3097" />
     <e k="sf_an_title" v="Amonyum Nitrat 34.5-0-0 (N)" eh="29f6ee93" />
-    <e k="sf_ams_title" v="Amonyum Sülfat 21-0-0 (N)" eh="033d1845" />
-    <e k="sf_map_title" v="MAP Gübresi 11-52-0 (P)" eh="31aa2534" />
-    <e k="sf_dap_title" v="DAP Gübresi 18-46-0 (P)" eh="5030a80a" />
+    <e k="sf_ams_title" v="Amonyum SÃ¼lfat 21-0-0 (N)" eh="033d1845" />
+    <e k="sf_map_title" v="MAP GÃ¼bresi 11-52-0 (P)" eh="31aa2534" />
+    <e k="sf_dap_title" v="DAP GÃ¼bresi 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Potas 0-0-60 (K)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="Sıvı Üre (N)" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="Sıvı Amonyum Sülfat (N)" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="Sıvı MAP (P)" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="Sıvı DAP (P)" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="Sıvı Potas (K)" eh="72ac9fd3" />
-    <e k="sf_insecticide_title" v="İnsektisit (Böcek İlacı)" eh="5650eeef" />
-    <e k="sf_fungicide_title" v="Fungisit (Mantar İlacı)" eh="e8512698" />
+    <e k="sf_liquid_urea_title" v="SÄ±vÄ± Ãœre (N)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="SÄ±vÄ± Amonyum SÃ¼lfat (N)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="SÄ±vÄ± MAP (P)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="SÄ±vÄ± DAP (P)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="SÄ±vÄ± Potas (K)" eh="72ac9fd3" />
+    <e k="sf_insecticide_title" v="Ä°nsektisit (BÃ¶cek Ä°lacÄ±)" eh="5650eeef" />
+    <e k="sf_fungicide_title" v="Fungisit (Mantar Ä°lacÄ±)" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
     <e k="sf_bigBag_anhydrous_name" v="IBC Anhidre Amonyak 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
-    <e k="sf_bigBag_urea_name" v="Big Bag Üre 46-0-0" eh="8e8cbaae" />
+    <e k="sf_bigBag_urea_name" v="Big Bag Ãœre 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
     <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
@@ -164,39 +164,39 @@
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
-    <e k="sf_bigBag_liquid_urea_name" v="IBC Sıvı Üre" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC SÄ±vÄ± Ãœre" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="IBC Sıvı AMS" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC SÄ±vÄ± AMS" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="IBC Sıvı MAP" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC SÄ±vÄ± MAP" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="IBC Sıvı DAP" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC SÄ±vÄ± DAP" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="IBC Sıvı Potas" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC SÄ±vÄ± Potas" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
-    <e k="sf_bigBag_starter_name" v="IBC Başlangıç 10-34-0" eh="62b13bd1" />
-    <e k="sf_bigBag_insecticide_name" v="IBC İnsektisit" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="İnsektisit (sıvı)" eh="09580f6b" />
+    <e k="sf_bigBag_starter_name" v="IBC BaÅŸlangÄ±Ã§ 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_insecticide_name" v="IBC Ä°nsektisit" eh="c8f0aabb" />
+    <e k="sf_bigBag_insecticide_function" v="Ä°nsektisit (sÄ±vÄ±)" eh="09580f6b" />
     <e k="sf_bigBag_fungicide_name" v="IBC Fungisit" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="Fungisit (sıvı)" eh="745c34cb" />
+    <e k="sf_bigBag_fungicide_function" v="Fungisit (sÄ±vÄ±)" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
-    <e k="sf_bigBag_gypsum_name" v="Big Bag Alçıtaşı (Jips)" eh="40fc8169" />
+    <e k="sf_bigBag_gypsum_name" v="Big Bag AlÃ§Ä±taÅŸÄ± (Jips)" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
     <e k="sf_bigBag_compost_name" v="Big Bag Kompost" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="Big Bag Biyokatı" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="Big Bag BiyokatÄ±" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
-    <e k="sf_bigBag_chicken_manure_name" v="Big Bag Tavuk Gübresi" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_name" v="Big Bag Tavuk GÃ¼bresi" eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
-    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag Peletlenmiş Gübre" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="Big Bag PeletlenmiÅŸ GÃ¼bre" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="Sıvı Kireç Tankı" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="SÄ±vÄ± KireÃ§ TankÄ±" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
-    <e k="sf_hud_title" v="TOPRAK MONİTÖRÜ" eh="f8cda642" />
+    <e k="sf_hud_title" v="TOPRAK MONÄ°TÃ–RÃœ" eh="f8cda642" />
     <e k="sf_hud_field" v="Tarla %d" eh="08988997" />
     <e k="sf_hud_noField" v="Bir tarlaya gidin" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
@@ -204,175 +204,175 @@
 		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="Zararlılar" eh="2fed5101" />
-    <e k="sf_hud_disease" v="Hastalık" eh="e7067a8c" />
+    <e k="sf_hud_pests" v="ZararlÄ±lar" eh="2fed5101" />
+    <e k="sf_hud_disease" v="HastalÄ±k" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
-    <e k="sf_hud_protected" v="(korumalı)" eh="8273211e" />
+    <e k="sf_hud_protected" v="(korumalÄ±)" eh="8273211e" />
     <e k="sf_hud_yield" v="Verim" eh="97345487" />
     <e k="sf_hud_estYield" v="Tahmini Verim" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="Hasat sonrası · Gübreleyin" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="Sürükle: taşı   Köşe: boyutlandır   Sağ Tık/Shift+H: tamam" eh="c3f1820c" />
-    <e k="sf_hud_hint_normal" v="Shift+H: taşı/boyutlandır" eh="f1d565b1" />
+    <e k="sf_hud_post_harvest" v="Hasat sonrasÄ± Â· GÃ¼breleyin" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="SÃ¼rÃ¼kle: taÅŸÄ±   KÃ¶ÅŸe: boyutlandÄ±r   SaÄŸ TÄ±k/Shift+H: tamam" eh="c3f1820c" />
+    <e k="sf_hud_hint_normal" v="Shift+H: taÅŸÄ±/boyutlandÄ±r" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="Precision Farming etkin olduğu için Soil &amp; Fertilizer bu kayıt için devre dışı bırakıldı. Her iki mod da toprak besinlerini yönetir ve aynı anda çalışamaz. Bu modu silmenize gerek yok. Bunun yerine Soil &amp; Fertilizer kullanmak için, mod seçim ekranında bu kayıt için Precision Farming'i devre dışı bırakmanız yeterli." eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Precision Farming etkin olduÄŸu iÃ§in Soil &amp; Fertilizer bu kayÄ±t iÃ§in devre dÄ±ÅŸÄ± bÄ±rakÄ±ldÄ±. Her iki mod da toprak besinlerini yÃ¶netir ve aynÄ± anda Ã§alÄ±ÅŸamaz. Bu modu silmenize gerek yok. Bunun yerine Soil &amp; Fertilizer kullanmak iÃ§in, mod seÃ§im ekranÄ±nda bu kayÄ±t iÃ§in Precision Farming'i devre dÄ±ÅŸÄ± bÄ±rakmanÄ±z yeterli." eh="91dbcf1b" />
 
-    <e k="helpLine_sf_cat_overview" v="Genel Bakış" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="Başlangıç" eh="bf647454" />
+    <e k="helpLine_sf_cat_overview" v="Genel BakÄ±ÅŸ" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="BaÅŸlangÄ±Ã§" eh="bf647454" />
     <e k="helpLine_sf_cat_nutrients" v="Toprak Besinleri" eh="64377acf" />
-    <e k="helpLine_sf_cat_fertilizers" v="Gübreler" eh="754d59bd" />
+    <e k="helpLine_sf_cat_fertilizers" v="GÃ¼breler" eh="754d59bd" />
     <e k="helpLine_sf_cat_hud" v="HUD &amp; Toprak Raporu" eh="655b1b40" />
     <e k="helpLine_sf_cat_settings" v="Ayarlar" eh="f4f70727" />
-    <e k="helpLine_sf_cat_multiplayer" v="Çok Oyunculu" eh="901a7320" />
+    <e k="helpLine_sf_cat_multiplayer" v="Ã‡ok Oyunculu" eh="901a7320" />
 
-    <e k="helpLine_sf_ov_p1_title" v="Ne İşe Yarar" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="Tarla Bazlı Toprak Takibi" eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="Her tarla beş özelliği bağımsız olarak takip eder: Azot (N), Fosfor (P), Potasyum (K), Organik Madde (OM) ve pH. Değerler kayıtlı oyununuza kaydedilir ve oturumlar arasında korunur." eh="c30216e6" />
-    <e k="helpLine_sf_ov_p1_flow_title" v="Besin Döngüsü" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="Ürünler hasatta besinleri topraktan alır. Gübre, katı gübre, sıvı gübre ve kireç bunları geri kazandırır. Mod gerçekçi bir besin bütçesini takip eder - ürünlerin aldığını siz geri koymalısınız." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_title" v="Ne Ä°ÅŸe Yarar" eh="46cbb25b" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="Tarla BazlÄ± Toprak Takibi" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="Her tarla beÅŸ Ã¶zelliÄŸi baÄŸÄ±msÄ±z olarak takip eder: Azot (N), Fosfor (P), Potasyum (K), Organik Madde (OM) ve pH. DeÄŸerler kayÄ±tlÄ± oyununuza kaydedilir ve oturumlar arasÄ±nda korunur." eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_flow_title" v="Besin DÃ¶ngÃ¼sÃ¼" eh="15b0d408" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="ÃœrÃ¼nler hasatta besinleri topraktan alÄ±r. GÃ¼bre, katÄ± gÃ¼bre, sÄ±vÄ± gÃ¼bre ve kireÃ§ bunlarÄ± geri kazandÄ±rÄ±r. Mod gerÃ§ekÃ§i bir besin bÃ¼tÃ§esini takip eder - Ã¼rÃ¼nlerin aldÄ±ÄŸÄ±nÄ± siz geri koymalÄ±sÄ±nÄ±z." eh="418041f0" />
 
-    <e k="helpLine_sf_ov_p2_title" v="Çevresel Etkiler" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="Yağmur ve Yıkanma" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="Yağmur en çok Azot'u, sonra Potasyum'u, sonra Fosfor'u yıkar. Ayrıca zamanla pH'ı yavaşça asitlendirir. Yağmur etkileri Ayarlar'dan kapatılabilir." eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="Mevsimler ve Nadas İyileşmesi" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="Bahar, günlük +0.03 N ekler (biyolojik aktivite). Sonbahar, günlük 0.02 N eksiltir. 7 günden fazla ekilmemiş bırakılan tarlalar tüm besinleri kendi başlarına yavaşça geri kazanır." eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_title" v="Ã‡evresel Etkiler" eh="e139e84f" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="YaÄŸmur ve YÄ±kanma" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="YaÄŸmur en Ã§ok Azot'u, sonra Potasyum'u, sonra Fosfor'u yÄ±kar. AyrÄ±ca zamanla pH'Ä± yavaÅŸÃ§a asitlendirir. YaÄŸmur etkileri Ayarlar'dan kapatÄ±labilir." eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="Mevsimler ve Nadas Ä°yileÅŸmesi" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="Bahar, gÃ¼nlÃ¼k +0.03 N ekler (biyolojik aktivite). Sonbahar, gÃ¼nlÃ¼k 0.02 N eksiltir. 7 gÃ¼nden fazla ekilmemiÅŸ bÄ±rakÄ±lan tarlalar tÃ¼m besinleri kendi baÅŸlarÄ±na yavaÅŸÃ§a geri kazanÄ±r." eh="e5ebb3b2" />
 
-    <e k="helpLine_sf_gs_p1_title" v="İlk Adımlarınız" eh="bdd0e0a7" />
-    <e k="helpLine_sf_gs_p1_hud_title" v="HUD'ı Açın (J tuşu)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="Canlı toprak katmanını açıp kapatmak için J'ye basın. İçinde bulunduğunuz tarla için N, P, K, pH ve OM değerlerini gösterir. İyi / Orta / Zayıf durum etiketleri bir bakışta neyin dikkat gerektirdiğini söyler." eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="Toprak Raporunu Açın (K tuşu)" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="Tam çiftlik toprak raporunu açmak için K'ye basın. Her tarla, aciliyet sırasına göre renk kodlu besin durumuyla listelenir. Önerilerin yer aldığı ayrıntılı görünüm için herhangi bir satırdaki oka tıklayın." eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_title" v="Ä°lk AdÄ±mlarÄ±nÄ±z" eh="bdd0e0a7" />
+    <e k="helpLine_sf_gs_p1_hud_title" v="HUD'Ä± AÃ§Ä±n (J tuÅŸu)" eh="e1bdea72" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="CanlÄ± toprak katmanÄ±nÄ± aÃ§Ä±p kapatmak iÃ§in J'ye basÄ±n. Ä°Ã§inde bulunduÄŸunuz tarla iÃ§in N, P, K, pH ve OM deÄŸerlerini gÃ¶sterir. Ä°yi / Orta / ZayÄ±f durum etiketleri bir bakÄ±ÅŸta neyin dikkat gerektirdiÄŸini sÃ¶yler." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="Toprak Raporunu AÃ§Ä±n (K tuÅŸu)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="Tam Ã§iftlik toprak raporunu aÃ§mak iÃ§in K'ye basÄ±n. Her tarla, aciliyet sÄ±rasÄ±na gÃ¶re renk kodlu besin durumuyla listelenir. Ã–nerilerin yer aldÄ±ÄŸÄ± ayrÄ±ntÄ±lÄ± gÃ¶rÃ¼nÃ¼m iÃ§in herhangi bir satÄ±rdaki oka tÄ±klayÄ±n." eh="9a0d32a6" />
 
-    <e k="helpLine_sf_gs_p2_title" v="Gübreleme ve Hasat" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="Tarlaları Gübreleme" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="Herhangi bir standart püskürtücü veya dağıtıcı ile gübre uygulayın. Mod, tüm ana oyun tiplerini ve 9 özel tipi (UAN-32, MAP, Potas vb.) tanır. Her tip farklı besinleri geri kazandırır - tam profiller için Gübreler kategorisine bakın." eh="fe906e29" />
-    <e k="helpLine_sf_gs_p2_harvest_title" v="Hasat Tükenmesi" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="Her hasat tarladaki besinleri eksiltir. Zorlayıcı ürünler (patates, şeker pancarı, soya fasulyesi) hafif beslenenlerden (arpa, yulaf) önemli ölçüde daha fazla tüketir. Her hasat döngüsünden sonra HUD'ı veya toprak raporunu tekrar kontrol edin." eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_title" v="GÃ¼breleme ve Hasat" eh="1a52ac04" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="TarlalarÄ± GÃ¼breleme" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="Herhangi bir standart pÃ¼skÃ¼rtÃ¼cÃ¼ veya daÄŸÄ±tÄ±cÄ± ile gÃ¼bre uygulayÄ±n. Mod, tÃ¼m ana oyun tiplerini ve 9 Ã¶zel tipi (UAN-32, MAP, Potas vb.) tanÄ±r. Her tip farklÄ± besinleri geri kazandÄ±rÄ±r - tam profiller iÃ§in GÃ¼breler kategorisine bakÄ±n." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_harvest_title" v="Hasat TÃ¼kenmesi" eh="a67b6cb5" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="Her hasat tarladaki besinleri eksiltir. ZorlayÄ±cÄ± Ã¼rÃ¼nler (patates, ÅŸeker pancarÄ±, soya fasulyesi) hafif beslenenlerden (arpa, yulaf) Ã¶nemli Ã¶lÃ§Ã¼de daha fazla tÃ¼ketir. Her hasat dÃ¶ngÃ¼sÃ¼nden sonra HUD'Ä± veya toprak raporunu tekrar kontrol edin." eh="63f90ed4" />
 
     <e k="helpLine_sf_gs_p3_title" v="Zorluk" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="Üç Zorluk Seviyesi" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="Basit (0.7x): %30 daha az tükenme - yeni oyuncular için iyidir. Gerçekçi (1.0x): dengeli, gerçek tarımsal oranlara göre kalibre edilmiştir. Hardcore (1.5x): %50 daha fazla tükenme - yoğun toprak yönetimi gerektirir." eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="Ayarları Değiştirme" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="ESC > Ayarlar > Toprak &amp; Gübre bölümünden ayarları açın. Çok oyunculu modda, simülasyon ayarlarını yalnızca sunucu yöneticisi değiştirebilir. Tüm HUD görüntüleme seçenekleri oyuncu özelindedir ve paylaşılmaz." eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="ÃœÃ§ Zorluk Seviyesi" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="Basit (0.7x): %30 daha az tÃ¼kenme - yeni oyuncular iÃ§in iyidir. GerÃ§ekÃ§i (1.0x): dengeli, gerÃ§ek tarÄ±msal oranlara gÃ¶re kalibre edilmiÅŸtir. Hardcore (1.5x): %50 daha fazla tÃ¼kenme - yoÄŸun toprak yÃ¶netimi gerektirir." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="AyarlarÄ± DeÄŸiÅŸtirme" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_access_text" v="ESC > Ayarlar > Toprak &amp; GÃ¼bre bÃ¶lÃ¼mÃ¼nden ayarlarÄ± aÃ§Ä±n. Ã‡ok oyunculu modda, simÃ¼lasyon ayarlarÄ±nÄ± yalnÄ±zca sunucu yÃ¶neticisi deÄŸiÅŸtirebilir. TÃ¼m HUD gÃ¶rÃ¼ntÃ¼leme seÃ§enekleri oyuncu Ã¶zelindedir ve paylaÅŸÄ±lmaz." eh="4ba9d860" />
 
     <e k="helpLine_sf_nu_p1_title" v="Azot ve Fosfor" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="Azot (N) - Ölçek 0'dan 100'e" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="En hareketli besin - en hızlı tükenir ve yağmurda yoğun şekilde yıkanır. Zayıf: 30'un altı. İyi: 50'nin üstü. Şunlarla artırın: sıvı gübre, UAN-32, UAN-28, anhidre amonyak, üre, AMS, katı gübre veya sıvı gübre." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="Fosfor (P) - Ölçek 0'dan 100'e" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="Toprağa sıkıca bağlanır ve çok yavaş yıkanır. Esas olarak hasat yoluyla tükenir. Kanola en yüksek P ihtiyacına sahiptir. Zayıf: 25'in altı. İyi: 45'in üstü. Şunlarla artırın: MAP, DAP, başlangıç gübresi veya sıvı gübre." eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Azot (N) - Ã–lÃ§ek 0'dan 100'e" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="En hareketli besin - en hÄ±zlÄ± tÃ¼kenir ve yaÄŸmurda yoÄŸun ÅŸekilde yÄ±kanÄ±r. ZayÄ±f: 30'un altÄ±. Ä°yi: 50'nin Ã¼stÃ¼. Åžunlarla artÄ±rÄ±n: sÄ±vÄ± gÃ¼bre, UAN-32, UAN-28, anhidre amonyak, Ã¼re, AMS, katÄ± gÃ¼bre veya sÄ±vÄ± gÃ¼bre." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="Fosfor (P) - Ã–lÃ§ek 0'dan 100'e" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="TopraÄŸa sÄ±kÄ±ca baÄŸlanÄ±r ve Ã§ok yavaÅŸ yÄ±kanÄ±r. Esas olarak hasat yoluyla tÃ¼kenir. Kanola en yÃ¼ksek P ihtiyacÄ±na sahiptir. ZayÄ±f: 25'in altÄ±. Ä°yi: 45'in Ã¼stÃ¼. Åžunlarla artÄ±rÄ±n: MAP, DAP, baÅŸlangÄ±Ã§ gÃ¼bresi veya sÄ±vÄ± gÃ¼bre." eh="92c5ac66" />
 
     <e k="helpLine_sf_nu_p2_title" v="Potasyum ve pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="Potasyum (K) - Ölçek 0'dan 100'e" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="Kök ve yumru bitkileri için kritiktir. Patates ve şeker pancarı her hasatta K'yi yoğun şekilde tüketir. Yağmurda orta derecede yıkanır. Zayıf: 20'nin altı. İyi: 40'ın üstü. Şunlarla artırın: potas (0-0-60), sıvı gübre, sindirilmiş atık veya sıvı gübre." eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Ölçek 5.0'dan 7.5'e" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="Çoğu ürün 6.5 ila 7.0 pH değerinde gelişir. Yağmur zamanla toprağı yavaşça asitlendirir. pH kendi kendine düzelmez - sadece kireç veya sıvı kireç onu yükseltir. Zayıf: 5.5'in altı. Bir sonraki ekimden önce pH düşüyorsa kireç uygulayın." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Potasyum (K) - Ã–lÃ§ek 0'dan 100'e" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="KÃ¶k ve yumru bitkileri iÃ§in kritiktir. Patates ve ÅŸeker pancarÄ± her hasatta K'yi yoÄŸun ÅŸekilde tÃ¼ketir. YaÄŸmurda orta derecede yÄ±kanÄ±r. ZayÄ±f: 20'nin altÄ±. Ä°yi: 40'Ä±n Ã¼stÃ¼. Åžunlarla artÄ±rÄ±n: potas (0-0-60), sÄ±vÄ± gÃ¼bre, sindirilmiÅŸ atÄ±k veya sÄ±vÄ± gÃ¼bre." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Ã–lÃ§ek 5.0'dan 7.5'e" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="Ã‡oÄŸu Ã¼rÃ¼n 6.5 ila 7.0 pH deÄŸerinde geliÅŸir. YaÄŸmur zamanla topraÄŸÄ± yavaÅŸÃ§a asitlendirir. pH kendi kendine dÃ¼zelmez - sadece kireÃ§ veya sÄ±vÄ± kireÃ§ onu yÃ¼kseltir. ZayÄ±f: 5.5'in altÄ±. Bir sonraki ekimden Ã¶nce pH dÃ¼ÅŸÃ¼yorsa kireÃ§ uygulayÄ±n." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Organik Madde" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="Organik Madde (OM) - Ölçek 0'dan 10'a" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="Çok yavaş oluşur ve hasatla tükenmez. Zayıf: 2.5'in altı. İyi: 4.0'ın üstü. Şunlarla artırın: katı gübre, sıvı gübre, sindirilmiş atık, kompost, biyokatılar, tavuk gübresi, peletlenmiş gübre veya samanı tarlaya geri kıyarak." eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="Nadas İyileşmesi" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="7+ gün ekilmemiş bırakılan bir tarla besinleri yavaşça geri kazanır. Günlük: N +0.07, P +0.03, K +0.05, OM +0.01. Münavebe ve dinlenme sürelerinin bu modda gerçek bir değeri vardır." eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Organik Madde (OM) - Ã–lÃ§ek 0'dan 10'a" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="Ã‡ok yavaÅŸ oluÅŸur ve hasatla tÃ¼kenmez. ZayÄ±f: 2.5'in altÄ±. Ä°yi: 4.0'Ä±n Ã¼stÃ¼. Åžunlarla artÄ±rÄ±n: katÄ± gÃ¼bre, sÄ±vÄ± gÃ¼bre, sindirilmiÅŸ atÄ±k, kompost, biyokatÄ±lar, tavuk gÃ¼bresi, peletlenmiÅŸ gÃ¼bre veya samanÄ± tarlaya geri kÄ±yarak." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="Nadas Ä°yileÅŸmesi" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="7+ gÃ¼n ekilmemiÅŸ bÄ±rakÄ±lan bir tarla besinleri yavaÅŸÃ§a geri kazanÄ±r. GÃ¼nlÃ¼k: N +0.07, P +0.03, K +0.05, OM +0.01. MÃ¼navebe ve dinlenme sÃ¼relerinin bu modda gerÃ§ek bir deÄŸeri vardÄ±r." eh="81fa82b3" />
 
     <!-- Category 4: Fertilizers -->
     <e k="helpLine_sf_fe_p1_title" v="Ana Oyun Tipleri" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="Sıvı, Katı, Hayvan Gübresi ve Bulamaç" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="Sıvı Gübre dengeli N+P+K ekler. Katı Gübre N ve P açısından daha yüksektir. Hayvan Gübresi ve Bulamaç N, P, K ve Organik Madde ekler. Sindirilmiş Atık (biyogaz yan ürünü) K açısından yüksektir ve ayrıca OM ekler. Hepsi standart ekipmanla uygulanır." eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="Kireç ve pH Düzeltme" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="Kireç ana oyundaki tek pH düzeltmedir - besin eklemez. Özel tipler olan Sıvı Kireç ve Alçıtaşı da pH'ı yükseltir (Alçıtaşı küçük miktarda OM de ekler). Ürünleri optimal aralıklarında tutmak için pH 6.0'ın altına düştüğünde uygulayın." eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_base_title" v="SÄ±vÄ±, KatÄ±, Hayvan GÃ¼bresi ve BulamaÃ§" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="SÄ±vÄ± GÃ¼bre dengeli N+P+K ekler. KatÄ± GÃ¼bre N ve P aÃ§Ä±sÄ±ndan daha yÃ¼ksektir. Hayvan GÃ¼bresi ve BulamaÃ§ N, P, K ve Organik Madde ekler. SindirilmiÅŸ AtÄ±k (biyogaz yan Ã¼rÃ¼nÃ¼) K aÃ§Ä±sÄ±ndan yÃ¼ksektir ve ayrÄ±ca OM ekler. Hepsi standart ekipmanla uygulanÄ±r." eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="KireÃ§ ve pH DÃ¼zeltme" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="KireÃ§ ana oyundaki tek pH dÃ¼zeltmedir - besin eklemez. Ã–zel tipler olan SÄ±vÄ± KireÃ§ ve AlÃ§Ä±taÅŸÄ± da pH'Ä± yÃ¼kseltir (AlÃ§Ä±taÅŸÄ± kÃ¼Ã§Ã¼k miktarda OM de ekler). ÃœrÃ¼nleri optimal aralÄ±klarÄ±nda tutmak iÃ§in pH 6.0'Ä±n altÄ±na dÃ¼ÅŸtÃ¼ÄŸÃ¼nde uygulayÄ±n." eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="Özel Azot ve PK Kaynakları" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="Azot Kaynakları (özel big bagler)" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) ve UAN-28 (28-0-0) sıvı azot çözeltileridir. Anhidre Amonyak (82-0-0) litre başına en yüksek N içeren üründür. Üre (46-0-0) ve AMS (21-0-0-24S) kuru granüldür. Hepsi sadece N içerir - P, K veya pH üzerinde etkileri yoktur." eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="Fosfor ve Potasyum Kaynakları" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): litre başına en yüksek P. DAP (18-46-0): biraz N ile birlikte yüksek P. Potas (0-0-60): saf K. Başlangıç (10-34-0): dengeli N+K ile yüksek P'li karık içi ürün. Hepsi mağazada satın alınabilir big bagler olarak mevcuttur." eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="Ã–zel Azot ve PK KaynaklarÄ±" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="Azot KaynaklarÄ± (Ã¶zel big bagler)" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) ve UAN-28 (28-0-0) sÄ±vÄ± azot Ã§Ã¶zeltileridir. Anhidre Amonyak (82-0-0) litre baÅŸÄ±na en yÃ¼ksek N iÃ§eren Ã¼rÃ¼ndÃ¼r. Ãœre (46-0-0) ve AMS (21-0-0-24S) kuru granÃ¼ldÃ¼r. Hepsi sadece N iÃ§erir - P, K veya pH Ã¼zerinde etkileri yoktur." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="Fosfor ve Potasyum KaynaklarÄ±" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): litre baÅŸÄ±na en yÃ¼ksek P. DAP (18-46-0): biraz N ile birlikte yÃ¼ksek P. Potas (0-0-60): saf K. BaÅŸlangÄ±Ã§ (10-34-0): dengeli N+K ile yÃ¼ksek P'li karÄ±k iÃ§i Ã¼rÃ¼n. Hepsi maÄŸazada satÄ±n alÄ±nabilir big bagler olarak mevcuttur." eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="Organik Ürünler ve Yanma Riski" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="Organik ve Yavaş Salınımlı Ürünler" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="Kompost en güçlü OM oluşturucudur (1.000 L başına +0.12). Biyokatılar ve Tavuk Gübresi N, P ve OM ekler. Peletlenmiş Gübre konsantre dengeli bir organiktir. Hepsi uyumlu ekipman modları yüklendiğinde mevcut olan özel dolum tipleridir." eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="Aşırı Uygulama Yanma Riski" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="Temel oranın 1.25 katı üzerinde uygulama yapmak gübre yanması riski taşır (-0.15 pH ve -5 N). 1.50 katı veya üzerinde, her geçişte yanma garantidir (-0.30 pH ve -12 N). Uygulama oranını kontrol etmek için araçta SF Rate Up / Rate Down tuşlarını kullanın." eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="Organik ÃœrÃ¼nler ve Yanma Riski" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="Organik ve YavaÅŸ SalÄ±nÄ±mlÄ± ÃœrÃ¼nler" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="Kompost en gÃ¼Ã§lÃ¼ OM oluÅŸturucudur (1.000 L baÅŸÄ±na +0.12). BiyokatÄ±lar ve Tavuk GÃ¼bresi N, P ve OM ekler. PeletlenmiÅŸ GÃ¼bre konsantre dengeli bir organiktir. Hepsi uyumlu ekipman modlarÄ± yÃ¼klendiÄŸinde mevcut olan Ã¶zel dolum tipleridir." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="AÅŸÄ±rÄ± Uygulama Yanma Riski" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="Temel oranÄ±n 1.25 katÄ± Ã¼zerinde uygulama yapmak gÃ¼bre yanmasÄ± riski taÅŸÄ±r (-0.15 pH ve -5 N). 1.50 katÄ± veya Ã¼zerinde, her geÃ§iÅŸte yanma garantidir (-0.30 pH ve -12 N). Uygulama oranÄ±nÄ± kontrol etmek iÃ§in araÃ§ta SF Rate Up / Rate Down tuÅŸlarÄ±nÄ± kullanÄ±n." eh="7bccc46a" />
 
-    <e k="helpLine_sf_hu_p1_title" v="Toprak HUD'ı" eh="6522879b" />
-    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD'ı Açıp Kapatma (J tuşu)" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="Canlı toprak katmanını göstermek veya gizlemek için J'ye basın. Bulunduğunuz tarlayı algılar ve N, P, K, pH ve OM değerlerini gösterir. Yabancı Ot, Zararlı veya Hastalık ayarları etkinleştirildiğinde, bu satırlar panelin altında görünür." eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_title" v="Toprak HUD'Ä±" eh="6522879b" />
+    <e k="helpLine_sf_hu_p1_toggle_title" v="HUD'Ä± AÃ§Ä±p Kapatma (J tuÅŸu)" eh="402283ba" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="CanlÄ± toprak katmanÄ±nÄ± gÃ¶stermek veya gizlemek iÃ§in J'ye basÄ±n. BulunduÄŸunuz tarlayÄ± algÄ±lar ve N, P, K, pH ve OM deÄŸerlerini gÃ¶sterir. YabancÄ± Ot, ZararlÄ± veya HastalÄ±k ayarlarÄ± etkinleÅŸtirildiÄŸinde, bu satÄ±rlar panelin altÄ±nda gÃ¶rÃ¼nÃ¼r." eh="3dcb9bfe" />
     <e k="helpLine_sf_hu_p1_status_title" v="Durumu Okuma" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="Her besin maddesi İyi (eylem gerekmez), Orta (yakında tedavi etmeyi düşünün) veya Zayıf (eylem gerekir - verim etkilenir) gösterir. Başlık çubuğundaki genel rozet; yabancı ot, zararlı ve hastalık dahil olmak üzere tüm takip edilen boyutlardaki en kötü değeri yansıtır." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Her besin maddesi Ä°yi (eylem gerekmez), Orta (yakÄ±nda tedavi etmeyi dÃ¼ÅŸÃ¼nÃ¼n) veya ZayÄ±f (eylem gerekir - verim etkilenir) gÃ¶sterir. BaÅŸlÄ±k Ã§ubuÄŸundaki genel rozet; yabancÄ± ot, zararlÄ± ve hastalÄ±k dahil olmak Ã¼zere tÃ¼m takip edilen boyutlardaki en kÃ¶tÃ¼ deÄŸeri yansÄ±tÄ±r." eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="Tarla Sağlığı Baskıları" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="Yabancı Ot, Zararlı ve Hastalık" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="Üç baskı puanı (0'dan 100'e) tarla başına biyolojik tehditleri takip eder. Önlem alınmazsa hasatta verimi düşürürler: Yabancı Ot -%30'a kadar, Zararlı -%20, Hastalık -%25. HUD satırları W, I ve D renk kodlu şiddeti gösterir: yeşil (düşük), sarı (orta), kırmızı (yüksek)." eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="Baskıyı Tedavi Etme" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="Herbisit yabancı ot baskısını azaltır - herhangi bir toprak işleme de onu sıfıra indirir. İnsektisit zararlı baskısını 25 puan azaltır ve 10 gün boyunca yeniden büyümeyi engeller. Fungisit hastalığı 20 puan azaltır ve 12 gün boyunca engeller. Her sistem Ayarlar'dan kapatılabilir." eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="Tarla SaÄŸlÄ±ÄŸÄ± BaskÄ±larÄ±" eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="YabancÄ± Ot, ZararlÄ± ve HastalÄ±k" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="ÃœÃ§ baskÄ± puanÄ± (0'dan 100'e) tarla baÅŸÄ±na biyolojik tehditleri takip eder. Ã–nlem alÄ±nmazsa hasatta verimi dÃ¼ÅŸÃ¼rÃ¼rler: YabancÄ± Ot -%30'a kadar, ZararlÄ± -%20, HastalÄ±k -%25. HUD satÄ±rlarÄ± W, I ve D renk kodlu ÅŸiddeti gÃ¶sterir: yeÅŸil (dÃ¼ÅŸÃ¼k), sarÄ± (orta), kÄ±rmÄ±zÄ± (yÃ¼ksek)." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="BaskÄ±yÄ± Tedavi Etme" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="Herbisit yabancÄ± ot baskÄ±sÄ±nÄ± azaltÄ±r - herhangi bir toprak iÅŸleme de onu sÄ±fÄ±ra indirir. Ä°nsektisit zararlÄ± baskÄ±sÄ±nÄ± 25 puan azaltÄ±r ve 10 gÃ¼n boyunca yeniden bÃ¼yÃ¼meyi engeller. Fungisit hastalÄ±ÄŸÄ± 20 puan azaltÄ±r ve 12 gÃ¼n boyunca engeller. Her sistem Ayarlar'dan kapatÄ±labilir." eh="4d65bdec" />
 
     <e k="helpLine_sf_hu_p3_title" v="Toprak Raporu" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="Raporu Açma (K tuşu)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="Tam çiftlik toprak raporunu açmak için K'ye basın. Özet çubuğu, takip edilen toplam tarlayı, kaçının gübreye ihtiyacı olduğunu ve ağırlıklı bir Çiftlik Sağlığı yüzdesini gösterir. Tarlalar aciliyetine göre sıralanır - en kötü durumdaki en üsttedir." eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="Tarla Ayrıntıları ve Öneriler" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="O tarlanın ayrıntılı görünümünü açmak için herhangi bir satırdaki oka tıklayın: besin değerleri, baskı seviyeleri, verim kaybı tahmini ve tam olarak ne uygulamanız gerektiğini söyleyen maddeli bir öneri listesi. Tabloya dönmek için Geri'ye veya Escape'e basın." eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_open_title" v="Raporu AÃ§ma (K tuÅŸu)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="Tam Ã§iftlik toprak raporunu aÃ§mak iÃ§in K'ye basÄ±n. Ã–zet Ã§ubuÄŸu, takip edilen toplam tarlayÄ±, kaÃ§Ä±nÄ±n gÃ¼breye ihtiyacÄ± olduÄŸunu ve aÄŸÄ±rlÄ±klÄ± bir Ã‡iftlik SaÄŸlÄ±ÄŸÄ± yÃ¼zdesini gÃ¶sterir. Tarlalar aciliyetine gÃ¶re sÄ±ralanÄ±r - en kÃ¶tÃ¼ durumdaki en Ã¼sttedir." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="Tarla AyrÄ±ntÄ±larÄ± ve Ã–neriler" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="O tarlanÄ±n ayrÄ±ntÄ±lÄ± gÃ¶rÃ¼nÃ¼mÃ¼nÃ¼ aÃ§mak iÃ§in herhangi bir satÄ±rdaki oka tÄ±klayÄ±n: besin deÄŸerleri, baskÄ± seviyeleri, verim kaybÄ± tahmini ve tam olarak ne uygulamanÄ±z gerektiÄŸini sÃ¶yleyen maddeli bir Ã¶neri listesi. Tabloya dÃ¶nmek iÃ§in Geri'ye veya Escape'e basÄ±n." eh="38dd2c6d" />
 
-    <e k="helpLine_sf_se_p1_title" v="Simülasyon Ayarları" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="Sunucu Ayarları (Çok Oyunculu Modda Sadece Yönetici)" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="Verimlilik Sistemi, Besin Döngüleri, Mevsimsel Etkiler, Yağmur Etkileri, Sürme Bonusu, Yabancı Ot/Zararlı/Hastalık Baskısı, Gübre Maliyetleri, Bildirimler, Münavebe ve Otomatik Oran Kontrolü. Çok oyunculu modda bunları yalnızca sunucu yöneticisi değiştirebilir. Değişiklikler anında tüm istemcilere senkronize edilir." eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_title" v="SimÃ¼lasyon AyarlarÄ±" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="Sunucu AyarlarÄ± (Ã‡ok Oyunculu Modda Sadece YÃ¶netici)" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="Verimlilik Sistemi, Besin DÃ¶ngÃ¼leri, Mevsimsel Etkiler, YaÄŸmur Etkileri, SÃ¼rme Bonusu, YabancÄ± Ot/ZararlÄ±/HastalÄ±k BaskÄ±sÄ±, GÃ¼bre Maliyetleri, Bildirimler, MÃ¼navebe ve Otomatik Oran KontrolÃ¼. Ã‡ok oyunculu modda bunlarÄ± yalnÄ±zca sunucu yÃ¶neticisi deÄŸiÅŸtirebilir. DeÄŸiÅŸiklikler anÄ±nda tÃ¼m istemcilere senkronize edilir." eh="abca5e43" />
     <e k="helpLine_sf_se_p1_diff_title" v="Zorluk" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="Basit (0.7x), rahat bir deneyim için tükenmeyi %30 azaltır. Gerçekçi (1.0x) dengeli varsayılan ayardır. Hardcore (1.5x), yoğun toprak yönetimi için tükenmeyi %50 artırır. ESC > Ayarlar > Toprak &amp; Gübre üzerinden erişebilirsiniz." eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_diff_text" v="Basit (0.7x), rahat bir deneyim iÃ§in tÃ¼kenmeyi %30 azaltÄ±r. GerÃ§ekÃ§i (1.0x) dengeli varsayÄ±lan ayardÄ±r. Hardcore (1.5x), yoÄŸun toprak yÃ¶netimi iÃ§in tÃ¼kenmeyi %50 artÄ±rÄ±r. ESC > Ayarlar > Toprak &amp; GÃ¼bre Ã¼zerinden eriÅŸebilirsiniz." eh="ca93ca3e" />
 
-    <e k="helpLine_sf_se_p2_title" v="HUD ve Oran Kontrolü" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="Oyuncu Başına HUD Seçenekleri" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="Her oyuncu kendi HUD'ını kontrol eder - sunucuyla senkronize edilmez. Seçenekler: HUD'ı Göster (açık/kapalı), Konum (5 ön ayar + sürükleme), Renk Teması (Yeşil / Mavi / Kehribar / Mono), Yazı Tipi Boyutu (Küçük / Orta / Büyük), Şeffaflık (%25 ile %100 arası), İngiliz Birimleri (açık/kapalı)." eh="f3934884" />
-    <e k="helpLine_sf_se_p2_rate_title" v="Püskürtücü Oran Kontrolü" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Bir püskürtücü veya dağıtıcıdayken, uygulama oranını 0.10x ile 2.00x arasında ayarlamak için SF Rate Up (]) ve SF Rate Down ([) tuşlarını kullanın. Modun otomatik olarak optimal besin seviyelerini hedeflemesini sağlamak ve yanma riskini önlemek için Otomatik Oran Kontrolünü (Shift+L) açın." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_title" v="HUD ve Oran KontrolÃ¼" eh="399f4910" />
+    <e k="helpLine_sf_se_p2_hud_title" v="Oyuncu BaÅŸÄ±na HUD SeÃ§enekleri" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="Her oyuncu kendi HUD'Ä±nÄ± kontrol eder - sunucuyla senkronize edilmez. SeÃ§enekler: HUD'Ä± GÃ¶ster (aÃ§Ä±k/kapalÄ±), Konum (5 Ã¶n ayar + sÃ¼rÃ¼kleme), Renk TemasÄ± (YeÅŸil / Mavi / Kehribar / Mono), YazÄ± Tipi Boyutu (KÃ¼Ã§Ã¼k / Orta / BÃ¼yÃ¼k), ÅžeffaflÄ±k (%25 ile %100 arasÄ±), Ä°ngiliz Birimleri (aÃ§Ä±k/kapalÄ±)." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_rate_title" v="PÃ¼skÃ¼rtÃ¼cÃ¼ Oran KontrolÃ¼" eh="5ecdfa23" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Bir pÃ¼skÃ¼rtÃ¼cÃ¼ veya daÄŸÄ±tÄ±cÄ±dayken, uygulama oranÄ±nÄ± 0.10x ile 2.00x arasÄ±nda ayarlamak iÃ§in SF Rate Up (]) ve SF Rate Down ([) tuÅŸlarÄ±nÄ± kullanÄ±n. Modun otomatik olarak optimal besin seviyelerini hedeflemesini saÄŸlamak ve yanma riskini Ã¶nlemek iÃ§in Otomatik Oran KontrolÃ¼nÃ¼ (Shift+L) aÃ§Ä±n." eh="dd385e39" />
 
-    <e k="helpLine_sf_mp_p1_title" v="Çok Oyunculu Nasıl Çalışır" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="Sunucu Yetkili Simülasyonu" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="Tüm toprak simülasyonu sunucuda çalışır. İstemciler katıldıklarında tam tarla verilerini ve ayarlarını alırlar; sunucu hala yükleniyorsa otomatik yeniden deneme yapılır. HUD görüntüleme ayarları (konum, tema, boyut) oyuncu bazlıdır ve asla sunucuyla senkronize edilmez." eh="db72a3f9" />
-    <e k="helpLine_sf_mp_p1_ded_title" v="Atanmış Sunucular" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="Atanmış sunucular, herhangi bir HUD veya GUI yükü olmadan tam simülasyonu çalıştırır - bu beklenen ve normal bir durumdur. Atanmış bir sunucudaki ayarları yönetmek ve doğrulamak için konsol komutlarını (soilStatus, SoilSetDifficulty, SoilShowSettings vb.) kullanın." eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_title" v="Ã‡ok Oyunculu NasÄ±l Ã‡alÄ±ÅŸÄ±r" eh="8a4ce30e" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="Sunucu Yetkili SimÃ¼lasyonu" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="TÃ¼m toprak simÃ¼lasyonu sunucuda Ã§alÄ±ÅŸÄ±r. Ä°stemciler katÄ±ldÄ±klarÄ±nda tam tarla verilerini ve ayarlarÄ±nÄ± alÄ±rlar; sunucu hala yÃ¼kleniyorsa otomatik yeniden deneme yapÄ±lÄ±r. HUD gÃ¶rÃ¼ntÃ¼leme ayarlarÄ± (konum, tema, boyut) oyuncu bazlÄ±dÄ±r ve asla sunucuyla senkronize edilmez." eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_ded_title" v="AtanmÄ±ÅŸ Sunucular" eh="4d3a45ba" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="AtanmÄ±ÅŸ sunucular, herhangi bir HUD veya GUI yÃ¼kÃ¼ olmadan tam simÃ¼lasyonu Ã§alÄ±ÅŸtÄ±rÄ±r - bu beklenen ve normal bir durumdur. AtanmÄ±ÅŸ bir sunucudaki ayarlarÄ± yÃ¶netmek ve doÄŸrulamak iÃ§in konsol komutlarÄ±nÄ± (soilStatus, SoilSetDifficulty, SoilShowSettings vb.) kullanÄ±n." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Compatibility and Workflow" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." />
     <e k="helpLine_sf_mp_p2_workflow_title" v="Changing Settings" />
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
-    <e k="sf_crop_rotation_short" v="Münavebe" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="Münavebe bonusunu ve monokültür yorgunluğunu etkinleştir/devre dışı bırak (baklagil dizileri azotu geri kazandırır; üst üste sezonlarda aynı ürün ekilmesi tükenmeyi artırır)" eh="958b4212" />
-    <e k="sf_gypsum_title" v="Alçıtaşı (pH-)" eh="d66da34c" />
+    <e k="sf_crop_rotation_short" v="MÃ¼navebe" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="MÃ¼navebe bonusunu ve monokÃ¼ltÃ¼r yorgunluÄŸunu etkinleÅŸtir/devre dÄ±ÅŸÄ± bÄ±rak (baklagil dizileri azotu geri kazandÄ±rÄ±r; Ã¼st Ã¼ste sezonlarda aynÄ± Ã¼rÃ¼n ekilmesi tÃ¼kenmeyi artÄ±rÄ±r)" eh="958b4212" />
+    <e k="sf_gypsum_title" v="AlÃ§Ä±taÅŸÄ± (pH-)" eh="d66da34c" />
     <e k="sf_compost_title" v="Kompost (Organik)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="Biyokatı (N+P)" eh="f0c901dc" />
-    <e k="sf_chicken_manure_title" v="Tavuk Gübresi (N+P)" eh="338128e2" />
-    <e k="sf_pelletized_manure_title" v="Peletlenmiş Gübre (NPK)" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="Sıvı Kireç (pH+)" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="Münavebe (Ekim Nöbeti)" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="Münavebe Bonusu" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="Baklagil olmayan bir üründen sonra baklagil (soya fasulyesi, bezelye, fasulye) yetiştirmek, her bahar 3 gün boyunca ücretsiz azot desteği sağlar." eh="e1fce95b" />
-    <e k="helpLine_sf_nu_p4_fatigue_title" v="Ürün Yorgunluğu" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="Üst üste iki sezon aynı ürünü ekmek, besin çekimini %15 artırır. Toprak yorgunluğunu önlemek için ürünleri münavebeli ekin." eh="1613f3c6" />
+    <e k="sf_biosolids_title" v="BiyokatÄ± (N+P)" eh="f0c901dc" />
+    <e k="sf_chicken_manure_title" v="Tavuk GÃ¼bresi (N+P)" eh="338128e2" />
+    <e k="sf_pelletized_manure_title" v="PeletlenmiÅŸ GÃ¼bre (NPK)" eh="c1b39b71" />
+    <e k="sf_liquidlime_title" v="SÄ±vÄ± KireÃ§ (pH+)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="MÃ¼navebe (Ekim NÃ¶beti)" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="MÃ¼navebe Bonusu" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="Baklagil olmayan bir Ã¼rÃ¼nden sonra baklagil (soya fasulyesi, bezelye, fasulye) yetiÅŸtirmek, her bahar 3 gÃ¼n boyunca Ã¼cretsiz azot desteÄŸi saÄŸlar." eh="e1fce95b" />
+    <e k="helpLine_sf_nu_p4_fatigue_title" v="ÃœrÃ¼n YorgunluÄŸu" eh="236a590c" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="Ãœst Ã¼ste iki sezon aynÄ± Ã¼rÃ¼nÃ¼ ekmek, besin Ã§ekimini %15 artÄ±rÄ±r. Toprak yorgunluÄŸunu Ã¶nlemek iÃ§in Ã¼rÃ¼nleri mÃ¼navebeli ekin." eh="1613f3c6" />
 
-    <e k="sf_map_layer_off" v="Toprak Haritası: Kapalı" eh="3e654ade" />
+    <e k="sf_map_layer_off" v="Toprak HaritasÄ±: KapalÄ±" eh="3e654ade" />
     <e k="sf_map_layer_n" v="Azot" eh="1e9ef3ba" />
     <e k="sf_map_layer_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_map_layer_k" v="Potasyum" eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
     <e k="sf_map_layer_om" v="Organik Madde" eh="6305f4bb" />
     <e k="sf_map_layer_urgency" v="Tarla Aciliyeti" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="Yabancı Ot Baskısı" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="Zararlı Baskısı" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="Hastalık Baskısı" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="Sıkışma" eh="19cf3ee7" />
+    <e k="sf_map_layer_weed" v="YabancÄ± Ot BaskÄ±sÄ±" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="ZararlÄ± BaskÄ±sÄ±" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="HastalÄ±k BaskÄ±sÄ±" eh="2b805cc9" />
+    <e k="sf_map_layer_compaction" v="SÄ±kÄ±ÅŸma" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
-    <e k="sf_map_overlay_cycle" v="Shift+M: Toprak Katmanını Değiştir" eh="032fdac7" />
-    <e k="sf_map_page_title" v="Toprak Katmanları" eh="04a675fb" />
-    <e k="sf_map_sidebar_header" v="Toprak Harita Katmanı" eh="81332549" />
+    <e k="sf_map_overlay_cycle" v="Shift+M: Toprak KatmanÄ±nÄ± DeÄŸiÅŸtir" eh="032fdac7" />
+    <e k="sf_map_page_title" v="Toprak KatmanlarÄ±" eh="04a675fb" />
+    <e k="sf_map_sidebar_header" v="Toprak Harita KatmanÄ±" eh="81332549" />
     <e k="sf_map_sidebar_label" v="Aktif Katman" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="Haritada hangi toprak besininin gösterileceğini seçin" eh="eb926e9a" />
-    <e k="sf_map_overlay_low" v="Düşük" eh="28d0edd0" />
+    <e k="sf_map_sidebar_tooltip" v="Haritada hangi toprak besininin gÃ¶sterileceÄŸini seÃ§in" eh="eb926e9a" />
+    <e k="sf_map_overlay_low" v="DÃ¼ÅŸÃ¼k" eh="28d0edd0" />
     <e k="sf_map_overlay_med" v="Orta" eh="248c9511" />
-    <e k="sf_map_overlay_high" v="Yüksek" eh="655d20c1" />
+    <e k="sf_map_overlay_high" v="YÃ¼ksek" eh="655d20c1" />
 
-    <e k="sf_pda_screen_title" v="Toprak &amp; Gübre" eh="f31197fb" />
-    <e k="sf_pda_tab_map" v="Toprak Haritası" eh="59f988b2" />
+    <e k="sf_pda_screen_title" v="Toprak &amp; GÃ¼bre" eh="f31197fb" />
+    <e k="sf_pda_tab_map" v="Toprak HaritasÄ±" eh="59f988b2" />
     <e k="sf_pda_tab_fields" v="Tarlalar" eh="a4ca5edd" />
-    <e k="sf_pda_tab_treatment" v="Tedavi Planı" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="Çiftlik Özeti" eh="47f2c19a" />
+    <e k="sf_pda_tab_treatment" v="Tedavi PlanÄ±" eh="4ba012e2" />
+    <e k="sf_pda_section_farm_overview" v="Ã‡iftlik Ã–zeti" eh="47f2c19a" />
     <e k="sf_pda_fields_tracked_label" v="Takip Edilen Tarlalar" eh="c763e26e" />
     <e k="sf_pda_fields_owned_label" v="Sahip Olunan Tarlalar" eh="335f5f7e" />
     <e k="sf_pda_section_avg_nutrients" v="Ort. Besinler" eh="f06b2704" />
@@ -381,111 +381,111 @@
     <e k="sf_pda_avg_k_label" v="Potasyum (K)" eh="39797137" />
     <e k="sf_pda_avg_ph_label" v="pH Seviyesi" eh="0c85daad" />
     <e k="sf_pda_avg_om_label" v="Organik Madde" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="Ürün Baskısı" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="Yabancı Ot" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="Zararlı" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="Hastalık" eh="e7067a8c" />
+    <e k="sf_pda_section_pressure" v="ÃœrÃ¼n BaskÄ±sÄ±" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="YabancÄ± Ot" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="ZararlÄ±" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="HastalÄ±k" eh="e7067a8c" />
     <e k="sf_pda_section_attention" v="Dikkat Gerektirenler" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="Gübre Gerekli" eh="fa9ded5e" />
+    <e k="sf_pda_needs_fert_label" v="GÃ¼bre Gerekli" eh="fa9ded5e" />
     <e k="sf_pda_total_urgent_label" v="Toplam dikkat gerektiren" eh="b3ce2db9" />
-    <e k="sf_pda_no_data_left" v="Henüz tarla verisi yok." eh="ba71c6b1" />
-    <e k="sf_pda_map_section_title" v="Toprak Harita Katmanları" eh="85d63132" />
+    <e k="sf_pda_no_data_left" v="HenÃ¼z tarla verisi yok." eh="ba71c6b1" />
+    <e k="sf_pda_map_section_title" v="Toprak Harita KatmanlarÄ±" eh="85d63132" />
     <e k="sf_pda_map_active_layer" v="Aktif Katman" eh="f8a2c198" />
-    <e k="sf_pda_map_layer_off_desc" v="Aktif toprak katmanı yok. Lütfen görüntülenecek bir katman seçin." eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="Tüm tarlalardaki azot içeriği. Yeşil = iyi, kırmızı = tükenmiş." eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="Tüm tarlalardaki fosfor içeriği. Yeşil = iyi, kırmızı = tükenmiş." eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="Tüm tarlalardaki potasyum içeriği. Yeşil = iyi, kırmızı = tükenmiş." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="Toprak pH seviyesi. Optimal aralık 6.5-7.0 (yeşil) arasıdır." eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="Organik madde içeriği. Uzun vadeli verimlilik için yüksek olması daha iyidir." eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="Birleşik tedavi aciliyeti. Kırmızı = acil müdahale gerektirir." eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="Yabancı ot baskı seviyesi. Kırmızı = yüksek istila, herbisit uygulayın." eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="Zararlı baskı seviyesi. Kırmızı = yüksek istila, insektisit uygulayın." eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="Hastalık baskı seviyesi. Kırmızı = aktif salgın, fungisit uygulayın." eh="5d32d30a" />
-    <e k="sf_pda_map_legend_title" v="Harita Açıklaması" eh="86448402" />
-    <e k="sf_pda_map_legend_good" v="İyi" eh="0c6ad70b" />
+    <e k="sf_pda_map_layer_off_desc" v="Aktif toprak katmanÄ± yok. LÃ¼tfen gÃ¶rÃ¼ntÃ¼lenecek bir katman seÃ§in." eh="3bd7e65a" />
+    <e k="sf_pda_map_layer_n_desc" v="TÃ¼m tarlalardaki azot iÃ§eriÄŸi. YeÅŸil = iyi, kÄ±rmÄ±zÄ± = tÃ¼kenmiÅŸ." eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="TÃ¼m tarlalardaki fosfor iÃ§eriÄŸi. YeÅŸil = iyi, kÄ±rmÄ±zÄ± = tÃ¼kenmiÅŸ." eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="TÃ¼m tarlalardaki potasyum iÃ§eriÄŸi. YeÅŸil = iyi, kÄ±rmÄ±zÄ± = tÃ¼kenmiÅŸ." eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Toprak pH seviyesi. Optimal aralÄ±k 6.5-7.0 (yeÅŸil) arasÄ±dÄ±r." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="Organik madde iÃ§eriÄŸi. Uzun vadeli verimlilik iÃ§in yÃ¼ksek olmasÄ± daha iyidir." eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="BirleÅŸik tedavi aciliyeti. KÄ±rmÄ±zÄ± = acil mÃ¼dahale gerektirir." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="YabancÄ± ot baskÄ± seviyesi. KÄ±rmÄ±zÄ± = yÃ¼ksek istila, herbisit uygulayÄ±n." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="ZararlÄ± baskÄ± seviyesi. KÄ±rmÄ±zÄ± = yÃ¼ksek istila, insektisit uygulayÄ±n." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="HastalÄ±k baskÄ± seviyesi. KÄ±rmÄ±zÄ± = aktif salgÄ±n, fungisit uygulayÄ±n." eh="5d32d30a" />
+    <e k="sf_pda_map_legend_title" v="Harita AÃ§Ä±klamasÄ±" eh="86448402" />
+    <e k="sf_pda_map_legend_good" v="Ä°yi" eh="0c6ad70b" />
     <e k="sf_pda_map_legend_fair" v="Orta" eh="f7f20cf0" />
-    <e k="sf_pda_map_legend_poor" v="Zayıf / Düşük" eh="32aa75ff" />
-    <e k="sf_pda_map_legend_low" v="Düşük" eh="28d0edd0" />
+    <e k="sf_pda_map_legend_poor" v="ZayÄ±f / DÃ¼ÅŸÃ¼k" eh="32aa75ff" />
+    <e k="sf_pda_map_legend_low" v="DÃ¼ÅŸÃ¼k" eh="28d0edd0" />
     <e k="sf_pda_map_legend_medium" v="Orta" eh="87f8a6ab" />
-    <e k="sf_pda_map_legend_high" v="Yüksek" eh="655d20c1" />
-    <e k="sf_pda_map_legend_excess" v="Aşırı" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="Haritada görüntülemek için kenar çubuğundan bir katman seçin." eh="eee76c81" />
-    <e k="sf_pda_map_jump_hint" v="Haritada o noktaya atlamak için bir tarlaya tıklayın" eh="006d5371" />
-    <e k="sf_pda_map_native_hint" v="Toprak katmanı görselleştirmesi taşındı! Artık tüm toprak katmanlarına doğrudan yerel PDA Haritası kenar çubuğundan (ESC > Harita) erişebilir ve bunları açıp kapatabilirsiniz. Kenar çubuğu noktalarında 'Toprak Katmanları' kategorisini arayın." eh="3210d828" />
-    <e k="sf_pda_map_open_btn" v="GELİŞTİRİCİ NOTU" eh="ef40b93f" />
-    <e k="sf_pda_btn_help" v="Yardım" eh="6a26f548" />
-    <e k="sf_pda_help_text" v="Merhaba, ben geliştirici! Daha kusursuz bir deneyim için toprak harita katmanlarını yerel PDA Haritasına (ESC > Harita) taşıdım. Artık katmanları doğrudan kenar çubuğundan seçebilirsiniz. PDA sayfası hala geliştirilme aşamasındadır, bu nedenle daha fazla güncelleme için takipte kalın!" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="GERİ BİLDİRİMİNİZ ÖNEMLİ! Herhangi bir hatayla karşılaşırsanız, yeni özellikler için önerileriniz varsa veya koda katkıda bulunmak istiyorsanız lütfen GitHub üzerindeki projeyi ziyaret edin. Bu modu herkes için daha iyi hale getirmeye yardımcı olmak için istediğiniz zaman bir Issue (Sorun) veya Pull Request (Çekme İsteği) açabilirsiniz. Test ettiğiniz için teşekkürler!" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="Not: Harita sayfasındaki toprak katmanları sekmesi ÇALIŞMIYOR. Sorunun farkındayım ve düzeltme üzerinde çalışıyorum. (Bu biraz zaman alabilir)" eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="Harita önizlemesi mevcut değil" eh="43983f81" />
-    <e k="sf_map_health_overall" v="Ortalama Toprak Sağlığı" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="Çiftlik Özetini Aç" eh="6f0800e8" />
+    <e k="sf_pda_map_legend_high" v="YÃ¼ksek" eh="655d20c1" />
+    <e k="sf_pda_map_legend_excess" v="AÅŸÄ±rÄ±" eh="d1d25b9f" />
+    <e k="sf_pda_map_instructions" v="Haritada gÃ¶rÃ¼ntÃ¼lemek iÃ§in kenar Ã§ubuÄŸundan bir katman seÃ§in." eh="eee76c81" />
+    <e k="sf_pda_map_jump_hint" v="Haritada o noktaya atlamak iÃ§in bir tarlaya tÄ±klayÄ±n" eh="006d5371" />
+    <e k="sf_pda_map_native_hint" v="Toprak katmanÄ± gÃ¶rselleÅŸtirmesi taÅŸÄ±ndÄ±! ArtÄ±k tÃ¼m toprak katmanlarÄ±na doÄŸrudan yerel PDA HaritasÄ± kenar Ã§ubuÄŸundan (ESC > Harita) eriÅŸebilir ve bunlarÄ± aÃ§Ä±p kapatabilirsiniz. Kenar Ã§ubuÄŸu noktalarÄ±nda 'Toprak KatmanlarÄ±' kategorisini arayÄ±n." eh="3210d828" />
+    <e k="sf_pda_map_open_btn" v="GELÄ°ÅžTÄ°RÄ°CÄ° NOTU" eh="ef40b93f" />
+    <e k="sf_pda_btn_help" v="YardÄ±m" eh="6a26f548" />
+    <e k="sf_pda_help_text" v="Merhaba, ben geliÅŸtirici! Daha kusursuz bir deneyim iÃ§in toprak harita katmanlarÄ±nÄ± yerel PDA HaritasÄ±na (ESC > Harita) taÅŸÄ±dÄ±m. ArtÄ±k katmanlarÄ± doÄŸrudan kenar Ã§ubuÄŸundan seÃ§ebilirsiniz. PDA sayfasÄ± hala geliÅŸtirilme aÅŸamasÄ±ndadÄ±r, bu nedenle daha fazla gÃ¼ncelleme iÃ§in takipte kalÄ±n!" eh="67643ddd" />
+    <e k="sf_pda_help_github" v="GERÄ° BÄ°LDÄ°RÄ°MÄ°NÄ°Z Ã–NEMLÄ°! Herhangi bir hatayla karÅŸÄ±laÅŸÄ±rsanÄ±z, yeni Ã¶zellikler iÃ§in Ã¶nerileriniz varsa veya koda katkÄ±da bulunmak istiyorsanÄ±z lÃ¼tfen GitHub Ã¼zerindeki projeyi ziyaret edin. Bu modu herkes iÃ§in daha iyi hale getirmeye yardÄ±mcÄ± olmak iÃ§in istediÄŸiniz zaman bir Issue (Sorun) veya Pull Request (Ã‡ekme Ä°steÄŸi) aÃ§abilirsiniz. Test ettiÄŸiniz iÃ§in teÅŸekkÃ¼rler!" eh="3a10b023" />
+    <e k="sf_pda_help_note" v="Not: Harita sayfasÄ±ndaki toprak katmanlarÄ± sekmesi Ã‡ALIÅžMIYOR. Sorunun farkÄ±ndayÄ±m ve dÃ¼zeltme Ã¼zerinde Ã§alÄ±ÅŸÄ±yorum. (Bu biraz zaman alabilir)" eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="Harita Ã¶nizlemesi mevcut deÄŸil" eh="43983f81" />
+    <e k="sf_map_health_overall" v="Ortalama Toprak SaÄŸlÄ±ÄŸÄ±" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="Ã‡iftlik Ã–zetini AÃ§" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
-    <e k="sf_map_btn_cycle_layer" v="Katmanı Değiştir" eh="875dbf22" />
-    <e k="sf_map_btn_treatment" v="Tedavi Planı" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="Katmanı Kapat" eh="8e75dec5" />
+    <e k="sf_map_btn_cycle_layer" v="KatmanÄ± DeÄŸiÅŸtir" eh="875dbf22" />
+    <e k="sf_map_btn_treatment" v="Tedavi PlanÄ±" eh="4ba012e2" />
+    <e k="sf_map_btn_disable" v="KatmanÄ± Kapat" eh="8e75dec5" />
     <e k="sf_treat_action_ok" v="Tamam" eh="e0aa021e" />
-    <e k="sf_help_title" v="Hızlı Toprak Referansı" eh="8986bb6d" />
-    <e k="sf_help_nutrients_header" v="BESİN MADDELERİ" eh="9aeb39bf" />
-    <e k="sf_help_n" v="N  (Azot)           - Hızlı tükenir. UAN, Üre veya Katı Gübre uygulayın." eh="f2d0c792" />
-    <e k="sf_help_p" v="P  (Fosfor)         - Uzun ömürlüdür. MAP veya DAP uygulayın." eh="fdfbd91e" />
-    <e k="sf_help_k" v="K  (Potasyum)       - Potas uygulayın. Kökler için önemlidir." eh="e0217634" />
-    <e k="sf_help_om" v="OM (Organik Madde) - Yavaş oluşur. Katı gübre/kompost karıştırın." eh="a4e29617" />
-    <e k="sf_help_soil_header" v="TOPRAK KİMYASI" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH  6.5-7.0 = İdeal.  &lt; 6.5 Kireç uygulayın.  > 7.5 Alçıtaşı uygulayın." eh="8929304d" />
-    <e k="sf_help_pressure_header" v="ÜRÜN BASKISI" eh="132b0f66" />
-    <e k="sf_help_weed" v="Yabancı Ot > %20 - Herbisit uygulayın." eh="c8d890df" />
-    <e k="sf_help_pest" v="Zararlı    > %20 - İnsektisit uygulayın." eh="f4932a05" />
-    <e k="sf_help_disease" v="Hastalık   > %20 - Fungisit uygulayın." eh="1bfd0913" />
-    <e k="sf_help_status_header" v="DURUM SEVİYELERİ" eh="b081c2c6" />
-    <e k="sf_help_good" v="İyi - İşlem gerekmez." eh="03910bec" />
-    <e k="sf_help_fair" v="Orta - İzleyin / önleyici takviye yapın." eh="2922eb1c" />
-    <e k="sf_help_poor" v="Zayıf - Acil tedavi gereklidir." eh="b287d206" />
-    <e k="sf_pda_fields_section_title" v="Tüm Tarlalar" eh="48729e0b" />
+    <e k="sf_help_title" v="HÄ±zlÄ± Toprak ReferansÄ±" eh="8986bb6d" />
+    <e k="sf_help_nutrients_header" v="BESÄ°N MADDELERÄ°" eh="9aeb39bf" />
+    <e k="sf_help_n" v="N  (Azot)           - HÄ±zlÄ± tÃ¼kenir. UAN, Ãœre veya KatÄ± GÃ¼bre uygulayÄ±n." eh="f2d0c792" />
+    <e k="sf_help_p" v="P  (Fosfor)         - Uzun Ã¶mÃ¼rlÃ¼dÃ¼r. MAP veya DAP uygulayÄ±n." eh="fdfbd91e" />
+    <e k="sf_help_k" v="K  (Potasyum)       - Potas uygulayÄ±n. KÃ¶kler iÃ§in Ã¶nemlidir." eh="e0217634" />
+    <e k="sf_help_om" v="OM (Organik Madde) - YavaÅŸ oluÅŸur. KatÄ± gÃ¼bre/kompost karÄ±ÅŸtÄ±rÄ±n." eh="a4e29617" />
+    <e k="sf_help_soil_header" v="TOPRAK KÄ°MYASI" eh="19c67ff5" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = Ä°deal.  &lt; 6.5 KireÃ§ uygulayÄ±n.  > 7.5 AlÃ§Ä±taÅŸÄ± uygulayÄ±n." eh="8929304d" />
+    <e k="sf_help_pressure_header" v="ÃœRÃœN BASKISI" eh="132b0f66" />
+    <e k="sf_help_weed" v="YabancÄ± Ot > %20 - Herbisit uygulayÄ±n." eh="c8d890df" />
+    <e k="sf_help_pest" v="ZararlÄ±    > %20 - Ä°nsektisit uygulayÄ±n." eh="f4932a05" />
+    <e k="sf_help_disease" v="HastalÄ±k   > %20 - Fungisit uygulayÄ±n." eh="1bfd0913" />
+    <e k="sf_help_status_header" v="DURUM SEVÄ°YELERÄ°" eh="b081c2c6" />
+    <e k="sf_help_good" v="Ä°yi - Ä°ÅŸlem gerekmez." eh="03910bec" />
+    <e k="sf_help_fair" v="Orta - Ä°zleyin / Ã¶nleyici takviye yapÄ±n." eh="2922eb1c" />
+    <e k="sf_help_poor" v="ZayÄ±f - Acil tedavi gereklidir." eh="b287d206" />
+    <e k="sf_pda_fields_section_title" v="TÃ¼m Tarlalar" eh="48729e0b" />
     <e k="sf_pda_col_field" v="Tarla" eh="6f16a5f8" />
     <e k="sf_pda_col_n" v="N%" eh="30740562" />
     <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="Filtre: Tüm Tarlalar" eh="a46a8cb2" />
+    <e k="sf_pda_filter_all" v="Filtre: TÃ¼m Tarlalar" eh="a46a8cb2" />
     <e k="sf_pda_filter_owned" v="Filtre: Sadece Sahip Olunanlar" eh="258cb971" />
     <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
     <e k="sf_pda_col_om" v="OM" eh="bfbebc07" />
     <e k="sf_pda_col_status" v="Durum" eh="ec53a8c4" />
-    <e k="sf_pda_no_fields" v="Henüz kayıtlı tarla verisi yok." eh="72265670" />
-    <e k="sf_pda_status_good" v="İyi" eh="0c6ad70b" />
+    <e k="sf_pda_no_fields" v="HenÃ¼z kayÄ±tlÄ± tarla verisi yok." eh="72265670" />
+    <e k="sf_pda_status_good" v="Ä°yi" eh="0c6ad70b" />
     <e k="sf_pda_status_fair" v="Orta" eh="f7f20cf0" />
-    <e k="sf_pda_status_poor" v="Zayıf" eh="0e94d017" />
-    <e k="sf_pda_treatment_section_title" v="Tedavi Planı" eh="4ba012e2" />
+    <e k="sf_pda_status_poor" v="ZayÄ±f" eh="0e94d017" />
+    <e k="sf_pda_treatment_section_title" v="Tedavi PlanÄ±" eh="4ba012e2" />
     <e k="sf_pda_col_priority" v="Aciliyet" eh="c94e3850" />
-    <e k="sf_pda_col_needs" v="İhtiyaçlar" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="Tüm tarlalar iyi durumda." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Sağda listelenen tarlaların tedaviye ihtiyacı var. Önerilen girdileri ve tahmini miktarları görmek için bir satıra tıklayın." eh="5748d316" />
+    <e k="sf_pda_col_needs" v="Ä°htiyaÃ§lar" eh="94d6125d" />
+    <e k="sf_pda_no_treatment" v="TÃ¼m tarlalar iyi durumda." eh="fa985166" />
+    <e k="sf_pda_treatment_hint" v="SaÄŸda listelenen tarlalarÄ±n tedaviye ihtiyacÄ± var. Ã–nerilen girdileri ve tahmini miktarlarÄ± gÃ¶rmek iÃ§in bir satÄ±ra tÄ±klayÄ±n." eh="5748d316" />
     <e k="sf_pda_need_n" v="Azot" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potasyum" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="pH Ayarı" eh="0570e9d2" />
+    <e k="sf_pda_need_ph" v="pH AyarÄ±" eh="0570e9d2" />
     <e k="sf_pda_need_weed" v="Herbisit" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="İnsektisit" eh="5650eeef" />
+    <e k="sf_pda_need_pest" v="Ä°nsektisit" eh="5650eeef" />
     <e k="sf_pda_need_disease" v="Fungisit" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="Çoklu" eh="a0bf169f" />
-    <e k="sf_pda_treatment_minor" v="Düşük" eh="6fed0c37" />
-    <e k="sf_detail_title" v="Tarla Ayrıntıları" eh="03b5acd7" />
+    <e k="sf_pda_need_multiple" v="Ã‡oklu" eh="a0bf169f" />
+    <e k="sf_pda_treatment_minor" v="DÃ¼ÅŸÃ¼k" eh="6fed0c37" />
+    <e k="sf_detail_title" v="Tarla AyrÄ±ntÄ±larÄ±" eh="03b5acd7" />
     <e k="sf_detail_close" v="Kapat" eh="d3d2e617" />
     <e k="sf_detail_field_label" v="Tarla #" eh="228118ab" />
     <e k="sf_detail_urgency_label" v="Aciliyet:" eh="9a83237c" />
     <e k="sf_detail_section_nutrients" v="Toprak Besinleri" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="Ürün Baskısı" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="Ürün Geçmişi" eh="54c27499" />
+    <e k="sf_detail_section_pressure" v="ÃœrÃ¼n BaskÄ±sÄ±" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="ÃœrÃ¼n GeÃ§miÅŸi" eh="54c27499" />
     <e k="sf_detail_n_label" v="Azot (N)" eh="25cee53b" />
     <e k="sf_detail_p_label" v="Fosfor (P)" eh="75cb5cd6" />
     <e k="sf_detail_k_label" v="Potasyum (K)" eh="39797137" />
     <e k="sf_detail_ph_label" v="pH Seviyesi" eh="0c85daad" />
     <e k="sf_detail_om_label" v="Organik Madde" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="Yabancı Ot Baskısı" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="Zararlı Baskısı" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="Hastalık Baskısı" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="Son Ürün" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="Münavebe Durumu" eh="83f7f522" />
+    <e k="sf_detail_weed_label" v="YabancÄ± Ot BaskÄ±sÄ±" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="ZararlÄ± BaskÄ±sÄ±" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="HastalÄ±k BaskÄ±sÄ±" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="Son ÃœrÃ¼n" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="MÃ¼navebe Durumu" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -500,206 +500,206 @@
     <e k="sf_rf_effect_disease_up" v="[EN] more disease" eh="0417d38f" />
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
-    <e k="sf_treat_title" v="Tedavi Reçetesi" eh="0ccc3ee5" />
-    <e k="sf_treat_section_soil" v="Toprak Islahı" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="Besin Uygulaması" eh="76521e8e" />
+    <e k="sf_treat_title" v="Tedavi ReÃ§etesi" eh="0ccc3ee5" />
+    <e k="sf_treat_section_soil" v="Toprak IslahÄ±" eh="09e016e4" />
+    <e k="sf_treat_section_fert" v="Besin UygulamasÄ±" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Bitki Koruma" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="Özel gübreler için mağazanın 'Ürünler' bölümüne bakın." eh="540bff4d" />
+    <e k="sf_treat_hint" v="Ã–zel gÃ¼breler iÃ§in maÄŸazanÄ±n 'ÃœrÃ¼nler' bÃ¶lÃ¼mÃ¼ne bakÄ±n." eh="540bff4d" />
     <e k="sf_treat_action_optimal" v="Optimal - Eylem gerekmez." eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="pH'ı yükseltmek için KİREÇ veya SIVI KİREÇ uygulayın." eh="d1420b97" />
-    <e k="sf_treat_action_gypsum" v="pH'ı düşürmek / yapıyı iyileştirmek için ALÇITAŞI uygulayın." eh="4cb3f0dc" />
-    <e k="sf_treat_action_om_low" v="KATI GÜBRE, KOMPOST karıştırın veya saman kıyın." eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="İzleyin. Organik girdileri koruyun." eh="ae3af748" />
-    <e k="sf_treat_action_n_poor" v="UAN32, ÜRE veya ANHİDRE uygulayın." eh="ebc225b0" />
-    <e k="sf_treat_action_n_fair" v="AMS veya BAŞLANGIÇ gübresi uygulayın." eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="MAP veya DAP (Fosfor) uygulayın." eh="ec2d9afa" />
+    <e k="sf_treat_action_lime" v="pH'Ä± yÃ¼kseltmek iÃ§in KÄ°REÃ‡ veya SIVI KÄ°REÃ‡ uygulayÄ±n." eh="d1420b97" />
+    <e k="sf_treat_action_gypsum" v="pH'Ä± dÃ¼ÅŸÃ¼rmek / yapÄ±yÄ± iyileÅŸtirmek iÃ§in ALÃ‡ITAÅžI uygulayÄ±n." eh="4cb3f0dc" />
+    <e k="sf_treat_action_om_low" v="KATI GÃœBRE, KOMPOST karÄ±ÅŸtÄ±rÄ±n veya saman kÄ±yÄ±n." eh="33ec544c" />
+    <e k="sf_treat_action_om_fair" v="Ä°zleyin. Organik girdileri koruyun." eh="ae3af748" />
+    <e k="sf_treat_action_n_poor" v="UAN32, ÃœRE veya ANHÄ°DRE uygulayÄ±n." eh="ebc225b0" />
+    <e k="sf_treat_action_n_fair" v="AMS veya BAÅžLANGIÃ‡ gÃ¼bresi uygulayÄ±n." eh="dc8fbeba" />
+    <e k="sf_treat_action_p_poor" v="MAP veya DAP (Fosfor) uygulayÄ±n." eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="POTAS (Potasyum) uygulayın." eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="POTAS (Potasyum) uygulayÄ±n." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="Derhal HERBİSİT uygulayın." eh="625551c5" />
-    <e k="sf_treat_action_pest" v="Derhal İNSEKTİSİT uygulayın." eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="Derhal FUNGİSİT uygulayın." eh="9228323a" />
+    <e k="sf_treat_action_weed" v="Derhal HERBÄ°SÄ°T uygulayÄ±n." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="Derhal Ä°NSEKTÄ°SÄ°T uygulayÄ±n." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="Derhal FUNGÄ°SÄ°T uygulayÄ±n." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="Tamam" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
     <e k="sf_detail_rotation_bonus" v="Baklagil Bonusu (+N)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="Yorgunluk (x1.15 tükenme)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="Veri mevcut değil." eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="Kayıt yok" eh="a4b5a996" />
+    <e k="sf_detail_rotation_fatigue" v="Yorgunluk (x1.15 tÃ¼kenme)" eh="522a6d93" />
+    <e k="sf_detail_no_field" v="Veri mevcut deÄŸil." eh="c6d95d5e" />
+    <e k="sf_detail_no_crop" v="KayÄ±t yok" eh="a4b5a996" />
 
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
     <e k="sf_hud_label_om" v="OM" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Kapsama: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
-    <e k="sf_hud_compaction" v="Sıkışma: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_compaction" v="SÄ±kÄ±ÅŸma: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
 
-    <e k="sf_sprayer_auto_on" v="UYGULAMA ORANI ( OTO: AÇIK )" eh="099b5dac" />
+    <e k="sf_sprayer_auto_on" v="UYGULAMA ORANI ( OTO: AÃ‡IK )" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="UYGULAMA ORANI  OTO: KAPALI [%s]" eh="848cc106" />
     <e k="sf_sprayer_target" v="Hedef:" eh="31d43504" />
-    <e k="sf_sprayer_burn_guaranteed" v="YANMA RİSKİ: GARANTİ" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="YANMA RİSKİ: OLASI" eh="25b251b6" />
+    <e k="sf_sprayer_burn_guaranteed" v="YANMA RÄ°SKÄ°: GARANTÄ°" eh="422601c4" />
+    <e k="sf_sprayer_burn_possible" v="YANMA RÄ°SKÄ°: OLASI" eh="25b251b6" />
 
-    <e k="sf_notify_welcome" v="Toprak &amp; Gübre Modu Aktif | Ayarlar için Shift+O | Komutlar için 'soilfertility' yazın" eh="d97e4139" />
-    <e k="sf_startup_dialog_version" v="Bu sürümdeki yenilikler:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Modumu kullandığınız için teşekkürler, bu benim için çok değerli &lt;3" eh="0f08d735" />
-    <e k="sf_startup_dialog_footer2" v="Hata mı buldunuz? Lütfen GitHub'da bildirin!" eh="728e2cf3" />
-    <e k="sf_startup_dialog_footer3" v="İyi tarımlar ve unutmayın:" eh="aa38e511" />
-    <e k="sf_startup_dialog_footer4" v="Toprağınız her şeyi hatırlar..." eh="1a3e5c35" />
-    <e k="sf_notify_init_delayed" v="Toprak Modu: Tarla başlatma gecikti. Alternatif yöntem deneniyor..." eh="f8bd28f8" />
-    <e k="sf_notify_init_success" v="Toprak Modu: Tarla başlatma başarılı!" eh="46214360" />
-    <e k="sf_notify_critical_title" v="Kritik Bakım Uyarısı" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="Tarla %d acil müdahale gerektiriyor! Aciliyet: %d%%" eh="171246aa" />
-    <e k="sf_notify_treated_title" v="Toprak Güncellemesi" eh="4633156e" />
+    <e k="sf_notify_welcome" v="Toprak &amp; GÃ¼bre Modu Aktif | Ayarlar iÃ§in Shift+O | Komutlar iÃ§in 'soilfertility' yazÄ±n" eh="d97e4139" />
+    <e k="sf_startup_dialog_version" v="Bu sÃ¼rÃ¼mdeki yenilikler:" eh="0b25f5c2" />
+    <e k="sf_startup_dialog_footer" v="Modumu kullandÄ±ÄŸÄ±nÄ±z iÃ§in teÅŸekkÃ¼rler, bu benim iÃ§in Ã§ok deÄŸerli &lt;3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer2" v="Hata mÄ± buldunuz? LÃ¼tfen GitHub'da bildirin!" eh="728e2cf3" />
+    <e k="sf_startup_dialog_footer3" v="Ä°yi tarÄ±mlar ve unutmayÄ±n:" eh="aa38e511" />
+    <e k="sf_startup_dialog_footer4" v="TopraÄŸÄ±nÄ±z her ÅŸeyi hatÄ±rlar..." eh="1a3e5c35" />
+    <e k="sf_notify_init_delayed" v="Toprak Modu: Tarla baÅŸlatma gecikti. Alternatif yÃ¶ntem deneniyor..." eh="f8bd28f8" />
+    <e k="sf_notify_init_success" v="Toprak Modu: Tarla baÅŸlatma baÅŸarÄ±lÄ±!" eh="46214360" />
+    <e k="sf_notify_critical_title" v="Kritik BakÄ±m UyarÄ±sÄ±" eh="3f981d0c" />
+    <e k="sf_notify_critical_body" v="Tarla %d acil mÃ¼dahale gerektiriyor! Aciliyet: %d%%" eh="171246aa" />
+    <e k="sf_notify_treated_title" v="Toprak GÃ¼ncellemesi" eh="4633156e" />
     <e k="sf_notify_treated_body" v="Tarla %d tamamen %s ile tedavi edildi" eh="585aa9b7" />
-    <e k="sf_notify_burn_title" v="Gübre Yanması" eh="ad8ed599" />
-    <e k="sf_notify_burn_body" v="Tarla %d: aşırı uygulama hasarı (pH %.1f)" eh="cb731ee3" />
-    <e k="sf_notify_sync_error" v="Toprak Modu: Veri senkronizasyon sorunu algılandı. Bu devam ederse lütfen bildirin." eh="1a307946" />
+    <e k="sf_notify_burn_title" v="GÃ¼bre YanmasÄ±" eh="ad8ed599" />
+    <e k="sf_notify_burn_body" v="Tarla %d: aÅŸÄ±rÄ± uygulama hasarÄ± (pH %.1f)" eh="cb731ee3" />
+    <e k="sf_notify_sync_error" v="Toprak Modu: Veri senkronizasyon sorunu algÄ±landÄ±. Bu devam ederse lÃ¼tfen bildirin." eh="1a307946" />
 		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
 
-    <e k="sf_panel_cat_sim" v="Simülasyon" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="Çiftlik mekanikleri, zorluk ve besin döngüleri" eh="3c584cdb" />
+    <e k="sf_panel_cat_sim" v="SimÃ¼lasyon" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="Ã‡iftlik mekanikleri, zorluk ve besin dÃ¶ngÃ¼leri" eh="3c584cdb" />
     <e k="sf_panel_cat_display" v="Ekran &amp; HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="HUD görünümü, renk teması, konum ve yazı tipi boyutu" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="Harita Katmanı" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="PDA haritasında gösterilen aktif katman" eh="a5892aef" />
+    <e k="sf_panel_cat_display_desc" v="HUD gÃ¶rÃ¼nÃ¼mÃ¼, renk temasÄ±, konum ve yazÄ± tipi boyutu" eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="Harita KatmanÄ±" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="PDA haritasÄ±nda gÃ¶sterilen aktif katman" eh="a5892aef" />
     <e k="sf_panel_hdr_core" v="Temel Sistemler" eh="44a497a5" />
     <e k="sf_panel_hdr_difficulty" v="Zorluk" eh="7b29ca96" />
-    <e k="sf_panel_hdr_environment" v="Çevre" eh="0ba29c6a" />
-    <e k="sf_panel_hdr_crop_stress" v="Ürün Stresi" eh="260167bb" />
-    <e k="sf_panel_hdr_visibility" v="Görünürlük" eh="1729a56c" />
+    <e k="sf_panel_hdr_environment" v="Ã‡evre" eh="0ba29c6a" />
+    <e k="sf_panel_hdr_crop_stress" v="ÃœrÃ¼n Stresi" eh="260167bb" />
+    <e k="sf_panel_hdr_visibility" v="GÃ¶rÃ¼nÃ¼rlÃ¼k" eh="1729a56c" />
     <e k="sf_panel_hdr_hud_style" v="HUD Stili" eh="1d4a8cac" />
     <e k="sf_panel_hdr_position" v="Konum" eh="52f5e0bc" />
     <e k="sf_panel_hdr_layer" v="Katman" eh="359b71e8" />
     <e k="sf_panel_hdr_performance" v="Performans" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="Mod Kontrolü &amp; Zorluk" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_mod_ctrl" v="Mod KontrolÃ¼ &amp; Zorluk" eh="ae2e88fb" />
     <e k="sf_panel_hdr_systems" v="Sistemler" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="Eylemler &amp; Tarla Araçları" eh="f64ba1c9" />
+    <e k="sf_panel_hdr_actions" v="Eylemler &amp; Tarla AraÃ§larÄ±" eh="f64ba1c9" />
 		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
 		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
 		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
 
-    <e k="sf_panel_admin_yes" v="Yönetici: EVET" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="Yönetici: HAYIR" eh="a9394f7b" />
-    <e k="sf_panel_multiplayer" v="Çok Oyunculu" eh="901a7320" />
+    <e k="sf_panel_admin_yes" v="YÃ¶netici: EVET" eh="4628842a" />
+    <e k="sf_panel_admin_no" v="YÃ¶netici: HAYIR" eh="a9394f7b" />
+    <e k="sf_panel_multiplayer" v="Ã‡ok Oyunculu" eh="901a7320" />
     <e k="sf_panel_singleplayer" v="Tek Oyunculu" eh="da602601" />
     <e k="sf_panel_btn_back" v="&lt; Geri" eh="36cf3e1f" />
-    <e k="sf_panel_btn_reset_cat" v="Kategoriyi Sıfırla" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="Kapatmak için SHIFT+O" eh="254406e3" />
-    <e k="sf_panel_select_category" v="Ayarları yapılandırmak için bir kategori seçin" eh="a277d257" />
-    <e k="sf_panel_btn_configure" v="Yapılandır >>" eh="a2cb3902" />
-    <e k="sf_panel_btn_open" v="Aç >>" eh="6624d17c" />
+    <e k="sf_panel_btn_reset_cat" v="Kategoriyi SÄ±fÄ±rla" eh="b66faa88" />
+    <e k="sf_panel_btn_close_hint" v="Kapatmak iÃ§in SHIFT+O" eh="254406e3" />
+    <e k="sf_panel_select_category" v="AyarlarÄ± yapÄ±landÄ±rmak iÃ§in bir kategori seÃ§in" eh="a277d257" />
+    <e k="sf_panel_btn_configure" v="YapÄ±landÄ±r >>" eh="a2cb3902" />
+    <e k="sf_panel_btn_open" v="AÃ§ >>" eh="6624d17c" />
 
-    <e k="sf_desc_enabled" v="Tüm modu etkinleştir / devre dışı bırak" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="Sorun giderme için ekstra günlük kaydı" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="Tam toprak verimliliği modellemesi" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="N/P/K tükenmesini ve geri kazanımını takip edin" eh="6eff80b3" />
-    <e k="sf_desc_fertilizerCosts" v="Gübreler için oyun içi gerçek maliyet" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="Oyun içi toprak durumu bildirimleri" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="Toprak HUD katmanını göster" eh="fa8b9224" />
+    <e k="sf_desc_enabled" v="TÃ¼m modu etkinleÅŸtir / devre dÄ±ÅŸÄ± bÄ±rak" eh="895364cb" />
+    <e k="sf_desc_debugMode" v="Sorun giderme iÃ§in ekstra gÃ¼nlÃ¼k kaydÄ±" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="Tam toprak verimliliÄŸi modellemesi" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="N/P/K tÃ¼kenmesini ve geri kazanÄ±mÄ±nÄ± takip edin" eh="6eff80b3" />
+    <e k="sf_desc_fertilizerCosts" v="GÃ¼breler iÃ§in oyun iÃ§i gerÃ§ek maliyet" eh="1c197c9f" />
+    <e k="sf_desc_showNotifications" v="Oyun iÃ§i toprak durumu bildirimleri" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="Toprak HUD katmanÄ±nÄ± gÃ¶ster" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="HUD ön ayarlı çıpa konumu" eh="98c8bcea" />
-    <e k="sf_desc_hudColorTheme" v="HUD öğeleri için renk paleti" eh="97271907" />
+    <e k="sf_desc_hudPosition" v="HUD Ã¶n ayarlÄ± Ã§Ä±pa konumu" eh="98c8bcea" />
+    <e k="sf_desc_hudColorTheme" v="HUD Ã¶ÄŸeleri iÃ§in renk paleti" eh="97271907" />
     <e k="sf_desc_hudFontSize" v="HUD metin boyutu" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="HUD arka plan şeffaflığı" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="Mevsim kaynaklı toprak değişiklikleri" eh="f515f484" />
-    <e k="sf_desc_rainEffects" v="Yağmur besin yıkanmasına neden olur" eh="82fec75d" />
-    <e k="sf_desc_plowingBonus" v="Toprak iyileşmesi için pulluk sürüm bonusu" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="Toprak işleme, anızdaki besinleri salar" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="Yabancı ot yayılımını takip edin ve cezalandırın" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="Böcek zararlı istilasını takip edin" eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="Mantar kökenli ürün hastalıklarını takip edin" eh="0858395f" />
+    <e k="sf_desc_hudTransparency" v="HUD arka plan ÅŸeffaflÄ±ÄŸÄ±" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="Mevsim kaynaklÄ± toprak deÄŸiÅŸiklikleri" eh="f515f484" />
+    <e k="sf_desc_rainEffects" v="YaÄŸmur besin yÄ±kanmasÄ±na neden olur" eh="82fec75d" />
+    <e k="sf_desc_plowingBonus" v="Toprak iyileÅŸmesi iÃ§in pulluk sÃ¼rÃ¼m bonusu" eh="23522b97" />
+    <e k="sf_desc_residueIncorporation" v="Toprak iÅŸleme, anÄ±zdaki besinleri salar" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="YabancÄ± ot yayÄ±lÄ±mÄ±nÄ± takip edin ve cezalandÄ±rÄ±n" eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="BÃ¶cek zararlÄ± istilasÄ±nÄ± takip edin" eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="Mantar kÃ¶kenli Ã¼rÃ¼n hastalÄ±klarÄ±nÄ± takip edin" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
-    <e k="sf_desc_compactionEnabled" v="Ağır vasıta toprak sıkışması" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="Besin tükenme yoğunluğu seviyesi" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="Gübre besin maddesi geri kazanım hızı" eh="858d2b23" />
-    <e k="sf_desc_useImperialUnits" v="İngiliz birimlerini kullan (ABD ton/akre)" eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="Akıllı püskürtücü uygulama oranları" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="Münavebe faydaları ve cezaları" eh="bb79b03a" />
-    <e k="sf_desc_activeMapLayer" v="PDA haritasında gösterilen besin katmanı" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="Örnek nokta bütçesi (Düşük=8k, Orta=20k, Yüksek=40k)" eh="42503763" />
+    <e k="sf_desc_compactionEnabled" v="AÄŸÄ±r vasÄ±ta toprak sÄ±kÄ±ÅŸmasÄ±" eh="a7d3a795" />
+    <e k="sf_desc_difficulty" v="Besin tÃ¼kenme yoÄŸunluÄŸu seviyesi" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="GÃ¼bre besin maddesi geri kazanÄ±m hÄ±zÄ±" eh="858d2b23" />
+    <e k="sf_desc_useImperialUnits" v="Ä°ngiliz birimlerini kullan (ABD ton/akre)" eh="8ba3d81a" />
+    <e k="sf_desc_autoRateControl" v="AkÄ±llÄ± pÃ¼skÃ¼rtÃ¼cÃ¼ uygulama oranlarÄ±" eh="bb4e5880" />
+    <e k="sf_desc_cropRotation" v="MÃ¼navebe faydalarÄ± ve cezalarÄ±" eh="bb79b03a" />
+    <e k="sf_desc_activeMapLayer" v="PDA haritasÄ±nda gÃ¶sterilen besin katmanÄ±" eh="3c01c599" />
+    <e k="sf_desc_overlayDensity" v="Ã–rnek nokta bÃ¼tÃ§esi (DÃ¼ÅŸÃ¼k=8k, Orta=20k, YÃ¼ksek=40k)" eh="42503763" />
     <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
     <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
 
-    <e k="sf_rr_1" v="Çok Yavaş (0.25x)" eh="b681a1b4" />
-    <e k="sf_rr_2" v="Yavaş (0.5x)" eh="db69874d" />
+    <e k="sf_rr_1" v="Ã‡ok YavaÅŸ (0.25x)" eh="b681a1b4" />
+    <e k="sf_rr_2" v="YavaÅŸ (0.5x)" eh="db69874d" />
     <e k="sf_rr_3" v="Normal (1.0x)" eh="930452c1" />
-    <e k="sf_rr_4" v="Hızlı (1.5x)" eh="4c8ebfdb" />
-    <e k="sf_rr_5" v="Çok Hızlı (2.0x)" eh="bd682dd5" />
-    <e k="sf_layer_1" v="Kapalı" eh="d15305d7" />
+    <e k="sf_rr_4" v="HÄ±zlÄ± (1.5x)" eh="4c8ebfdb" />
+    <e k="sf_rr_5" v="Ã‡ok HÄ±zlÄ± (2.0x)" eh="bd682dd5" />
+    <e k="sf_layer_1" v="KapalÄ±" eh="d15305d7" />
     <e k="sf_layer_2" v="Azot" eh="1e9ef3ba" />
     <e k="sf_layer_3" v="Fosfor" eh="eb4f2688" />
     <e k="sf_layer_4" v="Potasyum" eh="3a4edc67" />
     <e k="sf_layer_5" v="pH" eh="397dff20" />
     <e k="sf_layer_6" v="Organik Madde" eh="d2e254bc" />
     <e k="sf_layer_7" v="Aciliyet" eh="c94e3850" />
-    <e k="sf_layer_8" v="Yabancı Ot" eh="2b75024d" />
-    <e k="sf_layer_9" v="Zararlı" eh="8f2aee79" />
-    <e k="sf_layer_10" v="Hastalık" eh="e7067a8c" />
-    <e k="sf_layer_11" v="Sıkışma" eh="19cf3ee7" />
-    <e k="sf_density_1" v="Düşük" eh="28d0edd0" />
+    <e k="sf_layer_8" v="YabancÄ± Ot" eh="2b75024d" />
+    <e k="sf_layer_9" v="ZararlÄ±" eh="8f2aee79" />
+    <e k="sf_layer_10" v="HastalÄ±k" eh="e7067a8c" />
+    <e k="sf_layer_11" v="SÄ±kÄ±ÅŸma" eh="19cf3ee7" />
+    <e k="sf_density_1" v="DÃ¼ÅŸÃ¼k" eh="28d0edd0" />
     <e k="sf_density_2" v="Orta" eh="87f8a6ab" />
-    <e k="sf_density_3" v="Yüksek" eh="655d20c1" />
+    <e k="sf_density_3" v="YÃ¼ksek" eh="655d20c1" />
 
     <e k="sf_admin_save_label" v="Toprak Verilerini Kaydet" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="Tüm toprak verilerini şimdi kaydetmeye zorla" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="Tüm Ayarları Sıfırla" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="Her ayarı varsayılan değerine geri döndür" eh="599b7454" />
+    <e k="sf_admin_save_desc" v="TÃ¼m toprak verilerini ÅŸimdi kaydetmeye zorla" eh="f365613a" />
+    <e k="sf_admin_reset_label" v="TÃ¼m AyarlarÄ± SÄ±fÄ±rla" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="Her ayarÄ± varsayÄ±lan deÄŸerine geri dÃ¶ndÃ¼r" eh="599b7454" />
     
-    <e k="sf_panel_hdr_field_tools" v="Tarla Araçları" eh="2b250a56" />
-    <e k="sf_nav_field_tools_label" v="Tarla Araçları" eh="2b250a56" />
-    <e k="sf_nav_field_tools_desc" v="Tarla durumlarını incelemek ve değiştirmek için özel araçları açın" eh="360db19b" />
+    <e k="sf_panel_hdr_field_tools" v="Tarla AraÃ§larÄ±" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="Tarla AraÃ§larÄ±" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="Tarla durumlarÄ±nÄ± incelemek ve deÄŸiÅŸtirmek iÃ§in Ã¶zel araÃ§larÄ± aÃ§Ä±n" eh="360db19b" />
     
-    <e k="sf_panel_hdr_vehicle_tools" v="Araç Araçları" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_label" v="Araç Araçları" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_desc" v="Bağlı araçlar ve ekipmanlar için özel araçları açın" eh="1a8b2100" />
-    <e k="sf_admin_drain_label" v="Araç Tanklarını Boşalt" eh="d216b101" />
-    <e k="sf_admin_drain_desc" v="Püskürtücü + ekipmanları boşalt (%50 iade)" eh="5e048a34" />
+    <e k="sf_panel_hdr_vehicle_tools" v="AraÃ§ AraÃ§larÄ±" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="AraÃ§ AraÃ§larÄ±" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="BaÄŸlÄ± araÃ§lar ve ekipmanlar iÃ§in Ã¶zel araÃ§larÄ± aÃ§Ä±n" eh="1a8b2100" />
+    <e k="sf_admin_drain_label" v="AraÃ§ TanklarÄ±nÄ± BoÅŸalt" eh="d216b101" />
+    <e k="sf_admin_drain_desc" v="PÃ¼skÃ¼rtÃ¼cÃ¼ + ekipmanlarÄ± boÅŸalt (%50 iade)" eh="5e048a34" />
     <e k="sf_admin_field_info_label" v="Mevcut Tarla Bilgisi" eh="5df500d6" />
-    <e k="sf_admin_field_info_desc" v="Bulunduğunuz konumdaki tarla için toprak verileri" eh="b7e2a72d" />
+    <e k="sf_admin_field_info_desc" v="BulunduÄŸunuz konumdaki tarla iÃ§in toprak verileri" eh="b7e2a72d" />
     <e k="sf_admin_field_forecast_label" v="Tarla Tahmini" eh="1df41470" />
-    <e k="sf_admin_field_forecast_desc" v="Bulunduğunuz konumdaki tarla için verim tahmini" eh="67e56b9d" />
-    <e k="sf_admin_list_fields_label" v="Tüm Tarlaları Listele" eh="efeb1b25" />
-    <e k="sf_admin_list_fields_desc" v="Tüm tarla toprak verilerini oyun günlüğüne dök" eh="c9fa812e" />
+    <e k="sf_admin_field_forecast_desc" v="BulunduÄŸunuz konumdaki tarla iÃ§in verim tahmini" eh="67e56b9d" />
+    <e k="sf_admin_list_fields_label" v="TÃ¼m TarlalarÄ± Listele" eh="efeb1b25" />
+    <e k="sf_admin_list_fields_desc" v="TÃ¼m tarla toprak verilerini oyun gÃ¼nlÃ¼ÄŸÃ¼ne dÃ¶k" eh="c9fa812e" />
     <e k="sf_admin_field_set_state_label" v="Tarla Durumunu Ayarla" eh="5b0d7a31" />
-    <e k="sf_admin_field_set_state_desc" v="Mevcut tarla için N, P, K, pH ve OM değerlerini manuel olarak değiştirin" eh="a491e190" />
-    <e k="sf_admin_field_recover_label" v="Tarlayı Kurtar" eh="e1c82ff0" />
-    <e k="sf_admin_field_recover_desc" v="Mevcut tarlayı varsayılan güvenli değerlere sıfırlayın (hataları düzeltin)" eh="68b687a2" />
+    <e k="sf_admin_field_set_state_desc" v="Mevcut tarla iÃ§in N, P, K, pH ve OM deÄŸerlerini manuel olarak deÄŸiÅŸtirin" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="TarlayÄ± Kurtar" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="Mevcut tarlayÄ± varsayÄ±lan gÃ¼venli deÄŸerlere sÄ±fÄ±rlayÄ±n (hatalarÄ± dÃ¼zeltin)" eh="68b687a2" />
     <e k="sf_infobox_title" v="Toprak Besinleri" eh="64377acf" />
     <e k="sf_infobox_grade" v="Toprak Derecesi" eh="65d1be5f" />
-    <e k="sf_infobox_needs" v="İhtiyaçlar" eh="94d6125d" />
-    <e k="sf_infobox_fertilizer" v="Gübre" eh="cd248829" />
+    <e k="sf_infobox_needs" v="Ä°htiyaÃ§lar" eh="94d6125d" />
+    <e k="sf_infobox_fertilizer" v="GÃ¼bre" eh="cd248829" />
 
     <e k="sf_fieldinfo_box_title" v="Toprak Besinleri" eh="64377acf" />
     <e k="sf_fieldinfo_grade" v="Toprak Derecesi" eh="65d1be5f" />
     <e k="sf_fieldinfo_yield" v="Verim" eh="97345487" />
-    <e k="sf_fieldinfo_rotation" v="Münavebe" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_rotation" v="MÃ¼navebe" eh="f1a42bd4" />
 		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
-    <e k="sf_fieldinfo_needs" v="İhtiyaçlar" eh="94d6125d" />
+    <e k="sf_fieldinfo_needs" v="Ä°htiyaÃ§lar" eh="94d6125d" />
     <e k="sf_field" v="Tarla" eh="6f16a5f8" />
-    <e k="sf_no_field" v="Tarla seçilmedi" eh="717ff56f" />
-    <e k="sf_overall_Good" v="İyi" eh="0c6ad70b" />
+    <e k="sf_no_field" v="Tarla seÃ§ilmedi" eh="717ff56f" />
+    <e k="sf_overall_Good" v="Ä°yi" eh="0c6ad70b" />
     <e k="sf_overall_Fair" v="Orta" eh="f7f20cf0" />
-    <e k="sf_overall_Poor" v="Zayıf" eh="0e94d017" />
-    <e k="sf_cell_report" v="Hücre Raporu" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="Hücre verisi bulunamadı" eh="dc41c753" />
+    <e k="sf_overall_Poor" v="ZayÄ±f" eh="0e94d017" />
+    <e k="sf_cell_report" v="HÃ¼cre Raporu" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="HÃ¼cre verisi bulunamadÄ±" eh="dc41c753" />
     <e k="sf_cell_no_data" v="Bu konumda toprak verisi yok" eh="5dfa58aa" />
     <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
-    <e k="sf_cell" v="Hücre" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="Toprak Hücresi İncelemesi" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="Hücre Ayrıntıları" eh="6fc5243e" />
+    <e k="sf_cell" v="HÃ¼cre" eh="1a66ab62" />
+    <e k="sf_cell_dialog_title" v="Toprak HÃ¼cresi Ä°ncelemesi" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="HÃ¼cre AyrÄ±ntÄ±larÄ±" eh="6fc5243e" />
     <e k="sf_cell_coord" v="Koordinatlar" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="Bir toprak hücresini incelemek için haritaya tıklayın" eh="fc9d240b" />
+    <e k="sf_cell_click_hint" v="Bir toprak hÃ¼cresini incelemek iÃ§in haritaya tÄ±klayÄ±n" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
@@ -762,7 +762,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -777,7 +777,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -925,13 +925,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -971,9 +971,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1008,7 +1008,7 @@
     <e k="sf_report_rec_poor"         v="Poor" />
     	<e k="sf_fieldsentry_asleep" v="sim. uykuda" eh="7d49241b" />
     	<e k="sf_fs_reason_manual" v="manuel" eh="3c78b355" />
-    	<e k="sf_fs_reason_npc" v="NPC sözleşmesi" eh="2e1a268b" />
+    	<e k="sf_fs_reason_npc" v="NPC sÃ¶zleÅŸmesi" eh="2e1a268b" />
     	<e k="sf_fs_reason_deco" v="dekoratif" eh="8a817367" />
     <e k="input_SF_SCOUT" v="[EN] Scout Field for Disease" eh="34e6d14b" />
     <e k="sf_scout_no_field" v="[EN] Stand on a field to scout it." eh="2c33ecb7" />
@@ -1134,7 +1134,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
-    <e k="sf_unscouted" v="Keşfedilmemiş" />
+    <e k="sf_unscouted" v="KeÅŸfedilmemiÅŸ" />
 <e k="sf_map_layer_organic_status" v="Organic Status" />
     
 <e k="sf_layer_12" v="Organic Status" />
@@ -1220,7 +1220,12 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
+<e k="sf_experimental_short" v="Experimental Systems" />
+    <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
+    <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
+    <e k="sf_panel_hdr_experimental" v="Experimental" />
 </elements>
 
 
 </l10n>
+

@@ -24,6 +24,11 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Release gate: new systems (disease resistance, hybrids, tank mixes,",
+    "    ground material, spatial soil, Read the Dirt) now ship locked until",
+    "    they are released deliberately. Turn them on under Settings >",
+    "    Experimental, independent of your difficulty, at your own risk.",
+    "    A stable playthrough never meets unfinished systems by default.",
     "- NEW SOIL ENGINE (thanks to WizardlyPayload): soil is now stored",
     "    per pixel across the map, not as one average per field. Spray half a",
     "    field and the map shows it. All 11 layers render at PF quality.",

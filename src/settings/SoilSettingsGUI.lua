@@ -31,6 +31,17 @@ local function bypassLockedMsg()
     return nil
 end
 
+-- Returns a refusal message when a console command belongs to an experimental (LOCKED)
+-- system and the player has not opted into experimental systems. Mirrors bypassLockedMsg()
+-- but on the release axis - the two locks are orthogonal and both must pass. Policy lives
+-- in ReleaseGate + Settings:allowsExperimentalSystems().
+local function releaseGateLockedMsg(commandName)
+    if not ReleaseGate then return nil end
+    local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
+    local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
+    return ReleaseGate.commandLockMessage(commandName, optIn)
+end
+
 function SoilSettingsGUI.new()
     local self = setmetatable({}, SoilSettingsGUI_mt)
     return self
@@ -75,6 +86,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     -- REFINED: per-pixel value map debug commands
     addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
     addConsoleCommand("SoilMaterialBench", "SF-43/49 family gate: time ms per engine call for the ground-material passes: SoilMaterialBench [fieldId] [iterations]", "consoleCommandMaterialBench", self)
+    addConsoleCommand("SoilRelease", "Release gate: show which systems are STABLE vs experimental-LOCKED", "consoleCommandRelease", self)
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
@@ -339,6 +351,8 @@ end
 --- Timing uses getTimeSec() (seconds, float) - the pattern proven in the reference
 --- scripting corpus, `(endTime - startTime) * 1000` for milliseconds.
 function SoilSettingsGUI:consoleCommandMaterialBench(fieldIdArg, iterArg)
+    local gate = releaseGateLockedMsg("SoilMaterialBench")
+    if gate then return gate end
     if g_server == nil then return "Material bench is server-only" end
     if getTimeSec == nil then return "getTimeSec() unavailable on this build - cannot time" end
 
@@ -756,7 +770,16 @@ end
 -- writes ground state. None of that is observable on a bench -- the brief says so itself
 -- and assigns it to a person. This command is that person's instrument: it asks the live
 -- engine what actually got registered instead of asking the source what it intended.
+function SoilSettingsGUI:consoleCommandRelease()
+    if not ReleaseGate then return "Release gate not loaded" end
+    local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
+    local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
+    return ReleaseGate.status(optIn)
+end
+
 function SoilSettingsGUI:consoleCommandBlendCheck()
+    local gate = releaseGateLockedMsg("SoilBlendCheck")
+    if gate then return gate end
     if not (g_fillTypeManager and g_sprayTypeManager) then
         return "Fill/spray type managers unavailable - run this in a loaded savegame."
     end
@@ -883,6 +906,8 @@ local function chemicalsForMode(mode)
 end
 
 function SoilSettingsGUI:consoleCommandResistance(fieldId)
+    local gate = releaseGateLockedMsg("SoilResistance")
+    if gate then return gate end
     local sfm = g_SoilFertilityManager
     if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
     local soilSys = sfm.soilSystem
@@ -943,6 +968,8 @@ end
 --- application -- because that call shape IS the bug: before the fix, a flat increment per
 --- call saturated a mode inside the first pass.
 function SoilSettingsGUI:consoleCommandResistanceTest(chemical, passes, fieldId)
+    local gate = releaseGateLockedMsg("SoilResistanceTest")
+    if gate then return gate end
     local sfm = g_SoilFertilityManager
     if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
     local soilSys = sfm.soilSystem

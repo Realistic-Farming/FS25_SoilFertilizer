@@ -1,15 +1,15 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
-    <e k="sf_section" v="Đất &amp; Phân bón" eh="f31197fb" />
-    <e k="sf_enabled_short" v="Bật Mod" eh="cf7fea13" />
-    <e k="sf_enabled_long" v="Bật hoặc tắt mod đất &amp; phân bón" eh="a891399a" />
-    <e k="sf_debug_short" v="Chế độ DEBUG" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="Bật/tắt chế độ gỡ lỗi (nhật ký bổ sung)" eh="f6f20240" />
-    <e k="sf_seasonal_effects_short" v="Hiệu ứng theo mùa" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="Bật/tắt tác động theo mùa đối với chất dinh dưỡng trong đất (thúc đẩy tăng trưởng vụ xuân, làm chậm vụ thu)" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="Hiệu ứng mưa" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="Bật/tắt tác động của mưa đối với đất (rửa trôi chất dinh dưỡng, thay đổi pH)" eh="de3b14b9" />
+    <e k="sf_section" v="Äáº¥t &amp; PhÃ¢n bÃ³n" eh="f31197fb" />
+    <e k="sf_enabled_short" v="Báº­t Mod" eh="cf7fea13" />
+    <e k="sf_enabled_long" v="Báº­t hoáº·c táº¯t mod Ä‘áº¥t &amp; phÃ¢n bÃ³n" eh="a891399a" />
+    <e k="sf_debug_short" v="Cháº¿ Ä‘á»™ DEBUG" eh="2ddcdc76" />
+    <e k="sf_debug_long" v="Báº­t/táº¯t cháº¿ Ä‘á»™ gá»¡ lá»—i (nháº­t kÃ½ bá»• sung)" eh="f6f20240" />
+    <e k="sf_seasonal_effects_short" v="Hiá»‡u á»©ng theo mÃ¹a" eh="c16ea608" />
+    <e k="sf_seasonal_effects_long" v="Báº­t/táº¯t tÃ¡c Ä‘á»™ng theo mÃ¹a Ä‘á»‘i vá»›i cháº¥t dinh dÆ°á»¡ng trong Ä‘áº¥t (thÃºc Ä‘áº©y tÄƒng trÆ°á»Ÿng vá»¥ xuÃ¢n, lÃ m cháº­m vá»¥ thu)" eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="Hiá»‡u á»©ng mÆ°a" eh="a2a1758b" />
+    <e k="sf_rain_effects_long" v="Báº­t/táº¯t tÃ¡c Ä‘á»™ng cá»§a mÆ°a Ä‘á»‘i vá»›i Ä‘áº¥t (rá»­a trÃ´i cháº¥t dinh dÆ°á»¡ng, thay Ä‘á»•i pH)" eh="de3b14b9" />
     <e k="sf_ws_short" v="World Climate" />
     <e k="sf_desc_weatherSource" v="Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." />
     <e k="sf_ws_long" v="Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." />
@@ -22,102 +22,102 @@
     <e k="sf_ws_blurb_2" v="Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." />
     <e k="sf_ws_blurb_1" v="Real sky only: soil follows the forecast with no fill. Short months can feel sparse." />
     <e k="sf_ws_world_note" v="World setting - admin only in multiplayer; changes soil for everyone." />
-    <e k="sf_plowing_bonus_short" v="Thưởng khi cày" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="Bật/tắt lợi ích của việc cày đối với độ phì nhiêu của đất (cải thiện đạm và chất hữu cơ)" eh="fe701c1c" />
-    <e k="sf_residue_incorporation_short" v="Vùi phụ phẩm" eh="f4352cb5" />
-    <e k="sf_residue_incorporation_long" v="Bật/tắt giải phóng chất dinh dưỡng từ tàn dư cây trồng được đưa vào đất bằng các công cụ làm đất (máy xới, máy cày, máy gieo hạt trực tiếp)" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="Áp lực cỏ dại" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="Bật/tắt sự phát triển của cỏ dại và tác động đến năng suất" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="Áp lực sâu bệnh" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="Bật/tắt hệ thống côn trùng và sâu bệnh gây hại" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="Áp lực bệnh hại" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="Bật/tắt hệ thống nấm và bệnh hại cây trồng" eh="9080edbc" />
-    <e k="sf_compaction_short" v="Nén chặt đất" eh="68734a56" />
-    <e k="sf_compaction_long" v="Bật/tắt hệ thống nén chặt đất do xe hạng nặng" eh="a0995ec5" />
-    <e k="sf_fertility_short" v="Hệ thống độ phì" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="Bật/tắt hệ thống độ phì nhiêu của đất năng động" eh="ea074366" />
-    <e k="sf_nutrients_short" v="Chu kỳ dinh dưỡng" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="Bật/tắt quá trình cạn kiệt và bổ sung chất dinh dưỡng thực tế" eh="dbe9c8ff" />
-    <e k="sf_difficulty_short" v="Độ khó" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="Thiết lập mức độ khó: Đơn giản, Thực tế, Hardcore" eh="cfb758a4" />
-    <e k="sf_diff_1" v="Đơn giản" eh="1fbb1e39" />
-    <e k="sf_diff_2" v="Thực tế" eh="408c999f" />
+    <e k="sf_plowing_bonus_short" v="ThÆ°á»Ÿng khi cÃ y" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="Báº­t/táº¯t lá»£i Ã­ch cá»§a viá»‡c cÃ y Ä‘á»‘i vá»›i Ä‘á»™ phÃ¬ nhiÃªu cá»§a Ä‘áº¥t (cáº£i thiá»‡n Ä‘áº¡m vÃ  cháº¥t há»¯u cÆ¡)" eh="fe701c1c" />
+    <e k="sf_residue_incorporation_short" v="VÃ¹i phá»¥ pháº©m" eh="f4352cb5" />
+    <e k="sf_residue_incorporation_long" v="Báº­t/táº¯t giáº£i phÃ³ng cháº¥t dinh dÆ°á»¡ng tá»« tÃ n dÆ° cÃ¢y trá»“ng Ä‘Æ°á»£c Ä‘Æ°a vÃ o Ä‘áº¥t báº±ng cÃ¡c cÃ´ng cá»¥ lÃ m Ä‘áº¥t (mÃ¡y xá»›i, mÃ¡y cÃ y, mÃ¡y gieo háº¡t trá»±c tiáº¿p)" eh="2e43448f" />
+    <e k="sf_weed_pressure_short" v="Ãp lá»±c cá» dáº¡i" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="Báº­t/táº¯t sá»± phÃ¡t triá»ƒn cá»§a cá» dáº¡i vÃ  tÃ¡c Ä‘á»™ng Ä‘áº¿n nÄƒng suáº¥t" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="Ãp lá»±c sÃ¢u bá»‡nh" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="Báº­t/táº¯t há»‡ thá»‘ng cÃ´n trÃ¹ng vÃ  sÃ¢u bá»‡nh gÃ¢y háº¡i" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="Ãp lá»±c bá»‡nh háº¡i" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="Báº­t/táº¯t há»‡ thá»‘ng náº¥m vÃ  bá»‡nh háº¡i cÃ¢y trá»“ng" eh="9080edbc" />
+    <e k="sf_compaction_short" v="NÃ©n cháº·t Ä‘áº¥t" eh="68734a56" />
+    <e k="sf_compaction_long" v="Báº­t/táº¯t há»‡ thá»‘ng nÃ©n cháº·t Ä‘áº¥t do xe háº¡ng náº·ng" eh="a0995ec5" />
+    <e k="sf_fertility_short" v="Há»‡ thá»‘ng Ä‘á»™ phÃ¬" eh="f7e27d58" />
+    <e k="sf_fertility_long" v="Báº­t/táº¯t há»‡ thá»‘ng Ä‘á»™ phÃ¬ nhiÃªu cá»§a Ä‘áº¥t nÄƒng Ä‘á»™ng" eh="ea074366" />
+    <e k="sf_nutrients_short" v="Chu ká»³ dinh dÆ°á»¡ng" eh="ffab595d" />
+    <e k="sf_nutrients_long" v="Báº­t/táº¯t quÃ¡ trÃ¬nh cáº¡n kiá»‡t vÃ  bá»• sung cháº¥t dinh dÆ°á»¡ng thá»±c táº¿" eh="dbe9c8ff" />
+    <e k="sf_difficulty_short" v="Äá»™ khÃ³" eh="7b29ca96" />
+    <e k="sf_difficulty_long" v="Thiáº¿t láº­p má»©c Ä‘á»™ khÃ³: ÄÆ¡n giáº£n, Thá»±c táº¿, Hardcore" eh="cfb758a4" />
+    <e k="sf_diff_1" v="ÄÆ¡n giáº£n" eh="1fbb1e39" />
+    <e k="sf_diff_2" v="Thá»±c táº¿" eh="408c999f" />
     <e k="sf_diff_3" v="Hardcore" eh="1c800aa9" />
-    <e k="sf_fertilizer_cost_short" v="Chi phí phân bón" eh="6870d88b" />
-    <e k="sf_fertilizer_cost_long" v="Bật/tắt chi phí mua phân bón thực tế" eh="12b03fbb" />
-    <e k="sf_notifications_short" v="Thông báo" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="Bật/tắt thông báo về đất và phân bón" eh="9a872f8f" />
-    <e k="sf_show_hud_short" v="Hiện HUD" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="Hiện/ẩn lớp phủ HUD thông tin đất (F8 để chuyển đổi tạm thời)" eh="4e2e11b6" />
+    <e k="sf_fertilizer_cost_short" v="Chi phÃ­ phÃ¢n bÃ³n" eh="6870d88b" />
+    <e k="sf_fertilizer_cost_long" v="Báº­t/táº¯t chi phÃ­ mua phÃ¢n bÃ³n thá»±c táº¿" eh="12b03fbb" />
+    <e k="sf_notifications_short" v="ThÃ´ng bÃ¡o" eh="a274f4d4" />
+    <e k="sf_notifications_long" v="Báº­t/táº¯t thÃ´ng bÃ¡o vá» Ä‘áº¥t vÃ  phÃ¢n bÃ³n" eh="9a872f8f" />
+    <e k="sf_show_hud_short" v="Hiá»‡n HUD" eh="c94fd4d7" />
+    <e k="sf_show_hud_long" v="Hiá»‡n/áº©n lá»›p phá»§ HUD thÃ´ng tin Ä‘áº¥t (F8 Ä‘á»ƒ chuyá»ƒn Ä‘á»•i táº¡m thá»i)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="[EN] Show/hide the sprayer nutrient info panel when driving a sprayer" eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
-    <e k="sf_hud_position_short" v="Vị trí HUD" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="Chọn nơi HUD thông tin đất xuất hiện trên màn hình" eh="d7b9c109" />
-    <e k="sf_hud_pos_1" v="Trên bên phải" eh="5f9f6784" />
-    <e k="sf_hud_pos_2" v="Trên bên trái" eh="ac71274a" />
-    <e k="sf_hud_pos_3" v="Dưới bên phải" eh="4d297f5d" />
-    <e k="sf_hud_pos_4" v="Dưới bên trái" eh="7eb55425" />
-    <e k="sf_hud_pos_5" v="Giữa bên phải" eh="d7afdc5a" />
-    <e k="sf_hud_pos_6" v="Tùy chỉnh" eh="90589c47" />
-    <e k="sf_hud_color_theme_short" v="Chủ đề màu HUD" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="Chọn bảng màu cho hiển thị thông tin đất" eh="3218bca6" />
-    <e k="sf_hud_color_1" v="Xanh lá" eh="d382816a" />
-    <e k="sf_hud_color_2" v="Xanh dương" eh="9594eec9" />
-    <e k="sf_hud_color_3" v="Hổ phách" eh="88068e33" />
-    <e k="sf_hud_color_4" v="Đơn sắc" eh="5d9b47bd" />
-    <e k="sf_diff_short" v="Độ khó" eh="7b29ca96" />
-    <e k="sf_diff_long" v="Mức độ khó quản lý đất" eh="d6f4560c" />
-    <e k="sf_rr_short" v="Tỷ lệ bổ sung" eh="b363b336" />
-    <e k="sf_rr_long" v="Tốc độ phân bón phục hồi dinh dưỡng (0.25x Rất chậm đến 2.0x Rất nhanh)" eh="afe78a6d" />
+    <e k="sf_hud_position_short" v="Vá»‹ trÃ­ HUD" eh="5ac371f2" />
+    <e k="sf_hud_position_long" v="Chá»n nÆ¡i HUD thÃ´ng tin Ä‘áº¥t xuáº¥t hiá»‡n trÃªn mÃ n hÃ¬nh" eh="d7b9c109" />
+    <e k="sf_hud_pos_1" v="TrÃªn bÃªn pháº£i" eh="5f9f6784" />
+    <e k="sf_hud_pos_2" v="TrÃªn bÃªn trÃ¡i" eh="ac71274a" />
+    <e k="sf_hud_pos_3" v="DÆ°á»›i bÃªn pháº£i" eh="4d297f5d" />
+    <e k="sf_hud_pos_4" v="DÆ°á»›i bÃªn trÃ¡i" eh="7eb55425" />
+    <e k="sf_hud_pos_5" v="Giá»¯a bÃªn pháº£i" eh="d7afdc5a" />
+    <e k="sf_hud_pos_6" v="TÃ¹y chá»‰nh" eh="90589c47" />
+    <e k="sf_hud_color_theme_short" v="Chá»§ Ä‘á» mÃ u HUD" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="Chá»n báº£ng mÃ u cho hiá»ƒn thá»‹ thÃ´ng tin Ä‘áº¥t" eh="3218bca6" />
+    <e k="sf_hud_color_1" v="Xanh lÃ¡" eh="d382816a" />
+    <e k="sf_hud_color_2" v="Xanh dÆ°Æ¡ng" eh="9594eec9" />
+    <e k="sf_hud_color_3" v="Há»• phÃ¡ch" eh="88068e33" />
+    <e k="sf_hud_color_4" v="ÄÆ¡n sáº¯c" eh="5d9b47bd" />
+    <e k="sf_diff_short" v="Äá»™ khÃ³" eh="7b29ca96" />
+    <e k="sf_diff_long" v="Má»©c Ä‘á»™ khÃ³ quáº£n lÃ½ Ä‘áº¥t" eh="d6f4560c" />
+    <e k="sf_rr_short" v="Tá»· lá»‡ bá»• sung" eh="b363b336" />
+    <e k="sf_rr_long" v="Tá»‘c Ä‘á»™ phÃ¢n bÃ³n phá»¥c há»“i dinh dÆ°á»¡ng (0.25x Ráº¥t cháº­m Ä‘áº¿n 2.0x Ráº¥t nhanh)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
     <e k="sf_dm_2" v="[EN] Temperate" />
     <e k="sf_dm_3" v="[EN] Humid" />
     <e k="sf_dm_4" v="[EN] Wet" />
-    <e k="sf_auto_rate_short" v="Kiểm soát tỷ lệ tự động" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="Tự động điều chỉnh tỷ lệ bón phân dựa trên nhu cầu của cánh đồng" eh="a9ca9f6b" />
-    <e k="sf_hud_theme_1" v="Xanh lá" eh="d382816a" />
-    <e k="sf_hud_theme_2" v="Xanh dương" eh="9594eec9" />
-    <e k="sf_hud_theme_3" v="Hổ phách" eh="88068e33" />
-    <e k="sf_hud_theme_4" v="Đơn sắc" eh="5d9b47bd" />
-    <e k="sf_hud_font_size_short" v="Cỡ chữ HUD" eh="fd6ca64a" />
-    <e k="sf_hud_font_size_long" v="Điều chỉnh kích thước văn bản để dễ đọc hơn" eh="c338854f" />
-    <e k="sf_hud_font_1" v="Nhỏ" eh="2660064e" />
-    <e k="sf_hud_font_2" v="Vừa" eh="87f8a6ab" />
-    <e k="sf_hud_font_3" v="Lớn" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="Độ trong suốt HUD" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="Đặt mức độ trong suốt của nền (Trong suốt - Đặc)" eh="152e390a" />
-    <e k="sf_hud_trans_1" v="Trong suốt" eh="dc30bc0c" />
-    <e k="sf_hud_trans_2" v="Sáng" eh="9914a0ce" />
-    <e k="sf_hud_trans_3" v="Vừa" eh="87f8a6ab" />
-    <e k="sf_hud_trans_4" v="Tối" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="Đặc" eh="e41480b6" />
-    <e k="sf_use_imperial_short" v="Đơn vị Anh Mỹ" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="Hiển thị tỷ lệ bón theo gal/ac và lb/ac (tắt = L/ha và kg/ha)" eh="17efa489" />
-    <e k="sf_active_map_layer_short" v="Lớp bản đồ hoạt động" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="Lớp dinh dưỡng được hiển thị trên bản đồ PDA" eh="d7755cc8" />
-    <e k="sf_overlay_density_short" v="Chi tiết bản đồ" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="Ngân sách điểm lấy mẫu cho lớp phủ đất PDA. Thấp = FPS tốt hơn, Cao = độ phủ đầy đủ hơn trên bản đồ lớn." eh="89215ce5" />
+    <e k="sf_auto_rate_short" v="Kiá»ƒm soÃ¡t tá»· lá»‡ tá»± Ä‘á»™ng" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="Tá»± Ä‘á»™ng Ä‘iá»u chá»‰nh tá»· lá»‡ bÃ³n phÃ¢n dá»±a trÃªn nhu cáº§u cá»§a cÃ¡nh Ä‘á»“ng" eh="a9ca9f6b" />
+    <e k="sf_hud_theme_1" v="Xanh lÃ¡" eh="d382816a" />
+    <e k="sf_hud_theme_2" v="Xanh dÆ°Æ¡ng" eh="9594eec9" />
+    <e k="sf_hud_theme_3" v="Há»• phÃ¡ch" eh="88068e33" />
+    <e k="sf_hud_theme_4" v="ÄÆ¡n sáº¯c" eh="5d9b47bd" />
+    <e k="sf_hud_font_size_short" v="Cá»¡ chá»¯ HUD" eh="fd6ca64a" />
+    <e k="sf_hud_font_size_long" v="Äiá»u chá»‰nh kÃ­ch thÆ°á»›c vÄƒn báº£n Ä‘á»ƒ dá»… Ä‘á»c hÆ¡n" eh="c338854f" />
+    <e k="sf_hud_font_1" v="Nhá»" eh="2660064e" />
+    <e k="sf_hud_font_2" v="Vá»«a" eh="87f8a6ab" />
+    <e k="sf_hud_font_3" v="Lá»›n" eh="3a69b34c" />
+    <e k="sf_hud_transparency_short" v="Äá»™ trong suá»‘t HUD" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="Äáº·t má»©c Ä‘á»™ trong suá»‘t cá»§a ná»n (Trong suá»‘t - Äáº·c)" eh="152e390a" />
+    <e k="sf_hud_trans_1" v="Trong suá»‘t" eh="dc30bc0c" />
+    <e k="sf_hud_trans_2" v="SÃ¡ng" eh="9914a0ce" />
+    <e k="sf_hud_trans_3" v="Vá»«a" eh="87f8a6ab" />
+    <e k="sf_hud_trans_4" v="Tá»‘i" eh="a18366b2" />
+    <e k="sf_hud_trans_5" v="Äáº·c" eh="e41480b6" />
+    <e k="sf_use_imperial_short" v="ÄÆ¡n vá»‹ Anh Má»¹" eh="ff2701ad" />
+    <e k="sf_use_imperial_long" v="Hiá»ƒn thá»‹ tá»· lá»‡ bÃ³n theo gal/ac vÃ  lb/ac (táº¯t = L/ha vÃ  kg/ha)" eh="17efa489" />
+    <e k="sf_active_map_layer_short" v="Lá»›p báº£n Ä‘á»“ hoáº¡t Ä‘á»™ng" eh="1861765f" />
+    <e k="sf_active_map_layer_long" v="Lá»›p dinh dÆ°á»¡ng Ä‘Æ°á»£c hiá»ƒn thá»‹ trÃªn báº£n Ä‘á»“ PDA" eh="d7755cc8" />
+    <e k="sf_overlay_density_short" v="Chi tiáº¿t báº£n Ä‘á»“" eh="a525859a" />
+    <e k="sf_overlay_density_long" v="NgÃ¢n sÃ¡ch Ä‘iá»ƒm láº¥y máº«u cho lá»›p phá»§ Ä‘áº¥t PDA. Tháº¥p = FPS tá»‘t hÆ¡n, Cao = Ä‘á»™ phá»§ Ä‘áº§y Ä‘á»§ hÆ¡n trÃªn báº£n Ä‘á»“ lá»›n." eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="[EN] Colorblind Mode" />
     <e k="sf_colorblind_mode_long" v="[EN] Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." />
     <e k="sf_show_field_info_box_short" v="[EN] Field Info Box" />
     <e k="sf_show_field_info_box_long" v="[EN] Show soil nutrients in the native Field Info panel when standing on a field." />
-    <e k="input_SF_OPEN_SETTINGS" v="Mở cài đặt đất" eh="2e31c0dd" />
-    <e k="sf_reset" v="Đặt lại cài đặt đất" eh="467bc2f5" />
-    <e k="input_SF_TOGGLE_HUD" v="Bật/Tắt HUD đất" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="Chế độ kéo HUD" eh="cb2eb762" />
-    <e k="input_SF_SOIL_REPORT" v="Báo cáo đất" eh="c33180ef" />
-    <e k="input_SF_TOGGLE_CELL_MAP" v="Bật/Tắt bản đồ ô đất" eh="3a7e9b9d" />
-    <e k="input_SF_RATE_UP" v="Tăng lượng phân bón" eh="6e601ef5" />
-    <e k="input_SF_RATE_DOWN" v="Giảm lượng phân bón" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="Bật/Tắt lượng tự động" eh="a8642cf0" />
-    <e k="input_SF_CYCLE_MAP_LAYER" v="Chuyển lớp bản đồ đất" eh="8e4a716c" />
-    <e k="input_SF_SOIL_PDA" v="Mở PDA đất" eh="7d70f7b4" />
+    <e k="input_SF_OPEN_SETTINGS" v="Má»Ÿ cÃ i Ä‘áº·t Ä‘áº¥t" eh="2e31c0dd" />
+    <e k="sf_reset" v="Äáº·t láº¡i cÃ i Ä‘áº·t Ä‘áº¥t" eh="467bc2f5" />
+    <e k="input_SF_TOGGLE_HUD" v="Báº­t/Táº¯t HUD Ä‘áº¥t" eh="f0224a10" />
+    <e k="input_SF_HUD_DRAG" v="Cháº¿ Ä‘á»™ kÃ©o HUD" eh="cb2eb762" />
+    <e k="input_SF_SOIL_REPORT" v="BÃ¡o cÃ¡o Ä‘áº¥t" eh="c33180ef" />
+    <e k="input_SF_TOGGLE_CELL_MAP" v="Báº­t/Táº¯t báº£n Ä‘á»“ Ã´ Ä‘áº¥t" eh="3a7e9b9d" />
+    <e k="input_SF_RATE_UP" v="TÄƒng lÆ°á»£ng phÃ¢n bÃ³n" eh="6e601ef5" />
+    <e k="input_SF_RATE_DOWN" v="Giáº£m lÆ°á»£ng phÃ¢n bÃ³n" eh="30712026" />
+    <e k="input_SF_TOGGLE_AUTO" v="Báº­t/Táº¯t lÆ°á»£ng tá»± Ä‘á»™ng" eh="a8642cf0" />
+    <e k="input_SF_CYCLE_MAP_LAYER" v="Chuyá»ƒn lá»›p báº£n Ä‘á»“ Ä‘áº¥t" eh="8e4a716c" />
+    <e k="input_SF_SOIL_PDA" v="Má»Ÿ PDA Ä‘áº¥t" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
@@ -126,365 +126,365 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_uan32_title" v="Phân bón UAN 32 (N)" eh="90913bb8" />
-    <e k="sf_uan28_title" v="Phân bón UAN 28 (N)" eh="9d902cd7" />
+    <e k="sf_uan32_title" v="PhÃ¢n bÃ³n UAN 32 (N)" eh="90913bb8" />
+    <e k="sf_uan28_title" v="PhÃ¢n bÃ³n UAN 28 (N)" eh="9d902cd7" />
     <e k="sf_anhydrous_title" v="Amoniac khan (N)" eh="3fc85c02" />
-    <e k="sf_starter_title" v="Phân bón lót 10-34-0 (P)" eh="8c1a1ddc" />
-    <e k="sf_urea_title" v="Urê 46-0-0 (N)" eh="659b3097" />
+    <e k="sf_starter_title" v="PhÃ¢n bÃ³n lÃ³t 10-34-0 (P)" eh="8c1a1ddc" />
+    <e k="sf_urea_title" v="UrÃª 46-0-0 (N)" eh="659b3097" />
     <e k="sf_an_title" v="Amoni Nitrat 34.5-0-0 (N)" eh="29f6ee93" />
     <e k="sf_ams_title" v="Amoni Sunfat 21-0-0 (N)" eh="033d1845" />
-    <e k="sf_map_title" v="Phân bón MAP 11-52-0 (P)" eh="31aa2534" />
-    <e k="sf_dap_title" v="Phân bón DAP 18-46-0 (P)" eh="5030a80a" />
+    <e k="sf_map_title" v="PhÃ¢n bÃ³n MAP 11-52-0 (P)" eh="31aa2534" />
+    <e k="sf_dap_title" v="PhÃ¢n bÃ³n DAP 18-46-0 (P)" eh="5030a80a" />
     <e k="sf_potash_title" v="Kali 0-0-60 (K)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="[EN] Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="Urê lỏng (N)" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="Amoni Sunfat lỏng (N)" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="MAP lỏng (P)" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="DAP lỏng (P)" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="Kali lỏng (K)" eh="72ac9fd3" />
-    <e k="sf_insecticide_title" v="Thuốc trừ sâu" eh="5650eeef" />
-    <e k="sf_fungicide_title" v="Thuốc trừ nấm" eh="e8512698" />
+    <e k="sf_liquid_urea_title" v="UrÃª lá»ng (N)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="Amoni Sunfat lá»ng (N)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="MAP lá»ng (P)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="DAP lá»ng (P)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="Kali lá»ng (K)" eh="72ac9fd3" />
+    <e k="sf_insecticide_title" v="Thuá»‘c trá»« sÃ¢u" eh="5650eeef" />
+    <e k="sf_fungicide_title" v="Thuá»‘c trá»« náº¥m" eh="e8512698" />
     <e k="sf_bigBag_uan32_name" v="IBC UAN 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
     <e k="sf_bigBag_uan28_name" v="IBC UAN 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
     <e k="sf_bigBag_anhydrous_name" v="IBC Amoniac khan 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
-    <e k="sf_bigBag_urea_name" v="Túi Urê 46-0-0" eh="8e8cbaae" />
+    <e k="sf_bigBag_urea_name" v="TÃºi UrÃª 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
-    <e k="sf_bigBag_an_name" v="Túi AN 34.5-0-0" eh="45f56f60" />
+    <e k="sf_bigBag_an_name" v="TÃºi AN 34.5-0-0" eh="45f56f60" />
     <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="7ac87840" />
-    <e k="sf_bigBag_ams_name" v="Túi AMS 21-0-0-24S" eh="7f71ee68" />
+    <e k="sf_bigBag_ams_name" v="TÃºi AMS 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) - +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
-    <e k="sf_bigBag_map_name" v="Túi MAP 11-52-0" eh="8a5a059b" />
+    <e k="sf_bigBag_map_name" v="TÃºi MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) - +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
-    <e k="sf_bigBag_dap_name" v="Túi DAP 18-46-0" eh="fb4e9987" />
+    <e k="sf_bigBag_dap_name" v="TÃºi DAP 18-46-0" eh="fb4e9987" />
     <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) - +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
-    <e k="sf_bigBag_potash_name" v="Túi Kali 0-0-60" eh="eb771556" />
+    <e k="sf_bigBag_potash_name" v="TÃºi Kali 0-0-60" eh="eb771556" />
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="[EN] Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="d6a84718" />
-    <e k="sf_bigBag_liquid_urea_name" v="IBC Urê lỏng" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC UrÃª lá»ng" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="IBC AMS lỏng" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC AMS lá»ng" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="IBC MAP lỏng" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC MAP lá»ng" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="IBC DAP lỏng" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC DAP lá»ng" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="IBC Kali lỏng" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC Kali lá»ng" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
-    <e k="sf_bigBag_starter_name" v="IBC Phân bón lót 10-34-0" eh="62b13bd1" />
-    <e k="sf_bigBag_insecticide_name" v="IBC Thuốc trừ sâu" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="Thuốc trừ sâu (lỏng)" eh="09580f6b" />
-    <e k="sf_bigBag_fungicide_name" v="IBC Thuốc trừ nấm" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="Thuốc trừ nấm (lỏng)" eh="745c34cb" />
+    <e k="sf_bigBag_starter_name" v="IBC PhÃ¢n bÃ³n lÃ³t 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_insecticide_name" v="IBC Thuá»‘c trá»« sÃ¢u" eh="c8f0aabb" />
+    <e k="sf_bigBag_insecticide_function" v="Thuá»‘c trá»« sÃ¢u (lá»ng)" eh="09580f6b" />
+    <e k="sf_bigBag_fungicide_name" v="IBC Thuá»‘c trá»« náº¥m" eh="2a1c78d4" />
+    <e k="sf_bigBag_fungicide_function" v="Thuá»‘c trá»« náº¥m (lá»ng)" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
-    <e k="sf_bigBag_gypsum_name" v="Túi Thạch cao" eh="40fc8169" />
+    <e k="sf_bigBag_gypsum_name" v="TÃºi Tháº¡ch cao" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
-    <e k="sf_bigBag_compost_name" v="Túi Phân hữu cơ" eh="14322c5d" />
+    <e k="sf_bigBag_compost_name" v="TÃºi PhÃ¢n há»¯u cÆ¡" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="[EN] Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="Túi Bùn thải" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="TÃºi BÃ¹n tháº£i" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="[EN] Big Bag Biosolids (10,000L)" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
-    <e k="sf_bigBag_chicken_manure_name" v="Túi Phân gà" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_name" v="TÃºi PhÃ¢n gÃ " eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="[EN] Big Bag Chicken Manure (10,000L)" />
     <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
-    <e k="sf_bigBag_pelletized_manure_name" v="Túi Phân viên" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="TÃºi PhÃ¢n viÃªn" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="[EN] Big Bag Pelletized Manure (10,000L)" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="Bình Vôi lỏng" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="BÃ¬nh VÃ´i lá»ng" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
-    <e k="sf_hud_title" v="GIÁM SÁT ĐẤT" eh="f8cda642" />
-    <e k="sf_hud_field" v="Cánh đồng %d" eh="08988997" />
-    <e k="sf_hud_noField" v="Hãy đi vào cánh đồng" eh="62c55e9e" />
+    <e k="sf_hud_title" v="GIÃM SÃT Äáº¤T" eh="f8cda642" />
+    <e k="sf_hud_field" v="CÃ¡nh Ä‘á»“ng %d" eh="08988997" />
+    <e k="sf_hud_noField" v="HÃ£y Ä‘i vÃ o cÃ¡nh Ä‘á»“ng" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
-    <e k="sf_hud_fallow" v="Để hoang" eh="eafe5913" />
+    <e k="sf_hud_fallow" v="Äá»ƒ hoang" eh="eafe5913" />
 		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="Sâu bệnh" eh="2fed5101" />
-    <e k="sf_hud_disease" v="Bệnh hại" eh="e7067a8c" />
+    <e k="sf_hud_pests" v="SÃ¢u bá»‡nh" eh="2fed5101" />
+    <e k="sf_hud_disease" v="Bá»‡nh háº¡i" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
-    <e k="sf_hud_protected" v="(được bảo vệ)" eh="8273211e" />
-    <e k="sf_hud_yield" v="Sản lượng" eh="97345487" />
-    <e k="sf_hud_estYield" v="Sản lượng dự tính" eh="32a4135e" />
-    <e k="sf_hud_optimal" v="Tối ưu" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="Sau thu hoạch · Bón phân" eh="634de6fe" />
-    <e k="sf_hud_hint_edit" v="Kéo: di chuyển   Góc: đổi cỡ   Chuột phải/Shift+H: xong" eh="c3f1820c" />
-    <e k="sf_hud_hint_normal" v="Shift+H: di chuyển/đổi cỡ" eh="f1d565b1" />
+    <e k="sf_hud_protected" v="(Ä‘Æ°á»£c báº£o vá»‡)" eh="8273211e" />
+    <e k="sf_hud_yield" v="Sáº£n lÆ°á»£ng" eh="97345487" />
+    <e k="sf_hud_estYield" v="Sáº£n lÆ°á»£ng dá»± tÃ­nh" eh="32a4135e" />
+    <e k="sf_hud_optimal" v="Tá»‘i Æ°u" eh="cb61fef1" />
+    <e k="sf_hud_post_harvest" v="Sau thu hoáº¡ch Â· BÃ³n phÃ¢n" eh="634de6fe" />
+    <e k="sf_hud_hint_edit" v="KÃ©o: di chuyá»ƒn   GÃ³c: Ä‘á»•i cá»¡   Chuá»™t pháº£i/Shift+H: xong" eh="c3f1820c" />
+    <e k="sf_hud_hint_normal" v="Shift+H: di chuyá»ƒn/Ä‘á»•i cá»¡" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer đã bị tắt cho tệp lưu này vì Precision Farming đang hoạt động. Cả hai mod đều quản lý dưỡng chất của đất và không thể chạy cùng lúc. Bạn không cần xóa mod này. Để dùng Soil &amp; Fertilizer thay thế, chỉ cần tắt Precision Farming cho tệp lưu này trong màn hình chọn mod." eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Soil &amp; Fertilizer Ä‘Ã£ bá»‹ táº¯t cho tá»‡p lÆ°u nÃ y vÃ¬ Precision Farming Ä‘ang hoáº¡t Ä‘á»™ng. Cáº£ hai mod Ä‘á»u quáº£n lÃ½ dÆ°á»¡ng cháº¥t cá»§a Ä‘áº¥t vÃ  khÃ´ng thá»ƒ cháº¡y cÃ¹ng lÃºc. Báº¡n khÃ´ng cáº§n xÃ³a mod nÃ y. Äá»ƒ dÃ¹ng Soil &amp; Fertilizer thay tháº¿, chá»‰ cáº§n táº¯t Precision Farming cho tá»‡p lÆ°u nÃ y trong mÃ n hÃ¬nh chá»n mod." eh="91dbcf1b" />
 
-    <e k="helpLine_sf_cat_overview" v="Tổng quan" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="Bắt đầu" eh="bf647454" />
-    <e k="helpLine_sf_cat_nutrients" v="Dinh dưỡng đất" eh="64377acf" />
-    <e k="helpLine_sf_cat_fertilizers" v="Phân bón" eh="754d59bd" />
-    <e k="helpLine_sf_cat_hud" v="HUD &amp; Báo cáo đất" eh="655b1b40" />
-    <e k="helpLine_sf_cat_settings" v="Cài đặt" eh="f4f70727" />
-    <e k="helpLine_sf_cat_multiplayer" v="Chơi mạng" eh="901a7320" />
+    <e k="helpLine_sf_cat_overview" v="Tá»•ng quan" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="Báº¯t Ä‘áº§u" eh="bf647454" />
+    <e k="helpLine_sf_cat_nutrients" v="Dinh dÆ°á»¡ng Ä‘áº¥t" eh="64377acf" />
+    <e k="helpLine_sf_cat_fertilizers" v="PhÃ¢n bÃ³n" eh="754d59bd" />
+    <e k="helpLine_sf_cat_hud" v="HUD &amp; BÃ¡o cÃ¡o Ä‘áº¥t" eh="655b1b40" />
+    <e k="helpLine_sf_cat_settings" v="CÃ i Ä‘áº·t" eh="f4f70727" />
+    <e k="helpLine_sf_cat_multiplayer" v="ChÆ¡i máº¡ng" eh="901a7320" />
 
-    <e k="helpLine_sf_ov_p1_title" v="Tính năng chính" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="Theo dõi đất theo cánh đồng" eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="Mỗi cánh đồng theo dõi độc lập năm thuộc tính: Đạm (N), Lân (P), Kali (K), Chất hữu cơ (OM) và pH. Các giá trị được lưu vào savegame của bạn." eh="c30216e6" />
-    <e k="helpLine_sf_ov_p1_flow_title" v="Chu kỳ dinh dưỡng" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="Cây trồng lấy đi chất dinh dưỡng khi thu hoạch. Phân bón, phân chuồng và vôi bù đắp lại chúng. Mod theo dõi ngân sách dinh dưỡng thực tế - những gì cây lấy đi, bạn phải trả lại." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_title" v="TÃ­nh nÄƒng chÃ­nh" eh="46cbb25b" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="Theo dÃµi Ä‘áº¥t theo cÃ¡nh Ä‘á»“ng" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="Má»—i cÃ¡nh Ä‘á»“ng theo dÃµi Ä‘á»™c láº­p nÄƒm thuá»™c tÃ­nh: Äáº¡m (N), LÃ¢n (P), Kali (K), Cháº¥t há»¯u cÆ¡ (OM) vÃ  pH. CÃ¡c giÃ¡ trá»‹ Ä‘Æ°á»£c lÆ°u vÃ o savegame cá»§a báº¡n." eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_flow_title" v="Chu ká»³ dinh dÆ°á»¡ng" eh="15b0d408" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="CÃ¢y trá»“ng láº¥y Ä‘i cháº¥t dinh dÆ°á»¡ng khi thu hoáº¡ch. PhÃ¢n bÃ³n, phÃ¢n chuá»“ng vÃ  vÃ´i bÃ¹ Ä‘áº¯p láº¡i chÃºng. Mod theo dÃµi ngÃ¢n sÃ¡ch dinh dÆ°á»¡ng thá»±c táº¿ - nhá»¯ng gÃ¬ cÃ¢y láº¥y Ä‘i, báº¡n pháº£i tráº£ láº¡i." eh="418041f0" />
 
-    <e k="helpLine_sf_ov_p2_title" v="Tác động môi trường" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="Mưa và rửa trôi" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="Mưa rửa trôi Đạm mạnh nhất, sau đó là Kali và Lân. Nó cũng làm đất bị chua dần (giảm pH) theo thời gian. Có thể tắt hiệu ứng mưa trong Cài đặt." eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="Mùa vụ và phục hồi" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="Mùa xuân thêm +0.03 N mỗi ngày (hoạt động sinh học). Mùa thu giảm 0.02 N. Cánh đồng bỏ hoang hơn 7 ngày sẽ tự phục hồi dinh dưỡng dần dần." eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_title" v="TÃ¡c Ä‘á»™ng mÃ´i trÆ°á»ng" eh="e139e84f" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="MÆ°a vÃ  rá»­a trÃ´i" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="MÆ°a rá»­a trÃ´i Äáº¡m máº¡nh nháº¥t, sau Ä‘Ã³ lÃ  Kali vÃ  LÃ¢n. NÃ³ cÅ©ng lÃ m Ä‘áº¥t bá»‹ chua dáº§n (giáº£m pH) theo thá»i gian. CÃ³ thá»ƒ táº¯t hiá»‡u á»©ng mÆ°a trong CÃ i Ä‘áº·t." eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="MÃ¹a vá»¥ vÃ  phá»¥c há»“i" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="MÃ¹a xuÃ¢n thÃªm +0.03 N má»—i ngÃ y (hoáº¡t Ä‘á»™ng sinh há»c). MÃ¹a thu giáº£m 0.02 N. CÃ¡nh Ä‘á»“ng bá» hoang hÆ¡n 7 ngÃ y sáº½ tá»± phá»¥c há»“i dinh dÆ°á»¡ng dáº§n dáº§n." eh="e5ebb3b2" />
 
-    <e k="helpLine_sf_gs_p1_title" v="Các bước đầu tiên" eh="bdd0e0a7" />
-    <e k="helpLine_sf_gs_p1_hud_title" v="Mở HUD (phím J)" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="Nhấn J để bật lớp phủ đất trực tiếp. Nó hiển thị N, P, K, pH và OM cho cánh đồng bạn đang đứng. Các trạng thái Tốt / Trung bình / Kém cho biết cần chú ý điều gì." eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="Mở Báo cáo đất (phím K)" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="Nhấn K để mở báo cáo đất toàn trang trại. Mỗi cánh đồng được liệt kê với màu sắc chỉ trạng thái dinh dưỡng. Nhấp vào mũi tên để xem chi tiết và khuyến nghị." eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_title" v="CÃ¡c bÆ°á»›c Ä‘áº§u tiÃªn" eh="bdd0e0a7" />
+    <e k="helpLine_sf_gs_p1_hud_title" v="Má»Ÿ HUD (phÃ­m J)" eh="e1bdea72" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="Nháº¥n J Ä‘á»ƒ báº­t lá»›p phá»§ Ä‘áº¥t trá»±c tiáº¿p. NÃ³ hiá»ƒn thá»‹ N, P, K, pH vÃ  OM cho cÃ¡nh Ä‘á»“ng báº¡n Ä‘ang Ä‘á»©ng. CÃ¡c tráº¡ng thÃ¡i Tá»‘t / Trung bÃ¬nh / KÃ©m cho biáº¿t cáº§n chÃº Ã½ Ä‘iá»u gÃ¬." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="Má»Ÿ BÃ¡o cÃ¡o Ä‘áº¥t (phÃ­m K)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="Nháº¥n K Ä‘á»ƒ má»Ÿ bÃ¡o cÃ¡o Ä‘áº¥t toÃ n trang tráº¡i. Má»—i cÃ¡nh Ä‘á»“ng Ä‘Æ°á»£c liá»‡t kÃª vá»›i mÃ u sáº¯c chá»‰ tráº¡ng thÃ¡i dinh dÆ°á»¡ng. Nháº¥p vÃ o mÅ©i tÃªn Ä‘á»ƒ xem chi tiáº¿t vÃ  khuyáº¿n nghá»‹." eh="9a0d32a6" />
 
-    <e k="helpLine_sf_gs_p2_title" v="Bón phân và Thu hoạch" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="Bón phân cho cánh đồng" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="Bón phân bằng bất kỳ máy phun hoặc máy rải tiêu chuẩn nào. Mod nhận diện tất cả loại phân bón gốc cộng với 9 loại tùy chỉnh (UAN-32, MAP, Kali...). Mỗi loại phục hồi dinh dưỡng khác nhau." eh="fe906e29" />
-    <e k="helpLine_sf_gs_p2_harvest_title" v="Cạn kiệt khi thu hoạch" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="Mỗi vụ thu hoạch lấy đi dinh dưỡng. Các cây trồng thâm canh (khoai tây, củ cải đường, đậu nành) làm cạn kiệt nhiều hơn đáng kể so với cây nhẹ (lúa mạch, yến mạch)." eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_title" v="BÃ³n phÃ¢n vÃ  Thu hoáº¡ch" eh="1a52ac04" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="BÃ³n phÃ¢n cho cÃ¡nh Ä‘á»“ng" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="BÃ³n phÃ¢n báº±ng báº¥t ká»³ mÃ¡y phun hoáº·c mÃ¡y ráº£i tiÃªu chuáº©n nÃ o. Mod nháº­n diá»‡n táº¥t cáº£ loáº¡i phÃ¢n bÃ³n gá»‘c cá»™ng vá»›i 9 loáº¡i tÃ¹y chá»‰nh (UAN-32, MAP, Kali...). Má»—i loáº¡i phá»¥c há»“i dinh dÆ°á»¡ng khÃ¡c nhau." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_harvest_title" v="Cáº¡n kiá»‡t khi thu hoáº¡ch" eh="a67b6cb5" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="Má»—i vá»¥ thu hoáº¡ch láº¥y Ä‘i dinh dÆ°á»¡ng. CÃ¡c cÃ¢y trá»“ng thÃ¢m canh (khoai tÃ¢y, cá»§ cáº£i Ä‘Æ°á»ng, Ä‘áº­u nÃ nh) lÃ m cáº¡n kiá»‡t nhiá»u hÆ¡n Ä‘Ã¡ng ká»ƒ so vá»›i cÃ¢y nháº¹ (lÃºa máº¡ch, yáº¿n máº¡ch)." eh="63f90ed4" />
 
-    <e k="helpLine_sf_gs_p3_title" v="Độ khó" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="Ba mức độ khó" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="Đơn giản (0.7x): giảm 30% cạn kiệt. Thực tế (1.0x): cân bằng theo tỷ lệ nông nghiệp thực. Hardcore (1.5x): tăng 50% cạn kiệt - yêu cầu quản lý đất chuyên sâu." eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="Thay đổi cài đặt" eh="b421c88f" />
-    <e k="helpLine_sf_gs_p3_access_text" v="Mở cài đặt tại ESC > Settings > Soil &amp; Fertilizer. Trong chơi mạng, chỉ admin máy chủ mới có thể đổi cài đặt mô phỏng. Các tùy chọn HUD là riêng biệt cho từng người chơi." eh="4ba9d860" />
+    <e k="helpLine_sf_gs_p3_title" v="Äá»™ khÃ³" eh="7b29ca96" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="Ba má»©c Ä‘á»™ khÃ³" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="ÄÆ¡n giáº£n (0.7x): giáº£m 30% cáº¡n kiá»‡t. Thá»±c táº¿ (1.0x): cÃ¢n báº±ng theo tá»· lá»‡ nÃ´ng nghiá»‡p thá»±c. Hardcore (1.5x): tÄƒng 50% cáº¡n kiá»‡t - yÃªu cáº§u quáº£n lÃ½ Ä‘áº¥t chuyÃªn sÃ¢u." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="Thay Ä‘á»•i cÃ i Ä‘áº·t" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_access_text" v="Má»Ÿ cÃ i Ä‘áº·t táº¡i ESC > Settings > Soil &amp; Fertilizer. Trong chÆ¡i máº¡ng, chá»‰ admin mÃ¡y chá»§ má»›i cÃ³ thá»ƒ Ä‘á»•i cÃ i Ä‘áº·t mÃ´ phá»ng. CÃ¡c tÃ¹y chá»n HUD lÃ  riÃªng biá»‡t cho tá»«ng ngÆ°á»i chÆ¡i." eh="4ba9d860" />
 
-    <e k="helpLine_sf_nu_p1_title" v="Đạm và Lân" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="Đạm (N) - Thang 0 đến 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="Dinh dưỡng dễ mất nhất - cạn kiệt nhanh và rửa trôi mạnh khi mưa. Kém: dưới 30. Tốt: trên 50. Tăng bằng: phân lỏng, UAN, amoniac khan, urê, phân chuồng." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="Lân (P) - Thang 0 đến 100" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="Liên kết chặt với đất và rửa trôi rất chậm. Cạn kiệt chủ yếu qua thu hoạch. Cải dầu có nhu cầu P cao nhất. Kém: dưới 25. Tốt: trên 45. Tăng bằng: MAP, DAP, phân lót." eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_title" v="Äáº¡m vÃ  LÃ¢n" eh="27d37372" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Äáº¡m (N) - Thang 0 Ä‘áº¿n 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Dinh dÆ°á»¡ng dá»… máº¥t nháº¥t - cáº¡n kiá»‡t nhanh vÃ  rá»­a trÃ´i máº¡nh khi mÆ°a. KÃ©m: dÆ°á»›i 30. Tá»‘t: trÃªn 50. TÄƒng báº±ng: phÃ¢n lá»ng, UAN, amoniac khan, urÃª, phÃ¢n chuá»“ng." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="LÃ¢n (P) - Thang 0 Ä‘áº¿n 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="LiÃªn káº¿t cháº·t vá»›i Ä‘áº¥t vÃ  rá»­a trÃ´i ráº¥t cháº­m. Cáº¡n kiá»‡t chá»§ yáº¿u qua thu hoáº¡ch. Cáº£i dáº§u cÃ³ nhu cáº§u P cao nháº¥t. KÃ©m: dÆ°á»›i 25. Tá»‘t: trÃªn 45. TÄƒng báº±ng: MAP, DAP, phÃ¢n lÃ³t." eh="92c5ac66" />
 
-    <e k="helpLine_sf_nu_p2_title" v="Kali và pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="Kali (K) - Thang 0 đến 100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="Quan trọng cho cây lấy củ. Khoai tây và củ cải đường rút Kali mạnh. Rửa trôi vừa phải khi mưa. Kém: dưới 20. Tốt: trên 40. Tăng bằng: phân kali, bùn lỏng, bùn sau biogas." eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Thang 5.0 đến 7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="Cây phát triển tốt ở pH 6.5 đến 7.0. Mưa làm đất chua dần. pH không tự phục hồi - chỉ có vôi hoặc vôi lỏng mới giúp tăng pH. Kém: dưới 5.5. Hãy bón vôi nếu pH thấp trước khi gieo." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_title" v="Kali vÃ  pH" eh="6bd92f25" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Kali (K) - Thang 0 Ä‘áº¿n 100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="Quan trá»ng cho cÃ¢y láº¥y cá»§. Khoai tÃ¢y vÃ  cá»§ cáº£i Ä‘Æ°á»ng rÃºt Kali máº¡nh. Rá»­a trÃ´i vá»«a pháº£i khi mÆ°a. KÃ©m: dÆ°á»›i 20. Tá»‘t: trÃªn 40. TÄƒng báº±ng: phÃ¢n kali, bÃ¹n lá»ng, bÃ¹n sau biogas." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Thang 5.0 Ä‘áº¿n 7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="CÃ¢y phÃ¡t triá»ƒn tá»‘t á»Ÿ pH 6.5 Ä‘áº¿n 7.0. MÆ°a lÃ m Ä‘áº¥t chua dáº§n. pH khÃ´ng tá»± phá»¥c há»“i - chá»‰ cÃ³ vÃ´i hoáº·c vÃ´i lá»ng má»›i giÃºp tÄƒng pH. KÃ©m: dÆ°á»›i 5.5. HÃ£y bÃ³n vÃ´i náº¿u pH tháº¥p trÆ°á»›c khi gieo." eh="08e0aefd" />
 
-    <e k="helpLine_sf_nu_p3_title" v="Chất hữu cơ" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="Chất hữu cơ (OM) - Thang 0 đến 10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="Tích lũy rất chậm và không bị mất đi khi thu hoạch. Kém: dưới 2.5. Tốt: trên 4.0. Tăng bằng: phân chuồng, phân hữu cơ, phân gà, bùn thải hoặc băm rơm rạ trả lại ruộng." eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="Phục hồi khi bỏ hoang" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="Ruộng bỏ trống trên 7 ngày sẽ hồi phục dinh dưỡng. Mỗi ngày: N +0.07, P +0.03, K +0.05, OM +0.01. Luân canh và nghỉ đất có giá trị thực tế trong mod này." eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_title" v="Cháº¥t há»¯u cÆ¡" eh="6305f4bb" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Cháº¥t há»¯u cÆ¡ (OM) - Thang 0 Ä‘áº¿n 10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="TÃ­ch lÅ©y ráº¥t cháº­m vÃ  khÃ´ng bá»‹ máº¥t Ä‘i khi thu hoáº¡ch. KÃ©m: dÆ°á»›i 2.5. Tá»‘t: trÃªn 4.0. TÄƒng báº±ng: phÃ¢n chuá»“ng, phÃ¢n há»¯u cÆ¡, phÃ¢n gÃ , bÃ¹n tháº£i hoáº·c bÄƒm rÆ¡m ráº¡ tráº£ láº¡i ruá»™ng." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="Phá»¥c há»“i khi bá» hoang" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="Ruá»™ng bá» trá»‘ng trÃªn 7 ngÃ y sáº½ há»“i phá»¥c dinh dÆ°á»¡ng. Má»—i ngÃ y: N +0.07, P +0.03, K +0.05, OM +0.01. LuÃ¢n canh vÃ  nghá»‰ Ä‘áº¥t cÃ³ giÃ¡ trá»‹ thá»±c táº¿ trong mod nÃ y." eh="81fa82b3" />
 
-    <e k="helpLine_sf_fe_p1_title" v="Các loại phân bón gốc" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="Lỏng, Rắn, Phân chuồng và Bùn" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="Phân lỏng bổ sung NPK cân bằng. Phân rắn cao hơn về N và P. Phân chuồng và Bùn lỏng thêm N, P, K và Chất hữu cơ. Bùn biogas cao về Kali và cũng thêm OM. Tất cả dùng thiết bị tiêu chuẩn." eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="Vôi và Điều chỉnh pH" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="Vôi là chất điều chỉnh pH duy nhất trong game gốc - nó không thêm dinh dưỡng. Vôi lỏng và Thạch cao cũng tăng pH (Thạch cao thêm ít OM). Bón khi pH dưới 6.0 để cây phát triển tối ưu." eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_title" v="CÃ¡c loáº¡i phÃ¢n bÃ³n gá»‘c" eh="fd941c0d" />
+    <e k="helpLine_sf_fe_p1_base_title" v="Lá»ng, Ráº¯n, PhÃ¢n chuá»“ng vÃ  BÃ¹n" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="PhÃ¢n lá»ng bá»• sung NPK cÃ¢n báº±ng. PhÃ¢n ráº¯n cao hÆ¡n vá» N vÃ  P. PhÃ¢n chuá»“ng vÃ  BÃ¹n lá»ng thÃªm N, P, K vÃ  Cháº¥t há»¯u cÆ¡. BÃ¹n biogas cao vá» Kali vÃ  cÅ©ng thÃªm OM. Táº¥t cáº£ dÃ¹ng thiáº¿t bá»‹ tiÃªu chuáº©n." eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="VÃ´i vÃ  Äiá»u chá»‰nh pH" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="VÃ´i lÃ  cháº¥t Ä‘iá»u chá»‰nh pH duy nháº¥t trong game gá»‘c - nÃ³ khÃ´ng thÃªm dinh dÆ°á»¡ng. VÃ´i lá»ng vÃ  Tháº¡ch cao cÅ©ng tÄƒng pH (Tháº¡ch cao thÃªm Ã­t OM). BÃ³n khi pH dÆ°á»›i 6.0 Ä‘á»ƒ cÃ¢y phÃ¡t triá»ƒn tá»‘i Æ°u." eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="Nguồn Đạm và PK tùy chỉnh" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="Nguồn Đạm (túi lớn tùy chỉnh)" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 và UAN-28 là đạm lỏng. Amoniac khan có nồng độ N cao nhất. Urê và AMS là dạng hạt khô. Tất cả chỉ chứa đạm - không ảnh hưởng đến P, K hay pH." eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="Nguồn Lân và Kali" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="MAP: P cao nhất. DAP: P cao kèm ít N. Kali (0-0-60): K thuần khiết. Phân lót (10-34-0): P cao kèm N+K cân bằng. Tất cả có sẵn dạng túi lớn trong cửa hàng." eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="Nguá»“n Äáº¡m vÃ  PK tÃ¹y chá»‰nh" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="Nguá»“n Äáº¡m (tÃºi lá»›n tÃ¹y chá»‰nh)" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 vÃ  UAN-28 lÃ  Ä‘áº¡m lá»ng. Amoniac khan cÃ³ ná»“ng Ä‘á»™ N cao nháº¥t. UrÃª vÃ  AMS lÃ  dáº¡ng háº¡t khÃ´. Táº¥t cáº£ chá»‰ chá»©a Ä‘áº¡m - khÃ´ng áº£nh hÆ°á»Ÿng Ä‘áº¿n P, K hay pH." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="Nguá»“n LÃ¢n vÃ  Kali" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP: P cao nháº¥t. DAP: P cao kÃ¨m Ã­t N. Kali (0-0-60): K thuáº§n khiáº¿t. PhÃ¢n lÃ³t (10-34-0): P cao kÃ¨m N+K cÃ¢n báº±ng. Táº¥t cáº£ cÃ³ sáºµn dáº¡ng tÃºi lá»›n trong cá»­a hÃ ng." eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="Sản phẩm hữu cơ và rủi ro cháy lá" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="Sản phẩm hữu cơ chậm tan" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="Phân hữu cơ là chất xây dựng OM mạnh nhất. Bùn thải và Phân gà thêm N, P và OM. Phân viên là hữu cơ đậm đặc. Xuất hiện khi cài đặt các mod thiết bị tương thích." eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="Rủi ro cháy lá do quá liều" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="Bón trên 1.25x tỷ lệ cơ bản có nguy cơ cháy lá (-0.15 pH và -5 N). Tại 1.50x trở lên, cháy lá chắc chắn xảy ra (-0.30 pH và -12 N). Dùng phím tăng/giảm lượng bón trên xe để kiểm soát." eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="Sáº£n pháº©m há»¯u cÆ¡ vÃ  rá»§i ro chÃ¡y lÃ¡" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="Sáº£n pháº©m há»¯u cÆ¡ cháº­m tan" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="PhÃ¢n há»¯u cÆ¡ lÃ  cháº¥t xÃ¢y dá»±ng OM máº¡nh nháº¥t. BÃ¹n tháº£i vÃ  PhÃ¢n gÃ  thÃªm N, P vÃ  OM. PhÃ¢n viÃªn lÃ  há»¯u cÆ¡ Ä‘áº­m Ä‘áº·c. Xuáº¥t hiá»‡n khi cÃ i Ä‘áº·t cÃ¡c mod thiáº¿t bá»‹ tÆ°Æ¡ng thÃ­ch." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="Rá»§i ro chÃ¡y lÃ¡ do quÃ¡ liá»u" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="BÃ³n trÃªn 1.25x tá»· lá»‡ cÆ¡ báº£n cÃ³ nguy cÆ¡ chÃ¡y lÃ¡ (-0.15 pH vÃ  -5 N). Táº¡i 1.50x trá»Ÿ lÃªn, chÃ¡y lÃ¡ cháº¯c cháº¯n xáº£y ra (-0.30 pH vÃ  -12 N). DÃ¹ng phÃ­m tÄƒng/giáº£m lÆ°á»£ng bÃ³n trÃªn xe Ä‘á»ƒ kiá»ƒm soÃ¡t." eh="7bccc46a" />
 
-    <e k="helpLine_sf_hu_p1_title" v="HUD Đất" eh="6522879b" />
-    <e k="helpLine_sf_hu_p1_toggle_title" v="Bật/Tắt HUD (phím J)" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="Nhấn J để hiện/ẩn lớp phủ đất. Nó nhận diện cánh đồng bạn đang đứng và hiện N, P, K, pH, OM. Khi bật cài đặt Cỏ dại, Sâu bệnh hay Bệnh hại, các hàng đó sẽ hiện phía dưới." eh="3dcb9bfe" />
-    <e k="helpLine_sf_hu_p1_status_title" v="Đọc trạng thái" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="Mỗi chất hiện Tốt (không cần làm gì), Trung bình (nên xử lý sớm), hoặc Kém (cần xử lý ngay). Huy hiệu trên thanh tiêu đề phản ánh giá trị tệ nhất trong tất cả các chỉ số." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_title" v="HUD Äáº¥t" eh="6522879b" />
+    <e k="helpLine_sf_hu_p1_toggle_title" v="Báº­t/Táº¯t HUD (phÃ­m J)" eh="402283ba" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="Nháº¥n J Ä‘á»ƒ hiá»‡n/áº©n lá»›p phá»§ Ä‘áº¥t. NÃ³ nháº­n diá»‡n cÃ¡nh Ä‘á»“ng báº¡n Ä‘ang Ä‘á»©ng vÃ  hiá»‡n N, P, K, pH, OM. Khi báº­t cÃ i Ä‘áº·t Cá» dáº¡i, SÃ¢u bá»‡nh hay Bá»‡nh háº¡i, cÃ¡c hÃ ng Ä‘Ã³ sáº½ hiá»‡n phÃ­a dÆ°á»›i." eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_status_title" v="Äá»c tráº¡ng thÃ¡i" eh="291c3aac" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Má»—i cháº¥t hiá»‡n Tá»‘t (khÃ´ng cáº§n lÃ m gÃ¬), Trung bÃ¬nh (nÃªn xá»­ lÃ½ sá»›m), hoáº·c KÃ©m (cáº§n xá»­ lÃ½ ngay). Huy hiá»‡u trÃªn thanh tiÃªu Ä‘á» pháº£n Ã¡nh giÃ¡ trá»‹ tá»‡ nháº¥t trong táº¥t cáº£ cÃ¡c chá»‰ sá»‘." eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="Áp lực sức khỏe cánh đồng" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="Cỏ dại, Sâu bệnh và Bệnh hại" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="Ba điểm số (0-100) theo dõi đe dọa sinh học. Nếu không kiểm soát, chúng làm giảm năng suất: Cỏ dại tới -30%, Sâu bệnh -20%, Bệnh hại -25%. Các hàng W, I, D hiện màu: xanh (thấp), vàng (vừa), đỏ (cao)." eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="Xử lý áp lực" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="Thuốc diệt cỏ giảm cỏ dại - xới đất cũng đưa nó về không. Thuốc trừ sâu giảm áp lực 25 điểm và chặn mọc lại 10 ngày. Thuốc trừ nấm giảm bệnh 20 điểm và chặn 12 ngày." eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="Ãp lá»±c sá»©c khá»e cÃ¡nh Ä‘á»“ng" eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="Cá» dáº¡i, SÃ¢u bá»‡nh vÃ  Bá»‡nh háº¡i" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="Ba Ä‘iá»ƒm sá»‘ (0-100) theo dÃµi Ä‘e dá»a sinh há»c. Náº¿u khÃ´ng kiá»ƒm soÃ¡t, chÃºng lÃ m giáº£m nÄƒng suáº¥t: Cá» dáº¡i tá»›i -30%, SÃ¢u bá»‡nh -20%, Bá»‡nh háº¡i -25%. CÃ¡c hÃ ng W, I, D hiá»‡n mÃ u: xanh (tháº¥p), vÃ ng (vá»«a), Ä‘á» (cao)." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="Xá»­ lÃ½ Ã¡p lá»±c" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="Thuá»‘c diá»‡t cá» giáº£m cá» dáº¡i - xá»›i Ä‘áº¥t cÅ©ng Ä‘Æ°a nÃ³ vá» khÃ´ng. Thuá»‘c trá»« sÃ¢u giáº£m Ã¡p lá»±c 25 Ä‘iá»ƒm vÃ  cháº·n má»c láº¡i 10 ngÃ y. Thuá»‘c trá»« náº¥m giáº£m bá»‡nh 20 Ä‘iá»ƒm vÃ  cháº·n 12 ngÃ y." eh="4d65bdec" />
 
-    <e k="helpLine_sf_hu_p3_title" v="Báo cáo Đất" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="Mở báo cáo (phím K)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="Nhấn K để mở báo cáo đầy đủ. Thanh tóm tắt cho biết tổng số cánh đồng theo dõi, số lượng cần bón phân và % sức khỏe trang trại. Các cánh đồng được xếp theo độ khẩn cấp." eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="Chi tiết và Khuyến nghị" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="Nhấp vào mũi tên ở bất kỳ hàng nào để xem chi tiết: chỉ số dinh dưỡng, áp lực, dự báo năng suất và danh sách khuyến nghị chính xác những gì cần bón. Nhấn Quay lại hoặc Escape để trở về." eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_title" v="BÃ¡o cÃ¡o Äáº¥t" eh="35fcce6c" />
+    <e k="helpLine_sf_hu_p3_open_title" v="Má»Ÿ bÃ¡o cÃ¡o (phÃ­m K)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="Nháº¥n K Ä‘á»ƒ má»Ÿ bÃ¡o cÃ¡o Ä‘áº§y Ä‘á»§. Thanh tÃ³m táº¯t cho biáº¿t tá»•ng sá»‘ cÃ¡nh Ä‘á»“ng theo dÃµi, sá»‘ lÆ°á»£ng cáº§n bÃ³n phÃ¢n vÃ  % sá»©c khá»e trang tráº¡i. CÃ¡c cÃ¡nh Ä‘á»“ng Ä‘Æ°á»£c xáº¿p theo Ä‘á»™ kháº©n cáº¥p." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="Chi tiáº¿t vÃ  Khuyáº¿n nghá»‹" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="Nháº¥p vÃ o mÅ©i tÃªn á»Ÿ báº¥t ká»³ hÃ ng nÃ o Ä‘á»ƒ xem chi tiáº¿t: chá»‰ sá»‘ dinh dÆ°á»¡ng, Ã¡p lá»±c, dá»± bÃ¡o nÄƒng suáº¥t vÃ  danh sÃ¡ch khuyáº¿n nghá»‹ chÃ­nh xÃ¡c nhá»¯ng gÃ¬ cáº§n bÃ³n. Nháº¥n Quay láº¡i hoáº·c Escape Ä‘á»ƒ trá»Ÿ vá»." eh="38dd2c6d" />
 
-    <e k="helpLine_sf_se_p1_title" v="Cài đặt mô phỏng" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="Cài đặt máy chủ (Chỉ dành cho Admin)" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="Hệ thống độ phì, Chu kỳ dinh dưỡng, Hiệu ứng mùa, Hiệu ứng mưa, Thưởng cày, Áp lực sâu bệnh, Chi phí phân bón, Thông báo, Luân canh và Tự động bón. Admin máy chủ thay đổi sẽ đồng bộ cho mọi người." eh="abca5e43" />
-    <e k="helpLine_sf_se_p1_diff_title" v="Độ khó" eh="7b29ca96" />
-    <e k="helpLine_sf_se_p1_diff_text" v="Đơn giản (0.7x) giảm 30% cạn kiệt cho trải nghiệm thư giãn. Thực tế (1.0x) là mặc định. Hardcore (1.5x) tăng 50% cạn kiệt. Truy cập qua ESC > Settings > Soil &amp; Fertilizer." eh="ca93ca3e" />
+    <e k="helpLine_sf_se_p1_title" v="CÃ i Ä‘áº·t mÃ´ phá»ng" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="CÃ i Ä‘áº·t mÃ¡y chá»§ (Chá»‰ dÃ nh cho Admin)" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="Há»‡ thá»‘ng Ä‘á»™ phÃ¬, Chu ká»³ dinh dÆ°á»¡ng, Hiá»‡u á»©ng mÃ¹a, Hiá»‡u á»©ng mÆ°a, ThÆ°á»Ÿng cÃ y, Ãp lá»±c sÃ¢u bá»‡nh, Chi phÃ­ phÃ¢n bÃ³n, ThÃ´ng bÃ¡o, LuÃ¢n canh vÃ  Tá»± Ä‘á»™ng bÃ³n. Admin mÃ¡y chá»§ thay Ä‘á»•i sáº½ Ä‘á»“ng bá»™ cho má»i ngÆ°á»i." eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_diff_title" v="Äá»™ khÃ³" eh="7b29ca96" />
+    <e k="helpLine_sf_se_p1_diff_text" v="ÄÆ¡n giáº£n (0.7x) giáº£m 30% cáº¡n kiá»‡t cho tráº£i nghiá»‡m thÆ° giÃ£n. Thá»±c táº¿ (1.0x) lÃ  máº·c Ä‘á»‹nh. Hardcore (1.5x) tÄƒng 50% cáº¡n kiá»‡t. Truy cáº­p qua ESC > Settings > Soil &amp; Fertilizer." eh="ca93ca3e" />
 
-    <e k="helpLine_sf_se_p2_title" v="HUD và Kiểm soát bón" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="Tùy chọn HUD cá nhân" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="Mỗi người chơi tự chỉnh HUD của mình. Tùy chọn: Hiện HUD, Vị trí (5 mẫu + kéo), Chủ đề màu, Cỡ chữ, Độ trong suốt (25% - 100%), Đơn vị Anh Mỹ." eh="f3934884" />
-    <e k="helpLine_sf_se_p2_rate_title" v="Kiểm soát lượng phun" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Khi ngồi trên máy phun, dùng phím ] và [ để chỉnh lượng bón từ 0.10x đến 2.00x. Bật Tự động (Shift+L) để mod tự tính toán mức dinh dưỡng tối ưu và tránh rủi ro cháy lá." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_title" v="HUD vÃ  Kiá»ƒm soÃ¡t bÃ³n" eh="399f4910" />
+    <e k="helpLine_sf_se_p2_hud_title" v="TÃ¹y chá»n HUD cÃ¡ nhÃ¢n" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="Má»—i ngÆ°á»i chÆ¡i tá»± chá»‰nh HUD cá»§a mÃ¬nh. TÃ¹y chá»n: Hiá»‡n HUD, Vá»‹ trÃ­ (5 máº«u + kÃ©o), Chá»§ Ä‘á» mÃ u, Cá»¡ chá»¯, Äá»™ trong suá»‘t (25% - 100%), ÄÆ¡n vá»‹ Anh Má»¹." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_rate_title" v="Kiá»ƒm soÃ¡t lÆ°á»£ng phun" eh="5ecdfa23" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Khi ngá»“i trÃªn mÃ¡y phun, dÃ¹ng phÃ­m ] vÃ  [ Ä‘á»ƒ chá»‰nh lÆ°á»£ng bÃ³n tá»« 0.10x Ä‘áº¿n 2.00x. Báº­t Tá»± Ä‘á»™ng (Shift+L) Ä‘á»ƒ mod tá»± tÃ­nh toÃ¡n má»©c dinh dÆ°á»¡ng tá»‘i Æ°u vÃ  trÃ¡nh rá»§i ro chÃ¡y lÃ¡." eh="dd385e39" />
 
-    <e k="helpLine_sf_mp_p1_title" v="Cách chơi mạng hoạt động" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="Mô phỏng do máy chủ quản lý" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="Mọi mô phỏng đất chạy trên máy chủ. Người chơi nhận dữ liệu khi tham gia. Các cài đặt hiển thị HUD là riêng tư cho từng người và không bao giờ đồng bộ lên máy chủ." eh="db72a3f9" />
-    <e k="helpLine_sf_mp_p1_ded_title" v="Máy chủ chuyên dụng" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="Máy chủ chuyên dụng chạy mô phỏng đầy đủ mà không có HUD/GUI - đây là điều bình thường. Dùng lệnh console (soilStatus, SoilSetDifficulty...) để quản lý trên máy chủ chuyên dụng." eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_title" v="CÃ¡ch chÆ¡i máº¡ng hoáº¡t Ä‘á»™ng" eh="8a4ce30e" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="MÃ´ phá»ng do mÃ¡y chá»§ quáº£n lÃ½" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="Má»i mÃ´ phá»ng Ä‘áº¥t cháº¡y trÃªn mÃ¡y chá»§. NgÆ°á»i chÆ¡i nháº­n dá»¯ liá»‡u khi tham gia. CÃ¡c cÃ i Ä‘áº·t hiá»ƒn thá»‹ HUD lÃ  riÃªng tÆ° cho tá»«ng ngÆ°á»i vÃ  khÃ´ng bao giá» Ä‘á»“ng bá»™ lÃªn mÃ¡y chá»§." eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_ded_title" v="MÃ¡y chá»§ chuyÃªn dá»¥ng" eh="4d3a45ba" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="MÃ¡y chá»§ chuyÃªn dá»¥ng cháº¡y mÃ´ phá»ng Ä‘áº§y Ä‘á»§ mÃ  khÃ´ng cÃ³ HUD/GUI - Ä‘Ã¢y lÃ  Ä‘iá»u bÃ¬nh thÆ°á»ng. DÃ¹ng lá»‡nh console (soilStatus, SoilSetDifficulty...) Ä‘á»ƒ quáº£n lÃ½ trÃªn mÃ¡y chá»§ chuyÃªn dá»¥ng." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Compatibility and Workflow" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." />
     <e k="helpLine_sf_mp_p2_workflow_title" v="Changing Settings" />
     <e k="helpLine_sf_mp_p2_workflow_text" v="In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." />
 
-    <e k="sf_crop_rotation_short" v="Luân canh cây trồng" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="Bật/tắt thưởng luân canh và mệt mỏi do độc canh (trồng họ đậu giúp hồi đạm; trồng liên tiếp cùng một loại cây làm tăng sự cạn kiệt)" eh="958b4212" />
-    <e k="sf_gypsum_title" v="Thạch cao (pH-)" eh="d66da34c" />
-    <e k="sf_compost_title" v="Phân hữu cơ (Hữu cơ)" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="Bùn thải (N+P)" eh="f0c901dc" />
-    <e k="sf_chicken_manure_title" v="Phân gà (N+P)" eh="338128e2" />
-    <e k="sf_pelletized_manure_title" v="Phân viên (NPK)" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="Vôi lỏng (pH+)" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="Luân canh" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="Thưởng luân canh" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="Trồng cây họ đậu (đậu nành, đậu hà lan) sau cây khác giúp tăng đạm miễn phí mỗi mùa xuân trong 3 ngày." eh="e1fce95b" />
-    <e k="helpLine_sf_nu_p4_fatigue_title" v="Đất mệt mỏi" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="Trồng cùng một loại cây hai mùa liên tiếp làm tăng mức rút dinh dưỡng thêm 15%. Hãy luân canh để tránh đất mệt mỏi." eh="1613f3c6" />
+    <e k="sf_crop_rotation_short" v="LuÃ¢n canh cÃ¢y trá»“ng" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="Báº­t/táº¯t thÆ°á»Ÿng luÃ¢n canh vÃ  má»‡t má»i do Ä‘á»™c canh (trá»“ng há» Ä‘áº­u giÃºp há»“i Ä‘áº¡m; trá»“ng liÃªn tiáº¿p cÃ¹ng má»™t loáº¡i cÃ¢y lÃ m tÄƒng sá»± cáº¡n kiá»‡t)" eh="958b4212" />
+    <e k="sf_gypsum_title" v="Tháº¡ch cao (pH-)" eh="d66da34c" />
+    <e k="sf_compost_title" v="PhÃ¢n há»¯u cÆ¡ (Há»¯u cÆ¡)" eh="c3e2071a" />
+    <e k="sf_biosolids_title" v="BÃ¹n tháº£i (N+P)" eh="f0c901dc" />
+    <e k="sf_chicken_manure_title" v="PhÃ¢n gÃ  (N+P)" eh="338128e2" />
+    <e k="sf_pelletized_manure_title" v="PhÃ¢n viÃªn (NPK)" eh="c1b39b71" />
+    <e k="sf_liquidlime_title" v="VÃ´i lá»ng (pH+)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="LuÃ¢n canh" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="ThÆ°á»Ÿng luÃ¢n canh" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="Trá»“ng cÃ¢y há» Ä‘áº­u (Ä‘áº­u nÃ nh, Ä‘áº­u hÃ  lan) sau cÃ¢y khÃ¡c giÃºp tÄƒng Ä‘áº¡m miá»…n phÃ­ má»—i mÃ¹a xuÃ¢n trong 3 ngÃ y." eh="e1fce95b" />
+    <e k="helpLine_sf_nu_p4_fatigue_title" v="Äáº¥t má»‡t má»i" eh="236a590c" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="Trá»“ng cÃ¹ng má»™t loáº¡i cÃ¢y hai mÃ¹a liÃªn tiáº¿p lÃ m tÄƒng má»©c rÃºt dinh dÆ°á»¡ng thÃªm 15%. HÃ£y luÃ¢n canh Ä‘á»ƒ trÃ¡nh Ä‘áº¥t má»‡t má»i." eh="1613f3c6" />
 
-    <e k="sf_map_layer_off" v="Bản đồ đất: Tắt" eh="3e654ade" />
-    <e k="sf_map_layer_n" v="Đạm" eh="1e9ef3ba" />
-    <e k="sf_map_layer_p" v="Lân" eh="eb4f2688" />
+    <e k="sf_map_layer_off" v="Báº£n Ä‘á»“ Ä‘áº¥t: Táº¯t" eh="3e654ade" />
+    <e k="sf_map_layer_n" v="Äáº¡m" eh="1e9ef3ba" />
+    <e k="sf_map_layer_p" v="LÃ¢n" eh="eb4f2688" />
     <e k="sf_map_layer_k" v="Kali" eh="3a4edc67" />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
-    <e k="sf_map_layer_om" v="Chất hữu cơ" eh="6305f4bb" />
-    <e k="sf_map_layer_urgency" v="Độ khẩn cấp" eh="419ea5af" />
-    <e k="sf_map_layer_weed" v="Áp lực cỏ dại" eh="53f8b936" />
-    <e k="sf_map_layer_pest" v="Áp lực sâu bệnh" eh="18a7c2be" />
-    <e k="sf_map_layer_disease" v="Áp lực bệnh hại" eh="2b805cc9" />
-    <e k="sf_map_layer_compaction" v="Nén chặt" eh="19cf3ee7" />
+    <e k="sf_map_layer_om" v="Cháº¥t há»¯u cÆ¡" eh="6305f4bb" />
+    <e k="sf_map_layer_urgency" v="Äá»™ kháº©n cáº¥p" eh="419ea5af" />
+    <e k="sf_map_layer_weed" v="Ãp lá»±c cá» dáº¡i" eh="53f8b936" />
+    <e k="sf_map_layer_pest" v="Ãp lá»±c sÃ¢u bá»‡nh" eh="18a7c2be" />
+    <e k="sf_map_layer_disease" v="Ãp lá»±c bá»‡nh háº¡i" eh="2b805cc9" />
+    <e k="sf_map_layer_compaction" v="NÃ©n cháº·t" eh="19cf3ee7" />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
-    <e k="sf_map_overlay_cycle" v="Shift+M: Chuyển lớp đất" eh="032fdac7" />
-    <e k="sf_map_page_title" v="Lớp đất" eh="04a675fb" />
-    <e k="sf_map_sidebar_header" v="Lớp bản đồ đất" eh="81332549" />
-    <e k="sf_map_sidebar_label" v="Lớp hoạt động" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="Chọn dinh dưỡng đất để hiển thị trên bản đồ" eh="eb926e9a" />
-    <e k="sf_map_overlay_low" v="Thấp" eh="28d0edd0" />
-    <e k="sf_map_overlay_med" v="Vừa" eh="248c9511" />
+    <e k="sf_map_overlay_cycle" v="Shift+M: Chuyá»ƒn lá»›p Ä‘áº¥t" eh="032fdac7" />
+    <e k="sf_map_page_title" v="Lá»›p Ä‘áº¥t" eh="04a675fb" />
+    <e k="sf_map_sidebar_header" v="Lá»›p báº£n Ä‘á»“ Ä‘áº¥t" eh="81332549" />
+    <e k="sf_map_sidebar_label" v="Lá»›p hoáº¡t Ä‘á»™ng" eh="f8a2c198" />
+    <e k="sf_map_sidebar_tooltip" v="Chá»n dinh dÆ°á»¡ng Ä‘áº¥t Ä‘á»ƒ hiá»ƒn thá»‹ trÃªn báº£n Ä‘á»“" eh="eb926e9a" />
+    <e k="sf_map_overlay_low" v="Tháº¥p" eh="28d0edd0" />
+    <e k="sf_map_overlay_med" v="Vá»«a" eh="248c9511" />
     <e k="sf_map_overlay_high" v="Cao" eh="655d20c1" />
 
-    <e k="sf_pda_screen_title" v="Đất &amp; Phân bón" eh="f31197fb" />
-    <e k="sf_pda_tab_map" v="Bản đồ đất" eh="59f988b2" />
-    <e k="sf_pda_tab_fields" v="Cánh đồng" eh="a4ca5edd" />
-    <e k="sf_pda_tab_treatment" v="Kế hoạch xử lý" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="Tổng quan trang trại" eh="47f2c19a" />
-    <e k="sf_pda_fields_tracked_label" v="Đã theo dõi" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="Đã sở hữu" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="Dinh dưỡng TB" eh="f06b2704" />
-    <e k="sf_pda_avg_n_label" v="Đạm (N)" eh="25cee53b" />
-    <e k="sf_pda_avg_p_label" v="Lân (P)" eh="75cb5cd6" />
+    <e k="sf_pda_screen_title" v="Äáº¥t &amp; PhÃ¢n bÃ³n" eh="f31197fb" />
+    <e k="sf_pda_tab_map" v="Báº£n Ä‘á»“ Ä‘áº¥t" eh="59f988b2" />
+    <e k="sf_pda_tab_fields" v="CÃ¡nh Ä‘á»“ng" eh="a4ca5edd" />
+    <e k="sf_pda_tab_treatment" v="Káº¿ hoáº¡ch xá»­ lÃ½" eh="4ba012e2" />
+    <e k="sf_pda_section_farm_overview" v="Tá»•ng quan trang tráº¡i" eh="47f2c19a" />
+    <e k="sf_pda_fields_tracked_label" v="ÄÃ£ theo dÃµi" eh="c763e26e" />
+    <e k="sf_pda_fields_owned_label" v="ÄÃ£ sá»Ÿ há»¯u" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="Dinh dÆ°á»¡ng TB" eh="f06b2704" />
+    <e k="sf_pda_avg_n_label" v="Äáº¡m (N)" eh="25cee53b" />
+    <e k="sf_pda_avg_p_label" v="LÃ¢n (P)" eh="75cb5cd6" />
     <e k="sf_pda_avg_k_label" v="Kali (K)" eh="39797137" />
-    <e k="sf_pda_avg_ph_label" v="Độ pH" eh="0c85daad" />
-    <e k="sf_pda_avg_om_label" v="Chất hữu cơ" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="Áp lực mùa vụ" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="Cỏ dại" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="Sâu bệnh" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="Bệnh hại" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="Cần chú ý" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="Cần bón phân" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="Tổng số khẩn cấp" eh="b3ce2db9" />
-    <e k="sf_pda_no_data_left" v="Chưa có dữ liệu." eh="ba71c6b1" />
-    <e k="sf_pda_map_section_title" v="Lớp bản đồ đất" eh="85d63132" />
-    <e k="sf_pda_map_active_layer" v="Lớp hoạt động" eh="f8a2c198" />
-    <e k="sf_pda_map_layer_off_desc" v="Chưa chọn lớp đất. Hãy chọn một lớp để hiển thị." eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="Hàm lượng đạm trên toàn trang trại. Xanh = tốt, đỏ = cạn kiệt." eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="Hàm lượng lân trên toàn trang trại. Xanh = tốt, đỏ = cạn kiệt." eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="Hàm lượng kali trên toàn trang trại. Xanh = tốt, đỏ = cạn kiệt." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="Độ pH của đất. Khoảng tối ưu là 6.5-7.0 (xanh lá)." eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="Hàm lượng chất hữu cơ. Cao hơn sẽ tốt hơn cho độ phì lâu dài." eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="Độ khẩn cấp xử lý tổng hợp. Đỏ = cần chú ý ngay lập tức." eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="Mức độ cỏ dại. Đỏ = xâm nhiễm cao, hãy bón thuốc diệt cỏ." eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="Mức độ sâu bệnh. Đỏ = xâm nhiễm cao, hãy bón thuốc trừ sâu." eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="Mức độ bệnh hại. Đỏ = đang bùng phát, hãy bón thuốc trừ nấm." eh="5d32d30a" />
-    <e k="sf_pda_map_legend_title" v="Chú giải bản đồ" eh="86448402" />
-    <e k="sf_pda_map_legend_good" v="Tốt" eh="0c6ad70b" />
-    <e k="sf_pda_map_legend_fair" v="Trung bình" eh="f7f20cf0" />
-    <e k="sf_pda_map_legend_poor" v="Kém / Thấp" eh="32aa75ff" />
-    <e k="sf_pda_map_legend_low" v="Thấp" eh="28d0edd0" />
-    <e k="sf_pda_map_legend_medium" v="Vừa" eh="87f8a6ab" />
+    <e k="sf_pda_avg_ph_label" v="Äá»™ pH" eh="0c85daad" />
+    <e k="sf_pda_avg_om_label" v="Cháº¥t há»¯u cÆ¡" eh="6305f4bb" />
+    <e k="sf_pda_section_pressure" v="Ãp lá»±c mÃ¹a vá»¥" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="Cá» dáº¡i" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="SÃ¢u bá»‡nh" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="Bá»‡nh háº¡i" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="Cáº§n chÃº Ã½" eh="80e48bc3" />
+    <e k="sf_pda_needs_fert_label" v="Cáº§n bÃ³n phÃ¢n" eh="fa9ded5e" />
+    <e k="sf_pda_total_urgent_label" v="Tá»•ng sá»‘ kháº©n cáº¥p" eh="b3ce2db9" />
+    <e k="sf_pda_no_data_left" v="ChÆ°a cÃ³ dá»¯ liá»‡u." eh="ba71c6b1" />
+    <e k="sf_pda_map_section_title" v="Lá»›p báº£n Ä‘á»“ Ä‘áº¥t" eh="85d63132" />
+    <e k="sf_pda_map_active_layer" v="Lá»›p hoáº¡t Ä‘á»™ng" eh="f8a2c198" />
+    <e k="sf_pda_map_layer_off_desc" v="ChÆ°a chá»n lá»›p Ä‘áº¥t. HÃ£y chá»n má»™t lá»›p Ä‘á»ƒ hiá»ƒn thá»‹." eh="3bd7e65a" />
+    <e k="sf_pda_map_layer_n_desc" v="HÃ m lÆ°á»£ng Ä‘áº¡m trÃªn toÃ n trang tráº¡i. Xanh = tá»‘t, Ä‘á» = cáº¡n kiá»‡t." eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="HÃ m lÆ°á»£ng lÃ¢n trÃªn toÃ n trang tráº¡i. Xanh = tá»‘t, Ä‘á» = cáº¡n kiá»‡t." eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="HÃ m lÆ°á»£ng kali trÃªn toÃ n trang tráº¡i. Xanh = tá»‘t, Ä‘á» = cáº¡n kiá»‡t." eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Äá»™ pH cá»§a Ä‘áº¥t. Khoáº£ng tá»‘i Æ°u lÃ  6.5-7.0 (xanh lÃ¡)." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="HÃ m lÆ°á»£ng cháº¥t há»¯u cÆ¡. Cao hÆ¡n sáº½ tá»‘t hÆ¡n cho Ä‘á»™ phÃ¬ lÃ¢u dÃ i." eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="Äá»™ kháº©n cáº¥p xá»­ lÃ½ tá»•ng há»£p. Äá» = cáº§n chÃº Ã½ ngay láº­p tá»©c." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="Má»©c Ä‘á»™ cá» dáº¡i. Äá» = xÃ¢m nhiá»…m cao, hÃ£y bÃ³n thuá»‘c diá»‡t cá»." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="Má»©c Ä‘á»™ sÃ¢u bá»‡nh. Äá» = xÃ¢m nhiá»…m cao, hÃ£y bÃ³n thuá»‘c trá»« sÃ¢u." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="Má»©c Ä‘á»™ bá»‡nh háº¡i. Äá» = Ä‘ang bÃ¹ng phÃ¡t, hÃ£y bÃ³n thuá»‘c trá»« náº¥m." eh="5d32d30a" />
+    <e k="sf_pda_map_legend_title" v="ChÃº giáº£i báº£n Ä‘á»“" eh="86448402" />
+    <e k="sf_pda_map_legend_good" v="Tá»‘t" eh="0c6ad70b" />
+    <e k="sf_pda_map_legend_fair" v="Trung bÃ¬nh" eh="f7f20cf0" />
+    <e k="sf_pda_map_legend_poor" v="KÃ©m / Tháº¥p" eh="32aa75ff" />
+    <e k="sf_pda_map_legend_low" v="Tháº¥p" eh="28d0edd0" />
+    <e k="sf_pda_map_legend_medium" v="Vá»«a" eh="87f8a6ab" />
     <e k="sf_pda_map_legend_high" v="Cao" eh="655d20c1" />
-    <e k="sf_pda_map_legend_excess" v="Dư thừa" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="Chọn một lớp trên thanh bên để xem trên bản đồ." eh="eee76c81" />
-    <e k="sf_pda_map_jump_hint" v="Nhấp vào cánh đồng để chuyển đến đó trên bản đồ" eh="006d5371" />
-    <e k="sf_pda_map_native_hint" v="Trực quan hóa lớp đất đã được di chuyển! Giờ bạn có thể truy cập tất cả lớp đất trực tiếp từ thanh bên Bản đồ PDA gốc (ESC > Map). Tìm mục 'Soil Layers' trong các dấu chấm thanh bên." eh="3210d828" />
-    <e k="sf_pda_map_open_btn" v="GHI CHÚ DEV" eh="ef40b93f" />
-    <e k="sf_pda_btn_help" v="Trợ giúp" eh="6a26f548" />
-    <e k="sf_pda_help_text" v="Chào bạn, mình là nhà phát triển! Mình đã dời các lớp bản đồ đất vào Bản đồ PDA gốc (ESC > Map) để trải nghiệm mượt mà hơn. Bạn có thể chọn lớp trực tiếp từ thanh bên đó. Trang PDA này vẫn đang được hoàn thiện, hãy đón chờ bản cập nhật nhé!" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="PHẢN HỒI CỦA BẠN RẤT QUAN TRỌNG! Nếu gặp lỗi hoặc có ý tưởng mới, hãy ghé thăm dự án trên GitHub. Bạn có thể mở Issue hoặc Pull Request bất kỳ lúc nào để giúp mod tốt hơn. Cảm ơn bạn đã thử nghiệm!" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="Lưu ý: Tab lớp đất trên trang bản đồ HIỆN CHƯA HOẠT ĐỘNG. Mình đang tìm cách sửa lỗi này (có thể mất chút thời gian)." eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="Không có xem trước bản đồ" eh="43983f81" />
-    <e k="sf_map_health_overall" v="Sức khỏe đất trung bình" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="Mở tổng quan trang trại" eh="6f0800e8" />
+    <e k="sf_pda_map_legend_excess" v="DÆ° thá»«a" eh="d1d25b9f" />
+    <e k="sf_pda_map_instructions" v="Chá»n má»™t lá»›p trÃªn thanh bÃªn Ä‘á»ƒ xem trÃªn báº£n Ä‘á»“." eh="eee76c81" />
+    <e k="sf_pda_map_jump_hint" v="Nháº¥p vÃ o cÃ¡nh Ä‘á»“ng Ä‘á»ƒ chuyá»ƒn Ä‘áº¿n Ä‘Ã³ trÃªn báº£n Ä‘á»“" eh="006d5371" />
+    <e k="sf_pda_map_native_hint" v="Trá»±c quan hÃ³a lá»›p Ä‘áº¥t Ä‘Ã£ Ä‘Æ°á»£c di chuyá»ƒn! Giá» báº¡n cÃ³ thá»ƒ truy cáº­p táº¥t cáº£ lá»›p Ä‘áº¥t trá»±c tiáº¿p tá»« thanh bÃªn Báº£n Ä‘á»“ PDA gá»‘c (ESC > Map). TÃ¬m má»¥c 'Soil Layers' trong cÃ¡c dáº¥u cháº¥m thanh bÃªn." eh="3210d828" />
+    <e k="sf_pda_map_open_btn" v="GHI CHÃš DEV" eh="ef40b93f" />
+    <e k="sf_pda_btn_help" v="Trá»£ giÃºp" eh="6a26f548" />
+    <e k="sf_pda_help_text" v="ChÃ o báº¡n, mÃ¬nh lÃ  nhÃ  phÃ¡t triá»ƒn! MÃ¬nh Ä‘Ã£ dá»i cÃ¡c lá»›p báº£n Ä‘á»“ Ä‘áº¥t vÃ o Báº£n Ä‘á»“ PDA gá»‘c (ESC > Map) Ä‘á»ƒ tráº£i nghiá»‡m mÆ°á»£t mÃ  hÆ¡n. Báº¡n cÃ³ thá»ƒ chá»n lá»›p trá»±c tiáº¿p tá»« thanh bÃªn Ä‘Ã³. Trang PDA nÃ y váº«n Ä‘ang Ä‘Æ°á»£c hoÃ n thiá»‡n, hÃ£y Ä‘Ã³n chá» báº£n cáº­p nháº­t nhÃ©!" eh="67643ddd" />
+    <e k="sf_pda_help_github" v="PHáº¢N Há»’I Cá»¦A Báº N Ráº¤T QUAN TRá»ŒNG! Náº¿u gáº·p lá»—i hoáº·c cÃ³ Ã½ tÆ°á»Ÿng má»›i, hÃ£y ghÃ© thÄƒm dá»± Ã¡n trÃªn GitHub. Báº¡n cÃ³ thá»ƒ má»Ÿ Issue hoáº·c Pull Request báº¥t ká»³ lÃºc nÃ o Ä‘á»ƒ giÃºp mod tá»‘t hÆ¡n. Cáº£m Æ¡n báº¡n Ä‘Ã£ thá»­ nghiá»‡m!" eh="3a10b023" />
+    <e k="sf_pda_help_note" v="LÆ°u Ã½: Tab lá»›p Ä‘áº¥t trÃªn trang báº£n Ä‘á»“ HIá»†N CHÆ¯A HOáº T Äá»˜NG. MÃ¬nh Ä‘ang tÃ¬m cÃ¡ch sá»­a lá»—i nÃ y (cÃ³ thá»ƒ máº¥t chÃºt thá»i gian)." eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="KhÃ´ng cÃ³ xem trÆ°á»›c báº£n Ä‘á»“" eh="43983f81" />
+    <e k="sf_map_health_overall" v="Sá»©c khá»e Ä‘áº¥t trung bÃ¬nh" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="Má»Ÿ tá»•ng quan trang tráº¡i" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
-    <e k="sf_map_btn_cycle_layer" v="Đổi lớp" eh="875dbf22" />
-    <e k="sf_map_btn_treatment" v="Kế hoạch xử lý" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="Tắt lớp phủ" eh="8e75dec5" />
+    <e k="sf_map_btn_cycle_layer" v="Äá»•i lá»›p" eh="875dbf22" />
+    <e k="sf_map_btn_treatment" v="Káº¿ hoáº¡ch xá»­ lÃ½" eh="4ba012e2" />
+    <e k="sf_map_btn_disable" v="Táº¯t lá»›p phá»§" eh="8e75dec5" />
     <e k="sf_treat_action_ok" v="OK" eh="e0aa021e" />
-    <e k="sf_help_title" v="Tham khảo nhanh về đất" eh="8986bb6d" />
-    <e k="sf_help_nutrients_header" v="DINH DƯỠNG" eh="9aeb39bf" />
-    <e k="sf_help_n" v="N (Đạm) - Mất nhanh. Bón UAN, Urê hoặc Phân chuồng." eh="f2d0c792" />
-    <e k="sf_help_p" v="P (Lân) - Giữ lâu. Bón MAP hoặc DAP." eh="fdfbd91e" />
-    <e k="sf_help_k" v="K (Kali) - Bón Kali. Quan trọng cho bộ rễ." eh="e0217634" />
-    <e k="sf_help_om" v="OM (Hữu cơ) - Tăng chậm. Cày vùi phân chuồng/compost." eh="a4e29617" />
-    <e k="sf_help_soil_header" v="HÓA HỌC ĐẤT" eh="19c67ff5" />
-    <e k="sf_help_ph" v="pH 6.5-7.0 = Lý tưởng. &lt; 6.5 bón Vôi. > 7.5 bón Thạch cao." eh="8929304d" />
-    <e k="sf_help_pressure_header" v="ÁP LỰC MÙA VỤ" eh="132b0f66" />
-    <e k="sf_help_weed" v="Cỏ dại   > 20% - Dùng thuốc diệt cỏ." eh="c8d890df" />
-    <e k="sf_help_pest" v="Sâu bệnh  > 20% - Dùng thuốc trừ sâu." eh="f4932a05" />
-    <e k="sf_help_disease" v="Bệnh hại  > 20% - Dùng thuốc trừ nấm." eh="1bfd0913" />
-    <e k="sf_help_status_header" v="MỨC TRẠNG THÁI" eh="b081c2c6" />
-    <e k="sf_help_good" v="Tốt - Không cần xử lý." eh="03910bec" />
-    <e k="sf_help_fair" v="Vừa - Theo dõi / bón bổ sung." eh="2922eb1c" />
-    <e k="sf_help_poor" v="Kém - Cần xử lý ngay lập tức." eh="b287d206" />
-    <e k="sf_pda_fields_section_title" v="Tất cả cánh đồng" eh="48729e0b" />
-    <e k="sf_pda_col_field" v="Cánh đồng" eh="6f16a5f8" />
+    <e k="sf_help_title" v="Tham kháº£o nhanh vá» Ä‘áº¥t" eh="8986bb6d" />
+    <e k="sf_help_nutrients_header" v="DINH DÆ¯á» NG" eh="9aeb39bf" />
+    <e k="sf_help_n" v="N (Äáº¡m) - Máº¥t nhanh. BÃ³n UAN, UrÃª hoáº·c PhÃ¢n chuá»“ng." eh="f2d0c792" />
+    <e k="sf_help_p" v="P (LÃ¢n) - Giá»¯ lÃ¢u. BÃ³n MAP hoáº·c DAP." eh="fdfbd91e" />
+    <e k="sf_help_k" v="K (Kali) - BÃ³n Kali. Quan trá»ng cho bá»™ rá»…." eh="e0217634" />
+    <e k="sf_help_om" v="OM (Há»¯u cÆ¡) - TÄƒng cháº­m. CÃ y vÃ¹i phÃ¢n chuá»“ng/compost." eh="a4e29617" />
+    <e k="sf_help_soil_header" v="HÃ“A Há»ŒC Äáº¤T" eh="19c67ff5" />
+    <e k="sf_help_ph" v="pH 6.5-7.0 = LÃ½ tÆ°á»Ÿng. &lt; 6.5 bÃ³n VÃ´i. > 7.5 bÃ³n Tháº¡ch cao." eh="8929304d" />
+    <e k="sf_help_pressure_header" v="ÃP Lá»°C MÃ™A Vá»¤" eh="132b0f66" />
+    <e k="sf_help_weed" v="Cá» dáº¡i   > 20% - DÃ¹ng thuá»‘c diá»‡t cá»." eh="c8d890df" />
+    <e k="sf_help_pest" v="SÃ¢u bá»‡nh  > 20% - DÃ¹ng thuá»‘c trá»« sÃ¢u." eh="f4932a05" />
+    <e k="sf_help_disease" v="Bá»‡nh háº¡i  > 20% - DÃ¹ng thuá»‘c trá»« náº¥m." eh="1bfd0913" />
+    <e k="sf_help_status_header" v="Má»¨C TRáº NG THÃI" eh="b081c2c6" />
+    <e k="sf_help_good" v="Tá»‘t - KhÃ´ng cáº§n xá»­ lÃ½." eh="03910bec" />
+    <e k="sf_help_fair" v="Vá»«a - Theo dÃµi / bÃ³n bá»• sung." eh="2922eb1c" />
+    <e k="sf_help_poor" v="KÃ©m - Cáº§n xá»­ lÃ½ ngay láº­p tá»©c." eh="b287d206" />
+    <e k="sf_pda_fields_section_title" v="Táº¥t cáº£ cÃ¡nh Ä‘á»“ng" eh="48729e0b" />
+    <e k="sf_pda_col_field" v="CÃ¡nh Ä‘á»“ng" eh="6f16a5f8" />
     <e k="sf_pda_col_n" v="N%" eh="30740562" />
     <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="Lọc: Tất cả" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="Lọc: Đã sở hữu" eh="258cb971" />
+    <e k="sf_pda_filter_all" v="Lá»c: Táº¥t cáº£" eh="a46a8cb2" />
+    <e k="sf_pda_filter_owned" v="Lá»c: ÄÃ£ sá»Ÿ há»¯u" eh="258cb971" />
     <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
     <e k="sf_pda_col_om" v="OM" eh="bfbebc07" />
-    <e k="sf_pda_col_status" v="Trạng thái" eh="ec53a8c4" />
-    <e k="sf_pda_no_fields" v="Chưa có dữ liệu cánh đồng nào." eh="72265670" />
-    <e k="sf_pda_status_good" v="Tốt" eh="0c6ad70b" />
-    <e k="sf_pda_status_fair" v="Vừa" eh="f7f20cf0" />
-    <e k="sf_pda_status_poor" v="Kém" eh="0e94d017" />
-    <e k="sf_pda_treatment_section_title" v="Kế hoạch xử lý" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="Độ khẩn" eh="c94e3850" />
-    <e k="sf_pda_col_needs" v="Cần thiết" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="Tất cả cánh đồng đều trong tình trạng tốt." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Các cánh đồng bên phải cần được xử lý. Nhấp vào một hàng để xem các loại phân bón và lượng ước tính." eh="5748d316" />
-    <e k="sf_pda_need_n" v="Đạm" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="Lân" eh="eb4f2688" />
+    <e k="sf_pda_col_status" v="Tráº¡ng thÃ¡i" eh="ec53a8c4" />
+    <e k="sf_pda_no_fields" v="ChÆ°a cÃ³ dá»¯ liá»‡u cÃ¡nh Ä‘á»“ng nÃ o." eh="72265670" />
+    <e k="sf_pda_status_good" v="Tá»‘t" eh="0c6ad70b" />
+    <e k="sf_pda_status_fair" v="Vá»«a" eh="f7f20cf0" />
+    <e k="sf_pda_status_poor" v="KÃ©m" eh="0e94d017" />
+    <e k="sf_pda_treatment_section_title" v="Káº¿ hoáº¡ch xá»­ lÃ½" eh="4ba012e2" />
+    <e k="sf_pda_col_priority" v="Äá»™ kháº©n" eh="c94e3850" />
+    <e k="sf_pda_col_needs" v="Cáº§n thiáº¿t" eh="94d6125d" />
+    <e k="sf_pda_no_treatment" v="Táº¥t cáº£ cÃ¡nh Ä‘á»“ng Ä‘á»u trong tÃ¬nh tráº¡ng tá»‘t." eh="fa985166" />
+    <e k="sf_pda_treatment_hint" v="CÃ¡c cÃ¡nh Ä‘á»“ng bÃªn pháº£i cáº§n Ä‘Æ°á»£c xá»­ lÃ½. Nháº¥p vÃ o má»™t hÃ ng Ä‘á»ƒ xem cÃ¡c loáº¡i phÃ¢n bÃ³n vÃ  lÆ°á»£ng Æ°á»›c tÃ­nh." eh="5748d316" />
+    <e k="sf_pda_need_n" v="Äáº¡m" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="LÃ¢n" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Kali" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="Chỉnh pH" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="Thuốc diệt cỏ" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="Thuốc trừ sâu" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="Thuốc trừ nấm" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="Nhiều loại" eh="a0bf169f" />
-    <e k="sf_pda_treatment_minor" v="Nhỏ" eh="6fed0c37" />
-    <e k="sf_detail_title" v="Chi tiết cánh đồng" eh="03b5acd7" />
-    <e k="sf_detail_close" v="Đóng" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="Cánh đồng #" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="Độ khẩn cấp:" eh="9a83237c" />
-    <e k="sf_detail_section_nutrients" v="Dinh dưỡng đất" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="Áp lực mùa vụ" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="Lịch sử cây trồng" eh="54c27499" />
-    <e k="sf_detail_n_label" v="Đạm (N)" eh="25cee53b" />
-    <e k="sf_detail_p_label" v="Lân (P)" eh="75cb5cd6" />
+    <e k="sf_pda_need_ph" v="Chá»‰nh pH" eh="0570e9d2" />
+    <e k="sf_pda_need_weed" v="Thuá»‘c diá»‡t cá»" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="Thuá»‘c trá»« sÃ¢u" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="Thuá»‘c trá»« náº¥m" eh="e8512698" />
+    <e k="sf_pda_need_multiple" v="Nhiá»u loáº¡i" eh="a0bf169f" />
+    <e k="sf_pda_treatment_minor" v="Nhá»" eh="6fed0c37" />
+    <e k="sf_detail_title" v="Chi tiáº¿t cÃ¡nh Ä‘á»“ng" eh="03b5acd7" />
+    <e k="sf_detail_close" v="ÄÃ³ng" eh="d3d2e617" />
+    <e k="sf_detail_field_label" v="CÃ¡nh Ä‘á»“ng #" eh="228118ab" />
+    <e k="sf_detail_urgency_label" v="Äá»™ kháº©n cáº¥p:" eh="9a83237c" />
+    <e k="sf_detail_section_nutrients" v="Dinh dÆ°á»¡ng Ä‘áº¥t" eh="64377acf" />
+    <e k="sf_detail_section_pressure" v="Ãp lá»±c mÃ¹a vá»¥" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="Lá»‹ch sá»­ cÃ¢y trá»“ng" eh="54c27499" />
+    <e k="sf_detail_n_label" v="Äáº¡m (N)" eh="25cee53b" />
+    <e k="sf_detail_p_label" v="LÃ¢n (P)" eh="75cb5cd6" />
     <e k="sf_detail_k_label" v="Kali (K)" eh="39797137" />
-    <e k="sf_detail_ph_label" v="Độ pH" eh="0c85daad" />
-    <e k="sf_detail_om_label" v="Chất hữu cơ" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="Áp lực cỏ dại" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="Áp lực sâu bệnh" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="Áp lực bệnh hại" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="Vụ trước" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="Trạng thái luân canh" eh="83f7f522" />
+    <e k="sf_detail_ph_label" v="Äá»™ pH" eh="0c85daad" />
+    <e k="sf_detail_om_label" v="Cháº¥t há»¯u cÆ¡" eh="6305f4bb" />
+    <e k="sf_detail_weed_label" v="Ãp lá»±c cá» dáº¡i" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="Ãp lá»±c sÃ¢u bá»‡nh" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="Ãp lá»±c bá»‡nh háº¡i" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="Vá»¥ trÆ°á»›c" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="Tráº¡ng thÃ¡i luÃ¢n canh" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -499,206 +499,206 @@
     <e k="sf_rf_effect_disease_up" v="[EN] more disease" eh="0417d38f" />
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
-    <e k="sf_treat_title" v="Kê đơn xử lý" eh="0ccc3ee5" />
-    <e k="sf_treat_section_soil" v="Cải tạo đất" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="Bón dinh dưỡng" eh="76521e8e" />
-    <e k="sf_treat_section_prot" v="Bảo vệ cây trồng" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="Tham khảo phần 'Sản phẩm' trong cửa hàng cho các loại phân bón đặc thù." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="Tối ưu - Không cần xử lý." eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="Bón VÔI hoặc VÔI LỎNG để tăng pH." eh="d1420b97" />
-    <e k="sf_treat_action_gypsum" v="Bón THẠCH CAO để giảm pH / cải thiện cấu trúc." eh="4cb3f0dc" />
-    <e k="sf_treat_action_om_low" v="Cày vùi PHÂN CHUỒNG, COMPOST hoặc băm rơm." eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="Theo dõi. Duy trì đầu vào hữu cơ." eh="ae3af748" />
-    <e k="sf_treat_action_n_poor" v="Bón UAN32, URÊ hoặc AMONIAC KHAN." eh="ebc225b0" />
-    <e k="sf_treat_action_n_fair" v="Bón AMS hoặc PHÂN BÓN LÓT." eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="Bón MAP hoặc DAP (Lân)." eh="ec2d9afa" />
+    <e k="sf_treat_title" v="KÃª Ä‘Æ¡n xá»­ lÃ½" eh="0ccc3ee5" />
+    <e k="sf_treat_section_soil" v="Cáº£i táº¡o Ä‘áº¥t" eh="09e016e4" />
+    <e k="sf_treat_section_fert" v="BÃ³n dinh dÆ°á»¡ng" eh="76521e8e" />
+    <e k="sf_treat_section_prot" v="Báº£o vá»‡ cÃ¢y trá»“ng" eh="bd3fe9cd" />
+    <e k="sf_treat_hint" v="Tham kháº£o pháº§n 'Sáº£n pháº©m' trong cá»­a hÃ ng cho cÃ¡c loáº¡i phÃ¢n bÃ³n Ä‘áº·c thÃ¹." eh="540bff4d" />
+    <e k="sf_treat_action_optimal" v="Tá»‘i Æ°u - KhÃ´ng cáº§n xá»­ lÃ½." eh="4501a96b" />
+    <e k="sf_treat_action_lime" v="BÃ³n VÃ”I hoáº·c VÃ”I Lá»ŽNG Ä‘á»ƒ tÄƒng pH." eh="d1420b97" />
+    <e k="sf_treat_action_gypsum" v="BÃ³n THáº CH CAO Ä‘á»ƒ giáº£m pH / cáº£i thiá»‡n cáº¥u trÃºc." eh="4cb3f0dc" />
+    <e k="sf_treat_action_om_low" v="CÃ y vÃ¹i PHÃ‚N CHUá»’NG, COMPOST hoáº·c bÄƒm rÆ¡m." eh="33ec544c" />
+    <e k="sf_treat_action_om_fair" v="Theo dÃµi. Duy trÃ¬ Ä‘áº§u vÃ o há»¯u cÆ¡." eh="ae3af748" />
+    <e k="sf_treat_action_n_poor" v="BÃ³n UAN32, URÃŠ hoáº·c AMONIAC KHAN." eh="ebc225b0" />
+    <e k="sf_treat_action_n_fair" v="BÃ³n AMS hoáº·c PHÃ‚N BÃ“N LÃ“T." eh="dc8fbeba" />
+    <e k="sf_treat_action_p_poor" v="BÃ³n MAP hoáº·c DAP (LÃ¢n)." eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="Bón KALI (Potash)." eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="BÃ³n KALI (Potash)." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="Bón THUỐC DIỆT CỎ ngay lập tức." eh="625551c5" />
-    <e k="sf_treat_action_pest" v="Bón THUỐC TRỪ SÂU ngay lập tức." eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="Bón THUỐC TRỪ NẤM ngay lập tức." eh="9228323a" />
+    <e k="sf_treat_action_weed" v="BÃ³n THUá»C DIá»†T Cá»Ž ngay láº­p tá»©c." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="BÃ³n THUá»C TRá»ª SÃ‚U ngay láº­p tá»©c." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="BÃ³n THUá»C TRá»ª Náº¤M ngay láº­p tá»©c." eh="9228323a" />
     <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="[EN] Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="[EN] Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="Thưởng cây họ đậu (+N)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="Mệt mỏi (x1.15 cạn kiệt)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="Không có dữ liệu." eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="Không có ghi nhận" eh="a4b5a996" />
+    <e k="sf_detail_rotation_bonus" v="ThÆ°á»Ÿng cÃ¢y há» Ä‘áº­u (+N)" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_fatigue" v="Má»‡t má»i (x1.15 cáº¡n kiá»‡t)" eh="522a6d93" />
+    <e k="sf_detail_no_field" v="KhÃ´ng cÃ³ dá»¯ liá»‡u." eh="c6d95d5e" />
+    <e k="sf_detail_no_crop" v="KhÃ´ng cÃ³ ghi nháº­n" eh="a4b5a996" />
 
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
     <e k="sf_hud_label_om" v="OM" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
-    <e k="sf_hud_coverage" v="Độ phủ: %d%% / %d%%" eh="d407bb6d" />
+    <e k="sf_hud_coverage" v="Äá»™ phá»§: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
-    <e k="sf_hud_compaction" v="Độ nén: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_compaction" v="Äá»™ nÃ©n: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
 		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
 
-    <e k="sf_sprayer_auto_on" v="TỶ LỆ BÓN ( TỰ ĐỘNG: BẬT )" eh="099b5dac" />
-    <e k="sf_sprayer_auto_off" v="TỶ LỆ BÓN  TỰ ĐỘNG: TẮT [%s]" eh="848cc106" />
-    <e k="sf_sprayer_target" v="Mục tiêu:" eh="31d43504" />
-    <e k="sf_sprayer_burn_guaranteed" v="RỦI RO CHÁY LÁ: CHẮC CHẮN" eh="422601c4" />
-    <e k="sf_sprayer_burn_possible" v="RỦI RO CHÁY LÁ: CÓ THỂ" eh="25b251b6" />
+    <e k="sf_sprayer_auto_on" v="Tá»¶ Lá»† BÃ“N ( Tá»° Äá»˜NG: Báº¬T )" eh="099b5dac" />
+    <e k="sf_sprayer_auto_off" v="Tá»¶ Lá»† BÃ“N  Tá»° Äá»˜NG: Táº®T [%s]" eh="848cc106" />
+    <e k="sf_sprayer_target" v="Má»¥c tiÃªu:" eh="31d43504" />
+    <e k="sf_sprayer_burn_guaranteed" v="Rá»¦I RO CHÃY LÃ: CHáº®C CHáº®N" eh="422601c4" />
+    <e k="sf_sprayer_burn_possible" v="Rá»¦I RO CHÃY LÃ: CÃ“ THá»‚" eh="25b251b6" />
 
-    <e k="sf_notify_welcome" v="Mod Đất &amp; Phân bón Hoạt động | Shift+O để mở cài đặt | Gõ 'soilfertility' để xem lệnh" eh="d97e4139" />
-    <e k="sf_startup_dialog_version" v="Có gì mới trong phiên bản này:" eh="0b25f5c2" />
-    <e k="sf_startup_dialog_footer" v="Cảm ơn bạn đã sử dụng mod của mình &lt;3" eh="0f08d735" />
-    <e k="sf_startup_dialog_footer2" v="Tìm thấy lỗi? Hãy báo cáo trên GitHub!" eh="728e2cf3" />
-    <e k="sf_startup_dialog_footer3" v="Chúc bạn canh tác vui vẻ và đừng quên:" eh="aa38e511" />
-    <e k="sf_startup_dialog_footer4" v="Đất của bạn nhớ tất cả mọi thứ..." eh="1a3e5c35" />
-    <e k="sf_notify_init_delayed" v="Soil Mod: Khởi tạo cánh đồng bị chậm. Đang thử cách khác..." eh="f8bd28f8" />
-    <e k="sf_notify_init_success" v="Soil Mod: Khởi tạo cánh đồng thành công!" eh="46214360" />
-    <e k="sf_notify_critical_title" v="Cảnh báo chăm sóc khẩn cấp" eh="3f981d0c" />
-    <e k="sf_notify_critical_body" v="Cánh đồng %d cần chú ý ngay lập tức! Độ khẩn: %d%%" eh="171246aa" />
-    <e k="sf_notify_treated_title" v="Cập nhật đất" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Cánh đồng %d đã được xử lý đầy đủ với %s" eh="585aa9b7" />
-    <e k="sf_notify_burn_title" v="Cháy lá do phân bón" eh="ad8ed599" />
-    <e k="sf_notify_burn_body" v="Cánh đồng %d: thiệt hại do bón quá liều (pH %.1f)" eh="cb731ee3" />
-    <e k="sf_notify_sync_error" v="Soil Mod: Phát hiện lỗi đồng bộ dữ liệu. Hãy báo cáo nếu lỗi này lặp lại." eh="1a307946" />
+    <e k="sf_notify_welcome" v="Mod Äáº¥t &amp; PhÃ¢n bÃ³n Hoáº¡t Ä‘á»™ng | Shift+O Ä‘á»ƒ má»Ÿ cÃ i Ä‘áº·t | GÃµ 'soilfertility' Ä‘á»ƒ xem lá»‡nh" eh="d97e4139" />
+    <e k="sf_startup_dialog_version" v="CÃ³ gÃ¬ má»›i trong phiÃªn báº£n nÃ y:" eh="0b25f5c2" />
+    <e k="sf_startup_dialog_footer" v="Cáº£m Æ¡n báº¡n Ä‘Ã£ sá»­ dá»¥ng mod cá»§a mÃ¬nh &lt;3" eh="0f08d735" />
+    <e k="sf_startup_dialog_footer2" v="TÃ¬m tháº¥y lá»—i? HÃ£y bÃ¡o cÃ¡o trÃªn GitHub!" eh="728e2cf3" />
+    <e k="sf_startup_dialog_footer3" v="ChÃºc báº¡n canh tÃ¡c vui váº» vÃ  Ä‘á»«ng quÃªn:" eh="aa38e511" />
+    <e k="sf_startup_dialog_footer4" v="Äáº¥t cá»§a báº¡n nhá»› táº¥t cáº£ má»i thá»©..." eh="1a3e5c35" />
+    <e k="sf_notify_init_delayed" v="Soil Mod: Khá»Ÿi táº¡o cÃ¡nh Ä‘á»“ng bá»‹ cháº­m. Äang thá»­ cÃ¡ch khÃ¡c..." eh="f8bd28f8" />
+    <e k="sf_notify_init_success" v="Soil Mod: Khá»Ÿi táº¡o cÃ¡nh Ä‘á»“ng thÃ nh cÃ´ng!" eh="46214360" />
+    <e k="sf_notify_critical_title" v="Cáº£nh bÃ¡o chÄƒm sÃ³c kháº©n cáº¥p" eh="3f981d0c" />
+    <e k="sf_notify_critical_body" v="CÃ¡nh Ä‘á»“ng %d cáº§n chÃº Ã½ ngay láº­p tá»©c! Äá»™ kháº©n: %d%%" eh="171246aa" />
+    <e k="sf_notify_treated_title" v="Cáº­p nháº­t Ä‘áº¥t" eh="4633156e" />
+    <e k="sf_notify_treated_body" v="CÃ¡nh Ä‘á»“ng %d Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ Ä‘áº§y Ä‘á»§ vá»›i %s" eh="585aa9b7" />
+    <e k="sf_notify_burn_title" v="ChÃ¡y lÃ¡ do phÃ¢n bÃ³n" eh="ad8ed599" />
+    <e k="sf_notify_burn_body" v="CÃ¡nh Ä‘á»“ng %d: thiá»‡t háº¡i do bÃ³n quÃ¡ liá»u (pH %.1f)" eh="cb731ee3" />
+    <e k="sf_notify_sync_error" v="Soil Mod: PhÃ¡t hiá»‡n lá»—i Ä‘á»“ng bá»™ dá»¯ liá»‡u. HÃ£y bÃ¡o cÃ¡o náº¿u lá»—i nÃ y láº·p láº¡i." eh="1a307946" />
 		<e k="sf_notify_lime_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
 
-    <e k="sf_panel_cat_sim" v="Mô phỏng" eh="4f502b57" />
-    <e k="sf_panel_cat_sim_desc" v="Cơ chế trang trại, độ khó và chu kỳ dinh dưỡng" eh="3c584cdb" />
-    <e k="sf_panel_cat_display" v="Hiển thị &amp; HUD" eh="37b17394" />
-    <e k="sf_panel_cat_display_desc" v="Giao diện HUD, chủ đề màu, vị trí và cỡ chữ" eh="5b91fada" />
-    <e k="sf_panel_cat_overlay" v="Lớp phủ bản đồ" eh="28b898b6" />
-    <e k="sf_panel_cat_overlay_desc" v="Lớp phủ hoạt động hiển thị trên bản đồ PDA" eh="a5892aef" />
-    <e k="sf_panel_hdr_core" v="Hệ thống cốt lõi" eh="44a497a5" />
-    <e k="sf_panel_hdr_difficulty" v="Độ khó" eh="7b29ca96" />
-    <e k="sf_panel_hdr_environment" v="Môi trường" eh="0ba29c6a" />
-    <e k="sf_panel_hdr_crop_stress" v="Áp lực cây trồng" eh="260167bb" />
-    <e k="sf_panel_hdr_visibility" v="Hiển thị" eh="1729a56c" />
-    <e k="sf_panel_hdr_hud_style" v="Kiểu HUD" eh="1d4a8cac" />
-    <e k="sf_panel_hdr_position" v="Vị trí" eh="52f5e0bc" />
-    <e k="sf_panel_hdr_layer" v="Lớp" eh="359b71e8" />
-    <e k="sf_panel_hdr_performance" v="Hiệu năng" eh="9446a98a" />
-    <e k="sf_panel_hdr_mod_ctrl" v="Điều khiển Mod &amp; Độ khó" eh="ae2e88fb" />
-    <e k="sf_panel_hdr_systems" v="Hệ thống" eh="d6856404" />
-    <e k="sf_panel_hdr_actions" v="Hành động &amp; Công cụ" eh="f64ba1c9" />
+    <e k="sf_panel_cat_sim" v="MÃ´ phá»ng" eh="4f502b57" />
+    <e k="sf_panel_cat_sim_desc" v="CÆ¡ cháº¿ trang tráº¡i, Ä‘á»™ khÃ³ vÃ  chu ká»³ dinh dÆ°á»¡ng" eh="3c584cdb" />
+    <e k="sf_panel_cat_display" v="Hiá»ƒn thá»‹ &amp; HUD" eh="37b17394" />
+    <e k="sf_panel_cat_display_desc" v="Giao diá»‡n HUD, chá»§ Ä‘á» mÃ u, vá»‹ trÃ­ vÃ  cá»¡ chá»¯" eh="5b91fada" />
+    <e k="sf_panel_cat_overlay" v="Lá»›p phá»§ báº£n Ä‘á»“" eh="28b898b6" />
+    <e k="sf_panel_cat_overlay_desc" v="Lá»›p phá»§ hoáº¡t Ä‘á»™ng hiá»ƒn thá»‹ trÃªn báº£n Ä‘á»“ PDA" eh="a5892aef" />
+    <e k="sf_panel_hdr_core" v="Há»‡ thá»‘ng cá»‘t lÃµi" eh="44a497a5" />
+    <e k="sf_panel_hdr_difficulty" v="Äá»™ khÃ³" eh="7b29ca96" />
+    <e k="sf_panel_hdr_environment" v="MÃ´i trÆ°á»ng" eh="0ba29c6a" />
+    <e k="sf_panel_hdr_crop_stress" v="Ãp lá»±c cÃ¢y trá»“ng" eh="260167bb" />
+    <e k="sf_panel_hdr_visibility" v="Hiá»ƒn thá»‹" eh="1729a56c" />
+    <e k="sf_panel_hdr_hud_style" v="Kiá»ƒu HUD" eh="1d4a8cac" />
+    <e k="sf_panel_hdr_position" v="Vá»‹ trÃ­" eh="52f5e0bc" />
+    <e k="sf_panel_hdr_layer" v="Lá»›p" eh="359b71e8" />
+    <e k="sf_panel_hdr_performance" v="Hiá»‡u nÄƒng" eh="9446a98a" />
+    <e k="sf_panel_hdr_mod_ctrl" v="Äiá»u khiá»ƒn Mod &amp; Äá»™ khÃ³" eh="ae2e88fb" />
+    <e k="sf_panel_hdr_systems" v="Há»‡ thá»‘ng" eh="d6856404" />
+    <e k="sf_panel_hdr_actions" v="HÃ nh Ä‘á»™ng &amp; CÃ´ng cá»¥" eh="f64ba1c9" />
 		<e k="sf_panel_hdr_hud_layout" v="[EN] HUD Layout" eh="54e1930b" />
 		<e k="sf_hud_enter_drag_label" v="[EN] Move &amp; Resize Panels" eh="be34d24d" />
 		<e k="sf_hud_enter_drag_desc" v="[EN] Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="13230ef7" />
 
-    <e k="sf_panel_admin_yes" v="Admin: CÓ" eh="4628842a" />
-    <e k="sf_panel_admin_no" v="Admin: KHÔNG" eh="a9394f7b" />
-    <e k="sf_panel_multiplayer" v="Chơi mạng" eh="901a7320" />
-    <e k="sf_panel_singleplayer" v="Chơi đơn" eh="da602601" />
-    <e k="sf_panel_btn_back" v="&lt; Quay lại" eh="36cf3e1f" />
-    <e k="sf_panel_btn_reset_cat" v="Đặt lại mục" eh="b66faa88" />
-    <e k="sf_panel_btn_close_hint" v="SHIFT+O để đóng" eh="254406e3" />
-    <e k="sf_panel_select_category" v="Chọn một mục để cấu hình cài đặt" eh="a277d257" />
-    <e k="sf_panel_btn_configure" v="Cấu hình >>" eh="a2cb3902" />
-    <e k="sf_panel_btn_open" v="Mở >>" eh="6624d17c" />
+    <e k="sf_panel_admin_yes" v="Admin: CÃ“" eh="4628842a" />
+    <e k="sf_panel_admin_no" v="Admin: KHÃ”NG" eh="a9394f7b" />
+    <e k="sf_panel_multiplayer" v="ChÆ¡i máº¡ng" eh="901a7320" />
+    <e k="sf_panel_singleplayer" v="ChÆ¡i Ä‘Æ¡n" eh="da602601" />
+    <e k="sf_panel_btn_back" v="&lt; Quay láº¡i" eh="36cf3e1f" />
+    <e k="sf_panel_btn_reset_cat" v="Äáº·t láº¡i má»¥c" eh="b66faa88" />
+    <e k="sf_panel_btn_close_hint" v="SHIFT+O Ä‘á»ƒ Ä‘Ã³ng" eh="254406e3" />
+    <e k="sf_panel_select_category" v="Chá»n má»™t má»¥c Ä‘á»ƒ cáº¥u hÃ¬nh cÃ i Ä‘áº·t" eh="a277d257" />
+    <e k="sf_panel_btn_configure" v="Cáº¥u hÃ¬nh >>" eh="a2cb3902" />
+    <e k="sf_panel_btn_open" v="Má»Ÿ >>" eh="6624d17c" />
 
-    <e k="sf_desc_enabled" v="Kích hoạt / hủy kích hoạt toàn bộ mod" eh="895364cb" />
-    <e k="sf_desc_debugMode" v="Ghi nhật ký bổ sung để khắc phục sự cố" eh="de508edb" />
-    <e k="sf_desc_fertilitySystem" v="Mô hình hóa độ phì nhiêu của đất đầy đủ" eh="40efd611" />
-    <e k="sf_desc_nutrientCycles" v="Theo dõi sự cạn kiệt và phục hồi N/P/K" eh="6eff80b3" />
-    <e k="sf_desc_fertilizerCosts" v="Chi phí thực tế trong game cho phân bón" eh="1c197c9f" />
-    <e k="sf_desc_showNotifications" v="Thông báo trạng thái đất trong game" eh="7f275b4b" />
-    <e k="sf_desc_showHUD" v="Hiển thị lớp phủ HUD đất" eh="fa8b9224" />
+    <e k="sf_desc_enabled" v="KÃ­ch hoáº¡t / há»§y kÃ­ch hoáº¡t toÃ n bá»™ mod" eh="895364cb" />
+    <e k="sf_desc_debugMode" v="Ghi nháº­t kÃ½ bá»• sung Ä‘á»ƒ kháº¯c phá»¥c sá»± cá»‘" eh="de508edb" />
+    <e k="sf_desc_fertilitySystem" v="MÃ´ hÃ¬nh hÃ³a Ä‘á»™ phÃ¬ nhiÃªu cá»§a Ä‘áº¥t Ä‘áº§y Ä‘á»§" eh="40efd611" />
+    <e k="sf_desc_nutrientCycles" v="Theo dÃµi sá»± cáº¡n kiá»‡t vÃ  phá»¥c há»“i N/P/K" eh="6eff80b3" />
+    <e k="sf_desc_fertilizerCosts" v="Chi phÃ­ thá»±c táº¿ trong game cho phÃ¢n bÃ³n" eh="1c197c9f" />
+    <e k="sf_desc_showNotifications" v="ThÃ´ng bÃ¡o tráº¡ng thÃ¡i Ä‘áº¥t trong game" eh="7f275b4b" />
+    <e k="sf_desc_showHUD" v="Hiá»ƒn thá»‹ lá»›p phá»§ HUD Ä‘áº¥t" eh="fa8b9224" />
     <e k="sf_desc_showWorkTrail" v="[EN] Show spray and harvest pass trail overlays" eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="[EN] Show the sprayer nutrient panel when driving a sprayer" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="[EN] Show the harvester grain tank status panel when harvesting" eh="b16a1726" />
-    <e k="sf_desc_hudPosition" v="Vị trí neo HUD được thiết lập sẵn" eh="98c8bcea" />
-    <e k="sf_desc_hudColorTheme" v="Bảng màu cho các thành phần HUD" eh="97271907" />
-    <e k="sf_desc_hudFontSize" v="Kích thước văn bản HUD" eh="48a6fc15" />
-    <e k="sf_desc_hudTransparency" v="Độ trong suốt của nền HUD" eh="d20d72dc" />
-    <e k="sf_desc_seasonalEffects" v="Thay đổi đất đai theo mùa" eh="f515f484" />
-    <e k="sf_desc_rainEffects" v="Mưa gây rửa trôi chất dinh dưỡng" eh="82fec75d" />
-    <e k="sf_desc_plowingBonus" v="Thưởng khi cày để phục hồi đất" eh="23522b97" />
-    <e k="sf_desc_residueIncorporation" v="Làm đất giải phóng dinh dưỡng từ phụ phẩm" eh="e8cd556b" />
-    <e k="sf_desc_weedPressure" v="Theo dõi và phạt khi cỏ dại lan rộng" eh="df20c38d" />
-    <e k="sf_desc_pestPressure" v="Theo dõi sự xâm nhiễm của sâu bệnh" eh="12b3412e" />
-    <e k="sf_desc_diseasePressure" v="Theo dõi các bệnh hại cây trồng do nấm" eh="0858395f" />
+    <e k="sf_desc_hudPosition" v="Vá»‹ trÃ­ neo HUD Ä‘Æ°á»£c thiáº¿t láº­p sáºµn" eh="98c8bcea" />
+    <e k="sf_desc_hudColorTheme" v="Báº£ng mÃ u cho cÃ¡c thÃ nh pháº§n HUD" eh="97271907" />
+    <e k="sf_desc_hudFontSize" v="KÃ­ch thÆ°á»›c vÄƒn báº£n HUD" eh="48a6fc15" />
+    <e k="sf_desc_hudTransparency" v="Äá»™ trong suá»‘t cá»§a ná»n HUD" eh="d20d72dc" />
+    <e k="sf_desc_seasonalEffects" v="Thay Ä‘á»•i Ä‘áº¥t Ä‘ai theo mÃ¹a" eh="f515f484" />
+    <e k="sf_desc_rainEffects" v="MÆ°a gÃ¢y rá»­a trÃ´i cháº¥t dinh dÆ°á»¡ng" eh="82fec75d" />
+    <e k="sf_desc_plowingBonus" v="ThÆ°á»Ÿng khi cÃ y Ä‘á»ƒ phá»¥c há»“i Ä‘áº¥t" eh="23522b97" />
+    <e k="sf_desc_residueIncorporation" v="LÃ m Ä‘áº¥t giáº£i phÃ³ng dinh dÆ°á»¡ng tá»« phá»¥ pháº©m" eh="e8cd556b" />
+    <e k="sf_desc_weedPressure" v="Theo dÃµi vÃ  pháº¡t khi cá» dáº¡i lan rá»™ng" eh="df20c38d" />
+    <e k="sf_desc_pestPressure" v="Theo dÃµi sá»± xÃ¢m nhiá»…m cá»§a sÃ¢u bá»‡nh" eh="12b3412e" />
+    <e k="sf_desc_diseasePressure" v="Theo dÃµi cÃ¡c bá»‡nh háº¡i cÃ¢y trá»“ng do náº¥m" eh="0858395f" />
     <e k="sf_desc_diseaseMoisture" v="[EN] Climate moisture level affecting disease spread and fungicide duration" />
-    <e k="sf_desc_compactionEnabled" v="Nén đất do xe hạng nặng" eh="a7d3a795" />
-    <e k="sf_desc_difficulty" v="Mức độ cường độ rút dinh dưỡng" eh="54a7902e" />
-    <e k="sf_desc_replenishmentRate" v="Tốc độ phục hồi dinh dưỡng của phân bón" eh="858d2b23" />
-    <e k="sf_desc_useImperialUnits" v="Dùng đơn vị Anh Mỹ (tấn/mẫu Anh)" eh="8ba3d81a" />
-    <e k="sf_desc_autoRateControl" v="Tỷ lệ bón thông minh của máy phun" eh="bb4e5880" />
-    <e k="sf_desc_cropRotation" v="Lợi ích và hình phạt khi luân canh" eh="bb79b03a" />
-    <e k="sf_desc_activeMapLayer" v="Lớp dinh dưỡng hiển thị trong bản đồ PDA" eh="3c01c599" />
-    <e k="sf_desc_overlayDensity" v="Ngân sách điểm lấy mẫu (Thấp=8k, Vừa=20k, Cao=40k)" eh="42503763" />
+    <e k="sf_desc_compactionEnabled" v="NÃ©n Ä‘áº¥t do xe háº¡ng náº·ng" eh="a7d3a795" />
+    <e k="sf_desc_difficulty" v="Má»©c Ä‘á»™ cÆ°á»ng Ä‘á»™ rÃºt dinh dÆ°á»¡ng" eh="54a7902e" />
+    <e k="sf_desc_replenishmentRate" v="Tá»‘c Ä‘á»™ phá»¥c há»“i dinh dÆ°á»¡ng cá»§a phÃ¢n bÃ³n" eh="858d2b23" />
+    <e k="sf_desc_useImperialUnits" v="DÃ¹ng Ä‘Æ¡n vá»‹ Anh Má»¹ (táº¥n/máº«u Anh)" eh="8ba3d81a" />
+    <e k="sf_desc_autoRateControl" v="Tá»· lá»‡ bÃ³n thÃ´ng minh cá»§a mÃ¡y phun" eh="bb4e5880" />
+    <e k="sf_desc_cropRotation" v="Lá»£i Ã­ch vÃ  hÃ¬nh pháº¡t khi luÃ¢n canh" eh="bb79b03a" />
+    <e k="sf_desc_activeMapLayer" v="Lá»›p dinh dÆ°á»¡ng hiá»ƒn thá»‹ trong báº£n Ä‘á»“ PDA" eh="3c01c599" />
+    <e k="sf_desc_overlayDensity" v="NgÃ¢n sÃ¡ch Ä‘iá»ƒm láº¥y máº«u (Tháº¥p=8k, Vá»«a=20k, Cao=40k)" eh="42503763" />
     <e k="sf_desc_colorblindMode" v="[EN] Use orange/blue palette instead of red/green" />
     <e k="sf_desc_showFieldInfoBox" v="[EN] Show soil data in the Field Info panel" />
 
-    <e k="sf_rr_1" v="Rất chậm (0.25x)" eh="b681a1b4" />
-    <e k="sf_rr_2" v="Chậm (0.5x)" eh="db69874d" />
-    <e k="sf_rr_3" v="Bình thường (1.0x)" eh="930452c1" />
+    <e k="sf_rr_1" v="Ráº¥t cháº­m (0.25x)" eh="b681a1b4" />
+    <e k="sf_rr_2" v="Cháº­m (0.5x)" eh="db69874d" />
+    <e k="sf_rr_3" v="BÃ¬nh thÆ°á»ng (1.0x)" eh="930452c1" />
     <e k="sf_rr_4" v="Nhanh (1.5x)" eh="4c8ebfdb" />
-    <e k="sf_rr_5" v="Rất nhanh (2.0x)" eh="bd682dd5" />
-    <e k="sf_layer_1" v="Tắt" eh="d15305d7" />
-    <e k="sf_layer_2" v="Đạm" eh="1e9ef3ba" />
-    <e k="sf_layer_3" v="Lân" eh="eb4f2688" />
+    <e k="sf_rr_5" v="Ráº¥t nhanh (2.0x)" eh="bd682dd5" />
+    <e k="sf_layer_1" v="Táº¯t" eh="d15305d7" />
+    <e k="sf_layer_2" v="Äáº¡m" eh="1e9ef3ba" />
+    <e k="sf_layer_3" v="LÃ¢n" eh="eb4f2688" />
     <e k="sf_layer_4" v="Kali" eh="3a4edc67" />
     <e k="sf_layer_5" v="pH" eh="397dff20" />
-    <e k="sf_layer_6" v="Chất hữu cơ" eh="d2e254bc" />
-    <e k="sf_layer_7" v="Độ khẩn cấp" eh="c94e3850" />
-    <e k="sf_layer_8" v="Cỏ dại" eh="2b75024d" />
-    <e k="sf_layer_9" v="Sâu bệnh" eh="8f2aee79" />
-    <e k="sf_layer_10" v="Bệnh hại" eh="e7067a8c" />
-    <e k="sf_layer_11" v="Nén chặt" eh="19cf3ee7" />
-    <e k="sf_density_1" v="Thấp" eh="28d0edd0" />
-    <e k="sf_density_2" v="Vừa" eh="87f8a6ab" />
+    <e k="sf_layer_6" v="Cháº¥t há»¯u cÆ¡" eh="d2e254bc" />
+    <e k="sf_layer_7" v="Äá»™ kháº©n cáº¥p" eh="c94e3850" />
+    <e k="sf_layer_8" v="Cá» dáº¡i" eh="2b75024d" />
+    <e k="sf_layer_9" v="SÃ¢u bá»‡nh" eh="8f2aee79" />
+    <e k="sf_layer_10" v="Bá»‡nh háº¡i" eh="e7067a8c" />
+    <e k="sf_layer_11" v="NÃ©n cháº·t" eh="19cf3ee7" />
+    <e k="sf_density_1" v="Tháº¥p" eh="28d0edd0" />
+    <e k="sf_density_2" v="Vá»«a" eh="87f8a6ab" />
     <e k="sf_density_3" v="Cao" eh="655d20c1" />
 
-    <e k="sf_admin_save_label" v="Lưu dữ liệu đất" eh="d4e9a279" />
-    <e k="sf_admin_save_desc" v="Buộc lưu tất cả dữ liệu đất ngay bây giờ" eh="f365613a" />
-    <e k="sf_admin_reset_label" v="Đặt lại tất cả cài đặt" eh="6e7d5f9f" />
-    <e k="sf_admin_reset_desc" v="Khôi phục mọi cài đặt về mặc định" eh="599b7454" />
+    <e k="sf_admin_save_label" v="LÆ°u dá»¯ liá»‡u Ä‘áº¥t" eh="d4e9a279" />
+    <e k="sf_admin_save_desc" v="Buá»™c lÆ°u táº¥t cáº£ dá»¯ liá»‡u Ä‘áº¥t ngay bÃ¢y giá»" eh="f365613a" />
+    <e k="sf_admin_reset_label" v="Äáº·t láº¡i táº¥t cáº£ cÃ i Ä‘áº·t" eh="6e7d5f9f" />
+    <e k="sf_admin_reset_desc" v="KhÃ´i phá»¥c má»i cÃ i Ä‘áº·t vá» máº·c Ä‘á»‹nh" eh="599b7454" />
     
-    <e k="sf_panel_hdr_field_tools" v="Công cụ cánh đồng" eh="2b250a56" />
-    <e k="sf_nav_field_tools_label" v="Công cụ cánh đồng" eh="2b250a56" />
-    <e k="sf_nav_field_tools_desc" v="Mở các công cụ cụ thể để kiểm tra và sửa đổi trạng thái cánh đồng" eh="360db19b" />
+    <e k="sf_panel_hdr_field_tools" v="CÃ´ng cá»¥ cÃ¡nh Ä‘á»“ng" eh="2b250a56" />
+    <e k="sf_nav_field_tools_label" v="CÃ´ng cá»¥ cÃ¡nh Ä‘á»“ng" eh="2b250a56" />
+    <e k="sf_nav_field_tools_desc" v="Má»Ÿ cÃ¡c cÃ´ng cá»¥ cá»¥ thá»ƒ Ä‘á»ƒ kiá»ƒm tra vÃ  sá»­a Ä‘á»•i tráº¡ng thÃ¡i cÃ¡nh Ä‘á»“ng" eh="360db19b" />
     
-    <e k="sf_panel_hdr_vehicle_tools" v="Công cụ phương tiện" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_label" v="Công cụ phương tiện" eh="9b6d6e4c" />
-    <e k="sf_nav_vehicle_tools_desc" v="Mở các công cụ cụ thể cho phương tiện và thiết bị đang kết nối" eh="1a8b2100" />
-    <e k="sf_admin_drain_label" v="Xả bình phương tiện" eh="d216b101" />
-    <e k="sf_admin_drain_desc" v="Xả trống máy phun + thiết bị (hoàn 50% tiền)" eh="5e048a34" />
-    <e k="sf_admin_field_info_label" v="Thông tin cánh đồng hiện tại" eh="5df500d6" />
-    <e k="sf_admin_field_info_desc" v="Dữ liệu đất cho cánh đồng tại vị trí của bạn" eh="b7e2a72d" />
-    <e k="sf_admin_field_forecast_label" v="Dự báo cánh đồng" eh="1df41470" />
-    <e k="sf_admin_field_forecast_desc" v="Dự báo năng suất cho cánh đồng tại vị trí" eh="67e56b9d" />
-    <e k="sf_admin_list_fields_label" v="Liệt kê tất cả cánh đồng" eh="efeb1b25" />
-    <e k="sf_admin_list_fields_desc" v="Xuất tất cả dữ liệu đất cánh đồng vào nhật ký game" eh="c9fa812e" />
-    <e k="sf_admin_field_set_state_label" v="Thiết lập trạng thái ruộng" eh="5b0d7a31" />
-    <e k="sf_admin_field_set_state_desc" v="Chỉnh tay các giá trị N, P, K, pH và OM cho cánh đồng hiện tại" eh="a491e190" />
-    <e k="sf_admin_field_recover_label" v="Khôi phục cánh đồng" eh="e1c82ff0" />
-    <e k="sf_admin_field_recover_desc" v="Đặt lại cánh đồng hiện tại về các giá trị an toàn mặc định (sửa lỗi)" eh="68b687a2" />
-    <e k="sf_infobox_title" v="Dinh dưỡng đất" eh="64377acf" />
-    <e k="sf_infobox_grade" v="Cấp độ đất" eh="65d1be5f" />
-    <e k="sf_infobox_needs" v="Cần thiết" eh="94d6125d" />
-    <e k="sf_infobox_fertilizer" v="Phân bón" eh="cd248829" />
+    <e k="sf_panel_hdr_vehicle_tools" v="CÃ´ng cá»¥ phÆ°Æ¡ng tiá»‡n" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_label" v="CÃ´ng cá»¥ phÆ°Æ¡ng tiá»‡n" eh="9b6d6e4c" />
+    <e k="sf_nav_vehicle_tools_desc" v="Má»Ÿ cÃ¡c cÃ´ng cá»¥ cá»¥ thá»ƒ cho phÆ°Æ¡ng tiá»‡n vÃ  thiáº¿t bá»‹ Ä‘ang káº¿t ná»‘i" eh="1a8b2100" />
+    <e k="sf_admin_drain_label" v="Xáº£ bÃ¬nh phÆ°Æ¡ng tiá»‡n" eh="d216b101" />
+    <e k="sf_admin_drain_desc" v="Xáº£ trá»‘ng mÃ¡y phun + thiáº¿t bá»‹ (hoÃ n 50% tiá»n)" eh="5e048a34" />
+    <e k="sf_admin_field_info_label" v="ThÃ´ng tin cÃ¡nh Ä‘á»“ng hiá»‡n táº¡i" eh="5df500d6" />
+    <e k="sf_admin_field_info_desc" v="Dá»¯ liá»‡u Ä‘áº¥t cho cÃ¡nh Ä‘á»“ng táº¡i vá»‹ trÃ­ cá»§a báº¡n" eh="b7e2a72d" />
+    <e k="sf_admin_field_forecast_label" v="Dá»± bÃ¡o cÃ¡nh Ä‘á»“ng" eh="1df41470" />
+    <e k="sf_admin_field_forecast_desc" v="Dá»± bÃ¡o nÄƒng suáº¥t cho cÃ¡nh Ä‘á»“ng táº¡i vá»‹ trÃ­" eh="67e56b9d" />
+    <e k="sf_admin_list_fields_label" v="Liá»‡t kÃª táº¥t cáº£ cÃ¡nh Ä‘á»“ng" eh="efeb1b25" />
+    <e k="sf_admin_list_fields_desc" v="Xuáº¥t táº¥t cáº£ dá»¯ liá»‡u Ä‘áº¥t cÃ¡nh Ä‘á»“ng vÃ o nháº­t kÃ½ game" eh="c9fa812e" />
+    <e k="sf_admin_field_set_state_label" v="Thiáº¿t láº­p tráº¡ng thÃ¡i ruá»™ng" eh="5b0d7a31" />
+    <e k="sf_admin_field_set_state_desc" v="Chá»‰nh tay cÃ¡c giÃ¡ trá»‹ N, P, K, pH vÃ  OM cho cÃ¡nh Ä‘á»“ng hiá»‡n táº¡i" eh="a491e190" />
+    <e k="sf_admin_field_recover_label" v="KhÃ´i phá»¥c cÃ¡nh Ä‘á»“ng" eh="e1c82ff0" />
+    <e k="sf_admin_field_recover_desc" v="Äáº·t láº¡i cÃ¡nh Ä‘á»“ng hiá»‡n táº¡i vá» cÃ¡c giÃ¡ trá»‹ an toÃ n máº·c Ä‘á»‹nh (sá»­a lá»—i)" eh="68b687a2" />
+    <e k="sf_infobox_title" v="Dinh dÆ°á»¡ng Ä‘áº¥t" eh="64377acf" />
+    <e k="sf_infobox_grade" v="Cáº¥p Ä‘á»™ Ä‘áº¥t" eh="65d1be5f" />
+    <e k="sf_infobox_needs" v="Cáº§n thiáº¿t" eh="94d6125d" />
+    <e k="sf_infobox_fertilizer" v="PhÃ¢n bÃ³n" eh="cd248829" />
 
-    <e k="sf_fieldinfo_box_title" v="Dinh dưỡng đất" eh="64377acf" />
-    <e k="sf_fieldinfo_grade" v="Cấp độ đất" eh="65d1be5f" />
-    <e k="sf_fieldinfo_yield" v="Sản lượng" eh="97345487" />
-    <e k="sf_fieldinfo_rotation" v="Luân canh" eh="f1a42bd4" />
+    <e k="sf_fieldinfo_box_title" v="Dinh dÆ°á»¡ng Ä‘áº¥t" eh="64377acf" />
+    <e k="sf_fieldinfo_grade" v="Cáº¥p Ä‘á»™ Ä‘áº¥t" eh="65d1be5f" />
+    <e k="sf_fieldinfo_yield" v="Sáº£n lÆ°á»£ng" eh="97345487" />
+    <e k="sf_fieldinfo_rotation" v="LuÃ¢n canh" eh="f1a42bd4" />
 		<e k="sf_fieldinfo_disease" v="[EN] Active Disease" eh="a94ce36d" />
 		<e k="sf_fieldinfo_burn_risk" v="[EN] Amend. burn risk" eh="759e4661" />
 		<e k="sf_fieldinfo_sim_status" v="[EN] Sim Status" eh="c39e57f0" />
-    <e k="sf_fieldinfo_needs" v="Cần thiết" eh="94d6125d" />
-    <e k="sf_field" v="Cánh đồng" eh="6f16a5f8" />
-    <e k="sf_no_field" v="Chưa chọn cánh đồng" eh="717ff56f" />
-    <e k="sf_overall_Good" v="Tốt" eh="0c6ad70b" />
-    <e k="sf_overall_Fair" v="Vừa" eh="f7f20cf0" />
-    <e k="sf_overall_Poor" v="Kém" eh="0e94d017" />
-    <e k="sf_cell_report" v="Báo cáo ô" eh="2a403943" />
-    <e k="sf_cell_no_data_title" v="Không thấy dữ liệu ô" eh="dc41c753" />
-    <e k="sf_cell_no_data" v="Không có dữ liệu đất tại vị trí này" eh="5dfa58aa" />
+    <e k="sf_fieldinfo_needs" v="Cáº§n thiáº¿t" eh="94d6125d" />
+    <e k="sf_field" v="CÃ¡nh Ä‘á»“ng" eh="6f16a5f8" />
+    <e k="sf_no_field" v="ChÆ°a chá»n cÃ¡nh Ä‘á»“ng" eh="717ff56f" />
+    <e k="sf_overall_Good" v="Tá»‘t" eh="0c6ad70b" />
+    <e k="sf_overall_Fair" v="Vá»«a" eh="f7f20cf0" />
+    <e k="sf_overall_Poor" v="KÃ©m" eh="0e94d017" />
+    <e k="sf_cell_report" v="BÃ¡o cÃ¡o Ã´" eh="2a403943" />
+    <e k="sf_cell_no_data_title" v="KhÃ´ng tháº¥y dá»¯ liá»‡u Ã´" eh="dc41c753" />
+    <e k="sf_cell_no_data" v="KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘áº¥t táº¡i vá»‹ trÃ­ nÃ y" eh="5dfa58aa" />
     <e k="sf_field_avg" v="[EN] Field avg" eh="e01500f8" />
-    <e k="sf_cell" v="Ô" eh="1a66ab62" />
-    <e k="sf_cell_dialog_title" v="Kiểm tra ô đất" eh="7ce7fc03" />
-    <e k="sf_cell_sidebar_header" v="Chi tiết ô" eh="6fc5243e" />
-    <e k="sf_cell_coord" v="Tọa độ" eh="99171d3a" />
-    <e k="sf_cell_click_hint" v="Nhấp vào bản đồ để kiểm tra một ô đất" eh="fc9d240b" />
+    <e k="sf_cell" v="Ã”" eh="1a66ab62" />
+    <e k="sf_cell_dialog_title" v="Kiá»ƒm tra Ã´ Ä‘áº¥t" eh="7ce7fc03" />
+    <e k="sf_cell_sidebar_header" v="Chi tiáº¿t Ã´" eh="6fc5243e" />
+    <e k="sf_cell_coord" v="Tá»a Ä‘á»™" eh="99171d3a" />
+    <e k="sf_cell_click_hint" v="Nháº¥p vÃ o báº£n Ä‘á»“ Ä‘á»ƒ kiá»ƒm tra má»™t Ã´ Ä‘áº¥t" eh="fc9d240b" />
     <!-- SMART SYSTEMS (admin panel section) -->
     <e k="sf_panel_hdr_smart_systems"    v="Smart Systems" />
     <e k="sf_smart_sensor_short"         v="Smart Sensor" />
@@ -761,7 +761,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the âˆ’ button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -776,7 +776,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 â€“ 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -924,13 +924,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 â€“ 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1â€“2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -970,9 +970,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2â€“3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5â€“7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1005,10 +1005,10 @@
     <e k="sf_report_rec_good"         v="Good" />
     <e k="sf_report_rec_fair"         v="Fair" />
     <e k="sf_report_rec_poor"         v="Poor" />
-    	<e k="sf_fieldsentry_asleep" v="mô phỏng ngủ" eh="7d49241b" />
-    	<e k="sf_fs_reason_manual" v="thủ công" eh="3c78b355" />
-    	<e k="sf_fs_reason_npc" v="hợp đồng NPC" eh="2e1a268b" />
-    	<e k="sf_fs_reason_deco" v="trang trí" eh="8a817367" />
+    	<e k="sf_fieldsentry_asleep" v="mÃ´ phá»ng ngá»§" eh="7d49241b" />
+    	<e k="sf_fs_reason_manual" v="thá»§ cÃ´ng" eh="3c78b355" />
+    	<e k="sf_fs_reason_npc" v="há»£p Ä‘á»“ng NPC" eh="2e1a268b" />
+    	<e k="sf_fs_reason_deco" v="trang trÃ­" eh="8a817367" />
     <e k="input_SF_SCOUT" v="[EN] Scout Field for Disease" eh="34e6d14b" />
     <e k="sf_scout_no_field" v="[EN] Stand on a field to scout it." eh="2c33ecb7" />
     <e k="sf_scout_found" v="[EN] Field %d: %s detected (%d%% pressure). Best: %s" eh="d6af78b1" />
@@ -1133,7 +1133,7 @@
     <e k="sf_copper_hydroxide_title" v="Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_name" v="IBC Copper Hydroxide" />
     <e k="sf_bigBag_copper_hydroxide_function" v="Copper Hydroxide fungicide, organic-approved (liquid)" />
-    <e k="sf_unscouted" v="Chưa khảo sát" />
+    <e k="sf_unscouted" v="ChÆ°a kháº£o sÃ¡t" />
 <e k="sf_map_layer_organic_status" v="Organic Status" />
     
 <e k="sf_layer_12" v="Organic Status" />
@@ -1182,7 +1182,7 @@
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
     <!-- Harvester panel yield estimate (SF-50) -->
     <e k="sf_hud_tha" v="%.1f t/ha" />
-    <e k="sf_hud_yield_est_src" v="Ước tính từ dữ liệu bản đồ" />
+    <e k="sf_hud_yield_est_src" v="Æ¯á»›c tÃ­nh tá»« dá»¯ liá»‡u báº£n Ä‘á»“" />
     <!-- CD-12 tank mix names (generated) -->
     <e k="sf_blend_azoxystrobin_boscalid_title" v="Azoxystrobin + Boscalid" />
     <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="Azoxystrobin + Copper Hydroxide" />
@@ -1219,7 +1219,12 @@
     <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
+<e k="sf_experimental_short" v="Experimental Systems" />
+    <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
+    <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
+    <e k="sf_panel_hdr_experimental" v="Experimental" />
 </elements>
 
 
 </l10n>
+

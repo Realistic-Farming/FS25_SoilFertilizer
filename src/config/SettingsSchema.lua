@@ -284,6 +284,15 @@ SettingsSchema.definitions = {
         uiId = "sf_overlap_prev",
     },
     {
+        id = "experimentalSystems",
+        type = "boolean",
+        default = false,
+        uiId = "sf_experimental",
+        -- NOT simpleOnly: the release gate is orthogonal to difficulty. This is the
+        -- explicit opt-in for experimental (LOCKED) systems, independent of mode.
+        -- See ReleaseGate.lua.
+    },
+    {
         id = "multiTankApplication",
         type = "boolean",
         default = true,

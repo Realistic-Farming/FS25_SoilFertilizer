@@ -87,6 +87,15 @@ function Settings:enforceBypassLock()
     return changed
 end
 
+--- Release-gate opt-in. True when the player has explicitly enabled experimental
+--- (LOCKED) systems. Orthogonal to difficulty: a player on Realistic who opts into
+--- experimental systems gets them, and a player on Simple who does not opt in does
+--- not. The two locks stack - see ReleaseGate.lua.
+---@return boolean
+function Settings:allowsExperimentalSystems()
+    return self.experimentalSystems == true
+end
+
 function Settings:load()
     if type(self.difficulty) ~= "number" then
         SoilLogger.warning("Difficulty is not a number! Type: %s, Value: %s",
