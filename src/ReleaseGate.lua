@@ -22,16 +22,17 @@
 
 ReleaseGate = {}
 
--- The certified experimental (LOCKED) set. Each entry: [systemId] = { name, reason }.
--- `reason` is the four-test clause that fails, from Arissani's first lock set.
+-- The certified experimental (LOCKED) set. Each entry: [systemId] = { name, status }.
+-- `status` is a SHORT player-facing note on what is not working or implemented yet.
+-- Internal four-test reasons live in RELEASE-GATE-DESIGN.md and the tracker, not here.
 -- A system that is NOT in this table is released (the proven baseline).
 ReleaseGate.EXPERIMENTAL = {
-    cd9_resistance  = { name = "Disease resistance",    reason = "F66/F67 open, unobserved" },
-    cd10_hybrids    = { name = "Hybrid strains",        reason = "rides CD-9, readout unshipped, unobserved" },
-    cd12_tank_mixes = { name = "Tank mixes",            reason = "in-game acceptance owed, readout gap" },
-    ground_material = { name = "Ground material",       reason = "bale/wetness/conversion unobserved, surface blocked" },
-    spatial_soil    = { name = "Spatial soil",          reason = "4/14 built, no per-cell UI" },
-    read_the_dirt   = { name = "Read the Dirt",         reason = "panel SF-39 (Wizard) unbuilt" },
+    cd9_resistance  = { name = "Disease resistance", status = "awaiting in-game verification" },
+    cd10_hybrids    = { name = "Hybrid strains",     status = "ships with disease resistance" },
+    cd12_tank_mixes = { name = "Tank mixes",         status = "awaiting in-game check" },
+    ground_material = { name = "Ground material",    status = "awaiting bale + wetness checks" },
+    spatial_soil    = { name = "Spatial soil",       status = "awaiting the rest of its family" },
+    read_the_dirt   = { name = "Read the Dirt",      status = "awaiting its reading panel" },
 }
 
 -- Console command -> systemId, so command refusals route through the same registry.
@@ -61,8 +62,8 @@ function ReleaseGate.lockMessage(systemId, optIn)
     local entry = ReleaseGate.EXPERIMENTAL[systemId]
     if not entry or optIn == true then return nil end
     return string.format(
-        "Locked: %s is experimental and not released (%s). Enable experimental systems in the settings panel to use it at your own risk.",
-        entry.name, entry.reason)
+        "Locked: %s is not released yet. Enable Experimental Systems in the settings panel to use it at your own risk.",
+        entry.name)
 end
 
 --- Console command gate. Mirrors bypassLockedMsg() but on the release axis.
@@ -73,20 +74,25 @@ function ReleaseGate.commandLockMessage(commandName, optIn)
     return ReleaseGate.lockMessage(ReleaseGate.COMMAND_TO_SYSTEM[commandName], optIn)
 end
 
---- Human-readable gate status table, for the status/help surfaces and tests.
+--- Player-friendly gate status, for the status/help surfaces and tests. Short on
+--- purpose: one line per system, what is not working or implemented yet.
 ---@param optIn boolean|nil
 ---@return string
 function ReleaseGate.status(optIn)
     local lines = { "=== Release gate ===" }
     lines[#lines + 1] = string.format("  Experimental systems: %s",
-        optIn == true and "ON (opt-in, at your own risk)" or "OFF (stable only)")
-    local released, locked = 0, 0
-    for id in pairs(ReleaseGate.EXPERIMENTAL) do
-        if ReleaseGate.isReleased(id, optIn) then released = released + 1 else locked = locked + 1 end
-    end
-    lines[#lines + 1] = string.format("  Systems: %d stable, %d experimental-locked", released, locked)
-    for id, entry in pairs(ReleaseGate.EXPERIMENTAL) do
-        lines[#lines + 1] = string.format("    [%s] %s - %s", ReleaseGate.isReleased(id, optIn) and "STABLE" or "LOCKED", entry.name, entry.reason)
+        optIn == true and "ON (at your own risk)" or "OFF (stable only)")
+    local on = optIn == true
+    if on then
+        lines[#lines + 1] = "  All experimental systems: ON"
+        for id, entry in pairs(ReleaseGate.EXPERIMENTAL) do
+            lines[#lines + 1] = string.format("    [ON] %s", entry.name)
+        end
+    else
+        lines[#lines + 1] = "  Not yet released:"
+        for id, entry in pairs(ReleaseGate.EXPERIMENTAL) do
+            lines[#lines + 1] = string.format("    [LOCKED] %s - %s", entry.name, entry.status)
+        end
     end
     return table.concat(lines, "\n")
 end

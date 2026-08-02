@@ -42,7 +42,8 @@ T.eq("no lock message for a stable system", ReleaseGate.lockMessage("fertilitySy
 T.eq("no lock message when opted in", ReleaseGate.lockMessage("cd9_resistance", true), nil)
 local msg = ReleaseGate.lockMessage("cd9_resistance", false)
 T.ok("lock message when locked", msg ~= nil)
-T.ok("message names the experimental state", string.find(msg, "experimental", 1, true) ~= nil)
+T.ok("message names the released-gate state", string.find(msg, "not released", 1, true) ~= nil)
+T.ok("message points at the settings opt-in", string.find(msg, "settings panel", 1, true) ~= nil)
 
 -- commandLockMessage routes through the same registry.
 T.ok("SoilResistance gated when locked", ReleaseGate.commandLockMessage("SoilResistance", false) ~= nil)
@@ -52,9 +53,13 @@ T.ok("SoilMaterialBench gated when locked", ReleaseGate.commandLockMessage("Soil
 T.ok("SoilResistanceTest gated when locked", ReleaseGate.commandLockMessage("SoilResistanceTest", false) ~= nil)
 T.eq("an ungated command has no lock message", ReleaseGate.commandLockMessage("SoilSetDisease", false), nil)
 
--- status reports the opt-in state and names the lock set.
+-- status: player-friendly, short, one line per system.
 local st = ReleaseGate.status(false)
-T.ok("status says experimental OFF when not opted in", string.find(st, "OFF", 1, true) ~= nil)
+T.ok("status says OFF when not opted in", string.find(st, "OFF", 1, true) ~= nil)
 T.ok("status lists LOCKED systems", string.find(st, "LOCKED", 1, true) ~= nil)
+T.ok("status uses the player-facing status note", string.find(st, "awaiting", 1, true) ~= nil)
+T.ok("status does not leak the internal reason", string.find(st, "F66", 1, true) == nil)
 local stOn = ReleaseGate.status(true)
 T.ok("status says ON when opted in", string.find(stOn, "ON", 1, true) ~= nil)
+T.ok("status shows ON per system when opted in", string.find(stOn, "[ON]", 1, true) ~= nil)
+T.ok("status omits the awaiting notes when opted in", string.find(stOn, "awaiting", 1, true) == nil)

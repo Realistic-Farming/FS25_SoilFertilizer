@@ -1241,8 +1241,8 @@
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
 
     <e k="sf_experimental_short" v="Experimental Systems" />
-    <e k="sf_experimental_long" v="Enable experimental (LOCKED) systems at your own risk. Independent of difficulty." />
-    <e k="sf_desc_experimentalSystems" v="Explicit opt-in for systems that are not yet released: disease resistance, hybrids, tank mixes, the ground-material family, spatial soil, and Read the Dirt. Off by default so a stable playthrough never meets unfinished systems; the release gate is separate from the difficulty mode." />
+    <e k="sf_experimental_long" v="Turn on experimental systems that are not released yet." />
+    <e k="sf_desc_experimentalSystems" v="Off by default. Independent of difficulty. Use at your own risk." />
     <e k="sf_panel_hdr_experimental" v="Experimental" />
 </elements>
 
