@@ -13,7 +13,7 @@
 -- These assertions are load-bearing for CD-12, which changes this same expression to
 -- BUILD_PER_APPLICATION * maxRes(partner) / #partners. Halving a saturated build is not a
 -- feature, so the meter has to still be here when the tank mix lands.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R          = SoilConstants.RESISTANCE
 local BUILD      = R.BUILD_PER_APPLICATION

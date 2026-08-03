@@ -63,3 +63,71 @@ local stOn = ReleaseGate.status(true)
 T.ok("status says ON when opted in", string.find(stOn, "ON", 1, true) ~= nil)
 T.ok("status shows ON per system when opted in", string.find(stOn, "[ON]", 1, true) ~= nil)
 T.ok("status omits the awaiting notes when opted in", string.find(stOn, "awaiting", 1, true) == nil)
+
+-- ── SIM-WIRING GATE: isSystemLive reads the live settings through the manager ──
+-- The gate must LOCK a system when the player has not opted in, UNLOCK it when they
+-- have, and FAIL OPEN when the settings cannot be read (pre-init / test bench).
+
+local function withManager(settingsTbl, fn)
+    local prev = g_SoilFertilityManager
+    g_SoilFertilityManager = { settings = settingsTbl }
+    local ok, res = pcall(fn)
+    g_SoilFertilityManager = prev
+    if not ok then error(res, 0) end
+    return res
+end
+
+-- Opt-in OFF: every experimental system is not live.
+T.ok("isSystemLive: opt-in off locks cd9",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("cd9_resistance") end))
+T.ok("isSystemLive: opt-in off locks ground_material",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("ground_material") end))
+T.ok("isSystemLive: opt-in off locks read_the_dirt",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("read_the_dirt") end))
+T.ok("isSystemLive: opt-in off locks spatial_soil",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("spatial_soil") end))
+T.ok("isSystemLive: opt-in off locks cd10_hybrids",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("cd10_hybrids") end))
+T.ok("isSystemLive: opt-in off locks cd12_tank_mixes",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return not ReleaseGate.isSystemLive("cd12_tank_mixes") end))
+
+-- Opt-in ON: every experimental system is live.
+T.ok("isSystemLive: opt-in on releases cd9",
+    withManager({ experimentalSystems = true, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.isSystemLive("cd9_resistance") end))
+T.ok("isSystemLive: opt-in on releases ground_material",
+    withManager({ experimentalSystems = true, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.isSystemLive("ground_material") end))
+T.ok("isSystemLive: opt-in on releases read_the_dirt",
+    withManager({ experimentalSystems = true, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.isSystemLive("read_the_dirt") end))
+T.ok("isSystemLive: opt-in on releases spatial_soil",
+    withManager({ experimentalSystems = true, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.isSystemLive("spatial_soil") end))
+
+-- A NON-experimental system is live regardless of the opt-in.
+T.ok("isSystemLive: stable system always live even with opt-in off",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.isSystemLive("fertilitySystem") end))
+
+-- FAIL-OPEN: no manager / no settings / settings without the predicate => live.
+T.ok("isSystemLive: no manager fails open", ReleaseGate.isSystemLive("cd9_resistance"))
+T.ok("isSystemLive: nil settings fails open",
+    withManager(nil, function() return ReleaseGate.isSystemLive("cd9_resistance") end))
+T.ok("isSystemLive: settings without predicate fails open",
+    withManager({}, function() return ReleaseGate.isSystemLive("cd9_resistance") end))
+
+-- liveOptIn returns nil (not false) when unreadable, true when opted in, false when off.
+T.eq("liveOptIn: nil when no manager", ReleaseGate.liveOptIn(), nil)
+T.eq("liveOptIn: true when opted in",
+    withManager({ experimentalSystems = true, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.liveOptIn() end), true)
+T.eq("liveOptIn: false when opt-in off",
+    withManager({ experimentalSystems = false, allowsExperimentalSystems = function(self) return self.experimentalSystems end },
+        function() return ReleaseGate.liveOptIn() end), false)

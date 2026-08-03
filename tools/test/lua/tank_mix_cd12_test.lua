@@ -7,7 +7,7 @@
 -- spans nine sites across two files and missing one is INVISIBLE in game -- an uncalibrated
 -- rate looks like it works, a missed density-map remap means no ground state is ever
 -- written. So every derived list is asserted here rather than trusted to a loop.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R     = SoilConstants.RESISTANCE
 local BUILD = R.BUILD_PER_APPLICATION

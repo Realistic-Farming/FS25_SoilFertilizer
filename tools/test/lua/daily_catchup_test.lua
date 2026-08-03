@@ -4,7 +4,7 @@
 --   * A multi-day skip must apply each missed day (the daily logic runs once per
 --     elapsed day) rather than collapsing into a single pass.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 -- A SoilFertilitySystem with the value-map + per-field-work collaborators stubbed,
 -- counting how many times each field's daily pass runs.

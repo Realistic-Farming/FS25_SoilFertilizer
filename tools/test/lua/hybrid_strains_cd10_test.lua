@@ -7,7 +7,7 @@
 -- The one that matters most is bar 1: built against unfixed F66 this would have fired on
 -- almost any two-mode spray pass instead of as an earned seasons-long consequence, which
 -- inverts the entire design. That was a hard build-order gate.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/DiseaseSystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R      = SoilConstants.RESISTANCE
 local BUILD  = R.BUILD_PER_APPLICATION

@@ -39,6 +39,10 @@ local function releaseGateLockedMsg(commandName)
     if not ReleaseGate then return nil end
     local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
     local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
+    -- Fail-open: if the opt-in predicate is not readable (pre-init, no manager, or a
+    -- settings stub without the method), do not gate the command. The release gate is
+    -- an explicit opt-out of new systems; it must not block a path it cannot read.
+    if optIn == nil then return nil end
     return ReleaseGate.commandLockMessage(commandName, optIn)
 end
 
