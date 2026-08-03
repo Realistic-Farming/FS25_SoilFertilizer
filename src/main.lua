@@ -219,7 +219,13 @@ local function loadedMission(mission, node)
     -- watermark, and so Time Guard has published its g_currentMission handle.
     -- Both no-op when their mod is absent; the system stays inert rather than
     -- minting a private clock or a second copy of the state.
-    if SoilMaterialDownBridge then
+    -- RELEASE GATE: the ground-material family (SF-43/44/46/49) and Read the Dirt
+    -- (SF-26/37/38) are LOCKED. When not released, their bridges are not registered
+    -- either - the family is not wired into Time Guard / StateLedger / NetworkSync at
+    -- all, matching the "inert = not wired" rule. The modules stay loaded but idle.
+    local groundLive = ReleaseGate.isSystemLive("ground_material")
+    local dirtLive = ReleaseGate.isSystemLive("read_the_dirt")
+    if SoilMaterialDownBridge and groundLive then
         local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
         if md then
             SoilMaterialDownBridge.registerLedger(md)
@@ -249,7 +255,7 @@ local function loadedMission(mission, node)
     -- anything reads the mask, and so Time Guard has published its handle. All
     -- three no-op when their mod is absent; the mask then lives in the
     -- STANDALONE FALLBACK (session-transient, client-local).
-    if SoilScoutingBridge then
+    if SoilScoutingBridge and dirtLive then
         local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
         if scouting then
             SoilScoutingBridge.registerLedger(scouting)

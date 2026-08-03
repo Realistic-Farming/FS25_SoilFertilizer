@@ -1,7 +1,7 @@
 -- fieldsentry_phase3_test.lua - FieldSentry Phase 3 meadow profile (#651).
 -- Covers the meadow toggle API + persistence (FieldSentry) and the grassland daily
 -- profile + daily-loop routing (SoilFertilitySystem). Pure Lua mocks only.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 -- ── meadow toggle API ──────────────────────────────────────
 do

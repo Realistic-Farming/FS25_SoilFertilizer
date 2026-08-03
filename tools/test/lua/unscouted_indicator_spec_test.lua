@@ -9,7 +9,7 @@
 -- disease). This locks the band arithmetic, the floor, the no-leak invariants,
 -- the gated accessor and the known-trouble counter.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/maps/SoilValueMaps.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/maps/SoilValueMaps.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function stateOf(raw) return math.floor(raw / 16) end   -- DMV state = top 4 bits
 

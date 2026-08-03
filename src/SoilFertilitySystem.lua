@@ -244,25 +244,33 @@ function SoilFertilitySystem:initialize()
     -- SoilValueMaps global with byte-identical filenames and none of our defs, and
     -- every store method returns early SILENTLY on an unknown key. Without this the
     -- system would look healthy while recording nothing at all.
-    if self.materialDown then
+    --
+    -- RELEASE GATE: the ground-material family (SF-43/44/46/49) is LOCKED. When it
+    -- is not released, none of the four members arm, and every isArmed() check in the
+    -- hooks, bridges and readers goes inert - the family is not wired at all, exactly
+    -- as the release-gate design specifies. Arming is the single door.
+    if self.materialDown and ReleaseGate.isSystemLive("ground_material") then
         self.materialDown:arm(self.valueMaps)
     end
     -- [SF-49] Armed after the sibling: it depends on that system being live, not
     -- merely present, and refuses to arm if it is not.
-    if self.materialWetness then
+    if self.materialWetness and ReleaseGate.isSystemLive("ground_material") then
         self.materialWetness:arm(self.valueMaps, self.materialDown, self)
     end
     -- [SF-44] Armed after the condition layer: depends on both sibling systems.
-    if self.hayBet then
+    if self.hayBet and ReleaseGate.isSystemLive("ground_material") then
         self.hayBet:arm(self.materialDown, self.materialWetness)
     end
     -- [SF-46] Armed after HayBet; depends on all three sibling systems.
-    if self.yardLadder then
+    if self.yardLadder and ReleaseGate.isSystemLive("ground_material") then
         self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
     end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
-    if self.spatialScouting then
+    -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
+    -- is LOCKED; when not released, spatialScouting never arms and the kneel/mask/
+    -- handful all no-op through isArmed().
+    if self.spatialScouting and ReleaseGate.isSystemLive("read_the_dirt") then
         self.spatialScouting:arm(self.valueMaps)
     end
 
@@ -2169,12 +2177,16 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
         -- first), so a mode that decayed below threshold today reads as ineligible today.
         -- A hybrid is never reachable through selectDisease's weighted roll -- it is not in
         -- DISEASE_REGISTRY or any per-crop candidate list -- so this is its only door.
-        local hybridId = HybridStrains.selectOnset(field, currentDay)
-        if hybridId then
-            field.activeDisease = hybridId
-            field.activeDiseaseSeverity = SoilDiseaseSystem.yieldSeverity(hybridId)
-            field.diseaseDiscovered = false  -- as unknown as any fresh infection until scouted
-            return
+        -- RELEASE GATE: the hybrid family (CD-10) is LOCKED; when not released, the pre-pass
+        -- never runs and a normal disease is rolled instead.
+        if ReleaseGate.isSystemLive("cd10_hybrids") then
+            local hybridId = HybridStrains.selectOnset(field, currentDay)
+            if hybridId then
+                field.activeDisease = hybridId
+                field.activeDiseaseSeverity = SoilDiseaseSystem.yieldSeverity(hybridId)
+                field.diseaseDiscovered = false  -- as unknown as any fresh infection until scouted
+                return
+            end
         end
 
         local _, isCool = self:_diseaseClimateNow(season)
@@ -4413,7 +4425,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- (the daily pass is server-authoritative), after the field aggregate is
     -- settled. The field-level model is untouched; this adds only WHERE the
     -- pressure lands and how it moves. Neutral when disabled or no cells.
-    if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED then
+    -- RELEASE GATE: the spatial-soil family (SF-19 and the drop) is LOCKED; when not
+    -- released the per-cell distribution never runs and pressure stays field-level.
+    if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED
+       and ReleaseGate.isSystemLive("spatial_soil") then
         local poly = self:_getFieldPolyVerts(fieldId, field)
         SpatialPressures:run(self, fieldId, field, currentDay, poly)
     end
@@ -5798,7 +5813,13 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- collapses to the single-chemical path when it is.
     local blendPartners = SoilBlends.getPartners(chemId)
 
-    if blendPartners then
+    -- RELEASE GATE: the tank-mix family (CD-12) is LOCKED. When not released, a blend
+    -- fill type degrades to the generic fungicide path: rateName stays FUNGICIDE, no
+    -- lastFungicide tag, no max-over-partners control, and its resistance partners are
+    -- NOT split (a blend is not a real chemical until CD-12 releases). The fill type
+    -- itself still exists (registered at load) but behaves inert, per the design doc.
+    local blendsLive = ReleaseGate.isSystemLive("cd12_tank_mixes")
+    if blendPartners and blendsLive then
         -- The blend carries its own calibrated rate (the mean of its partners'), so the
         -- meter denominator below is the blend's pass and not generic FUNGICIDE's.
         rateName = chemId
@@ -5818,7 +5839,9 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
             -- earns full control while one fresh mode earns half. Without it, max-over-partners
             -- composed with the hybrid's flat 0.25 category default means a two-chemical mix
             -- answers a hybrid no better than one jug. No-op on ordinary diseases.
-            best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
+            if ReleaseGate.isSystemLive("cd10_hybrids") then
+                best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
+            end
             effectiveness = (effectiveness or 1.0) * best
         end
     elseif chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
@@ -5828,7 +5851,9 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
             local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
             -- CD-10: one jug spans one mode, so against a two-mode hybrid it earns half
             -- control at best. This is the asymmetry that makes mixing worth doing.
-            control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
+            if ReleaseGate.isSystemLive("cd10_hybrids") then
+                control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
+            end
             effectiveness = (effectiveness or 1.0) * control
         end
     end
@@ -5882,7 +5907,10 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- which would collapse the denominator and re-create the saturation this fixes.
     -- CD-12: the partners this pass builds on. A single chemical is the one-element case and
     -- collapses to exactly the arithmetic that shipped before blends existed.
-    local resistParts = blendPartners or { chemId }
+    -- RELEASE GATE: when CD-12 is locked, a blend is not a real chemical, so it builds
+    -- no split resistance - the partner set collapses to the blend's own name (which has
+    -- no mode, so the loop simply finds nothing to build).
+    local resistParts = (blendPartners and blendsLive) and blendPartners or { chemId }
     local partnerCount = #resistParts
 
     local isOrganicField = field.organic ~= nil
@@ -5891,41 +5919,47 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     local doseFactor = math.min(1.0, (liters or 0) / targetVol)
     local bestFactor = nil
 
-    for _, partner in ipairs(resistParts) do
-        local mode = self.getModeForFillType(partner)
-        if mode then
-            local isNatural = self.isNaturalFungicide(partner)
-            local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
-            -- THE ORGANIC GUARD IS EVALUATED PER PARTNER, never on the blend name:
-            -- isNaturalFungicide("BLEND_COPPER_HYDROXIDE_SULFUR") is false, which would
-            -- otherwise stop the all-organic blend building any resistance on an organic
-            -- field -- a free pass that the two chemicals alone do not get.
-            if not (isOrganicField and not isNatural) then
-                -- F68: the durability dial, and it belongs HERE on the build term. Putting it
-                -- on the ceiling does nothing -- the ceiling multiplies the build, divides
-                -- the penalty and scales the bands, so it cancels in all three. Multisite
-                -- naturals build a quarter as fast, which is the only place that difference
-                -- can actually land.
-                local buildRate = isNatural and SoilConstants.RESISTANCE.BUILD_RATE_NATURAL
-                                  or SoilConstants.RESISTANCE.BUILD_RATE_SYNTHETIC
-                -- Split across partners: two modes each carry half the selection pressure,
-                -- which IS the mechanism this system exists for. The divisor is the partner
-                -- count, so a future three-partner blend inherits the rule with no new
-                -- constant. Still metered per pass (F66) -- doseFactor is this call's share
-                -- of a full-rate pass.
-                field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
-                    + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * buildRate * doseFactor / partnerCount)
+    -- RELEASE GATE: the disease-resistance family (CD-9) is LOCKED. When not
+    -- released, resistance never accumulates and effectiveness is never reduced by
+    -- it: a sprayed fungicide behaves as the stable generic baseline. CD-10 hybrids
+    -- and CD-12 blend handling ride this same family and are gated with it.
+    if ReleaseGate.isSystemLive("cd9_resistance") then
+        for _, partner in ipairs(resistParts) do
+            local mode = self.getModeForFillType(partner)
+            if mode then
+                local isNatural = self.isNaturalFungicide(partner)
+                local maxRes = isNatural and SoilConstants.RESISTANCE.MAX_NATURAL or SoilConstants.RESISTANCE.MAX_SYNTHETIC
+                -- THE ORGANIC GUARD IS EVALUATED PER PARTNER, never on the blend name:
+                -- isNaturalFungicide("BLEND_COPPER_HYDROXIDE_SULFUR") is false, which would
+                -- otherwise stop the all-organic blend building any resistance on an organic
+                -- field -- a free pass that the two chemicals alone do not get.
+                if not (isOrganicField and not isNatural) then
+                    -- F68: the durability dial, and it belongs HERE on the build term. Putting it
+                    -- on the ceiling does nothing -- the ceiling multiplies the build, divides
+                    -- the penalty and scales the bands, so it cancels in all three. Multisite
+                    -- naturals build a quarter as fast, which is the only place that difference
+                    -- can actually land.
+                    local buildRate = isNatural and SoilConstants.RESISTANCE.BUILD_RATE_NATURAL
+                                      or SoilConstants.RESISTANCE.BUILD_RATE_SYNTHETIC
+                    -- Split across partners: two modes each carry half the selection pressure,
+                    -- which IS the mechanism this system exists for. The divisor is the partner
+                    -- count, so a future three-partner blend inherits the rule with no new
+                    -- constant. Still metered per pass (F66) -- doseFactor is this call's share
+                    -- of a full-rate pass.
+                    field.resistance[mode] = math.min(maxRes, (field.resistance[mode] or 0)
+                        + SoilConstants.RESISTANCE.BUILD_PER_APPLICATION * maxRes * buildRate * doseFactor / partnerCount)
+                end
+                -- THE RESCUE, and it stays a SEPARATE STEP from the catalog control above: the
+                -- MAX over partners of each mode's remaining potency. When one mode is burned
+                -- out it contributes nothing and the other partner carries the pass.
+                local factor = 1 - ((field.resistance[mode] or 0) / maxRes)
+                if bestFactor == nil or factor > bestFactor then bestFactor = factor end
             end
-            -- THE RESCUE, and it stays a SEPARATE STEP from the catalog control above: the
-            -- MAX over partners of each mode's remaining potency. When one mode is burned
-            -- out it contributes nothing and the other partner carries the pass.
-            local factor = 1 - ((field.resistance[mode] or 0) / maxRes)
-            if bestFactor == nil or factor > bestFactor then bestFactor = factor end
         end
-    end
 
-    if bestFactor ~= nil and bestFactor < 1 then
-        effectiveness = (effectiveness or 1.0) * bestFactor
+        if bestFactor ~= nil and bestFactor < 1 then
+            effectiveness = (effectiveness or 1.0) * bestFactor
+        end
     end
 
     local effective = effectiveness or 1.0

@@ -54,6 +54,37 @@ function ReleaseGate.isReleased(systemId, optIn)
     return optIn == true
 end
 
+--- The LIVE opt-in: reads the player's current settings.experimentalSystems value
+--- through the manager. Everything in the sim that gates a locked system calls this
+--- rather than re-deriving the flag, so the policy lives in one place.
+--- Returns nil when the manager/settings are not available yet (pre-init or the
+--- offline test bench); callers decide what nil means.
+---@return boolean|nil
+function ReleaseGate.liveOptIn()
+    local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
+    if s and s.allowsExperimentalSystems then
+        return s:allowsExperimentalSystems()
+    end
+    return nil
+end
+
+--- A system is LIVE right now: released, or the player has opted in. This is the
+--- single predicate the sim entry points check. When false, the system's hooks
+--- should not run / not arm / not be wired.
+--- FAIL-OPEN: when the live settings cannot be read (nil manager, nil settings, or
+--- a settings object without the predicate - e.g. the offline test bench), the
+--- system counts as live. The gate is an explicit opt-out of NEW systems; it must
+--- never silently disable a path just because the opt-in flag is not readable at
+--- that moment. In a running game the manager is always present and carries the
+--- predicate before any sim entry point fires, so nil only happens pre-init/tests.
+---@param systemId string
+---@return boolean
+function ReleaseGate.isSystemLive(systemId)
+    local optIn = ReleaseGate.liveOptIn()
+    if optIn == nil then return true end
+    return ReleaseGate.isReleased(systemId, optIn)
+end
+
 --- Refusal message when a system is locked; nil when released. Mirrors bypassLockedMsg().
 ---@param systemId string
 ---@param optIn boolean|nil
