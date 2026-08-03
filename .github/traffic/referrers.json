@@ -5609,5 +5609,57 @@
       "count": 18,
       "uniques": 12
     }
+  ],
+  "2026-08-03": [
+    {
+      "referrer": "github.com",
+      "count": 1626,
+      "uniques": 333
+    },
+    {
+      "referrer": "Google",
+      "count": 1245,
+      "uniques": 448
+    },
+    {
+      "referrer": "youtube.com",
+      "count": 358,
+      "uniques": 168
+    },
+    {
+      "referrer": "Bing",
+      "count": 241,
+      "uniques": 106
+    },
+    {
+      "referrer": "kingmods.net",
+      "count": 134,
+      "uniques": 62
+    },
+    {
+      "referrer": "DuckDuckGo",
+      "count": 94,
+      "uniques": 12
+    },
+    {
+      "referrer": "l.facebook.com",
+      "count": 27,
+      "uniques": 13
+    },
+    {
+      "referrer": "yandex.ru",
+      "count": 21,
+      "uniques": 7
+    },
+    {
+      "referrer": "Yahoo",
+      "count": 19,
+      "uniques": 16
+    },
+    {
+      "referrer": "reddit.com",
+      "count": 18,
+      "uniques": 12
+    }
   ]
 }
