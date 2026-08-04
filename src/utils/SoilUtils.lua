@@ -60,14 +60,34 @@ end
 --- @param fallbackIndex number|nil  index to use when the tank is empty/UNKNOWN
 --- @return number|nil  the resolved fill-type index (physical tank, else fallbackIndex)
 function SoilUtils.resolveSprayerFillTypeIndex(sprayer, fallbackIndex)
-    if not sprayer or sprayer.getSprayerFillUnitIndex == nil or sprayer.getFillUnitFillType == nil then
+    if not sprayer then return fallbackIndex end
+
+    -- #780: when vanilla is drawing product from an EXTERNAL source (tractor side
+    -- tank / nurse tank / attached supply implement), wap.sprayVehicle points at
+    -- that vehicle. Once the planter's own tank reads 0, getActiveSprayType() can
+    -- return nil and getSprayerFillUnitIndex() falls back to spec.fillUnitIndex,
+    -- which may be a DIFFERENT local unit still holding a valid product (seed tank,
+    -- second product tank). Trusting that stale local type overrides the correct
+    -- wap.sprayFillType, fails the nutrient-profile check in the sprayer hook, and
+    -- silently kills NPK credit while vanilla keeps draining the side tanks.
+    -- When an external source is active, wap.sprayFillType is authoritative.
+    local spec = sprayer.spec_sprayer
+    local wap = spec and spec.workAreaParameters
+    if wap and wap.sprayVehicle ~= nil and wap.sprayVehicle ~= sprayer then
+        return fallbackIndex
+    end
+
+    if sprayer.getSprayerFillUnitIndex == nil or sprayer.getFillUnitFillType == nil then
         return fallbackIndex
     end
     local okFui, fillUnitIndex = pcall(function() return sprayer:getSprayerFillUnitIndex() end)
     if okFui and fillUnitIndex then
         local okFt, tankFt = pcall(function() return sprayer:getFillUnitFillType(fillUnitIndex) end)
         if okFt and tankFt and tankFt > 0 and tankFt ~= FillType.UNKNOWN then
-            return tankFt
+            local okLvl, lvl = pcall(function() return sprayer:getFillUnitFillLevel(fillUnitIndex) end)
+            if okLvl and lvl and lvl > 0 then
+                return tankFt
+            end
         end
     end
     return fallbackIndex
