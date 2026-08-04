@@ -227,6 +227,7 @@ SoilConstants.CROP_INCORPORATION = {
     PLOW       = { OM = 1.2,  N = 6.0, P = 1.2, K = 4.0 },  -- deep inversion - fullest burial
     CULTIVATOR = { OM = 0.7,  N = 3.5, P = 0.7, K = 2.2 },  -- shallow mixing
     MULCHER    = { OM = 0.6,  N = 2.5, P = 0.5, K = 1.5 },  -- surface chop, no soil inversion
+    SOWING     = { OM = 0.4,  N = 2.0, P = 0.4, K = 1.2 },  -- #778 direct drill: opener slot only, no inversion
     MIN_BIOMASS = 0.30,   -- floor biomass factor once an established crop (past seedling) is detected
     SEEDLING_GROWTH_STATE = 1,  -- growth states at/below this are negligible biomass (just emerged)
 }

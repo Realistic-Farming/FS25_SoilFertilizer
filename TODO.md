@@ -11,6 +11,7 @@
 
 ## Bugs
 - [x] 2026-07-26 bug sweep (54 total across ecosystem): SoilFertilizer bugs fixed and merged to main. See GitHub issues #748-#757 for individual tracking. All closed.
+- [x] Oilseed-radish nitrate by direct drill (issue #778): the crop-incorporation probe never ran on seeders, so terminating a cover crop with a direct drill (Väderstad Proceed V24) awarded only the flat DIRECT_DRILL residue and the nitrate HUD read "unchanged". Fixed by installing the #674 crop-biomass probe on `SowingMachine`, threading `_sfCropBiomass` into `onSowing`, and awarding the new `CROP_INCORPORATION.SOWING` profile (OM 0.4 / N 2.0 / P 0.4 / K 1.2) after the residue block, gated on `residueIncorporation` and biomass > 0. 20 assertions in crop_incorporation_sowing_778_test.lua. PR open.
 - [ ] None open from the audit. Track new ones from GitHub issues here.
 
 ## Features / enhancements

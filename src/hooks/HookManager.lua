@@ -304,6 +304,10 @@ function HookManager:installAll(soilSystem)
     -- a green-manure OM boost. Installed for both Cultivator and Plow specs.
     if self:installCropBiomassProbe(Cultivator, "Cultivator") then successCount = successCount + 1 else failCount = failCount + 1 end
     if self:installCropBiomassProbe(Plow, "Plow") then successCount = successCount + 1 else failCount = failCount + 1 end
+    -- #778: cover-crop / green-manure termination by DIRECT DRILL. A seeder that sows into a
+    -- standing or dead crop (e.g. an over-wintered oilseed radish) works the biomass through the
+    -- opener slot. Sample it pre-clear here and consume it in onSowing, exactly like the tillage path.
+    if self:installCropBiomassProbe(SowingMachine, "SowingMachine") then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- #674: mulcher hook - chopping crop/stubble returns surface biomass to the soil as OM
     local mulcherOk = self:installMulcherHook()
@@ -5289,7 +5293,8 @@ function HookManager:installSowingHook()
                 if areaHa <= 0 then return end
                 g_SoilFertilityManager.soilSystem._lastTillageX = x
                 g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType)
+                local cropBiomass = sowingSelf._sfCropBiomass or 0
+                g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType, cropBiomass)
             end)
 
             if not ok then
