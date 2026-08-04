@@ -729,16 +729,31 @@ local LAYER_GRLE_NAME = {
 ---@param cell table zoneData cell
 ---@param layerIdx number active map layer
 ---@param fieldEntry table|nil owning fieldData entry, required to gate disease
-local function getCellLayerValue(cell, layerIdx, fieldEntry)
+---@param compose table|nil optional { scouting, farmId, day, x, z } for the SF-26
+---        walked-mask compose (B2). When present and the field is undiscovered,
+---        a fresh walked cell in THIS farm's mask paints its sampled truth
+---        instead of the UNKNOWN marker; every other cell keeps the gate's value.
+---        x/z are the CELL CENTRE world coords (never decoded from the key).
+local function getCellLayerValue(cell, layerIdx, fieldEntry, compose)
     if layerIdx == 7 then return cell.weedPressure
     elseif layerIdx == 8 then return cell.pestPressure
     elseif layerIdx == 9 then
         -- Discovery gate (merge item 3): this path does not flow through
         -- _vmDisplayValues, so it needs its own gate or an unscouted field leaks
-        -- its disease here. Undiscovered paints the HEALTHY value, exactly as the
-        -- value-map producer does, so unscouted reads identical to clean.
+        -- its disease here. Undiscovered paints the UNKNOWN marker, exactly as
+        -- the value-map producer does, so unscouted reads identical to clean.
         if fieldEntry and not fieldEntry.diseaseDiscovered then
-            return (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1   -- unscouted -> UNKNOWN tone, not clean
+            local base = (SoilValueMaps and SoilValueMaps.UNKNOWN_VALUE) or -1
+            -- [SF-26] B2 compose: the walked mask adds sampled truth inside
+            -- fresh walked cells of the local farm. Shared mirrors stay
+            -- untouched; each client composes from the synced payload (LAW 3).
+            if compose and compose.scouting and compose.farmId and compose.day
+               and compose.x ~= nil and compose.z ~= nil then
+                return compose.scouting:composeAtWorld(
+                    compose.farmId, compose.fieldId,
+                    compose.x, compose.z, compose.day, base, false)
+            end
+            return base
         end
         return cell.diseasePressure
     elseif layerIdx == 10 then return cell.compaction
@@ -841,6 +856,26 @@ function SoilMapOverlay:updateSamplePoints(force)
                         local fieldEntry = self.soilSystem.fieldData and self.soilSystem.fieldData[farmlandId]
                         local zoneData = fieldEntry and fieldEntry.zoneData
                         local zone = SoilConstants.ZONE
+                        -- [SF-26] B2 compose context: the walked mask of the farm
+                        -- that owns this field. Resolved once per field. The mask
+                        -- itself is the synced payload on a client (LAW 3); a
+                        -- different farm's client has no entries for this farmId.
+                        local scouting = self.soilSystem and self.soilSystem.spatialScouting
+                        local compose = nil
+                        if scouting and scouting:isArmed() then
+                            local owner = g_farmlandManager and g_farmlandManager.getFarmlandOwner
+                                and g_farmlandManager:getFarmlandOwner(farmlandId)
+                            local day = g_currentMission and g_currentMission.environment
+                                and g_currentMission.environment.currentDay
+                            if owner and owner > 0 and day then
+                                compose = {
+                                    scouting = scouting,
+                                    farmId   = owner,
+                                    fieldId  = farmlandId,
+                                    day      = day,
+                                }
+                            end
+                        end
                         for _, pt in ipairs(polyPts) do
                             if totalPoints < maxPoints then
                                 local r, g, b, a
@@ -853,13 +888,16 @@ function SoilMapOverlay:updateSamplePoints(force)
                                     local cellKey = tostring(cx * 10000 + cz)
                                     local cell = zoneData[cellKey]
                                     if cell then
-                                        local val = getCellLayerValue(cell, layerIdx, fieldEntry)
+                                        local cellCx = cx * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
+                                        local cellCz = cz * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
+                                        if compose then compose.x, compose.z = cellCx, cellCz end
+                                        local val = getCellLayerValue(cell, layerIdx, fieldEntry, compose)
                                         if val then
                                             r, g, b = self:valueToLayerColor(layerIdx, val)
                                             a = 1.0   -- measured: full opacity
                                             -- Anchor dot at cell centre so it matches tooltip lookup
-                                            dotX = cx * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
-                                            dotZ = cz * zone.CELL_SIZE + zone.CELL_SIZE * 0.5
+                                            dotX = cellCx
+                                            dotZ = cellCz
                                         end
                                     end
                                 end

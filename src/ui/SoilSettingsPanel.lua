@@ -122,6 +122,10 @@ local CATEGORIES = {
                 headerKey = "sf_panel_hdr_crop_stress",
                 items     = { "weedPressure", "pestPressure", "diseasePressure", "diseaseMoisture", "diseaseDifficulty", "compactionEnabled" }
             },
+            {
+                headerKey = "sf_panel_hdr_experimental",
+                items     = { "experimentalSystems" }
+            },
         }
     },
     {
@@ -222,6 +226,7 @@ local SETTING_DESCS = {
     fieldBoundaryControl  = "sf_desc_fieldBoundaryControl",
     overlapPrevention     = "sf_desc_overlapPrevention",
     independentPanels     = "sf_desc_independentPanels",
+    experimentalSystems   = "sf_desc_experimentalSystems",
 }
 
 -- Page states

@@ -1,5 +1,5 @@
 -- coverage_test.lua - spray-coverage accounting, incl. the #650 dry-spreader fix.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 -- Build a `self` that resolves SoilFertilitySystem methods (so self:method() works)
 -- without running .new() (which would pull in HookManager and the live game).
@@ -81,17 +81,55 @@ do
   local sys = newSys({
     [1] = {
       fieldArea = 2.0,
-      sessionCoverageHa = 0.5,                 -- geometric path already recorded 0.5 ha
+      sessionCoverageHa = 0.5,                  -- geometric path already recorded 0.5 ha
       sessionCoverageFraction = 0.25,
-      sessionCoverageCells = { ["c1"] = 123 },  -- markBoomCells stamped a cell -> geometric active
+      sessionCoverageCells = { ["c1"] = 123 },
+      _geometricCoverageOwner = true,           -- #753: markBoomCells owns the counter
     },
   })
   -- A huge liter estimate that WOULD saturate to 100% if it were counted here.
   sys:trackSprayerCoverage(1, 100000, "HERBICIDE", true)
-  T.eq("#726: liter path defers when geometric cells exist (fraction unchanged)",
+  T.eq("#726: liter path defers when the geometric path OWNS coverage (fraction unchanged)",
        sys.fieldData[1].sessionCoverageFraction, 0.25)
   T.near("#726: liter path leaves session ha untouched",
          sys.fieldData[1].sessionCoverageHa, 0.5)
+end
+
+-- ── #753: stamped cells alone are NOT the deferral signal ──
+-- overlayOnly mode fills sessionCoverageCells for spray-trail dedup while leaving
+-- the counter to the liter path, so the guard reads _geometricCoverageOwner rather
+-- than "are there cells". Cells without the owner flag must still track, otherwise
+-- an overlayOnly pass silently suppresses coverage accounting entirely.
+do
+  local sys = newSys({
+    [1] = {
+      fieldArea = 2.0,
+      sessionCoverageCells = { ["c1"] = 123 },  -- stamped by an overlayOnly pass
+    },
+  })
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)  -- 0.5 ha of a 2 ha field
+  T.near("#753: cells without the owner flag do NOT suppress the liter fallback",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
+end
+
+-- ── #753: a product change clears the owner flag so the new product re-detects ──
+do
+  local sys = newSys({
+    [1] = {
+      fieldArea = 2.0,
+      sessionLastProduct = "FERTILIZER",
+      sessionCoverageHa = 1.5,
+      sessionCoverageFraction = 0.75,
+      _geometricCoverageOwner = true,
+    },
+  })
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  T.ok("#753: switching product clears the geometric owner flag",
+       sys.fieldData[1]._geometricCoverageOwner == nil)
+  T.near("#753: the new product's session starts from the liter path, not the old total",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
 end
 
 do
@@ -113,4 +151,44 @@ do
     end
   end
   T.eq("FERTILIZER_PROFILES: all N/P/K/OM/pH values are numbers", bad, 0)
+end
+
+-- ── F61 (VWW half of #650): ownership is claimed only when a cell is ACCEPTED ──
+-- On a multi-field farmland _getFieldPolyVerts resolves the FIRST field's polygon, so a
+-- VWW sprayer on the OTHER field has every boom cell rejected by the containment test.
+-- markBoomCells used to set _geometricCoverageOwner regardless, which locked out the
+-- liter fallback for the rest of the session and froze Coverage/Pass% at 0%.
+do
+  local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
+  -- A polygon far from the boom points: every cell centre falls outside it.
+  sys._getFieldPolyVerts = function()
+    return { {x=1000, z=1000}, {x=1010, z=1000}, {x=1010, z=1010}, {x=1000, z=1010} }
+  end
+  sys:markBoomCells(1, { { x = 5, z = 5 }, { x = 15, z = 5 } }, false)
+
+  T.eq("F61: all cells rejected → geometric ownership NOT claimed",
+       sys.fieldData[1]._geometricCoverageOwner, nil)
+  T.near("F61: all cells rejected → no session ha accrued",
+         sys.fieldData[1].sessionCoverageHa or 0, 0)
+
+  -- The liter fallback must still be reachable, exactly as for a non-VWW implement.
+  local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  T.near("F61: liter fallback still tracks after a fully-rejected geometric pass",
+         sys.fieldData[1].sessionCoverageFraction, 0.25)
+end
+
+-- The healthy path is unchanged: an accepted cell still claims ownership immediately,
+-- so the #726 double-count guard keeps working on a correctly-resolved polygon.
+do
+  local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
+  sys._getFieldPolyVerts = function()
+    return { {x=0, z=0}, {x=100, z=0}, {x=100, z=100}, {x=0, z=100} }
+  end
+  sys:markBoomCells(1, { { x = 5, z = 5 }, { x = 15, z = 5 } }, false)
+
+  T.eq("F61: an accepted cell still claims geometric ownership",
+       sys.fieldData[1]._geometricCoverageOwner, true)
+  T.ok("F61: accepted cells accrue session ha",
+       (sys.fieldData[1].sessionCoverageHa or 0) > 0)
 end

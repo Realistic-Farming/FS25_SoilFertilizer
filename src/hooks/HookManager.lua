@@ -18,6 +18,106 @@ function HookManager.new()
     return self
 end
 
+-- =========================================================
+-- Material birth geometry helpers
+-- =========================================================
+-- [SF-43/SF-44] These build polygon vertices from vehicle work areas for the
+-- birth observation hook. Called from the mower and combine hooks below.
+
+--- Build a bounding-box polygon from a vehicle's typed work areas. The polygon
+--- is the axis-aligned bounding rectangle of ALL work areas of the given type.
+--- Overestimates slightly (may include non-cut area at swath edges), but the
+--- RAW_NO_RECORD filter in setPolygonWhere makes it safe: unrecorded pixels
+--- get born, already-recorded pixels are untouched.
+--- THE VERTEX SHAPE IS THE CONTRACT, and it is {x=,z=} objects, NOT a flat array.
+--- Everything downstream reads `v.x` and `v.z`: setPolygonRegion at
+--- SoilValueMaps.lua:527, isPointInPoly, and the field polygons
+--- SoilFertilitySystem:_getFieldPolyVerts builds. A flat {x1,z1,...} array does not
+--- merely fail to write, it INDEXES A NUMBER inside setPolygonRegion's pcall, and
+--- that handler treats any failure as "the engine has no polygon ops" and latches
+--- hasPolygonOps=false on the SHARED store for the rest of the session. One mown
+--- verge would have taken the age layer, the wetness layer and the yard ladder down
+--- together, with a single warning line to show for it.
+---@param vehicle table  the vehicle (Mower, Combine, etc.)
+---@param areaType number  WorkAreaType constant (e.g. WorkAreaType.MOWER)
+---@return table|nil  vertex array {{x=,z=}, ...} or nil
+local function buildWorkAreaPolygon(vehicle, areaType)
+    local ok, workAreas = pcall(function()
+        return vehicle:getTypedWorkAreas(areaType)
+    end)
+    if not ok or not workAreas or #workAreas == 0 then return nil end
+
+    local minX, maxX, minZ, maxZ
+    for _, wa in ipairs(workAreas) do
+        if wa.start and wa.width and wa.height then
+            local xs, _, zs = getWorldTranslation(wa.start)
+            local xw, _, zw = getWorldTranslation(wa.width)
+            local xh, _, zh = getWorldTranslation(wa.height)
+            if xs and xw and xh then
+                -- Fourth corner of the parallelogram: width + height - start
+                local x4 = xw + xh - xs
+                local z4 = zw + zh - zs
+                for _, xv in ipairs({ xs, xw, xh, x4 }) do
+                    if minX == nil or xv < minX then minX = xv end
+                    if maxX == nil or xv > maxX then maxX = xv end
+                end
+                for _, zv in ipairs({ zs, zw, zh, z4 }) do
+                    if minZ == nil or zv < minZ then minZ = zv end
+                    if maxZ == nil or zv > maxZ then maxZ = zv end
+                end
+            end
+        end
+    end
+    if minX == nil then return nil end
+    return {
+        { x = minX, z = minZ },
+        { x = maxX, z = minZ },
+        { x = maxX, z = maxZ },
+        { x = minX, z = maxZ },
+    }
+end
+
+--- Bounding box of ONE work area, as {x=,z=} vertices.
+---
+--- Same contract as buildWorkAreaPolygon above and for the same reasons; the
+--- difference is only that this takes a work area the engine already handed us rather
+--- than asking a vehicle for its typed set. Used by the tedder hook and the combine
+--- swath hook, both of which receive their work area as an argument.
+---@param workArea table
+---@return table|nil  {{x=,z=}, ...} or nil
+local function buildSingleWorkAreaPolygon(workArea)
+    if not workArea or not workArea.start or not workArea.width or not workArea.height then
+        return nil
+    end
+    local xs, _, zs = getWorldTranslation(workArea.start)
+    local xw, _, zw = getWorldTranslation(workArea.width)
+    local xh, _, zh = getWorldTranslation(workArea.height)
+    if not xs or not xw or not xh then return nil end
+
+    -- Fourth corner of the parallelogram: width + height - start.
+    local x4, z4 = xw + xh - xs, zw + zh - zs
+    local minX = math.min(xs, xw, xh, x4)
+    local maxX = math.max(xs, xw, xh, x4)
+    local minZ = math.min(zs, zw, zh, z4)
+    local maxZ = math.max(zs, zw, zh, z4)
+    return {
+        { x = minX, z = minZ },
+        { x = maxX, z = minZ },
+        { x = maxX, z = maxZ },
+        { x = minX, z = maxZ },
+    }
+end
+
+--- Resolve the windrow fill type name from a fruit type index.
+--- FS25 windrow fill types follow the pattern FRUITNAME_WINDROW.
+---@param fruitTypeIndex number
+---@return string|nil
+local function fruitTypeToWindrowName(fruitTypeIndex)
+    local ft = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    if not ft or not ft.name then return nil end
+    return tostring(ft.name):upper() .. "_WINDROW"
+end
+
 --- Helper to get field ID from world coordinates
 ---@param x number World X coordinate
 ---@param z number World Z coordinate
@@ -152,6 +252,25 @@ function HookManager:installAll(soilSystem)
     local mowerYieldOk = self:installMowerYieldHook()
     if mowerYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Tedder hook (SF-44 "THE HAY BET"): hay drying acceleration + corrective queue
+    local tedderOk = self:installTedderHook()
+    if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Combine swath hook (SF-43/SF-45): straw birth on the age layer
+    local swathOk = self:installCombineSwathHook()
+    if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Bale birth and death hooks (SF-46 "THE YARD LADDER"): per-bale condition rows
+    local baleBirthOk = self:installBaleBirthHook()
+    if baleBirthOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    local baleDeleteOk = self:installBaleDeleteHook()
+    if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
+    local balePickupOk = self:installBalerPickupHook()
+    if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -185,6 +304,10 @@ function HookManager:installAll(soilSystem)
     -- a green-manure OM boost. Installed for both Cultivator and Plow specs.
     if self:installCropBiomassProbe(Cultivator, "Cultivator") then successCount = successCount + 1 else failCount = failCount + 1 end
     if self:installCropBiomassProbe(Plow, "Plow") then successCount = successCount + 1 else failCount = failCount + 1 end
+    -- #778: cover-crop / green-manure termination by DIRECT DRILL. A seeder that sows into a
+    -- standing or dead crop (e.g. an over-wintered oilseed radish) works the biomass through the
+    -- opener slot. Sample it pre-clear here and consume it in onSowing, exactly like the tillage path.
+    if self:installCropBiomassProbe(SowingMachine, "SowingMachine") then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- #674: mulcher hook - chopping crop/stubble returns surface biomass to the soil as OM
     local mulcherOk = self:installMulcherHook()
@@ -405,6 +528,10 @@ function HookManager:registerCustomSprayTypes()
     -- "limed" state to the density map. Using LIQUIDFERTILIZER's ground type marks the field
     -- as "fertilized" only, leaving it unlimed from vanilla's perspective and reducing yield.
     local limeGroundType    = limeType and limeType.sprayGroundType or solidGroundType
+    -- CD-12: the crop-protection ground state, borrowed from generic FUNGICIDE (which DOES
+    -- have a vanilla entry). Blends must be given this explicitly -- see the branch below.
+    local fungicideType     = g_sprayTypeManager:getSprayTypeByName("FUNGICIDE")
+    local fungicideGroundType = (fungicideType and fungicideType.sprayGroundType) or liquidGroundType
 
     -- Direct rate-to-LPS conversion:  customLPS = customRate_L_ha / 36000
     --
@@ -436,6 +563,7 @@ function HookManager:registerCustomSprayTypes()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
                           "LIQUIDMANURE", "MANURE", "DIGESTATE" }
+    SoilBlends.appendNames(liquidNames)   -- CD-12: the 28 tank mixes are liquids too
     -- Granular/solid types → inherit visual from FERTILIZER
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
@@ -457,6 +585,12 @@ function HookManager:registerCustomSprayTypes()
             local groundType
             if name == "LIQUIDLIME" then
                 groundType = limeGroundType
+            elseif SoilBlends.isBlend(name) then
+                -- CD-12: PASSED EXPLICITLY, never left to the lookup below. A blend has no
+                -- vanilla spray type, so it would fall through to liquidGroundType -- the
+                -- FERTILISER ground state -- and spraying a tank mix would mark the field
+                -- as fertilised in vanilla's density map.
+                groundType = fungicideGroundType
             else
                 local existingST = g_sprayTypeManager:getSprayTypeByName(name)
                 groundType = (existingST and existingST.sprayGroundType) or liquidGroundType
@@ -552,6 +686,7 @@ function HookManager:installEffectTypeHook()
     self._effectLiquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                                 "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    SoilBlends.appendNames(self._effectLiquidNames)   -- CD-12
     self._effectFertIdx = fertIdx
     self._effectLiqIdx  = liqIdx
 
@@ -730,6 +865,7 @@ function HookManager:installSprayTypeEffectsHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                           "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    SoilBlends.appendNames(liquidNames)   -- CD-12
 
     -- Build name-lookup sets for fast membership tests
     local liquidNameSet = {}
@@ -959,6 +1095,10 @@ function HookManager:installDensityMapSprayHook()
     local liquidNames = { "UAN32", "UAN28", "ANHYDROUS", "STARTER",
                           "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                           "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }
+    -- CD-12: THE DENSITY-MAP SPRAY-TYPE REMAP. Omitting a name here means updateSprayArea
+    -- gets an unrecognised index, writes nothing, and changedArea stays 0 -- the blend
+    -- would spray, drain and cost money while never touching ground state.
+    SoilBlends.appendNames(liquidNames)
     local solidNames  = { "UREA", "AMS", "AN", "MAP", "DAP", "POTASH", "POLIFOSKA",
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM" }
     -- LIQUIDLIME must remap to LIME so FSDensityMapUtil writes the lime ground state
@@ -1477,6 +1617,7 @@ function HookManager:installVariableRateHook()
     local kFerts   = {}   -- K-only (POTASH, etc.)
     local npkFerts = {}   -- multi-nutrient (all N/P/K fertilizers)
     local omFerts  = {}   -- OM-primary (compost, manure, digestate - target organic matter)
+    local limeFerts = {}  -- pH-raising products (LIME, LIQUIDLIME)
 
     local profs = SoilConstants.FERTILIZER_PROFILES
     local omPrimarySet = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
@@ -1493,6 +1634,9 @@ function HookManager:installVariableRateHook()
             end
             if omPrimarySet and omPrimarySet[name] then
                 omFerts[name] = true
+            end
+            if prof.pH and prof.pH > 0 then
+                limeFerts[name] = true
             end
         end
     end
@@ -1547,15 +1691,16 @@ function HookManager:installVariableRateHook()
             if ft and ssNames[ft.name] then
                 return
             end
-            if not ft or (not npkFerts[ft.name] and not omFerts[ft.name]) then
+            if not ft or (not npkFerts[ft.name] and not omFerts[ft.name] and not limeFerts[ft.name]) then
                 sensorMgr:clearSectionRates(vehicleId)
                 return
             end
 
-            local isN   = nFerts[ft.name]  == true
-            local isP   = pFerts[ft.name]  == true
-            local isK   = kFerts[ft.name]  == true
-            local isOM  = omFerts[ft.name] == true
+            local isN    = nFerts[ft.name]   == true
+            local isP    = pFerts[ft.name]   == true
+            local isK    = kFerts[ft.name]   == true
+            local isOM   = omFerts[ft.name]  == true
+            local isLime = limeFerts[ft.name] == true
 
             -- Manual rate ceiling
             local rm = sfm.sprayerRateManager
@@ -1608,6 +1753,11 @@ function HookManager:installVariableRateHook()
                                 nutrientVal = readAt("phosphorus") or fd.phosphorus or target
                             elseif isK then
                                 nutrientVal = readAt("potassium") or fd.potassium or target
+                            elseif isLime then
+                                local cellPH = readAt("pH") or fd.pH
+                                local deficit = math.max(0, vrCfg.PH_OPTIMAL - cellPH) / (vrCfg.PH_OPTIMAL - vrCfg.PH_CURVE_FLOOR)
+                                if deficit > 1 then deficit = 1 end
+                                rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
                             else
                                 -- Complex NPK: use worst (lowest) of the three
                                 local n = readAt("nitrogen")   or fd.nitrogen   or target
@@ -1616,8 +1766,10 @@ function HookManager:installVariableRateHook()
                                 nutrientVal = math.min(n, p, k)
                             end
 
-                            local deficit = math.max(0, effTarget - nutrientVal) / effTarget
-                            rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                            if not isLime then
+                                local deficit = math.max(0, effTarget - nutrientVal) / effTarget
+                                rate = vrCfg.MIN_RATE + deficit * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                            end
                         end
                     end
 
@@ -2172,11 +2324,14 @@ function HookManager:installHarvestHook()
             -- The crop is deposited on the ground rather than collected in the hopper.
             -- We still deplete nutrients (the soil grew the biomass regardless of collection method);
             -- updateFieldNutrients handles the liters=0 case via area-based estimation.
+            -- Field detection for nutrient depletion + straw birth.
+            -- NOTE: straw birth does NOT gate on nutrientCycles: a player who turns
+            -- nutrient cycling off should still get straw that remembers when it was
+            -- cut (Arissani ruling 2026-07-30). The birth uses the same detection.
             if combineSelf.isServer
                 and g_SoilFertilityManager
                 and g_SoilFertilityManager.soilSystem
                 and g_SoilFertilityManager.settings.enabled
-                and g_SoilFertilityManager.settings.nutrientCycles
                 and inputFruitType and inputFruitType > 0
                 and area and area > 0
             then
@@ -2251,14 +2406,30 @@ function HookManager:installHarvestHook()
                         fieldId, inputFruitType, area)
                 end)
 
+                -- STRAW BIRTH DOES NOT LIVE HERE ANY MORE. It used to, and it could
+                -- never have fired, for two independent reasons:
+                --
+                --   1. It gated on `combineSelf:getIsSwathActive()`. THAT METHOD DOES
+                --      NOT EXIST, in the LUADOC, in lua-scripting, or in AI-reference.
+                --      The `if combineSelf.getIsSwathActive` guard around it was
+                --      therefore always false, the flag stayed false, and the block
+                --      returned every single time whatever the player had set.
+                --   2. It asked the COMBINE for `WorkAreaType.CUTTER` work areas. Those
+                --      belong to the cutter, a separate attached vehicle
+                --      (Cutter.md:483); a combine owns COMBINESWATH and COMBINECHOPPER
+                --      (Combine.md:1407). So the polygon would have been nil anyway.
+                --
+                -- Confirmed dead by a live harvest: the hook logged its field line
+                -- hundreds of times over a full wheat field and produced zero births.
+                -- See installCombineSwathHook for where this belongs.
+
                 if not ok then
                     SoilLogger.error("Harvest hook (field detection) failed: %s", tostring(errMsg))
                 end
             else
-                SoilLogger.debug("Harvest hook: skipped (isServer=%s enabled=%s nutrientCycles=%s fruit=%s area=%s)",
+                SoilLogger.debug("Harvest hook: skipped (isServer=%s enabled=%s fruit=%s area=%s)",
                     tostring(combineSelf.isServer),
                     tostring(g_SoilFertilityManager and g_SoilFertilityManager.settings.enabled),
-                    tostring(g_SoilFertilityManager and g_SoilFertilityManager.settings.nutrientCycles),
                     tostring(inputFruitType), tostring(area))
             end
 
@@ -2534,8 +2705,7 @@ function HookManager:installMowerHook()
             if not mowerSelf.isServer then return end
             if not g_SoilFertilityManager
                or not g_SoilFertilityManager.soilSystem
-               or not g_SoilFertilityManager.settings.enabled
-               or not g_SoilFertilityManager.settings.nutrientCycles then
+               or not g_SoilFertilityManager.settings.enabled then
                 return
             end
 
@@ -2549,8 +2719,56 @@ function HookManager:installMowerHook()
             if area <= 0 then return end
 
             local fruitType = spec.workAreaParameters.lastInputFruitType
-
             if not fruitType or fruitType <= 0 then return end
+
+            -- [MATERIAL DOWN BIRTH] Record cut grass on the age layer. Runs regardless
+            -- of nutrientCycles: a player who turns nutrient cycling off should still
+            -- get hay that remembers when it was cut (Arissani ruling 2026-07-30).
+            -- The TRACKED_MATERIALS gate filters non-tracked crops automatically.
+            do
+                local md = g_SoilFertilityManager.soilSystem.materialDown
+                if md and md:isArmed() then
+                    local waPoly = buildWorkAreaPolygon(mowerSelf, WorkAreaType.MOWER)
+                    if waPoly then
+                        -- Polygon centre for field lookup (avoids header-vs-tractor offset)
+                        local cx, cz = 0, 0
+                        for _, v in ipairs(waPoly) do
+                            cx = cx + v.x
+                            cz = cz + v.z
+                        end
+                        local n = #waPoly
+                        cx, cz = cx / n, cz / n
+
+                        local fieldId = hookMgrRef:getFieldIdAtWorldPosition(cx, cz)
+                        if fieldId and fieldId > 0 then
+                            local fillTypeName = fruitTypeToWindrowName(fruitType)
+                            if fillTypeName then
+                                -- REPORT THE RESULT, NOT THE PCALL STATUS. pcall returns
+                                -- true whenever the call RAN, so the old line announced
+                                -- "material birth" for materials noteMaterialAt had just
+                                -- refused. Mowing a meadow printed a birth per work area
+                                -- per frame for a material that is not in the tracked set
+                                -- and was never recorded. A diagnostic that cannot say no
+                                -- is worse than none, because it is trusted.
+                                local ok, recorded = pcall(md.noteMaterialAt, md, waPoly, fieldId, fillTypeName)
+                                if not ok then
+                                    SoilLogger.warning("[MowerHook] material birth raised: field %d, %s",
+                                        fieldId, fillTypeName)
+                                elseif recorded then
+                                    SoilLogger.debug("[MowerHook] material birth: field %d, %s",
+                                        fieldId, fillTypeName)
+                                else
+                                    SoilLogger.debug("[MowerHook] no record (not a tracked material): field %d, %s",
+                                        fieldId, fillTypeName)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- [NUTRIENT CYCLES] Existing nutrient depletion - gated on setting
+            if not g_SoilFertilityManager.settings.nutrientCycles then return end
 
             local success, errorMsg = pcall(function()
                 local x, _, z = getWorldTranslation(mowerSelf.rootNode)
@@ -2578,7 +2796,7 @@ function HookManager:installMowerHook()
     )
 
     self:register(Mower, "onEndWorkAreaProcessing", original, "Mower.onEndWorkAreaProcessing")
-    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) - forage crop nutrient tracking active")
+    SoilLogger.info("[OK] Mower hook installed (Mower.onEndWorkAreaProcessing) - forage crop + material birth active")
     return true
 end
 
@@ -2673,6 +2891,470 @@ function HookManager:installMowerYieldHook()
     self:register(Mower, "onEndWorkAreaProcessing", origEnd, "Mower.onEndWorkAreaProcessing (forage yield restore)")
 
     SoilLogger.info("[OK] Mower yield hook installed - windrow forage output now scales with soil nutrients")
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e: Tedder (hay drying acceleration - SF-44 "THE HAY BET")
+-- =========================================================
+--- Instance-level delegating wrapper on Tedder.processTedderArea.
+--- Applies the hay bet's one-time drying delta and enqueues a
+--- corrective pass at end of frame. Never a class-level assignment
+--- (the brief rules it explicitly) - each existing tedder instance
+--- is patched at install time, and VehicleSystem.addVehicle is
+--- hooked to catch new spawns.
+---@return boolean success
+function HookManager:installTedderHook()
+    if not Tedder or type(Tedder.processTedderArea) ~= "function" then
+        SoilLogger.warning("[TedderHook] Tedder.processTedderArea not available - skipping")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    --- Build a bounding-box polygon from a single work area's
+    --- start/width/height nodes. Returns {minX,minZ, maxX,minZ,
+    --- maxX,maxZ, minX,maxZ} or nil.
+    local function singleWAPoly(workArea)
+        if not workArea
+           or not workArea.start
+           or not workArea.width
+           or not workArea.height then
+            return nil
+        end
+        local xs, _, zs = getWorldTranslation(workArea.start)
+        local xw, _, zw = getWorldTranslation(workArea.width)
+        local xh, _, zh = getWorldTranslation(workArea.height)
+        if not xs or not xw or not xh then return nil end
+        local x4 = xw + xh - xs
+        local z4 = zw + zh - zs
+        local minX = math.min(xs, xw, xh, x4)
+        local maxX = math.max(xs, xw, xh, x4)
+        local minZ = math.min(zs, zw, zh, z4)
+        local maxZ = math.max(zs, zw, zh, z4)
+        -- {x=,z=} objects, the store contract. See buildWorkAreaPolygon at the top of
+        -- this file for what a flat array costs.
+        return {
+            { x = minX, z = minZ },
+            { x = maxX, z = minZ },
+            { x = maxX, z = maxZ },
+            { x = minX, z = maxZ },
+        }
+    end
+
+    --- Create a delegating wrapper for one tedder instance.
+    --- DELEGATES fully (superFunc first), then applies the
+    --- hay bet's drying delta and enqueues the correction pass.
+    local function makeWrapper(realFn)
+        return function(tedderSelf, workArea, dt)
+            -- DELEGATE fully: original processTedderArea first
+            local results = { realFn(tedderSelf, workArea, dt) }
+
+            -- HAY BET: apply drying delta + enqueue correction
+            -- Server only - no client-side material logic
+            if not tedderSelf.isServer then
+                return unpack(results)
+            end
+            if not g_SoilFertilityManager
+               or not g_SoilFertilityManager.soilSystem
+               or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            local hayBet = g_SoilFertilityManager.soilSystem.hayBet
+            if not hayBet or not hayBet:isArmed() then
+                return unpack(results)
+            end
+
+            local poly = singleWAPoly(workArea)
+            if not poly then return unpack(results) end
+
+            local ok = pcall(function()
+                hayBet:applyTedderDelta(poly)
+                hayBet:enqueueCorrection(poly)
+            end)
+            if not ok then
+                SoilLogger.warning("[TedderHook] hay bet apply failed for work area")
+            end
+
+            return unpack(results)
+        end
+    end
+
+    -- PATCH existing tedder instances (placed on map at load)
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            if vehicle.spec_tedder
+               and type(vehicle.processTedderArea) == "function" then
+                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
+                patchedCount = patchedCount + 1
+            end
+        end
+    end
+
+    -- HOOK VehicleSystem.addVehicle to patch future tedder spawns
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            if vehicle
+               and vehicle.spec_tedder
+               and type(vehicle.processTedderArea) == "function" then
+                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
+            end
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e2: Combine swath (STRAW BIRTH, SF-43 / SF-45)
+-- =========================================================
+-- `Combine:processCombineSwathArea(workArea)` is the function that actually lays a
+-- swath, and hooking it is what makes straw birth self-gating: it is only ever in the
+-- call path when the combine is dropping material, so there is no swath flag to read
+-- and no phantom method to guess at. That is the same shape the mower hook has for
+-- grass, which is the one birth path that has always worked.
+--
+-- INSTANCE LEVEL, and this is the trap-3 case rather than the Bale case below.
+-- `SpecializationUtil.registerFunction(vehicleType, "processCombineSwathArea", ...)`
+-- at Combine.md:2823 copies the pointer into each vehicle type's table at
+-- registration, so assigning `Combine.processCombineSwathArea` here would patch a
+-- table nobody reads and the hook would silently never run.
+--
+-- THE RETURN VALUE IS THE EVIDENCE. The engine returns dropped litres
+-- (Combine.md:2692-2714), so a birth is recorded only when material actually landed.
+-- No litres, no record: that is a stronger gate than any flag, because it is the
+-- outcome rather than an intention.
+---@return boolean success
+function HookManager:installCombineSwathHook()
+    if not Combine or type(Combine.processCombineSwathArea) ~= "function" then
+        SoilLogger.warning("[SwathHook] Combine.processCombineSwathArea not available - straw birth skipped")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    --- The dropped material's own fill type, resolved exactly the way the engine
+    --- resolves it at Combine.md:2703-2706: fruit type from the drop fill type, then
+    --- that fruit's windrow fill type. Never hardcoded to STRAW, so the tracked-material
+    --- set stays the single place that decides what is recorded.
+    local function windrowFillTypeName(combineSelf)
+        local spec = combineSelf.spec_combine
+        local params = spec and spec.workAreaParameters
+        local dropFillType = params and params.dropFillType
+        if dropFillType == nil or g_fruitTypeManager == nil then return nil end
+
+        local fruitDesc = g_fruitTypeManager:getFruitTypeByFillTypeIndex(dropFillType)
+        if fruitDesc == nil or fruitDesc.index == nil then return nil end
+
+        local windrowIdx = g_fruitTypeManager:getWindrowFillTypeIndexByFruitTypeIndex(fruitDesc.index)
+        if windrowIdx == nil or g_fillTypeManager == nil then return nil end
+
+        local ft = g_fillTypeManager:getFillTypeByIndex(windrowIdx)
+        return ft and ft.name or nil
+    end
+
+    local function makeWrapper(realFn)
+        return function(combineSelf, workArea, ...)
+            -- DELEGATE FIRST, always, and forward every return: the engine's own
+            -- caller reads the dropped-litres value.
+            local results = { realFn(combineSelf, workArea, ...) }
+
+            if not combineSelf.isServer then return unpack(results) end
+
+            -- Nothing landed on the ground, so there is nothing to remember.
+            local droppedLiters = results[1]
+            if type(droppedLiters) ~= "number" or droppedLiters <= 0 then
+                return unpack(results)
+            end
+
+            if not g_SoilFertilityManager
+               or not g_SoilFertilityManager.soilSystem
+               or not g_SoilFertilityManager.settings
+               or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            -- Birth is NOT gated on nutrientCycles: a player who turns nutrient
+            -- cycling off should still get straw that remembers when it was cut
+            -- (Arissani ruling 2026-07-30).
+            local md = g_SoilFertilityManager.soilSystem.materialDown
+            if not md or not md:isArmed() then return unpack(results) end
+
+            pcall(function()
+                local poly = buildSingleWorkAreaPolygon(workArea)
+                if not poly then return end
+
+                local cx, cz = 0, 0
+                for _, v in ipairs(poly) do cx, cz = cx + v.x, cz + v.z end
+                cx, cz = cx / #poly, cz / #poly
+
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(cx, cz)
+                if not fieldId or fieldId <= 0 then return end
+
+                -- nil name is allowed through: noteMaterialAt records it as an
+                -- unnamed material rather than refusing, because the caller made no
+                -- claim to check. A NAMED but untracked material is refused there.
+                local name = windrowFillTypeName(combineSelf)
+                if md:noteMaterialAt(poly, fieldId, name) then
+                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL dropped",
+                        fieldId, tostring(name), droppedLiters)
+                end
+            end)
+
+            return unpack(results)
+        end
+    end
+
+    -- Patch combines already in the world.
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            if vehicle.spec_combine and type(vehicle.processCombineSwathArea) == "function" then
+                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
+                patchedCount = patchedCount + 1
+            end
+        end
+    end
+
+    -- And any that spawn later, the same way the tedder and harvest hooks do.
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            if vehicle and vehicle.spec_combine
+               and type(vehicle.processCombineSwathArea) == "function" then
+                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
+            end
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info("[OK] Combine swath hook installed (instance-level, %d existing combines patched)", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1f: Bale birth and death (SF-46 "THE YARD LADDER")
+-- =========================================================
+-- Two hooks on Bale's own lifecycle, both on methods the LUADOC shows BaleManager
+-- calling on bale instances (Bale:register at BaleManager.md:154, Bale:delete inherited
+-- and shown at PackedBale.md:36).
+--
+-- CLASS-LEVEL ASSIGNMENT IS CORRECT HERE, and it is worth saying why, because the
+-- opposite is true two hooks up. The tedder hook must go on at instance level because
+-- SpecializationUtil.registerFunction copies the function pointer into each vehicle
+-- type's table, so a later class assignment patches a table nobody reads. A Bale is an
+-- Object, not a Vehicle: it has no specializations and instances resolve through the
+-- class table by metatable, so patching the class is what instances actually see.
+
+--- Resolve the yard ladder, or nil when it is not available to take an event.
+local function getArmedYardLadder()
+    local sfm = g_SoilFertilityManager
+    if sfm == nil or sfm.soilSystem == nil then return nil end
+    if sfm.settings == nil or not sfm.settings.enabled then return nil end
+    local yl = sfm.soilSystem.yardLadder
+    if yl == nil or not yl:isArmed() then return nil end
+    return yl
+end
+
+--- Hooks Bale.register for the yard ladder's per-bale condition rows. Catches every
+--- door a bale enters the world through: baler spawn, packed-bale unpacking, console
+--- creation, PlaceableObjectStorage retrieval, and savegame load.
+---@return boolean success
+function HookManager:installBaleBirthHook()
+    if Bale == nil or type(Bale.register) ~= "function" then
+        SoilLogger.warning("[BaleBirth] Bale.register not available - yard ladder birth hook skipped")
+        return false
+    end
+
+    local origRegister = Bale.register
+    Bale.register = function(baleSelf, ...)
+        -- DELEGATE FIRST, always. The bale must be fully registered before we read a
+        -- thing off it, and our failure must never be able to stop a bale existing.
+        local results = { origRegister(baleSelf, ...) }
+
+        local yl = getArmedYardLadder()
+        if yl ~= nil then
+            pcall(function()
+                local nodeId = baleSelf.nodeId
+                if nodeId == nil then return end
+
+                local ftName = "UNKNOWN"
+                if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
+                    local ftIdx = baleSelf:getFillType()
+                    if ftIdx ~= nil and ftIdx > 0 then
+                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+                        if ft ~= nil then ftName = ft.name end
+                    end
+                end
+
+                local fillLevel = 0
+                if baleSelf.getFillLevel ~= nil then
+                    fillLevel = baleSelf:getFillLevel() or 0
+                end
+
+                -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is
+                -- one third of the re-attach heuristic key, so a fill-level stand-in
+                -- would make the key drift every time a bale was partly used.
+                local capacity = fillLevel
+                if baleSelf.getCapacity ~= nil then
+                    capacity = baleSelf:getCapacity() or fillLevel
+                end
+
+                local farmId = 0
+                if baleSelf.getOwnerFarmId ~= nil then
+                    farmId = baleSelf:getOwnerFarmId() or 0
+                end
+
+                yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity)
+            end)
+        end
+
+        return unpack(results)
+    end
+
+    SoilLogger.info("[OK] Bale birth hook installed (Bale.register)")
+    return true
+end
+
+--- Rectangle covering a baler pickup pass, expanded by the engine's own line radius.
+--- A work area resolves to a LINE plus a radius, not a point
+--- (DensityMapHeightUtil.getLineByArea, Baler.lua:1868), so the sample has to cover
+--- what the pass actually sweeps.
+---@return table|nil verts
+local function pickupPolygonFromWorkArea(workArea)
+    if workArea == nil or workArea.start == nil then return nil end
+    if DensityMapHeightUtil == nil or DensityMapHeightUtil.getLineByArea == nil then return nil end
+    local ok, lsx, _, lsz, lex, _, lez, lineRadius = pcall(
+        DensityMapHeightUtil.getLineByArea, workArea.start, workArea.width, workArea.height)
+    if not ok or lsx == nil or lex == nil or lsz == nil or lez == nil then return nil end
+
+    local r = tonumber(lineRadius) or 0
+    if r <= 0 then r = 0.5 end
+
+    local dx, dz = lex - lsx, lez - lsz
+    local len = math.sqrt(dx * dx + dz * dz)
+    if len < 0.001 then
+        return {
+            { x = lsx - r, z = lsz - r }, { x = lsx + r, z = lsz - r },
+            { x = lsx + r, z = lsz + r }, { x = lsx - r, z = lsz + r },
+        }
+    end
+
+    local px, pz = -dz / len * r, dx / len * r   -- perpendicular half-width
+    return {
+        { x = lsx + px, z = lsz + pz },
+        { x = lex + px, z = lez + pz },
+        { x = lex - px, z = lez - pz },
+        { x = lsx - px, z = lsz - pz },
+    }
+end
+
+--- THE BIRTH SAMPLE (RULED 2026-07-31). Samples the swath at the pickup and feeds the
+--- yard ladder a litres-weighted average, so a bale is born knowing what it ate. The
+--- rule, and why the accumulator is ours rather than the engine's, is in YardLadder.
+---@return boolean success
+function HookManager:installBalerPickupHook()
+    if Baler == nil or type(Baler.processBalerArea) ~= "function"
+        or type(Baler.createBale) ~= "function" then
+        SoilLogger.warning("[BalePickup] Baler.processBalerArea/createBale not available - birth sampling skipped")
+        return false
+    end
+
+    -- readCondition takes litres ONLY as a sanity gate: it refuses a non-positive
+    -- quantity (MaterialWetness.lua:753-754), and the percent it returns is a
+    -- mass-weighted mean over the cells that carry material, independent of the number
+    -- passed (:767-774). A pass's real litres are not knowable until the delegate has
+    -- run and eaten the material, so a positive probe stands in for the gate and the
+    -- real litres do the weighting afterwards.
+    local PROBE_LITRES = 1
+
+    local origProcess = Baler.processBalerArea
+    Baler.processBalerArea = function(balerSelf, workArea, ...)
+        -- THE SAMPLE HAS TO HAPPEN FIRST. Once the delegate returns, the material this
+        -- pass measured has been eaten and the layer reads NO_MATERIAL, which is
+        -- exactly why every baled bale recorded an unknown wetness before this clause.
+        --
+        -- SERVER ONLY, and that gate is OURS: processBalerArea is not server-gated by
+        -- the engine. Its only early-out is a client DISTANCE check (Baler.lua:1865),
+        -- and the engine's own accumulation at :1908 sits outside any isServer branch.
+        local pct, sampled = nil, false
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            local mw = yl.materialWetness
+            if mw ~= nil and mw:isArmed() then
+                pcall(function()
+                    local verts = pickupPolygonFromWorkArea(workArea)
+                    if verts == nil then return end
+                    sampled = true
+                    local c = mw:readCondition(verts, PROBE_LITRES)
+                    if c ~= nil and c.status == MaterialWetness.RESULT.OK then
+                        pct = c.pct
+                    end
+                end)
+            end
+        end
+
+        local pickedUpLiters, second = origProcess(balerSelf, workArea, ...)
+
+        if sampled and type(pickedUpLiters) == "number" and pickedUpLiters > 0 then
+            -- pickedUpLiters carries the engine's additive bonus, up to 5%
+            -- (Baler.lua:1894). Left in deliberately: it is a per-pass scale factor
+            -- that all but cancels in a ratio, and taking it out would mean inventing
+            -- a correction nobody ruled.
+            pcall(function() yl:noteBalerPickup(balerSelf, pct, pickedUpLiters) end)
+        end
+
+        return pickedUpLiters, second
+    end
+
+    local origCreate = Baler.createBale
+    Baler.createBale = function(balerSelf, ...)
+        -- Close the chamber BEFORE delegating. Bale.register fires SYNCHRONOUSLY
+        -- inside createBale (Baler.lua:1478-1490), and our Bale.register hook is what
+        -- consumes the pending sample.
+        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
+        if yl ~= nil then
+            pcall(function() yl:closeBalerChamber(balerSelf) end)
+        end
+        return origCreate(balerSelf, ...)
+    end
+
+    SoilLogger.info("[OK] Baler pickup hook installed (birth wetness sampled at the pickup)")
+    return true
+end
+
+--- Hooks Bale.delete so a row dies with its bale. ONE door for every way a bale
+--- leaves: sale, feeding out, mixing, our own condemnation, RealisticWeather's
+--- deletion, and the engine bale cap. The brief lists those separately and notes the
+--- cap's internals are unexamined; hooking the single exit means we never had to
+--- examine them.
+---@return boolean success
+function HookManager:installBaleDeleteHook()
+    if Bale == nil or type(Bale.delete) ~= "function" then
+        SoilLogger.warning("[BaleDeath] Bale.delete not available - yard ladder rows will rely on the entityExists sweep")
+        return false
+    end
+
+    local origDelete = Bale.delete
+    Bale.delete = function(baleSelf, ...)
+        -- Read the node BEFORE delegating: after the base call the node is gone.
+        local yl = getArmedYardLadder()
+        if yl ~= nil then
+            pcall(function()
+                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId) end
+            end)
+        end
+        return origDelete(baleSelf, ...)
+    end
+
+    SoilLogger.info("[OK] Bale delete hook installed (Bale.delete)")
     return true
 end
 
@@ -2963,6 +3645,15 @@ function HookManager:installSprayerAreaHook()
                 local _hasCropProt = herbEffectiveness or pestEffectiveness or diseaseEffectiveness
                 local _useLitCov = (not isFertilizer) or (isFertilizer and _hasCropProt)
                 if g_SoilFertilityManager.soilSystem then
+                    local _vwwEarly = self.spec_variableWorkWidth
+                    local _hasVWWEarly = _vwwEarly and _vwwEarly.sections and #_vwwEarly.sections > 0
+                    -- F61: for non-VWW implements using liter-based coverage, clear stale
+                    -- _geometricCoverageOwner so a previous VWW session's guard does not
+                    -- block the liter path (line 5123 in trackSprayerCoverage).
+                    if not _hasVWWEarly and g_SoilFertilityManager.soilSystem.fieldData
+                       and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
+                        g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
+                    end
                     g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
                 end
 
@@ -3269,6 +3960,11 @@ function HookManager:installSprayerAreaHook()
                         -- protection products already did so in the trackSprayerCoverage call
                         -- above (updateFractions = not isFertilizer), so don't double-count.
                         if liters > 0 and isFertilizer then
+                            -- F61: clear stale geometric owner flag so the liter-based fallback
+                            -- is not blocked by a previous VWW session's guard (line 5123).
+                            if soilSys.fieldData and soilSys.fieldData[fieldId] then
+                                soilSys.fieldData[fieldId]._geometricCoverageOwner = nil
+                            end
                             soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true)
                         end
                     end
@@ -4597,7 +5293,8 @@ function HookManager:installSowingHook()
                 if areaHa <= 0 then return end
                 g_SoilFertilityManager.soilSystem._lastTillageX = x
                 g_SoilFertilityManager.soilSystem._lastTillageZ = z
-                g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType)
+                local cropBiomass = sowingSelf._sfCropBiomass or 0
+                g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType, cropBiomass)
             end)
 
             if not ok then
@@ -4628,6 +5325,9 @@ function HookManager:installFillUnitHookEarly()
                                  "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
     local liquidNames        = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
+    -- CD-12: prepended hook -- blends must exist BEFORE vanilla save restore, or a saved
+    -- tank holding one resolves to nothing on load.
+    SoilBlends.appendNames(liquidNames)
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base)
     local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject it into dedicated lime spreaders
@@ -4755,6 +5455,9 @@ function HookManager:installFillUnitHook()
                           "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM", "LIME"}
     local liquidNames = {"UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
                          "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH"}
+    -- CD-12. NOT the same hook as installFillUnitHookEarly: this later one has a category
+    -- safety net the early one lacks, so both need feeding.
+    SoilBlends.appendNames(liquidNames)
     -- Organic dry types also work in manure spreaders (MANURE fill-unit base).
     local manureCompatNames = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject into dedicated lime spreaders.
@@ -5095,6 +5798,12 @@ HookManager.SILO_GROUPS = {
                                            "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE", "LIQUIDLIME" } },
 }
 
+-- CD-12: the 28 tank mixes are liquid-fertilizer-based like their partners. Found by base
+-- name rather than index so reordering the groups above cannot silently drop them.
+for _, group in ipairs(HookManager.SILO_GROUPS) do
+    if group.base == "LIQUIDFERTILIZER" then SoilBlends.appendNames(group.names) end
+end
+
 -- Resolve SILO_GROUPS names → { baseIdx, idxList } once (cached; re-resolves while empty
 -- to cover dedicated-server timing where fill types aren't registered yet at first call).
 function HookManager:getResolvedSiloGroups()
@@ -5371,6 +6080,7 @@ function HookManager:installPurchaseRefillHook()
         "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
         "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
     }
+    SoilBlends.appendNames(ALL_CUSTOM_NAMES)   -- CD-12
 
     -- Prices from Constants (already defined there)
     local PRICE_OVERRIDES = {}
@@ -6363,9 +7073,9 @@ function HookManager:installSprayerVisualEffectHook()
     -- runs AFTER processSprayerArea sets lastSprayTime → effectsVisible = true → effects start.
     local remap = {}
     if liqFertIdx then
-        for _, name in ipairs({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
+        for _, name in ipairs(SoilBlends.appendNames({ "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
                                  "HERBICIDE", "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
-                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" }) do
+                                 "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH" })) do   -- CD-12
             local idx = fm:getFillTypeIndexByName(name)
             if idx then remap[idx] = liqFertIdx end
         end

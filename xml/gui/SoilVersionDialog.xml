@@ -53,6 +53,8 @@
     </GuiElement>
 
     <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonOK" id="sfVer_releaseBtn"
+              text="Release Gate" onClick="onClickRelease"/>
       <Button profile="buttonOK" id="sfVer_dontShowBtn"
               text="Don't show again" onClick="onClickDontShowAgain"/>
       <Button profile="buttonOK" id="sfVer_guideBtn"

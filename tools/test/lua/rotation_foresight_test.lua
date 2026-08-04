@@ -2,7 +2,7 @@
 -- dialog's Rotation Foresight section reads. Guards _rotationStatusFor (the shared pure
 -- status helper) and projectRotation (the read-only "what happens if I plant X next"),
 -- so the preview can never disagree with the status the player actually gets on harvest.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local cr = SoilConstants.CROP_ROTATION
 

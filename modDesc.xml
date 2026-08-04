@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK (Refined edition: WizardlyPayload)</author>
-    <version>2.4.7.0</version>
+    <version>2.5.0.0</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -106,19 +106,11 @@
         <actionBinding action="SF_TOGGLE_AUTO" />
         <actionBinding action="SF_CYCLE_MAP_LAYER" />
         <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_HUD_DRAG">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
-        </actionBinding>
-        <actionBinding action="SF_VARIABLE_RATE">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lalt KEY_7" />
-        </actionBinding>
+        <actionBinding action="SF_HUD_DRAG" />
+        <actionBinding action="SF_VARIABLE_RATE" />
         <actionBinding action="SF_MINIMAP_ZOOM" />
-        <actionBinding action="SF_SCOUT">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_k" />
-        </actionBinding>
-        <actionBinding action="SF_TREATMENT">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_t" />
-        </actionBinding>
+        <actionBinding action="SF_SCOUT" />
+        <actionBinding action="SF_TREATMENT" />
     </inputBinding>
 
     <!-- Custom fill types declared in external file (FS25 requires filename= attribute) -->

@@ -31,6 +31,21 @@ local function bypassLockedMsg()
     return nil
 end
 
+-- Returns a refusal message when a console command belongs to an experimental (LOCKED)
+-- system and the player has not opted into experimental systems. Mirrors bypassLockedMsg()
+-- but on the release axis - the two locks are orthogonal and both must pass. Policy lives
+-- in ReleaseGate + Settings:allowsExperimentalSystems().
+local function releaseGateLockedMsg(commandName)
+    if not ReleaseGate then return nil end
+    local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
+    local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
+    -- Fail-open: if the opt-in predicate is not readable (pre-init, no manager, or a
+    -- settings stub without the method), do not gate the command. The release gate is
+    -- an explicit opt-out of new systems; it must not block a path it cannot read.
+    if optIn == nil then return nil end
+    return ReleaseGate.commandLockMessage(commandName, optIn)
+end
+
 function SoilSettingsGUI.new()
     local self = setmetatable({}, SoilSettingsGUI_mt)
     return self
@@ -64,6 +79,9 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilMeadowField", "FieldSentry: flag/clear a field as meadow (grassland profile): SoilMeadowField <fieldId> [true|false] (#651)", "consoleCommandMeadowField", self)
     addConsoleCommand("SoilDecoField", "FieldSentry: flag/clear a field as decorative/fake (sim frozen): SoilDecoField <fieldId> [true|false] (#651)", "consoleCommandDecoField", self)
     addConsoleCommand("SoilScout", "Scout a field for disease: SoilScout [fieldId] (defaults to current field)", "consoleCommandScout", self)
+    addConsoleCommand("SoilBlendCheck", "CD-12: verify all 28 tank mixes registered correctly in the engine", "consoleCommandBlendCheck", self)
+    addConsoleCommand("SoilResistance", "Show per-MOA fungicide resistance + CD-11 bands: SoilResistance [fieldId]", "consoleCommandResistance", self)
+    addConsoleCommand("SoilResistanceTest", "TEST the F66 per-pass meter: SoilResistanceTest [chemical] [passes] [fieldId]", "consoleCommandResistanceTest", self)
     addConsoleCommand("SoilTreat", "Apply a fungicide: SoilTreat <chemical> [fieldId]  (e.g. SoilTreat AZOXYSTROBIN)", "consoleCommandTreat", self)
     addConsoleCommand("SoilFungicides", "List fungicides, or recommendations for a disease: SoilFungicides [diseaseId]", "consoleCommandFungicides", self)
     addConsoleCommand("SoilSetDisease", "TEST: force disease on the current field: SoilSetDisease <pressure 0-100> [diseaseId]", "consoleCommandSetDisease", self)
@@ -71,6 +89,8 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilAddCrop", "Add a custom crop to the tuning table (seeded from generic defaults): SoilAddCrop <name> (#717)", "consoleCommandAddCrop", self)
     -- REFINED: per-pixel value map debug commands
     addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
+    addConsoleCommand("SoilMaterialBench", "SF-43/49 family gate: time ms per engine call for the ground-material passes: SoilMaterialBench [fieldId] [iterations]", "consoleCommandMaterialBench", self)
+    addConsoleCommand("SoilRelease", "Release gate: show which systems are STABLE vs experimental-LOCKED", "consoleCommandRelease", self)
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
@@ -321,6 +341,132 @@ function SoilSettingsGUI:consoleCommandVmStats()
     return vm:getDebugStats()
 end
 
+--- [SF-43 / SF-49 FAMILY GATE] Measure milliseconds per engine call for the
+--- ground-material passes, against a real field polygon, in-game.
+---
+--- The family gate is "milliseconds per engine call on the largest supported map",
+--- and no member of the package may be declared DONE until that number exists.
+--- Call COUNTS are asserted in the bench; this is the other half.
+---
+--- Non-destructive by construction: it REFUSES on a field that already carries
+--- material records, paints its own pixels, and clears them again afterwards. The
+--- two material layers hold no player data, so its scratch space is its own.
+---
+--- Timing uses getTimeSec() (seconds, float) - the pattern proven in the reference
+--- scripting corpus, `(endTime - startTime) * 1000` for milliseconds.
+function SoilSettingsGUI:consoleCommandMaterialBench(fieldIdArg, iterArg)
+    local gate = releaseGateLockedMsg("SoilMaterialBench")
+    if gate then return gate end
+    if g_server == nil then return "Material bench is server-only" end
+    if getTimeSec == nil then return "getTimeSec() unavailable on this build - cannot time" end
+
+    local vm, err = sfGetValueMapsForConsole()
+    if not vm then return err end
+    if vm.applyRawDeltaToPolygonBand == nil then
+        return "This SoilValueMaps has no SF-49 banded delta (community-fork collision?)"
+    end
+
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if soilSys == nil then return "Soil system not available" end
+
+    -- Resolve the field: explicit id, else the one under the player.
+    local fieldId = tonumber(fieldIdArg)
+    if fieldId == nil and soilSys.soilHUD ~= nil then
+        local ok, cur = pcall(function() return soilSys.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur end
+    end
+    if fieldId == nil then
+        return "No field: pass one (SoilMaterialBench <fieldId> [iterations]) or stand on a field"
+    end
+
+    local field = soilSys.fieldData and soilSys.fieldData[fieldId]
+    local okV, verts = pcall(function() return soilSys:_getFieldPolyVerts(fieldId, field) end)
+    if not okV or verts == nil or #verts < 3 then
+        return string.format("Field %s has no usable polygon", tostring(fieldId))
+    end
+
+    local AGE, WET = "materialAge", "materialWetness"
+    local RAW_MAX = SoilValueMaps.RAW_MAX
+
+    -- Never clobber real records.
+    local occupied = vm:hasAnyInBand(AGE, verts, 1, RAW_MAX)
+    if occupied == nil then return "Band probe refused (polygon ops unavailable) - cannot bench safely" end
+    if occupied then
+        return string.format("Field %d already carries material records - refusing to bench on it", fieldId)
+    end
+
+    local iterations = math.max(1, math.min(200, math.floor(tonumber(iterArg) or 10)))
+
+    local function timeIt(label, fn)
+        local t0 = getTimeSec()
+        for _ = 1, iterations do fn() end
+        local t1 = getTimeSec()
+        return { label = label, ms = ((t1 - t0) * 1000) / iterations }
+    end
+
+    -- Paint scratch pixels so every pass has real work to do.
+    vm:setPolygonWhere(AGE, verts, 1, 0, 0)
+    vm:setPolygonWhere(WET, verts, 153, 0, 0)   -- ~60 percent, the top phase band
+
+    local rows = {}
+    rows[#rows + 1] = timeIt("age tick (whole-layer +1, the daily call)", function()
+        vm:applyRawDeltaToLayer(AGE, 1, 1, RAW_MAX - 1)
+    end)
+    rows[#rows + 1] = timeIt("age catch-up (+30, add + saturating pass)", function()
+        vm:applyRawDeltaToLayer(AGE, 30, 1, RAW_MAX - 1)
+    end)
+    rows[#rows + 1] = timeIt("drying band (polygon, -64 raw)", function()
+        vm:applyRawDeltaToPolygonBand(WET, verts, -64, 32, RAW_MAX, { floorTo = 32 })
+    end)
+    rows[#rows + 1] = timeIt("rain add (polygon, +38 raw)", function()
+        vm:applyRawDeltaToPolygonBand(WET, verts, 38, 32, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("band probe (inheritance / presence)", function()
+        vm:hasAnyInBand(AGE, verts, 1, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("banded average (the collector's read)", function()
+        vm:readAverageRawInBand(WET, verts, 32, RAW_MAX)
+    end)
+    rows[#rows + 1] = timeIt("aimed write (birth / inheritance)", function()
+        vm:setPolygonWhere(AGE, verts, 1, 0, 0)
+    end)
+
+    -- Put the scratch space back.
+    vm:clearPolygonWhere(AGE, verts, 1, RAW_MAX)
+    vm:clearPolygonWhere(WET, verts, 1, RAW_MAX)
+
+    local out = {
+        string.format("MATERIAL FAMILY GATE - field %d, %d iteration(s), %dpx / %.0fm (%.1f m/px)",
+            fieldId, iterations, vm.resolution, vm.terrainSize, vm.terrainSize / vm.resolution),
+        string.format("  capability: executeAdd=%s polygonOps=%s",
+            tostring(vm.hasExecuteAdd), tostring(vm.hasPolygonOps)),
+    }
+    local worst = 0
+    for _, r in ipairs(rows) do
+        out[#out + 1] = string.format("  %-42s %7.3f ms/call", r.label, r.ms)
+        if r.ms > worst then worst = r.ms end
+    end
+
+    -- The projected daily bill, stating the LINEAR term rather than hiding it.
+    local activeFields = 0
+    local md = soilSys.materialDown
+    if md ~= nil and md.enumerateActiveFields ~= nil then
+        activeFields = md:enumerateActiveFields(function() end)
+    end
+    local perField = 3   -- three drying phase bands
+    out[#out + 1] = string.format(
+        "  daily bill: 1 age tick + 1 rain + (%d phases x %d field(s) with material) = %d call(s)",
+        perField, activeFields, 2 + perField * activeFields)
+    out[#out + 1] = string.format("  worst single call: %.3f ms", worst)
+    out[#out + 1] = "  NOTE: cost is linear in FIELDS CARRYING MATERIAL, not flat across soil classes."
+
+    -- The console echoes the return value, so log a COMPACT line rather than the
+    -- whole block: printing both put the same nine lines in the log twice.
+    SoilLogger.info("[family gate] field %d @%dpx: ageTick=%.3fms catchUp=%.3fms dryBand=%.3fms probe=%.3fms read=%.3fms",
+        fieldId, vm.resolution, rows[1].ms, rows[2].ms, rows[3].ms, rows[5].ms, rows[6].ms)
+    return table.concat(out, "\n")
+end
+
 function SoilSettingsGUI:consoleCommandVmRead(xArg, zArg)
     local vm, err = sfGetValueMapsForConsole()
     if not vm then return err end
@@ -409,6 +555,9 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilMeadowField <fieldId> [true|false] - FieldSentry: flag/clear a field as meadow (#651)")
     print("SoilDecoField <fieldId> [true|false] - FieldSentry: flag/clear a field as decorative/fake (#651)")
     print("SoilAddCrop <name> - Add a custom crop to the Crop Tuning Editor (#717)")
+    print("SoilBlendCheck - CD-12: verify all 28 tank mixes registered in the engine")
+    print("SoilResistance [fieldId] - Per-MOA fungicide resistance + CD-11 bands")
+    print("SoilResistanceTest [chemical] [passes] [fieldId] - TEST the F66 per-pass meter")
     print("==============================================")
     return "Type 'soilfertility' for more info"
 end
@@ -615,6 +764,319 @@ function SoilSettingsGUI:consoleCommandSetDisease(pressure, diseaseId)
         "TEST: Field %d set to %.0f%% pressure (disease=%s), hidden until scouted. "
         .. "Check the Soil Monitor (shows '?'), then run SoilScout %d (or the Scout hotkey) to reveal.",
         fid, dinfo.pressure or p or 0, tostring(dinfo.disease or "none"), fid)
+end
+
+-- ── CD-12: tank mix registration self-check ──────────────────────────────
+--
+-- Registration for a crop-protection fill type spans nine sites across two files, and
+-- MISSING ONE IS INVISIBLE IN GAME: an uncalibrated rate looks like it works, and a missed
+-- density-map remap means the blend sprays, drains the tank, costs the money and never
+-- writes ground state. None of that is observable on a bench -- the brief says so itself
+-- and assigns it to a person. This command is that person's instrument: it asks the live
+-- engine what actually got registered instead of asking the source what it intended.
+function SoilSettingsGUI:consoleCommandRelease()
+    if not ReleaseGate then return "Release gate not loaded" end
+    local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
+    local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
+    return ReleaseGate.status(optIn)
+end
+
+function SoilSettingsGUI:consoleCommandBlendCheck()
+    local gate = releaseGateLockedMsg("SoilBlendCheck")
+    if gate then return gate end
+    if not (g_fillTypeManager and g_sprayTypeManager) then
+        return "Fill/spray type managers unavailable - run this in a loaded savegame."
+    end
+
+    local RATES = SoilConstants.SPRAYER_RATE.BASE_RATES
+    local hm = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+               and g_SoilFertilityManager.soilSystem.hookManager
+
+    -- The resolved LIQUIDFERTILIZER silo group, so we test what the game holds rather than
+    -- the declaration we wrote.
+    local siloIdx = {}
+    if hm and hm.getResolvedSiloGroups then
+        local ok, groups = pcall(function() return hm:getResolvedSiloGroups() end)
+        if ok and groups then
+            for _, g in pairs(groups) do
+                for _, idx in ipairs(g.idxList or {}) do siloIdx[idx] = true end
+            end
+        end
+    end
+
+    local fungicideST = g_sprayTypeManager:getSprayTypeByName("FUNGICIDE")
+    local expectGround = fungicideST and fungicideST.sprayGroundType or nil
+
+    local counts = { fill = 0, spray = 0, rate = 0, gate = 0, ground = 0, silo = 0 }
+    local problems = {}
+    local total = #SoilBlends.ORDER
+
+    for _, name in ipairs(SoilBlends.ORDER) do
+        local ft = g_fillTypeManager:getFillTypeByName(name)
+        if ft then
+            counts.fill = counts.fill + 1
+            if siloIdx[ft.index] then counts.silo = counts.silo + 1
+            else problems[#problems + 1] = name .. ": not in the LIQUIDFERTILIZER silo group" end
+        else
+            problems[#problems + 1] = name .. ": NO FILL TYPE (fillTypes.xml did not register it)"
+        end
+
+        local st = g_sprayTypeManager:getSprayTypeByName(name)
+        if st then
+            counts.spray = counts.spray + 1
+            local want = (RATES[name] and RATES[name].value or 0) / 36000
+            if math.abs((st.litersPerSecond or 0) - want) < 1e-9 then
+                counts.rate = counts.rate + 1
+            else
+                problems[#problems + 1] = string.format("%s: LPS %.8f, expected %.8f (uncalibrated rate)",
+                    name, st.litersPerSecond or 0, want)
+            end
+            -- The ground-state trap: without an explicit crop-protection ground type a blend
+            -- falls through to the FERTILISER state and the field reads as fertilised.
+            if expectGround == nil or st.sprayGroundType == expectGround then
+                counts.ground = counts.ground + 1
+            else
+                problems[#problems + 1] = string.format("%s: ground type %s, expected FUNGICIDE's %s",
+                    name, tostring(st.sprayGroundType), tostring(expectGround))
+            end
+        else
+            problems[#problems + 1] = name .. ": NO SPRAY TYPE (would drain at a vanilla rate)"
+        end
+
+        if SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[name] then
+            counts.gate = counts.gate + 1
+        else
+            problems[#problems + 1] = name .. ": absent from FUNGICIDE_TYPES (sprays and does NOTHING)"
+        end
+    end
+
+    -- The negative requirements. A blend in either of these is actively harmful.
+    for _, name in ipairs(SoilBlends.ORDER) do
+        if SoilConstants.FERTILIZER_PROFILES[name] ~= nil then
+            problems[#problems + 1] = name .. ": IN FERTILIZER_PROFILES - would double-apply as fertiliser"
+        end
+        if SoilConstants.PHYSICAL_FUNGICIDES[name] ~= nil then
+            problems[#problems + 1] = name .. ": IN PHYSICAL_FUNGICIDES - catalog-keyed UI will nil-index"
+        end
+    end
+
+    local approved = 0
+    for _, name in ipairs(SoilBlends.ORDER) do
+        if SoilConstants.ORGANIC.APPROVED_INPUTS[name] then approved = approved + 1 end
+    end
+
+    local lines = {}
+    lines[#lines+1] = string.format("=== CD-12 tank mix registration -- %d blends ===", total)
+    lines[#lines+1] = string.format("  fill type registered   %d/%d", counts.fill, total)
+    lines[#lines+1] = string.format("  spray type registered  %d/%d", counts.spray, total)
+    lines[#lines+1] = string.format("  rate calibrated        %d/%d", counts.rate, total)
+    lines[#lines+1] = string.format("  crop-protection ground %d/%d", counts.ground, total)
+    lines[#lines+1] = string.format("  FUNGICIDE_TYPES gate   %d/%d", counts.gate, total)
+    lines[#lines+1] = string.format("  in liquid silo group   %d/%d", counts.silo, total)
+    lines[#lines+1] = string.format("  organically approved   %d/%d  (only the copper+sulfur pair should be)", approved, total)
+    lines[#lines+1] = ""
+
+    if #problems == 0 then
+        lines[#lines+1] = "  RESULT: PASS -- every blend is registered on every checked surface."
+        lines[#lines+1] = "  Still owed by hand: load one into a sprayer and spray it. Ground-state"
+        lines[#lines+1] = "  writing and boom/nozzle resolution cannot be checked from here."
+    else
+        lines[#lines+1] = string.format("  RESULT: FAIL -- %d problem(s):", #problems)
+        for i = 1, math.min(#problems, 20) do lines[#lines+1] = "    - " .. problems[i] end
+        if #problems > 20 then lines[#lines+1] = string.format("    ...and %d more", #problems - 20) end
+    end
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
+end
+
+-- ── CD-9 / CD-11 resistance console commands ─────────────────────────────
+--
+-- Debug-only English band labels. Deliberately NOT in ResistanceBands: the CD-11 contract
+-- ships band VALUES, and band LABEL strings are the presentation build's job to localize.
+local RESISTANCE_BAND_NAMES = {
+    [-1] = "UNKNOWN",
+    [0]  = "WORKING",
+    [1]  = "SLIPPING",
+    [2]  = "FINISHED",
+}
+
+-- Which chemicals share each FRAC mode, so the readout names jugs and not just codes.
+local function chemicalsForMode(mode)
+    local names = {}
+    for _, id in ipairs(SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}) do
+        if SoilFertilitySystem.getModeForFillType(id) == mode then names[#names + 1] = id end
+    end
+    return table.concat(names, ", ")
+end
+
+function SoilSettingsGUI:consoleCommandResistance(fieldId)
+    local gate = releaseGateLockedMsg("SoilResistance")
+    if gate then return gate end
+    local sfm = g_SoilFertilityManager
+    if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
+    local soilSys = sfm.soilSystem
+    local fid = resolveDiseaseFieldId(fieldId)
+    if not fid then return "Usage: SoilResistance <fieldId>  (or stand on a field)" end
+
+    local field = soilSys.fieldData and soilSys.fieldData[fid]
+    if not field then return string.format("Field %d: no soil data", fid) end
+
+    local R = SoilConstants.RESISTANCE
+    local lines = {}
+    lines[#lines+1] = string.format("=== Resistance (CD-9) -- Field %d ===", fid)
+    lines[#lines+1] = string.format("Scouted: %s%s",
+        field.diseaseDiscovered and "YES" or "NO",
+        field.diseaseDiscovered and "" or "  <- bands are gated; everything reads UNKNOWN until you SoilScout")
+    lines[#lines+1] = string.format("Field area: %.2f ha", field.fieldArea or 0)
+    lines[#lines+1] = string.format("Picture: %s",
+        ResistanceBands.hasServerPicture() and "server/SP (raw scores local)" or "client (bands synced from server)")
+    lines[#lines+1] = ""
+    lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
+
+    -- Walk the FRAC modes the mod actually knows about, so a clean mode still shows.
+    local seen, modes = {}, {}
+    for _, id in ipairs(SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}) do
+        local m = SoilFertilitySystem.getModeForFillType(id)
+        if m and not seen[m] then seen[m] = true; modes[#modes + 1] = m end
+    end
+    table.sort(modes)
+
+    for _, mode in ipairs(modes) do
+        local ceiling = ResistanceBands.ceilingForMode(mode)
+        local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+        local ratio   = score / ceiling
+        local band    = soilSys:getResistanceBand(fid, mode)
+        -- The CD-9 penalty a spray of this mode would take right now.
+        local mult    = 1 - (score / ceiling)
+        lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
+            mode, score, ceiling, ratio * 100,
+            RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+    end
+
+    lines[#lines+1] = ""
+    local synPct = R.BUILD_PER_APPLICATION * R.BUILD_RATE_SYNTHETIC
+    local natPct = R.BUILD_PER_APPLICATION * R.BUILD_RATE_NATURAL
+    lines[#lines+1] = string.format("A full-rate pass builds %.1f%% of ceiling for single-site synthetics (%d passes to saturate),",
+        synPct * 100, math.floor(1 / synPct))
+    lines[#lines+1] = string.format("and %.2f%% for the multisite naturals M1/M2 (%d passes) -- they resist far more slowly.",
+        natPct * 100, math.floor(1 / natPct))
+    lines[#lines+1] = "Bands: WORKING < 50% of ceiling, SLIPPING 50-99%, FINISHED at 100% (effectiveness x0.00)."
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
+end
+
+--- Drive the REAL spray path N full-rate passes' worth and report what the meter did.
+---
+--- This is the in-game form of F66's one-minute test. It calls onFungicideAppliedDirect the
+--- way the sprayer hook does -- many small per-boom-section slices rather than one big
+--- application -- because that call shape IS the bug: before the fix, a flat increment per
+--- call saturated a mode inside the first pass.
+function SoilSettingsGUI:consoleCommandResistanceTest(chemical, passes, fieldId)
+    local gate = releaseGateLockedMsg("SoilResistanceTest")
+    if gate then return gate end
+    local sfm = g_SoilFertilityManager
+    if not (sfm and sfm.soilSystem) then return "Error: Soil Mod not initialized" end
+    local soilSys = sfm.soilSystem
+
+    if g_server == nil then
+        return "SoilResistanceTest is server/single-player only (a client cannot apply chemicals)."
+    end
+    if not (soilSys.settings and soilSys.settings.diseasePressure) then
+        return "Disease Pressure is OFF -- turn it on in settings or the spray path returns immediately."
+    end
+
+    local chem = (chemical and chemical ~= "") and string.upper(chemical) or "PROPICONAZOLE"
+    -- Three distinct answers, in this order, because they mean different things: a typo is
+    -- not the same as generic FUNGICIDE, which is a real sprayable fill type that simply
+    -- carries no mode of action and so can never build resistance.
+    local chemList = table.concat(SoilConstants.PHYSICAL_FUNGICIDE_ORDER, ", ")
+    if SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[chem] == nil then
+        return string.format("Unknown chemical '%s'. Try one of: %s", chem, chemList)
+    end
+    local mode = SoilFertilitySystem.getModeForFillType(chem)
+    if not mode then
+        return string.format("%s has no mode of action, so it builds no resistance. Use one of: %s",
+            chem, chemList)
+    end
+
+    local n = math.max(1, math.min(50, math.floor(tonumber(passes) or 1)))
+    local fid = resolveDiseaseFieldId(fieldId)
+    if not fid then return "Usage: SoilResistanceTest [chemical] [passes] <fieldId>  (or stand on a field)" end
+    local field = soilSys.fieldData and soilSys.fieldData[fid]
+    if not field then return string.format("Field %d: no soil data", fid) end
+
+    local R        = SoilConstants.RESISTANCE
+    local ceiling  = ResistanceBands.ceilingForMode(mode)
+    local areaHa   = field.fieldArea or 1.0
+    local rate     = (SoilConstants.SPRAYER_RATE.BASE_RATES[chem]
+                      or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE).value
+    local passVol  = areaHa * rate
+    local SECTIONS = 200   -- stand-in for "1000+ times per spray pass"
+
+    local before   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+
+    -- A mode already at its ceiling CANNOT answer this question: the expected value clamps
+    -- to the ceiling too, so a broken meter and a working one produce the same number and
+    -- the test would report PASS either way. Refuse instead of returning a false clear --
+    -- and this is the LIKELY state on any save sprayed under the pre-F66 build, which is
+    -- exactly who reaches for this command first.
+    if before >= ceiling - 0.001 then
+        return string.format(
+            "=== F66 meter test -- Field %d, %s (FRAC %s) ===\n"
+            .. "INCONCLUSIVE: this mode is ALREADY at its ceiling (%.3f / %.1f).\n"
+            .. "A saturated mode cannot distinguish a working meter from a broken one --\n"
+            .. "both would end at the ceiling -- so no verdict is possible here.\n\n"
+            .. "This is the expected state on a field sprayed under the pre-F66 build; the\n"
+            .. "fix does not heal existing saves and decay is %.0f%% per in-game month.\n"
+            .. "Test a mode you have not burned (%s), or a fresh field.",
+            fid, chem, mode, before, ceiling,
+            (1 - R.DECAY_MONTHLY) * 100,
+            table.concat(SoilConstants.PHYSICAL_FUNGICIDE_ORDER, ", "))
+    end
+
+    for _ = 1, n do
+        for _ = 1, SECTIONS do
+            soilSys:onFungicideAppliedDirect(fid, 1.0, passVol / SECTIONS, chem)
+        end
+    end
+    local after    = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+
+    -- F68: naturals build at a quarter rate, so the expected value must carry it or this
+    -- would report a false FAIL on every sulfur/copper test.
+    local buildRate = SoilFertilitySystem.isNaturalFungicide(chem)
+                      and R.BUILD_RATE_NATURAL or R.BUILD_RATE_SYNTHETIC
+    local expected = math.min(ceiling, before + R.BUILD_PER_APPLICATION * ceiling * buildRate * n)
+    local ok       = math.abs(after - expected) < 0.01
+
+    local lines = {}
+    lines[#lines+1] = string.format("=== F66 meter test -- Field %d, %s (FRAC %s) ===", fid, chem, mode)
+    lines[#lines+1] = string.format("Field %.2f ha at %.0f L/ha -> one full-rate pass = %.0f L", areaHa, rate, passVol)
+    lines[#lines+1] = string.format("Sprayed %d pass(es) as %d boom-section calls each (%d calls total)",
+        n, SECTIONS, n * SECTIONS)
+    lines[#lines+1] = ""
+    lines[#lines+1] = string.format("  before:   %.3f / %.1f", before, ceiling)
+    lines[#lines+1] = string.format("  after:    %.3f / %.1f  (%.0f%% -- band %s)",
+        after, ceiling, (after / ceiling) * 100,
+        RESISTANCE_BAND_NAMES[soilSys:getResistanceBand(fid, mode)] or "?")
+    lines[#lines+1] = string.format("  expected: %.3f  (%d pass x %.2f%% of ceiling%s)",
+        expected, n, R.BUILD_PER_APPLICATION * buildRate * 100,
+        (buildRate ~= 1.0) and ", multisite natural at x" .. tostring(buildRate) or "")
+    lines[#lines+1] = ""
+    if ok then
+        lines[#lines+1] = "  RESULT: PASS -- the per-pass meter is live."
+        lines[#lines+1] = string.format("  Pre-F66 this would read %.3f (saturated) after ~20 calls, not %d passes.", ceiling, n)
+    else
+        lines[#lines+1] = "  RESULT: FAIL -- the meter is NOT metering. Report this."
+        if after >= ceiling - 0.001 then
+            lines[#lines+1] = "  The mode is pinned at its ceiling: this is exactly the F66 signature."
+        end
+    end
+    lines[#lines+1] = ""
+    lines[#lines+1] = "NOTE: real applications were made -- disease pressure dropped, and a synthetic"
+    lines[#lines+1] = "on a certified organic field counts as a breach. Use a throwaway field."
+    lines[#lines+1] = string.format("Run 'SoilResistance %d' for the full per-mode readout.", fid)
+    lines[#lines+1] = "======================================"
+    return table.concat(lines, "\n")
 end
 
 function SoilSettingsGUI:consoleCommandScout(fieldId)

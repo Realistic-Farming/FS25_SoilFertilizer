@@ -8,7 +8,7 @@
 -- fills it; a fresh instance's readStream drains it. A correct pair leaves the FIFO
 -- exactly empty with zero type mismatches. run() is a no-op here (g_server/g_client
 -- are nil in the prelude), so readStream's trailing self:run() does not interfere.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
 local CONN = { getIsServer = function() return false end }
 
@@ -39,6 +39,10 @@ local function sampleField()
     nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
     activeDisease = "septoria", diseaseDiscovered = true,
     organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
+    -- CD-11: a saturated synthetic (10/10 -> FINISHED) and a natural at 70% of its own
+    -- lower ceiling (3.5/5 -> SLIPPING). The natural is here on purpose: banded against
+    -- the synthetic ceiling it would read WORKING and the wire bug would be invisible.
+    resistance = { ["3"] = 10, ["M2"] = 3.5 },
   }
 end
 
@@ -58,6 +62,12 @@ local function assertSampleField(name, b)
   T.eq(name .. ": lastHarvest", b.lastHarvest, 12)
   T.near(name .. ": fertilizerApplied", b.fertilizerApplied, 220)
   T.eq(name .. ": herbicideDaysLeft", b.herbicideDaysLeft, 2)
+  -- CD-11: bands must survive every field-carrying event, and no raw score may cross.
+  T.eq(name .. ": CD-11 saturated synthetic band survives",
+       b.resistanceBands and b.resistanceBands["3"], SoilConstants.RESISTANCE.BANDS.FINISHED)
+  T.eq(name .. ": CD-11 natural band survives on its OWN ceiling",
+       b.resistanceBands and b.resistanceBands["M2"], SoilConstants.RESISTANCE.BANDS.SLIPPING)
+  T.ok(name .. ": CD-11 no raw resistance score crossed the wire", b.resistance == nil)
   T.eq(name .. ": insecticideDaysLeft", b.insecticideDaysLeft, 1)
   T.eq(name .. ": fungicideDaysLeft", b.fungicideDaysLeft, 4)
   T.eq(name .. ": activeDisease", b.activeDisease, "septoria")
@@ -240,4 +250,26 @@ do
   T.eq("sentryStatus: fieldId", d.fieldId, 7)
   T.eq("sentryStatus: reason", d.reason, 5)
   T.eq("sentryStatus: seq", d.seq, 42)
+end
+
+-- ── SoilValueMapChecksumEvent (SF-43 ask 4): each entry CARRIES its layerIdx ──
+-- This was a positional array whose POSITION was read back as the LAYER_DEFS index.
+-- Skipping any layer (the serverOnly opt-out does exactly that) would then shift
+-- every later checksum onto the wrong layer, so a client would "detect drift" on a
+-- healthy layer and resync it forever. The gap below is the whole point: indices 3
+-- and 5 are sent with 4 missing, exactly as a skipped serverOnly layer produces.
+do
+  local sent = {
+    { layerIdx = 3, sum = 1200, nonZero = 340 },
+    { layerIdx = 5, sum = 77,   nonZero = 9   },
+  }
+  local d = rt("vmChecksum", SoilValueMapChecksumEvent.new(sent), SoilValueMapChecksumEvent)
+  T.eq("vmChecksum: entry count survives", #d.checksums, 2)
+  T.eq("vmChecksum: first layerIdx survives the gap", d.checksums[1].layerIdx, 3)
+  T.eq("vmChecksum: first sum",     d.checksums[1].sum,     1200)
+  T.eq("vmChecksum: first nonZero", d.checksums[1].nonZero, 340)
+  -- The assertion that matters: position 2 still says layer 5, not layer 4.
+  T.eq("vmChecksum: a skipped layer does not shift the next one", d.checksums[2].layerIdx, 5)
+  T.eq("vmChecksum: second sum",     d.checksums[2].sum,     77)
+  T.eq("vmChecksum: second nonZero", d.checksums[2].nonZero, 9)
 end

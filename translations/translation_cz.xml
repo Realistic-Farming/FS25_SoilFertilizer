@@ -1227,6 +1227,51 @@
 <e k="sf_rp_next" v="Next field" />
     
     <e k="sf_rp_field_header" v="Field #%d  (%d / %d)" />
+    <!-- Harvester panel yield estimate (SF-50) -->
+    <e k="sf_hud_tha" v="%.1f t/ha" />
+    <e k="sf_hud_yield_est_src" v="Odhad z dat mapy" />
+    <!-- CD-12 tank mix names (generated) -->
+    <e k="sf_blend_azoxystrobin_boscalid_title" v="Azoxystrobin + Boscalid" />
+    <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="Azoxystrobin + Copper Hydroxide" />
+    <e k="sf_blend_azoxystrobin_mancozeb_title" v="Azoxystrobin + Mancozeb" />
+    <e k="sf_blend_azoxystrobin_metalaxyl_title" v="Azoxystrobin + Metalaxyl" />
+    <e k="sf_blend_azoxystrobin_propiconazole_title" v="Azoxystrobin + Propiconazole" />
+    <e k="sf_blend_azoxystrobin_sulfur_title" v="Azoxystrobin + Sulfur" />
+    <e k="sf_blend_azoxystrobin_tebuconazole_title" v="Azoxystrobin + Tebuconazole" />
+    <e k="sf_blend_boscalid_copper_hydroxide_title" v="Boscalid + Copper Hydroxide" />
+    <e k="sf_blend_boscalid_mancozeb_title" v="Boscalid + Mancozeb" />
+    <e k="sf_blend_boscalid_metalaxyl_title" v="Boscalid + Metalaxyl" />
+    <e k="sf_blend_boscalid_propiconazole_title" v="Boscalid + Propiconazole" />
+    <e k="sf_blend_boscalid_sulfur_title" v="Boscalid + Sulfur" />
+    <e k="sf_blend_boscalid_tebuconazole_title" v="Boscalid + Tebuconazole" />
+    <e k="sf_blend_copper_hydroxide_mancozeb_title" v="Copper Hydroxide + Mancozeb" />
+    <e k="sf_blend_copper_hydroxide_metalaxyl_title" v="Copper Hydroxide + Metalaxyl" />
+    <e k="sf_blend_copper_hydroxide_propiconazole_title" v="Copper Hydroxide + Propiconazole" />
+    <e k="sf_blend_copper_hydroxide_sulfur_title" v="Copper Hydroxide + Sulfur" />
+    <e k="sf_blend_copper_hydroxide_tebuconazole_title" v="Copper Hydroxide + Tebuconazole" />
+    <e k="sf_blend_mancozeb_metalaxyl_title" v="Mancozeb + Metalaxyl" />
+    <e k="sf_blend_mancozeb_propiconazole_title" v="Mancozeb + Propiconazole" />
+    <e k="sf_blend_mancozeb_sulfur_title" v="Mancozeb + Sulfur" />
+    <e k="sf_blend_mancozeb_tebuconazole_title" v="Mancozeb + Tebuconazole" />
+    <e k="sf_blend_metalaxyl_propiconazole_title" v="Metalaxyl + Propiconazole" />
+    <e k="sf_blend_metalaxyl_sulfur_title" v="Metalaxyl + Sulfur" />
+    <e k="sf_blend_metalaxyl_tebuconazole_title" v="Metalaxyl + Tebuconazole" />
+    <e k="sf_blend_propiconazole_sulfur_title" v="Propiconazole + Sulfur" />
+    <e k="sf_blend_propiconazole_tebuconazole_title" v="Propiconazole + Tebuconazole" />
+    <e k="sf_blend_sulfur_tebuconazole_title" v="Sulfur + Tebuconazole" />
+    <e k="sf_dis_resistant_complex" v="[EN] Multi-resistant complex" />
+    <e k="sf_dis_resistant_complex_cereal" v="[EN] Multi-resistant cereal complex" />
+    <e k="sf_dis_resistant_complex_maize" v="[EN] Multi-resistant maize complex" />
+    <e k="sf_dis_resistant_complex_oilseed" v="[EN] Multi-resistant oilseed complex" />
+    <e k="sf_dis_resistant_complex_root" v="[EN] Multi-resistant root complex" />
+    <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
+    <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
+
+    <e k="sf_experimental_short" v="Experimental Systems" />
+    <e k="sf_experimental_long" v="Turn on experimental systems that are not released yet." />
+    <e k="sf_desc_experimentalSystems" v="Off by default. Independent of difficulty. Use at your own risk." />
+    <e k="sf_panel_hdr_experimental" v="Experimental" />
+<e k="sf_release_dialog_title" v="Release Gate" />
 </elements>
 
 
