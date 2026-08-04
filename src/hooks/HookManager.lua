@@ -6434,8 +6434,8 @@ function HookManager:installExternalFillHook()
             local areaPerSec = spd * ww2 / 36000  -- ha/s
             local effLpha = (areaPerSec > 0) and (usagePerSec / areaPerSec) or 0
             SoilLogger.debug(
-                "ExternalFill BUY veh=%d type=%-12s  spd=%.1f km/h  w=%.1fm  lps=%.6f  usage=%.4fL  cost=$%.4f  eff=%.1f L/ha",
-                sprayerSelf.id or 0, ftName, spd, ww2, lps2, usage, price, effLpha)
+                "ExternalFill BUY veh=%d type=%-12s  spd=%.1f km/h  w=%.1fm  lps=%.6f  usage=%.4fL  cost=%s  eff=%.1f L/ha",
+                sprayerSelf.id or 0, ftName, spd, ww2, lps2, usage, UIHelper.formatCurrencyValue(price, 2), effLpha)
         end
 
         return customIdx, usage

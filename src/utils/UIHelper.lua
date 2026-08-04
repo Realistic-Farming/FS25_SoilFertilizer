@@ -10,6 +10,69 @@
 ---@class UIHelper
 UIHelper = {}
 
+local function _trimCurrencyText(text)
+    if type(text) ~= "string" then return "" end
+    text = text:gsub("%s+", " ")
+    text = text:gsub("%s+%p", "%1")
+    text = text:gsub("%p%s+", "%1")
+    return text
+end
+
+function UIHelper.getCurrencySymbol()
+    if g_i18n then
+        if g_i18n.getCurrencySymbol and type(g_i18n.getCurrencySymbol) == "function" then
+            local symbol = g_i18n:getCurrencySymbol()
+            if symbol and symbol ~= "" then
+                return symbol
+            end
+        end
+
+        if g_i18n.getCurrency and type(g_i18n.getCurrency) == "function" then
+            local symbol = g_i18n:getCurrency()
+            if symbol and symbol ~= "" then
+                return symbol
+            end
+        end
+
+        if g_i18n.formatMoney and type(g_i18n.formatMoney) == "function" then
+            local formatted = g_i18n:formatMoney(1)
+            if formatted and formatted ~= "" then
+                local symbol = formatted:gsub("%d", ""):gsub("[%,%.]", ""):gsub("%s+", "")
+                symbol = _trimCurrencyText(symbol)
+                if symbol and symbol ~= "" then
+                    return symbol
+                end
+            end
+        end
+    end
+
+    return "$"
+end
+
+function UIHelper.formatCurrencyValue(value, decimals)
+    local amount = tonumber(value) or 0
+    local decimalPlaces = tonumber(decimals)
+    if decimalPlaces == nil then
+        decimalPlaces = 0
+    end
+
+    if g_i18n and g_i18n.formatMoney and type(g_i18n.formatMoney) == "function" then
+        local formatted = g_i18n:formatMoney(amount)
+        if formatted and formatted ~= "" then
+            return formatted
+        end
+    end
+
+    local symbol = UIHelper.getCurrencySymbol()
+    if decimalPlaces > 0 then
+        return string.format("%s%." .. tostring(decimalPlaces) .. "f", symbol, amount)
+    end
+    return string.format("%s%d", symbol, math.floor(amount + 0.5))
+end
+
+getfenv(0)["UIHelper"] = UIHelper
+getfenv(0)["g_UIHelper"] = UIHelper
+
 --- Create a section header element using FS25 profile
 ---@param layout table The gameSettingsLayout to add to
 ---@param text string The section header text
