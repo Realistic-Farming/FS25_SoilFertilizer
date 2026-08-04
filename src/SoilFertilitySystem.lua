@@ -936,7 +936,8 @@ end
 ---@param fieldId number The field being sown
 ---@param area number Area processed in hectares
 ---@param seedsFruitType number|nil  Fruit type index of the seed going in the ground
-function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
+---@param cropBiomass number|nil  Crop biomass factor 0..1 if a standing/dead cover crop was drilled in (#778)
+function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass)
     if not fieldId or fieldId <= 0 then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
@@ -1034,6 +1035,18 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType)
                     cell.weedPressure = math.max(0, cell.weedPressure - (cell.weedPressure * cellFactor))
                 end
             end
+        end
+    end
+
+    -- #778: green-manure incorporation by direct drill. A seeder that drills through a standing
+    -- or dead cover crop (over-wintered oilseed radish, failed crop, sod) works its biomass into
+    -- the opener slot - no inversion, so a smaller boost than mulching. Awarded ONLY when the
+    -- crop-biomass probe actually detected a standing crop (biomass > 0).
+    if self.settings.residueIncorporation and cropBiomass and cropBiomass > 0
+       and SoilConstants.CROP_INCORPORATION and SoilConstants.CROP_INCORPORATION.SOWING then
+        if self:_applyCropIncorporation(fieldId, field, SoilConstants.CROP_INCORPORATION.SOWING,
+                                        cropBiomass, factor, areaHa) then
+            changed = true
         end
     end
 
