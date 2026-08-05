@@ -460,7 +460,8 @@
     <e k="sf_pda_col_priority" v="Urgence" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Besoins" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Tous les champs sont en bon état." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Les champs listés à droite nécessitent un traitement. Cliquez sur une ligne pour voir les intrants recommandés et les quantités estimées." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Les champs listés à droite nécessitent un traitement. Sélectionnez une ligne pour voir le plan ci-dessous." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Sélectionnez un champ ci-dessus pour voir la prescription de traitement." eh="522cca27" />
     <e k="sf_pda_need_n" v="Azote" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Phosphore" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potassium" eh="3a4edc67" />
