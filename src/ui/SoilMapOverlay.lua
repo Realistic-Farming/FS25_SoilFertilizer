@@ -1139,6 +1139,7 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     local ttPOOR, ttFAIR, ttGOOD = self:statusColors()
     local DIM = { 0.55, 0.55, 0.62 }
     local NEU = { 0.85, 0.85, 0.90 }
+    local ppmUnit = g_i18n:getText("sf_hud_unit_ppm")
 
     local function fmtV(s) return est and (s .. "~") or s end
     local function clrStatus(status)
@@ -1165,28 +1166,30 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     if layerIdx >= 1 and layerIdx <= 3 then
         -- ── Nutrient layer (N / P / K) ──────────────────────────
         local nInfo, ppmMul, lbl
-        if     layerIdx == 1 then nInfo = info.nitrogen;   ppmMul = ppm.N; lbl = "Nitrogen (N)"
-        elseif layerIdx == 2 then nInfo = info.phosphorus; ppmMul = ppm.P; lbl = "Phosphorus (P)"
-        else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = "Potassium (K)" end
+        if     layerIdx == 1 then nInfo = info.nitrogen;   ppmMul = ppm.N; lbl = tr("sf_map_layer_n", "Nitrogen (N)")
+        elseif layerIdx == 2 then nInfo = info.phosphorus; ppmMul = ppm.P; lbl = tr("sf_map_layer_p", "Phosphorus (P)")
+        else                       nInfo = info.potassium;  ppmMul = ppm.K; lbl = tr("sf_map_layer_k", "Potassium (K)") end
 
         local val = (nInfo.value or 0) * ppmMul
-        addRow(lbl, fmtV(string.format("%d ppm", math.floor(val + 0.5))), clrStatus(nInfo.status))
+        addRow(lbl, fmtV(string.format("%d %s", math.floor(val + 0.5), ppmUnit)), clrStatus(nInfo.status))
 
         local targKey = (layerIdx == 1) and "N" or (layerIdx == 2) and "P" or "K"
         local ct = info.cropTargets
+        local targetLabel = tr("sf_map_target", "Target")
+        local gapLabel = tr("sf_map_gap", "Gap")
         if ct and ct[targKey] then
                 local target = ct[targKey].opt * ppmMul
                 local gap    = val - target
-                local crop   = cropTitle(info.lastCrop) or "Crop"
-                addRow("Target (" .. crop .. ")", string.format("%d ppm", math.floor(target + 0.5)), NEU[1], NEU[2], NEU[3])
+                local crop   = cropTitle(info.lastCrop) or tr("sf_hud_fallow", "Crop")
+                addRow(targetLabel .. " (" .. crop .. ")", string.format("%d %s", math.floor(target + 0.5), ppmUnit), NEU[1], NEU[2], NEU[3])
                 if gap >= 0 then
-                    addRow("Gap", string.format("+%d ppm", math.floor(gap + 0.5)), ttGOOD[1], ttGOOD[2], ttGOOD[3])
+                    addRow(gapLabel, string.format("+%d %s", math.floor(gap + 0.5), ppmUnit), ttGOOD[1], ttGOOD[2], ttGOOD[3])
                 else
-                    addRow("Gap", string.format("%d ppm needed", math.floor(-gap + 0.5)), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                    addRow(gapLabel, string.format("%d %s needed", math.floor(-gap + 0.5), ppmUnit), ttPOOR[1], ttPOOR[2], ttPOOR[3])
                 end
             else
                 local crop = cropTitle(info.lastCrop)
-                addRow("Target", crop and ("No data: " .. crop) or "No crop planted", DIM[1], DIM[2], DIM[3])
+                addRow(targetLabel, crop and (tr("sf_map_target_no_data", "No data") .. ": " .. crop) or tr("sf_map_target_none", "No crop planted"), DIM[1], DIM[2], DIM[3])
             end
 
     elseif layerIdx == 4 then
@@ -1194,24 +1197,24 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
         local condLabel, actionLabel, condR, condG, condB
         if pH >= 6.5 and pH <= 7.0 then
-            condLabel = "Optimal";              actionLabel = "None needed"
+            condLabel = tr("sf_map_ph_optimal", "Optimal");              actionLabel = tr("sf_map_ph_none_needed", "None needed")
             condR, condG, condB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
         elseif pH > 7.0 and pH <= 7.5 then
-            condLabel = "Over-limed";           actionLabel = "Allow to normalize"
+            condLabel = tr("sf_map_ph_over_limed", "Over-limed");           actionLabel = tr("sf_map_ph_normalize", "Allow to normalize")
             condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         elseif pH > 7.5 then
-            condLabel = "Severely over-limed";  actionLabel = "Apply sulfur"
+            condLabel = tr("sf_map_ph_severely_over_limed", "Severely over-limed");  actionLabel = tr("sf_map_ph_apply_sulfur", "Apply sulfur")
             condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         elseif pH >= 5.5 then
-            condLabel = "Slightly acidic";      actionLabel = "Apply lime"
+            condLabel = tr("sf_map_ph_slightly_acidic", "Slightly acidic");      actionLabel = tr("sf_map_ph_apply_lime", "Apply lime")
             condR, condG, condB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
         else
-            condLabel = "Very acidic";          actionLabel = "Apply lime urgently"
+            condLabel = tr("sf_map_ph_very_acidic", "Very acidic");          actionLabel = tr("sf_map_ph_apply_lime_urgent", "Apply lime urgently")
             condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         end
         addRow("pH",        fmtV(string.format("%.1f", pH)), condR, condG, condB)
-        addRow("Condition", condLabel,   condR, condG, condB)
-        addRow("Treatment", actionLabel, NEU[1], NEU[2], NEU[3])
+        addRow(tr("sf_map_condition", "Condition"), condLabel,   condR, condG, condB)
+        addRow(tr("sf_map_treatment", "Treatment"), actionLabel, NEU[1], NEU[2], NEU[3])
 
     elseif layerIdx == 5 then
         -- ── Organic Matter ──────────────────────────────────────
@@ -1220,16 +1223,16 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         local omR, omG, omB, hint
         if om >= (rc and rc.OM_GOOD or 4.0) then
             omR, omG, omB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
-            hint = "Healthy - maintain with straw"
+            hint = tr("sf_map_om_healthy", "Healthy - maintain with straw")
         elseif om >= (rc and rc.OM_FAIR or 2.5) then
             omR, omG, omB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
-            hint = "Incorporate straw / manure"
+            hint = tr("sf_map_om_fair", "Incorporate straw / manure")
         else
             omR, omG, omB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
-            hint = "Low - add manure or digestate"
+            hint = tr("sf_map_om_low", "Low - add manure or digestate")
         end
-        addRow("Organic Matter", fmtV(string.format("%.1f%%", om)), omR, omG, omB)
-        addRow("Tip",            hint, NEU[1], NEU[2], NEU[3])
+        addRow(tr("sf_map_layer_om", "Organic Matter"), fmtV(string.format("%.1f%%", om)), omR, omG, omB)
+        addRow(tr("sf_map_tip", "Tip"), hint, NEU[1], NEU[2], NEU[3])
 
     elseif layerIdx == 6 then
         -- ── Field Urgency ───────────────────────────────────────
@@ -1238,10 +1241,10 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         if urgency > 66 then uR, uG, uB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         elseif urgency > 33 then uR, uG, uB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
         else uR, uG, uB = ttGOOD[1], ttGOOD[2], ttGOOD[3] end
-        addRow("Urgency", string.format("%d / 100", math.floor(urgency + 0.5)), uR, uG, uB)
+        addRow(tr("sf_map_layer_urgency", "Urgency"), string.format("%d / 100", math.floor(urgency + 0.5)), uR, uG, uB)
 
         local T = SoilConstants.STATUS_THRESHOLDS
-        local limLabel = "Balanced"
+        local limLabel = tr("sf_map_balanced", "Balanced")
         local limR, limG, limB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
         local worst = 0
         local function checkNutrient(val, thresh, name)
@@ -1253,54 +1256,54 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
                 end
             end
         end
-        checkNutrient(info.nitrogen.value   or 0, (T.nitrogen   and T.nitrogen.fair)   or 50, "Nitrogen (N)")
-        checkNutrient(info.phosphorus.value or 0, (T.phosphorus and T.phosphorus.fair) or 30, "Phosphorus (P)")
-        checkNutrient(info.potassium.value  or 0, (T.potassium  and T.potassium.fair)  or 80, "Potassium (K)")
-        addRow("Limiting", limLabel, limR, limG, limB)
+        checkNutrient(info.nitrogen.value   or 0, (T.nitrogen   and T.nitrogen.fair)   or 50, tr("sf_map_layer_n", "Nitrogen (N)"))
+        checkNutrient(info.phosphorus.value or 0, (T.phosphorus and T.phosphorus.fair) or 30, tr("sf_map_layer_p", "Phosphorus (P)"))
+        checkNutrient(info.potassium.value  or 0, (T.potassium  and T.potassium.fair)  or 80, tr("sf_map_layer_k", "Potassium (K)"))
+        addRow(tr("sf_map_limiting", "Limiting"), limLabel, limR, limG, limB)
 
-        local crop = cropTitle(info.lastCrop) or "Fallow"
-        addRow("Crop", crop, NEU[1], NEU[2], NEU[3])
+        local crop = cropTitle(info.lastCrop) or tr("sf_hud_fallow", "Fallow")
+        addRow(tr("sf_map_crop", "Crop"), crop, NEU[1], NEU[2], NEU[3])
 
     elseif layerIdx == 7 then
         -- ── Weed Pressure ───────────────────────────────────────
         local wp     = math.floor((info.weedPressure or 0) + 0.5)
         local wConst = SoilConstants.WEED_PRESSURE or {}
         local wLow, wMed = wConst.LOW or 20, wConst.MEDIUM or 50
-        addRow("Weed Pressure", string.format("%d%%", wp), clrPct(wp, wLow, wMed))
+        addRow(tr("sf_map_weed_pressure", "Weed Pressure"), string.format("%d%%", wp), clrPct(wp, wLow, wMed))
         if info.herbicideActive then
-            addRow("Herbicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+            addRow(tr("sf_map_herbicide", "Herbicide"), tr("sf_map_active", "Active"), ttGOOD[1], ttGOOD[2], ttGOOD[3])
         elseif wp >= wLow then
-            addRow("Herbicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            addRow(tr("sf_map_herbicide", "Herbicide"), tr("sf_map_not_applied", "Not applied"), ttFAIR[1], ttFAIR[2], ttFAIR[3])
         else
-            addRow("Herbicide", "Not needed", NEU[1], NEU[2], NEU[3])
+            addRow(tr("sf_map_herbicide", "Herbicide"), tr("sf_map_not_needed", "Not needed"), NEU[1], NEU[2], NEU[3])
         end
 
     elseif layerIdx == 8 then
         -- ── Pest Pressure ───────────────────────────────────────
         local pp = math.floor((info.pestPressure or 0) + 0.5)
-        addRow("Pest Pressure", string.format("%d%%", pp), clrPct(pp, 20, 50))
+        addRow(tr("sf_map_pest_pressure", "Pest Pressure"), string.format("%d%%", pp), clrPct(pp, 20, 50))
         if info.insecticideActive then
-            addRow("Insecticide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+            addRow(tr("sf_map_insecticide", "Insecticide"), tr("sf_map_active", "Active"), ttGOOD[1], ttGOOD[2], ttGOOD[3])
         elseif pp >= 20 then
-            addRow("Insecticide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            addRow(tr("sf_map_insecticide", "Insecticide"), tr("sf_map_not_applied", "Not applied"), ttFAIR[1], ttFAIR[2], ttFAIR[3])
         else
-            addRow("Insecticide", "Not needed", NEU[1], NEU[2], NEU[3])
+            addRow(tr("sf_map_insecticide", "Insecticide"), tr("sf_map_not_needed", "Not needed"), NEU[1], NEU[2], NEU[3])
         end
 
     elseif layerIdx == 9 then
         -- ── Disease Pressure ────────────────────────────────────
         if info.shownDiseasePressure == nil then
             -- Unscouted: no percentage, no fungicide hint (would leak the disease).
-            addRow("Disease Pressure", g_i18n:getText("sf_unscouted"), NEU[1], NEU[2], NEU[3])
+            addRow(tr("sf_map_disease_pressure", "Disease Pressure"), g_i18n:getText("sf_unscouted"), NEU[1], NEU[2], NEU[3])
         else
             local dp = math.floor((info.shownDiseasePressure or 0) + 0.5)
-            addRow("Disease Pressure", string.format("%d%%", dp), clrPct(dp, 20, 50))
+            addRow(tr("sf_map_disease_pressure", "Disease Pressure"), string.format("%d%%", dp), clrPct(dp, 20, 50))
             if info.fungicideActive then
-                addRow("Fungicide", "Active", ttGOOD[1], ttGOOD[2], ttGOOD[3])
+                addRow(tr("sf_map_fungicide", "Fungicide"), tr("sf_map_active", "Active"), ttGOOD[1], ttGOOD[2], ttGOOD[3])
             elseif dp >= 20 then
-                addRow("Fungicide", "Not applied", ttFAIR[1], ttFAIR[2], ttFAIR[3])
+                addRow(tr("sf_map_fungicide", "Fungicide"), tr("sf_map_not_applied", "Not applied"), ttFAIR[1], ttFAIR[2], ttFAIR[3])
             else
-                addRow("Fungicide", "Not needed", NEU[1], NEU[2], NEU[3])
+                addRow(tr("sf_map_fungicide", "Fungicide"), tr("sf_map_not_needed", "Not needed"), NEU[1], NEU[2], NEU[3])
             end
         end
 
@@ -1334,26 +1337,26 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         local comp = math.floor((info.compaction or 0) + 0.5)
         local cR, cG, cB, action
         if comp < 25 then
-            cR, cG, cB = ttGOOD[1], ttGOOD[2], ttGOOD[3]; action = "No action needed"
+            cR, cG, cB = ttGOOD[1], ttGOOD[2], ttGOOD[3]; action = tr("sf_map_compaction_ok", "No action needed")
         elseif comp < 60 then
-            cR, cG, cB = ttFAIR[1], ttFAIR[2], ttFAIR[3]; action = "Subsoiling recommended"
+            cR, cG, cB = ttFAIR[1], ttFAIR[2], ttFAIR[3]; action = tr("sf_map_compaction_recommended", "Subsoiling recommended")
         else
-            cR, cG, cB = ttPOOR[1], ttPOOR[2], ttPOOR[3]; action = "Subsoiling urgent"
+            cR, cG, cB = ttPOOR[1], ttPOOR[2], ttPOOR[3]; action = tr("sf_map_compaction_urgent", "Subsoiling urgent")
         end
-        addRow("Compaction", string.format("%d%%", comp), cR, cG, cB)
-        addRow("Treatment",  action, cR, cG, cB)
+        addRow(tr("sf_map_layer_compaction", "Compaction"), string.format("%d%%", comp), cR, cG, cB)
+        addRow(tr("sf_map_treatment", "Treatment"),  action, cR, cG, cB)
 
     elseif layerIdx == 11 then
         -- ── Yield potential (field-average) ──────────────────────
         if info.yieldEfficiency == nil then
-            addRow("Yield", "n/a", NEU[1], NEU[2], NEU[3])
+            addRow(tr("sf_map_layer_yield", "Yield"), "n/a", NEU[1], NEU[2], NEU[3])
         else
             local y = math.floor(info.yieldEfficiency + 0.5)
             local yR, yG, yB
             if y >= 80 then     yR, yG, yB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
             elseif y >= 55 then yR, yG, yB = ttFAIR[1], ttFAIR[2], ttFAIR[3]
             else                yR, yG, yB = ttPOOR[1], ttPOOR[2], ttPOOR[3] end
-            addRow("Yield", string.format("%d%%", y), yR, yG, yB)
+            addRow(tr("sf_map_layer_yield", "Yield"), string.format("%d%%", y), yR, yG, yB)
         end
     else
         return
@@ -1400,8 +1403,9 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
     setTextColor(0.65, 0.85, 1.0, 1.0)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_MIDDLE)
+    local fieldTitle = string.format(g_i18n:getText("sf_hud_field"), sel.farmlandId)
     renderText(bx + padX, titleY + titleH * 0.5, titSz,
-               string.format("Field %d  [%d, %d]", sel.farmlandId, sel.cellCX, sel.cellCZ))
+               fieldTitle .. string.format("  [%d, %d]", sel.cellCX, sel.cellCZ))
     setTextBold(false)
     drawFilledRect(bx + padX, titleY - bdrT, boxW - padX * 2, bdrT, 0.4, 0.65, 1.0, 0.3)
 

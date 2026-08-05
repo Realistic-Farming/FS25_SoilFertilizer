@@ -1133,9 +1133,10 @@ function SoilSettingsGUI:consoleCommandTreat(chemical, fieldId)
         return string.format("Treatment failed (%s) on field %d", tostring(msgKey), fid)
     end
     detail = detail or {}
-    return string.format("Applied %s to field %d: control %.0f%%, pressure -%.0f, protected %d day(s), cost $%.0f%s",
+    local costText = UIHelper.formatCurrencyValue(detail.cost or 0)
+    return string.format("Applied %s to field %d: control %.0f%%, pressure -%.0f, protected %d day(s), cost %s%s",
         chemDisplayName(chemId), fid,
-        (detail.control or 0) * 100, detail.reduction or 0, detail.protDays or 0, detail.cost or 0,
+        (detail.control or 0) * 100, detail.reduction or 0, detail.protDays or 0, costText,
         (detail.disease and (" vs " .. diseaseDisplayName(detail.disease)) or ""))
 end
 
@@ -1153,8 +1154,9 @@ function SoilSettingsGUI:consoleCommandFungicides(diseaseId)
         local tag = (c.seedTreatment and "  (seed)")
             or (SoilConstants.PHYSICAL_FUNGICIDES and SoilConstants.PHYSICAL_FUNGICIDES[id] and "  (tank - spray)")
             or ""
-        lines[#lines+1] = string.format("%-18s  $%d/ha  T%d  %s%s",
-            id, c.costPerHa or 0, c.tier or 1, c.group or "", tag)
+        local costText = UIHelper.formatCurrencyValue(c.costPerHa or 0)
+        lines[#lines+1] = string.format("%-18s  %s/ha  T%d  %s%s",
+            id, costText, c.tier or 1, c.group or "", tag)
     end
     lines[#lines+1] = "Apply with: SoilTreat <chemical> <fieldId>"
     lines[#lines+1] = "========================="
@@ -1627,9 +1629,9 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
                         totalDrained = totalDrained + level
                         totalRefund  = totalRefund  + refund
                         table.insert(report, string.format(
-                            "  %s: %.0f L/kg drained → refund $%.0f", typeName, level, refund))
-                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %s, refund $%.0f",
-                            level, typeName, refund)
+                            "  %s: %.0f L/kg drained → refund %s", typeName, level, UIHelper.formatCurrencyValue(refund)))
+                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %s, refund %s",
+                            level, typeName, UIHelper.formatCurrencyValue(refund))
                     end
                 end
             end
@@ -1645,8 +1647,8 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
 
     local summary = string.format(
-        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: $%.0f (50%%)\n========================",
-        table.concat(report, "\n"), totalDrained, totalRefund
+        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%%)\n========================",
+        table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund)
     )
     print(summary)
     return summary

@@ -462,12 +462,24 @@ function SoilMinimapLayer:draw(mapSelf)
 end
 
 -- Short labels for each layer index (displayed in minimap corner).
+-- Use localized keys when available so the minimap fits the active language.
 local LAYER_LABEL = {
     [1]  = "N",        [2]  = "P",      [3]  = "K",
     [4]  = "pH",       [5]  = "OM",     [6]  = "!",
     [7]  = "Weed",     [8]  = "Pest",   [9]  = "Disease",
     [10] = "Compact",  [11] = "Yield",  [12] = "Organic",
 }
+
+local function sfMapLayerText(layerIdx, fallback)
+    local key = SoilMapOverlay and SoilMapOverlay.LAYER_KEYS and SoilMapOverlay.LAYER_KEYS[layerIdx]
+    if key and g_i18n then
+        local ok, text = pcall(function() return g_i18n:getText(key) end)
+        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
+            return text
+        end
+    end
+    return fallback
+end
 -- Matching accent colours (same palette as SoilMapOverlay.LAYER_COLORS).
 local LAYER_LABEL_COLOR = {
     [1]  = {0.40, 0.90, 0.40},  [2]  = {0.40, 0.70, 1.00},
@@ -501,8 +513,7 @@ end
 -- (SoilMapOverlay.LAYER_KEYS), so there is a single set of strings to translate.
 -- The bracketed short code is only appended where it differs from the full name.
 function SoilMinimapLayer.buildLayerLabel(layerIdx)
-    local key = SoilMapOverlay and SoilMapOverlay.LAYER_KEYS and SoilMapOverlay.LAYER_KEYS[layerIdx]
-    local fullName = sfTr(key, LAYER_LABEL[layerIdx])
+    local fullName = sfMapLayerText(layerIdx, LAYER_LABEL[layerIdx])
     if not fullName then return nil end
 
     local abbr = LAYER_ABBREV[layerIdx]
