@@ -1,0 +1,576 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<GUIProfiles>
+    <!-- ============================================================ -->
+    <!-- Realistic Farming PDA profiles — MOCKUP-ESC-RF-PDA swatches  -->
+    <!-- Main #222222 (0.133) · Side #2A2D28 (0.165 0.176 0.157)     -->
+    <!-- Lime #8cc63f (0.549 0.776 0.247) · blank.png avoids purple   -->
+    <!-- ============================================================ -->
+
+    <Profile name="RF_RowBoxH" extends="emptyPanel" with="anchorTopLeft">
+        <layoutDirection value="horizontal"/>
+        <layoutSpacing value="10px"/>
+        <clipChildren value="false"/>
+    </Profile>
+
+    <Profile name="RF_ColBoxV" extends="emptyPanel" with="anchorTopLeft">
+        <layoutDirection value="vertical"/>
+        <layoutSpacing value="6px"/>
+        <clipChildren value="false"/>
+    </Profile>
+
+    <!-- F12: TREATMENT PLAN section title (+2 vs F11 19). -->
+    <Profile name="RF_SectionTitle" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="21px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.95 0.95 0.95 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+
+    <!-- F12: Soil Fertilizer hero (~74; still bold header via textBold). -->
+    <Profile name="RF_PageTitle" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="74px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.95 0.95 0.95 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+
+    <!-- F12: tagline a bit larger so it sits closer to the hero title. -->
+    <Profile name="RF_PageTagline" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="23px"/>
+        <textBold value="false"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="2"/>
+    </Profile>
+
+    <!-- F11: one-line brand REALISTIC FARMING (lime arrows clear; tint forced in Lua). -->
+    <Profile name="RF_BrandSelector" extends="fs25_subCategorySelector">
+        <size value="100% 44px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px -48px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_BrandSelectorText"/>
+    </Profile>
+    <Profile name="RF_BrandSelectorText" extends="fs25_subCategorySelectorText">
+        <textSize value="20px"/>
+        <textBold value="true"/>
+        <textMaxWidth value="320px"/>
+        <textMaxNumLines value="1"/>
+        <textLayoutMode value="resize"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <!-- Soil/CS left help (mid-band under Modules MTO; before moduleList in XML). -->
+    <Profile name="RF_SideInfoShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="384px 300px"/>
+        <position value="10px -148px"/>
+        <clipChildren value="false"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_SideInfoBody" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="16px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="16"/>
+    </Profile>
+    <!-- Fresh WC: page band = sibling of rfFilterBox; grow height so side info under MTO is not clipped. -->
+    <Profile name="RF_WcSubnavShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="410px 370px"/>
+        <position value="0px -118px"/>
+        <clipChildren value="false"/>
+    </Profile>
+    <!-- Page MTO: same width/offset/left as Modules fs25_subCategorySelector (100% 42 + 56 offset). -->
+    <Profile name="RF_WcSubnavSelector" extends="fs25_subCategorySelector">
+        <size value="100% 42px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px -10px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_WcSubnavSelectorText"/>
+    </Profile>
+    <Profile name="RF_WcSubnavSelectorText" extends="fs25_subCategorySelectorText">
+        <textSize value="18px"/>
+        <textBold value="false"/>
+        <textMaxWidth value="240px"/>
+        <textMaxNumLines value="1"/>
+        <textLayoutMode value="resize"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <!-- Page dots under page selector inside sibling shell (not in rfFilterBox). -->
+    <Profile name="RF_WcSubnavDotBox" extends="fs25_subCategorySelectorBox">
+        <position value="0px -60px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- Retired title-chrome (RESTORE): keep profiles for nil-safe ids; never shown. -->
+    <Profile name="RF_WcTitlePageShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="1px 1px"/>
+        <position value="0px 0px"/>
+        <clipChildren value="false"/>
+    </Profile>
+    <Profile name="RF_WcTitlePageSelector" extends="fs25_subCategorySelector">
+        <size value="1px 1px"/>
+        <absoluteSizeOffset value="0px 0px"/>
+        <position value="0px 0px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_BrandSelectorText"/>
+    </Profile>
+    <!-- CLEARED ship: page bodies under hero title/blurb. -->
+    <Profile name="RF_WcPageShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="1140px 520px"/>
+        <position value="16px -84px"/>
+        <clipChildren value="false"/>
+    </Profile>
+    <Profile name="RF_WcPage" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="1140px 500px"/>
+        <position value="0px 0px"/>
+        <clipChildren value="false"/>
+    </Profile>
+    <Profile name="RF_WcWageOption" extends="fs25_subCategorySelector">
+        <size value="360px 40px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px 0px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_BrandSelectorText"/>
+    </Profile>
+    <Profile name="RF_WcAboutTabSelector" extends="fs25_subCategorySelector">
+        <size value="520px 40px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px 0px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_BrandSelectorText"/>
+    </Profile>
+    <!-- WC/MDM help card top-aligned under the page selector cluster (round 3: abs top -198 =
+         shell -118 + child -80; 10px air under the page dot row at -70). Shared by both cards. -->
+    <Profile name="RF_WcSideInfoShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="384px 240px"/>
+        <position value="10px -80px"/>
+        <clipChildren value="false"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_WcSideHeading" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="16px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.659 0.878 0.290 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+    <Profile name="RF_WcSideBody" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="16px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="12"/>
+    </Profile>
+
+    <Profile name="RF_RowLabel" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="22px"/>
+        <textBold value="false"/>
+        <textColor value="1 1 1 0.8"/>
+        <textAlignment value="left"/>
+        <width value="200px"/>
+    </Profile>
+
+    <Profile name="RF_RowValue" extends="fs25_textDefault" with="anchorTopRight">
+        <textSize value="22px"/>
+        <textBold value="true"/>
+        <textColor value="1 1 1 1"/>
+        <textAlignment value="right"/>
+        <width value="220px"/>
+    </Profile>
+
+    <Profile name="RF_RowValueGreen" extends="fs25_textDefault" with="anchorTopRight">
+        <textSize value="20px"/>
+        <textBold value="true"/>
+        <textColor value="0.659 0.878 0.290 1"/>
+        <textAlignment value="right"/>
+        <width value="220px"/>
+    </Profile>
+
+    <!-- Treatment "Selected field" — left align (mock treat-meta .sel) -->
+    <Profile name="RF_TreatSelected" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="19px"/>
+        <textBold value="true"/>
+        <textColor value="0.659 0.878 0.290 1"/>
+        <textAlignment value="left"/>
+        <textMaxNumLines value="1"/>
+    </Profile>
+    <!-- Eyes-on 2026-08-03: Next tip under Field (may wrap once). -->
+    <Profile name="RF_TreatNext" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="18px"/>
+        <textBold value="true"/>
+        <textColor value="0.659 0.878 0.290 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="2"/>
+    </Profile>
+
+    <Profile name="RF_BigStat" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="40px"/>
+        <textBold value="true"/>
+        <textColor value="0.549 0.776 0.247 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+
+    <Profile name="RF_BigStatLabel" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="18px"/>
+        <textBold value="false"/>
+        <textUpperCase value="true"/>
+        <textColor value="1 1 1 0.6"/>
+    </Profile>
+
+    <Profile name="RF_BodyText" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="18px"/>
+        <textBold value="false"/>
+        <textColor value="1 1 1 0.85"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="5"/>
+        <width value="380px"/>
+    </Profile>
+
+    <!-- F5/F11: Target levels stacked lines (no embedded newlines); section +1. -->
+    <Profile name="RF_TreatTargetLine" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="19px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+    </Profile>
+
+    <!-- F7/F8/F12: PRODUCTS table cells (fixed columns; no SmoothList). -->
+    <!-- F12: PRODUCTS section title (+1 vs F11 RF_ColHeader 17) — do not inherit fields +2. -->
+    <Profile name="RF_ProductsTitle" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="18px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.478 0.502 0.533 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+    <Profile name="RF_ProductColHeader" extends="RF_ColHeader">
+        <textSize value="17px"/>
+    </Profile>
+    <Profile name="RF_ProductCell" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="17px"/>
+        <textColor value="0.941 0.753 0.251 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_ProductCellRight" extends="RF_ProductCell">
+        <textAlignment value="right"/>
+    </Profile>
+    <Profile name="RF_ProductOk" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="18px"/>
+        <textColor value="0.659 0.878 0.290 1"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="top"/>
+    </Profile>
+
+    <!-- F8 pink: clip shell so PRODUCTS rows stay inside treatment panel. Wider Name (eyes-on 2026-08-03). -->
+    <Profile name="RF_ProductsShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="560px 248px"/>
+        <clipChildren value="true"/>
+    </Profile>
+    <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="560px 160px"/>
+        <clipChildren value="true"/>
+    </Profile>
+    <Profile name="RF_ProductRow" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="560px 20px"/>
+        <clipChildren value="false"/>
+    </Profile>
+
+    <Profile name="RF_EmptyText" extends="fs25_textGrey" with="anchorMiddleCenter">
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+        <textSize value="26px"/>
+    </Profile>
+
+    <Profile name="RF_BtnBgGreen" extends="baseReference" with="anchorTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.12 0.35 0.12 0.95"/>
+    </Profile>
+
+    <Profile name="RF_BtnHit" extends="emptyPanel" with="anchorTopLeft">
+        <isFocusable value="true"/>
+    </Profile>
+
+    <Profile name="RF_BtnText" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="20px"/>
+        <textBold value="true"/>
+        <textColor value="1 1 1 1"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+
+    <Profile name="RF_tabListItemButton" extends="fs25_tabListItemButton">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0 0 0 0"/>
+    </Profile>
+
+    <!-- Kept for RfSoilFrame / other Esc pages (Phase 1 A7: do not delete shared header chrome). -->
+    <Profile name="RF_IconMenu" extends="baseReference" with="anchorMiddleCenter">
+        <size value="50px 50px"/>
+        <imageSliceId value="noSlice"/>
+        <imageFilename value="g_SFIconMenu"/>
+        <imageColor value="1 1 1 1"/>
+    </Profile>
+
+    <!-- Kept for other Esc pages; RfPdaMenuPage omits money (Phase 1 Q3 = B). -->
+    <Profile name="RF_MoneyBoxShell" extends="emptyPanel" with="anchorTopRight"/>
+
+    <!--
+        F9 page root: fill Esc paging content (uiInGameMenuPaging already sits
+        past the 125px icon rail). Do NOT use vanilla uiInGameMenuFrame here —
+        that profile is fixed 1400x756 + anchorMiddleCenter and leaves constant gutters.
+        George cite: extract/dataS/guiProfiles.xml uiInGameMenuFrame.
+    -->
+    <Profile name="RF_PageRoot" extends="emptyPanel" with="anchorStretchingYStretchingX">
+        <size value="100% 100%"/>
+        <absoluteSizeOffset value="0px 0px"/>
+        <position value="0px 0px"/>
+    </Profile>
+
+    <!-- F8: side ~1/4 of Esc RF content (Wizard yellow line); wider than vanilla 410/463. -->
+    <!-- F10: keep side 520; shrink chrome overhang (was +53) and butt main — closes centre black bar. -->
+    <Profile name="RF_SideColShell" extends="fs25_subCategoryContainer">
+        <width value="520px"/>
+    </Profile>
+    <Profile name="RF_SideColChrome" extends="fs25_subCategoryContainerBg">
+        <width value="548px"/>
+    </Profile>
+
+    <!-- MDM pre-kiss chrome: parent fs25_menuContentContainer center traits, X 226. -->
+    <!-- Kiss seam: X=404 left edge via pivot X 0; Y vanilla bottom-up via pivot Y 0 (round 2 D1:
+         pivotTopLeft's pivot Y 1 multiplied the 192 absOff into a +192 lift and beheaded the title). -->
+    <Profile name="RF_MainColShell" extends="fs25_menuContentContainer" with="anchorStretchingYLeft pivotBottomLeft">
+        <position value="404px 40px"/>
+        <absoluteSizeOffset value="178px 192px"/>
+    </Profile>
+
+    <!-- Nest surface narrowed to the 404 seam. Keeps vanilla texture slices:
+         blank.png + noSlice on a ThreePartBitmap paints the raw gui atlas (2026-08-04 lesson). -->
+    <Profile name="RF_SubCategoryContainerBg" extends="fs25_subCategoryContainerBg">
+        <width value="404px"/>
+    </Profile>
+
+    <Profile name="RF_PanelContentShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
+        <absoluteSizeOffset value="0px 36px"/>
+        <position value="0px -52px"/>
+    </Profile>
+
+    <Profile name="RF_HostPlaceholderShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
+        <absoluteSizeOffset value="0px 36px"/>
+        <position value="0px -52px"/>
+    </Profile>
+
+    <!-- F11: registered modules docked at bottom of side strip. -->
+    <Profile name="RF_ModuleListShellBottom" extends="emptyPanel" with="anchorBottomLeft pivotBottomLeft">
+        <!-- Default 220; host Lua shrinks to ~170 on WC while About side info is up. -->
+        <size value="504px 220px"/>
+        <position value="8px 16px"/>
+    </Profile>
+
+    <!-- Table viewport reserve. -->
+    <Profile name="RF_TableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
+        <absoluteSizeOffset value="0px 392px"/>
+        <position value="0px 0px"/>
+    </Profile>
+
+    <!-- MDM TOP commodities vs BOTTOM band (368)+L(~20): MDM-only; do not change shared Soil table shell. -->
+    <Profile name="RF_MdTableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
+        <absoluteSizeOffset value="0px 388px"/>
+        <position value="0px 0px"/>
+    </Profile>
+
+    <!-- MDM Esc TOP crop icon twin of deep mdm_cropIcon (26x26 @ 5px). Esc loads rfEscProfiles only. -->
+    <Profile name="RF_MdCropIcon" extends="baseReference" with="anchorMiddleLeft">
+        <size value="26px 26px"/>
+        <position value="5px 0px"/>
+        <imageSliceId value="noSlice"/>
+    </Profile>
+
+    <!-- MDM Prices graph rect: top-left under PRICE TREND (draw slaves to abs box).
+         Round 3: Y -28 -> -38 for 10px air under the graph title (title bottom -28). -->
+    <Profile name="RF_MdGraphArea" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="720px 200px"/>
+        <position value="40px -38px"/>
+        <clipChildren value="false"/>
+        <handleFocus value="false"/>
+    </Profile>
+
+    <!-- Treatment / CS detail: clipChildren keeps PRODUCTS inside strip. -->
+    <Profile name="RF_TreatmentStrip" extends="emptyPanel" with="anchorBottomStretchingX pivotBottomLeft">
+        <height value="384px"/>
+        <position value="0px 0px"/>
+        <clipChildren value="true"/>
+    </Profile>
+
+    <!-- Wizard swatches: blank.png + imageColor (never nil filename); stretch fill parents -->
+    <Profile name="RF_SideColBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.165 0.176 0.157 0.92"/>
+        <handleFocus value="false"/>
+    </Profile>
+
+    <!-- Round 4: sidebar repaint with the vanilla glass slice (George, extract gui.xml UV 936 441 10 104).
+         extends baseReference = gui atlas + engine white; NO blank.png, NO imageColor (vanilla tone is
+         baked in the atlas pixels, zero tint). anchorStretchingYLeft -> x 0..404, full column height. -->
+    <Profile name="RF_SideColUnderlay" extends="baseReference" with="anchorStretchingYLeft">
+        <width value="404px"/>
+        <imageSliceId value="gui.animalScreen_left"/>
+        <handleFocus value="false"/>
+    </Profile>
+
+    <Profile name="RF_MainColBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.133 0.133 0.133 0.96"/>
+    </Profile>
+
+    <Profile name="RF_TableWrapBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.078 0.086 0.094 0.92"/>
+    </Profile>
+
+    <Profile name="RF_TreatmentBoxBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.078 0.086 0.094 0.92"/>
+    </Profile>
+
+    <Profile name="RF_HintText" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="17px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+
+    <Profile name="RF_DotLegend" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="15px"/>
+        <textColor value="0.478 0.502 0.533 1"/>
+        <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="RF_ModuleListLabel" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="14px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.478 0.502 0.533 1"/>
+        <textAlignment value="left"/>
+    </Profile>
+
+    <!-- F12: fields col headers +2 (17->19); all centered in cells. -->
+    <Profile name="RF_ColHeader" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="19px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.478 0.502 0.533 1"/>
+        <textAlignment value="center"/>
+    </Profile>
+
+    <!-- Kept for other pages; fields table uses centered RF_ColHeader (F12). -->
+    <Profile name="RF_ColHeaderRight" extends="RF_ColHeader">
+        <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="RF_SmoothList" extends="emptyPanel" with="anchorStretchingYLeft pivotTopLeft"/>
+
+    <Profile name="RF_ListRow" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
+        <height value="28px"/>
+    </Profile>
+
+    <Profile name="RF_RowBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.118 0.129 0.141 0.85"/>
+        <imageSelectedColor value="0.549 0.776 0.247 0.18"/>
+        <alternateBackgroundColor value="0.145 0.157 0.173 0.85"/>
+    </Profile>
+
+    <Profile name="RF_CellLeft" extends="fs25_textDefault" with="anchorStretchingYLeft">
+        <position value="8px 0px"/>
+        <textSize value="20px"/>
+        <textBold value="true"/>
+        <textAlignment value="left"/>
+        <textColor value="0.95 0.95 0.95 1"/>
+        <textSelectedColor value="0.95 0.95 0.95 1"/>
+    </Profile>
+
+    <Profile name="RF_CellRight" extends="RF_CellLeft">
+        <textBold value="false"/>
+        <textAlignment value="center"/>
+    </Profile>
+
+    <!-- F12: AREA body cells centered in column. -->
+    <Profile name="RF_CellCenter" extends="RF_CellLeft">
+        <textBold value="false"/>
+        <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="RF_EmptyHint" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="19px"/>
+        <textAlignment value="center"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+    </Profile>
+
+    <!-- F8: taller rows for +2 textSize -->
+    <Profile name="RF_ListRowTall" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
+        <height value="44px"/>
+    </Profile>
+
+    <!-- F12: STATUS body cells centered. -->
+    <Profile name="RF_StatusCell" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="17px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+        <textColor value="0.95 0.95 0.95 1"/>
+        <textSelectedColor value="0.95 0.95 0.95 1"/>
+    </Profile>
+
+    <Profile name="RF_FertChip" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="17px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+        <textColor value="0.941 0.753 0.251 1"/>
+    </Profile>
+
+    <Profile name="RF_ModuleListRow" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
+        <height value="34px"/>
+    </Profile>
+
+    <Profile name="RF_ModuleRowBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0 0 0 0"/>
+        <imageSelectedColor value="0.549 0.776 0.247 0.15"/>
+        <alternateBackgroundColor value="0 0 0 0"/>
+    </Profile>
+
+    <Profile name="RF_ModuleItemText" extends="fs25_textDefault" with="anchorStretchingYLeft">
+        <position value="10px 0px"/>
+        <textSize value="16px"/>
+        <textAlignment value="left"/>
+        <textVerticalAlignment value="middle"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textSelectedColor value="0.659 0.878 0.290 1"/>
+    </Profile>
+
+    <Profile name="RF_ModuleItemTag" extends="fs25_textDefault" with="anchorStretchingYRight">
+        <position value="-8px 0px"/>
+        <size value="80px 28px"/>
+        <textSize value="13px"/>
+        <textUpperCase value="true"/>
+        <textAlignment value="right"/>
+        <textVerticalAlignment value="middle"/>
+        <textColor value="0.478 0.502 0.533 1"/>
+        <textSelectedColor value="0.478 0.502 0.533 1"/>
+    </Profile>
+
+    <!-- WC blank.png pattern: color Bitmap must have a filename or GuiOverlay returns nil (purple) -->
+    <Profile name="RF_InfoBoxBg" extends="baseReference" with="anchorStretchingYStretchingX">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0 0 0 0.35"/>
+    </Profile>
+</GUIProfiles>
