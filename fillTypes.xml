@@ -191,6 +191,149 @@
             <pallet filename="objects/liquidTank/copper_hydroxide/liquidTank_copper_hydroxide.xml" />
         </fillType>
 
+        <!-- CD-12 TANK MIXES: generated, do not hand-edit. 28 two-chemical blends. -->
+        <fillType name="BLEND_AZOXYSTROBIN_BOSCALID" title="$l10n_sf_blend_azoxystrobin_boscalid_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.73"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_COPPER_HYDROXIDE" title="$l10n_sf_blend_azoxystrobin_copper_hydroxide_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.08"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_MANCOZEB" title="$l10n_sf_blend_azoxystrobin_mancozeb_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.25"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_METALAXYL" title="$l10n_sf_blend_azoxystrobin_metalaxyl_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.52"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_PROPICONAZOLE" title="$l10n_sf_blend_azoxystrobin_propiconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.50"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_SULFUR" title="$l10n_sf_blend_azoxystrobin_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.00"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_AZOXYSTROBIN_TEBUCONAZOLE" title="$l10n_sf_blend_azoxystrobin_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.58"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_COPPER_HYDROXIDE" title="$l10n_sf_blend_boscalid_copper_hydroxide_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.20"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_MANCOZEB" title="$l10n_sf_blend_boscalid_mancozeb_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.38"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_METALAXYL" title="$l10n_sf_blend_boscalid_metalaxyl_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.65"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_PROPICONAZOLE" title="$l10n_sf_blend_boscalid_propiconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.62"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_SULFUR" title="$l10n_sf_blend_boscalid_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.12"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_BOSCALID_TEBUCONAZOLE" title="$l10n_sf_blend_boscalid_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.70"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_COPPER_HYDROXIDE_MANCOZEB" title="$l10n_sf_blend_copper_hydroxide_mancozeb_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.73"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_COPPER_HYDROXIDE_METALAXYL" title="$l10n_sf_blend_copper_hydroxide_metalaxyl_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.00"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_COPPER_HYDROXIDE_PROPICONAZOLE" title="$l10n_sf_blend_copper_hydroxide_propiconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.97"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_COPPER_HYDROXIDE_SULFUR" title="$l10n_sf_blend_copper_hydroxide_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.48"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_COPPER_HYDROXIDE_TEBUCONAZOLE" title="$l10n_sf_blend_copper_hydroxide_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.05"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_MANCOZEB_METALAXYL" title="$l10n_sf_blend_mancozeb_metalaxyl_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.18"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_MANCOZEB_PROPICONAZOLE" title="$l10n_sf_blend_mancozeb_propiconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.15"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_MANCOZEB_SULFUR" title="$l10n_sf_blend_mancozeb_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.65"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_MANCOZEB_TEBUCONAZOLE" title="$l10n_sf_blend_mancozeb_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.23"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_METALAXYL_PROPICONAZOLE" title="$l10n_sf_blend_metalaxyl_propiconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.42"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_METALAXYL_SULFUR" title="$l10n_sf_blend_metalaxyl_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.93"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_METALAXYL_TEBUCONAZOLE" title="$l10n_sf_blend_metalaxyl_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.50"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_PROPICONAZOLE_SULFUR" title="$l10n_sf_blend_propiconazole_sulfur_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.90"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_PROPICONAZOLE_TEBUCONAZOLE" title="$l10n_sf_blend_propiconazole_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="1.48"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <fillType name="BLEND_SULFUR_TEBUCONAZOLE" title="$l10n_sf_blend_sulfur_tebuconazole_title" showOnPriceTable="false" isBulkType="false" unitShort="$l10n_unit_literShort">
+            <physics massPerLiter="0.001" maxPhysicalSurfaceAngle="0"/>
+            <economy pricePerLiter="0.98"/>
+            <image hud="$dataS/menu/hud/fillTypes/hud_fill_liquidFertilizer.png"/>
+        </fillType>
+        <!-- /CD-12 TANK MIXES -->
+
         <fillType name="LIQUID_UREA" title="$l10n_sf_liquid_urea_title" showOnPriceTable="true" isBulkType="false" unitShort="$l10n_unit_literShort">
             <physics massPerLiter="1.10" maxPhysicalSurfaceAngle="0"/>
             <economy pricePerLiter="0.60"/>
@@ -309,7 +452,30 @@
             that already accept LIQUIDFERTILIZER will also accept our liquid nitrogen products
             and starter fertilizer.
         -->
-        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE SULFUR COPPER_HYDROXIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME</fillTypeCategory>
+        <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE SULFUR COPPER_HYDROXIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME BLEND_AZOXYSTROBIN_BOSCALID BLEND_AZOXYSTROBIN_COPPER_HYDROXIDE BLEND_AZOXYSTROBIN_MANCOZEB BLEND_AZOXYSTROBIN_METALAXYL BLEND_AZOXYSTROBIN_PROPICONAZOLE BLEND_AZOXYSTROBIN_SULFUR BLEND_AZOXYSTROBIN_TEBUCONAZOLE BLEND_BOSCALID_COPPER_HYDROXIDE BLEND_BOSCALID_MANCOZEB BLEND_BOSCALID_METALAXYL BLEND_BOSCALID_PROPICONAZOLE BLEND_BOSCALID_SULFUR BLEND_BOSCALID_TEBUCONAZOLE BLEND_COPPER_HYDROXIDE_MANCOZEB BLEND_COPPER_HYDROXIDE_METALAXYL BLEND_COPPER_HYDROXIDE_PROPICONAZOLE BLEND_COPPER_HYDROXIDE_SULFUR BLEND_COPPER_HYDROXIDE_TEBUCONAZOLE BLEND_MANCOZEB_METALAXYL BLEND_MANCOZEB_PROPICONAZOLE BLEND_MANCOZEB_SULFUR BLEND_MANCOZEB_TEBUCONAZOLE BLEND_METALAXYL_PROPICONAZOLE BLEND_METALAXYL_SULFUR BLEND_METALAXYL_TEBUCONAZOLE BLEND_PROPICONAZOLE_SULFUR BLEND_PROPICONAZOLE_TEBUCONAZOLE BLEND_SULFUR_TEBUCONAZOLE</fillTypeCategory>
+
+        <!--
+            TRANSPORT, not application. The two categories above decide what SPREADS
+            and SPRAYS our products. They do not decide what HAULS them, which is why
+            a player could spread urea and could not put it in a tipper (issue #773).
+
+            Verified in the base game at data/maps/maps_fillTypes.xml: BULK carries the
+            crops plus FERTILIZER, LIME and MANURE, and AUGERWAGON carries the grains
+            plus FERTILIZER. So vanilla dry fertiliser is haulable in both and ours was
+            in neither. isBulkType="true" on each product was never the gate: per
+            FillTypeDesc.lua:287 that flag only means "can be SOLD as bulk".
+
+            Arissani ruled parity (2026-08-05): our dry products haul exactly as vanilla
+            FERTILIZER hauls, so they join both of the categories vanilla FERTILIZER is
+            in. Nothing here is a special case.
+
+            The liquid half of that parity needs no change. Vanilla LIQUIDFERTILIZER is
+            in SPRAYER only, never in the LIQUID transport category (milk, water, diesel,
+            DEF), so a liquid is carried by the sprayer or tanker that applies it. Our
+            liquids already match that through the LIQUIDFERTILIZER line above.
+        -->
+        <fillTypeCategory name="BULK">UREA AN AMS MAP DAP POTASH POLIFOSKA GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
+        <fillTypeCategory name="AUGERWAGON">UREA AN AMS MAP DAP POTASH POLIFOSKA GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
     </fillTypeCategories>
 
 </map>

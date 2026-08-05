@@ -227,6 +227,7 @@ SoilConstants.CROP_INCORPORATION = {
     PLOW       = { OM = 1.2,  N = 6.0, P = 1.2, K = 4.0 },  -- deep inversion - fullest burial
     CULTIVATOR = { OM = 0.7,  N = 3.5, P = 0.7, K = 2.2 },  -- shallow mixing
     MULCHER    = { OM = 0.6,  N = 2.5, P = 0.5, K = 1.5 },  -- surface chop, no soil inversion
+    SOWING     = { OM = 0.4,  N = 2.0, P = 0.4, K = 1.2 },  -- #778 direct drill: opener slot only, no inversion
     MIN_BIOMASS = 0.30,   -- floor biomass factor once an established crop (past seedling) is detected
     SEEDLING_GROWTH_STATE = 1,  -- growth states at/below this are negligible biomass (just emerged)
 }
@@ -1396,6 +1397,39 @@ SoilConstants.DISEASE_DEFS = {
     late_leaf_spot     = { cat="leaf_spot",       sci="Cercosporidium personatum",   cool=false, wet=true,  season={0.8,1.2,1.3}, yMin=0.15, yMax=0.40 },
     peanut_rust        = { cat="rust",            sci="Puccinia arachidis",          cool=false, wet=true,  season={0.9,1.2,1.2}, yMin=0.08, yMax=0.18 },
     pod_rot            = { cat="sclerotinia",     sci="Sclerotinia sclerotiorum",    cool=true,  wet=true,  season={1.0,1.0,1.3}, yMin=0.10, yMax=0.25 },
+
+    -- CD-10 HYBRID STRAINS. Reachable ONLY through the resistance-gated pre-pass in
+    -- _updateActiveDisease, never through selectDisease's weighted roll -- which is why this
+    -- id is deliberately absent from DISEASE_REGISTRY and every per-crop candidate list.
+    --
+    -- `cat` is a BRAND-NEW, EMPTY category on purpose. No physical fungicide's `eff` table
+    -- carries it, so every chemical falls through to DISEASE_DEFAULT_EFFECTIVENESS (0.25) --
+    -- a uniform ceiling rather than a hand-tuned scatter. That is the SDS 5.3 taste call, and
+    -- this build takes the uniform shape: it makes the hybrid's difficulty a property of the
+    -- RESISTANCE the player built rather than of a table someone balanced by feel.
+    --
+    -- `requiresModes` is the RULED CONTROL FACTOR's hook (2026-07-30, Arissani delegated).
+    -- Without it a blend would answer a hybrid no better than one fresh jug, because
+    -- max-over-partners control composed with a flat 0.25 default collapses to 0.25 either
+    -- way. Its presence is also the flag that the factor applies at all; ordinary diseases
+    -- carry no requiresModes and nothing about them changes.
+    --
+    -- COUNT IS SEVEN (ruled 2026-08-01): one resistant complex per crop family, plus the
+    -- default kept for unfamilied and modded crops. The rows differ ONLY in `sci`, the
+    -- display key, and the yield band; `cat` and `requiresModes` stay IDENTICAL on all
+    -- seven so the ruled control factor and isHybrid hold on every one.
+    --
+    -- The yield band is where families are allowed to differ because that is an agronomic
+    -- statement rather than a dial: a root crop's blight complex genuinely costs more than
+    -- a forage stand's leaf complex. The shipped 0.25 to 0.45 sits in the middle where it
+    -- should; root sits above it and forage below it, per the brief's own example.
+    resistant_complex          = { cat="resistant_complex", sci="Multi-resistant complex",       cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
+    resistant_complex_cereal   = { cat="resistant_complex", sci="Multi-resistant cereal complex",  cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_maize    = { cat="resistant_complex", sci="Multi-resistant maize complex",   cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_oilseed  = { cat="resistant_complex", sci="Multi-resistant oilseed complex", cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.25, yMax=0.45, requiresModes=2 },
+    resistant_complex_root     = { cat="resistant_complex", sci="Multi-resistant root complex",    cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.30, yMax=0.55, requiresModes=2 },
+    resistant_complex_pulse    = { cat="resistant_complex", sci="Multi-resistant pulse complex",   cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.20, yMax=0.40, requiresModes=2 },
+    resistant_complex_forage   = { cat="resistant_complex", sci="Multi-resistant forage complex",  cool=false, wet=true, season={1.0,1.1,1.1}, yMin=0.15, yMax=0.30, requiresModes=2 },
 }
 
 -- Crop → its candidate diseases (lowercased internal fruit name → list of DISEASE_DEFS ids).
@@ -1452,8 +1486,92 @@ SoilConstants.DISEASE_REGISTRY = {
 }
 SoilConstants.DISEASE_REGISTRY_DEFAULT = { "leaf_spot", "rust", "powdery_mildew" }
 
+-- Crop family for the CD-10 hybrid count ruling (2026-08-01): ONE resistant complex per
+-- crop family, the default kept for everything else. The family is the right unit because
+-- resistance breeds in a FIELD, across a rotation, through the disease pool a rotation
+-- shares. Mint and cotton are deliberately absent: a herb and a fibre crop are each their
+-- own world, and they fall to the default rather than to a bucket invented for them.
+-- Lowercase crop key -> family name; every DISEASE_REGISTRY key resolves here or to the
+-- default (the drift test in the CD-10 hybrid-family bench asserts exactly that).
+--
+-- NOTE THE NAME IS HYBRID_CROP_FAMILY, NOT CROP_FAMILY: that name is already a blessed
+-- rotation-planner contract at line ~1698 (getCropFamily, read by DiseaseSystem.rotationMult)
+-- with a DIFFERENT taxonomy (wheat=grain, maize=grain, mint=forage, cotton=other, peanut=root).
+-- The hybrid brief named its table CROP_FAMILY but that slot is taken; a second assignment
+-- of the same name would silently overwrite the rotation planner's table and change how it
+-- scores crop chains. This table carries the hybrid ruling's OWN taxonomy (cereal, maize,
+-- oilseed, root, pulse, forage) and is read only by HybridStrains.strainForPair.
+SoilConstants.HYBRID_CROP_FAMILY = {
+    -- cereal
+    wheat      = "cereal", barley = "cereal", oat = "cereal", rye = "cereal",
+    spelt      = "cereal", triticale = "cereal", greenrye = "cereal",
+    buckwheat  = "cereal", millet = "cereal",
+    -- maize
+    maize      = "maize", sorghum = "maize",
+    -- oilseed
+    canola     = "oilseed", sunflower = "oilseed", mustard = "oilseed",
+    linseed    = "oilseed", flax = "oilseed", poppy = "oilseed",
+    sesame     = "oilseed", safflower = "oilseed",
+    -- root
+    potato     = "root", sugarbeet = "root", taro = "root",
+    -- pulse
+    soybean    = "pulse", pea = "pulse", peas = "pulse", driedpeas = "pulse",
+    chickpea   = "pulse", chickpeas = "pulse", lentil = "pulse", lentils = "pulse",
+    greenbean  = "pulse", bean = "pulse", beans = "pulse", pintobean = "pulse",
+    pintobeans = "pulse", peanut = "pulse", peanuts = "pulse",
+    -- forage
+    alfalfa    = "forage", luzerne = "forage", clover = "forage",
+    whiteclover = "forage", redclover = "forage", grass = "forage",
+    meadow     = "forage", miscanthus = "forage",
+}
+
 -- Effectiveness fallback for any (chemical, category) pair not explicitly listed.
 SoilConstants.DISEASE_DEFAULT_EFFECTIVENESS = 0.25
+
+-- ========================================
+-- CD-10 HYBRID STRAINS
+-- ========================================
+-- A field sprayed with the same one or two modes for long enough breeds an infection no
+-- single chemical answers well. RESISTANCE.HYBRID_THRESHOLD (0.7) is the eligibility
+-- fraction; these are the rest of the dials.
+SoilConstants.HYBRID = {
+    -- Candidacy weight per FRAC mode. Eligibility (3.2) decides which pairs QUALIFY;
+    -- candidacy decides which qualifying pair actually FIRES. Weighting by real FRAC risk
+    -- is not optional -- treating all mode-pairs as equal candidates was ruled out.
+    --
+    -- SINGLE-SITE modes are where resistance genuinely breeds: the fungus has one lock to
+    -- pick. MULTISITE modes weight to ZERO, and that zero is doing real work -- a pair
+    -- containing one is ELIGIBLE under the threshold arithmetic and still fires nothing,
+    -- which is exactly the "weight low or to zero" the brief calls for.
+    --
+    -- Note M3 MANCOZEB: it is multisite but SYNTHETIC, so unlike M1/M2 it builds at the full
+    -- rate and can genuinely reach the threshold. Zeroing it is a chemistry statement, not a
+    -- side effect of it being slow -- multisite chemistry does not select for cross-resistance.
+    --
+    -- THE CURVE IS A FLAGGED SUBSTITUTION: the exact weighting is one of Arissani's four open
+    -- CD-10 feel calls. This is the stated default shape, built per the brief's authorisation.
+    MODE_RISK = {
+        ["3"]  = 1.00,   -- DMI / triazole      - single-site, high risk
+        ["11"] = 1.00,   -- QoI / strobilurin   - single-site, high risk (notorious for it)
+        ["7"]  = 0.90,   -- SDHI                - single-site, high risk
+        ["4"]  = 0.80,   -- phenylamide         - single-site, high risk
+        M1     = 0.00,   -- copper   - MULTISITE, never a hybrid parent
+        M2     = 0.00,   -- sulfur   - MULTISITE, never a hybrid parent
+        M3     = 0.00,   -- mancozeb - MULTISITE, never a hybrid parent
+    },
+    -- Risk for a mode not listed above (a future chemical). Conservative: assume single-site
+    -- until someone says otherwise, because the failure direction that matters is a hybrid
+    -- that never fires, not one that fires slightly too readily.
+    DEFAULT_MODE_RISK = 0.75,
+
+    -- Re-onset cooldown after a hybrid clears, in CALENDAR MONTHS. Measured against
+    -- daysPerPeriod exactly as the resistance decay is, so it is one real month on a 1-day
+    -- month and on a 28-day month alike.
+    --
+    -- FLAGGED SUBSTITUTION: the length is another of Arissani's four open feel calls; one
+    -- month is the brief's stated default.
+    REONSET_COOLDOWN_MONTHS = 1,
+}
 
 -- Fungicide catalog. Menu-selectable chemicals (no physical fill type).
 --   group   : chemistry family (for UI grouping + resistance-rotation tracking)
@@ -1740,10 +1858,92 @@ SoilConstants.SEE_AND_SPRAY = {
 -- ========================================
 -- Per-section rate multiplier derived from the nutrient deficit at each section's soil cell.
 -- The manual rate setting acts as a ceiling; variable rate cannot exceed it.
+-- CD-9: Per-MOA disease resistance tuning values
+-- RESISTANCE_BUILD_PER_APPLICATION: fractional immunity gained per full-rate pass of one MOA
+-- RESISTANCE_DECAY_MONTHLY: multiplier applied per unused month (calendar-normalized)
+-- HYBRID_THRESHOLD: resistance level at which ≥2 modes triggers hybrid onset
+-- RESISTANCE_MAX_SYNTHETIC: ceiling for synthetic MOA scores (10 = 100% immunity)
+-- RESISTANCE_MAX_NATURAL: ceiling for natural/bio MOA scores (5 = 50% immunity)
+SoilConstants.RESISTANCE = {
+    BUILD_PER_APPLICATION = 0.05,
+    DECAY_MONTHLY         = 0.85,
+    HYBRID_THRESHOLD      = 0.7,
+    MAX_SYNTHETIC         = 10,
+    MAX_NATURAL           = 5,
+
+    -- CD-11: the BAND enum a client may see. Resistance is simulated as a raw score, but
+    -- a raw score is never rendered and (by default) never travels: the server computes a
+    -- band and the client reads only that. UNKNOWN is a first-class value, NOT an absence
+    -- -- an unscouted or unsynced field reads UNKNOWN and must never fall back to WORKING,
+    -- or a client renders "your fungicide is fine" about ground it has never looked at.
+    BANDS = {
+        UNKNOWN  = -1,   -- never scouted, or not yet synced. Distinct from every real band.
+        WORKING  = 0,    -- the chemical still does what the label says
+        SLIPPING = 1,    -- measurably weaker; rotate the mode of action
+        FINISHED = 2,    -- effectiveness is provably zero on this mode
+    },
+
+    -- Band cut points, as a FRACTION of the mode's own ceiling (MAX_SYNTHETIC /
+    -- MAX_NATURAL), so naturals and synthetics band on the same scale.
+    --
+    -- FINISHED is ANCHORED at 1.0 by the CD-11 SDS and is not a tuning knob: at ratio 1.0
+    -- the build's own penalty is (1 - score/maxRes) = 0, so the chemical is provably inert.
+    -- SLIPPING is the open tuning question the SDS left to engineering; it is a named
+    -- constant precisely so it can be retuned without touching the sync path.
+    BAND_CUT_SLIPPING = 0.5,
+    BAND_CUT_FINISHED = 1.0,
+
+    -- FRAC modes that cap at MAX_NATURAL rather than MAX_SYNTHETIC.
+    --
+    -- Keyed by MODE, not by chemical, because field.resistance is keyed by mode. (The
+    -- CD-11 brief's pseudocode calls isNaturalFungicide(mode); that cannot work -- it takes
+    -- a fill-type name like "SULFUR", so every mode returns false and a saturated natural
+    -- would band against the synthetic ceiling and read half-clean.)
+    --
+    -- Mirrors the natural entries of SoilFertilitySystem's MODE_FOR_FILLTYPE (SULFUR -> M2,
+    -- COPPER_HYDROXIDE -> M1). resistance_bands_cd11_test asserts the two agree, so adding
+    -- a natural chemical without updating this fails the suite rather than shipping a
+    -- silently wrong ceiling.
+    NATURAL_MODES = { M1 = true, M2 = true },
+
+    -- F68: THE DURABILITY DIAL, and it has to live on the BUILD RATE rather than the ceiling.
+    --
+    -- MAX_NATURAL looks like it makes sulfur and copper more durable. It does not, and this
+    -- was certified at three sites: the ceiling MULTIPLIES the build, DIVIDES the penalty
+    -- (1 - score/maxRes) and SCALES the bands (a fraction of that same ceiling), so it
+    -- cancels in all three. Synthetic: 0.05 x 10 = 0.5 per pass into a ceiling of 10 = 20
+    -- passes. Natural: 0.05 x 5 = 0.25 into a ceiling of 5 = ALSO exactly 20 passes. The
+    -- penalty at pass N is 1 - 0.05N either way. Anyone tuning MAX_NATURAL to make sulfur
+    -- last longer would change nothing and believe they had -- which is worse than a missing
+    -- feature, because the constant reads like a dial.
+    --
+    -- So the real dial is here, applied to the BUILD TERM ONLY. The ceiling keeps its one
+    -- honest job: setting where FINISHED sits.
+    --
+    -- THE AGRONOMY: sulfur and copper are MULTISITE -- they attack the fungus at many
+    -- biochemical points at once, so it has to defeat all of them. FRAC grades the M-group
+    -- LOW resistance risk on decades of field use with almost no documented resistance. A
+    -- triazole hits ONE site, and a fungus picks one lock far faster than twelve.
+    --
+    -- AND THE FAIRNESS REASON, which is what re-graded F68 from LOW to MEDIUM: by CD-12's
+    -- own ruling an organic grower has exactly ONE legal mix, so he cannot rotate modes --
+    -- there is nothing to rotate to. Under the old arithmetic he burned out his only
+    -- chemistry at precisely the rate of a farmer hammering one synthetic by choice. The
+    -- system punished him identically for a decision he was never offered.
+    --
+    -- 0.25 gives roughly 80 full-rate passes to saturation against the synthetic's 20.
+    -- Ruled by Tyson 2026-08-01 on Claude(A)'s recommendation. This is the tuning knob:
+    -- raise it to burn naturals faster, lower it to make them nearer-permanent.
+    BUILD_RATE_NATURAL   = 0.25,
+    BUILD_RATE_SYNTHETIC = 1.0,
+}
+
 SoilConstants.VARIABLE_RATE = {
     NUTRIENT_TARGET = 70,     -- "well stocked" level - same as Smart Sensor NUTRIENT_TARGET
     MIN_RATE        = 0.30,   -- minimum multiplier (field at or above target → light top-up pass)
     MAX_RATE        = 1.50,   -- maximum multiplier (completely depleted cell)
+    PH_OPTIMAL      = 6.5,   -- optimal pH target (reuse NUTRIENT_LIMITS.PH_OPTIMAL)
+    PH_CURVE_FLOOR  = 5.0,   -- max rate at pH <= floor (reuse NUTRIENT_LIMITS.PH_MIN)
 }
 
 -- ========================================

@@ -648,7 +648,10 @@ function SoilHUD:update(dt)
     self._cachedFillType = self:getSprayerFillType(sprayer)
     self._cachedProfile  = self._cachedFillType and SoilConstants.FERTILIZER_PROFILES[self._cachedFillType.name]
     local rm             = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
-    self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(sprayer.id) or 1.0
+    -- Resolve rate via rootVehicle so separate tanker + boom setups match (#754).
+    local _sprRoot = sprayer and sprayer.rootVehicle
+    local _rateVehId = sprayer and ((_sprRoot and _sprRoot ~= sprayer) and (_sprRoot.id or 0) or sprayer.id) or 0
+    self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(_rateVehId) or 1.0
 
     -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
@@ -789,7 +792,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- boxes could show e.g. 84% and -27% for the same field. Formatting
     -- yieldEfficiency directly here guarantees the FIELD INFO box and the
     -- Soil Monitor panel can never disagree again.
-    local yieldStr = g_i18n:getText("sf_hud_optimal") or "Optimal"
+    local yieldStr = g_i18n:getText("sf_hud_optimal") or g_i18n:getText("sf_report_rec_optimal") or "Optimal"
     if info.yieldEfficiency ~= nil then
         local pct = math.floor(info.yieldEfficiency + 0.5)
         yieldStr = string.format("%d%%", pct)
@@ -837,7 +840,7 @@ function SoilHUD:buildFieldInfoLines(info)
     if info.simDisabled then
         simStatusStr = (info.simDisabledReasonKey and g_i18n:getText(info.simDisabledReasonKey))
             or info.simDisabledReason
-            or "asleep"
+            or g_i18n:getText("sf_fieldsentry_asleep") or "asleep"
     end
 
     -- ── Needs summary (actionable issues list) ─────────────
@@ -849,12 +852,12 @@ function SoilHUD:buildFieldInfoLines(info)
     if     info.potassium.status  == "Poor" then table.insert(needs, "K!")
     elseif info.potassium.status  == "Fair" then table.insert(needs, "K")  end
     if info.pH and (info.pH < phGoodLow or info.pH > phGoodHigh) then table.insert(needs, "pH") end
-    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or "Weed Risk")   end
-    if pestPct    >= pestMed    then table.insert(needs, g_i18n:getText("sf_hud_pests")   or "Pests")   end
-    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, g_i18n:getText("sf_hud_disease") or "Disease") end
-    if compPct    > 10          then table.insert(needs, g_i18n:getText("sf_hud_compaction") or "Compaction") end
+    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label")   or "Weed Risk")   end
+    if pestPct    >= pestMed    then table.insert(needs, g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label")   or "Pests")   end
+    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, g_i18n:getText("sf_hud_disease") or g_i18n:getText("sf_pda_disease_label") or "Disease") end
+    if compPct    > 10          then table.insert(needs, g_i18n:getText("sf_hud_compaction") or g_i18n:getText("sf_map_layer_compaction") or "Compaction") end
 
-    local protected = g_i18n:getText("sf_hud_protected") or "protected"
+    local protected = g_i18n:getText("sf_hud_protected") or "(protected)"
     local function pressureLine(pct, active)
         if active then return string.format("%d%% (%s)", pct, protected) end
         return string.format("%d%%", pct)
@@ -884,11 +887,11 @@ function SoilHUD:buildFieldInfoLines(info)
     -- via compPct even though its own row is gone.
     table.insert(lines, { group = "early", label = "pH",      value = string.format("%.1f", info.pH) })
     table.insert(lines, { group = "early", label = "OM",      value = string.format("%.1f%%", info.organicMatter) })
-    if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
-    if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
+    if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label") or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
+    if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label") or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
     if diseaseHidden then
         local unknownStr = (g_i18n:hasText("sf_hud_disease_unknown") and g_i18n:getText("sf_hud_disease_unknown"))
-            or "? (scout to identify)"
+            or g_i18n:getText("sf_hud_disease") or "? (scout to identify)"
         table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease", value = unknownStr })
     else
         if diseasePct > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease",   value = pressureLine(diseasePct, info.fungicideActive) }) end
@@ -2058,7 +2061,9 @@ function SoilHUD:drawSprayerRatePanel()
 
     local s          = self.scale
     local steps      = SoilConstants.SPRAYER_RATE.STEPS
-    local currentIdx = rm:getIndex(sprayer.id)
+    local _sprRoot2 = sprayer.rootVehicle
+    local _rateVehId2 = (_sprRoot2 and _sprRoot2 ~= sprayer) and (_sprRoot2.id or 0) or sprayer.id
+    local currentIdx = rm:getIndex(_rateVehId2)
     local fontMult   = SoilConstants.HUD.FONT_SIZE_MULTIPLIERS[self.settings.hudFontSize or 2]
     local fillType   = self:getSprayerFillType(sprayer)
     local rateConfig = self:getRateConfig(fillType)
@@ -2094,7 +2099,7 @@ function SoilHUD:drawSprayerRatePanel()
     -- The toggle key is read live from the input binding. SF_TOGGLE_AUTO ships
     -- unbound, so if the player has not bound it we show no key hint at all.
     -- isAuto = auto rate mode active on this vehicle AND the setting is enabled
-    local isAuto = rm:getAutoMode(sprayer.id) and self.settings.autoRateControl
+    local isAuto = rm:getAutoMode(_rateVehId2) and self.settings.autoRateControl
     local autoKey = ""   -- stays empty until a real bound key is found below
     if g_inputDisplayManager ~= nil then
         local ok, helpElement = pcall(function()

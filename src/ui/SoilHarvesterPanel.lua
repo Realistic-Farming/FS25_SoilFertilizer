@@ -27,22 +27,18 @@ SoilHarvesterPanel.SEG_N   = 10      -- number of segments
 SoilHarvesterPanel.SEG_GAP = 0.0018  -- gap between segments
 SoilHarvesterPanel.PANEL_W = 0.210
 SoilHarvesterPanel.STAT_H  = 0.040   -- stats bar (icons + values) at bottom
+SoilHarvesterPanel.EST_H   = 0.012   -- provenance caption above the stats bar
 
 SoilHarvesterPanel.DEFAULT_X = 0.015625
 SoilHarvesterPanel.DEFAULT_Y = 0.340
 
 SoilHarvesterPanel.WARN_THRESHOLD = 0.85  -- flash warning above this fill ratio
 
--- Base crop yields (t/ha) for the yield estimate cell
-SoilHarvesterPanel.BASE_YIELD = {
-    wheat=8, barley=7, oat=6, rye=6, triticale=7,
-    corn=12, maize=12, sorghum=10,
-    canola=4, rapeseed=4, sunflower=4,
-    soybean=4, beans=4,
-    potato=45, sugarbeet=65, sugarcane=80,
-    cotton=3, tobacco=3,
-    default=8,
-}
+-- [SF-50] The hardcoded BASE_YIELD table was deleted here, deliberately WITHOUT a
+-- fallback. The estimate is now computed from the map's own crop truth (see
+-- computeYieldEstimate below). A stale fallback would be the same defect in disguise:
+-- the table failed silently for its whole life because nothing audited it, whereas a
+-- live read fails as a visible empty cell, which is a bug report within a day.
 
 -- ── Colors ───────────────────────────────────────────────
 SoilHarvesterPanel.C_BG       = {0.05, 0.05, 0.05, 0.82}
@@ -374,6 +370,69 @@ function SoilHarvesterPanel:getCropFillType(combine, tank)
     return nil
 end
 
+-- ── Yield estimate [SF-50] ────────────────────────────────
+-- Estimated t/ha read from the map's own crop truth instead of a hardcoded table:
+--
+--   literPerSqm x yieldScales[growthState] x 10000 m²/ha x massPerLiter x (yieldEff/100)
+--
+-- Every term is an engine descriptor read, so a map that retunes its fruit types retunes
+-- this panel for free and there is nothing left to go stale.
+--
+-- Returns nil when ANY term is missing (unknown fill type, no live growth state, no yield
+-- scale for that state, no mass conversion). The caller then renders the panel's no-data
+-- marker - never a substituted constant.
+--
+-- Units: FillTypeDesc loads `physics#massPerLiter` as `value * 0.001`, so the stored
+-- figure is TONNES per litre (wheat at 0.77 kg/L stores as 0.00077) and the product lands
+-- directly in t/ha with no further scaling.
+SoilHarvesterPanel._estUnitLogged = false
+
+function SoilHarvesterPanel:computeYieldEstimate(cropFT, info)
+    if not cropFT or not info then return nil end
+
+    -- The state of the crop actually standing in the field, never the max-yield state:
+    -- a max read systematically over-promises. nil = no live fruit (bare or fully cut).
+    local growthState = info.growthState
+    if growthState == nil then return nil end
+
+    local fillIdx = cropFT.index
+    if fillIdx == nil then return nil end
+
+    local ok, fruitDesc = pcall(function()
+        return g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByFillTypeIndex(fillIdx)
+    end)
+    if not ok or fruitDesc == nil then return nil end
+
+    local literPerSqm  = fruitDesc.literPerSqm
+    -- yieldScales carries an entry ONLY for harvest-ready growth states, so a standing
+    -- but unripe crop legitimately has no scale. Honest absence, not an error.
+    local scale        = fruitDesc.yieldScales and fruitDesc.yieldScales[growthState]
+    local massPerLiter = cropFT.massPerLiter
+
+    if literPerSqm  == nil or literPerSqm  <= 0 then return nil end
+    if scale        == nil or scale        <= 0 then return nil end
+    if massPerLiter == nil or massPerLiter <= 0 then return nil end
+
+    local yieldEff = info.yieldEfficiency or 100
+    local estTha   = literPerSqm * scale * 10000 * massPerLiter * (yieldEff / 100)
+
+    -- [SF50-C2] Print the raw term set once per session so massPerLiter's unit can be
+    -- confirmed in-game against a known crop. Gated on debugMode so toggling SoilDebug
+    -- on mid-session still produces the line.
+    if not SoilHarvesterPanel._estUnitLogged
+       and g_SoilFertilityManager and g_SoilFertilityManager.settings
+       and g_SoilFertilityManager.settings.debugMode then
+        SoilHarvesterPanel._estUnitLogged = true
+        SoilLogger.debug(
+            "[SoilHarvesterPanel][SF50-C2] fillType=%s literPerSqm=%s growthState=%s " ..
+            "yieldScale=%s massPerLiter=%s yieldEff=%s -> %.2f t/ha",
+            tostring(cropFT.name), tostring(literPerSqm), tostring(growthState),
+            tostring(scale), tostring(massPerLiter), tostring(yieldEff), estTha)
+    end
+
+    return estTha
+end
+
 -- ── Field detection (throttled) ───────────────────────────
 
 function SoilHarvesterPanel:update(dt)
@@ -512,7 +571,11 @@ function SoilHarvesterPanel:draw()
     -- Rows: tank bar + fill text + divider + yield  (+stats bar when active)
     local numContentRows = isActive and 4 or 1
     local statH  = isActive and (SoilHarvesterPanel.STAT_H * sc) or 0
-    local panelH = titleH + pad + numContentRows * rowH + statH + pad
+    -- [SF-50] Reserve a thin band above the stats bar for the estimate's provenance
+    -- caption. The panel is anchored bottom-left, so this grows it upward and leaves
+    -- the saved position untouched.
+    local estH   = isActive and (SoilHarvesterPanel.EST_H * sc) or 0
+    local panelH = titleH + pad + numContentRows * rowH + statH + estH + pad
 
     -- Position
     local panelX, panelBot
@@ -691,13 +754,9 @@ function SoilHarvesterPanel:draw()
         local fieldArea     = (info and info.fieldArea) or 0
         local daysSinceHarv = (info and info.daysSinceHarvest) or 0
 
-        -- Yield estimate: yieldEfficiency * base crop yield (t/ha)
-        local cropName  = info and info.lastCrop
-        local cropKey   = cropName and string.lower(cropName) or "default"
-        local baseYield = SoilHarvesterPanel.BASE_YIELD[cropKey]
-                       or SoilHarvesterPanel.BASE_YIELD.default
-        local yieldEff  = (info and info.yieldEfficiency) or 100
-        local estTha    = baseYield * (yieldEff / 100)
+        -- [SF-50] Yield estimate computed from the map's own crop truth.
+        -- nil means a term was missing; the cell says so rather than inventing a number.
+        local estTha = self:computeYieldEstimate(cropFT, info)
 
         -- ── Cell 1: Wheat icon + estimated t/ha ───────────────
         local cell1X = panelX
@@ -719,10 +778,38 @@ function SoilHarvesterPanel:draw()
         self:drawRect(ic1 - isz*0.28, ic1by + isz*0.44, isz*0.22, isz*0.10, C.C_TITLE_FG, 0.60)
         self:drawRect(ic1 + isz*0.06, ic1by + isz*0.28, isz*0.22, isz*0.10, C.C_TITLE_FG, 0.60)
 
-        local thaStr = string.format("%.1f t/ha", estTha)
+        -- [SF-50] Honest absence: when a term is missing the cell shows the panel's own
+        -- no-data marker (the same "--" the yield-efficiency row uses), never a
+        -- substituted yield number.
+        local thaSz  = 0.0075 * sc
+        local thaY   = sbY + (sbH * 0.35 - thaSz) * 0.5
         setTextAlignment(RenderText.ALIGN_CENTER)
-        setTextColor(unpack(C.C_VALUE))
-        renderText(cell1X + cellW * 0.5, sbY + (sbH * 0.35 - 0.0075*sc) * 0.5, 0.0075*sc, thaStr)
+        if estTha then
+            local okT, fmtT = pcall(function() return g_i18n:getText("sf_hud_tha") end)
+            local thaStr = (okT and fmtT and not fmtT:find("^%$l10n_"))
+                           and string.format(fmtT, estTha)
+                           or  string.format("%.1f t/ha", estTha)
+            setTextColor(unpack(C.C_VALUE))
+            renderText(cell1X + cellW * 0.5, thaY, thaSz, thaStr)
+        else
+            setTextColor(unpack(C.C_DIM))
+            renderText(cell1X + cellW * 0.5, thaY, thaSz, "--")
+        end
+
+        -- ── [SF-50] Provenance caption ────────────────────────
+        -- The t/ha figure is estimated from the map's crop data, not measured from what
+        -- the player actually took off the field. Say so plainly, in their language.
+        -- (sbH is unscaled here while the reserved band is scaled - a pre-existing
+        -- mismatch at userScale ~= 1; max() keeps the caption clear of the bar either way.)
+        local capSz = 0.0062 * sc
+        local okCap, capStr = pcall(function() return g_i18n:getText("sf_hud_yield_est_src") end)
+        if okCap and capStr and not capStr:find("^%$l10n_") then
+            setTextAlignment(RenderText.ALIGN_LEFT)
+            setTextColor(unpack(C.C_DIM))
+            renderText(panelX + pad,
+                       sbY + math.max(sbH, statH) + (estH - capSz) * 0.5,
+                       capSz, capStr)
+        end
 
         -- ── Cell 2: Grain bag icon + session grain (L) ──────────
         local cell2X  = panelX + cellW

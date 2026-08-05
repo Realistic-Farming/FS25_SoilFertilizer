@@ -135,6 +135,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Guide dialog registered")
         end
 
+        -- Release gate dialog (opened from the version/changelog dialog)
+        if SoilReleaseDialog and g_gui then
+            SoilReleaseDialog.register(modDirectory)
+            SoilLogger.info("Soil Release dialog registered")
+        end
+
         -- Overlay help dialog (4th sidebar button on soil map)
         if SoilOverlayHelpDialog and g_gui then
             SoilOverlayHelpDialog.register(modDirectory)
@@ -931,29 +937,26 @@ local function scanImpls(root)
     return nil
 end
 
--- Returns the fertilizer applicator relevant for rate adjustment.
--- Checks the directly driven vehicle first; if that is not an applicator (e.g. a
--- tractor towing a spreader), scans the attacher-joint implement tree.
--- Mirrors the same logic in SoilHUD:getCurrentSprayer so both the HUD panel
--- and the key callbacks always agree on which vehicle the rate belongs to.
+-- Returns the vehicle that owns the sprayer rate for the current player.
+-- For rate adjustment, we always return the root vehicle (tractor) so the rate
+-- is stored on the vehicle the player is sitting in. This ensures the rate
+-- lookup in sprayer hooks (which run on individual sprayer implements and use
+-- rootVehicle.id) always finds the stored rate, even for separate tanker + boom
+-- setups where the tanker and boom are different vehicles with spec_sprayer.
+-- For self-propelled sprayers the root vehicle IS the sprayer, so no change.
 -- Uses scanImpls as a shared recursive helper (hoisted above).
 local function getApplicatorVehicle()
     local v = getPlayerVehicle()
     if not v then return nil end
 
-    -- Direct (self-propelled): liquid sprayer, air seeder, etc.
-    if SoilFertilityManager.isFertilizerApplicator(v) then
-        -- ALSO scan for an attached implement that carries the actual product
-        -- (e.g. the Vredo DLC VT7138 where the chassis has spec_sprayer but
-        --  the slurry tank + boom is an implement sub-entity). Prefer the
-        --  implement when one exists so fill-type resolution reads the correct
-        --  physical tank (LIQUIDMANURE, not LIQUIDFERTILIZER, #728).
-        local implement = scanImpls(v)
-        return implement or v
+    -- Always return the root vehicle so rate storage and lookup are on the same ID.
+    local root = v.rootVehicle
+    if root and root ~= v then
+        return root
     end
 
-    -- Pulled implement: walk the attacher-joint tree
-    return scanImpls(v)
+    -- Self-propelled: return self
+    return v
 end
 
 function SoilFertilityManager:onSprayerRateUpInput()
@@ -1018,10 +1021,14 @@ function SoilFertilityManager:onScoutInput()
     -- Detect the field underfoot. detectCurrentFieldId() actively probes the player's
     -- world position (works even with the HUD hidden); cachedFieldId is the last frame's
     -- value as a fallback. (getCurrentFieldId never existed - that was the no-op bug.)
-    local fieldId = nil
+    -- [SF-37] It ALSO returns the spot x,z, which used to be discarded. Carry it
+    -- through ADDITIVELY: the field-level scout path below is byte-identical for a
+    -- caller with no spot, and the kneel (a per-cell reveal onto the walked mask)
+    -- fires only when a spot is resolved.
+    local fieldId, x, z = nil, nil, nil
     if self.soilHUD.detectCurrentFieldId then
-        local ok, cur = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
-        if ok then fieldId = cur end
+        local ok, cur, cx, cz = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur; x, z = cx, cz end
     end
     if (not fieldId or fieldId <= 0) and self.soilHUD.cachedFieldId then
         fieldId = self.soilHUD.cachedFieldId
@@ -1032,6 +1039,29 @@ function SoilFertilityManager:onScoutInput()
             g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_scout_no_field"), 3000)
         end
         return
+    end
+
+    -- [SF-37] THE KNEEL. When the player is on foot with a resolved spot, the
+    -- exact spot enters knowledge: ONE cell written onto the walked mask, server
+    -- authoritative. The client key press is a REQUEST (SoilKneelEvent carries
+    -- only x,z); on the host/SP the write is direct. The field-level scout fee
+    -- below still runs for every caller (the kneel is additive, not a
+    -- replacement) - it is what buys the whole field's pattern and the name.
+    if x ~= nil and z ~= nil and g_server ~= nil then
+        if self.soilSystem.spatialScouting and self.soilSystem.spatialScouting:isArmed() then
+            local day = g_currentMission and g_currentMission.environment
+                and g_currentMission.environment.currentDay
+            if day then
+                self.soilSystem.spatialScouting:revealCellAt(nil, x, z, day)
+            end
+        end
+    elseif x ~= nil and z ~= nil and g_client ~= nil and SoilKneelEvent then
+        local ok = pcall(function()
+            g_client:getServerConnection():sendEvent(SoilKneelEvent.new(x, z))
+        end)
+        if not ok then
+            SoilLogger.warning("[Kneel] failed to send SoilKneelEvent: %s", tostring(ok))
+        end
     end
 
     -- The Scout hotkey is a deliberate scout: reveal the field's disease so the flash
@@ -1261,6 +1291,14 @@ function SoilFertilityManager:saveSoilData()
     -- REFINED: persist the per-pixel soil value maps next to soilData.xml
     if self.soilSystem.valueMaps then
         self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+    end
+
+    -- [SF-43] MATERIAL DOWN's watermark + object sidecar. The age LAYER itself
+    -- persists natively as one of the .grle files just written; only the small
+    -- sidecar needs a home. No-ops when StateLedger is present (the ledger owns the
+    -- state then, so nothing writes it twice).
+    if SoilMaterialDownBridge and self.soilSystem.materialDown then
+        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown)
     end
 end
 

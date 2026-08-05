@@ -246,7 +246,19 @@ function SoilFieldDetailDialog:_populateData()
         return sfm.soilSystem:getFieldInfo(fieldId)
     end)
     if not ok or info == nil then
+        -- #748: show at least the field ID so the user can report it, rather than a
+        -- blank dialog. Log the pcall error for diagnosis.
+        if not ok then
+            SoilLogger.warning("SoilFieldDetailDialog: getFieldInfo pcall error for field %d: %s",
+                fieldId, tostring(info))
+        else
+            SoilLogger.debug("SoilFieldDetailDialog: getFieldInfo returned nil for field %d", fieldId)
+        end
         self:_showNoData()
+        -- Still show the field ID so the reporter has something useful.
+        if self.detailFieldId then
+            self.detailFieldId:setText(tr("sf_detail_field_label", "Field #") .. tostring(fieldId))
+        end
         return
     end
 

@@ -34,9 +34,17 @@ source(modDirectory .. "src/utils/Logger.lua")
 source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
+-- CD-12: must load immediately after Constants -- it reads PHYSICAL_FUNGICIDE_ORDER and
+-- writes the 28 derived blend registrations back into SoilConstants, so every later
+-- module (HookManager's spray lists, the fungicide path) sees a complete picture.
+source(modDirectory .. "src/config/SoilBlends.lua")
 source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
+-- Release gate: which systems are released (STABLE) vs experimental (LOCKED).
+-- Orthogonal to difficulty; the lock set comes from Arissani's certification
+-- (2026-08-02). Loaded before Settings and SoilSettingsGUI, which consult it.
+source(modDirectory .. "src/ReleaseGate.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
 
@@ -54,12 +62,29 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 -- FieldSentry backend gate (#651): must load before SoilFertilitySystem so its
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
+source(modDirectory .. "src/MaterialDown.lua")
+source(modDirectory .. "src/MaterialWetness.lua")
+source(modDirectory .. "src/HayBet.lua")
+source(modDirectory .. "src/YardLadder.lua")
+-- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
+-- subsystems; armed by SoilFertilitySystem after the value maps initialize.
+source(modDirectory .. "src/SpatialScouting.lua")
+-- SF-38 THE HANDFUL READ: the frozen payload contract the Read the Dirt panel
+-- renders. Pure assembly; the kneel (SF-37) calls it after its reveal write.
+source(modDirectory .. "src/HandfulRead.lua")
+-- SF-19 VARIABLE PEST AND DISEASE PRESSURE: spatial outbreak origin + spread.
+-- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
+-- daily pass.
+source(modDirectory .. "src/SpatialPressures.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
 -- SoilFertilitySystem:computeYieldModifier at runtime; installed as a class hook by HookManager.
 source(modDirectory .. "src/HarvestContractUnderwrite.lua")
 source(modDirectory .. "src/OrganicCertification.lua")
+source(modDirectory .. "src/ResistanceBands.lua")
+-- CD-10: after ResistanceBands, whose ceilingForMode it uses for the threshold arithmetic.
+source(modDirectory .. "src/HybridStrains.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
@@ -87,6 +112,7 @@ source(modDirectory .. "src/ui/SoilVersionDialog.lua")
 source(modDirectory .. "src/ui/SoilHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilGuideDialog.lua")
 source(modDirectory .. "src/ui/SoilOverlayHelpDialog.lua")
+source(modDirectory .. "src/ui/SoilReleaseDialog.lua")
 source(modDirectory .. "src/ui/SoilTuningPanel.lua")
 source(modDirectory .. "src/ui/SoilCropTuningPanel.lua")
 source(modDirectory .. "src/ui/SoilSettingsPanel.lua")
@@ -100,6 +126,8 @@ source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
 source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 source(modDirectory .. "src/integrations/SoilStateLedgerBridge.lua")
+source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
+source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
 
@@ -184,6 +212,57 @@ local function loadedMission(mission, node)
     -- runs loadSoilData.
     if SoilStateLedgerBridge then
         SoilStateLedgerBridge.register(sfm)
+    end
+
+    -- [SF-43] MATERIAL DOWN's own two bridges. Registered here, alongside the ledger
+    -- above, so the sidecar's deserialize has fired before anything reads a
+    -- watermark, and so Time Guard has published its g_currentMission handle.
+    -- Both no-op when their mod is absent; the system stays inert rather than
+    -- minting a private clock or a second copy of the state.
+    -- RELEASE GATE: the ground-material family (SF-43/44/46/49) and Read the Dirt
+    -- (SF-26/37/38) are LOCKED. When not released, their bridges are not registered
+    -- either - the family is not wired into Time Guard / StateLedger / NetworkSync at
+    -- all, matching the "inert = not wired" rule. The modules stay loaded but idle.
+    local groundLive = ReleaseGate.isSystemLive("ground_material")
+    local dirtLive = ReleaseGate.isSystemLive("read_the_dirt")
+    if SoilMaterialDownBridge and groundLive then
+        local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
+        if md then
+            SoilMaterialDownBridge.registerLedger(md)
+            SoilMaterialDownBridge.loadFallback(md)
+            SoilMaterialDownBridge.registerAccruals(md)
+        end
+        -- [SF-49] The condition half registers into the slot the sibling reserved.
+        local mw = sfm and sfm.soilSystem and sfm.soilSystem.materialWetness
+        if mw then
+            SoilMaterialDownBridge.registerWaterLedger(mw)
+            SoilMaterialDownBridge.registerConditionAccrual(mw)
+        end
+        -- [SF-44] THE HAY BET: settle pass member, priority 10 (before age tick).
+        local hayBet = sfm and sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            SoilMaterialDownBridge.registerHayMember(hayBet)
+        end
+        -- [SF-46] THE YARD LADDER: bale condition ladder pass, priority 40.
+        local yardLadder = sfm and sfm.soilSystem and sfm.soilSystem.yardLadder
+        if yardLadder then
+            SoilMaterialDownBridge.registerLadderPass(yardLadder)
+        end
+    end
+
+    -- [SF-26] SPATIAL SCOUTING's own bridges. Registered here alongside the
+    -- MaterialDown bridges so the ledger sidecar's deserialize has fired before
+    -- anything reads the mask, and so Time Guard has published its handle. All
+    -- three no-op when their mod is absent; the mask then lives in the
+    -- STANDALONE FALLBACK (session-transient, client-local).
+    if SoilScoutingBridge and dirtLive then
+        local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
+        if scouting then
+            SoilScoutingBridge.registerLedger(scouting)
+            SoilScoutingBridge.loadFallback(scouting)
+            SoilScoutingBridge.registerAccruals(scouting)
+            SoilScoutingBridge.registerSync(scouting)
+        end
     end
 
     -- FS25_MasterHUD: when present it drives our whole HUD draw stack through its
@@ -575,6 +654,11 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
     if sfm then
         sfm:update(dt)
+        -- [SF-44] Drain the tedder's correction queue at end of frame
+        local hayBet = sfm.soilSystem and sfm.soilSystem.hayBet
+        if hayBet then
+            hayBet:onUpdate()
+        end
         if sfm.sprayerInfoPanel then
             sfm.sprayerInfoPanel:update(dt)
         end
