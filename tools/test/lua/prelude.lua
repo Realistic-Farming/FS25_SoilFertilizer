@@ -6,6 +6,18 @@
 -- ── Lua 5.1 ↔ fengari (5.3) shims ──────────────────────────
 unpack = unpack or table.unpack
 
+-- getfenv was removed in 5.2. FS25 runs 5.1, so mod files use getfenv(0) to
+-- publish a global handle (UIHelper does, at :73). Level 0 means the global
+-- environment, which here is _G, and that is the only level any of our source
+-- asks for. Returning _G for every level is wrong in general and exactly right
+-- for what the sources actually do with it.
+if getfenv == nil then
+  function getfenv(_level) return _G end
+end
+if setfenv == nil then
+  function setfenv(_f, _env) return _f end
+end
+
 -- ── FS25 engine globals (stubs) ────────────────────────────
 -- Class(base): FS25's OO helper. Returns a metatable whose __index chains to base,
 -- which is enough for `setmetatable({}, Class(Foo))` and method dispatch in tests.
