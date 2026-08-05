@@ -2445,6 +2445,22 @@ function HookManager:installHarvestHook()
                 if not ok then
                     SoilLogger.error("Harvest hook (nutrient update) failed: %s", tostring(errMsg))
                 end
+
+                -- OM-213 organic premium provenance: fold this harvest pass into the
+                -- owning farm's organic fraction for the harvested fill type. The farmId
+                -- is the engine-passed argument (dedi-safe; never the local-player read),
+                -- and the field's certification state decides whether it counts as organic.
+                if combineSelf.isServer
+                    and farmId and farmId > 0
+                    and outputFillType and outputFillType > 0
+                    and g_SoilFertilityManager and g_SoilFertilityManager.organic then
+                    local okOrg, errOrg = pcall(function()
+                        g_SoilFertilityManager.organic:recordHarvest(detectedFieldId, farmId, outputFillType, liters)
+                    end)
+                    if not okOrg then
+                        SoilLogger.error("Harvest hook (organic provenance) failed: %s", tostring(errOrg))
+                    end
+                end
             end
 
             -- Harvest trail: record combine position for in-world + minimap overlay

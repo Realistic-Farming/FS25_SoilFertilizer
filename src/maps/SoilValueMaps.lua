@@ -502,6 +502,54 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
     m:executeSet(encode(value, entry.def))
 end
 
+--- [RSF-762] Add a semantic delta to a parallelogram strip additively.
+--- The shape is the parallelogram from (sx,sz) to (wx,wz) along the width and to
+--- (hx,hz) along the height - the exact shape the swept-quad spray painter needs
+--- (the previous boom line as the base, the current boom line as the travel edge,
+--- so consecutive frames share no overlap), and the symmetric centered strip is
+--- just this parallelogram with both travel corners offset by the same perpendicular.
+---
+--- Uses the proven additive pattern from applyDeltaToPolygon: semantic delta to raw
+--- steps via unitsPerRaw, a BETWEEN filter guarding the sentinel wrap and the layer's
+--- rawFloor, executeAdd under pcall. Kept intentionally as the single additive write
+--- primitive: never falls back to a coarse read-shift-write, because a point-sampled
+--- unfiltered block would birth records on bare ground (the SF-43 fabrication fence).
+---@param sx,sz  start corner (meters)
+---@param wx,wz  width corner (meters)
+---@param hx,hz  height corner (meters)
+---@param delta  semantic delta to add
+---@return number semantic amount applied (0 when sub-step or the additive path is unavailable)
+function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
+    if not self.available then return 0 end
+    local entry = self.layers[key]
+    if not entry then return 0 end
+    local def = entry.def
+    local upr = unitsPerRaw(def)
+    local rawDelta = (delta >= 0) and math.floor(delta / upr) or -math.floor(-delta / upr)
+    if rawDelta == 0 then return 0 end
+
+    local m = entry.modifier
+    m:setParallelogramWorldCoords(sx, sz, wx, wz, hx, hz, DensityCoordType.POINT_POINT_POINT)
+
+    if not self.hasExecuteAdd then return 0 end
+    local rawLow = def.rawFloor or RAW_MIN
+    local filter = entry.filter
+    if rawDelta > 0 then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, RAW_MAX - rawDelta)
+    else
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow - rawDelta, RAW_MAX)
+    end
+    local ok, err = pcall(function()
+        m:executeAdd(rawDelta, filter)
+    end)
+    if not ok then
+        SoilLogger.debug("SoilValueMaps: addPaintStrip executeAdd failed (%s) - disabling add path", tostring(err))
+        self.hasExecuteAdd = false
+        return 0
+    end
+    return rawDelta * upr
+end
+
 -- ─────────────────────────────────────────────────────────
 -- Polygon / field-area operations
 -- ─────────────────────────────────────────────────────────

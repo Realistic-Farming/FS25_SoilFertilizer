@@ -28,6 +28,13 @@ function OrganicCertification.new(soilSystem)
     local self = setmetatable({}, OrganicCertification_mt)
     self.soilSystem = soilSystem
     self.lastProcessedDay = nil
+
+    -- OM-213 organic market premium: farm-level provenance ledger.
+    -- organicFraction[farmId][fillTypeIndex] = { frac in [0,1], total }
+    -- where `total` is the litres this farm has harvested of that fill type
+    -- (the D1 blend weight) and `frac` the organic share of those litres.
+    -- Server-authoritative; the premium reads it via getFarmOrganicFraction.
+    self.organicFraction = {}
     return self
 end
 
@@ -329,6 +336,130 @@ function OrganicCertification:onDayChanged()
                 self:applyStateChange(fieldId)
             end
         end
+    end
+end
+
+-- ---------------------------------------------------------
+-- Organic market premium provenance (OM-213)
+-- ---------------------------------------------------------
+-- FS25 storage is fungible, so no per-batch tag exists. Provenance survives as a
+-- farm-level running organic share per fill type, raised by certified harvests and
+-- diluted by conventional ones with the D1 blend arithmetic:
+--   frac = (total * oldFrac + amount * isOrganic) / (total + amount)
+-- where `total` is the litres harvested of that fill type so far (the blend weight).
+-- The premium consumer (MarketDynamics "OrganicPremium" modifier) reads the share
+-- through getFarmOrganicFraction and never touches this ledger.
+-- ---------------------------------------------------------
+
+--- Fold a harvest pass into the farm's provenance for a fill type.
+-- @param fieldId       the harvested field (for its organic cert state)
+-- @param farmId        the owning farm of the harvest operation (engine-passed, dedi-safe)
+-- @param fillTypeIndex the harvested fill type index
+-- @param liters        litres this pass put into the farm's supply
+function OrganicCertification:recordHarvest(fieldId, farmId, fillTypeIndex, liters)
+    if farmId == nil or farmId <= 0 or fillTypeIndex == nil or fillTypeIndex <= 0
+       or liters == nil or liters <= 0 then
+        return
+    end
+
+    -- A harvest only raises the organic share when the field is certified at the
+    -- moment of the harvest. Transition and conventional fold as conventional.
+    local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
+    local isOrganic = 0
+    if field and field.organic and field.organic.state == SoilConstants.ORGANIC.STATE_CERTIFIED then
+        isOrganic = 1
+    end
+
+    self.organicFraction[farmId] = self.organicFraction[farmId] or {}
+    local farmEntries = self.organicFraction[farmId]
+    local entry = farmEntries[fillTypeIndex]
+    if entry == nil then
+        farmEntries[fillTypeIndex] = { frac = isOrganic, total = liters }
+        return
+    end
+    local total = entry.total or 0
+    entry.frac  = (total * (entry.frac or 0) + liters * isOrganic) / (total + liters)
+    entry.total = total + liters
+end
+
+--- Organic share of a farm's harvested supply of a fill type, in [0,1].
+-- @param farmId        farm id
+-- @param fillTypeIndex fill type index
+-- @return number 0 when the farm has no tracked harvest of that type
+function OrganicCertification:getFarmOrganicFraction(farmId, fillTypeIndex)
+    if farmId == nil or fillTypeIndex == nil then return 0 end
+    local farmEntries = self.organicFraction and self.organicFraction[farmId]
+    local entry = farmEntries and farmEntries[fillTypeIndex]
+    if entry == nil then return 0 end
+    return math.max(0, math.min(1, entry.frac or 0))
+end
+
+--- Plain-table snapshot of the provenance ledger (for StateLedger + soilData.xml).
+function OrganicCertification:getFractionsTable()
+    local out = {}
+    for farmId, farmEntries in pairs(self.organicFraction) do
+        local e = {}
+        for ft, entry in pairs(farmEntries) do
+            e[tostring(ft)] = { frac = entry.frac or 0, total = entry.total or 0 }
+        end
+        out[tostring(farmId)] = e
+    end
+    return out
+end
+
+--- Apply a plain-table provenance snapshot. Replaces the ledger (server loads).
+function OrganicCertification:applyFractionsTable(data)
+    self.organicFraction = {}
+    if type(data) ~= "table" then return end
+    for farmId, farmEntries in pairs(data) do
+        local fid = tonumber(farmId)
+        if fid then
+            local e = {}
+            for ft, entry in pairs(farmEntries or {}) do
+                local ftIndex = tonumber(ft)
+                if ftIndex then
+                    e[ftIndex] = { frac = entry.frac or 0, total = entry.total or 0 }
+                end
+            end
+            self.organicFraction[fid] = e
+        end
+    end
+end
+
+--- Write the provenance ledger as a flat XML list under a key.
+function OrganicCertification:saveFractionsXML(xmlFile, key)
+    if not xmlFile then return end
+    local i = 0
+    for farmId, farmEntries in pairs(self.organicFraction) do
+        for ft, entry in pairs(farmEntries) do
+            local fk = string.format("%s.organicFraction(%d)", key, i)
+            setXMLInt(xmlFile, fk .. "#farmId", farmId)
+            setXMLInt(xmlFile, fk .. "#fillTypeIndex", ft)
+            setXMLFloat(xmlFile, fk .. "#frac", entry.frac or 0)
+            setXMLFloat(xmlFile, fk .. "#total", entry.total or 0)
+            i = i + 1
+        end
+    end
+end
+
+--- Load the provenance ledger from a flat XML list under a key.
+function OrganicCertification:loadFractionsXML(xmlFile, key)
+    self.organicFraction = {}
+    if not xmlFile then return end
+    local i = 0
+    while true do
+        local fk = string.format("%s.organicFraction(%d)", key, i)
+        local farmId = getXMLInt(xmlFile, fk .. "#farmId")
+        if farmId == nil then break end
+        local ft = getXMLInt(xmlFile, fk .. "#fillTypeIndex")
+        if ft ~= nil then
+            self.organicFraction[farmId] = self.organicFraction[farmId] or {}
+            self.organicFraction[farmId][ft] = {
+                frac  = getXMLFloat(xmlFile, fk .. "#frac") or 0,
+                total = getXMLFloat(xmlFile, fk .. "#total") or 0,
+            }
+        end
+        i = i + 1
     end
 end
 

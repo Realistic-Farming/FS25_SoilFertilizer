@@ -3803,20 +3803,92 @@ function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius)
     end
 end
 
---- Paint the sprayer's real boom strip into the value maps with the field's
---- post-application averages (PF-style continuous work strips at map
---- resolution instead of stamped 10 m cells).
+--- Paint the sprayer's real boom strip into the value maps additively as a
+--- SWEPT QUAD (RSF-762). Each frame with a valid dose paints the parallelogram
+--- between the last PAINTED boom line and the current boom line, then advances
+--- the anchor. Consecutive frames share no overlap, so the dose never stacks;
+--- a tick whose dose guard fails does not advance the anchor, so the next valid
+--- tick's quad spans the gap and the orphan mechanism self-heals. First frame or
+--- a teleport (anchor farther than 3x the boom length) seeds a thin strip instead.
+--- Replaces the per-cell painting that used to live in markBoomCells, which now
+--- only marks coverage: painting is decoupled from coverage bookkeeping.
+---
+--- The dose is the same mass-conserving arithmetic as before, with the strip's
+--- own area as the denominator: painted delta = sd.dX * (sd.area / stripAreaHa),
+--- so the total nutrient applied per tick is exactly sd.dX * sd.area. Consume-once
+--- stays (the second HookManager site in the same tick cannot re-apply) and the
+--- sd.time == nowMs stale-dose guard stays.
 ---@param fieldId    number
 ---@param boomPoints table   Array of {x=,z=} spanning the boom (from getBoomCellPositions)
----@param fillTypeName string  FERTILIZER_PROFILES key
---- DEPRECATED (#735): this used to paint the boom strip with the field AVERAGE
---- (field.nitrogen ...), which made a single uniform pass show a false low->high
---- gradient (the reported bug: red where you started, green where you finished, because
---- the average drifts up as you spray). The per-pixel painting now lives in markBoomCells,
---- which applies the correct LOCAL dose to each cell exactly once. Kept as a safe no-op so
---- the existing sprayer-hook call sites need no change; remove the calls in a later pass.
-function SoilFertilitySystem:paintBoomStrip(_fieldId, _boomPoints, _fillTypeName)
-    return
+---@param fillTypeName string  FERTILIZER_PROFILES key (unused; kept for the call sites)
+function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName)
+    if not fieldId or not boomPoints or #boomPoints < 2 then return end
+    local field = self.fieldData and self.fieldData[fieldId]
+    if not field then return end
+    if not self:vmAvailable() then return end
+
+    local nowMs = (g_currentMission and g_currentMission.time) or 0
+    local sd = field._sprayDose
+    -- Stale-dose guard stays: only THIS tick's dose may paint, and only once.
+    if not sd or sd.time ~= nowMs or not sd.area or sd.area <= 0 then return end
+
+    -- Boom endpoints: first and last of the swept boom line.
+    local ax, az = boomPoints[1].x, boomPoints[1].z
+    local bx, bz = boomPoints[#boomPoints].x, boomPoints[#boomPoints].z
+    local boomLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
+    if boomLen < 0.01 then return end
+
+    local anchor = field._vmLastBoomLine
+    local sx, sz, wx, wz, hx, hz
+    local areaM2
+
+    if anchor then
+        local travX = (ax - anchor.ax + bx - anchor.bx) * 0.5
+        local travZ = (az - anchor.az + bz - anchor.bz) * 0.5
+        local travel = math.sqrt(travX * travX + travZ * travZ)
+        if travel < 0.05 then
+            anchor = nil   -- no forward progress this frame: seed instead
+        elseif travel > boomLen * 3 then
+            anchor = nil   -- teleport: never span the gap, seed fresh
+        else
+            -- Quad between the previous boom line (base) and this one (travel edge).
+            sx, sz = anchor.ax, anchor.az
+            wx, wz = anchor.bx, anchor.bz
+            hx, hz = ax, az
+            -- Parallelogram area = |(w-s) x (h-s)| (2D cross).
+            areaM2 = math.abs((wx - sx) * (hz - sz) - (wz - sz) * (hx - sx))
+        end
+    end
+
+    if anchor == nil then
+        -- Seed: a thin strip centred on the current boom line.
+        local ux, uz = -(bz - az) / boomLen, (bx - ax) / boomLen
+        local h = math.max(0.5, boomLen * 0.02)
+        sx, sz = ax - ux * h, az - uz * h
+        wx, wz = bx - ux * h, bz - uz * h
+        hx, hz = ax + ux * h, az + uz * h
+        areaM2 = boomLen * (h * 2)
+    end
+
+    if areaM2 and areaM2 > 0.001 then
+        local areaHa = areaM2 / 10000
+        local scale = sd.area / areaHa
+        local vm = self.valueMaps
+        if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
+        if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
+        if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
+        if sd.dPH ~= 0 then vm:addPaintStrip("pH",            sx, sz, wx, wz, hx, hz, sd.dPH * scale) end
+        if sd.dOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, sd.dOM * scale) end
+
+        -- Advance the anchor to the line this quad actually painted.
+        field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
+        -- Mark a recent boom paint so the narrow-tool dot fallback defers (see applyFertilizer).
+        field._vmBoomPaintTime = nowMs
+        -- Consume so the second HookManager site in the same tick can't re-apply.
+        sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
+    end
 end
 
 -- Finish the in-flight daily batch synchronously: process every field still past
@@ -5483,7 +5555,6 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     if not field.zoneData             then field.zoneData             = {} end
 
     local seen = {}
-    local newCells  -- #735: cells first covered THIS call, painted below with the local spray dose
     for _, pt in ipairs(boomPoints) do
         local cx = math.floor(pt.x / zone.CELL_SIZE)
         local cz = math.floor(pt.z / zone.CELL_SIZE)
@@ -5509,10 +5580,6 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 -- and avoid suppressing sections that are still on their current pass.
                 if not field.sessionCoverageCells[cellKey] then
                     field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
-                    -- #735: newly covered this session - record its centre so the correct
-                    -- local nutrient dose is painted onto it exactly once (dedup by this set).
-                    if newCells == nil then newCells = {} end
-                    newCells[#newCells + 1] = { x = cellCx, z = cellCz }
                     if not overlayOnly then
                         field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
@@ -5573,34 +5640,13 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
         end
     end
 
-    -- #735: paint the correct LOCAL nutrient dose onto the cells first covered this call.
-    -- applyFertilizer stashed THIS tick's field-average delta (field._sprayDose); the true
-    -- per-cell dose is that average delta scaled up by fieldArea / area-covered-this-tick, so
-    -- one uniform pass raises every covered cell by the same amount (its own pre-spray value
-    -- + the dose) with no false low->high gradient, and the map still converges to the field
-    -- average once the whole field is covered. addValueAtWorld is a per-cell read-add-write and
-    -- each cell is painted once (sessionCoverageCells dedup), so consecutive frames over the
-    -- same ground never stack the delta. Replaces the old paintBoomStrip average stamp.
-    local sd  = field._sprayDose
-    local nowMs = (g_currentMission and g_currentMission.time) or 0
-    if sd and newCells and #newCells > 0 and self:vmAvailable()
-       and sd.time == nowMs and sd.area and sd.area > 0 then
-        local scale = sd.area / (#newCells * cellArea)
-        local vm = self.valueMaps
-        local r  = zone.CELL_SIZE * 0.5
-        for _, c in ipairs(newCells) do
-            if sd.dN  ~= 0 then vm:addValueAtWorld("nitrogen",      c.x, c.z, sd.dN  * scale, r) end
-            if sd.dP  ~= 0 then vm:addValueAtWorld("phosphorus",    c.x, c.z, sd.dP  * scale, r) end
-            if sd.dK  ~= 0 then vm:addValueAtWorld("potassium",     c.x, c.z, sd.dK  * scale, r) end
-            if sd.dPH ~= 0 then vm:addValueAtWorld("pH",            c.x, c.z, sd.dPH * scale, r) end
-            if sd.dOM ~= 0 then vm:addValueAtWorld("organicMatter", c.x, c.z, sd.dOM * scale, r) end
-        end
-        field._vmBoomPaintTime = nowMs
-        -- Consume so the second markBoomCells hook site in the same tick can't re-apply.
-        sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
-        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
-        if minimapLayer then minimapLayer:markDirty() end
-    end
+    -- RSF-762: value-map painting no longer lives here. markBoomCells only marks
+    -- coverage (session/daily cells, pass percent, spray trail, zoneData seed-on-create).
+    -- The per-cell addValueAtWorld painter was moved out: it painted before the paint,
+    -- orphaned whole rows when the dose guard failed, quantised to whole 10 m cells
+    -- (staircasing on angled passes), and banded per tick. paintBoomStrip now owns the
+    -- painting as a swept additive quad, self-healing a failed tick by spanning the gap.
+    -- Coverage bookkeeping above is unchanged by design.
 
     -- Recompute fractions after all cells are processed.
     -- In overlayOnly mode the counters are owned by trackSprayerCoverage (liter-based);
@@ -6519,6 +6565,12 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
     setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
 
+    -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
+    -- safety copy, the same one StateLedger's block mirrors).
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic then
+        g_SoilFertilityManager.organic:saveFractionsXML(xmlFile, key)
+    end
+
     for fieldId, field in pairs(self.fieldData) do
         if type(field) == "table" then
             local fieldKey = string.format("%s.field(%d)", key, index)
@@ -6647,6 +6699,11 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
     self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
+
+    -- OM-213 organic premium provenance ledger (absent on older saves = empty).
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic then
+        g_SoilFertilityManager.organic:loadFractionsXML(xmlFile, key)
+    end
 
     while true do
         local fieldKey = string.format("%s.field(%d)", key, index)
@@ -6973,6 +7030,12 @@ function SoilFertilitySystem:getSoilStateTable()
             out.fields[fieldId] = e
         end
     end
+
+    -- OM-213 organic premium provenance ledger (rides the same block StateLedger holds).
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic
+       and g_SoilFertilityManager.organic.getFractionsTable then
+        out.organicFractions = g_SoilFertilityManager.organic:getFractionsTable()
+    end
     return out
 end
 
@@ -7076,6 +7139,12 @@ function SoilFertilitySystem:applySoilStateTable(data)
         end
     end
     self:_endF66ResistanceRelief()
+
+    -- OM-213 organic premium provenance ledger (StateLedger block mirror).
+    if g_SoilFertilityManager and g_SoilFertilityManager.organic
+       and g_SoilFertilityManager.organic.applyFractionsTable then
+        g_SoilFertilityManager.organic:applyFractionsTable(data.organicFractions)
+    end
     return count
 end
 
