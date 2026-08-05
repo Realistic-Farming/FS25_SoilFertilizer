@@ -15,10 +15,10 @@ g_SoilFertilityManager = { settings = {}, soilSystem = nil }
 local organic = OrganicCertification.new(nil)
 g_SoilFertilityManager.organic = organic
 
--- The engine-side farm context the modifier reads (set by PriceHook at sale).
+-- Strict market-wide reading: the modifier resolves the LOCAL/server farm via
+-- g_currentMission:getFarmId() (the test controls it through `currentFarmId`).
 g_MarketDynamics = {
     priceModifiers = {},
-    _organicSellingFarmId = 0,
     registerPriceModifier = function(_self, name, fn)
         g_MarketDynamics.priceModifiers[name] = fn
         return true
@@ -82,21 +82,26 @@ T.eq("premium: modifier registered with the registry", g_MarketDynamics.priceMod
 
 local fn = g_MarketDynamics.priceModifiers["OrganicPremium"]
 
-g_MarketDynamics._organicSellingFarmId = 0
-T.eq("premium: no selling-farm context opts out", fn({ fillTypeIndex = WHEAT }), nil)
+-- Strict market-wide reading: the modifier resolves the LOCAL/server farm via
+-- g_currentMission:getFarmId(). Nil (dedicated server) -> opt out.
+local currentFarmId = 0
+g_currentMission.getFarmId = function() return currentFarmId end
 
-g_MarketDynamics._organicSellingFarmId = 2     -- farm 2 has no fraction
+currentFarmId = 0
+T.eq("premium: no farm (dedicated server) opts out", fn({ fillTypeIndex = WHEAT }), nil)
+
+currentFarmId = 2     -- farm 2 has no fraction
 T.eq("premium: zero-fraction farm opts out", fn({ fillTypeIndex = WHEAT }), nil)
 
 -- farm 3: a single certified harvest -> a full 1.0 organic share
 setField(3, newField(C.STATE_CERTIFIED))
 organic:recordHarvest(3, 3, WHEAT, 1000)
-g_MarketDynamics._organicSellingFarmId = 3
+currentFarmId = 3
 T.near("premium: full organic share pays the full multiplier",
     fn({ fillTypeIndex = WHEAT }), OrganicPremiumBridge.ORGANIC_PREMIUM.CERTIFIED)
 
 -- farm 1 now has 2/3 organic wheat: multiplier = 1 + 0.20 * (2/3) ≈ 1.1333
-g_MarketDynamics._organicSellingFarmId = 1
+currentFarmId = 1
 local frac = organic:getFarmOrganicFraction(1, WHEAT)
 T.near("premium: partial share pays a proportional multiplier", fn({ fillTypeIndex = WHEAT }), 1.0 + 0.20 * frac, 1e-9)
 
@@ -110,12 +115,12 @@ local engine = MarketEngine.new()
 engine.prices[WHEAT] = { base = 10, volatilityFactor = 1.0, modifiers = {}, current = 10, history = {} }
 g_MarketDynamics.marketEngine = engine
 
-g_MarketDynamics._organicSellingFarmId = 1    -- farm with a positive organic share
+currentFarmId = 1    -- farm with a positive organic share
 engine:_recalculate(WHEAT)
 T.near("premium: recalculate moves the price for an organic seller",
     engine:getPrice(WHEAT), 10 * (1.0 + 0.20 * frac), 1e-6)
 
-g_MarketDynamics._organicSellingFarmId = 2    -- no organic share -> vanilla price
+currentFarmId = 2    -- no organic share -> vanilla price
 engine:_recalculate(WHEAT)
 T.near("premium: recalculate leaves a conventional seller's price unchanged",
     engine:getPrice(WHEAT), 10, 1e-6)
@@ -123,7 +128,7 @@ T.near("premium: recalculate leaves a conventional seller's price unchanged",
 -- clamp B: a modifier beyond the ruled band clips at 3.0
 g_MarketDynamics.priceModifiers["TestClamp"] = function() return 4.0 end
 engine.prices[WHEAT].current = 10
-g_MarketDynamics._organicSellingFarmId = 1
+currentFarmId = 1
 engine:_recalculate(WHEAT)
 T.near("premium: clamp B clips the composition band at 3.0", engine:getPrice(WHEAT), 30, 1e-6)
 g_MarketDynamics.priceModifiers["TestClamp"] = nil
