@@ -453,6 +453,29 @@
             and starter fertilizer.
         -->
         <fillTypeCategory name="LIQUIDFERTILIZER">LIQUIDFERTILIZER UAN32 UAN28 ANHYDROUS STARTER INSECTICIDE FUNGICIDE PROPICONAZOLE AZOXYSTROBIN BOSCALID MANCOZEB METALAXYL TEBUCONAZOLE SULFUR COPPER_HYDROXIDE LIQUID_UREA LIQUID_AMS LIQUID_MAP LIQUID_DAP LIQUID_POTASH LIQUIDLIME BLEND_AZOXYSTROBIN_BOSCALID BLEND_AZOXYSTROBIN_COPPER_HYDROXIDE BLEND_AZOXYSTROBIN_MANCOZEB BLEND_AZOXYSTROBIN_METALAXYL BLEND_AZOXYSTROBIN_PROPICONAZOLE BLEND_AZOXYSTROBIN_SULFUR BLEND_AZOXYSTROBIN_TEBUCONAZOLE BLEND_BOSCALID_COPPER_HYDROXIDE BLEND_BOSCALID_MANCOZEB BLEND_BOSCALID_METALAXYL BLEND_BOSCALID_PROPICONAZOLE BLEND_BOSCALID_SULFUR BLEND_BOSCALID_TEBUCONAZOLE BLEND_COPPER_HYDROXIDE_MANCOZEB BLEND_COPPER_HYDROXIDE_METALAXYL BLEND_COPPER_HYDROXIDE_PROPICONAZOLE BLEND_COPPER_HYDROXIDE_SULFUR BLEND_COPPER_HYDROXIDE_TEBUCONAZOLE BLEND_MANCOZEB_METALAXYL BLEND_MANCOZEB_PROPICONAZOLE BLEND_MANCOZEB_SULFUR BLEND_MANCOZEB_TEBUCONAZOLE BLEND_METALAXYL_PROPICONAZOLE BLEND_METALAXYL_SULFUR BLEND_METALAXYL_TEBUCONAZOLE BLEND_PROPICONAZOLE_SULFUR BLEND_PROPICONAZOLE_TEBUCONAZOLE BLEND_SULFUR_TEBUCONAZOLE</fillTypeCategory>
+
+        <!--
+            TRANSPORT, not application. The two categories above decide what SPREADS
+            and SPRAYS our products. They do not decide what HAULS them, which is why
+            a player could spread urea and could not put it in a tipper (issue #773).
+
+            Verified in the base game at data/maps/maps_fillTypes.xml: BULK carries the
+            crops plus FERTILIZER, LIME and MANURE, and AUGERWAGON carries the grains
+            plus FERTILIZER. So vanilla dry fertiliser is haulable in both and ours was
+            in neither. isBulkType="true" on each product was never the gate: per
+            FillTypeDesc.lua:287 that flag only means "can be SOLD as bulk".
+
+            Arissani ruled parity (2026-08-05): our dry products haul exactly as vanilla
+            FERTILIZER hauls, so they join both of the categories vanilla FERTILIZER is
+            in. Nothing here is a special case.
+
+            The liquid half of that parity needs no change. Vanilla LIQUIDFERTILIZER is
+            in SPRAYER only, never in the LIQUID transport category (milk, water, diesel,
+            DEF), so a liquid is carried by the sprayer or tanker that applies it. Our
+            liquids already match that through the LIQUIDFERTILIZER line above.
+        -->
+        <fillTypeCategory name="BULK">UREA AN AMS MAP DAP POTASH POLIFOSKA GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
+        <fillTypeCategory name="AUGERWAGON">UREA AN AMS MAP DAP POTASH POLIFOSKA GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE</fillTypeCategory>
     </fillTypeCategories>
 
 </map>

@@ -513,11 +513,20 @@ function SoilSettingsPanel:drawRect(x, y, w, h, col, alpha)
     renderOverlay(self.fillOverlay, x, y, w, h)
 end
 
-function SoilSettingsPanel:drawText(x, y, size, text, col, align, bold)
+---Every text draw in this panel goes through here, so it is the one place that
+---has to know about long translations (issue #771). maxWidth is optional and
+---backwards compatible: without it this behaves exactly as it always did.
+---Bold is set before measuring because getTextWidth reads the current bold state.
+function SoilSettingsPanel:drawText(x, y, size, text, col, align, bold, maxWidth)
     setTextColor(col[1], col[2], col[3], col[4] or 1.0)
     setTextBold(bold == true)
     setTextAlignment(align or RenderText.ALIGN_LEFT)
-    renderText(x, y, size, text)
+    if maxWidth ~= nil and UIHelper ~= nil and UIHelper.fitText ~= nil then
+        local fitted, fittedSize = UIHelper.fitText(text, size, maxWidth)
+        renderText(x, y, fittedSize, fitted)
+    else
+        renderText(x, y, size, text)
+    end
 end
 
 function SoilSettingsPanel:registerClick(id, x, y, w, h, data)

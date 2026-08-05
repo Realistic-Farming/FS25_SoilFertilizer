@@ -103,6 +103,16 @@ source(modDirectory .. "src/ui/SoilMapOverlay.lua")
 source(modDirectory .. "src/ui/SoilMinimapLayer.lua")
 source(modDirectory .. "src/hooks/SoilMapHooks.lua")
 source(modDirectory .. "src/ui/SoilPDAScreen.lua")
+-- RF Esc greenfield (NO-HOST Option B): shared door + Soil module joiner.
+-- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
+source(modDirectory .. "src/ui/RfEscModules.lua")
+source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
+source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
+source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
+source(modDirectory .. "src/ui/RfEscBootstrap.lua")
+-- DEV: Esc UIDebugger hot-reload (F6 / rfEscReloadGui). Cross-mod singleton install.
+source(modDirectory .. "src/ui/RfEscUiDebugger.lua")
+source(modDirectory .. "src/ui/RfSoilEscJoiner.lua")
 source(modDirectory .. "src/ui/RotationPlannerData.lua")
 source(modDirectory .. "src/ui/SoilFieldDetailDialog.lua")
 source(modDirectory .. "src/ui/RotationPlannerDialog.lua")

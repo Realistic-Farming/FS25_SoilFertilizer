@@ -188,3 +188,76 @@ function UIHelper.createMultiOption(layout, callbackTarget, callbackName, texts,
 
     return multiTextOption
 end
+
+-- =========================================================
+-- Text fitting for the raw renderText surfaces (issue #771)
+-- =========================================================
+-- Ten files under src/ui/ draw with raw renderText, and raw renderText gets NO
+-- fitting behaviour from the engine: nothing measures, nothing shrinks, nothing
+-- truncates, the glyphs just draw past the box. That is why a longer translation
+-- overlaps the next column. GUI TextElement surfaces get this for free from their
+-- profile; these do not, and no profile can reach them.
+--
+-- This is a straight port of the base game's own answer, TextElement RESIZE
+-- (gui/elements/TextElement.lua:479-490): shrink the text by 5 percent of its
+-- default size per step until it fits, floor at a minimum size, and only then
+-- fall back to truncation with an ellipsis. Shrinking first is what keeps a label
+-- readable instead of cutting a word in half.
+--
+-- Not a German problem. Finnish, Hungarian and Russian sit in the same length
+-- band, and English gets there the day a label grows. Verify layout against the
+-- longest language, never against English.
+
+UIHelper.TEXT_MIN_SIZE_FACTOR = 0.7   -- floor, as a fraction of the requested size
+UIHelper.TEXT_SHRINK_STEP     = 0.05  -- per step, as a fraction of the requested size
+UIHelper.TEXT_ELLIPSIS        = "..."
+
+---Fit text into maxWidth by shrinking, then truncating as a last resort.
+---Measurement uses the CURRENT bold state, so call setTextBold before this.
+---@param text string
+---@param textSize number the size you would have passed to renderText
+---@param maxWidth number available width in screen space; nil or <= 0 disables fitting
+---@param minSizeFactor number|nil floor as a fraction of textSize (default 0.7)
+---@param ellipsis string|nil trailing marker when truncation is reached (default "...")
+---@return string fittedText, number fittedSize
+function UIHelper.fitText(text, textSize, maxWidth, minSizeFactor, ellipsis)
+    if type(text) ~= "string" or text == "" then return text or "", textSize end
+    if type(maxWidth) ~= "number" or maxWidth <= 0 then return text, textSize end
+    if type(textSize) ~= "number" or textSize <= 0 then return text, textSize end
+    if getTextWidth == nil then return text, textSize end
+
+    local size    = textSize
+    local minSize = textSize * (minSizeFactor or UIHelper.TEXT_MIN_SIZE_FACTOR)
+    local step    = textSize * UIHelper.TEXT_SHRINK_STEP
+    local mark    = ellipsis or UIHelper.TEXT_ELLIPSIS
+
+    while maxWidth < getTextWidth(size, text) do
+        size = size - step
+        if size <= minSize then
+            -- Step back to the last size at or above the floor, then truncate.
+            size = size + step
+            if Utils ~= nil and Utils.limitTextToWidth ~= nil then
+                text = Utils.limitTextToWidth(text, size, maxWidth, false, mark)
+            end
+            break
+        end
+    end
+
+    return text, size
+end
+
+---renderText that fits first. Drop-in for a raw renderText call that has a known
+---column width. Same argument order as renderText, with the width appended.
+---@param x number
+---@param y number
+---@param textSize number
+---@param text string
+---@param maxWidth number|nil nil renders exactly like renderText
+---@param minSizeFactor number|nil
+---@param ellipsis string|nil
+---@return number renderedSize the size actually used, after any shrink
+function UIHelper.renderTextFitted(x, y, textSize, text, maxWidth, minSizeFactor, ellipsis)
+    local fitted, size = UIHelper.fitText(text, textSize, maxWidth, minSizeFactor, ellipsis)
+    renderText(x, y, size, fitted)
+    return size
+end

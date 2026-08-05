@@ -10,18 +10,18 @@
     <e k="sf_seasonal_effects_long" v="Jahreszeiten beeinflussen den Stickstoffhaushalt deiner Pflanzen. Es werden nun realit├ñtsnah ein Fr├╝hjahrswachstumsschub und ein verlangsamtes Wachstum im Herbst simuliert." eh="3eea94c7" />
     <e k="sf_rain_effects_short" v="Auswaschung" eh="a2a1758b" />
     <e k="sf_rain_effects_long" v="Auswirkungen von Niederschlag auf den Boden ein-/ausschalten (N├ñhrstoffauswaschung, ├änderungen pH-Wert)" eh="de3b14b9" />
-    <e k="sf_ws_short" v="Auswirkung Niederschlag" />
-    <e k="sf_desc_weatherSource" v="Anpassung der Auswirkung von Niederschlag auf den Boden. Standard ├ñndert nichts. Trocken, Normal oder Nass passen die Bodenwerte unabh├ñngig von der Wettervorhersage an und ver├ñndern die Feuchtigkeitswertew f├╝r den Boden." />
-    <e k="sf_ws_long" v="W├ñhlt die klimatischen Bedingungen f├╝r den Zeitraum aus, in denen das Wetter trocken erscheint (Sommer). Hat keinen Einfluss auf das sichtbare Wetter. Diese globale Einstellung ist im Multiplayer nur f├╝r Administratoren zug├ñnglich." />
-    <e k="sf_ws_1" v="Standard" />
-    <e k="sf_ws_2" v="Trocken" />
-    <e k="sf_ws_3" v="Normal" />
-    <e k="sf_ws_4" v="Nass" />
-    <e k="sf_ws_blurb_4" v="Nass: Feuchteres Wetter ├╝ber einen kurzen Zeitraum. Regen beg├╝nstigt eine st├ñrkere Auswaschung und h├Âheren Krankheitsdruck." />
-    <e k="sf_ws_blurb_3" v="Normal: Ausgewogene Regenf├ñlle ├╝ber einen kurzen Zeitraum." />
-    <e k="sf_ws_blurb_2" v="Trocken: Starke Trockenheit ├╝ber einen kurzen Zeitraum. N├ñhrstoffe verbleiben l├ñnger im Boden und Pflanzen ben├Âtigt schneller Wasser." />
-    <e k="sf_ws_blurb_1" v="Standard: Es werden die Werte der Wettervorhersage verwendet. Im Sommer kann Niederschlag gef├╝hlt sehr gering ausfallen." />
-    <e k="sf_ws_world_note" v="Globale Einstellung - Admin-only im multiplayer; ver├ñnder Bodenwerte f├╝r jeden." />
+    <e k="sf_ws_short" v="[EN] World Climate" eh="59d3bec0" />
+    <e k="sf_desc_weatherSource" v="[EN] Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." eh="e143bba8" />
+    <e k="sf_ws_long" v="[EN] Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." eh="e2f5fab8" />
+    <e k="sf_ws_1" v="[EN] Real sky only" eh="f1cf2f61" />
+    <e k="sf_ws_2" v="[EN] Arid" eh="cf9aa4a8" />
+    <e k="sf_ws_3" v="[EN] Normal" eh="960b44c5" />
+    <e k="sf_ws_4" v="[EN] Wet" eh="ae789b86" />
+    <e k="sf_ws_blurb_4" v="[EN] Wet: wetter short-month fill. More leaching and disease pressure on rainy fills." eh="4f0d9df2" />
+    <e k="sf_ws_blurb_3" v="[EN] Normal: balanced seasonal rains for short months. Default living climate." eh="0c0ddca4" />
+    <e k="sf_ws_blurb_2" v="[EN] Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." eh="4c159062" />
+    <e k="sf_ws_blurb_1" v="[EN] Real sky only: soil follows the forecast with no fill. Short months can feel sparse." eh="e36f0769" />
+    <e k="sf_ws_world_note" v="[EN] World setting - admin only in multiplayer; changes soil for everyone." eh="9f78a319" />
     <e k="sf_plowing_bonus_short" v="Pflugbonus" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Pflugvorteile f├╝r Bodenfruchtbarkeit ein-/ausschalten (verbesserter Stickstoff und organische Substanz)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Ernter├╝ckst├ñnde" eh="f4352cb5" />
@@ -74,7 +74,7 @@
     <e k="sf_rr_short" v="D├╝ngereffizienz" eh="b363b336" />
     <e k="sf_rr_long" v="Wie schnell D├╝nger die N├ñhrstoffe im Boden wiederherstellt (0,25x sehr langsam bis 2,0x sehr schnell)" eh="afe78a6d" />
     <e k="sf_dm_short" v="Klimazone" eh="86eac820" />
-    <e k="sf_dm_long" v="Legt die Feuchtigkeit der Region fest. Bestimmt wie schnell sich Pilzinfektionen ausbreiten und hat einen Einfluss auf die L├ñnge des Zeitraums in denen Fungizide die Pflanze sch├╝tzen." eh="9948c967" />
+    <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="23424d05" />
     <e k="sf_dm_1" v="Trocken" eh="cf9aa4a8" />
     <e k="sf_dm_2" v="Gem├ñ├ƒigt" eh="e8328062" />
     <e k="sf_dm_3" v="Feucht" eh="ccb2fc34" />
@@ -224,7 +224,7 @@
     <e k="sf_hud_yield" v="Ertrag" eh="97345487" />
     <e k="sf_hud_estYield" v="gesch├ñtzter Ertrag" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="nach der Ernte: D├╝ngen" eh="634de6fe" />
+    <e k="sf_hud_post_harvest" v="[EN] Post-harvest ├é┬À Fertilize" eh="61d2d595" />
     <e k="sf_hud_hint_edit" v="Ziehen: Bewegen   Ecke: Gr├Â├ƒe   Rechtsklick oder Umschalt+H: Beenden" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Umschalt+H: Bearbeitungsmodus" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="Inkompatibilit├ñt erkannt" eh="89dbfc90" />
@@ -340,11 +340,11 @@
     <e k="helpLine_sf_mp_p1_auth_text" v="Alle Bodensimulationen laufen auf dem Server. Clients erhalten beim Beitritt vollst├ñndige Felddaten und Einstellungen, mit automatischem Wiederholungsversuch, wenn der Server noch l├ñdt. HUD-Anzeigeeinstellungen (Position, Thema, Gr├Â├ƒe) sind pro Spieler und werden nie mit dem Server synchronisiert." eh="db72a3f9" />
     <e k="helpLine_sf_mp_p1_ded_title" v="Dedizierte Server" eh="4d3a45ba" />
     <e k="helpLine_sf_mp_p1_ded_text" v="Dedizierte Server f├╝hren die vollst├ñndige Simulation ohne HUD- oder GUI-Overhead aus - dies ist erwartet und normal. Verwenden Sie Konsolenbefehle (soilStatus, SoilSetDifficulty, SoilShowSettings usw.), um Einstellungen auf einem dedizierten Server zu verwalten und zu ├╝berpr├╝fen." eh="3df784d6" />
-    <e k="helpLine_sf_mp_p2_title" v="Kompatibilit├ñt" />
-    <e k="helpLine_sf_mp_p2_compat_title" v="Mod Compatibility" />
-    <e k="helpLine_sf_mp_p2_compat_text" v="Die Realistische B├Âden &amp; D├╝ngung-Mod nutzt angeh├ñngte Funktions-Hooks, sodass es ohne Konflikte parallel zu Courseplay, AutoDrive und den meisten Maschinen-Mods l├ñuft. Wenn ÔÇ×Precision FarmingÔÇ£ in einem Spielstand aktiv ist, erkennt es dies und schaltet sich automatisch aus, sodass sich die beiden Mods niemals um dieselben Felder streiten." />
-    <e k="helpLine_sf_mp_p2_workflow_title" v="Einstellungen" />
-    <e k="helpLine_sf_mp_p2_workflow_text" v="Im Mehrspielermodus k├Ânnen nur Serveradministratoren die Einstellungen ├ñndern. Diese ├änderungen werden ├╝ber das Control Panel oder die Konsole des Hosts vorgenommen und anschlie├ƒend ├╝berpr├╝ft und an alle Clients ├╝bertragen. In den Spielmodi ÔÇ×RealisticÔÇ£ und ÔÇ×HardcoreÔÇ£ sind die Einstellungseditoren und die Schalter f├╝r Herausforderungen gesperrt, sodass niemand die Simulation w├ñhrend des Spiels abschw├ñchen kann." />
+    <e k="helpLine_sf_mp_p2_title" v="[EN] Compatibility and Workflow" eh="b25d25e9" />
+    <e k="helpLine_sf_mp_p2_compat_title" v="[EN] Mod Compatibility" eh="5581e454" />
+    <e k="helpLine_sf_mp_p2_compat_text" v="[EN] Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." eh="54b87e0c" />
+    <e k="helpLine_sf_mp_p2_workflow_title" v="[EN] Changing Settings" eh="b421c88f" />
+    <e k="helpLine_sf_mp_p2_workflow_text" v="[EN] In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." eh="42ace095" />
 
     <e k="sf_crop_rotation_short" v="Fruchtfolge" eh="def2c162" />
     <e k="sf_crop_rotation_long" v="Fruchtfolgebonus und Fruchtfolgeprobleme aktivieren/deaktivieren (Leguminosen k├Ânnen durch Stickstoffbindung den Stickstoffvorrat erh├Âhen; wiederholter Anbau derselben Kultur verst├ñrkt den N├ñhrstoffentzug)." eh="958b4212" />
@@ -487,7 +487,7 @@
     <e k="sf_pda_treatment_minor" v="Gering" eh="6fed0c37" />
     <e k="sf_detail_title" v="├£bersicht" eh="03b5acd7" />
     <e k="sf_detail_close" v="Ok" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="Schlagnummer: " eh="228118ab" />
+    <e k="sf_detail_field_label" v="Schlagnummer:" eh="228118ab" />
     <e k="sf_detail_urgency_label" v="Zustand:" eh="9a83237c" />
     <e k="sf_detail_section_nutrients" v="N├ñhrstoffversorgung" eh="64377acf" />
     <e k="sf_detail_section_pressure" v="Wirtschaftliche Schadschwelle" eh="a73974d0" />
@@ -546,12 +546,12 @@
     <e k="sf_hud_label_ph" v="pH" eh="397dff20" />
     <e k="sf_hud_label_om" v="OS" eh="bfbebc07" />
     <e k="sf_hud_unit_ppm" v="kg/ha" eh="71b18c32" />
-    <e k="sf_hud_coverage" v="Abgedeckte Fl├ñche: %d%% / %d%%" />
-    <e k="sf_hud_pass_coverage" v="Aktueller ├£berfahrt: %d%% (%s)" />
-    <e k="sf_hud_compaction" v="Bodenverdichtung: %d%%" />
-    <e k="sf_hud_yield_eff" v="Ertragspotenzial: %d%%" />
-    <e k="sf_hud_amend_burn" v="Ertragsverlust durch Ver├ñtzung: -%d%%" />
-		<e k="sf_hud_burn_risk" v="Ver├ñtzungsrisiko: erh├Âht" />
+    <e k="sf_hud_coverage" v="[EN] Coverage: %d%% / %d%%" eh="d407bb6d" />
+    <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_compaction" v="[EN] Compaction: %d%%" eh="bef3a4f5" />
+    <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
+    <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
+		<e k="sf_hud_burn_risk" v="[EN] Amend. burn risk: Yes" eh="6f553cf3" />
 
     <e k="sf_sprayer_auto_on" v="Bedarfsgerechte D├╝ngung aktiv" eh="099b5dac" />
     <e k="sf_sprayer_auto_off" v="Bedarfsgerechte D├╝ngung inaktiv [%s]" eh="848cc106" />
@@ -619,7 +619,7 @@
     <e k="sf_desc_fertilizerCosts" v="realistische D├╝ngerpreise" eh="1c197c9f" />
     <e k="sf_desc_showNotifications" v="erhalte Benachrichtigungen ├╝ber den Zustand deiner B├Âden" eh="7f275b4b" />
     <e k="sf_desc_showHUD" v="HUD anzeigen" eh="fa8b9224" />
-    <e k="sf_desc_showWorkTrail" v="Zeige kleine Markierungen auf dem Feld, " eh="3a3da614" />
+    <e k="sf_desc_showWorkTrail" v="Zeige kleine Markierungen auf dem Feld," eh="3a3da614" />
 		<e k="sf_desc_showSprayerInfoPanel" v="Zeige das Feldspritzen-HUD wenn du ein entsprechende Maschine benutzt" eh="016b4402" />
 		<e k="sf_desc_showHarvesterPanel" v="Zeige das M├ñhdrescher-HUD wenn du ein entsprechende Maschine benutzt" eh="b16a1726" />
     <e k="sf_desc_hudPosition" v="Ausrichtung" eh="98c8bcea" />
@@ -766,7 +766,6 @@
     <e k="sf_see_spray_disease"     v="Krankheit" />
     <e k="sf_see_spray_weed"        v="Unkraut" />
     <e k="sf_see_spray_suppressed"  v="Alle Sektionen unterdr├╝ckt: kein Druck erkannt" />
-    <e k="sf_see_spray_protected" v="0% (Schutzwirkung)" eh="190bfadc" />
     <!-- PANEL F├£R VARIABLE AUSBRINGMENGE -->
     <e k="sf_var_rate_panel_title" v="SmartRate" eh="799c3bf7" />
     <e k="sf_var_rate_label"       v="Var. Rate" />
@@ -779,7 +778,7 @@
         <!-- HUD-LAYOUT-ZIEHMODUS-SCHALTFL├äCHE -->
     <e k="sf_independent_panels_short" v="Freies Panel-Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Smart-System-Panels d├╝rfen im Bearbeitungsmodus unabh├ñngig positioniert werden" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="Jedes Panel im Bearbeitungsmodus frei ziehen. Panels mit der Schaltfl├ñche - in der Titelleiste einklappen." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="69091cec" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the ├ó╦åÔÇÖ button in their title bar." eh="6f96e17c" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="69091cec" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="da09523b" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="438cd61b" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="ab1d5b05" />
@@ -794,7 +793,7 @@
     <e k="sf_guide_p1_08" v="P   Phosphor        Verschwindet langsamer. Vermehrt bei Wurzelfr├╝chte." eh="651919e6" />
     <e k="sf_guide_p1_09" v="K   Kalium          Wurzelfr├╝chte entziehen besonders viel." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="OS  Organische Substanz   Baut sich ├╝ber viele Saisons langsam auf." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="pH  Bodenreaktion.  Zielbereich: 6.5 - 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 ├óÔé¼ÔÇ£ 7.0." eh="66ec261a" />
     <e k="sf_guide_p1_12" v="STATUSSTUFEN" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="GUT (gr├╝n)  Auf oder ├╝ber dem Optimalwert der Frucht." eh="a081208f" />
     <e k="sf_guide_p1_14" v="Diese Saison ist keine Aktion n├Âtig." eh="58b36ac2" />
@@ -942,13 +941,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="pH-KORREKTUR" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="Zielbereich: 6.5 - 7.0 f├╝r die meisten Kulturen." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 ├óÔé¼ÔÇ£ 7.0 for most crops." eh="142248c3" />
     <e k="sf_guide_p4_19" v="" eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="pH zu NIEDRIG (sauer, unter 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="pH zu HOCH (alkalisch, ├╝ber 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="F├╝r vollst├ñndige Normalisierung 1-2 Saisons einplanen." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1├óÔé¼ÔÇ£2 seasons for full normalization." eh="b64ec970" />
     <e k="sf_guide_p4_25" v="ORGANISCHE SUBSTANZ (OS)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="Mist            Bester OS-Aufbauer. F├╝gt auch N hinzu." eh="99834812" />
     <e k="sf_guide_p4_27" v="Kompost         Mittlere OS-Wirkung, gut ausgewogen." eh="d9b0e2f9" />
@@ -988,9 +987,9 @@
     <e k="sf_guide_p5_22" v="MUSS ICH JEDE SAISON D├£NGEN?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="Stickstoff: Ja, m├Âglichst jede Saison." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="Er verarmt bei jeder Ernte stark." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="P und K: Meist reicht alle 2-3 Saisons." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2├óÔé¼ÔÇ£3 seasons is usually enough." eh="8863dc51" />
     <e k="sf_guide_p5_26" v="Organische Substanz: langfristig. Mist einmal pro Jahr zuf├╝hren." eh="78827593" />
-    <e k="sf_guide_p5_27" v="pH: Nur eingreifen, wenn au├ƒerhalb 6.5-7.0." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5├óÔé¼ÔÇ£7.0 range." eh="2dcf1b6d" />
     <e k="sf_guide_p5_28" v="WIE FUNKTIONIEREN DIE SMART-SENSOR-SYSTEME?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="Smart-Sensor blockiert einzelne Gest├ñngesektionen, wenn" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="kein Bedarf erkannt wird (kein Sch├ñdlings-, Krankheits- oder N├ñhrstoff-" eh="22de015a" />
@@ -1018,7 +1017,6 @@
     <e k="sf_report_rotation_bonus"   v="Fruchtfolgebonus" />
     <e k="sf_report_rotation_fatigue" v="ungeeignete Vorfrucht" eh="7b173595" />
     <e k="sf_report_rotation_ok"      v="Fruchtfolge: OK" />
-    <e k="sf_report_rotation_na" v="nicht verf├╝gbar" eh="382b0f51" />
     <e k="sf_report_rec_optimal"      v="Bodengesundheit: Optimal" />
     <e k="sf_report_rec_good"         v="Gut" />
     <e k="sf_report_rec_fair"         v="Mittel" />
@@ -1113,7 +1111,7 @@
     <e k="input_SF_TREATMENT" v="[EN] Open Soil Treatment Panel" eh="a14be056" />
 		<e k="sf_scout_tier_none" v="gesund" eh="741839f3" />
 		<e k="sf_scout_tier_mild" v="vereinzelt" eh="3cc4af7c" />
-		<e k="sf_scout_tier_moderate" v="" eh="vermehrtes Auftreten" />
+		<e k="sf_scout_tier_moderate" v="[EN] moderate" eh="7f0217cd" />
 		<e k="sf_scout_tier_severe" v="gro├ƒfl├ñchig" eh="e709e56a" />
 		<e k="sf_scout_pressure_label" v="Im Bestand befallene Pflanzen" eh="49abd79e" />
 		<e k="sf_scout_budget" v="Preisg├╝nstig" eh="822bead6" />
@@ -1122,114 +1120,112 @@
 		<e k="sf_scout_disabled" v="Krankheiten sind deaktiviert." eh="a2ffd328" />
     <e k="sf_admin_field_set_disease_label" v="Erkrankung festlegen" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="Lege die aktuelle Erkrankung des Feldes fest und wie stark der Befall sein soll." eh="d86eb3e1" />
-		<e k="sf_multi_tank_short" v="[EN] Multi-Tank Application" eh="3225f56b" />
-		<e k="sf_multi_tank_long" v="[EN] Apply fertilizer to multiple tanks at once (front + rear)" eh="14ae72fc" />
-		<e k="sf_desc_multiTankApplication" v="[EN] When enabled, applying product also fills or drains secondary tanks proportionally" eh="71033529" />
-        <e k="sf_propiconazole_title" v="Propiconazol" />
-    <e k="sf_bigBag_propiconazole_name" v="Propiconazol" />
-    <e k="sf_bigBag_propiconazole_function" v="Systemisches Fungizid zur Bek├ñmpfung von Rostpilzen, Mehltau und weiteren Blattkrankheiten." />
-    <e k="sf_azoxystrobin_title" v="Azoxystrobin" />
-    <e k="sf_bigBag_azoxystrobin_name" v="Azoxystrobin" />
-    <e k="sf_bigBag_azoxystrobin_function" v="Breitbrandfungizid gegen Blattfleckenkrankheiten, Rostpilze und Mehltau." />
-    <e k="sf_boscalid_title" v="Boscalid" />
-    <e k="sf_bigBag_boscalid_name" v="Boscalid" />
-    <e k="sf_bigBag_boscalid_function" v="Fungizid gegen Botrytis, Sclerotinia und weitere pilzliche Blatt- und St├ñngelkrankheiten." />
-    <e k="sf_mancozeb_title" v="Mancozeb" />
-    <e k="sf_bigBag_mancozeb_name" v="Mancozeb" />
-    <e k="sf_bigBag_mancozeb_function" v="Kontaktfungizid mit breitem Wirkungsspektrum gegen Kraut- und Blattkrankheiten." />
-    <e k="sf_metalaxyl_title" v="Metalaxyl" />
-    <e k="sf_bigBag_metalaxyl_name" v="Metalaxyl" />
-    <e k="sf_bigBag_metalaxyl_function" v="Systemisches Fungizid gegen Falschen Mehltau sowie Phytophthora- und Pythium-Arten." />
-    <e k="sf_tebuconazole_title" v="Tebuconazol" />
-    <e k="sf_bigBag_tebuconazole_name" v="Tebuconazol" />
-    <e k="sf_bigBag_tebuconazole_function" v="Systemisches Fungizid gegen Rostpilze, Mehltau, Fusarium und weitere Blattkrankheiten." />
-    <e k="sf_treat_tank_tag" v="F├╝llung" />
-    <e k="sf_treat_physical" v="%s ist ein Spritzmittel - kaufe das Mittel und bringe es mit einer Pflanzenschutzspritze aus." />
-    <e k="sf_sulfur_title" v="Schwefel" />
-    <e k="sf_bigBag_sulfur_name" v="Schwefel" />
-    <e k="sf_bigBag_sulfur_function" v="Kontaktfungizid gegen Echten Mehltau und weitere pilzliche Krankheiten. F├╝r den ├Âkologischen Landbau geeignet." />
-    <e k="sf_copper_hydroxide_title" v="Kupferhydroxid" />
-    <e k="sf_bigBag_copper_hydroxide_name" v="Kupferhydroxid" />
-    <e k="sf_bigBag_copper_hydroxide_function" v="Kontaktfungizid gegen pilzliche und bakterielle Krankheiten. F├╝r den ├Âkologischen Landbau geeignet." />
-    <e k="sf_unscouted" v="Nicht erkundet" />
-<e k="sf_map_layer_organic_status" v="Bewirtschaftungsweise" />
+        <e k="sf_propiconazole_title" v="[EN] Propiconazole" eh="920d7ec6" />
+    <e k="sf_bigBag_propiconazole_name" v="[EN] IBC Propiconazole" eh="fc219313" />
+    <e k="sf_bigBag_propiconazole_function" v="[EN] Propiconazole fungicide (liquid)" eh="490ed9b0" />
+    <e k="sf_azoxystrobin_title" v="[EN] Azoxystrobin" eh="34160dda" />
+    <e k="sf_bigBag_azoxystrobin_name" v="[EN] IBC Azoxystrobin" eh="b40a0610" />
+    <e k="sf_bigBag_azoxystrobin_function" v="[EN] Azoxystrobin fungicide (liquid)" eh="be5ee11a" />
+    <e k="sf_boscalid_title" v="[EN] Boscalid" eh="5c0a4c40" />
+    <e k="sf_bigBag_boscalid_name" v="[EN] IBC Boscalid" eh="92f0478a" />
+    <e k="sf_bigBag_boscalid_function" v="[EN] Boscalid fungicide (liquid)" eh="0f6520f8" />
+    <e k="sf_mancozeb_title" v="[EN] Mancozeb" eh="5117fb39" />
+    <e k="sf_bigBag_mancozeb_name" v="[EN] IBC Mancozeb" eh="1e434105" />
+    <e k="sf_bigBag_mancozeb_function" v="[EN] Mancozeb fungicide (liquid)" eh="575656e9" />
+    <e k="sf_metalaxyl_title" v="[EN] Metalaxyl" eh="2c4598e3" />
+    <e k="sf_bigBag_metalaxyl_name" v="[EN] IBC Metalaxyl" eh="9f270208" />
+    <e k="sf_bigBag_metalaxyl_function" v="[EN] Metalaxyl fungicide (liquid)" eh="cc268585" />
+    <e k="sf_tebuconazole_title" v="[EN] Tebuconazole" eh="3755d13c" />
+    <e k="sf_bigBag_tebuconazole_name" v="[EN] IBC Tebuconazole" eh="151459c1" />
+    <e k="sf_bigBag_tebuconazole_function" v="[EN] Tebuconazole fungicide (liquid)" eh="903ba330" />
+    <e k="sf_treat_tank_tag" v="[EN] tank - spray" eh="62f0dd3b" />
+    <e k="sf_treat_physical" v="[EN] %s is a sprayable product - buy the tank and spray the field" eh="6170b051" />
+    <e k="sf_sulfur_title" v="[EN] Sulfur" eh="529df3e8" />
+    <e k="sf_bigBag_sulfur_name" v="[EN] IBC Sulfur" eh="5ff5268e" />
+    <e k="sf_bigBag_sulfur_function" v="[EN] Sulfur fungicide, organic-approved (liquid)" eh="d3b65711" />
+    <e k="sf_copper_hydroxide_title" v="[EN] Copper Hydroxide" eh="6b294851" />
+    <e k="sf_bigBag_copper_hydroxide_name" v="[EN] IBC Copper Hydroxide" eh="8d35ad49" />
+    <e k="sf_bigBag_copper_hydroxide_function" v="[EN] Copper Hydroxide fungicide, organic-approved (liquid)" eh="ee1a16b8" />
+    <e k="sf_unscouted" v="[EN] Unscouted" eh="a773e76d" />
+<e k="sf_map_layer_organic_status" v="[EN] Organic Status" eh="037de0fd" />
     
-<e k="sf_layer_12" v="Bewirtschaftungsweise" />
+<e k="sf_layer_12" v="[EN] Organic Status" eh="037de0fd" />
     
-<e k="sf_org_legend_conventional" v="Konventionell" />
+<e k="sf_org_legend_conventional" v="[EN] Conventional" eh="e5932769" />
     
-<e k="sf_org_legend_transition" v="Umstellungphase" />
+<e k="sf_org_legend_transition" v="[EN] Transitioning" eh="69a4b718" />
     
-<e k="sf_org_legend_certified" v="├ûkologisch" />
+<e k="sf_org_legend_certified" v="[EN] Certified" eh="2e768a9e" />
     
-<e k="sf_org_tt_conventional" v="Konventionelle Bewirtschaftung." />
+<e k="sf_org_tt_conventional" v="[EN] Not in organic conversion" eh="2da36ff5" />
     
-<e k="sf_org_tt_certified" v="├ûkologische Bewirtschaftung" />
+<e k="sf_org_tt_certified" v="[EN] Organic certified" eh="20b70b75" />
     
-    <e k="sf_org_tt_progress" v="%d%% - %d / %d days" />
-<e k="sf_rp_status_unknown" v="Unbekannt" />
+    <e k="sf_org_tt_progress" v="[EN] %d%% - %d / %d days" eh="b6ade20d" />
+<e k="sf_rp_status_unknown" v="[EN] Unknown" eh="88183b94" />
     
-<e k="sf_rp_no_crop" v="-" />
+<e k="sf_rp_no_crop" v="[EN] -" eh="336d5ebc" />
     
-<e k="sf_rp_no_history" v="Keine Daten." />
+<e k="sf_rp_no_history" v="[EN] No crop history yet" eh="4fabff90" />
     
-<e k="sf_rp_standing_unknown" v="Unknown" />
+<e k="sf_rp_standing_unknown" v="[EN] Unknown" eh="88183b94" />
     
-<e k="sf_rp_bonus_days" v="bonus %dd" />
+<e k="sf_rp_bonus_days" v="[EN] bonus %dd" eh="f7e148b1" />
     
-<e k="sf_rp_title" v="Auswertung deiner Fruchtfolge" />
+<e k="sf_rp_title" v="[EN] Rotation Planner" eh="5404f1c2" />
     
-<e k="sf_rp_open" v="Fruchtfolgeauswertung " />
+<e k="sf_rp_open" v="Fruchtfolgeauswertung" eh="5404f1c2" />
     
-<e k="sf_rp_farm_header" v="Hof-├£bersicht" />
+<e k="sf_rp_farm_header" v="[EN] Farm standing" eh="f9d6920b" />
     
-<e k="sf_rp_what_if" v="Wenn du als n├ñchstes folgende Kultur anbaust:" />
+<e k="sf_rp_what_if" v="[EN] What if (next crop)" eh="6e9a098e" />
     
-<e k="sf_rp_hint" v="Die selben Informationen wie in der Fruchtfolgebewertung" />
+<e k="sf_rp_hint" v="[EN] Same candidates as the field-detail foresight. Read-only; nothing is planted." eh="4d2e12a2" />
     
-<e k="sf_rp_hint_no_history" v="Baue erst eine Kultur auf dem Feld an, um eine Auswertung deiner Fruchtfolge zu erhalten." />
+<e k="sf_rp_hint_no_history" v="[EN] No crop history yet on this field. Grow a crop before comparing." eh="188eb102" />
     
-<e k="sf_rp_farm_summary" v="%d Felder - Ausgezeichnet %d - In Ordnung %d - Schlecht %d - Unbekannt %d" />
+<e k="sf_rp_farm_summary" v="[EN] %d fields - Bonus %d - OK %d - Fatigue %d - Unknown %d" eh="8c5f4ce1" />
     
-    <e k="sf_rp_no_fields" v="Keine Felder" />
+    <e k="sf_rp_no_fields" v="[EN] No fields" eh="72cd127c" />
     
-<e k="sf_rp_prev" v="Vorheriges Feld" />
+<e k="sf_rp_prev" v="[EN] Prev field" eh="2218ceab" />
     
-<e k="sf_rp_next" v="n├ñchstes Feld" />
+<e k="sf_rp_next" v="[EN] Next field" eh="9046f8e0" />
     
-    <e k="sf_rp_field_header" v="Feld %d  (%d von %d)" />
+    <e k="sf_rp_field_header" v="[EN] Field #%d  (%d / %d)" eh="ab1619e3" />
+		<e k="sf_underwrite_notify" v="[EN] Harvest contract topped up on field %s: degraded soil compensated to the expected yield." eh="76e3ddd0" />
     <!-- Harvester panel yield estimate (SF-50) -->
-    <e k="sf_hud_tha" v="%.1f t/ha" />
-    <e k="sf_hud_yield_est_src" v="GeschÔö£├▒tzt aus Kartendaten" />
+    <e k="sf_hud_tha" v="[EN] %.1f t/ha" eh="02c9dfd7" />
+    <e k="sf_hud_yield_est_src" v="[EN] Estimated from map data" eh="f81875ef" />
     <!-- CD-12 tank mix names (generated) -->
-    <e k="sf_blend_azoxystrobin_boscalid_title" v="Azoxystrobin + Boscalid" />
-    <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="Azoxystrobin + Copper Hydroxide" />
-    <e k="sf_blend_azoxystrobin_mancozeb_title" v="Azoxystrobin + Mancozeb" />
-    <e k="sf_blend_azoxystrobin_metalaxyl_title" v="Azoxystrobin + Metalaxyl" />
-    <e k="sf_blend_azoxystrobin_propiconazole_title" v="Azoxystrobin + Propiconazole" />
-    <e k="sf_blend_azoxystrobin_sulfur_title" v="Azoxystrobin + Sulfur" />
-    <e k="sf_blend_azoxystrobin_tebuconazole_title" v="Azoxystrobin + Tebuconazole" />
-    <e k="sf_blend_boscalid_copper_hydroxide_title" v="Boscalid + Copper Hydroxide" />
-    <e k="sf_blend_boscalid_mancozeb_title" v="Boscalid + Mancozeb" />
-    <e k="sf_blend_boscalid_metalaxyl_title" v="Boscalid + Metalaxyl" />
-    <e k="sf_blend_boscalid_propiconazole_title" v="Boscalid + Propiconazole" />
-    <e k="sf_blend_boscalid_sulfur_title" v="Boscalid + Sulfur" />
-    <e k="sf_blend_boscalid_tebuconazole_title" v="Boscalid + Tebuconazole" />
-    <e k="sf_blend_copper_hydroxide_mancozeb_title" v="Copper Hydroxide + Mancozeb" />
-    <e k="sf_blend_copper_hydroxide_metalaxyl_title" v="Copper Hydroxide + Metalaxyl" />
-    <e k="sf_blend_copper_hydroxide_propiconazole_title" v="Copper Hydroxide + Propiconazole" />
-    <e k="sf_blend_copper_hydroxide_sulfur_title" v="Copper Hydroxide + Sulfur" />
-    <e k="sf_blend_copper_hydroxide_tebuconazole_title" v="Copper Hydroxide + Tebuconazole" />
-    <e k="sf_blend_mancozeb_metalaxyl_title" v="Mancozeb + Metalaxyl" />
-    <e k="sf_blend_mancozeb_propiconazole_title" v="Mancozeb + Propiconazole" />
-    <e k="sf_blend_mancozeb_sulfur_title" v="Mancozeb + Sulfur" />
-    <e k="sf_blend_mancozeb_tebuconazole_title" v="Mancozeb + Tebuconazole" />
-    <e k="sf_blend_metalaxyl_propiconazole_title" v="Metalaxyl + Propiconazole" />
-    <e k="sf_blend_metalaxyl_sulfur_title" v="Metalaxyl + Sulfur" />
-    <e k="sf_blend_metalaxyl_tebuconazole_title" v="Metalaxyl + Tebuconazole" />
-    <e k="sf_blend_propiconazole_sulfur_title" v="Propiconazole + Sulfur" />
-    <e k="sf_blend_propiconazole_tebuconazole_title" v="Propiconazole + Tebuconazole" />
-    <e k="sf_blend_sulfur_tebuconazole_title" v="Sulfur + Tebuconazole" />
+    <e k="sf_blend_azoxystrobin_boscalid_title" v="[EN] Azoxystrobin + Boscalid" eh="fe129cff" />
+    <e k="sf_blend_azoxystrobin_copper_hydroxide_title" v="[EN] Azoxystrobin + Copper Hydroxide" eh="b2ebbc6e" />
+    <e k="sf_blend_azoxystrobin_mancozeb_title" v="[EN] Azoxystrobin + Mancozeb" eh="22c043b9" />
+    <e k="sf_blend_azoxystrobin_metalaxyl_title" v="[EN] Azoxystrobin + Metalaxyl" eh="03a01200" />
+    <e k="sf_blend_azoxystrobin_propiconazole_title" v="[EN] Azoxystrobin + Propiconazole" eh="96edc7dc" />
+    <e k="sf_blend_azoxystrobin_sulfur_title" v="[EN] Azoxystrobin + Sulfur" eh="d8bef109" />
+    <e k="sf_blend_azoxystrobin_tebuconazole_title" v="[EN] Azoxystrobin + Tebuconazole" eh="9d26797e" />
+    <e k="sf_blend_boscalid_copper_hydroxide_title" v="[EN] Boscalid + Copper Hydroxide" eh="3348b944" />
+    <e k="sf_blend_boscalid_mancozeb_title" v="[EN] Boscalid + Mancozeb" eh="021e77f7" />
+    <e k="sf_blend_boscalid_metalaxyl_title" v="[EN] Boscalid + Metalaxyl" eh="4aa98c4d" />
+    <e k="sf_blend_boscalid_propiconazole_title" v="[EN] Boscalid + Propiconazole" eh="c72f945e" />
+    <e k="sf_blend_boscalid_sulfur_title" v="[EN] Boscalid + Sulfur" eh="0b50c375" />
+    <e k="sf_blend_boscalid_tebuconazole_title" v="[EN] Boscalid + Tebuconazole" eh="a1dabf6d" />
+    <e k="sf_blend_copper_hydroxide_mancozeb_title" v="[EN] Copper Hydroxide + Mancozeb" eh="11d78ed9" />
+    <e k="sf_blend_copper_hydroxide_metalaxyl_title" v="[EN] Copper Hydroxide + Metalaxyl" eh="48ef4c0b" />
+    <e k="sf_blend_copper_hydroxide_propiconazole_title" v="[EN] Copper Hydroxide + Propiconazole" eh="92ac4dfd" />
+    <e k="sf_blend_copper_hydroxide_sulfur_title" v="[EN] Copper Hydroxide + Sulfur" eh="8366560f" />
+    <e k="sf_blend_copper_hydroxide_tebuconazole_title" v="[EN] Copper Hydroxide + Tebuconazole" eh="aa0f65b8" />
+    <e k="sf_blend_mancozeb_metalaxyl_title" v="[EN] Mancozeb + Metalaxyl" eh="909841a4" />
+    <e k="sf_blend_mancozeb_propiconazole_title" v="[EN] Mancozeb + Propiconazole" eh="010df778" />
+    <e k="sf_blend_mancozeb_sulfur_title" v="[EN] Mancozeb + Sulfur" eh="edb405bb" />
+    <e k="sf_blend_mancozeb_tebuconazole_title" v="[EN] Mancozeb + Tebuconazole" eh="0bbc3c4a" />
+    <e k="sf_blend_metalaxyl_propiconazole_title" v="[EN] Metalaxyl + Propiconazole" eh="fd2a77f1" />
+    <e k="sf_blend_metalaxyl_sulfur_title" v="[EN] Metalaxyl + Sulfur" eh="50d49fb4" />
+    <e k="sf_blend_metalaxyl_tebuconazole_title" v="[EN] Metalaxyl + Tebuconazole" eh="3afc3aac" />
+    <e k="sf_blend_propiconazole_sulfur_title" v="[EN] Propiconazole + Sulfur" eh="ab3044f6" />
+    <e k="sf_blend_propiconazole_tebuconazole_title" v="[EN] Propiconazole + Tebuconazole" eh="4f87fc33" />
+    <e k="sf_blend_sulfur_tebuconazole_title" v="[EN] Sulfur + Tebuconazole" eh="51ee006b" />
     <e k="sf_dis_resistant_complex" v="[EN] Multi-resistant complex" />
     <e k="sf_dis_resistant_complex_cereal" v="[EN] Multi-resistant cereal complex" />
     <e k="sf_dis_resistant_complex_maize" v="[EN] Multi-resistant maize complex" />
@@ -1238,46 +1234,103 @@
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
 
-    <e k="sf_experimental_short" v="Experimental Systems" />
-    <e k="sf_experimental_long" v="Turn on experimental systems that are not released yet." />
-    <e k="sf_desc_experimentalSystems" v="Off by default. Independent of difficulty. Use at your own risk." />
-    <e k="sf_panel_hdr_experimental" v="Experimental" />
-<e k="sf_release_dialog_title" v="Release Gate" />
-    <e k="sf_map_target_no_data" v="Keine Daten" />
-    <e k="sf_map_limiting" v="Begrenzend" />
-    <e k="sf_map_ph_optimal" v="Optimal" />
-    <e k="sf_map_weed_pressure" v="Unkraut" />
-    <e k="sf_map_tip" v="Hinweis" />
-    <e k="sf_map_balanced" v="Ausgewogen" />
-    <e k="sf_map_ph_apply_lime" v="Kalk ausbringen" />
-    <e k="sf_map_ph_very_acidic" v="Sehr sauer" />
-    <e k="sf_map_herbicide" v="Herbizid" />
-    <e k="sf_map_compaction_urgent" v="dringend Boden auflockern" />
-    <e k="sf_map_ph_none_needed" v="Kein Handlungsbedarf" />
-    <e k="sf_map_not_needed" v="Nicht n├Âtig" />
-    <e k="sf_map_treatment" v="Behandlung" />
-    <e k="sf_map_crop" v="Kultur" />
-    <e k="sf_map_not_applied" v="Nicht ausgebracht" />
-    <e k="sf_map_ph_slightly_acidic" v="Leicht sauer" />
-    <e k="sf_map_compaction_ok" v="Kein Handlungsbedarf" />
-    <e k="sf_map_om_low" v="Niedrig - Mist oder Kompost ausbringen" />
-    <e k="sf_map_disease_pressure" v="Krankheitsbefall" />
-    <e k="sf_map_condition" v="Zustand" />
-    <e k="sf_map_target_none" v="Kein Kultur angebaut" />
-    <e k="sf_map_compaction_recommended" v="Bodenauflockerung empfohlen" />
-    <e k="sf_map_om_fair" v="Stroh / Mist einarbeiten" />
-    <e k="sf_map_ph_apply_lime_urgent" v="Dringend Kalk ausbringen" />
-    <e k="sf_map_insecticide" v="Insektizid" />
-    <e k="sf_map_pest_pressure" v="Sch├ñdlingsbefall" />
-    <e k="sf_map_target" v="Bedarf" />
-    <e k="sf_map_active" v="Aktiv" />
-    <e k="sf_map_ph_severely_over_limed" v="Stark ├╝berkalkt" />
-    <e k="sf_map_fungicide" v="Fungizid" />
-    <e k="sf_map_ph_normalize" v="Normalisierung erlauben" />
-    <e k="sf_map_ph_over_limed" v="├£berkalkt" />
-    <e k="sf_map_gap" v="Differenz" />
-    <e k="sf_map_ph_apply_sulfur" v="Schwefel ausbringen" />
-    <e k="sf_map_om_healthy" v="Gesund - mit Stroh erhalten" />
+    <e k="sf_experimental_short" v="[EN] Experimental Systems" eh="065b69cd" />
+    <e k="sf_experimental_long" v="[EN] Turn on experimental systems that are not released yet." eh="5226b9cb" />
+    <e k="sf_desc_experimentalSystems" v="[EN] Off by default. Independent of difficulty. Use at your own risk." eh="a8ad3206" />
+    <e k="sf_panel_hdr_experimental" v="[EN] Experimental" eh="704b5561" />
+<e k="sf_release_dialog_title" v="[EN] Release Gate" eh="74d19780" />
+    <e k="sf_map_target_no_data" v="[EN] No data" eh="42a7b262" />
+    <e k="sf_map_limiting" v="[EN] Limiting" eh="208ee821" />
+    <e k="sf_map_ph_optimal" v="[EN] Optimal" eh="cb61fef1" />
+    <e k="sf_map_weed_pressure" v="[EN] Weed Pressure" eh="53f8b936" />
+    <e k="sf_map_tip" v="[EN] Tip" eh="12ae2a12" />
+    <e k="sf_map_balanced" v="[EN] Balanced" eh="c6589f52" />
+    <e k="sf_map_ph_apply_lime" v="[EN] Apply lime" eh="5b3983de" />
+    <e k="sf_map_ph_very_acidic" v="[EN] Very acidic" eh="5f032f0b" />
+    <e k="sf_map_herbicide" v="[EN] Herbicide" eh="1029736e" />
+    <e k="sf_map_compaction_urgent" v="[EN] Subsoiling urgent" eh="62a80ea4" />
+    <e k="sf_map_ph_none_needed" v="[EN] None needed" eh="a01f2705" />
+    <e k="sf_map_not_needed" v="[EN] Not needed" eh="3ec6d6a7" />
+    <e k="sf_map_treatment" v="[EN] Treatment" eh="4c4ac06f" />
+    <e k="sf_map_crop" v="[EN] Crop" eh="d388632d" />
+    <e k="sf_map_not_applied" v="[EN] Not applied" eh="ac612def" />
+    <e k="sf_map_ph_slightly_acidic" v="[EN] Slightly acidic" eh="908e5a88" />
+    <e k="sf_map_compaction_ok" v="[EN] No action needed" eh="f51a497f" />
+    <e k="sf_map_om_low" v="[EN] Low - add manure or digestate" eh="85262077" />
+    <e k="sf_map_disease_pressure" v="[EN] Disease Pressure" eh="2b805cc9" />
+    <e k="sf_map_condition" v="[EN] Condition" eh="9e2941b3" />
+    <e k="sf_map_target_none" v="[EN] No crop planted" eh="101c620c" />
+    <e k="sf_map_compaction_recommended" v="[EN] Subsoiling recommended" eh="d01f0d65" />
+    <e k="sf_map_om_fair" v="[EN] Incorporate straw / manure" eh="caf68ba7" />
+    <e k="sf_map_ph_apply_lime_urgent" v="[EN] Apply lime urgently" eh="b151ae45" />
+    <e k="sf_map_insecticide" v="[EN] Insecticide" eh="5650eeef" />
+    <e k="sf_map_pest_pressure" v="[EN] Pest Pressure" eh="18a7c2be" />
+    <e k="sf_map_target" v="[EN] Target" eh="c41a3189" />
+    <e k="sf_map_active" v="[EN] Active" eh="4d3d769b" />
+    <e k="sf_map_ph_severely_over_limed" v="[EN] Severely over-limed" eh="23897c47" />
+    <e k="sf_map_fungicide" v="[EN] Fungicide" eh="e8512698" />
+    <e k="sf_map_ph_normalize" v="[EN] Allow to normalize" eh="9645480a" />
+    <e k="sf_map_ph_over_limed" v="[EN] Over-limed" eh="b2a29851" />
+    <e k="sf_map_gap" v="[EN] Gap" eh="466b98ca" />
+    <e k="sf_map_ph_apply_sulfur" v="[EN] Apply sulfur" eh="73c513b6" />
+    <e k="sf_map_om_healthy" v="[EN] Healthy - maintain with straw" eh="99d4efa2" />
+
+    <!-- Esc RF PDA greenfield (2026-08-02) -->
+    <e k="rf_pda_panel_soil" v="[EN] Soil Fertilizer" eh="ed0df48a" />
+    <e k="rf_pda_menu_blurb" v="[EN] Monitor your fields' nutrient levels. Apply fertilizer to maintain optimal yields." eh="a3e3f27d" />
+    <e k="rf_pda_host_blurb" v="[EN] Quick look at this module. Open Farm Tablet for the full tools." eh="8eabc065" />
+    <e k="rf_pda_suite_hint" v="[EN] This page shows nutrient levels for your fields and a treatment plan for the field you select." eh="32d7efb3" />
+    <e k="rf_pda_host_placeholder" v="[EN] How to: when this module adds Esc detail, use it here. Until then, open Farm Tablet." eh="227f25ea" />
+    <e k="rf_pda_module_soil_short" v="[EN] Soil" eh="e4b9dca2" />
+    <e k="rf_pda_module_tag_host" v="[EN] open" eh="7cef8a73" />
+    <e k="rf_pda_module_tag_loaded" v="[EN] ready" eh="b2fdab23" />
+    <e k="rf_pda_module_list_label" v="[EN] Modules" eh="bf17ac14" />
+    <e k="rf_pda_col_area" v="[EN] Area" eh="deec4ff1" />
+    <e k="rf_pda_col_fert" v="[EN] Fertilizer" eh="cd248829" />
+    <e k="rf_pda_section_treatment" v="[EN] Treatment" eh="4c4ac06f" />
+    <e k="rf_pda_treat_products" v="[EN] Products" eh="068f80c7" />
+    <e k="rf_pda_sample_hint" v="[EN] Soil sample dates appear here when available." eh="fa51cbfd" />
+    <e k="rf_pda_status_urgent" v="[EN] URGENT" eh="e395eb26" />
+    <e k="rf_pda_status_ok" v="[EN] OK" eh="e0aa021e" />
+    <e k="rf_pda_fert_chip" v="[EN] FERT" eh="c7185b0b" />
+    <e k="rf_pda_treatment_selected" v="[EN] Selected field: Field %s" eh="0c01ba54" />
+		<e k="rf_pda_treatment_next" v="[EN] Next: %s" eh="6914fabe" />
+		<e k="rf_pda_treatment_selected_next" v="[EN] Field %s · Next: %s" eh="1bfc779c" />
+    <e k="rf_pda_treatment_none_selected" v="[EN] Select a field" eh="fe1cc690" />
+    <e k="rf_pda_treatment_targets_heading" v="[EN] Target levels" eh="c3719aff" />
+    <e k="rf_pda_sample_heading" v="[EN] Soil sampling" eh="9b707834" />
+    <e k="rf_pda_sample_dated" v="[EN] Last sample" eh="67398c4b" />
+    <e k="rf_pda_sample_next" v="[EN] Next suggested" eh="3fd9ab58" />
+    <e k="rf_pda_click_hint" v="[EN] Click a field row for treatment details." eh="ab972960" />
+		<e k="rf_pda_treat_or" v="[EN] or %s" eh="a9c3981a" />
+		<e k="rf_pda_treat_method_dry" v="[EN] spreader" eh="fc40238b" />
+		<e k="rf_pda_treat_method_liquid" v="[EN] sprayer/tank" eh="463b51c3" />
+		<e k="rf_pda_treat_prod_with_how" v="[EN] %s · %s" eh="a2dac483" />
+		<e k="rf_pda_treat_next_with_amount" v="[EN] %s %s (%s total) · %s" eh="916610f2" />
+		<e k="rf_pda_treat_next_no_amount" v="[EN] %s - %s" eh="23afceb9" />
+		<e k="rf_pda_treat_next_why_ph" v="[EN] Fix pH before nutrients." eh="f1ba4606" />
+		<e k="rf_pda_treat_next_why_protect" v="[EN] Crop pressure first, then soil." eh="ad384268" />
+		<e k="rf_pda_treat_burn_amend" v="[EN] Wait: amending now can burn the crop." eh="a521d414" />
+		<e k="rf_pda_treat_next_how_dry" v="[EN] buy in shop Products, load a dry spreader, cover the field" eh="4a03cd81" />
+		<e k="rf_pda_treat_next_how_liquid" v="[EN] buy in shop Products, fill a sprayer/tank, cover the field" eh="2682c53f" />
+		<e k="rf_pda_treat_next_how_lime" v="[EN] spread with a dry fertilizer spreader" eh="fcca6b35" />
+		<e k="rf_pda_treat_next_how_liq_lime" v="[EN] apply with a sprayer/tank" eh="ccb22a68" />
+		<e k="rf_pda_treat_next_how_gypsum" v="[EN] spread with a dry fertilizer spreader" eh="fcca6b35" />
+		<e k="rf_pda_treat_next_how_om" v="[EN] spread manure/compost or leave chopped straw" eh="dd5833f9" />
+		<e k="rf_pda_treat_next_how_weed" v="[EN] spray (or use a weeder)" eh="b8b43874" />
+		<e k="rf_pda_treat_next_how_pest" v="[EN] spray the field" eh="27723cda" />
+		<e k="rf_pda_treat_next_how_disease" v="[EN] spray the field" eh="27723cda" />
+		<e k="rf_pda_treat_om_low" v="[EN] MANURE / COMPOST / chop straw · spread or leave residue" eh="8ca0887c" />
+		<e k="rf_pda_treat_om_fair" v="[EN] Maintain organic inputs (manure / compost / straw)" eh="edd90a81" />
+		<e k="rf_pda_treat_weed" v="[EN] HERBICIDE · sprayer (or mechanical weeder)" eh="dd2133cd" />
+		<e k="rf_pda_treat_weed_active" v="[EN] Herbicide still active - recheck later" eh="c119bdf0" />
+		<e k="rf_pda_treat_pest" v="[EN] INSECTICIDE · sprayer" eh="8cf7f77b" />
+		<e k="rf_pda_treat_pest_active" v="[EN] Insecticide still active - recheck later" eh="c1ee2552" />
+		<e k="rf_pda_treat_disease" v="[EN] FUNGICIDE · sprayer" eh="47f19736" />
+		<e k="rf_pda_treat_disease_active" v="[EN] Fungicide still active - recheck later" eh="8ee03e99" />
+		<e k="rf_pda_side_info_soil" v="[EN] Soil Fertilizer&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field #, Area, N/P/K (% of a healthy target), pH (like the soil monitor - e.g. 6.2), Status (Good / Fair / Poor), Fertilizer need (short cue for what still looks short).&#10;&#10;Click a row. Treatment (below) is the plan for that field:&#10;- PRODUCT = what to buy (first is preferred; &quot;or ...&quot; is an alternate)&#10;- RATE = amount per area / TOTAL = amount for this field&#10;- Selected names the field; Next (under it) says what to do first&#10;&#10;How to apply: dry goods (urea, MAP, potash, lime) go through a fertilizer spreader; liquids go in a sprayer tank. If pH and nutrients both show, fix lime or gypsum first so nutrients can work. Weed, pest, or disease lines mean spray (or weed mechanically) before you expect a full crop.&#10;&#10;Start with the weakest Status, open Treatment, follow Next, then the rest of the list." eh="3eba26e2" />
+		<e k="rf_pda_side_info_crop_stress" v="[EN] Crop Stress&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).&#10;&#10;Click a row. The strip below names the field, then Next says what to do first:&#10;- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)&#10;- High Stress or a sensitive growth window → protect now; stress today cuts harvest later&#10;- Looking fine → recheck later; worse fields first&#10;&#10;Irrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. Edit systems on Farm Tablet / Crop Consultant when you need to change them.&#10;&#10;If Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.&#10;&#10;Start with Critical Status, follow Next, then work up the list." />
+		<e k="rf_pda_side_info_market_dynamics" v="[EN] Market Dynamics&amp;#10;&amp;#10;This is a pause market glance, not the full Market desk.&amp;#10;&amp;#10;Graph = price path for the crop you pick.&amp;#10;&amp;#10;Movers = biggest swings right now. Click one to change the graph.&amp;#10;&amp;#10;Events = world events still driving prices. Empty means nothing active (normal).&amp;#10;&amp;#10;Bottom strip = facts for the crop you selected.&amp;#10;&amp;#10;Contracts line = open count only. Full contracts live deeper.&amp;#10;&amp;#10;Open full Market when you need Prices / Events / Contracts admin." eh="699dc7b5" />
 </elements>
 
 
