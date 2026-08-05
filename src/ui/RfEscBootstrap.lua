@@ -10,6 +10,44 @@ RfEscBootstrap = {}
 local PAGE_NAME = "menuRealisticFarming"
 local CLASS_NAME = "RfPdaMenuPage"
 
+-- ── Preferred host ────────────────────────────────────────
+-- Equal bootstrap means whichever joiner loads first builds the door, and load
+-- order is not stable. On 2026-08-05 MarketDynamics won the race and the whole
+-- menu was created from its copy of the chrome, which is why the door appeared
+-- to live "inside MDM".
+--
+-- This does NOT reintroduce a host dependency. It is a PREFERENCE, not a
+-- requirement: when SoilFertilizer is installed it builds the door so the
+-- chrome comes from the same place every session. When it is absent, the old
+-- first-come behaviour is unchanged and any joiner still builds it alone.
+--
+-- Yielding is safe because a failed ensureDoor is non-fatal to the caller: the
+-- joiner still registers its module on rfEscModules, and the page rebuilds from
+-- that registry through addChangeListener. The yield also expires, so a
+-- SoilFertilizer that is installed but never manages to build the door cannot
+-- leave the suite with no menu at all.
+RfEscBootstrap.PREFERRED_HOST = "FS25_SoilFertilizer"
+
+-- Attempts a non-preferred joiner will stand aside for before building it
+-- itself. In practice SoilFertilizer wins within the same load pass (all four
+-- joiners registered inside 250ms on 2026-08-05), so this is only a safety net.
+local YIELD_LIMIT = 240
+local _yieldCount = 0
+local _yieldLogged = false
+
+local function _isPreferredHost(modDir)
+    return modDir ~= nil
+        and string.find(modDir, RfEscBootstrap.PREFERRED_HOST, 1, true) ~= nil
+end
+
+local function _preferredHostInstalled()
+    if g_modManager == nil or type(g_modManager.getModByName) ~= "function" then
+        return false
+    end
+    local ok, mod = pcall(g_modManager.getModByName, g_modManager, RfEscBootstrap.PREFERRED_HOST)
+    return ok and mod ~= nil
+end
+
 local function _log(level, fmt, ...)
     local msg = string.format(fmt, ...)
     if SoilLogger ~= nil and type(SoilLogger[level]) == "function" then
@@ -123,6 +161,22 @@ function RfEscBootstrap.ensureDoor(modDir, opts)
 
     if g_inGameMenu[PAGE_NAME] ~= nil then
         return true
+    end
+
+    -- Stand aside for the preferred host while it still has a chance to build.
+    if not _isPreferredHost(modDir) and _preferredHostInstalled() then
+        _yieldCount = _yieldCount + 1
+        if _yieldCount <= YIELD_LIMIT then
+            if not _yieldLogged then
+                _yieldLogged = true
+                _log("info", "yielding door creation to %s (preferred host)", RfEscBootstrap.PREFERRED_HOST)
+            end
+            return false
+        end
+        if _yieldCount == YIELD_LIMIT + 1 then
+            _log("warning", "%s is installed but did not create the door after %d attempts; building it here instead",
+                RfEscBootstrap.PREFERRED_HOST, YIELD_LIMIT)
+        end
     end
 
     if RfPdaMenuPage == nil then
