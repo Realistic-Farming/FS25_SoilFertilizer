@@ -106,14 +106,7 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- RF Esc greenfield (NO-HOST Option B): shared door + Soil module joiner.
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
--- NOTE: src/ui/SoilTreatmentRates.lua is sourced here in Wizard's #787 but the
--- file was never included in that PR (not in the repo, not in git, not in the
--- zip). The source() failed at load with "Can't load resource", which FS25
--- reports and then carries on past, so the module simply never existed.
--- RfPdaSoilPanel already guards every call behind `if SoilTreatmentRates and ...`
--- so the Soil panel degrades to no treatment-plan rows rather than erroring.
--- Line removed to stop the load error. Restore it with the file when Wizard
--- supplies it; nothing else needs to change.
+source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
