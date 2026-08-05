@@ -1,5 +1,9 @@
 name: Reply Labels
 
+# Keeps `owner-replied` / `user-replied` accurate so triage can filter on who
+# spoke last. These labels are bookkeeping only: nothing auto-closes on them.
+# The auto-close gate is `waiting-on-author`, set deliberately by a maintainer.
+
 on:
   issue_comment:
     types: [created]
@@ -10,39 +14,52 @@ permissions:
 jobs:
   label:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.sender.type == 'Bot' && github.event.issue.pull_request == null }}
+    # Was: `!github.event.sender.type == 'Bot'`, which parses as
+    # `(!'Bot-or-User') == 'Bot'` -> `false == 'Bot'` -> always false, so this
+    # job never ran at all. Comparison first, negation second.
+    if: ${{ github.event.sender.type != 'Bot' && github.event.issue.pull_request == null }}
     steps:
-      - name: Determine commenter role
-        id: role
+      - name: Apply reply labels
         uses: actions/github-script@v7
         with:
           script: |
-            const sender = context.payload.sender;
-            // Skip bots
-            if (sender.type === 'Bot') {
-              core.setOutput('skip', 'true');
-              return;
-            }
-            core.setOutput('skip', 'false');
+            const issueNumber = context.payload.issue.number;
             const assoc = context.payload.comment.author_association;
-            // OWNER, MEMBER, COLLABORATOR = owner side
-            const isOwner = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(assoc);
-            core.setOutput('is_owner', isOwner ? 'true' : 'false');
+            const isMaintainer = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(assoc);
 
-      - name: Apply owner-replied label
-        if: steps.role.outputs.skip == 'false' && steps.role.outputs.is_owner == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.payload.issue.number;
-            await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, labels: ['owner-replied'] });
-            try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, name: 'user-replied' }); } catch {}
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-      - name: Apply user-replied label
-        if: steps.role.outputs.skip == 'false' && steps.role.outputs.is_owner == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue = context.payload.issue.number;
-            await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, labels: ['user-replied'] });
-            try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, name: 'owner-replied' }); } catch {}
+            const add = async (name) => {
+              try {
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: issueNumber, labels: [name]
+                });
+              } catch (e) {
+                core.info(`could not add ${name}: ${e.message}`);
+              }
+            };
+            const remove = async (name) => {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number: issueNumber, name
+                });
+              } catch {
+                // not present, nothing to do
+              }
+            };
+
+            if (isMaintainer) {
+              await add('owner-replied');
+              await remove('user-replied');
+            } else {
+              await add('user-replied');
+              await remove('owner-replied');
+
+              // The reporter answering is what stops the auto-close clock.
+              // Clear the gate here rather than waiting for the 6 hourly sweep,
+              // so an answer given minutes before the deadline still counts.
+              if (context.payload.comment.user.login === context.payload.issue.user.login) {
+                await remove('waiting-on-author');
+              }
+            }
