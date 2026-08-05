@@ -124,6 +124,21 @@ end
 
 ---@param modDir string
 function SoilPDAScreen.register(modDir)
+    -- Greenfield RF Esc door owns the Esc tab when it actually exists.
+    -- RfEscBootstrap ~= nil only means the class was sourced — NOT that the door is live.
+    if RfEscBootstrap ~= nil and RfSoilEscJoiner ~= nil and type(RfSoilEscJoiner.tryRegister) == "function" then
+        RfSoilEscJoiner.tryRegister()
+    elseif RfEscBootstrap ~= nil and modDir ~= nil then
+        RfEscBootstrap.ensureDoor(modDir, {
+            profilesXml = modDir .. "xml/gui/rfEscProfiles.xml",
+            iconPath = "textures/ui/menuIcon.dds",
+        })
+    end
+    if g_inGameMenu ~= nil and g_inGameMenu.menuRealisticFarming ~= nil then
+        SoilLogger.info("SoilPDAScreen: RF Esc door present — skipping legacy menuSoilFertilizer inject")
+        _pendingRegistration = false
+        return
+    end
     if SoilPDAScreen._performRegistration(modDir) then
         return
     end
@@ -135,6 +150,19 @@ end
 ---@return boolean true if successfully registered
 function SoilPDAScreen._performRegistration(modDir)
     if g_gui == nil or g_inGameMenu == nil then return false end
+
+    if RfEscBootstrap ~= nil and RfSoilEscJoiner ~= nil and type(RfSoilEscJoiner.tryRegister) == "function" then
+        RfSoilEscJoiner.tryRegister()
+    elseif RfEscBootstrap ~= nil and modDir ~= nil then
+        RfEscBootstrap.ensureDoor(modDir, {
+            profilesXml = modDir .. "xml/gui/rfEscProfiles.xml",
+            iconPath = "textures/ui/menuIcon.dds",
+        })
+    end
+    if g_inGameMenu.menuRealisticFarming ~= nil then
+        SoilLogger.info("SoilPDAScreen: RF Esc door present — skipping legacy inject")
+        return true
+    end
 
     if g_inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] ~= nil then
         SoilLogger.info("SoilPDAScreen: already registered, skipping")
