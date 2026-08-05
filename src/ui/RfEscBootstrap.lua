@@ -1,4 +1,4 @@
-﻿-- =========================================================
+-- =========================================================
 -- Realistic Farming Esc â€” equal shared chrome bootstrap (NO HOST)
 -- =========================================================
 -- Any joiner may create menuRealisticFarming if absent.
