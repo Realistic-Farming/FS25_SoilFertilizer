@@ -55,3 +55,9 @@
 - Rotation Foresight v2: an at-the-drill / sowing pre-plant prompt. Needs a reachable sowing/pre-plant hook. v1 SHIPPED this cycle on the field-detail / scout / FarmTablet surface (#739 data surface + the in-menu rotation planner dialog #744 + the FarmTablet app); v2 (the sowing-time prompt) still needs the hook. (ledger OPEN A)
 - Disease progressive reveal: a richer readout where the Disease track mirrors the intel ladder - blank unscouted, "present" once the dog flags it, full % + name once scouted. First half SHIPPED: the unscouted indicator (cb29b018) reads UNKNOWN instead of clean green. The "present once the dog flags it" middle rung and full per-field knowledge state in SoilHUD remain. (ledger, 2026-07)
 - #740 World Climate selection UI: the player-facing climate picker for the short-month rain fill is in review as Wizard PR #747 (renames the control to World Climate, 4-chip picker, 26 languages). Merge lands the UI on the already-built mechanism.
+
+
+## 2026-08-06 (Fred): Esc RF dialogs + map buttons reachable again
+- [x] With the RF Esc door live, the legacy menuSoilFertilizer Esc page is stood down, which also nilled inGameMenu[pageName]. That killed three openers: the Rotation Planner dialog, the per-field detail dialog, and the map sidebar report/treatment buttons (they read the nil page and returned silently).
+- [x] Rotation Planner and Field Detail now open from the Esc panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), passing the panel's selectedFieldId (nil allowed).
+- [x] The map sidebar report/treatment buttons work again via the retained-page pattern: stand-down keeps the deep page on SoilPDAScreen._retainedDeepScreen, and show/toggle/showTreatment re-inject it into InGameMenu paging without restoring the Esc tab icon. In-game observation still pending.

@@ -264,11 +264,43 @@ end
 
 -- ── Static show / toggle ─────────────────────────────────
 
+--- Ensure the deep PDA screen is in InGameMenu paging (no Esc tab) for map open only.
+function SoilPDAScreen._ensureDeepPageInjectable(inGameMenu, page)
+    if inGameMenu == nil or page == nil or inGameMenu.pagingElement == nil then
+        return false
+    end
+    local pe = inGameMenu.pagingElement
+    local inElements = false
+    if pe.elements ~= nil then
+        for _, el in ipairs(pe.elements) do
+            if el == page then
+                inElements = true
+                break
+            end
+        end
+    end
+    if not inElements and type(pe.addElement) == "function" then
+        pe:addElement(page)
+    end
+    inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] = page
+    if type(pe.updateAbsolutePosition) == "function" then
+        pcall(pe.updateAbsolutePosition, pe)
+    end
+    if type(pe.updatePageMapping) == "function" then
+        pcall(pe.updatePageMapping, pe)
+    end
+    return true
+end
+
 function SoilPDAScreen.show()
     local inGameMenu = g_gui.screenControllers[InGameMenu] or g_inGameMenu
     if inGameMenu == nil then return end
-    local page = inGameMenu[SoilPDAScreen.MENU_PAGE_NAME]
+    local page = inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] or SoilPDAScreen._retainedDeepScreen
     if page == nil then return end
+    -- After Esc rail stand-down, page lives only on _retainedDeepScreen; re-inject without tab.
+    if inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] == nil or SoilPDAScreen._retainedDeepScreen == page then
+        SoilPDAScreen._ensureDeepPageInjectable(inGameMenu, page)
+    end
     g_gui:showGui("InGameMenu")
     inGameMenu:goToPage(page)
 end
@@ -276,7 +308,8 @@ end
 function SoilPDAScreen.toggle()
     if g_gui.currentGuiName == "InGameMenu" then
         local inGameMenu = g_gui.screenControllers[InGameMenu] or g_inGameMenu
-        if inGameMenu and inGameMenu.currentPage == inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] then
+        local page = inGameMenu and (inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] or SoilPDAScreen._retainedDeepScreen)
+        if inGameMenu and page ~= nil and inGameMenu.currentPage == page then
             g_gui:changeScreen(nil)
             return
         end
@@ -287,8 +320,12 @@ end
 function SoilPDAScreen.showTreatment()
     local inGameMenu = g_gui.screenControllers[InGameMenu] or g_inGameMenu
     if inGameMenu == nil then return end
-    local page = inGameMenu[SoilPDAScreen.MENU_PAGE_NAME]
+    local page = inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] or SoilPDAScreen._retainedDeepScreen
     if page == nil then return end
+    -- After Esc rail stand-down, re-inject without tab.
+    if inGameMenu[SoilPDAScreen.MENU_PAGE_NAME] == nil or SoilPDAScreen._retainedDeepScreen == page then
+        SoilPDAScreen._ensureDeepPageInjectable(inGameMenu, page)
+    end
     -- Pre-set before goToPage so onOpen() picks up the right tab
     page.activeTab = TAB_TREATMENT
     g_gui:showGui("InGameMenu")
@@ -1098,7 +1135,7 @@ local function _onUpdate(mission, dt)
 end
 
 local function _onDelete(mission)
-    -- Nothing to clean up - g_inGameMenu owns the page reference
+    SoilPDAScreen._retainedDeepScreen = nil
 end
 
 -- Register a keyboard shortcut (SF_SOIL_PDA → Shift+P) for quick PDA toggle
