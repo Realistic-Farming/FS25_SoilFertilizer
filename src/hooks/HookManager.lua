@@ -442,7 +442,111 @@ function HookManager:installAll(soilSystem)
     -- causing the boom to lock at minimum width until the player manually cycles the width.
     self:installSectionStatePreserver()
 
+    -- DIAGNOSTIC (issue #764). Temporary instrumentation, not a fix.
+    self:installAIFillTraceHook()
+
     self.installed = true
+end
+
+-- =========================================================
+-- DIAGNOSTIC: AI SPRAYER FILL TRACE (issue #764)
+-- =========================================================
+-- TEMPORARY instrumentation. This is not a fix and must not survive into a
+-- release build; it exists to settle one binary question on a reporter's machine.
+--
+-- THE QUESTION: on a Courseplay/AI run that never stops to refill, does the tank
+-- actually reach zero?
+--
+-- The base game raises the out-of-fill stop for a sprayer in exactly one place,
+-- Sprayer:processSprayerArea, and only when spec.workAreaParameters.sprayFillType
+-- is nil or FillType.UNKNOWN. That value is set from the fill unit's fill type in
+-- onStartWorkAreaProcessing, and the fill unit only becomes UNKNOWN inside
+-- FillUnit:addFillUnitFillLevel once the level actually reaches 0. So the whole
+-- question reduces to: does fillLevel hit 0, and does sprayFillType follow it to
+-- UNKNOWN? Both are logged here, once a second, per AI-active sprayer.
+--
+-- WHY onUpdateTick AND NOT THE WORK AREA EVENTS: onUpdateTick is registered with
+-- registerEventListener, so it is looked up on the class at each fire and reaches
+-- vehicles that were already loaded (same reasoning as the density map hook at
+-- installDensityMapSprayHook). The work area events stop firing when the tool is
+-- raised, and the frames after the tank runs dry are exactly the interesting ones.
+---@return boolean success
+function HookManager:installAIFillTraceHook()
+    if not Sprayer or type(Sprayer.onUpdateTick) ~= "function" then
+        SoilLogger.warning("[SFTrace] Sprayer.onUpdateTick not available - AI fill trace skipped")
+        return false
+    end
+
+    local INTERVAL_MS = 1000
+
+    -- Short vehicle label: last path segment of the config file, without extension.
+    local function shortName(sprayerSelf)
+        local cfg = sprayerSelf.configFileName
+        if type(cfg) ~= "string" then return tostring(sprayerSelf.id or "?") end
+        local name = cfg:match("([^/\\]+)%.xml$") or cfg
+        return name
+    end
+
+    local function ftLabel(idx)
+        if idx == nil then return "nil" end
+        local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(idx)
+        return string.format("%s#%s", tostring(ft and ft.name or "?"), tostring(idx))
+    end
+
+    local function safeCall(fn)
+        local ok, res = pcall(fn)
+        if ok then return res end
+        return nil
+    end
+
+    local original = Sprayer.onUpdateTick
+    Sprayer.onUpdateTick = Utils.appendedFunction(
+        original,
+        function(sprayerSelf)
+            if not sprayerSelf.isServer then return end
+
+            if not safeCall(function() return sprayerSelf:getIsAIActive() end) then
+                sprayerSelf._sfTraceNextMs = nil
+                return
+            end
+
+            local now = (g_currentMission and g_currentMission.time) or 0
+            if sprayerSelf._sfTraceNextMs and now < sprayerSelf._sfTraceNextMs then return end
+            sprayerSelf._sfTraceNextMs = now + INTERVAL_MS
+
+            local spec = sprayerSelf.spec_sprayer
+            local wap  = spec and spec.workAreaParameters
+            if not wap then return end
+
+            local fuIdx = safeCall(function() return sprayerSelf:getSprayerFillUnitIndex() end)
+            local level, unitType
+            if fuIdx then
+                level    = safeCall(function() return sprayerSelf:getFillUnitFillLevel(fuIdx) end)
+                unitType = safeCall(function() return sprayerSelf:getFillUnitFillType(fuIdx) end)
+            end
+
+            local root = sprayerSelf.rootVehicle
+            local fieldWork = root and safeCall(function() return root:getIsFieldWorkActive() end)
+
+            SoilLogger.info(
+                "[SFTrace] %s fu=%s level=%s unitType=%s wapFill=%s wapUsage=%s sprayVeh=%s wapActive=%s on=%s fieldWork=%s",
+                shortName(sprayerSelf),
+                tostring(fuIdx),
+                level and string.format("%.3f", level) or "nil",
+                ftLabel(unitType),
+                ftLabel(wap.sprayFillType),
+                wap.usage and string.format("%.4f", wap.usage) or "nil",
+                wap.sprayVehicle ~= nil and "yes" or "NIL",
+                tostring(wap.isActive),
+                tostring(safeCall(function() return sprayerSelf:getIsTurnedOn() end)),
+                tostring(fieldWork))
+        end
+    )
+
+    self:register(Sprayer, "onUpdateTick", original,
+        "Sprayer.onUpdateTick (AI fill trace, DIAGNOSTIC)")
+    SoilLogger.info("[OK] [SFTrace] AI sprayer fill trace installed - DIAGNOSTIC BUILD, 1 line/s per AI-active sprayer")
+    return true
 end
 
 --- Uninstall all hooks and restore original functions
