@@ -21,6 +21,21 @@ for (const f of files) {
   } catch {
     continue; // deleted or moved between staging and now; nothing to parse
   }
+
+  // A UTF-8 BOM is caught by the parse below, but only as
+  // "Cannot read properties of undefined (reading 'range')", which tells you
+  // nothing. Name it explicitly instead. Lua does not skip a byte order mark
+  // the way it skips a shebang, so U+FEFF is read as part of the first token.
+  // Seven files across four repos hit this on 2026-08-05, all from an editor
+  // saving as "UTF-8 with BOM".
+  if (code.charCodeAt(0) === 0xfeff) {
+    bad++;
+    console.error(`  \u2717 ${f}`);
+    console.error("      Starts with a UTF-8 BOM (EF BB BF). Lua 5.1 cannot parse it.");
+    console.error("      Fix: re-save as UTF-8 WITHOUT BOM, or strip the 3 leading bytes.");
+    continue;
+  }
+
   try {
     luaparse.parse(code, { luaVersion: "5.1", comments: false, locations: true });
   } catch (e) {

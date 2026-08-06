@@ -477,7 +477,8 @@
     <e k="sf_pda_col_priority" v="Naléhavost" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Potřeby" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Všechna pole jsou v dobrém stavu." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Pole uvedená vpravo potřebují ošetření. Kliknutím na řádek zobrazíte doporučené vstupy a odhadované množství." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Pole uvedená vpravo potřebují ošetření. Vyberte řádek, abyste viděli plán níže." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Vyberte pole výše, abyste viděli doporučení ošetření." eh="522cca27" />
     <e k="sf_pda_need_n" v="Dusík" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Draslík" eh="3a4edc67" />

@@ -459,7 +459,8 @@
     <e k="sf_pda_col_priority" v="Aciliyet" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="İhtiyaçlar" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Tüm tarlalar iyi durumda." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Sağda listelenen tarlaların tedaviye ihtiyacı var. Önerilen girdileri ve tahmini miktarları görmek için bir satıra tıklayın." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Sağda listelenen tarlaların tedaviye ihtiyacı var. Planı aşağıda görmek için bir satır seçin." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Tedavi reçetesini görmek için yukarıdan bir tarla seçin." eh="522cca27" />
     <e k="sf_pda_need_n" v="Azot" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potasyum" eh="3a4edc67" />

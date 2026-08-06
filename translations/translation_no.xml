@@ -476,7 +476,8 @@
     <e k="sf_pda_col_priority" v="Hastegrad" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Behov" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Alle felt er i god stand." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Felt som er oppført til høyre trenger behandling. Klikk på en rad for å se anbefalte innsatsmidler og estimerte mengder." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Felt som er oppført til høyre trenger behandling. Velg en rad for å se planen under." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Velg et felt ovenfor for å se behandlingsplanen." eh="522cca27" />
     <e k="sf_pda_need_n" v="Nitrogen" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Kalium" eh="3a4edc67" />

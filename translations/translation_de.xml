@@ -475,10 +475,11 @@
     <e k="sf_pda_col_priority" v="Zustand" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Bedarf" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Alle Felder sind in gutem Zustand." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Die rechts aufgelisteten Felder ben├Âtigen Behandlung. Klicke auf eine Zeile, um empfohlene Mittel und gesch├ñtzte Mengen zu sehen." eh="5748d316" />
-    <e k="sf_pda_need_n" v="ben├Âtigt Stickstoff" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="ben├Âtigt Phosphor" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="ben├Âtigt Kalium" eh="3a4edc67" />
+    <e k="sf_pda_treatment_hint" v="Wähle eine Zeile, um den Plan darunter zu sehen." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Wähle oben ein Feld, um die Behandlungsempfehlung zu sehen." eh="522cca27" />
+    <e k="sf_pda_need_n" v="benötigt Stickstoff" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="benötigt Phosphor" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="benötigt Kalium" eh="3a4edc67" />
     <e k="sf_pda_need_ph" v="pH-Wert" eh="0570e9d2" />
     <e k="sf_pda_need_weed" v="Herbizid" eh="1029736e" />
     <e k="sf_pda_need_pest" v="Insektizid" eh="5650eeef" />

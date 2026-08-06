@@ -3,7 +3,8 @@
 -- =========================================================
 -- Provides actionable advice on which products to apply
 -- to a field based on its current nutrient and pressure status.
--- Opened from the Treatment tab of SoilPDAScreen.
+-- Opened from hotkey / other entry points. PDA Treatment tab
+-- uses buildPrescription() for an inline detail pane instead.
 --
 -- Pattern: ScreenElement (proven pattern for popups).
 -- =========================================================
@@ -183,131 +184,135 @@ local function _nutrientActionText(currentVal, targetVal, rrMult, fieldArea, pro
     return table.concat(parts, "  ·  ")
 end
 
--- ── Data Population ───────────────────────────────────────
+local function _action(text, color)
+    return { text = text, color = color }
+end
 
-function SoilTreatmentDialog:_populateData()
+--- Shared prescription builder for the dialog and the PDA inline pane.
+---@param fieldId number
+---@return table|nil { fieldId, ph, om, n, p, k, weed, pest, disease } each action is {text, color}
+function SoilTreatmentDialog.buildPrescription(fieldId)
     local COLOR_POOR, COLOR_FAIR, COLOR_GOOD = getStatusColors()
-    local fieldId = self._fieldId
     local sfm = g_SoilFertilityManager
 
     if fieldId == nil or sfm == nil or sfm.soilSystem == nil then
-        self:_setAllNoAction()
-        return
+        return nil
     end
 
     local info = sfm.soilSystem:getFieldInfo(fieldId)
     if info == nil then
-        self:_setAllNoAction()
-        return
+        return nil
     end
 
-    if self.treatFieldId then
-        self.treatFieldId:setText(tr("sf_detail_field_label", "Field #") .. tostring(fieldId))
-    end
+    local rx = { fieldId = fieldId }
 
     -- 1. pH Action
     local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
     if ph < 6.5 then
-        self:_setAction(self.treatPHAction, tr("sf_treat_action_lime", "Apply LIME or LIQUID LIME to raise pH."), COLOR_POOR)
+        rx.ph = _action(tr("sf_treat_action_lime", "Apply LIME or LIQUID LIME to raise pH."), COLOR_POOR)
     elseif ph > 7.5 then
-        self:_setAction(self.treatPHAction, tr("sf_treat_action_gypsum", "Apply GYPSUM to lower pH / improve structure."), COLOR_FAIR)
+        rx.ph = _action(tr("sf_treat_action_gypsum", "Apply GYPSUM to lower pH / improve structure."), COLOR_FAIR)
     else
-        self:_setAction(self.treatPHAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.ph = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
     -- 2. OM Action
     local om = info.organicMatter or 3.5
     if om < 3.0 then
-        self:_setAction(self.treatOMAction, tr("sf_treat_action_om_low", "Plow in MANURE, COMPOST, or chop straw."), COLOR_POOR)
+        rx.om = _action(tr("sf_treat_action_om_low", "Plow in MANURE, COMPOST, or chop straw."), COLOR_POOR)
     elseif om < 4.0 then
-        self:_setAction(self.treatOMAction, tr("sf_treat_action_om_fair", "Monitor. Maintain organic inputs."), COLOR_FAIR)
+        rx.om = _action(tr("sf_treat_action_om_fair", "Monitor. Maintain organic inputs."), COLOR_FAIR)
     else
-        self:_setAction(self.treatOMAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.om = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
     -- 3. Nutrient Actions (N, P, K) with per-product application rates
     local thresh  = SoilConstants.STATUS_THRESHOLDS
-    local targets = SoilConstants.CROP_NUTRIENT_TARGETS
     local fieldArea = info.fieldArea or 1.0
 
-    -- Replenishment multiplier from settings (index 1-5, default Normal = 3 = 1.00×)
     local rrIdx = (sfm.settings and sfm.settings.replenishmentRate) or 3
     local rrMult = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
 
-    -- Crop-specific targets or status-threshold fallbacks
     local ct = info.cropTargets
     local targetN = (ct and ct.N and ct.N.opt) or (thresh.nitrogen.fair or 50)
     local targetP = (ct and ct.P and ct.P.opt) or (thresh.phosphorus.fair or 45)
     local targetK = (ct and ct.K and ct.K.opt) or (thresh.potassium.fair or 40)
 
-    -- N
     if info.nitrogen.value < (thresh.nitrogen.poor or 30) then
-        local text = _nutrientActionText(info.nitrogen.value, targetN, rrMult, fieldArea,
-            { {"UREA","N"}, {"UAN32","N"} },
-            "Apply UREA or UAN32")
-        self:_setAction(self.treatNAction, text, COLOR_POOR)
+        rx.n = _action(_nutrientActionText(info.nitrogen.value, targetN, rrMult, fieldArea,
+            { {"UREA","N"}, {"UAN32","N"} }, "Apply UREA or UAN32"), COLOR_POOR)
     elseif info.nitrogen.value < (thresh.nitrogen.fair or 50) then
-        local text = _nutrientActionText(info.nitrogen.value, targetN, rrMult, fieldArea,
-            { {"AMS","N"}, {"AN","N"} },
-            "Apply AMS or AN")
-        self:_setAction(self.treatNAction, text, COLOR_FAIR)
+        rx.n = _action(_nutrientActionText(info.nitrogen.value, targetN, rrMult, fieldArea,
+            { {"AMS","N"}, {"AN","N"} }, "Apply AMS or AN"), COLOR_FAIR)
     else
-        self:_setAction(self.treatNAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.n = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
-    -- P
     if info.phosphorus.value < (thresh.phosphorus.poor or 25) then
-        local text = _nutrientActionText(info.phosphorus.value, targetP, rrMult, fieldArea,
-            { {"MAP","P"}, {"DAP","P"} },
-            "Apply MAP or DAP")
-        self:_setAction(self.treatPAction, text, COLOR_POOR)
+        rx.p = _action(_nutrientActionText(info.phosphorus.value, targetP, rrMult, fieldArea,
+            { {"MAP","P"}, {"DAP","P"} }, "Apply MAP or DAP"), COLOR_POOR)
     elseif info.phosphorus.value < (thresh.phosphorus.fair or 45) then
-        local text = _nutrientActionText(info.phosphorus.value, targetP, rrMult, fieldArea,
-            { {"LIQUID_MAP","P"}, {"LIQUID_DAP","P"} },
-            "Top-up with Liquid MAP or Liquid DAP")
-        self:_setAction(self.treatPAction, text, COLOR_FAIR)
+        rx.p = _action(_nutrientActionText(info.phosphorus.value, targetP, rrMult, fieldArea,
+            { {"LIQUID_MAP","P"}, {"LIQUID_DAP","P"} }, "Top-up with Liquid MAP or Liquid DAP"), COLOR_FAIR)
     else
-        self:_setAction(self.treatPAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.p = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
-    -- K
     if info.potassium.value < (thresh.potassium.poor or 20) then
-        local text = _nutrientActionText(info.potassium.value, targetK, rrMult, fieldArea,
-            { {"POTASH","K"}, {"LIQUID_POTASH","K"} },
-            "Apply POTASH")
-        self:_setAction(self.treatKAction, text, COLOR_POOR)
+        rx.k = _action(_nutrientActionText(info.potassium.value, targetK, rrMult, fieldArea,
+            { {"POTASH","K"}, {"LIQUID_POTASH","K"} }, "Apply POTASH"), COLOR_POOR)
     elseif info.potassium.value < (thresh.potassium.fair or 40) then
-        local text = _nutrientActionText(info.potassium.value, targetK, rrMult, fieldArea,
-            { {"POTASH","K"}, {"LIQUID_POTASH","K"} },
-            "Top-up with POTASH or Liquid POTASH")
-        self:_setAction(self.treatKAction, text, COLOR_FAIR)
+        rx.k = _action(_nutrientActionText(info.potassium.value, targetK, rrMult, fieldArea,
+            { {"POTASH","K"}, {"LIQUID_POTASH","K"} }, "Top-up with POTASH or Liquid POTASH"), COLOR_FAIR)
     else
-        self:_setAction(self.treatKAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.k = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
     -- 4. Protection Actions
     local pThresh = 20
 
-    -- Weed
     if (info.weedPressure or 0) >= pThresh then
-        self:_setAction(self.treatWeedAction, tr("sf_treat_action_weed", "Apply HERBICIDE or use mechanical WEEDER/HOE."), COLOR_POOR)
+        rx.weed = _action(tr("sf_treat_action_weed", "Apply HERBICIDE or use mechanical WEEDER/HOE."), COLOR_POOR)
     else
-        self:_setAction(self.treatWeedAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.weed = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
-    -- Pest
     if (info.pestPressure or 0) >= pThresh then
-        self:_setAction(self.treatPestAction, tr("sf_treat_action_pest", "Apply INSECTICIDE immediately."), COLOR_POOR)
+        rx.pest = _action(tr("sf_treat_action_pest", "Apply INSECTICIDE immediately."), COLOR_POOR)
     else
-        self:_setAction(self.treatPestAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.pest = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
 
-    -- Disease
     if (info.diseasePressure or 0) >= pThresh then
-        self:_setAction(self.treatDiseaseAction, tr("sf_treat_action_disease", "Apply FUNGICIDE immediately."), COLOR_POOR)
+        rx.disease = _action(tr("sf_treat_action_disease", "Apply FUNGICIDE immediately."), COLOR_POOR)
     else
-        self:_setAction(self.treatDiseaseAction, tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
+        rx.disease = _action(tr("sf_treat_action_ok", "OK"), COLOR_GOOD)
     end
+
+    return rx
+end
+
+-- ── Data Population ───────────────────────────────────────
+
+function SoilTreatmentDialog:_populateData()
+    local rx = SoilTreatmentDialog.buildPrescription(self._fieldId)
+    if rx == nil then
+        self:_setAllNoAction()
+        return
+    end
+
+    if self.treatFieldId then
+        self.treatFieldId:setText(tr("sf_detail_field_label", "Field #") .. tostring(rx.fieldId))
+    end
+
+    self:_setAction(self.treatPHAction,      rx.ph.text,      rx.ph.color)
+    self:_setAction(self.treatOMAction,      rx.om.text,      rx.om.color)
+    self:_setAction(self.treatNAction,       rx.n.text,       rx.n.color)
+    self:_setAction(self.treatPAction,       rx.p.text,       rx.p.color)
+    self:_setAction(self.treatKAction,       rx.k.text,       rx.k.color)
+    self:_setAction(self.treatWeedAction,    rx.weed.text,    rx.weed.color)
+    self:_setAction(self.treatPestAction,    rx.pest.text,    rx.pest.color)
+    self:_setAction(self.treatDiseaseAction, rx.disease.text, rx.disease.color)
 end
 
 function SoilTreatmentDialog:_setAction(el, text, color)

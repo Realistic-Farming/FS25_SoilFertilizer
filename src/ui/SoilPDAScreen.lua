@@ -6,6 +6,8 @@
 -- Left sidebar is context-sensitive per tab:
 --   Overview  → full field list (N/P/K/pH/OM/Status)
 --   Treatment → summary stats + hint
+-- Treatment Plan shows the prescription inline under the field
+-- list (SoilTreatmentDialog stays available for hotkey / other entry points).
 --
 -- Pattern: identical to FS25_MarketDynamics MDMMarketScreen.
 --   - Extends TabbedMenuFrameElement
@@ -45,7 +47,10 @@ SoilPDAScreen.CONTROLS = {
     "tabUnderlineOverview", "tabUnderlineTreatment",
     "treatStatNeedsFert", "treatStatWeed", "treatStatPest",
     "treatStatDisease", "treatStatTotal", "treatHintText",
-    "treatmentEmptyHint", "leftNoDataHint"
+    "treatmentEmptyHint", "leftNoDataHint",
+    "treatmentDetailPane", "treatDetailTitle", "treatDetailEmpty", "treatDetailBody",
+    "pdaTreatPH", "pdaTreatOM", "pdaTreatN", "pdaTreatP", "pdaTreatK",
+    "pdaTreatWeed", "pdaTreatPest", "pdaTreatDisease"
 }
 
 -- Tabs (2 tabs: sidebar is context-sensitive)
@@ -334,6 +339,18 @@ function SoilPDAScreen:onGuiSetupFinished()
     -- Treatment tab
     self.treatmentList      = self:getDescendantById("treatmentList")
     self.treatmentEmptyHint = self:getDescendantById("treatmentEmptyHint")
+    self.treatmentDetailPane = self:getDescendantById("treatmentDetailPane")
+    self.treatDetailTitle    = self:getDescendantById("treatDetailTitle")
+    self.treatDetailEmpty    = self:getDescendantById("treatDetailEmpty")
+    self.treatDetailBody     = self:getDescendantById("treatDetailBody")
+    self.pdaTreatPH          = self:getDescendantById("pdaTreatPH")
+    self.pdaTreatOM          = self:getDescendantById("pdaTreatOM")
+    self.pdaTreatN           = self:getDescendantById("pdaTreatN")
+    self.pdaTreatP           = self:getDescendantById("pdaTreatP")
+    self.pdaTreatK           = self:getDescendantById("pdaTreatK")
+    self.pdaTreatWeed        = self:getDescendantById("pdaTreatWeed")
+    self.pdaTreatPest        = self:getDescendantById("pdaTreatPest")
+    self.pdaTreatDisease     = self:getDescendantById("pdaTreatDisease")
 
     -- Tab labels + underlines (2 tabs)
     self.tabLabelOverview      = self:getDescendantById("tabLabelOverview")
@@ -368,6 +385,7 @@ end
 function SoilPDAScreen:onOpen()
     SoilPDAScreen:superClass().onOpen(self)
 
+    self.selectedTreatmentIndex = 0
     self:_rebuildAllData()
     self:_refreshSummaryStats()
     self:_refreshTreatmentSidebar()
@@ -553,6 +571,7 @@ function SoilPDAScreen:onListSelectionChanged(list, section, index)
             self.selectedFieldIndex = index
         elseif list == self.treatmentList then
             self.selectedTreatmentIndex = index
+            self:_showInlineTreatment(index)
         end
     end
 end
@@ -569,16 +588,18 @@ function SoilPDAScreen:onClickFieldRow(element)
     end
 end
 
---- Called by ListItem.onClick in PDA Treatment tab (XML)
+--- Called by ListItem.onClick in PDA Treatment tab (XML).
+--- Shows the prescription inline under the list (no dialog).
 function SoilPDAScreen:onClickTreatmentRow(element)
     local index = element and element.rowDataIndex
     SoilLogger.debug("SoilPDAScreen: onClickTreatmentRow index: %s", tostring(index))
     if index and index > 0 then
-        self:_openTreatmentDetail(index)
+        self.selectedTreatmentIndex = index
+        self:_showInlineTreatment(index)
     end
 end
 
--- ── Detail Dialog ─────────────────────────────────────────
+-- ── Detail Dialog / Inline Treatment ──────────────────────
 
 function SoilPDAScreen:_openFieldDetail(index)
     local entry = self.fieldData[index]
@@ -589,9 +610,78 @@ function SoilPDAScreen:_openFieldDetail(index)
     end
 end
 
+--- Apply a prescription action line to a PDA detail Text element.
+local function _setPdaAction(el, action)
+    if not el or not action then return end
+    el:setText(action.text or "--")
+    if action.color then
+        el:setTextColor(unpack(action.color))
+    end
+end
+
+--- Clear / hide the inline prescription pane (select-a-field state).
+function SoilPDAScreen:_clearInlineTreatment()
+    if self.treatDetailBody then
+        self.treatDetailBody:setVisible(false)
+    end
+    if self.treatDetailEmpty then
+        self.treatDetailEmpty:setVisible(true)
+        self.treatDetailEmpty:setText(tr("sf_pda_treatment_select", "Select a field above to see the treatment prescription."))
+    end
+    if self.treatDetailTitle then
+        self.treatDetailTitle:setText("")
+    end
+end
+
+--- Show SoilTreatmentDialog.buildPrescription() results in the detail pane.
+---@param index number 1-based index into self.treatmentData
+function SoilPDAScreen:_showInlineTreatment(index)
+    local entry = self.treatmentData[index]
+    SoilLogger.debug("SoilPDAScreen: _showInlineTreatment index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
+    if not entry then
+        self:_clearInlineTreatment()
+        return
+    end
+
+    if SoilTreatmentDialog == nil or SoilTreatmentDialog.buildPrescription == nil then
+        self:_clearInlineTreatment()
+        return
+    end
+
+    local rx = SoilTreatmentDialog.buildPrescription(entry.fieldId)
+    if rx == nil then
+        self:_clearInlineTreatment()
+        return
+    end
+
+    if self.treatDetailEmpty then
+        self.treatDetailEmpty:setVisible(false)
+    end
+    if self.treatDetailBody then
+        self.treatDetailBody:setVisible(true)
+    end
+    if self.treatDetailTitle then
+        self.treatDetailTitle:setText(
+            tr("sf_treat_title", "Treatment Prescription")
+            .. "  ·  "
+            .. tr("sf_detail_field_label", "Field #")
+            .. tostring(rx.fieldId)
+        )
+    end
+
+    _setPdaAction(self.pdaTreatPH,      rx.ph)
+    _setPdaAction(self.pdaTreatOM,      rx.om)
+    _setPdaAction(self.pdaTreatN,       rx.n)
+    _setPdaAction(self.pdaTreatP,       rx.p)
+    _setPdaAction(self.pdaTreatK,       rx.k)
+    _setPdaAction(self.pdaTreatWeed,    rx.weed)
+    _setPdaAction(self.pdaTreatPest,    rx.pest)
+    _setPdaAction(self.pdaTreatDisease, rx.disease)
+end
+
+--- Kept for callers that still want the dialog (hotkey path uses SoilTreatmentDialog.show directly).
 function SoilPDAScreen:_openTreatmentDetail(index)
     local entry = self.treatmentData[index]
-    SoilLogger.debug("SoilPDAScreen: _openTreatmentDetail index=%s, fieldId=%s", tostring(index), tostring(entry and entry.fieldId))
     if not entry then return end
     if SoilTreatmentDialog then
         SoilTreatmentDialog.show(entry.fieldId)
@@ -822,7 +912,7 @@ function SoilPDAScreen:_refreshTreatmentSidebar()
     setText(self.treatStatTotal,     #self.treatmentData)
 
     if self.treatHintText then
-        self.treatHintText:setText(tr("sf_pda_treatment_hint", "Fields listed on the right need treatment. Click a row to see recommended inputs and estimated quantities."))
+        self.treatHintText:setText(tr("sf_pda_treatment_hint", "Fields listed on the right need treatment. Select a row to see the plan below."))
     end
 end
 
@@ -838,6 +928,14 @@ function SoilPDAScreen:_reloadLists()
     end
     if self.treatmentEmptyHint then
         self.treatmentEmptyHint:setVisible(#self.treatmentData == 0)
+    end
+
+    -- Keep or clear the inline prescription after list rebuild
+    if self.selectedTreatmentIndex > 0 and self.selectedTreatmentIndex <= #self.treatmentData then
+        self:_showInlineTreatment(self.selectedTreatmentIndex)
+    else
+        self.selectedTreatmentIndex = 0
+        self:_clearInlineTreatment()
     end
 end
 

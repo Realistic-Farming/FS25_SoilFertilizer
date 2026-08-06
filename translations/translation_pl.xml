@@ -476,7 +476,8 @@
     <e k="sf_pda_col_priority" v="Pilność" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Potrzeby" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Wszystkie pola są w dobrym stanie." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Pola wymienione po prawej wymagają zabiegów. Kliknij wiersz, aby zobaczyć zalecane środki i szacowane ilości." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Pola wymienione po prawej wymagają zabiegów. Wybierz wiersz, aby zobaczyć plan poniżej." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Wybierz pole powyżej, aby zobaczyć zalecenie zabiegu." eh="522cca27" />
     <e k="sf_pda_need_n" v="Azot" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfor" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potas" eh="3a4edc67" />

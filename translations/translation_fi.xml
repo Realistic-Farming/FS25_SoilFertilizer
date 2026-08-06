@@ -459,7 +459,8 @@
     <e k="sf_pda_col_priority" v="Kiireellisyys" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Tarpeet" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Kaikki pellot ovat hyvässä kunnossa." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Oikealla luetellut pellot vaativat hoitoa. Napsauta riviä nähdäksesi suositellut lannoitteet." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Oikealla luetellut pellot vaativat hoitoa. Valitse rivi nähdäksesi suunnitelman alla." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Valitse yllä pelto nähdäksesi hoitosuosituksen." eh="522cca27" />
     <e k="sf_pda_need_n" v="Typpi" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fosfori" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Kalium" eh="3a4edc67" />
