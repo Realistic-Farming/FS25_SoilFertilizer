@@ -53,6 +53,9 @@
 ## Docs / localization
 - [ ] Keep all 26 languages in step for any new setting or fill type.
 - [ ] Update SoilVersionDialog CHANGELOG + README version on every release.
+- [x] `sf_hud_pass_noproduct` (SoilHUD.lua:687) was defined in no language file at all, English included, so the HUD rendered the raw key name whenever a session pass had no known product. Added to all 27 files, each derived from that language's `sf_hud_pass_coverage` sibling minus the product parenthetical, so every file keeps its existing translated or `[EN]` state instead of gaining invented text. 2026-08-06.
+- [ ] 90 strings still read `[EN]` in French and every one is `rf_pda_*` (Esc RF PDA chrome). Hold that ask until the Esc door work settles those surfaces, or the strings move under the translator.
+- [ ] Worth a guard: nothing catches a `g_i18n:getText` key that exists in no translation file. The one above shipped and was only found by reading the source.
 
 ## Blocked / waiting on
 - [!] getFieldInfo FieldSentry-state decision (waits on: audit answer).
