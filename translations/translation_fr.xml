@@ -541,6 +541,7 @@
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Couverture : %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="Passage : %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_pass_noproduct" v="Passage : %d%%" />
     <e k="sf_hud_compaction" v="Compaction : %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Rendement : %d%%" eh="7b49cf24" />
 

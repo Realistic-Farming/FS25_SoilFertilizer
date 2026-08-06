@@ -555,6 +555,7 @@
     <e k="sf_hud_unit_ppm" v="(百万分比)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="作业覆盖率：%d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="达标区域：%d%%（%s）" eh="531a10ef" />
+    <e k="sf_hud_pass_noproduct" v="达标区域：%d%%" />
     <e k="sf_hud_compaction" v="土壤板结度：%d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="产量效率：%d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="肥害减产：-%d%%" eh="34059aac" />
