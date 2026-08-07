@@ -74,3 +74,6 @@
 - [x] Cross-mod resolution: the door can be built by another mod's RfPdaMenuPage (MDM loads first), so callbacks now resolve Soil classes via the g_currentMission handoff instead of bare globals. Deployed and verified in-game.
 - [x] Treatment button dropped after in-game pass: the map sidebar still opens the Treatment tab; the Esc panel keeps Back, Help, Rotation Planner, Field Detail.
 - [x] Help button shows only on the Soil module; other modules show Back only (the Soil guide is Soil-specific).
+
+## Module page dots always visible (2026-08-07)
+- [x] The Esc RF module page dots were hidden while Worker Costs or Market Dynamics was active, so WC never read as the 3rd module. All four RfPdaMenuPage copies now keep them visible. Built, deployed, PR open.
