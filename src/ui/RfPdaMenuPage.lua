@@ -469,18 +469,6 @@ function RfPdaMenuPage:initialize()
             end
         end
     }
-    -- MENU_ACTIVATE: open the Treatment tab of the deep PDA screen from the Esc glance.
-    self.btnTreatment = {
-        inputAction = InputAction.MENU_ACTIVATE,
-        showWhenPaused = true,
-        text = tr("sf_pda_btn_treatment", "Treatment"),
-        callback = function()
-            local pda = soilGlobal("SoilPDAScreen")
-            if pda ~= nil and type(pda.showTreatment) == "function" then
-                pda.showTreatment()
-            end
-        end
-    }
     -- SPACE / MENU_ACTIVATE: open the Worker Manager deep desk when WC is active.
     self.btnOpenWorkerManager = {
         inputAction = InputAction.MENU_ACTIVATE,
@@ -1145,7 +1133,7 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     if isWc and self.btnOpenWorkerManager ~= nil then
         self.menuButtonInfo = { self.btnBack, self.btnOpenWorkerManager }
     elseif isSoil then
-        self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnTreatment, self.btnFieldDetail }
+        self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnFieldDetail }
     else
         self.menuButtonInfo = { self.btnBack, self.btnHelp }
     end
