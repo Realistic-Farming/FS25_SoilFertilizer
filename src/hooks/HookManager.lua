@@ -3769,6 +3769,12 @@ function HookManager:installSprayerAreaHook()
                        rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                         soilSys:applyBurnEffect(fId, rateMultiplier)
                     end
+                    -- CD-14 heat scorch: called UNCONDITIONALLY, BESIDE the burn
+                    -- branch, never inside the FERTILIZER_PROFILES N/P/K guard
+                    -- (SULFUR / COPPER_HYDROXIDE take the fungicide branch above and
+                    -- would never reach a guarded line). The HEAT_SENSITIVITY probe
+                    -- inside applyScorchEffect is the whole cost when absent.
+                    soilSys:applyScorchEffect(fId, fillType.name)
                 end
 
                 if vww and vww.sections and #vww.sections > 0 then
@@ -3923,6 +3929,9 @@ function HookManager:installSprayerAreaHook()
                                                     if rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                                                         soilSys:applyBurnEffect(fId2, rateMultiplier)
                                                     end
+                                                    -- CD-14 heat scorch: unconditional,
+                                                    -- beside the burn branch (see applySingle).
+                                                    soilSys:applyScorchEffect(fId2, ftName)
                                                 end
 
                                                 if vww and vww.sections and #vww.sections > 0 and scratchN > 0 then

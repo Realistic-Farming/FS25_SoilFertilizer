@@ -553,6 +553,23 @@ SoilConstants.FERTILIZER_PROFILES = {
 }
 
 -- ========================================
+-- HEAT SCORCH (CD-14): the correct dose on the wrong day
+-- ========================================
+-- Products whose active ingredient damages the SOIL under a standing established
+-- crop when sprayed hot (pH down, nitrogen drained; the crop is not killed and
+-- the chemical still works). shift lowers the product's risk temperature:
+--   riskT    = HEAT_RISK_BASE - shift          (first scorch risk here)
+--   certainT = riskT + HEAT_BAND_WIDTH         (full band damage at/above here)
+-- HEAT_RISK_BASE / HEAT_BAND_WIDTH and the per-band caps live in SPRAYER_RATE.
+-- SHIP stand-ins marked ARISSANI'S at the unlock (steward C2); every number here
+-- is a ratio-pass candidate recorded awaiting the spine. v1 carries no lime/OM
+-- amendment entries (the table fence: nothing with entry.pH/entry.OM).
+SoilConstants.HEAT_SENSITIVITY = {
+    SULFUR           = { shift = 4 },  -- elemental S oxidises hot; the classic case
+    COPPER_HYDROXIDE = { shift = 2 },
+}
+
+-- ========================================
 -- ORGANIC CERTIFICATION (per-field state layer over the OM substrate)
 -- ========================================
 -- A field moves conventional -> in_transition -> certified by being farmed with
@@ -961,6 +978,19 @@ SoilConstants.SPRAYER_RATE = {
     -- longer than BURN_PASS_GAP_MS (boom lifted, headland turn) starts a fresh pass.
     BURN_PASS_GAP_MS          = 1500,  -- ms of over-spray inactivity that ends a burn pass
     BURN_FULL_DAMAGE_MS       = 8000,  -- ms of continuous over-spray to reach full burn magnitude
+
+    -- Heat scorch (CD-14) risk band on the temperature scale, deg C.
+    -- riskT = HEAT_RISK_BASE - HEAT_SENSITIVITY[product].shift; the band is
+    -- HEAT_BAND_WIDTH wide, so certain damage sits at riskT + HEAT_BAND_WIDTH.
+    -- Between risk and certain the per-pass caps scale linearly with the excess,
+    -- the rate burn's exact clamp shape. SHIP stand-ins marked ARISSANI'S at the
+    -- unlock (steward C2); ratio-pass candidates recorded awaiting the spine.
+    HEAT_RISK_BASE             = 30,    -- deg C: first scorch risk for a shift-0 product
+    HEAT_BAND_WIDTH            = 6,     -- deg C: risk grows to certainty across this band
+    SCORCH_PH_DROP_RISK        = 0.15,  -- max pH lost over a full scorch pass in the risk band (scaled by excess)
+    SCORCH_PH_DROP_CERTAIN     = 0.30,  -- max pH lost over a full scorch pass at/above certainT
+    SCORCH_N_DRAIN_RISK        = 5.0,   -- max N drained over a full scorch pass in the risk band (scaled by excess)
+    SCORCH_N_DRAIN_CERTAIN     = 12.0,  -- max N drained over a full scorch pass at/above certainT
     FERTILIZER_COVERAGE_THRESHOLD = 0.90, -- % field coverage needed before nutrients are credited (V1.6 Realism Update)
 
     -- Reference application rates at 1.0x (step 10) per fill type.
