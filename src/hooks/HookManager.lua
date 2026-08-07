@@ -3411,6 +3411,31 @@ function HookManager:installSprayerAreaHook()
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
 
+            -- Issue #764: after vanilla's drain the tank can sit at a tiny residual
+            -- (0 < level < 0.0005) that displays as 0.000 but never crosses the
+            -- engine's 0.00001 threshold, so the fill type never resets to UNKNOWN
+            -- and Sprayer:processSprayerArea never raises the AI out-of-fill stop.
+            -- Courseplay is never told the tank is empty and keeps driving. This
+            -- happens when the final work-area pass's usage lands just under the
+            -- remaining level; our speed-based getSprayerUsage makes that exact
+            -- arithmetic vary run to run, which is the intermittency. Complete the
+            -- drain through the engine's own API so its reset fires and the AI stop
+            -- works again. Runs only when the tank is effectively empty.
+            do
+                local okFu, fuIdx = pcall(function() return self:getSprayerFillUnitIndex() end)
+                if okFu and fuIdx then
+                    local okLvl, level = pcall(function() return self:getFillUnitFillLevel(fuIdx) end)
+                    local okTy, fillTy = pcall(function() return self:getFillUnitFillType(fuIdx) end)
+                    if okLvl and okTy and level and level > 0 and level < 0.001
+                            and fillTy and fillTy ~= FillType.UNKNOWN then
+                        local okFarm, farmId = pcall(function() return self:getOwnerFarmId() end)
+                        pcall(function()
+                            self:addFillUnitFillLevel(farmId, fuIdx, -level, fillTy, ToolType.UNDEFINED)
+                        end)
+                    end
+                end
+            end
+
             -- Guard: sprayer must have a valid fill type and consumed product this frame.
             -- NOTE: We deliberately do NOT gate on spec.workAreaParameters.isActive here.
             -- isActive is only set true inside processSprayerArea when FSDensityMapUtil.updateSprayArea
