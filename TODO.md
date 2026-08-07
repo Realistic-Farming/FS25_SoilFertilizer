@@ -68,3 +68,8 @@
 ## SF #764 Courseplay empty-tank (2026-08-07)
 - [x] Root-caused via diagnostic trace: tank hits zero but fill type stays LIME (sub-threshold residual above the 0.00001 reset line); AI out-of-fill stop never fires. FIXED in code (complete the drain in appended onEndWorkAreaProcessing), built and deployed.
 - [~] In-game verification pending: one failing run (T7.300 + Titan Teagle + lime) with the deployed zip should now stop and raise AutoDrive onCpEmpty.
+
+## Esc panel buttons UI fixes (2026-08-07)
+- [x] Bottom-bar buttons (Help, Rotation Planner, Treatment, Field Detail) were disabled while the Esc menu is paused; fixed via showWhenPaused.
+- [x] A Treatment button now opens the deep PDA screen on the Treatment tab (was map-sidebar only).
+- [x] Cross-mod resolution: the door can be built by another mod's RfPdaMenuPage (MDM loads first), so callbacks now resolve Soil classes via g_modEnvironments instead of bare globals. Built, deploy pending (game locks the zip). In-game verification pending.
