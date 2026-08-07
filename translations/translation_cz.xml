@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Půda &amp; hnojiva" eh="f31197fb" />
@@ -1265,5 +1265,98 @@
     <e k="sf_desc_experimentalSystems" v="Ve výchozím nastavení vypnuto. Nezávislé na obtížnosti. Použití na vlastní nebezpečí." />
     <e k="sf_panel_hdr_experimental" v="Experimentální" />
 <e k="sf_release_dialog_title" v="Brána vydání" />
+    <e k="sf_pda_treatment_select" v="Vyberte pole výše, abyste viděli doporučení ošetření." />
+    <e k="sf_hud_pass_noproduct" v="Přejezd: %d%%" />
+    <e k="sf_map_target_no_data" v="[EN] No data" />
+    <e k="sf_map_limiting" v="[EN] Limiting" />
+    <e k="sf_map_ph_optimal" v="[EN] Optimal" />
+    <e k="sf_map_weed_pressure" v="[EN] Weed Pressure" />
+    <e k="sf_map_tip" v="[EN] Tip" />
+    <e k="sf_map_balanced" v="[EN] Balanced" />
+    <e k="sf_map_ph_apply_lime" v="[EN] Apply lime" />
+    <e k="sf_map_ph_very_acidic" v="[EN] Very acidic" />
+    <e k="sf_map_herbicide" v="[EN] Herbicide" />
+    <e k="sf_map_compaction_urgent" v="[EN] Subsoiling urgent" />
+    <e k="sf_map_ph_none_needed" v="[EN] None needed" />
+    <e k="sf_map_not_needed" v="[EN] Not needed" />
+    <e k="sf_map_treatment" v="[EN] Treatment" />
+    <e k="sf_map_crop" v="[EN] Crop" />
+    <e k="sf_map_not_applied" v="[EN] Not applied" />
+    <e k="sf_map_ph_slightly_acidic" v="[EN] Slightly acidic" />
+    <e k="sf_map_compaction_ok" v="[EN] No action needed" />
+    <e k="sf_map_om_low" v="[EN] Low - add manure or digestate" />
+    <e k="sf_map_disease_pressure" v="[EN] Disease Pressure" />
+    <e k="sf_map_condition" v="[EN] Condition" />
+    <e k="sf_map_target_none" v="[EN] No crop planted" />
+    <e k="sf_map_compaction_recommended" v="[EN] Subsoiling recommended" />
+    <e k="sf_map_om_fair" v="[EN] Incorporate straw / manure" />
+    <e k="sf_map_ph_apply_lime_urgent" v="[EN] Apply lime urgently" />
+    <e k="sf_map_insecticide" v="[EN] Insecticide" />
+    <e k="sf_map_pest_pressure" v="[EN] Pest Pressure" />
+    <e k="sf_map_target" v="[EN] Target" />
+    <e k="sf_map_active" v="[EN] Active" />
+    <e k="sf_map_ph_severely_over_limed" v="[EN] Severely over-limed" />
+    <e k="sf_map_fungicide" v="[EN] Fungicide" />
+    <e k="sf_map_ph_normalize" v="[EN] Allow to normalize" />
+    <e k="sf_map_ph_over_limed" v="[EN] Over-limed" />
+    <e k="sf_map_gap" v="[EN] Gap" />
+    <e k="sf_map_ph_apply_sulfur" v="[EN] Apply sulfur" />
+    <e k="sf_map_om_healthy" v="[EN] Healthy - maintain with straw" />
+    <e k="rf_pda_panel_soil" v="[EN] Soil Fertilizer" />
+    <e k="rf_pda_menu_blurb" v="[EN] Monitor your fields' nutrient levels. Apply fertilizer to maintain optimal yields." />
+    <e k="rf_pda_host_blurb" v="[EN] Quick look at this module. Open Farm Tablet for the full tools." />
+    <e k="rf_pda_suite_hint" v="[EN] This page shows nutrient levels for your fields and a treatment plan for the field you select." />
+    <e k="rf_pda_host_placeholder" v="[EN] How to: when this module adds Esc detail, use it here. Until then, open Farm Tablet." />
+    <e k="rf_pda_module_soil_short" v="[EN] Soil" />
+    <e k="rf_pda_module_tag_host" v="[EN] open" />
+    <e k="rf_pda_module_tag_loaded" v="[EN] ready" />
+    <e k="rf_pda_module_list_label" v="[EN] Modules" />
+    <e k="rf_pda_col_area" v="[EN] Area" />
+    <e k="rf_pda_col_fert" v="[EN] Fertilizer" />
+    <e k="rf_pda_section_treatment" v="[EN] Treatment" />
+    <e k="rf_pda_treat_products" v="[EN] Products" />
+    <e k="rf_pda_sample_hint" v="[EN] Soil sample dates appear here when available." />
+    <e k="rf_pda_status_urgent" v="[EN] URGENT" />
+    <e k="rf_pda_status_ok" v="[EN] OK" />
+    <e k="rf_pda_fert_chip" v="[EN] FERT" />
+    <e k="rf_pda_treatment_selected" v="[EN] Selected field: Field %s" />
+    <e k="rf_pda_treatment_next" v="[EN] Next: %s" />
+    <e k="rf_pda_treatment_selected_next" v="[EN] Field %s · Next: %s" />
+    <e k="rf_pda_treatment_none_selected" v="[EN] Select a field" />
+    <e k="rf_pda_treatment_targets_heading" v="[EN] Target levels" />
+    <e k="rf_pda_sample_heading" v="[EN] Soil sampling" />
+    <e k="rf_pda_sample_dated" v="[EN] Last sample" />
+    <e k="rf_pda_sample_next" v="[EN] Next suggested" />
+    <e k="rf_pda_click_hint" v="[EN] Click a field row for treatment details." />
+    <e k="rf_pda_treat_or" v="[EN] or %s" />
+    <e k="rf_pda_treat_method_dry" v="[EN] spreader" />
+    <e k="rf_pda_treat_method_liquid" v="[EN] sprayer/tank" />
+    <e k="rf_pda_treat_prod_with_how" v="[EN] %s · %s" />
+    <e k="rf_pda_treat_next_with_amount" v="[EN] %s %s (%s total) · %s" />
+    <e k="rf_pda_treat_next_no_amount" v="[EN] %s - %s" />
+    <e k="rf_pda_treat_next_why_ph" v="[EN] Fix pH before nutrients." />
+    <e k="rf_pda_treat_next_why_protect" v="[EN] Crop pressure first, then soil." />
+    <e k="rf_pda_treat_burn_amend" v="[EN] Wait: amending now can burn the crop." />
+    <e k="rf_pda_treat_next_how_dry" v="[EN] buy in shop Products, load a dry spreader, cover the field" />
+    <e k="rf_pda_treat_next_how_liquid" v="[EN] buy in shop Products, fill a sprayer/tank, cover the field" />
+    <e k="rf_pda_treat_next_how_lime" v="[EN] spread with a dry fertilizer spreader" />
+    <e k="rf_pda_treat_next_how_liq_lime" v="[EN] apply with a sprayer/tank" />
+    <e k="rf_pda_treat_next_how_gypsum" v="[EN] spread with a dry fertilizer spreader" />
+    <e k="rf_pda_treat_next_how_om" v="[EN] spread manure/compost or leave chopped straw" />
+    <e k="rf_pda_treat_next_how_weed" v="[EN] spray (or use a weeder)" />
+    <e k="rf_pda_treat_next_how_pest" v="[EN] spray the field" />
+    <e k="rf_pda_treat_next_how_disease" v="[EN] spray the field" />
+    <e k="rf_pda_treat_om_low" v="[EN] MANURE / COMPOST / chop straw · spread or leave residue" />
+    <e k="rf_pda_treat_om_fair" v="[EN] Maintain organic inputs (manure / compost / straw)" />
+    <e k="rf_pda_treat_weed" v="[EN] HERBICIDE · sprayer (or mechanical weeder)" />
+    <e k="rf_pda_treat_weed_active" v="[EN] Herbicide still active - recheck later" />
+    <e k="rf_pda_treat_pest" v="[EN] INSECTICIDE · sprayer" />
+    <e k="rf_pda_treat_pest_active" v="[EN] Insecticide still active - recheck later" />
+    <e k="rf_pda_treat_disease" v="[EN] FUNGICIDE · sprayer" />
+    <e k="rf_pda_treat_disease_active" v="[EN] Fungicide still active - recheck later" />
+    <e k="rf_pda_side_info_soil" v="[EN] Soil Fertilizer&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field #, Area, N/P/K (% of a healthy target), pH (like the soil monitor - e.g. 6.2), Status (Good / Fair / Poor), Fertilizer need (short cue for what still looks short).&#10;&#10;Click a row. Treatment (below) is the plan for that field:&#10;- PRODUCT = what to buy (first is preferred; &quot;or ...&quot; is an alternate)&#10;- RATE = amount per area / TOTAL = amount for this field&#10;- Selected names the field; Next (under it) says what to do first&#10;&#10;How to apply: dry goods (urea, MAP, potash, lime) go through a fertilizer spreader; liquids go in a sprayer tank. If pH and nutrients both show, fix lime or gypsum first so nutrients can work. Weed, pest, or disease lines mean spray (or weed mechanically) before you expect a full crop.&#10;&#10;Start with the weakest Status, open Treatment, follow Next, then the rest of the list." />
+    <e k="rf_pda_side_info_crop_stress" v="[EN] Crop Stress&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).&#10;&#10;Click a row. The strip below names the field, then Next says what to do first:&#10;- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)&#10;- High Stress or a sensitive growth window → protect now; stress today cuts harvest later&#10;- Looking fine → recheck later; worse fields first&#10;&#10;Irrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. Edit systems on Farm Tablet / Crop Consultant when you need to change them.&#10;&#10;If Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.&#10;&#10;Start with Critical Status, follow Next, then work up the list." />
+    <e k="rf_pda_side_info_market_dynamics" v="[EN] Market Dynamics&amp;#10;&amp;#10;This is a pause market glance, not the full Market desk.&amp;#10;&amp;#10;Graph = price path for the crop you pick.&amp;#10;&amp;#10;Movers = biggest swings right now. Click one to change the graph.&amp;#10;&amp;#10;Events = world events still driving prices. Empty means nothing active (normal).&amp;#10;&amp;#10;Bottom strip = facts for the crop you selected.&amp;#10;&amp;#10;Contracts line = open count only. Full contracts live deeper.&amp;#10;&amp;#10;Open full Market when you need Prices / Events / Contracts admin." />
 </elements>
 </l10n>
+
