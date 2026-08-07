@@ -135,6 +135,16 @@ function RfSoilEscJoiner.tryRegister()
     if g_currentMission ~= nil and RfPdaSoilPanel ~= nil then
         g_currentMission.rfPdaSoilPanel = RfPdaSoilPanel
     end
+    -- Same handoff for the deep tools the Esc door buttons open. g_currentMission
+    -- is the only table every mod can read, so the door host (whichever mod built
+    -- RfPdaMenuPage) can open these dialogs even though they live in Soil's env.
+    if g_currentMission ~= nil then
+        if SoilGuideDialog ~= nil then g_currentMission.rfSoilGuideDialog = SoilGuideDialog end
+        if SoilHelpDialog ~= nil then g_currentMission.rfSoilHelpDialog = SoilHelpDialog end
+        if SoilPDAScreen ~= nil then g_currentMission.rfSoilPDAScreen = SoilPDAScreen end
+        if RotationPlannerDialog ~= nil then g_currentMission.rfRotationPlannerDialog = RotationPlannerDialog end
+        if SoilFieldDetailDialog ~= nil then g_currentMission.rfSoilFieldDetailDialog = SoilFieldDetailDialog end
+    end
 
     -- Always ensureDoor when bootstrap class is sourced; use source-time MOD_DIR only.
     if RfEscBootstrap ~= nil then
