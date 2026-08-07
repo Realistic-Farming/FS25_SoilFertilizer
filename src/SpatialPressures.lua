@@ -34,7 +34,10 @@ SpatialPressures = {}
 
 SpatialPressures.ENABLED = true
 
--- Tunables (the brief's numbers; ratio-pass owned, one-line changes)
+-- Tunables (the brief's numbers; awaiting the SF-19 spine split, one-line changes)
+-- The pending spine split is ruled: the pest half routes onto Agronomy, the
+-- disease half onto Biological. Until the spine builds, these four dials are the
+-- neutral default character (same awaiting-the-spine form as EmergencyLoan).
 SpatialPressures.PEST_EDGE_MIN_M   = 10      -- edge band inner radius (m)
 SpatialPressures.PEST_EDGE_MAX_M   = 30      -- edge band outer radius (m)
 SpatialPressures.CEILING_FRACTION  = 0.5     -- max outbreak = half the field
