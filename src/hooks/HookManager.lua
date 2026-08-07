@@ -3540,6 +3540,82 @@ function HookManager:installSprayerAreaHook()
                 end
             end
 
+            -- AI-1: an AI helper spraying in buy mode currently leaves the ground
+            -- untouched. Buy mode ships zero usage and zero sprayFillLevel (the tank
+            -- is externally filled, never drained, so the two guards below exit
+            -- every frame) while Hook 9's getExternalFill already charged the farm
+            -- at the 1.5x AI premium. Suite doctrine: an AI action triggers our
+            -- consequence like a player's. Detect a genuinely-working AI helper in
+            -- buy mode and inject the three work-area parameters the guards read.
+            -- Genuinely working is established upstream (the turnedOn / folded guards
+            -- above already passed; the speed guard below stays). The usage is the
+            -- SAME speed x width x litersPerSecond figure the external-fill billing
+            -- uses (Hook 9, getExternalFill), so agronomy matches what was paid for.
+            -- wap.sprayVehicle is NEVER set: the :4023 self-skip is the double-charge
+            -- protection and it keys on that field staying nil on the external-fill
+            -- path. isInBuyMode is scoped inside installPurchaseRefillHook, so the
+            -- detection is mirrored inline (same three mission flags, same AI paths).
+            if (liters == nil or liters <= 0) and (sprayFillLevel == nil or sprayFillLevel <= 0) then
+                local isAI = false
+                local okAIb, resAIb = pcall(function() return self:getIsAIActive() end)
+                if okAIb and resAIb then isAI = true end
+                if not isAI and self.spec_aiVehicle and self.spec_aiVehicle.isActive then isAI = true end
+                if not isAI and self.spec_aiJobVehicle and self.spec_aiJobVehicle.job ~= nil then isAI = true end
+                if not isAI and self.spec_cpAIWorker and self.spec_cpAIWorker.isActive then isAI = true end
+                if not isAI and self.cp and self.cp.isActive then isAI = true end
+
+                local buyActive = false
+                if isAI and g_currentMission and g_currentMission.missionInfo then
+                    local mi = g_currentMission.missionInfo
+                    local ftB = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+                    local ftNameB = ftB and ftB.name or "UNKNOWN"
+                    if ftNameB == "LIQUIDMANURE" or ftNameB == "DIGESTATE" then
+                        buyActive = (mi.helperSlurrySource == 2)
+                    elseif ftNameB == "MANURE" then
+                        buyActive = (mi.helperManureSource == 2)
+                    else
+                        buyActive = (mi.helperBuyFertilizer == true)
+                    end
+                end
+
+                if buyActive then
+                    -- Same billing figure as getExternalFill (Hook 9):
+                    -- scale x litersPerSecond x actualSpeed_km/h x workWidth_m x dt_ms x 0.001
+                    local actualSpeedKmh = math.abs(self.lastSpeed or 0) * 3600
+                    if actualSpeedKmh >= 0.5 then
+                        local specB   = self.spec_sprayer
+                        local usScaleB = specB and specB.usageScale
+                        local okASTb, activeSpTB = pcall(function() return self:getActiveSprayType() end)
+                        if okASTb and activeSpTB and activeSpTB.usageScale then
+                            usScaleB = activeSpTB.usageScale
+                        end
+                        local workWidthB = (usScaleB and usScaleB.workingWidth) or 12
+                        if usScaleB and usScaleB.workAreaIndex then
+                            local okWB, wB = pcall(function() return self:getWorkAreaWidth(usScaleB.workAreaIndex) end)
+                            if okWB and wB and wB > 0 then workWidthB = wB end
+                        end
+                        local fillScaleB = 1
+                        if specB and specB.usageScale then
+                            local ftScalesB = specB.usageScale.fillTypeScales
+                            fillScaleB = (ftScalesB and ftScalesB[fillTypeIndex]) or specB.usageScale.default or 1
+                        end
+                        local spTB = g_sprayTypeManager and g_sprayTypeManager:getSprayTypeByFillTypeIndex(fillTypeIndex)
+                        local lpsB = spTB and spTB.litersPerSecond or 1
+                        local injectedUsage = fillScaleB * lpsB * actualSpeedKmh * workWidthB * dt * 0.001
+
+                        if injectedUsage > 0 then
+                            spec.workAreaParameters.usage          = injectedUsage
+                            spec.workAreaParameters.sprayFillLevel = injectedUsage
+                            spec.workAreaParameters.sprayFillType  = fillTypeIndex
+                            liters         = injectedUsage
+                            sprayFillLevel = injectedUsage
+                            SoilLogger.debug("AI-1: buy-mode AI helper injected usage=%.2f L (agronomy matches billing)",
+                                injectedUsage)
+                        end
+                    end
+                end
+            end
+
             if not liters or liters <= 0 then
                 -- Throttle: log at most once per 3 s per vehicle to avoid headland-turn spam
                 local _now = g_currentMission and g_currentMission.time or 0
