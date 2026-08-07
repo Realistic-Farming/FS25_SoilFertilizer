@@ -53,6 +53,23 @@ local function invalidatePolyVerts(field)
     end
 end
 
+-- SF-74: the spray-path sky read, in the MaterialWetness.lua:305-323 pattern.
+-- WeatherGuard's handle is published on g_currentMission by main.lua; absent
+-- means we do not know, and heat scorch HOLDS rather than inventing a day.
+local function weatherGuard()
+    return (g_currentMission ~= nil and g_currentMission.weatherGuard) or nil
+end
+
+--- Current temperature at spray time. nil means we do not know, and scorch
+--- HOLDS rather than inventing one: no WeatherGuard is not a mild day.
+local function readSprayTemperature()
+    local wg = weatherGuard()
+    if wg == nil or wg.getCurrentSky == nil then return nil end
+    local ok, sky = pcall(function() return wg:getCurrentSky() end)
+    if not ok or sky == nil then return nil end
+    return sky.temperature   -- number or nil; nil propagates as NO SCORCH
+end
+
 -- CD-9: Lookup the FRAC group for a fungicide fill type name.
 -- Returns nil for generic FUNGICIDE (no MOA assigned).
 ---@param fillTypeName string
@@ -6132,6 +6149,131 @@ function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier)
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo and g_currentMission.missionDynamicInfo.isMultiplayer then
         if SoilFieldUpdateEvent and (not field._lastBurnBroadcast or (now - field._lastBurnBroadcast) >= gapMs) then
             field._lastBurnBroadcast = now
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
+        end
+    end
+end
+
+--- Heat scorch (CD-14): the correct dose on the wrong day. Spraying a
+--- heat-sensitive product (SULFUR, COPPER_HYDROXIDE) when the air is hot
+--- damages the SOIL under a standing established crop: pH down, nitrogen
+--- drained - exactly the currency this mod trades in. The crop is not killed
+--- and the chemical still works; the farmer who checks the forecast pays
+--- nothing. Composes the rate burn's band-and-accumulator engine (on a
+--- temperature scale) with the amendment burn's crop gate; invents no new
+--- machinery class. Server-only by inheritance (it lives under the hook's
+--- isServer gate), actor-blind (no getIsAIActive anywhere - an AI pass
+--- scorches like a player's), and nil-honest (nil temperature or an absent
+--- HEAT_SENSITIVITY entry means NO scorch and NO state change).
+--- Called UNCONDITIONALLY from both spray closures, BESIDE the burn branch,
+--- never inside the FERTILIZER_PROFILES N/P/K guard (SULFUR and COPPER_HYDROXIDE
+--- take the fungicide branch and never reach the guarded lines). The sensitivity
+--- probe here is the whole cost of that unconditional call.
+---@param fieldId number
+---@param fillTypeName string
+function SoilFertilitySystem:applyScorchEffect(fieldId, fillTypeName)
+    local field = self.fieldData[fieldId]
+    if not field then return end
+
+    -- Absent sensitivity entry: the unconditional closure call costs one probe.
+    local s = SoilConstants.HEAT_SENSITIVITY[fillTypeName]
+    if s == nil then return end
+
+    -- Nil-honest: no WeatherGuard read means no scorch, no state change.
+    local tempC = readSprayTemperature()
+    if tempC == nil then return end
+
+    local scorchCfg = SoilConstants.SPRAYER_RATE
+    local limits    = SoilConstants.NUTRIENT_LIMITS
+    local now       = (g_currentMission and g_currentMission.time) or 0
+    local gapMs     = scorchCfg.BURN_PASS_GAP_MS or 1500
+    local fullMs    = scorchCfg.BURN_FULL_DAMAGE_MS or 8000
+
+    -- Risk band on the temperature scale: below riskT nothing, at/above certainT
+    -- the full band caps every application, between them magnitude scales
+    -- linearly with the excess (the rate burn's exact clamp shape).
+    local riskT    = (scorchCfg.HEAT_RISK_BASE or 30) - (s.shift or 0)
+    local certainT = riskT + (scorchCfg.HEAT_BAND_WIDTH or 6)
+    if tempC < riskT then return end
+
+    local fullPh, fullN
+    if tempC >= certainT then
+        fullPh = scorchCfg.SCORCH_PH_DROP_CERTAIN or 0.30
+        fullN  = scorchCfg.SCORCH_N_DRAIN_CERTAIN or 12.0
+    else
+        local excess = (tempC - riskT) / (certainT - riskT)
+        excess = math.max(0.0, math.min(1.0, excess))
+        fullPh = (scorchCfg.SCORCH_PH_DROP_RISK or 0.15) * excess
+        fullN  = (scorchCfg.SCORCH_N_DRAIN_RISK or 5.0) * excess
+    end
+    if fullPh <= 0 and fullN <= 0 then return end
+
+    -- Crop gate (the #532 pattern, shared shape with applyFertilizer): resolve
+    -- the crop the way applyFertilizer does - _lastSprayX/_lastSprayZ plus a
+    -- live FieldState query - and require an established standing crop. Bare
+    -- ground and seedlings cannot scorch.
+    local hasCrop = false
+    local cropFruitIndex, cropGrowthState = nil, nil
+    local spx, spz = self._lastSprayX, self._lastSprayZ
+    if spx and spz and g_farmlandManager then
+        local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
+        local fsField = farmlandTmp and g_fieldManager and
+                        g_fieldManager.farmlandIdFieldMapping and
+                        g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
+        if fsField and fsField.posX and fsField.posZ then
+            local ok, fs = pcall(function()
+                local s2 = FieldState.new()
+                s2:update(fsField.posX, fsField.posZ)
+                return s2
+            end)
+            if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
+                hasCrop          = true
+                cropFruitIndex   = fs.fruitTypeIndex
+                cropGrowthState  = fs.growthState
+            end
+        end
+    end
+    if not hasCrop or not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState) then
+        return
+    end
+
+    -- ── Scorch's OWN accumulator (mirrored on the rate burn) ──────────────────
+    -- Pass continuity on the burn's gap/full clock, but with scorch's own fields
+    -- so a pass tripping both scorch and the rate burn pays each cap once, and
+    -- resetting one never resets the other.
+    local dt
+    if field._scorchTickTime and (now - field._scorchTickTime) <= gapMs then
+        dt = now - field._scorchTickTime
+    else
+        -- New pass: reset the per-pass accumulators.
+        dt = 0
+        field._scorchPassPh = 0
+        field._scorchPassN  = 0
+    end
+    field._scorchTickTime = now
+    if dt <= 0 then return end   -- first tick of a pass, or a sibling section this tick
+
+    -- ── Full-pass magnitude for the current band (the per-pass cap) ───────────
+    local frac   = math.min(1.0, dt / fullMs)
+    local phDrop = math.min(fullPh * frac, math.max(0.0, fullPh - (field._scorchPassPh or 0)))
+    local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._scorchPassN  or 0)))
+    if phDrop <= 0 and nDrain <= 0 then return end
+
+    field.pH          = math.max(limits.PH_MIN, field.pH - phDrop)
+    field.nitrogen    = math.max(limits.MIN, field.nitrogen - nDrain)
+    field._scorchPassPh = (field._scorchPassPh or 0) + phDrop
+    field._scorchPassN  = (field._scorchPassN  or 0) + nDrain
+
+    self:log("Scorch slice field %d: pH -%.3f, N -%.2f (%.1f C)",
+        fieldId, phDrop, nDrain, tempC)
+
+    -- Broadcast on the existing field event, throttled by scorch's OWN timestamp
+    -- (never share _lastBurnBroadcast, so scorch and the rate burn each throttle
+    -- independently).
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo and
+       g_currentMission.missionDynamicInfo.isMultiplayer then
+        if SoilFieldUpdateEvent and (not field._scorchBroadcast or (now - field._scorchBroadcast) >= gapMs) then
+            field._scorchBroadcast = now
             SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
         end
     end
