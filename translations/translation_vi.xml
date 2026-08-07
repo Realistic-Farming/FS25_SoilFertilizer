@@ -458,7 +458,8 @@
     <e k="sf_pda_col_priority" v="Độ khẩn" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Cần thiết" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Tất cả cánh đồng đều trong tình trạng tốt." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Các cánh đồng bên phải cần được xử lý. Nhấp vào một hàng để xem các loại phân bón và lượng ước tính." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Các cánh đồng bên phải cần xử lý. Chọn một hàng để xem kế hoạch bên dưới." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Chọn một cánh đồng phía trên để xem kế hoạch xử lý." eh="522cca27" />
     <e k="sf_pda_need_n" v="Đạm" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Lân" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Kali" eh="3a4edc67" />
@@ -531,6 +532,7 @@
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Độ phủ: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_pass_noproduct" v="[EN] Pass: %d%%" />
     <e k="sf_hud_compaction" v="Độ nén: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />

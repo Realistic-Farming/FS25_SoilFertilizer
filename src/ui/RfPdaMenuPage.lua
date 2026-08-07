@@ -111,6 +111,61 @@ local function soilPanel()
     return nil
 end
 
+--- Resolve any Soil-exposed class cross-mod. The door is created by whichever
+--- mod's RfPdaMenuPage loads first, so Soil globals (dialogs, PDAScreen) are nil
+--- when a non-Soil mod built the door (FS25 envs are per-mod). Soil publishes its
+--- deep tools on g_currentMission at registration, so read those first, then
+--- g_modEnvironments, then getfenv(0), matching soilPanel() above.
+local function soilGlobal(name)
+    local missionHandles = {
+        SoilGuideDialog       = "rfSoilGuideDialog",
+        SoilHelpDialog        = "rfSoilHelpDialog",
+        SoilPDAScreen         = "rfSoilPDAScreen",
+        RotationPlannerDialog = "rfRotationPlannerDialog",
+        SoilFieldDetailDialog = "rfSoilFieldDetailDialog",
+    }
+    local key = missionHandles[name]
+    if g_currentMission ~= nil and key ~= nil then
+        local v = g_currentMission[key]
+        if v ~= nil then
+            return v
+        end
+    end
+    local env0 = getfenv and getfenv(0)
+    if env0 and env0[name] ~= nil then
+        return env0[name]
+    end
+    if _G and _G[name] ~= nil then
+        return _G[name]
+    end
+    if g_modEnvironments ~= nil then
+        for _, modName in ipairs({ "FS25_SoilFertilizer", "FS25_SoilFertilizer_Refined" }) do
+            local modEnv = g_modEnvironments[modName]
+            local v = modEnv and modEnv[name]
+            if v ~= nil then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+--- Cross-mod Soil help dialog resolve. The door is created by whichever mod's
+--- RfPdaMenuPage loads first, so a bare SoilGuideDialog/SoilHelpDialog global
+--- is nil when a non-Soil mod built the door (FS25 envs are per-mod). Delegate
+--- to soilGlobal, which reads the g_currentMission handoff first.
+local function soilGuideDialog()
+    local dlg = soilGlobal("SoilGuideDialog")
+    if dlg ~= nil and type(dlg.show) == "function" then
+        return dlg
+    end
+    local dlgHelp = soilGlobal("SoilHelpDialog")
+    if dlgHelp ~= nil and type(dlgHelp.show) == "function" then
+        return dlgHelp
+    end
+    return nil
+end
+
 --- Resolve l10n with English fallback. When CS/WC create the Esc door, MOD_NAME
 --- i18n may lack Soil table keys — also probe Soil modEnv, then g_i18n.
 local function tr(key, fallback)
@@ -379,12 +434,58 @@ function RfPdaMenuPage:initialize()
     -- Do NOT bind MENU_PAGE_PREV/NEXT to cyclePanel; modules use MTO L/R arrows.
     self.btnHelp = {
         inputAction = InputAction.MENU_EXTRA_1,
+        showWhenPaused = true,
         text = tr("sf_pda_btn_help", "Help"),
         callback = function()
-            if SoilGuideDialog then
-                SoilGuideDialog.show()
-            elseif SoilHelpDialog then
+            local dlg = soilGuideDialog()
+            if dlg ~= nil then
+                dlg.show()
+            elseif SoilHelpDialog ~= nil and type(SoilHelpDialog.show) == "function" then
                 SoilHelpDialog.show()
+            end
+        end
+    }
+    -- MENU_EXTRA_2: open the Rotation Planner from the Esc glance.
+    self.btnRotationPlanner = {
+        inputAction = InputAction.MENU_EXTRA_2,
+        showWhenPaused = true,
+        text = tr("sf_pda_btn_rotation_planner", "Rotation Planner"),
+        callback = function()
+            local dlg = soilGlobal("RotationPlannerDialog")
+            if dlg ~= nil and type(dlg.show) == "function" then
+                dlg.show(self.selectedFieldId)
+            end
+        end
+    }
+    -- MENU_ACTIVATE: open the per-field detail dialog from the Esc glance.
+    self.btnFieldDetail = {
+        inputAction = InputAction.MENU_ACTIVATE,
+        showWhenPaused = true,
+        text = tr("sf_pda_btn_field_detail", "Field Detail"),
+        callback = function()
+            local dlg = soilGlobal("SoilFieldDetailDialog")
+            if dlg ~= nil and type(dlg.show) == "function" then
+                dlg.show(self.selectedFieldId)
+            end
+        end
+    }
+    -- SPACE / MENU_ACTIVATE: open the Worker Manager deep desk when WC is active.
+    self.btnOpenWorkerManager = {
+        inputAction = InputAction.MENU_ACTIVATE,
+        showWhenPaused = true,
+        text = tr("wc_rf_pda_open_manager", "Open Worker Manager"),
+        callback = function()
+            local wcGui = g_currentMission ~= nil and g_currentMission.rfWcGui
+            if wcGui == nil then
+                local env0 = getfenv and getfenv(0)
+                wcGui = env0 and env0.g_wcGui
+            end
+            if wcGui == nil and g_modEnvironments ~= nil then
+                local wcEnv = g_modEnvironments["FS25_WorkerCosts"]
+                wcGui = wcEnv and wcEnv.g_wcGui
+            end
+            if wcGui ~= nil then
+                g_gui:showGui("WCGui")
             end
         end
     }
@@ -1027,6 +1128,17 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     setVis(self.rfHostBlurb, not isWc and not isMd and not isCs)
     if (isWc or isCs or isMd) and self.rfHostBody and self.rfHostBody.setText then
         self.rfHostBody:setText("")
+    end
+    -- Bottom bar: SPACE opens the Worker Manager deep desk while WC is active.
+    if isWc and self.btnOpenWorkerManager ~= nil then
+        self.menuButtonInfo = { self.btnBack, self.btnOpenWorkerManager }
+    elseif isSoil then
+        self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnFieldDetail }
+    else
+        self.menuButtonInfo = { self.btnBack }
+    end
+    if type(self.setMenuButtonInfoDirty) == "function" then
+        self:setMenuButtonInfoDirty()
     end
     -- NEVER shrink MODULES dock below workable height (George: >=220).
     local shell = self.rfModuleListShell

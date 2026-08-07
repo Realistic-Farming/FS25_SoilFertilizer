@@ -476,7 +476,8 @@
     <e k="sf_pda_col_priority" v="緊迫性" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="需求" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="所有田地狀況良好。" eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Els camps llistats a la dreta necessiten tractament. Feu clic en una fila per veure els inputs recomanats i les quantitats estimades." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Els camps a la dreta necessiten tractament. Seleccioneu una fila per veure el pla a sota." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Seleccioneu un camp a dalt per veure la recepta de tractament." eh="522cca27" />
     <e k="sf_pda_need_n" v="氮" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="磷" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="鉀" eh="3a4edc67" />
@@ -554,6 +555,7 @@
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Coverage: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="Pass: %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_pass_noproduct" v="Pass: %d%%" />
     <e k="sf_hud_compaction" v="Compaction: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />

@@ -53,7 +53,25 @@
 ## Docs / localization
 - [ ] Keep all 26 languages in step for any new setting or fill type.
 - [ ] Update SoilVersionDialog CHANGELOG + README version on every release.
+- [x] `sf_hud_pass_noproduct` (SoilHUD.lua:687) was defined in no language file at all, English included, so the HUD rendered the raw key name whenever a session pass had no known product. Added to all 27 files, each derived from that language's `sf_hud_pass_coverage` sibling minus the product parenthetical, so every file keeps its existing translated or `[EN]` state instead of gaining invented text. 2026-08-06.
+- [ ] 90 strings still read `[EN]` in French and every one is `rf_pda_*` (Esc RF PDA chrome). Hold that ask until the Esc door work settles those surfaces, or the strings move under the translator.
+- [ ] Worth a guard: nothing catches a `g_i18n:getText` key that exists in no translation file. The one above shipped and was only found by reading the source.
 
 ## Blocked / waiting on
 - [!] getFieldInfo FieldSentry-state decision (waits on: audit answer).
 - [!] ProStaff discount bridge (waits on: ProStaffCoOp handle confirmed + SF cost hook site scheduled).
+
+## Esc doors + map buttons (2026-08-06)
+- [x] Rotation Planner and Field Detail open from the Esc RF panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), selectedFieldId passed through (nil allowed). DONE in code, deployed.
+- [x] Map sidebar report/treatment buttons restored via retained-page pattern (SoilPDAScreen._retainedDeepScreen + _ensureDeepPageInjectable). DONE in code, deployed.
+- [~] In-game observation pending: confirm all three surfaces open with no Farm Tablet installed, and that the Esc rail still shows exactly one Realistic Farming tab.
+
+## SF #764 Courseplay empty-tank (2026-08-07)
+- [x] Root-caused via diagnostic trace: tank hits zero but fill type stays LIME (sub-threshold residual above the 0.00001 reset line); AI out-of-fill stop never fires. FIXED in code (complete the drain in appended onEndWorkAreaProcessing), built and deployed.
+- [~] In-game verification pending: one failing run (T7.300 + Titan Teagle + lime) with the deployed zip should now stop and raise AutoDrive onCpEmpty.
+
+## Esc panel buttons UI fixes (2026-08-07)
+- [x] Bottom-bar buttons (Help, Rotation Planner, Field Detail) were disabled while the Esc menu is paused; fixed via showWhenPaused.
+- [x] Cross-mod resolution: the door can be built by another mod's RfPdaMenuPage (MDM loads first), so callbacks now resolve Soil classes via the g_currentMission handoff instead of bare globals. Deployed and verified in-game.
+- [x] Treatment button dropped after in-game pass: the map sidebar still opens the Treatment tab; the Esc panel keeps Back, Help, Rotation Planner, Field Detail.
+- [x] Help button shows only on the Soil module; other modules show Back only (the Soil guide is Soil-specific).

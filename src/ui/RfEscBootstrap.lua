@@ -10,6 +10,47 @@ RfEscBootstrap = {}
 local PAGE_NAME = "menuRealisticFarming"
 local CLASS_NAME = "RfPdaMenuPage"
 
+-- ── Whose badge the shared door wears ─────────────────────
+-- The door is built by whichever joiner loads first, and addPageTab resolves
+-- the tab icon relative to THAT mod's directory. Load order is alphabetical, so
+-- MarketDynamics always won and the Realistic Farming tab wore the MDM icon
+-- even with SoilFertilizer installed.
+--
+-- SoilFertilizer is the mod this suite grew out of, so it owns the badge. When
+-- it is installed the tab icon is taken from its directory no matter who built
+-- the door. When it is absent the creator's own icon is used exactly as before.
+--
+-- Deliberately NOT changing who creates the door. An earlier attempt made the
+-- other joiners stand aside so SoilFertilizer could build it, which moved door
+-- creation later in the load and broke the Esc menu. Creation order stays
+-- untouched; only the icon path is redirected, so there is no timing risk.
+-- The owner's icon lives at its OWN path, which is not the caller's path: this
+-- mod keeps it at textures/ui, MarketDynamics passes images/. Redirecting only
+-- the directory would look for images/menuIcon.dds inside SoilFertilizer and
+-- miss. So the owner's path travels with the owner. SeasonalCropStress and
+-- WorkerCosts ship no menuIcon at all, so before this they fell back to an
+-- engine default; now they get the suite badge too.
+local ICON_OWNER = "FS25_SoilFertilizer"
+local ICON_OWNER_PATH = "textures/ui/menuIcon.dds"
+
+--- Absolute icon file of the badge owner, or nil when it is not installed or
+--- does not ship the icon.
+---@return string|nil
+local function _ownerIconFile()
+    if g_modManager == nil or type(g_modManager.getModByName) ~= "function" then
+        return nil
+    end
+    local ok, mod = pcall(g_modManager.getModByName, g_modManager, ICON_OWNER)
+    if not ok or mod == nil or mod.modDir == nil then
+        return nil
+    end
+    local f = Utils.getFilename(ICON_OWNER_PATH, mod.modDir)
+    if f == nil or not fileExists(f) then
+        return nil
+    end
+    return f
+end
+
 local function _log(level, fmt, ...)
     local msg = string.format(fmt, ...)
     if SoilLogger ~= nil and type(SoilLogger[level]) == "function" then
@@ -82,7 +123,15 @@ local function addIngameMenuPage(frame, pageName, iconPath, uvs, position, predi
     inGameMenu.pagingElement:updatePageMapping()
     inGameMenu:registerPage(inGameMenu[pageName], nil, predicateFunc)
 
-    local iconFileName = Utils.getFilename(iconPath, modDir)
+    -- Badge belongs to the owner when it is installed, whoever built the door.
+    -- Falls back to the creator's own icon when the owner is absent, so a
+    -- standalone install is unchanged.
+    local iconFileName = _ownerIconFile()
+    if iconFileName ~= nil then
+        _log("info", "tab icon from %s (suite badge)", ICON_OWNER)
+    else
+        iconFileName = Utils.getFilename(iconPath, modDir)
+    end
     inGameMenu:addPageTab(inGameMenu[pageName], iconFileName, GuiUtils.getUVs(uvs))
 
     if position ~= nil then

@@ -458,7 +458,8 @@
     <e k="sf_pda_col_priority" v="Urgencia" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Necesidades" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Campos en buen estado." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Campos que necesitan tratamiento. Haz clic para ver insumos y cantidades estimadas." eh="5748d316" />
+    <e k="sf_pda_treatment_hint" v="Campos que necesitan tratamiento. Selecciona una fila para ver el plan abajo." eh="008230a2" />
+    <e k="sf_pda_treatment_select" v="Selecciona un campo arriba para ver la prescripción de tratamiento." eh="522cca27" />
     <e k="sf_pda_need_n" v="Nitrógeno" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fósforo" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potasio" eh="3a4edc67" />
@@ -531,6 +532,7 @@
     <e k="sf_hud_unit_ppm" v="(ppm)" eh="71b18c32" />
     <e k="sf_hud_coverage" v="Cobertura: %d%% / %d%%" eh="d407bb6d" />
     <e k="sf_hud_pass_coverage" v="[EN] Pass: %d%% (%s)" eh="531a10ef" />
+    <e k="sf_hud_pass_noproduct" v="[EN] Pass: %d%%" />
     <e k="sf_hud_compaction" v="Compactación: %d%%" eh="bef3a4f5" />
     <e k="sf_hud_yield_eff" v="[EN] Yield: %d%%" eh="7b49cf24" />
     <e k="sf_hud_amend_burn" v="[EN] Burn penalty: -%d%%" eh="34059aac" />
