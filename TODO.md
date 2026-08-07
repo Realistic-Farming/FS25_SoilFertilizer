@@ -70,6 +70,6 @@
 - [~] In-game verification pending: one failing run (T7.300 + Titan Teagle + lime) with the deployed zip should now stop and raise AutoDrive onCpEmpty.
 
 ## Esc panel buttons UI fixes (2026-08-07)
-- [x] Bottom-bar buttons (Help, Rotation Planner, Treatment, Field Detail) were disabled while the Esc menu is paused; fixed via showWhenPaused.
-- [x] A Treatment button now opens the deep PDA screen on the Treatment tab (was map-sidebar only).
-- [x] Cross-mod resolution: the door can be built by another mod's RfPdaMenuPage (MDM loads first), so callbacks now resolve Soil classes via g_modEnvironments instead of bare globals. Built, deploy pending (game locks the zip). In-game verification pending.
+- [x] Bottom-bar buttons (Help, Rotation Planner, Field Detail) were disabled while the Esc menu is paused; fixed via showWhenPaused.
+- [x] Cross-mod resolution: the door can be built by another mod's RfPdaMenuPage (MDM loads first), so callbacks now resolve Soil classes via the g_currentMission handoff instead of bare globals. Deployed and verified in-game.
+- [x] Treatment button dropped after in-game pass: the map sidebar still opens the Treatment tab; the Esc panel keeps Back, Help, Rotation Planner, Field Detail.
