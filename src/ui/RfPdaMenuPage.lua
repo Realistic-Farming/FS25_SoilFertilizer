@@ -111,35 +111,26 @@ local function soilPanel()
     return nil
 end
 
---- Cross-mod Soil help dialog resolve. The door is created by whichever mod's
---- RfPdaMenuPage loads first, so a bare SoilGuideDialog/SoilHelpDialog global
---- is nil when a non-Soil mod built the door (FS25 envs are per-mod). Probe
---- g_modEnvironments, then the shared global, matching soilPanel() above.
-local function soilGuideDialog()
-    if SoilGuideDialog ~= nil and type(SoilGuideDialog.show) == "function" then
-        return SoilGuideDialog
-    end
-    if g_modEnvironments ~= nil then
-        for _, modName in ipairs({ "FS25_SoilFertilizer", "FS25_SoilFertilizer_Refined" }) do
-            local modEnv = g_modEnvironments[modName]
-            local dlg = modEnv and modEnv.SoilGuideDialog
-            if dlg ~= nil and type(dlg.show) == "function" then
-                return dlg
-            end
-        end
-    end
-    local env0 = getfenv and getfenv(0)
-    if env0 and env0.SoilGuideDialog ~= nil and type(env0.SoilGuideDialog.show) == "function" then
-        return env0.SoilGuideDialog
-    end
-    return nil
-end
-
 --- Resolve any Soil-exposed class cross-mod. The door is created by whichever
 --- mod's RfPdaMenuPage loads first, so Soil globals (dialogs, PDAScreen) are nil
---- when a non-Soil mod built the door (FS25 envs are per-mod). Probe
+--- when a non-Soil mod built the door (FS25 envs are per-mod). Soil publishes its
+--- deep tools on g_currentMission at registration, so read those first, then
 --- g_modEnvironments, then getfenv(0), matching soilPanel() above.
 local function soilGlobal(name)
+    local missionHandles = {
+        SoilGuideDialog       = "rfSoilGuideDialog",
+        SoilHelpDialog        = "rfSoilHelpDialog",
+        SoilPDAScreen         = "rfSoilPDAScreen",
+        RotationPlannerDialog = "rfRotationPlannerDialog",
+        SoilFieldDetailDialog = "rfSoilFieldDetailDialog",
+    }
+    local key = missionHandles[name]
+    if g_currentMission ~= nil and key ~= nil then
+        local v = g_currentMission[key]
+        if v ~= nil then
+            return v
+        end
+    end
     local env0 = getfenv and getfenv(0)
     if env0 and env0[name] ~= nil then
         return env0[name]
@@ -155,6 +146,22 @@ local function soilGlobal(name)
                 return v
             end
         end
+    end
+    return nil
+end
+
+--- Cross-mod Soil help dialog resolve. The door is created by whichever mod's
+--- RfPdaMenuPage loads first, so a bare SoilGuideDialog/SoilHelpDialog global
+--- is nil when a non-Soil mod built the door (FS25 envs are per-mod). Delegate
+--- to soilGlobal, which reads the g_currentMission handoff first.
+local function soilGuideDialog()
+    local dlg = soilGlobal("SoilGuideDialog")
+    if dlg ~= nil and type(dlg.show) == "function" then
+        return dlg
+    end
+    local dlgHelp = soilGlobal("SoilHelpDialog")
+    if dlgHelp ~= nil and type(dlgHelp.show) == "function" then
+        return dlgHelp
     end
     return nil
 end
@@ -480,8 +487,11 @@ function RfPdaMenuPage:initialize()
         showWhenPaused = true,
         text = tr("wc_rf_pda_open_manager", "Open Worker Manager"),
         callback = function()
-            local env0 = getfenv and getfenv(0)
-            local wcGui = env0 and env0.g_wcGui
+            local wcGui = g_currentMission ~= nil and g_currentMission.rfWcGui
+            if wcGui == nil then
+                local env0 = getfenv and getfenv(0)
+                wcGui = env0 and env0.g_wcGui
+            end
             if wcGui == nil and g_modEnvironments ~= nil then
                 local wcEnv = g_modEnvironments["FS25_WorkerCosts"]
                 wcGui = wcEnv and wcEnv.g_wcGui
