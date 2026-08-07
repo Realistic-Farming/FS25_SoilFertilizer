@@ -54,8 +54,17 @@ function RfSoilEscJoiner.standDownLegacyEsc()
     local pageName = (SoilPDAScreen and SoilPDAScreen.MENU_PAGE_NAME) or "menuSoilFertilizer"
     local screen = inGameMenu[pageName]
     if screen == nil then
-        _legacyStoodDown = true
-        return true
+        if SoilPDAScreen ~= nil and SoilPDAScreen._retainedDeepScreen ~= nil then
+            _legacyStoodDown = true
+            return true
+        end
+        return false
+    end
+
+    -- Giants-safe remove: retain the deep page before nilling it so the map
+    -- sidebar can still open it. The Esc rail tab stays stood down.
+    if SoilPDAScreen ~= nil then
+        SoilPDAScreen._retainedDeepScreen = screen
     end
 
     local ok = pcall(function()
