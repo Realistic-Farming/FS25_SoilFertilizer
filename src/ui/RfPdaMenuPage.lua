@@ -1135,7 +1135,7 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     elseif isSoil then
         self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnFieldDetail }
     else
-        self.menuButtonInfo = { self.btnBack, self.btnHelp }
+        self.menuButtonInfo = { self.btnBack }
     end
     if type(self.setMenuButtonInfoDirty) == "function" then
         self:setMenuButtonInfoDirty()
