@@ -76,6 +76,11 @@ source(modDirectory .. "src/HandfulRead.lua")
 -- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
 -- daily pass.
 source(modDirectory .. "src/SpatialPressures.lua")
+-- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
+-- establishment window is physically absent crop. Loaded before
+-- SoilFertilitySystem, which owns the sowing chain and the daily pass that
+-- drive it. Consumes SCS positional moisture (absent = inert).
+source(modDirectory .. "src/EstablishmentFailure.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
