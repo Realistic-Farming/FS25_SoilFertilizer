@@ -361,6 +361,12 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.soilColFert = self:getDescendantById("soilColFert") or self.soilColFert
     self.soilSectionTreatment = self:getDescendantById("soilSectionTreatment") or self.soilSectionTreatment
     self.soilTreatProducts = self:getDescendantById("soilTreatProducts") or self.soilTreatProducts
+    -- Read-only rotation card (2026-08-07). Nil-safe: older door XML lacks these ids.
+    self.soilRotationCard   = self:getDescendantById("soilRotationCard") or self.soilRotationCard
+    self.soilRotationTitle  = self:getDescendantById("soilRotationTitle") or self.soilRotationTitle
+    self.soilRotationLast   = self:getDescendantById("soilRotationLast") or self.soilRotationLast
+    self.soilRotationStatus = self:getDescendantById("soilRotationStatus") or self.soilRotationStatus
+    self.soilRotationTip    = self:getDescendantById("soilRotationTip") or self.soilRotationTip
     self.treatSelectedLabel = self:getDescendantById("treatSelectedLabel") or self.treatSelectedLabel
     self.treatNextLabel     = self:getDescendantById("treatNextLabel") or self.treatNextLabel
     self.treatTargetsLabel  = self:getDescendantById("treatTargetsLabel") or self.treatTargetsLabel
@@ -469,9 +475,61 @@ function RfPdaMenuPage:initialize()
             end
         end
     }
+    -- Open full Market when MDM module is active. MENU_EXTRA_1, NOT MENU_ACTIVATE: the
+    -- commodity SmoothList consumes ACTIVATE/SPACE first so the footer callback never
+    -- fires (Ash+George r2 2026-08-07). Must exist in EVERY door carrier, because
+    -- whichever mod wins ensureDoor is the one whose footer the player actually gets
+    -- (Vera F1 2026-08-07).
+    self.btnOpenMarket = {
+        inputAction = InputAction.MENU_EXTRA_1,
+        showWhenPaused = true,
+        text = tr("md_rf_pda_open_market", "Open full Market"),
+        callback = function()
+            print("[MarketDynamics] Esc footer Open full Market pressed")
+            -- Cross-mod resolve (Vera F2 2026-08-07). MdRfPdaGuest / MDMMarketScreen are
+            -- MarketDynamics-env globals and are nil on a Soil/WC/SCS hosted door, so the
+            -- bare calls silently did nothing there. Same shape as the Worker Manager
+            -- resolve below and Soil's soilGlobal: try in-env, then g_modEnvironments.
+            local host = self:_getHost()
+            local activeId = host ~= nil and host.activeModuleId or nil
+            local mod = (host ~= nil and host.modules ~= nil and activeId ~= nil)
+                and host.modules[activeId] or nil
+            if mod ~= nil and type(mod.onOpenFullMarket) == "function" then
+                print("[MarketDynamics] Open full Market via active module def")
+                mod.onOpenFullMarket()
+                return
+            end
+            if MdRfPdaGuest ~= nil and type(MdRfPdaGuest.onOpenFullMarket) == "function" then
+                print("[MarketDynamics] Open full Market via in-env MdRfPdaGuest")
+                MdRfPdaGuest.onOpenFullMarket()
+                return
+            end
+            local mdEnv = g_modEnvironments ~= nil and g_modEnvironments["FS25_MarketDynamics"] or nil
+            local guest = mdEnv ~= nil and mdEnv.MdRfPdaGuest or nil
+            if guest ~= nil and type(guest.onOpenFullMarket) == "function" then
+                print("[MarketDynamics] Open full Market via g_modEnvironments MdRfPdaGuest")
+                guest.onOpenFullMarket()
+                return
+            end
+            local scr = mdEnv ~= nil and mdEnv.MDMMarketScreen or nil
+            if scr ~= nil and type(scr.show) == "function" then
+                print("[MarketDynamics] Open full Market via g_modEnvironments MDMMarketScreen")
+                scr.show()
+                return
+            end
+            if MDMMarketScreen ~= nil and type(MDMMarketScreen.show) == "function" then
+                print("[MarketDynamics] Open full Market via in-env MDMMarketScreen")
+                MDMMarketScreen.show()
+                return
+            end
+            print("[MarketDynamics] Open full Market: no handler available (all resolve paths nil)")
+        end
+    }
     -- SPACE / MENU_ACTIVATE: open the Worker Manager deep desk when WC is active.
     self.btnOpenWorkerManager = {
-        inputAction = InputAction.MENU_ACTIVATE,
+        -- MENU_EXTRA_2, not MENU_ACTIVATE: same SmoothList swallow class as Open full
+        -- Market (Ash 2026-08-07). Free while WC is active, Rotation Planner is Soil-only.
+        inputAction = InputAction.MENU_EXTRA_2,
         showWhenPaused = true,
         text = tr("wc_rf_pda_open_manager", "Open Worker Manager"),
         callback = function()
@@ -1130,7 +1188,13 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
         self.rfHostBody:setText("")
     end
     -- Bottom bar: SPACE opens the Worker Manager deep desk while WC is active.
-    if isWc and self.btnOpenWorkerManager ~= nil then
+    if isMd and self.btnOpenMarket ~= nil then
+        self.menuButtonInfo = { self.btnBack, self.btnOpenMarket }
+        local trFn = self._rfTr
+        if type(trFn) == "function" then
+            self.btnOpenMarket.text = trFn("md_rf_pda_open_market", "Open full Market")
+        end
+    elseif isWc and self.btnOpenWorkerManager ~= nil then
         self.menuButtonInfo = { self.btnBack, self.btnOpenWorkerManager }
     elseif isSoil then
         self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnFieldDetail }

@@ -10,7 +10,7 @@
 
 RfPdaSoilPanel = {}
 -- Cross-mod: WC/CS may source RfPdaMenuPage last (their env has no RfPdaSoilPanel).
--- getfenv(0) is Soil modEnv only — still publish for same-env callers.
+-- getfenv(0) is Soil modEnv only - still publish for same-env callers.
 -- Mission soft-detect is the reliable cross-mod bridge (also set in RfSoilEscJoiner).
 if type(getfenv) == "function" then
     local env0 = getfenv(0)
@@ -240,7 +240,7 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
             fertEl:setText(tr("rf_pda_fert_chip", "FERT"))
             fertEl:setTextColor(unpack(COLOR_FAIR))
         else
-            fertEl:setText("—")
+            fertEl:setText("-")
             fertEl:setTextColor(unpack(COLOR_DIM))
         end
     end
@@ -256,6 +256,8 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
             break
         end
     end
+
+    RfPdaSoilPanel.refreshRotationCard(page, entry)
 
     local function clearTargets()
         if page.treatTargetsHeading then page.treatTargetsHeading:setText("") end
