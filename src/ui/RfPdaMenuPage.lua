@@ -548,7 +548,10 @@ function RfPdaMenuPage:initialize()
         end
     }
 
-    self.menuButtonInfo = { self.btnBack, self.btnHelp }
+    -- Back only. Help is Soil-only and _syncHostGuestChrome adds it when the Soil
+    -- module is the active one; seeding it here leaked Help onto every module's
+    -- footer for the window before the first sync ran.
+    self.menuButtonInfo = { self.btnBack }
     self:_applyChromeL10n()
     self:_bindHostListener()
 end
