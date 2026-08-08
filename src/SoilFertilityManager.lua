@@ -51,6 +51,10 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     end
     self.soilSystem = SoilFertilitySystem.new(self.settings)
 
+    -- SF-18 establishment failure (the keystone): driven by the sowing chain
+    -- and the daily pass; consumes SCS positional moisture (absent = inert).
+    self.establishment = EstablishmentFailure and EstablishmentFailure.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -668,6 +672,16 @@ function SoilFertilityManager:activateSoilSystem()
 
     local ok, err = pcall(function()
         self.soilSystem:initialize()
+
+        -- SF-18 establishment failure: initialize + register the daily kill with
+        -- Time Guard (simulation flow) when present; SF's own day pass is the
+        -- fallback cadence. Server-only by the density write's nature.
+        if self.establishment then
+            self.establishment:initialize()
+            if g_server ~= nil then
+                self.establishment:registerDailyAccrual()
+            end
+        end
 
         -- DMV minimap heatmap - must init AFTER soilSystem so layerSystem is ready
         if self.soilMinimapLayer then

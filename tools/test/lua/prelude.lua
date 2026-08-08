@@ -52,6 +52,66 @@ function getXMLString(handle, key) if handle then return handle[key] end end
 -- Class tables some modules reference at load; harmless empty stubs.
 HookManager = HookManager or { new = function() return {} end }
 
+-- ── Density-map stubs (SF-18 establishment substrate + value-map tests) ──
+-- The production substrate is a cached DensityMapModifier machine over the fruit
+-- planes (clearPolygonPoints / addPolygonPointWorldCoords / executeSet), wrapped
+-- in growthSystem:setIgnoreDensityChanges, per the verified in-mod write path
+-- (SoilLayerSystem.writeFieldToLayers). These stubs keep the decision logic
+-- (window state, threshold, no-signal-no-thinning, per-region kill) testable
+-- without a terrain; a test asserts the write was ATTEMPTED through the stub.
+DensityMapMultiModifier = DensityMapMultiModifier or { new = function() return { sets = 0, executed = 0 } end }
+DensityMapModifier = DensityMapModifier or {
+  new = function()
+    local m = { polygons = {}, writes = 0, target = nil }
+    m.clearPolygonPoints = function(_self) m.polygons = {} end
+    m.addPolygonPointWorldCoords = function(_self, x, z)
+      m.polygons[#m.polygons + 1] = { x = x, z = z }
+    end
+    m.executeSet = function(_self, value, _filter)
+      m.writes = m.writes + 1
+      m.target = value
+    end
+    return m
+  end,
+}
+DensityMapFilter = DensityMapFilter or {
+  new = function()
+    local f = { compares = 0, op = nil, a = nil, b = nil }
+    f.setValueCompareParams = function(_self, op, a, b)
+      f.compares = f.compares + 1
+      f.op, f.a, f.b = op, a, b
+    end
+    return f
+  end,
+}
+DensityValueCompareType = DensityValueCompareType or { GREATER = 1, BETWEEN = 2, EQUAL = 3 }
+DensityRoundingMode = DensityRoundingMode or { INCLUSIVE = 1 }
+FieldDensityMap = FieldDensityMap or { GROUND_TYPE = 1, SPRAY_TYPE = 2 }
+FSDensityMapUtil = FSDensityMapUtil or { removeWeedArea = function() return true end }
+g_fieldManager = g_fieldManager or { fields = {} }
+g_fruitTypeManager = g_fruitTypeManager or {
+  getFruitTypeByName = function(_self, name)
+    if name == nil then return nil end
+    return {
+      name = name,
+      index = 1,
+      terrainDataPlaneId = 5,
+      startStateChannel = 0,
+      numStateChannels = 4,
+      minHarvestingGrowthState = 6,
+    }
+  end,
+  -- HayBet's fill-type index guard (g_fruitTypeManager and :getFillTypeIndexByName)
+  -- previously saw a nil manager and short-circuited to nil; preserve that.
+  getFillTypeIndexByName = function() return nil end,
+}
+g_currentMission.growthSystem = g_currentMission.growthSystem or {
+  setIgnoreDensityChanges = function() end,
+}
+g_currentMission.fieldGroundSystem = g_currentMission.fieldGroundSystem or {
+  getDensityMapData = function() return 1, 0, 1 end,
+}
+
 -- ── FS25 Event system (stubs) ──────────────────────────────
 -- Enough of the Event base + InitEventClass for a module's event classes to load
 -- and for `SomeEvent.new()` / `:writeStream` / `:readStream` to dispatch in tests.

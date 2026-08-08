@@ -77,3 +77,10 @@
 
 ## Module page dots always visible (2026-08-07)
 - [x] The Esc RF module page dots were hidden while Worker Costs or Market Dynamics was active, so WC never read as the 3rd module. All four RfPdaMenuPage copies now keep them visible. Built, deployed, PR open.
+
+## SF-18 establishment failure (2026-08-08)
+- [x] `src/EstablishmentFailure.lua` built to the certified brief (full conformance): ESTABLISHING window (sowing -> first visible green, live-sampled close), daily threshold kill consuming SCS-018 positional `getMoisture(fieldId, x, z)` per zone cell, compaction-weighted + severity-scaled (Biological dial, neutral awaiting the spine), NO SIGNAL = NO THINNING, contiguous cells grouped into regions killed once each, verified in-mod substrate write (single DensityMapModifier polygon path, growth-state 0, weed/spray clear), base-game re-drill door.
+- [x] Cadence: Time Guard `simulation` accrual at priority 95 (after moisture store 90, before stress/band refresh), SF day tracking fallback, frame-budgeted sweep pumped from update(); per-field daily wiring removed (it double-fired and made the feature inert).
+- [x] `establishment_window_spec_test.lua` at 25 assertions (brief certs 23): window machine, threshold/compaction/severity, no-signal-no-thinning, kill-once, re-drill, live green close, positional per-cell kill with surviving cells keeping the window open, whole-stand close. Suite 2328/0 across 50 files; syntax + lint clean. Built and deployed.
+- [~] In-game verification owed (the brief's in-game items): waterlogged seedbed yields bare ground following the water's contour (state-0 look), re-sow onto a killed region works, dedicated-server propagation of the density write, frame cost at a mass-sowing spring rollover.
+

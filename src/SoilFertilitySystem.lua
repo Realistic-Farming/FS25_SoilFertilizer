@@ -959,6 +959,12 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
 
+    -- SF-18: opening (or extending) the establishment window. Every sowing pass
+    -- extends, making re-drilling and multi-day drilling the same case.
+    if g_SoilFertilityManager and g_SoilFertilityManager.establishment then
+        g_SoilFertilityManager.establishment:onSowing(fieldId)
+    end
+
     -- Record the crop being seeded so the HUD/map show it right away (#661). Live FieldState
     -- detection only returns the new crop once the sampled point (field centroid) has actually
     -- been seeded, so on a half-finished pass the readout fell back to lastCrop and showed the
@@ -2581,6 +2587,18 @@ function SoilFertilitySystem:update(dt)
         end
     end
 
+    -- [SF-18] ESTABLISHMENT FAILURE: daily cadence pump. When Time Guard is
+    -- present its accrual drives the sweep; this call continues a pending
+    -- frame-budgeted sweep and, absent Time Guard, starts the daily sweep on a
+    -- day boundary (SF's own day tracking is the brief's fallback). Server only:
+    -- the kill write is server-authoritative and clients see it via base-game
+    -- crop density sync.
+    if g_server ~= nil and g_SoilFertilityManager and g_SoilFertilityManager.establishment
+        and g_SoilFertilityManager.establishment.isInitialized
+        and g_SoilFertilityManager.establishment.checkDayFallback then
+        g_SoilFertilityManager.establishment:checkDayFallback()
+    end
+
     -- REFINED: round-robin display-layer mirror. Keeps the per-pixel
     -- weed/pest/disease/urgency/yield maps in step with the field-level
     -- simulation values (herbicide passes, burn effects, nutrient changes
@@ -4115,6 +4133,12 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         -- Phase 3 (#651): a meadow field still simulates, but on grassland rules.
         isMeadow = meadow == true
     end
+
+    -- SF-18 ESTABLISHMENT FAILURE: the daily kill check is NOT driven per-field
+    -- here. It is a Time Guard accrual on the simulation flow class (priority
+    -- after the moisture store), with SF's own day tracking as the fallback when
+    -- Time Guard is absent; both are pumped from update() via checkDayFallback.
+    -- This per-field seam stays out so the sweep fires exactly once per day.
 
     local limits   = SoilConstants.NUTRIENT_LIMITS
     local recovery = SoilConstants.FALLOW_RECOVERY
