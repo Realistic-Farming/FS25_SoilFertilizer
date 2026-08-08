@@ -63,6 +63,9 @@
 - [x] Rotation Planner and Field Detail now open from the Esc panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), passing the panel's selectedFieldId (nil allowed).
 - [x] The map sidebar report/treatment buttons work again via the retained-page pattern: stand-down keeps the deep page on SoilPDAScreen._retainedDeepScreen, and show/toggle/showTreatment re-inject it into InGameMenu paging without restoring the Esc tab icon. In-game observation still pending.
 
+## 2026-08-07 (Fred): module page dots always visible
+- [x] The Esc RF module selector hid its page dots when Worker Costs or Market Dynamics was the active module. Soil and Crop Stress always showed theirs, so WC never read as the 3rd module and the left panel was inconsistent. All four RfPdaMenuPage copies now keep the dots visible (dots = N, chrome unchanged, per the esc-rf-pda umbrella brief). Built, deployed, PR open.
+
 
 ## 2026-08-07 (Bob): SF #764 root-caused and fixed - AI out-of-fill stop restored
 - [x] Issue #764 (Courseplay empty-tank): the diagnostic 2.5.0.6 trace build proved the tank reaches exactly zero in the failing runs but the fill unit type does NOT reset to UNKNOWN, so Sprayer:processSprayerArea never raises stopCurrentAIJob(OutOfFill) and Courseplay keeps driving. Root cause: the final drain leaves a sub-threshold residual (0 < level < 0.0005) above the engine's 0.00001 reset threshold; our speed-based getSprayerUsage makes that exact arithmetic vary run to run, which is the intermittency. Fix: in the appended onEndWorkAreaProcessing, complete the drain through the engine's own addFillUnitFillLevel when the tank is effectively empty (level < 0.001, type still set), so the engine's UNKNOWN reset fires and the AI stop works. In-game verification still pending.
