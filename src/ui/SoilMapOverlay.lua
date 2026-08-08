@@ -82,8 +82,19 @@ local function layerValueToT(layerIdx, val)
     if     layerIdx == 1 then return math.max(0, math.min(1, val / 100))        -- N   0-100
     elseif layerIdx == 2 then return math.max(0, math.min(1, val / 100))        -- P   0-100
     elseif layerIdx == 3 then return math.max(0, math.min(1, val / 100))        -- K   0-100
-    elseif layerIdx == 4 then                                                    -- pH  5.0-7.5, bell around 6.75
-        return math.max(0, math.min(1, 1 - math.abs(val - 6.75) / 1.75))
+    elseif layerIdx == 4 then
+        -- Match SoilHUD:pHColor bands (not a 6.75-centred bell):
+        -- 6.5-7.0 good, >7.0-7.5 poor (over-limed), >=5.5 fair, else poor.
+        local pH = val or 7.0
+        if pH >= 6.5 and pH <= 7.0 then
+            return 1.0
+        elseif pH > 7.0 and pH <= 7.5 then
+            return 0.0
+        elseif pH >= 5.5 then
+            return 0.5
+        else
+            return 0.0
+        end
     elseif layerIdx == 5 then return math.max(0, math.min(1, val / 4.0))        -- OM  0-10, green at 4+
     elseif layerIdx == 10 then                                                   -- Compaction: steep ramp so a
         -- single heavy pass (~8%) already reads as a warning tint, not "good" green.
@@ -1843,8 +1854,10 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
             elseif val < T.potassium.fair then return FAIR[1], FAIR[2], FAIR[3]
             else                               return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 4 then
+            -- Match SoilHUD:pHColor (over-limed >7.0-7.5 is POOR, not FAIR).
             local pH = math.floor((val * 10) + 0.5) / 10
             if pH >= 6.5 and pH <= 7.0 then return GOOD[1], GOOD[2], GOOD[3]
+            elseif pH > 7.0 and pH <= 7.5 then return POOR[1], POOR[2], POOR[3]
             elseif pH >= 5.5           then return FAIR[1], FAIR[2], FAIR[3]
             else                            return POOR[1], POOR[2], POOR[3] end
         elseif layerIdx == 5 then
@@ -1898,8 +1911,10 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             elseif v < T.potassium.fair then return FAIR[1], FAIR[2], FAIR[3]
             else                             return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 4 then
+            -- Match SoilHUD:pHColor (over-limed >7.0-7.5 is POOR, not FAIR).
             local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
             if pH >= 6.5 and pH <= 7.0 then    return GOOD[1], GOOD[2], GOOD[3]
+            elseif pH > 7.0 and pH <= 7.5 then return POOR[1], POOR[2], POOR[3]
             elseif pH >= 5.5           then    return FAIR[1], FAIR[2], FAIR[3]
             else                               return POOR[1], POOR[2], POOR[3] end
         elseif layerIdx == 5 then

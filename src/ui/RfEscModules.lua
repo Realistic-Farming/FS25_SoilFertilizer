@@ -70,6 +70,10 @@ function RfEscModules:registerModule(def)
         onHide = def.onHide,
         onWageOptionChanged = def.onWageOptionChanged,
         onWageReset = def.onWageReset,
+        -- Vera F2 2026-08-07: registerModule whitelists fields, so this was being
+        -- dropped and the door could never ask the active module to open its own
+        -- deep screen. Guests register it; keep it.
+        onOpenFullMarket = def.onOpenFullMarket,
     }
     if self.activeModuleId == nil then
         self.activeModuleId = def.id

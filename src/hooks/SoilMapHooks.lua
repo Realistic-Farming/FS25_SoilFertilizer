@@ -5,9 +5,28 @@
 -- as a standard category (like Growth or Soil Type).
 -- =========================================================
 -- Pattern: DynamicFieldFiresInGameMenuMapFrameHooks
+-- FAILFIX 2026-08-05: pairs(nil) Map freeze — nil-guards, coordinated
+-- mouseEvent chain with CsMapHooks, overwrite generateOverviewOverlay so
+-- custom page indices do not hit vanilla MAP_HOTSPOTS <= state fruit path,
+-- always call IngameMapElement.draw superFunc.
 -- =========================================================
 
 SoilMapHooks = {}
+
+local function logNilOnce(key, msg)
+    if InGameMenuMapFrame == nil then
+        SoilLogger.warning("SoilMapHooks: %s", msg)
+        return
+    end
+    if InGameMenuMapFrame._rfMapNilLog == nil then
+        InGameMenuMapFrame._rfMapNilLog = {}
+    end
+    if InGameMenuMapFrame._rfMapNilLog[key] then
+        return
+    end
+    InGameMenuMapFrame._rfMapNilLog[key] = true
+    SoilLogger.warning("SoilMapHooks: %s", msg)
+end
 
 local function getSoilOverlay(frame)
     if frame == nil then return nil end
@@ -21,7 +40,6 @@ local function isSoilPageActive(frame)
 
     local isActive = frame.mapOverviewSelector:getState() == frame.soilMapPageIndex
 
-    -- Local tracking to log transitions
     if isActive ~= frame._soilPageWasActive then
         frame._soilPageWasActive = isActive
         if isActive then
@@ -30,6 +48,66 @@ local function isSoilPageActive(frame)
     end
 
     return isActive
+end
+
+--- Ensure tables vanilla MapFrame pairs()/indexes are never nil.
+--- Shared with CsMapHooks via InGameMenuMapFrame._rfMapNilLog (once-per-key).
+local function ensurePairsSafeTables(frame)
+    if frame == nil then
+        return
+    end
+
+    if frame.ingameMap ~= nil and frame.ingameMap.ingameMap ~= nil then
+        if frame.ingameMap.ingameMap.hotspots == nil then
+            frame.ingameMap.ingameMap.hotspots = {}
+            logNilOnce("hotspots", "ingameMap.ingameMap.hotspots was nil; guarded to {}")
+        end
+    end
+
+    if frame.subCategoryDotBox ~= nil and frame.subCategoryDotBox.elements == nil then
+        frame.subCategoryDotBox.elements = {}
+        logNilOnce("dotElements", "subCategoryDotBox.elements was nil; guarded to {}")
+    end
+
+    if frame.displayCropTypes == nil then
+        logNilOnce("displayCropTypes", "displayCropTypes is nil (loadFilters / onLoadMapFinished may not have run)")
+    end
+
+    local state = nil
+    if frame.mapOverviewSelector ~= nil then
+        state = frame.mapOverviewSelector:getState()
+    end
+    if state == nil then
+        return
+    end
+
+    if frame.dataTables ~= nil and frame.dataTables[state] == nil then
+        if frame.soilMapPageIndex ~= nil and state == frame.soilMapPageIndex then
+            local overlay = getSoilOverlay(frame)
+            if overlay ~= nil then
+                frame.dataTables[state] = overlay:getDisplayValues() or {}
+            else
+                frame.dataTables[state] = {}
+            end
+            logNilOnce("dataTables_soil", string.format("dataTables[%s] was nil on Soil page; filled", tostring(state)))
+        else
+            logNilOnce("dataTables_" .. tostring(state), string.format("dataTables[%s] is nil", tostring(state)))
+        end
+    end
+
+    if frame.filterStates ~= nil and frame.filterStates[state] == nil then
+        if frame.soilMapPageIndex ~= nil and state == frame.soilMapPageIndex then
+            local overlay = getSoilOverlay(frame)
+            if overlay ~= nil then
+                frame.filterStates[state] = overlay:getDefaultFilterState() or {}
+            else
+                frame.filterStates[state] = {}
+            end
+            logNilOnce("filterStates_soil", string.format("filterStates[%s] was nil on Soil page; filled", tostring(state)))
+        else
+            logNilOnce("filterStates_" .. tostring(state), string.format("filterStates[%s] is nil", tostring(state)))
+        end
+    end
 end
 
 local function updateSubCategoryDotBox(frame)
@@ -47,11 +125,17 @@ local function updateSubCategoryDotBox(frame)
     while #elements < expectedCount do
         dotBox:addElement(elements[1]:clone(dotBox))
         elements = dotBox.elements
+        if elements == nil then
+            return
+        end
     end
 
     while #elements > expectedCount do
         elements[#elements]:delete()
         elements = dotBox.elements
+        if elements == nil then
+            return
+        end
     end
 
     for i, dot in ipairs(dotBox.elements) do
@@ -64,14 +148,19 @@ local function updateSubCategoryDotBox(frame)
     dotBox:invalidateLayout()
 end
 
+local function suppressNativeOverlay(frame)
+    if frame.ingameMap ~= nil and frame.ingameMap.setOverlayVisible ~= nil then
+        frame.ingameMap:setOverlayVisible(false)
+    end
+    if frame.ingameMapBase ~= nil and frame.ingameMapBase.setOverlayVisible ~= nil then
+        frame.ingameMapBase:setOverlayVisible(false)
+    end
+end
+
 function SoilMapHooks:onLoadMapFinished()
     local soilOverlay = getSoilOverlay(self)
     if soilOverlay then
         soilOverlay:requestRefresh()
-        -- Cache the IngameMap HUD reference for the minimap overlay.
-        -- g_currentMission.ingameMap is nil in FS25; the real instance lives on the
-        -- InGameMenuMapFrame as ingameMapBase (preferred) or ingameMap.
-        -- onLoadMapFinished fires at map-load time so we capture it before first draw.
         if not soilOverlay.ingameMapRef then
             local ref = nil
             if self.ingameMapBase and self.ingameMapBase.layout then
@@ -103,26 +192,36 @@ function SoilMapHooks:setupMapOverview()
 
     local pageText = g_i18n:getText("sf_map_page_title") or "Soil Nutrients"
 
-    -- FS25 InGameMenuMapFrame.mapSelectorTexts is usually 1-indexed table of strings
     table.insert(self.mapSelectorTexts, pageText)
     self.soilMapPageIndex = #self.mapSelectorTexts
     SoilLogger.info("SoilMapHooks: Registered native page index %d", self.soilMapPageIndex)
 
     self.mapOverviewSelector:setTexts(self.mapSelectorTexts)
 
-    -- Mimic DFF: Populate native data tables so the engine handles clearing/switching correctly
     if self.dataTables ~= nil then
-        self.dataTables[self.soilMapPageIndex] = soilOverlay:getDisplayValues()
+        self.dataTables[self.soilMapPageIndex] = soilOverlay:getDisplayValues() or {}
     end
 
     if self.filterStates ~= nil then
-        self.filterStates[self.soilMapPageIndex] = soilOverlay:getDefaultFilterState()
+        self.filterStates[self.soilMapPageIndex] = soilOverlay:getDefaultFilterState() or {}
+    end
+
+    if self.numSelectedFilters ~= nil then
+        self.numSelectedFilters[self.soilMapPageIndex] = 0
     end
 
     updateSubCategoryDotBox(self)
 end
 
-function SoilMapHooks:onClickMapOverviewSelector(state)
+function SoilMapHooks:onFrameOpen()
+    ensurePairsSafeTables(self)
+    if self.soilMapPageIndex == nil then
+        SoilMapHooks.setupMapOverview(self)
+    end
+end
+
+--- Own-page activation after vanilla selector work.
+function SoilMapHooks:onSoilPageSelected(state)
     if self.soilMapPageIndex == nil or state ~= self.soilMapPageIndex then
         return
     end
@@ -132,62 +231,44 @@ function SoilMapHooks:onClickMapOverviewSelector(state)
     local soilOverlay = getSoilOverlay(self)
     if soilOverlay == nil then return end
 
-    -- Ensure our data tables are initialised (DFF pattern)
     if self.dataTables ~= nil and self.dataTables[self.soilMapPageIndex] == nil then
-        self.dataTables[self.soilMapPageIndex] = soilOverlay:getDisplayValues()
+        self.dataTables[self.soilMapPageIndex] = soilOverlay:getDisplayValues() or {}
     end
     if self.filterStates ~= nil and self.filterStates[self.soilMapPageIndex] == nil then
-        self.filterStates[self.soilMapPageIndex] = soilOverlay:getDefaultFilterState()
+        self.filterStates[self.soilMapPageIndex] = soilOverlay:getDefaultFilterState() or {}
     end
     if self.numSelectedFilters ~= nil then
         self.numSelectedFilters[self.soilMapPageIndex] = 0
     end
 
-    -- Let generateOverviewOverlay (hooked below) handle native overlay suppression.
-    -- Calling it explicitly here ensures it runs even if the appended hook order differs.
-    if self.generateOverviewOverlay ~= nil then
-        self:generateOverviewOverlay()
-    end
-
+    suppressNativeOverlay(self)
     soilOverlay:requestRefresh()
 end
 
--- Called by the engine every time it tries to rebuild the density-map overlay texture.
--- When our Soil page is active we suppress the native overlay so it doesn't overwrite
--- our manually-drawn heatmap dots.  This is the DFF-correct suppression point.
-function SoilMapHooks:generateOverviewOverlay()
-    if self.soilMapPageIndex == nil or self.mapOverviewSelector == nil then return end
-    if self.mapOverviewSelector:getState() ~= self.soilMapPageIndex then return end
-
-    -- Hide the native density-map overlay so it does not render on top of our dots.
-    if self.ingameMap ~= nil and self.ingameMap.setOverlayVisible ~= nil then
-        self.ingameMap:setOverlayVisible(false)
+--- Overwrite: skip vanilla fruit path when Soil page active (MAP_HOTSPOTS <= state hazard).
+function SoilMapHooks:generateOverviewOverlay(superFunc)
+    if isSoilPageActive(self) then
+        suppressNativeOverlay(self)
+        local soilOverlay = getSoilOverlay(self)
+        if soilOverlay ~= nil then
+            soilOverlay:requestRefresh()
+        end
+        return
     end
-    if self.ingameMapBase ~= nil and self.ingameMapBase.setOverlayVisible ~= nil then
-        self.ingameMapBase:setOverlayVisible(false)
-    end
-
-    local soilOverlay = getSoilOverlay(self)
-    if soilOverlay ~= nil then
-        soilOverlay:requestRefresh()
+    if superFunc ~= nil then
+        return superFunc(self)
     end
 end
 
--- Called from IngameMapElement.draw (appended at class level).
--- `elementSelf` is the IngameMapElement instance being drawn.
--- We walk up the parent chain to find whichever InGameMenuMapFrame owns it,
--- then check if our soil page is active before drawing.
 function SoilMapHooks.onDrawIngameMapElement(elementSelf, ...)
     if elementSelf == nil or elementSelf.ingameMap == nil then return end
 
-    -- Opportunistically cache the IngameMap ref if setupMapOverview didn't get it
     local _soilOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
     if _soilOverlay and not _soilOverlay.ingameMapRef and elementSelf.ingameMap.layout then
         _soilOverlay.ingameMapRef = elementSelf.ingameMap
         SoilLogger.debug("SoilMapHooks: ingameMap ref captured from PDA draw (fallback)")
     end
 
-    -- Walk up (max 6 levels) to find the frame that has soilMapPageIndex
     local frame = elementSelf.parent
     local depth = 0
     while frame ~= nil and depth < 6 do
@@ -215,52 +296,40 @@ function SoilMapHooks:onDrawOverlayHud()
     soilOverlay:onDrawHud(self)
 end
 
-function SoilMapHooks:onMouseEvent(superFunc, posX, posY, isDown, isUp, button, eventUsed)
-    -- Guard: isSoilPageActive may error if selector is in transition (first-open race condition)
+--- Sidebar / cell click only; coordinated chain calls this before vanilla (no pcall amp).
+function SoilMapHooks.handleMouseEvent(frame, posX, posY, isDown, isUp, button, eventUsed)
     local pageActive = false
-    local ok, result = pcall(isSoilPageActive, self)
+    local ok, result = pcall(isSoilPageActive, frame)
     if ok then pageActive = result end
-
     if not pageActive then
-        local ok2, ret = pcall(superFunc, self, posX, posY, isDown, isUp, button, eventUsed)
-        if not ok2 then
-            SoilLogger.debug("[SoilMapHooks] mouseEvent superFunc error (frame in transition): %s", tostring(ret))
-        end
-        return ret
+        return false
     end
 
-    -- Store down position to distinguish click from drag
     if isDown then
-        self.soilMapClickX = posX
-        self.soilMapClickY = posY
+        frame.soilMapClickX = posX
+        frame.soilMapClickY = posY
     end
 
-    -- Manual click detection for our sidebar buttons (handled on Down)
     if not eventUsed and isDown and (button == Input.MOUSE_BUTTON_LEFT or button == Input.MOUSE_BUTTON_RIGHT) then
-        local soilOverlay = getSoilOverlay(self)
+        local soilOverlay = getSoilOverlay(frame)
         if soilOverlay and soilOverlay:onSideBarClick(posX, posY) then
-            return true -- Consume click
+            return true
         end
     end
 
-    -- Cell inspection: left-click inside the map area
-    -- We do this on Up to avoid blocking the native drag-start on Down.
-    -- We also check the distance to ensure it was a click, not a drag.
     if not eventUsed and isUp and button == Input.MOUSE_BUTTON_LEFT then
-        local soilOverlay = getSoilOverlay(self)
-        if soilOverlay and self.soilMapClickX and self.soilMapClickY then
-            local dx = math.abs(posX - self.soilMapClickX)
-            local dy = math.abs(posY - self.soilMapClickY)
-            -- Distance threshold (normalized screen units): 0.005 is roughly 8-10 pixels
+        local soilOverlay = getSoilOverlay(frame)
+        if soilOverlay and frame.soilMapClickX and frame.soilMapClickY then
+            local dx = math.abs(posX - frame.soilMapClickX)
+            local dy = math.abs(posY - frame.soilMapClickY)
             if dx < 0.005 and dy < 0.005 then
-                local ingameMap = (self.ingameMapBase and self.ingameMapBase.layout and self.ingameMapBase)
-                               or (self.ingameMap     and self.ingameMap.layout     and self.ingameMap)
+                local ingameMap = (frame.ingameMapBase and frame.ingameMapBase.layout and frame.ingameMapBase)
+                               or (frame.ingameMap     and frame.ingameMap.layout     and frame.ingameMap)
                 if ingameMap then
-                    local mapX, mapY, mapW, mapH = soilOverlay:getMapRenderBounds(self, ingameMap)
+                    local mapX, mapY, mapW, mapH = soilOverlay:getMapRenderBounds(frame, ingameMap)
                     if mapX and posX >= mapX and posX <= mapX + mapW
                            and posY >= mapY and posY <= mapY + mapH then
                         soilOverlay:onMapClick(ingameMap, posX, posY)
-                        -- Fall through to superFunc below
                     end
                 end
             end
@@ -268,22 +337,17 @@ function SoilMapHooks:onMouseEvent(superFunc, posX, posY, isDown, isUp, button, 
     end
 
     if isUp then
-        self.soilMapClickX = nil
-        self.soilMapClickY = nil
+        frame.soilMapClickX = nil
+        frame.soilMapClickY = nil
     end
 
-    -- Let the native handler handle movement, zooming, and map dragging
-    local ok3, ret3 = pcall(superFunc, self, posX, posY, isDown, isUp, button, eventUsed)
-    if not ok3 then
-        SoilLogger.debug("[SoilMapHooks] mouseEvent superFunc error: %s", tostring(ret3))
-    end
-    return ret3
+    return false
 end
 
 function SoilMapHooks:getHasChangeableFilterList(superFunc, ...)
     if self.soilMapPageIndex ~= nil and self.mapOverviewSelector ~= nil then
         if self.mapOverviewSelector:getState() == self.soilMapPageIndex then
-            return false -- We hide the native list and draw our own
+            return false
         end
     end
     return superFunc(self, ...)
@@ -297,6 +361,244 @@ function SoilMapHooks:onFrameClose()
     end
 end
 
+-- ── Shared installs (idempotent with CsMapHooks) ──────────
+
+--- Belt: if vanilla pageMapOverview:onLoadMapFinished never ran (e.g. aborted
+--- loadMission00Finished), restore real filter tables from mapOverlayGenerator
+--- before onFrameOpen → loadFilters. Do NOT paper with empty {} alone.
+local function restoreVanillaMapFilterInitIfMissing(frame)
+    if frame == nil then
+        return
+    end
+    local fruitKey = InGameMenuMapFrame.MAP_FRUIT_TYPE
+    local needsRestore = frame.displayCropTypes == nil
+        or frame.dataTables == nil
+        or (fruitKey ~= nil and frame.dataTables[fruitKey] == nil)
+    if not needsRestore then
+        return
+    end
+
+    local mission = g_currentMission
+    local mapOverlayGenerator = mission ~= nil and mission.mapOverlayGenerator or nil
+    frame.displaySoilStateMapping = {}
+    if mapOverlayGenerator ~= nil then
+        frame.displayCropTypes = mapOverlayGenerator:getDisplayCropTypes()
+        frame.displayGrowthStates = mapOverlayGenerator:getDisplayGrowthStates()
+        frame.displaySoilStates = mapOverlayGenerator:getDisplaySoilStates()
+        if frame.displaySoilStates ~= nil then
+            for index, state in pairs(frame.displaySoilStates) do
+                if state.isActive then
+                    state.soilStateIndex = index
+                    table.insert(frame.displaySoilStateMapping, state)
+                end
+            end
+        end
+    end
+
+    if frame.dataTables == nil then
+        frame.dataTables = {}
+    end
+    frame.dataTables[InGameMenuMapFrame.MAP_SOIL] = frame.displaySoilStateMapping or {}
+    frame.dataTables[InGameMenuMapFrame.MAP_FRUIT_TYPE] = frame.displayCropTypes or {}
+    frame.dataTables[InGameMenuMapFrame.MAP_GROWTH] = frame.displayGrowthStates or {}
+    frame.dataTables[InGameMenuMapFrame.MAP_HOTSPOTS] = InGameMenuMapFrame.HOTSPOT_FILTER_CATEGORIES or {}
+    frame.dataTables[InGameMenuMapFrame.MAP_FARMLANDS] = frame.farmlandItems or {}
+
+    if g_gameSettings ~= nil and GameSettings ~= nil and GameSettings.SETTING ~= nil then
+        g_gameSettings:setValue(GameSettings.SETTING.INGAME_MAP_HOTSPOT_FILTER, 4294967295, true)
+    end
+    if g_terrainNode ~= nil and frame.filterList ~= nil and type(frame.filterList.reloadData) == "function" then
+        frame.filterList:reloadData()
+    end
+
+    if InGameMenuMapFrame._rfVanillaFilterInitRestoredLogged ~= true then
+        InGameMenuMapFrame._rfVanillaFilterInitRestoredLogged = true
+        SoilLogger.info("SoilMapHooks: restored vanilla map filter init before onFrameOpen")
+    end
+end
+
+local function installVanillaFilterInitBelt()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.onFrameOpen == nil then
+        return
+    end
+    if InGameMenuMapFrame._rfVanillaFilterInitBeltInstalled then
+        return
+    end
+    InGameMenuMapFrame._rfVanillaFilterInitBeltInstalled = true
+    InGameMenuMapFrame.onFrameOpen = Utils.prependedFunction(
+        InGameMenuMapFrame.onFrameOpen,
+        restoreVanillaMapFilterInitIfMissing
+    )
+end
+
+local function installPairsSafeMouseChain()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.mouseEvent == nil then
+        return
+    end
+
+    if InGameMenuMapFrame._rfMapMouseHandlers == nil then
+        InGameMenuMapFrame._rfMapMouseHandlers = {}
+    end
+
+    local handlers = InGameMenuMapFrame._rfMapMouseHandlers
+    local replaced = false
+    for i = 1, #handlers do
+        if handlers[i].name == "SoilMapHooks" then
+            handlers[i].fn = SoilMapHooks.handleMouseEvent
+            replaced = true
+            break
+        end
+    end
+    if not replaced then
+        table.insert(handlers, { name = "SoilMapHooks", fn = SoilMapHooks.handleMouseEvent })
+    end
+
+    if InGameMenuMapFrame._rfMapMouseChainInstalled then
+        return
+    end
+    InGameMenuMapFrame._rfMapMouseChainInstalled = true
+
+    InGameMenuMapFrame.mouseEvent = Utils.overwrittenFunction(
+        InGameMenuMapFrame.mouseEvent,
+        function(self, superFunc, posX, posY, isDown, isUp, button, eventUsed)
+            ensurePairsSafeTables(self)
+            local list = InGameMenuMapFrame._rfMapMouseHandlers
+            if list ~= nil then
+                for i = 1, #list do
+                    local h = list[i]
+                    if h ~= nil and h.fn ~= nil then
+                        local used = h.fn(self, posX, posY, isDown, isUp, button, eventUsed)
+                        if used then
+                            return true
+                        end
+                    end
+                end
+            end
+            return superFunc(self, posX, posY, isDown, isUp, button, eventUsed)
+        end
+    )
+end
+
+local function installDeselectGuard()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.onClickDeselectAll == nil then
+        return
+    end
+    if InGameMenuMapFrame._rfDeselectGuardInstalled then
+        return
+    end
+    InGameMenuMapFrame._rfDeselectGuardInstalled = true
+
+    InGameMenuMapFrame.onClickDeselectAll = Utils.overwrittenFunction(
+        InGameMenuMapFrame.onClickDeselectAll,
+        function(self, superFunc, exceptionSection, exceptionIndex)
+            if self.getHasChangeableFilterList ~= nil and not self:getHasChangeableFilterList() then
+                return
+            end
+            ensurePairsSafeTables(self)
+            local state = self.mapOverviewSelector and self.mapOverviewSelector:getState()
+            if state == nil then
+                return
+            end
+            local dt = self.dataTables and self.dataTables[state]
+            if dt == nil then
+                logNilOnce("deselect_nil_table", string.format("onClickDeselectAll blocked: dataTables[%s] nil", tostring(state)))
+                return
+            end
+            if InGameMenuMapFrame.MAP_HOTSPOTS ~= nil and state == InGameMenuMapFrame.MAP_HOTSPOTS then
+                if dt[1] == nil or dt[2] == nil then
+                    logNilOnce("deselect_hotspot_shape", "onClickDeselectAll blocked: hotspot filter subtables nil")
+                    return
+                end
+            end
+            return superFunc(self, exceptionSection, exceptionIndex)
+        end
+    )
+end
+
+local function installSelectorGuard()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.onClickMapOverviewSelector == nil then
+        return
+    end
+    if InGameMenuMapFrame._rfSelectorGuardInstalled then
+        if not InGameMenuMapFrame._rfSoilSelectorPostInstalled then
+            InGameMenuMapFrame._rfSoilSelectorPostInstalled = true
+            local prev = InGameMenuMapFrame.onClickMapOverviewSelector
+            InGameMenuMapFrame.onClickMapOverviewSelector = function(self, state)
+                prev(self, state)
+                SoilMapHooks.onSoilPageSelected(self, state)
+            end
+        end
+        return
+    end
+    InGameMenuMapFrame._rfSelectorGuardInstalled = true
+    InGameMenuMapFrame._rfSoilSelectorPostInstalled = true
+
+    InGameMenuMapFrame.onClickMapOverviewSelector = Utils.overwrittenFunction(
+        InGameMenuMapFrame.onClickMapOverviewSelector,
+        function(self, superFunc, state)
+            ensurePairsSafeTables(self)
+            if superFunc ~= nil then
+                superFunc(self, state)
+            end
+            SoilMapHooks.onSoilPageSelected(self, state)
+        end
+    )
+end
+
+local function installFrameCloseGuard()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.onFrameClose == nil then
+        return
+    end
+    if InGameMenuMapFrame._rfFrameCloseHotspotGuard then
+        return
+    end
+    InGameMenuMapFrame._rfFrameCloseHotspotGuard = true
+
+    InGameMenuMapFrame.onFrameClose = Utils.overwrittenFunction(
+        InGameMenuMapFrame.onFrameClose,
+        function(self, superFunc)
+            ensurePairsSafeTables(self)
+            return superFunc(self)
+        end
+    )
+end
+
+local function installFilterListDeselectGuard()
+    if InGameMenuMapFrame == nil or InGameMenuMapFrame.initialize == nil then
+        return
+    end
+    if InGameMenuMapFrame._rfFilterListInitGuardInstalled then
+        return
+    end
+    InGameMenuMapFrame._rfFilterListInitGuardInstalled = true
+
+    InGameMenuMapFrame.initialize = Utils.appendedFunction(
+        InGameMenuMapFrame.initialize,
+        function(self)
+            if self._rfFilterListDeselectGuarded then
+                return
+            end
+            local filterList = self.filterList
+            if filterList == nil or filterList.mouseEvent == nil then
+                return
+            end
+            self._rfFilterListDeselectGuarded = true
+            local prev = filterList.mouseEvent
+            function filterList.mouseEvent(list, posX, posY, isDown, isUp, button, eventUsed)
+                if isDown and button == Input.MOUSE_BUTTON_RIGHT then
+                    if self.getHasChangeableFilterList ~= nil and not self:getHasChangeableFilterList() then
+                        if SmoothListElement ~= nil and SmoothListElement.mouseEvent ~= nil then
+                            return SmoothListElement.mouseEvent(list, posX, posY, isDown, isUp, button, eventUsed)
+                        end
+                        return eventUsed
+                    end
+                end
+                return prev(list, posX, posY, isDown, isUp, button, eventUsed)
+            end
+        end
+    )
+end
+
 -- ── Install Hooks ────────────────────────────────────────
 
 if InGameMenuMapFrame ~= nil then
@@ -308,14 +610,16 @@ if InGameMenuMapFrame ~= nil then
         InGameMenuMapFrame.setupMapOverview = Utils.appendedFunction(InGameMenuMapFrame.setupMapOverview, SoilMapHooks.setupMapOverview)
     end
 
-    if InGameMenuMapFrame.onClickMapOverviewSelector ~= nil then
-        InGameMenuMapFrame.onClickMapOverviewSelector = Utils.appendedFunction(InGameMenuMapFrame.onClickMapOverviewSelector, SoilMapHooks.onClickMapOverviewSelector)
+    if InGameMenuMapFrame.onFrameOpen ~= nil then
+        installVanillaFilterInitBelt()
+        InGameMenuMapFrame.onFrameOpen = Utils.appendedFunction(InGameMenuMapFrame.onFrameOpen, SoilMapHooks.onFrameOpen)
     end
 
-    -- Hook generateOverviewOverlay so the engine calls our suppression every time it
-    -- tries to rebuild the native density-map overlay texture (DFF pattern).
+    installSelectorGuard()
+
     if InGameMenuMapFrame.generateOverviewOverlay ~= nil then
-        InGameMenuMapFrame.generateOverviewOverlay = Utils.appendedFunction(InGameMenuMapFrame.generateOverviewOverlay, SoilMapHooks.generateOverviewOverlay)
+        InGameMenuMapFrame.generateOverviewOverlay = Utils.overwrittenFunction(
+            InGameMenuMapFrame.generateOverviewOverlay, SoilMapHooks.generateOverviewOverlay)
     end
 
     if InGameMenuMapFrame.draw ~= nil then
@@ -324,26 +628,33 @@ if InGameMenuMapFrame ~= nil then
         InGameMenuMapFrame.onDraw = Utils.appendedFunction(InGameMenuMapFrame.onDraw, SoilMapHooks.onDrawOverlayHud)
     end
 
-    if InGameMenuMapFrame.mouseEvent ~= nil then
-        InGameMenuMapFrame.mouseEvent = Utils.overwrittenFunction(InGameMenuMapFrame.mouseEvent, SoilMapHooks.onMouseEvent)
-    end
+    installPairsSafeMouseChain()
+    installDeselectGuard()
+    installFrameCloseGuard()
+    installFilterListDeselectGuard()
 
     if InGameMenuMapFrame.getHasChangeableFilterList ~= nil then
-        InGameMenuMapFrame.getHasChangeableFilterList = Utils.overwrittenFunction(InGameMenuMapFrame.getHasChangeableFilterList, SoilMapHooks.getHasChangeableFilterList)
+        InGameMenuMapFrame.getHasChangeableFilterList = Utils.overwrittenFunction(
+            InGameMenuMapFrame.getHasChangeableFilterList, SoilMapHooks.getHasChangeableFilterList)
     end
 
     if InGameMenuMapFrame.onFrameClose ~= nil then
         InGameMenuMapFrame.onFrameClose = Utils.appendedFunction(InGameMenuMapFrame.onFrameClose, SoilMapHooks.onFrameClose)
     end
 
-    SoilLogger.info("SoilMapHooks: installed on InGameMenuMapFrame (Manual UI Mode)")
+    SoilLogger.info("SoilMapHooks: installed on InGameMenuMapFrame (pairs-safe mouse chain)")
 end
 
 -- Hook IngameMapElement.draw at class level.
+-- ALWAYS call superFunc when present (George FAILFIX: prior early-return skipped vanilla draw).
 if IngameMapElement ~= nil then
     IngameMapElement.draw = Utils.overwrittenFunction(IngameMapElement.draw, function(self, superFunc, clipX1, clipY1, clipX2, clipY2)
-        if self.ingameMap == nil then return end
-        superFunc(self, clipX1, clipY1, clipX2, clipY2)
+        if superFunc ~= nil then
+            superFunc(self, clipX1, clipY1, clipX2, clipY2)
+        end
+        if self.ingameMap == nil then
+            return
+        end
         SoilMapHooks.onDrawIngameMapElement(self)
     end)
     SoilLogger.info("SoilMapHooks: IngameMapElement.draw hook installed for overlay drawing")
@@ -352,8 +663,6 @@ else
 end
 
 -- Hook IngameMap.drawFields at class level for DMV minimap heatmap rendering.
--- This fires per-IngameMap instance (HUD minimap AND PDA fullscreen).
--- SoilMinimapLayer.draw() guards against drawing on the PDA map internally.
 if IngameMap ~= nil and IngameMap.drawFields ~= nil then
     IngameMap.drawFields = Utils.appendedFunction(IngameMap.drawFields, function(mapSelf)
         local sfm = g_SoilFertilityManager
@@ -365,4 +674,3 @@ if IngameMap ~= nil and IngameMap.drawFields ~= nil then
 else
     SoilLogger.warning("SoilMapHooks: IngameMap.drawFields not available - DMV minimap heatmap will not render")
 end
-
