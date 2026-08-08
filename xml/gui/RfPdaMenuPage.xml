@@ -38,8 +38,8 @@
                 <!-- Soil/CS left info (George: inside rfFilterBox, BEFORE moduleList; Text + blank.png). -->
                 <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 284px"
-                          textMaxNumLines="16" textVerticalAlignment="top" text=""/>
+                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 644px"
+                          textMaxNumLines="36" textVerticalAlignment="top" text=""/>
                 </GuiElement>
 
                 <GuiElement profile="fs25_subCategoryListContainer" id="rfModuleListShell">
@@ -123,14 +123,17 @@
 
                         <!-- F12: all headers centered; AREA/STATUS/Fertilizer body centered.
                              IDs: Lua _applyChromeL10n rebinds when CS/WC created the Esc door. -->
-                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="16px -8px"    size="100px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="100px 24px"/>
-                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" text="P"                       position="350px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" text="K"                       position="470px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="590px -8px"   size="100px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="700px -8px"   size="140px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="860px -8px"  size="160px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
+                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
 
                         <GuiElement profile="fs25_subCategoryListContainer" position="0px -32px"
                                     absoluteSizeOffset="0px 40px">
@@ -139,14 +142,17 @@
                                         endClipperElementName="rfListEnd">
                                 <ListItem profile="RF_ListRowTall" onClick="onClickFieldRow">
                                     <Bitmap profile="RF_RowBg" name="alternating"/>
-                                    <Text profile="RF_CellLeft"   name="fieldRowId"     size="100px 44px"/>
-                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="100px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="350px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="470px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="590px 0px"  size="100px 44px"/>
-                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="700px 0px" size="140px 44px"/>
-                                    <Text profile="RF_FertChip"   name="fieldRowFert"   position="860px 0px" size="160px 44px"/>
+                                    <Text profile="RF_CellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
+                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
+                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
+                                    <Text profile="RF_FertChip"   name="fieldRowFert"   position="702px 0px" size="106px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
                                 </ListItem>
                             </SmoothList>
                             <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfListStart"/>
@@ -165,23 +171,24 @@
                         <Bitmap profile="RF_TreatmentBoxBg"/>
                         <Text profile="RF_SectionTitle" id="soilSectionTreatment" position="10px -6px" text="$l10n_rf_pda_section_treatment"/>
 
-                        <!-- Col 1: vertical target stack (F11 positions held; Selected field moved right) -->
-                        <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -56px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetN" position="10px -88px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetP" position="10px -120px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetK" position="10px -152px" size="250px 20px"/>
+                        <!-- Col 1: Target stack (W 180; N→P→K→pH @ 22px pitch; plan X 220) -->
+                        <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -56px" size="180px 20px"/>
+                        <Text profile="RF_TreatTargetLine" id="treatTargetN" position="10px -78px" size="180px 20px"/>
+                        <Text profile="RF_TreatTargetLine" id="treatTargetP" position="10px -100px" size="180px 20px"/>
+                        <Text profile="RF_TreatTargetLine" id="treatTargetK" position="10px -122px" size="180px 20px"/>
+                        <Text profile="RF_TreatTargetLine" id="treatTargetPH" position="10px -144px" size="180px 20px"/>
                         <!-- Legacy bind kept hidden (F5 replaces single multiline Text) -->
                         <Text profile="RF_HintText" id="treatTargetsLabel" position="10px -54px" size="1px 1px"
                               visible="false"/>
 
                         <!-- Eyes-on 2026-08-03: Field on line 1, Next tip on line 2 (separate Text ids). -->
-                        <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="270px -22px" size="560px 20px"
+                        <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="220px -22px" size="560px 20px"
                               textAlignment="left"/>
-                        <Text profile="RF_TreatNext" id="treatNextLabel" position="270px -42px" size="560px 40px"
+                        <Text profile="RF_TreatNext" id="treatNextLabel" position="220px -42px" size="560px 40px"
                               textAlignment="left" textMaxNumLines="2" textVerticalAlignment="top"/>
 
                         <!-- Col 2: PRODUCTS table — wider Name; Rate/Total kept readable (no SmoothList) -->
-                        <GuiElement profile="RF_ProductsShell" id="treatProductsShell" position="270px -88px">
+                        <GuiElement profile="RF_ProductsShell" id="treatProductsShell" position="220px -88px">
                             <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="0px 0px" size="560px 18px"
                                   text="$l10n_rf_pda_treat_products"/>
                             <Text profile="RF_ProductColHeader" position="0px -20px" size="40px 16px" text="NUT"/>
@@ -244,16 +251,30 @@
                             </GuiElement>
                         </GuiElement>
 
-                        <!-- Col 3: read-only crop rotation card (Wizard red square 2026-08-07,
-                             Samantha DESIGN ACK). Reuses RotationPlannerData copy so the words
-                             match the deep planner. Read-only: no SmoothList, no apply controls. -->
-                        <GuiElement profile="RF_ProductsShell" id="soilRotationCard" position="850px -88px" size="290px 248px">
+                        <!-- Col 3: read-only rotation glance + What-if (Wizard eyes-on 2026-08-08 pics 1-3,
+                             Samantha DESIGN + George ENGINE ACK). Footprint held at George's
+                             850px -88px / 290px 248px - never grows left into PRODUCTS.
+                             Soil grey via RF_TreatmentBoxBg (mock blue vetoed). Fixed Text only,
+                             no SmoothList. Read-only: no apply-rotation controls. -->
+                        <GuiElement profile="RF_ProductsShell" id="soilRotationCard" position="850px -52px" size="290px 248px">
                             <Text profile="RF_ProductsTitle" id="soilRotationTitle" position="0px 0px" size="290px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationLast" position="0px -24px" size="290px 40px"
+                            <Text profile="RF_ProductCell" id="soilRotationLast" position="0px -24px" size="290px 20px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationStatus" position="0px -46px" size="290px 20px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationTip" position="0px -66px" size="290px 32px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCell" id="soilRotationStatus" position="0px -68px" size="290px 20px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationTip" position="0px -92px" size="290px 60px"
-                                  textMaxNumLines="3" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationWhatIfHeader" position="0px -98px" size="290px 16px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColCrop" position="0px -116px" size="96px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColStatus" position="100px -116px" size="66px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColEffect" position="170px -116px" size="120px 14px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Crop" position="0px -132px" size="96px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Status" position="100px -132px" size="66px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Effect" position="170px -132px" size="120px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Crop" position="0px -150px" size="96px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Status" position="100px -150px" size="66px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Effect" position="170px -150px" size="120px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Crop" position="0px -168px" size="96px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Status" position="100px -168px" size="66px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Effect" position="170px -168px" size="120px 18px"/>
                         </GuiElement>
 
                         <!-- Col 3: sampling — shifted right so widened PRODUCTS does not overlap -->
@@ -359,15 +380,15 @@
                     <GuiElement profile="RF_WcPageShell" id="rfFrameworkGlanceShell" visible="false" position="0px 0px">
                         <GuiElement id="rfFwStatusBlock" visible="true" position="0px 0px" size="1140px 580px">
                             <Text profile="RF_SectionTitle" id="rfFwStatusTitle" position="0px 0px" size="1140px 24px" text="" visible="false"/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="0px 0px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="0px -48px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="0px -96px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="0px -144px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="0px -192px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="0px -240px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="0px -288px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="0px -336px" size="1140px 22px" text=""/>
-                            <Text profile="RF_HintText" id="rfFwHint" position="0px -384px" size="1140px 120px"
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="0px 0px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="0px -48px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="0px -96px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="0px -144px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="580px 0px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="580px -48px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="580px -96px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="580px -144px" size="560px 22px" text=""/>
+                            <Text profile="RF_HintText" id="rfFwHint" position="0px -200px" size="1140px 120px"
                                   textMaxNumLines="4" textVerticalAlignment="top" text=""/>
                         </GuiElement>
                         <GuiElement id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 580px">

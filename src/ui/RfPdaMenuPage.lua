@@ -381,6 +381,9 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.soilColArea = self:getDescendantById("soilColArea") or self.soilColArea
     self.soilColStatus = self:getDescendantById("soilColStatus") or self.soilColStatus
     self.soilColFert = self:getDescendantById("soilColFert") or self.soilColFert
+    self.soilColWeed = self:getDescendantById("soilColWeed") or self.soilColWeed
+    self.soilColPest = self:getDescendantById("soilColPest") or self.soilColPest
+    self.soilColDisease = self:getDescendantById("soilColDisease") or self.soilColDisease
     self.soilSectionTreatment = self:getDescendantById("soilSectionTreatment") or self.soilSectionTreatment
     self.soilTreatProducts = self:getDescendantById("soilTreatProducts") or self.soilTreatProducts
     -- Read-only rotation card (2026-08-07). Nil-safe: older door XML lacks these ids.
@@ -389,6 +392,19 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.soilRotationLast   = self:getDescendantById("soilRotationLast") or self.soilRotationLast
     self.soilRotationStatus = self:getDescendantById("soilRotationStatus") or self.soilRotationStatus
     self.soilRotationTip    = self:getDescendantById("soilRotationTip") or self.soilRotationTip
+    -- What-if block (2026-08-08). Nil-safe: older door XML lacks these ids.
+    self.soilRotationWhatIfHeader = self:getDescendantById("soilRotationWhatIfHeader") or self.soilRotationWhatIfHeader
+    self.soilRotationIfColCrop    = self:getDescendantById("soilRotationIfColCrop") or self.soilRotationIfColCrop
+    self.soilRotationIfColStatus  = self:getDescendantById("soilRotationIfColStatus") or self.soilRotationIfColStatus
+    self.soilRotationIfColEffect  = self:getDescendantById("soilRotationIfColEffect") or self.soilRotationIfColEffect
+    self.soilRotationIfRows = {}
+    for i = 1, 3 do
+        self.soilRotationIfRows[i] = {
+            crop   = self:getDescendantById(string.format("soilRotationIf%dCrop", i)),
+            status = self:getDescendantById(string.format("soilRotationIf%dStatus", i)),
+            effect = self:getDescendantById(string.format("soilRotationIf%dEffect", i)),
+        }
+    end
     self.treatSelectedLabel = self:getDescendantById("treatSelectedLabel") or self.treatSelectedLabel
     self.treatNextLabel     = self:getDescendantById("treatNextLabel") or self.treatNextLabel
     self.treatTargetsLabel  = self:getDescendantById("treatTargetsLabel") or self.treatTargetsLabel
@@ -396,6 +412,7 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.treatTargetN       = self:getDescendantById("treatTargetN") or self.treatTargetN
     self.treatTargetP       = self:getDescendantById("treatTargetP") or self.treatTargetP
     self.treatTargetK       = self:getDescendantById("treatTargetK") or self.treatTargetK
+    self.treatTargetPH      = self:getDescendantById("treatTargetPH") or self.treatTargetPH
     self.treatPlanLines     = self:getDescendantById("treatPlanLines") or self.treatPlanLines
     self.treatProdRows = {}
     for i = 1, 8 do
@@ -444,7 +461,10 @@ function RfPdaMenuPage:_applyChromeL10n()
     setEl(self.soilColField, "sf_pda_col_field", "Field")
     setEl(self.soilColArea, "rf_pda_col_area", "Area")
     setEl(self.soilColStatus, "sf_pda_col_status", "Status")
-    setEl(self.soilColFert, "rf_pda_col_fert", "Fertilizer")
+    setEl(self.soilColFert, "rf_pda_col_fert", "FERT")
+    setEl(self.soilColWeed, "sf_pda_col_weeds", "Weeds")
+    setEl(self.soilColPest, "sf_pda_col_pests", "Pests")
+    setEl(self.soilColDisease, "sf_pda_col_disease", "Disease")
     setEl(self.fieldsEmptyHint, "sf_pda_no_fields", "No field data recorded yet.")
     setEl(self.soilSectionTreatment, "rf_pda_section_treatment", "Treatment")
     setEl(self.soilTreatProducts, "rf_pda_treat_products", "Products")
@@ -1127,7 +1147,7 @@ function RfPdaMenuPage:_refreshSideInfo(activeId)
     if self.rfSideInfoBody and self.rfSideInfoBody.setText then
         if isSoil then
             self.rfSideInfoBody:setText(tr("rf_pda_side_info_soil",
-                "Soil Fertilizer\n\nThis table lists every field you own. One row = one field.\n\nColumns: Field #, Area, N/P/K (% of a healthy target), pH (like the soil monitor - e.g. 6.2), Status (Good / Fair / Poor), Fertilizer need (short cue for what still looks short).\n\nClick a row. Treatment (below) is the plan for that field:\n- PRODUCT = what to buy (first is preferred; \"or ...\" is an alternate)\n- RATE = amount per area / TOTAL = amount for this field\n- Selected names the field; Next (under it) says what to do first\n\nHow to apply: dry goods (urea, MAP, potash, lime) go through a fertilizer spreader; liquids go in a sprayer tank. If pH and nutrients both show, fix lime or gypsum first so nutrients can work. Weed, pest, or disease lines mean spray (or weed mechanically) before you expect a full crop.\n\nStart with the weakest Status, open Treatment, follow Next, then the rest of the list."))
+                "Soil Fertilizer\n\nThis screen shows the soil on your owned fields. Each line is one field. Press X HELP for the full Field Guide.\n\nThe table shows Field, Area, N, P, K, pH, Status, FERT, Weeds, Pests, and Disease. Status is Good, Fair, or Poor from the worst nutrient or pressure. Work the weakest Status first. When FERT says IN NEED, that field needs fertilizer.\n\nClick a field to open Treatment. PRODUCTS lists what to use, top first. RATE is per area. TOTAL is for the whole field. Next is the first job. Target is healthy. Fix lime or gypsum before nutrients. Dry goes in a spreader. Liquid goes in a sprayer. High Weeds, Pests, or Disease means spray first.\n\nWhat-if lets you try the next crop. Press SPACE for detail. Press C for rotation. N falls every harvest. P and K move slower. Organic matter builds over seasons. Aim for pH 6.5 to 7.0. Check worst fields, treat top-down, recheck.\n\nLime raises acid soil. Gypsum lowers alkaline soil. Use N often. Use P and K every few seasons. Press X HELP for lists, HUD tips, and FAQ."))
         elseif isCs then
             self.rfSideInfoBody:setText(tr("rf_pda_side_info_crop_stress",
                 "Crop Stress\n\nThis table lists every field you own. One row = one field.\n\nColumns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).\n\nClick a row. The strip below names the field, then Next says what to do first:\n- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)\n- High Stress or a sensitive growth window → protect now; stress today cuts harvest later\n- Looking fine → recheck later; worse fields first\n\nIrrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. Edit systems on Farm Tablet / Crop Consultant when you need to change them.\n\nIf Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.\n\nStart with Critical Status, follow Next, then work up the list."))
