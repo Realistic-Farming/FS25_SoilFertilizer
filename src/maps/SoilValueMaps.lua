@@ -801,7 +801,16 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
     local dev = SoilValueMaps.computeReliefDeviations(heights, amplitude, minRange)
     if dev == nil then return false end
 
-    -- Pass 2: paint base + deviation over the same blocks. encode() clamps to
+    -- BASE COAT FIRST, and it is not optional. The block loop below only paints
+    -- blocks whose CENTRE falls inside the polygon (isPointInPoly), so pixels in
+    -- the boundary blocks would be left untouched. The path this replaces used
+    -- setPolygonRegion, which covers the polygon EXACTLY, so without this the
+    -- organicMatter layer would lose its field edges on every machine where
+    -- engine polygon ops work. paintPolygon takes the precise path when it can
+    -- and the same block fallback when it cannot.
+    self:paintPolygon(key, verts, baseValue)
+
+    -- Pass 2: overlay base + deviation over the same blocks. encode() clamps to
     -- the layer's range; on a decayed field sitting near its floor the clamp can
     -- absorb part of the deviation (the brief's measured "clamp residual").
     local def = entry.def
