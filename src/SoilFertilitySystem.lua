@@ -3482,6 +3482,32 @@ local VM_SEED_SPREAD = {
     compaction    = 0,
 }
 
+-- SF-20 RELIEF WEIGHT: seed one nutrient layer. Organic matter is painted from
+-- the field's own terrain relief (low ground is richer); every other layer keeps
+-- the cosmetic Perlin spread. Relief REPLACES the spread only where relief
+-- exists - on a field flatter than the guard, seedPolygonByRelief declines and
+-- this falls through to exactly today's behaviour.
+--
+-- Organic matter is the ONE property where a static terrain-derived deviation is
+-- honest. Nitrogen here is plant-available N, a seasonal weather-driven
+-- quantity, not a landscape-structural one: do NOT extend this to N/P/K/pH.
+local function vmSeedNutrient(vm, key, verts, baseValue, spread)
+    if key == "organicMatter" and baseValue and baseValue > 0 then
+        local relief = SoilConstants.RELIEF
+        -- Guarded on the method as well as the constants: seeding must degrade
+        -- to the existing path on any value-maps object that predates SF-20
+        -- rather than take a field's seeding down with it.
+        if relief and vm.seedPolygonByRelief then
+            local amplitude = baseValue * relief.AMPLITUDE_FRACTION * relief.AGRONOMY_SCALE
+            if amplitude >= (relief.MIN_AMPLITUDE or 0)
+               and vm:seedPolygonByRelief(key, verts, baseValue, amplitude) then
+                return
+            end
+        end
+    end
+    vm:seedPolygon(key, verts, baseValue, spread)
+end
+
 --- True when the per-pixel value maps are usable.
 function SoilFertilitySystem:vmAvailable()
     return self.valueMaps ~= nil and self.valueMaps.available
@@ -3574,10 +3600,14 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
             end
         end
         if migrated then
-            -- Base fill first so gaps between stamped cells are covered
+            -- Base fill first so gaps between stamped cells are covered.
+            -- [SF-20] The OM base fill is relief-painted; the legacy per-cell
+            -- stamp below then lands ON TOP of it, so a migrated save's real
+            -- stored soil always beats the derived relief picture and only the
+            -- gaps between stamped cells take the terrain-true fill.
             for _, key in ipairs(VM_NUTRIENT_KEYS) do
                 if vmShouldSeed(vm, key, force) then
-                    vm:seedPolygon(key, verts, field[key]
+                    vmSeedNutrient(vm, key, verts, field[key]
                         or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
                 end
             end
@@ -3633,7 +3663,7 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
     if not migrated then
         for _, key in ipairs(VM_NUTRIENT_KEYS) do
             if vmShouldSeed(vm, key, force) then
-                vm:seedPolygon(key, verts, field[key]
+                vmSeedNutrient(vm, key, verts, field[key]
                     or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
             end
         end

@@ -102,6 +102,39 @@ SoilConstants.FIELD_VARIATION = {
 }
 
 -- ========================================
+-- RELIEF WEIGHT (SF-20)
+-- ========================================
+-- Organic matter varies within a field by where each patch sits in that field's
+-- own relief: water and material collect downhill, so LOW ground is richer.
+-- Painted into the organicMatter value map at seed time (and as the base fill on
+-- the legacy migration); nothing new is stored and nothing new goes on the wire.
+SoilConstants.RELIEF = {
+    -- Peak-to-peak OM variation across one field, as a FRACTION of that field's
+    -- own OM stock. The brief's balance anchor is roughly 5-20% of stock.
+    -- This is the AGRONOMY dial magnitude of the suite difficulty framework,
+    -- resolved through the vendored resolver (OptionScalingResolver,
+    -- FS25_SettingsHub) when the Option-Scaling Spine ships. Until then the
+    -- neutral identity below is the honest value. One-line change when the
+    -- resolver lands, and deliberately NOT a SoilFertilizer setting (the brief's
+    -- dial-neutral contract: this mod already carries two local difficulty axes).
+    AMPLITUDE_FRACTION = 0.15,
+    -- Neutral identity for the Agronomy dial until the spine resolves it.
+    AGRONOMY_SCALE = 1.0,
+    -- Height range (metres) across a field below which the field carries no
+    -- relief information. Under it every deviation is zero and seeding falls
+    -- back to the existing cosmetic spread, so a flat field looks exactly as it
+    -- does today rather than becoming a flat colour block.
+    MIN_RANGE = 1.5,
+    -- Terrain-sample and paint block size (metres). Matches the existing seed
+    -- block size; sampling finer than the heightmap unit returns interpolation
+    -- rather than information.
+    BLOCK_SIZE = 8,
+    -- Floor on the computed amplitude (OM points). Below this the deviation is
+    -- not worth a second pass over the polygon.
+    MIN_AMPLITUDE = 0.05,
+}
+
+-- ========================================
 -- PLOWING
 -- ========================================
 -- Thresholds for plowing operations
