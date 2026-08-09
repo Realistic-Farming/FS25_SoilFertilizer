@@ -73,6 +73,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
+    addConsoleCommand("SoilReliefCheck", "SF-20: run the relief acceptance checks on a field (direction/magnitude/conservation)", "consoleCommandReliefCheck", self)
     addConsoleCommand("SoilRerollUnownedFields", "Re-roll starting soil only for fields you don't own (keeps your own farm's soil) (#632)", "consoleCommandRerollUnownedFields", self)
     addConsoleCommand("SoilBlacklistField", "FieldSentry: sleep/wake a field's soil sim: SoilBlacklistField <fieldId> [true|false] (#651)", "consoleCommandBlacklistField", self)
     addConsoleCommand("SoilFieldSentry", "FieldSentry: show a field's sim status, or list all slept fields: SoilFieldSentry [fieldId] (#651)", "consoleCommandFieldSentry", self)
@@ -1860,3 +1861,66 @@ function SoilSettingsGUI:consoleCommandAddCrop(name)
         key, rates and rates.N or 0, rates and rates.P or 0, rates and rates.K or 0)
 end
 
+
+--- SF-20 relief acceptance check. Runs the brief's three in-game checks on one
+--- field and reports numbers plus a verdict, so the result is something a
+--- second person can reproduce rather than a judgement about a picture.
+function SoilSettingsGUI:consoleCommandReliefCheck(fieldIdStr)
+    if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then
+        return "Error: Soil Mod not initialized"
+    end
+    local soilSystem = g_SoilFertilityManager.soilSystem
+
+    local fieldId = tonumber(fieldIdStr)
+    if fieldId == nil then
+        -- Default to the field under the player, the same detection the HUD uses.
+        local hud = g_SoilFertilityManager.soilHUD
+        fieldId = hud and hud.cachedFieldId or nil
+    end
+    if fieldId == nil then
+        return "Usage: SoilReliefCheck <fieldId>   (or stand on a field)"
+    end
+
+    local r, err = soilSystem:reliefCheck(fieldId)
+    if r == nil then
+        return string.format("SoilReliefCheck: %s", tostring(err))
+    end
+
+    local lines = {
+        string.format("=== SF-20 relief check, field %d ===", fieldId),
+        string.format("  samples %d   ground range %.2f m   flat guard %.2f m",
+            r.samples, r.reliefRange, r.flatGuard),
+    }
+
+    if r.isFlat then
+        lines[#lines + 1] = "  FLAT FIELD: below the guard, so no relief is expected here."
+        lines[#lines + 1] = "  This is a PASS for the flat-neutrality check, not a failure."
+        lines[#lines + 1] = string.format("  OM spread %.3f pts (should be the cosmetic spread only)", r.omSpread)
+        return table.concat(lines, "\n")
+    end
+
+    -- CHECK 4: direction. The one that matters most; inverted means the mod is
+    -- telling the player the opposite of the truth.
+    local dirOk = r.lowGroundOM > r.highGroundOM
+    lines[#lines + 1] = string.format("  low ground  OM %.3f %%", r.lowGroundOM)
+    lines[#lines + 1] = string.format("  high ground OM %.3f %%", r.highGroundOM)
+    lines[#lines + 1] = string.format("  DIRECTION : %s (low must read higher)",
+        dirOk and "PASS" or "FAIL - SIGN INVERTED")
+
+    -- CHECK 6: magnitude. Spread should be about the amplitude, never far over.
+    local magOk = r.amplitude <= 0 or r.omSpread <= r.amplitude * 1.35
+    lines[#lines + 1] = string.format("  OM spread %.3f pts vs amplitude %.3f pts", r.omSpread, r.amplitude)
+    lines[#lines + 1] = string.format("  MAGNITUDE : %s (spread must not exceed the amplitude)",
+        magOk and "PASS" or "FAIL - went multiplicative somewhere")
+
+    -- CHECK 5: conservation. The sampled mean should sit on the field figure;
+    -- a drift means the deviation is being stored rather than derived.
+    local drift = math.abs(r.omSampledMean - r.fieldOM)
+    local consOk = drift <= math.max(0.05, r.amplitude * 0.25)
+    lines[#lines + 1] = string.format("  sampled mean %.3f vs field figure %.3f (drift %.3f)",
+        r.omSampledMean, r.fieldOM, drift)
+    lines[#lines + 1] = string.format("  CONSERVATION: %s (cells vary, the field total must not move)",
+        consOk and "PASS" or "FAIL - deviation is being written, not derived")
+
+    return table.concat(lines, "\n")
+end

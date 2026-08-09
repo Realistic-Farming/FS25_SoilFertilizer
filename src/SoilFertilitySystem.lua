@@ -7718,3 +7718,86 @@ function SoilFertilitySystem:recordTillageTrailPoint(fieldId, wx, wz, isPlow)
         field.tillageSessionDay = nil
     end
 end
+
+-- ============================================================
+-- SF-20 RELIEF CHECK (acceptance instrument)
+--
+-- The relief weight's acceptance is three in-game checks that were, until now,
+-- "look at the map and judge". That is not a test anybody can pass or fail
+-- honestly, and it is not something a second person can verify the same way.
+-- This runs all three and reports numbers.
+--
+--   DIRECTION     low ground must read HIGHER organic matter than high ground
+--   CONSERVATION  the field-level figure must not move while cells vary
+--   MAGNITUDE     peak-to-peak spread should be about the amplitude, no more
+--
+-- Read-only. Samples terrain height and the organicMatter value map on the same
+-- bounded grid the painter used, so it measures the thing that shipped rather
+-- than recomputing what it thinks should be there.
+-- ============================================================
+function SoilFertilitySystem:reliefCheck(fieldId)
+    if not self:vmAvailable() then return nil, "value maps unavailable" end
+    local field = self.fieldData[fieldId]
+    if field == nil then return nil, string.format("field %s not tracked", tostring(fieldId)) end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if verts == nil or #verts < 3 then return nil, "field has no usable polygon" end
+    if g_terrainNode == nil or getTerrainHeightAtWorldPos == nil then
+        return nil, "terrain unavailable"
+    end
+
+    local relief = SoilConstants.RELIEF or {}
+    local step = relief.BLOCK_SIZE or 8
+    local minX, maxX, minZ, maxZ = verts[1].x, verts[1].x, verts[1].z, verts[1].z
+    for i = 2, #verts do
+        local v = verts[i]
+        if v.x < minX then minX = v.x end
+        if v.x > maxX then maxX = v.x end
+        if v.z < minZ then minZ = v.z end
+        if v.z > maxZ then maxZ = v.z end
+    end
+
+    local vm = self.valueMaps
+    local lo, hi = nil, nil        -- lowest / highest GROUND, with their OM
+    local omMin, omMax = nil, nil  -- OM extremes regardless of height
+    local n, omSum = 0, 0
+    local x = minX + step * 0.5
+    while x <= maxX and n < 4000 do
+        local z = minZ + step * 0.5
+        while z <= maxZ and n < 4000 do
+            if _isPointInPoly(x, z, verts) then
+                local okH, h = pcall(getTerrainHeightAtWorldPos, g_terrainNode, x, 0, z)
+                local om = vm:readValueAtWorld("organicMatter", x, z)
+                if okH and type(h) == "number" and type(om) == "number" then
+                    n = n + 1
+                    omSum = omSum + om
+                    if lo == nil or h < lo.h then lo = { h = h, om = om, x = x, z = z } end
+                    if hi == nil or h > hi.h then hi = { h = h, om = om, x = x, z = z } end
+                    if omMin == nil or om < omMin then omMin = om end
+                    if omMax == nil or om > omMax then omMax = om end
+                end
+            end
+            z = z + step
+        end
+        x = x + step
+    end
+
+    if n < 2 then return nil, "not enough readable samples" end
+
+    local reliefRange = hi.h - lo.h
+    local flatGuard = relief.MIN_RANGE or 0
+    local amplitude = (field.organicMatter or 0)
+        * (relief.AMPLITUDE_FRACTION or 0) * (relief.AGRONOMY_SCALE or 1)
+
+    return {
+        samples      = n,
+        reliefRange  = reliefRange,
+        flatGuard    = flatGuard,
+        isFlat       = reliefRange < flatGuard,
+        lowGroundOM  = lo.om,
+        highGroundOM = hi.om,
+        omSpread     = (omMax or 0) - (omMin or 0),
+        omSampledMean= omSum / n,
+        fieldOM      = field.organicMatter or 0,
+        amplitude    = amplitude,
+    }
+end
