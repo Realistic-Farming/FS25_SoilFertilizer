@@ -633,11 +633,14 @@ function HookManager:registerCustomSprayTypes()
         SoilLogger.warning("LIQUIDLIME spray type override failed: ft=%s st=%s", tostring(llFT), tostring(llST))
     end
 
-    SoilLogger.info(
-        "[OK] Custom spray types registered: %d types (direct LPS: vanilla ref liq=%.5f dry=%.5f, %d skipped)",
-        registered, liquidLPS, solidLPS, skipped
-    )
-    SoilLogger.info("     Enable SoilDebug to see per-type LPS and rate values")
+    if not self._loggedSprayTypeSummary then
+        self._loggedSprayTypeSummary = true
+        SoilLogger.info(
+            "[OK] Custom spray types registered: %d types (direct LPS: vanilla ref liq=%.5f dry=%.5f, %d skipped)",
+            registered, liquidLPS, solidLPS, skipped
+        )
+        SoilLogger.info("     Enable SoilDebug to see per-type LPS and rate values")
+    end
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0)
     if not self._sprayTypesComplete then
@@ -5913,8 +5916,12 @@ function HookManager:reapplyFillUnitPatch()
     end
 
     if patched > 0 then
-        SoilLogger.info("[DeferredInit] Deferred fill unit re-patch: %d vehicles patched, %d skipped (no eligible fill unit) (%d types found)", patched, skipped, found)
-    else
+        if not self._loggedFillUnitRepatch then
+            self._loggedFillUnitRepatch = true
+            SoilLogger.info("[DeferredInit] Deferred fill unit re-patch: %d vehicles patched, %d skipped (no eligible fill unit) (%d types found)", patched, skipped, found)
+        end
+    elseif not self._loggedFillUnitRepatchEmpty then
+        self._loggedFillUnitRepatchEmpty = true
         SoilLogger.warning("[DeferredInit] Deferred fill unit re-patch: 0 vehicles patched (%d skipped - none had eligible fill units) (%d types found)", skipped, found)
     end
     return true

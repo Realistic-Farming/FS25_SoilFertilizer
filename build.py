@@ -20,7 +20,9 @@ MODS_DIR = Path.home() / "Documents" / "My Games" / "FarmingSimulator2025" / "mo
 
 EXCLUDE_DIRS = {".git", ".claude", ".github", "__MACOSX", "tools", ".vscode"}
 EXCLUDE_EXTS = {".sh", ".py", ".md", ".DS_Store", ".zip"}
-EXCLUDE_FILES = {".gitignore", "icon_source.png"}
+# menuIcon_sprout.dds is the pre-RF suite badge, kept in the repo so it can be
+# restored without digging through history. Nothing loads it, so it never ships.
+EXCLUDE_FILES = {".gitignore", "icon_source.png", "menuIcon_sprout.dds"}
 
 def build_zip():
     print(f"============================================")

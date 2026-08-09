@@ -10,7 +10,7 @@
 
 RfPdaSoilPanel = {}
 -- Cross-mod: WC/CS may source RfPdaMenuPage last (their env has no RfPdaSoilPanel).
--- getfenv(0) is Soil modEnv only — still publish for same-env callers.
+-- getfenv(0) is Soil modEnv only - still publish for same-env callers.
 -- Mission soft-detect is the reliable cross-mod bridge (also set in RfSoilEscJoiner).
 if type(getfenv) == "function" then
     local env0 = getfenv(0)
@@ -240,9 +240,100 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
             fertEl:setText(tr("rf_pda_fert_chip", "FERT"))
             fertEl:setTextColor(unpack(COLOR_FAIR))
         else
-            fertEl:setText("—")
+            fertEl:setText("-")
             fertEl:setTextColor(unpack(COLOR_DIM))
         end
+    end
+end
+
+-- =========================================================
+-- ROTATION CARD (Wizard rotation-card call site, 2026-08-08)
+-- Populates the read-only crop rotation card in the Soil Esc
+-- glance (soilRotationTitle / soilRotationLast /
+-- soilRotationStatus / soilRotationTip). Reuses
+-- RotationPlannerData so the words match the deep planner.
+-- Nil-safe: older door XML without the card ids renders nothing.
+-- =========================================================
+
+function RfPdaSoilPanel.refreshRotationCard(page, entry)
+    local tr = page._rfTr or function(k, fb) return fb or k end
+    local card = page.soilRotationCard
+    local titleEl = page.soilRotationTitle
+    local lastEl = page.soilRotationLast
+    local statusEl = page.soilRotationStatus
+    local tipEl = page.soilRotationTip
+    if card == nil or titleEl == nil or lastEl == nil or statusEl == nil or tipEl == nil then
+        return
+    end
+
+    titleEl:setText(tr("sf_rp_title", "Rotation Planner"))
+
+    local fieldId = entry and entry.fieldId or page.selectedFieldId
+    local sfm = g_SoilFertilityManager
+    if sfm == nil and type(getfenv) == "function" then
+        local env0 = getfenv(0)
+        if env0 ~= nil then sfm = env0.g_SoilFertilityManager end
+    end
+    if sfm == nil or sfm.soilSystem == nil or fieldId == nil or fieldId <= 0 then
+        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
+        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
+        tipEl:setText("")
+        return
+    end
+
+    -- FieldInfo via the same public payload the deep planner reads.
+    local info = nil
+    local ok, res = pcall(function()
+        return sfm.soilSystem:getFieldInfo(fieldId)
+    end)
+    if ok and res ~= nil then info = res end
+
+    if info == nil then
+        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
+        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
+        tipEl:setText(tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted."))
+        return
+    end
+
+    -- One-line standing (crops + bonus) and the status word, from the same
+    -- data the deep planner renders, so the glance and the planner agree.
+    local line = tr("sf_rp_no_history", "No crop history yet")
+    local statusWord = tr("sf_rp_status_unknown", "Unknown")
+    local colorKey = "unknown"
+    if RotationPlannerData ~= nil then
+        pcall(function()
+            line, colorKey = RotationPlannerData.standingLine(info)
+            local word = RotationPlannerData.statusWord(info.rotationStatus)
+            if word then statusWord = word end
+        end)
+    else
+        if info.lastCrop ~= nil and info.lastCrop ~= "" then
+            line = info.lastCrop
+        end
+        if info.rotationStatus ~= nil then statusWord = info.rotationStatus end
+    end
+
+    lastEl:setText(line)
+    statusEl:setText(statusWord)
+
+    -- Tip: bonus days remaining when a rotation bonus is live, else the hint.
+    local tip = tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted.")
+    if info.rotationBonusDaysLeft ~= nil and tonumber(info.rotationBonusDaysLeft) ~= nil
+        and tonumber(info.rotationBonusDaysLeft) > 0 then
+        tip = string.format(tr("sf_rp_bonus_days", "bonus %dd"),
+            math.floor(tonumber(info.rotationBonusDaysLeft)))
+    end
+    tipEl:setText(tip)
+
+    if colorKey == "bonus" then
+        statusEl:setTextColor(unpack(COLOR_LIME_BRIGHT))
+        lastEl:setTextColor(unpack(COLOR_GOOD))
+    elseif colorKey == "fatigue" then
+        statusEl:setTextColor(unpack(COLOR_POOR))
+        lastEl:setTextColor(unpack(COLOR_FAIR))
+    else
+        statusEl:setTextColor(unpack(COLOR_DIM))
+        lastEl:setTextColor(unpack(COLOR_GOOD))
     end
 end
 
@@ -256,6 +347,8 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
             break
         end
     end
+
+    RfPdaSoilPanel.refreshRotationCard(page, entry)
 
     local function clearTargets()
         if page.treatTargetsHeading then page.treatTargetsHeading:setText("") end

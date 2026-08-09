@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<i3D name="liquidTank" version="1.6" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://i3d.giants.ch/schema/i3d-1.6.xsd">
+
+  <Files>
+    <File fileId="5" filename="$data/objects/pallets/liquidTank/cortevaDecal_diffuse.png" />
+    <File fileId="1" filename="$data/objects/pallets/liquidTank/fertilizerTank_diffuse.png" />
+    <File fileId="2" filename="$data/objects/pallets/liquidTank/fertilizerTank_normal.png" />
+    <File fileId="3" filename="$data/objects/pallets/liquidTank/fertilizerTank_specular.png" />
+    <File fileId="9" filename="starter_diffuse.png" />
+    <File fileId="4" filename="$data/objects/pallets/liquidTank/herbicideTank_diffuse.png" />
+    <File fileId="8" filename="$data/shaders/decalShader.xml" />
+    <File fileId="6" filename="$data/shared/default_normal.png" />
+    <File fileId="7" filename="$data/shared/default_specular.png" />
+  </Files>
+
+  <Materials>
+    <Material name="lambert1" materialId="1" diffuseColor="0.5 0.5 0.5 1">
+    </Material>
+    <Material name="fertilizerTank_mat" materialId="2">
+      <Texture fileId="1"/>
+      <Normalmap fileId="2"/>
+      <Glossmap fileId="3"/>
+    </Material>
+    <Material name="fertilizerTank_mat3" materialId="5">
+      <Texture fileId="4"/>
+      <Normalmap fileId="2"/>
+      <Glossmap fileId="3"/>
+    </Material>
+    <Material name="cortevaDecal_mat" materialId="4" alphaBlending="true" customShaderId="8">
+      <Texture fileId="5"/>
+      <Normalmap fileId="6"/>
+      <Glossmap fileId="7"/>
+    </Material>
+    <Material name="helmDecal_mat" materialId="3" alphaBlending="true" customShaderId="8">
+      <Texture fileId="9"/>
+      <Normalmap fileId="6"/>
+      <Glossmap fileId="7"/>
+    </Material>
+  </Materials>
+
+
+  <Shapes externalShapesFile="../_shared/liquidTank.i3d.shapes">
+  </Shapes>
+
+  <Scene>
+    <Shape name="fertilizerTank_main_component1" shapeId="1" dynamic="true" compound="true" staticFriction="1" dynamicFriction="1" density="0.07" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="200" nodeId="1">
+      <TransformGroup name="triggers" nodeId="2">
+        <Shape name="dynamicMountTrigger" translation="-0.006497 0.077686 -0.021384" shapeId="2" kinematic="true" trigger="true" collisionFilterGroup="0x20000000" collisionFilterMask="0x20000" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="100" nodeId="3"/>
+        <Shape name="fillTrigger" shapeId="3" kinematic="true" compound="true" trigger="true" collisionFilterGroup="0x20000000" collisionFilterMask="0x40000000" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="300" nodeId="4"/>
+      </TransformGroup>
+      <TransformGroup name="collisions" nodeId="5">
+        <Shape name="floorCollision01" translation="-0.006497 0.077686 -0.342983" shapeId="4" compoundChild="true" staticFriction="1" dynamicFriction="1" collisionFilterGroup="0x10000" collisionFilterMask="0xfe3dfb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="100" nodeId="6"/>
+        <Shape name="floorCollision02" translation="-0.006497 0.077686 0.321158" shapeId="5" compoundChild="true" staticFriction="1" dynamicFriction="1" collisionFilterGroup="0x10000" collisionFilterMask="0xfe3dfb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="100" nodeId="7"/>
+      </TransformGroup>
+      <TransformGroup name="configurations" nodeId="8">
+        <Shape name="helmConfiguration" shapeId="6" castsShadows="true" receiveShadows="true" materialIds="2" nodeId="9">
+          <Shape name="decalHelmLiquidHerbicide" shapeId="7" castsShadows="false" receiveShadows="true" decalLayer="1" materialIds="3" clipDistance="60" nodeId="10"/>
+          <Shape name="decalHelmLiquidFertilizer" shapeId="8" castsShadows="false" receiveShadows="true" decalLayer="1" materialIds="3" clipDistance="60" nodeId="11"/>
+        </Shape>
+        <Shape name="cortevaConfiguration" shapeId="9" castsShadows="true" receiveShadows="true" materialIds="4" clipDistance="60" nodeId="12"/>
+      </TransformGroup>
+      <TransformGroup name="visible" nodeId="13">
+        <Shape name="fertilizerTank_vis" shapeId="10" castsShadows="true" receiveShadows="true" materialIds="2" nodeId="14"/>
+        <Shape name="materialHerbicide" shapeId="11" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="5" clipDistance="10" nodeId="15"/>
+      </TransformGroup>
+    </Shape>
+  </Scene>
+
+  <UserAttributes>
+  </UserAttributes>
+</i3D>

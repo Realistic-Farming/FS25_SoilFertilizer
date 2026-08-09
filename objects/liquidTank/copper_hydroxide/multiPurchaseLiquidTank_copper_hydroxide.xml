@@ -14,7 +14,7 @@
         <canBeSold>false</canBeSold>
         <rotation>0</rotation>
         <shopHeight>2</shopHeight>
-        <brand>HELM</brand>
+        <brand>LIZARD</brand>
         <category>ibc palletFertilizerHerbicide</category>
         <financeCategory>PURCHASE_FERTILIZER</financeCategory>
         <shopLoadingDelay initial="0.2" config="0.2"/>
