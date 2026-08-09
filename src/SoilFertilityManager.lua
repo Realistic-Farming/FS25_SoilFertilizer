@@ -59,6 +59,8 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- publishes getCellGrowthInfo / getFieldGrowthSummary, the contract SF-53,
     -- SF-54 and SCS-020 all bind to. No engine write in v1 (that is v2, held).
     self.viability = ViabilityMask and ViabilityMask.new(self) or nil
+    -- The published surface for the getters lives on this manager, not on the
+    -- `viability` field: see getCellGrowthInfo / getFieldGrowthSummary below.
 
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
@@ -2060,4 +2062,43 @@ function SoilFertilityManager:delete()
     -- #730). Real persistence is already covered: every change point saves immediately
     -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
+end
+-- ============================================================
+-- SF-52 THE PUBLISHED GROWTH CONTRACT (cross-mod surface)
+--
+-- SF-53, SF-54 and SCS-020 bind to these two, and two of them live in other
+-- mods. They are delegates on the MANAGER rather than reads of the `viability`
+-- field on purpose: `g_currentMission.soilFertilityManager` is the only handle
+-- that crosses the mod boundary (g_SoilFertilityManager is per-mod scoped via
+-- getfenv(0) and is not reachable from another mod), and a consumer reaching
+-- through `.viability` would be binding to an internal field name that a
+-- refactor here could rename out from under three mods at once.
+--
+-- Both are nil-safe in every direction: absent subsystem, absent field, mask
+-- disabled, or a value map that is not carrying data all return nil rather
+-- than throwing across the boundary.
+--
+-- Consumers should call these as:
+--   local sfm = g_currentMission and g_currentMission.soilFertilityManager
+--   local info = sfm and sfm:getCellGrowthInfo(fieldId, x, z)
+-- ============================================================
+
+--- Per-cell growth judgement at a world position.
+--- @return table|nil { blocked, blockedBy, bands, credit, capturedEfficiency }
+function SoilFertilityManager:getCellGrowthInfo(fieldId, x, z)
+    local v = self.viability
+    if v == nil or type(v.getCellGrowthInfo) ~= 'function' then return nil end
+    local ok, info = pcall(function() return v:getCellGrowthInfo(fieldId, x, z) end)
+    if not ok then return nil end
+    return info
+end
+
+--- Field-level area fractions in the outer bands.
+--- @return table|nil { blockedFrac, excellentFrac }
+function SoilFertilityManager:getFieldGrowthSummary(fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummary) ~= 'function' then return nil end
+    local ok, summary = pcall(function() return v:getFieldGrowthSummary(fieldId) end)
+    if not ok then return nil end
+    return summary
 end

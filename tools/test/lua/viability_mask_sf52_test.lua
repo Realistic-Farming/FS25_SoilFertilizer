@@ -169,4 +169,45 @@ do
   T.eq('v1.noWriteMethod', rawget(V, 'writeMask'), nil)
 end
 
+
+-- 11. THE CROSS-MOD SURFACE. Two of the three consumers live in OTHER mods and
+--     can only reach us through g_currentMission.soilFertilityManager, so the
+--     contract is delegated onto the manager rather than left on the internal
+--     `viability` field. Binding to that field would let a refactor here rename
+--     the contract out from under three mods at once.
+do
+  -- A stand-in manager carrying only the delegate shape.
+  local mgr = { viability = V.new({ soilSystem = nil }) }
+  mgr.getCellGrowthInfo = function(self, fieldId, x, z)
+    local v = self.viability
+    if v == nil or type(v.getCellGrowthInfo) ~= 'function' then return nil end
+    local ok, info = pcall(function() return v:getCellGrowthInfo(fieldId, x, z) end)
+    if not ok then return nil end
+    return info
+  end
+  mgr.getFieldGrowthSummary = function(self, fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummary) ~= 'function' then return nil end
+    local ok, s = pcall(function() return v:getFieldGrowthSummary(fieldId) end)
+    if not ok then return nil end
+    return s
+  end
+
+  mgr.viability._summaries[11] = { blockedFrac = 0.4, excellentFrac = 0.2, samples = 25 }
+  local s = mgr:getFieldGrowthSummary(11)
+  T.near('bridge.summaryReaches', s.blockedFrac, 0.4, 1e-9)
+
+  -- Absent subsystem must be nil, never a throw across the boundary.
+  local empty = { viability = nil }
+  empty.getFieldGrowthSummary = mgr.getFieldGrowthSummary
+  empty.getCellGrowthInfo = mgr.getCellGrowthInfo
+  T.eq('bridge.noSubsystemSummary', empty:getFieldGrowthSummary(11), nil)
+  T.eq('bridge.noSubsystemCell', empty:getCellGrowthInfo(11, 0, 0), nil)
+
+  -- A subsystem that throws is swallowed into nil, not propagated.
+  local angry = { viability = { getFieldGrowthSummary = function() error('boom') end } }
+  angry.getFieldGrowthSummary = mgr.getFieldGrowthSummary
+  T.eq('bridge.throwBecomesNil', angry:getFieldGrowthSummary(11), nil)
+end
+
 T.summary()
