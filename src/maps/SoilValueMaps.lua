@@ -715,6 +715,116 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
     end)
 end
 
+--- SF-20 RELIEF WEIGHT: the pure maths, engine-free so the bench can prove it.
+--- Each sample gets a weight from 0 to 1 by its position in the field's own
+--- relief, LOWEST ground weighing 1 (water and material collect downhill). The
+--- deviation is the amplitude times the signed difference between that sample's
+--- weight and the field's mean weight.
+---
+--- Three properties hold BY CONSTRUCTION, for every possible field shape:
+---   * the deviations sum to exactly zero, so the field-level figure cannot move;
+---   * weights span exactly 0..1 (min and max are drawn from the sample set), so
+---     the peak-to-peak spread is exactly `amplitude` and never more - this is
+---     what the additive form buys, and it is why a narrow valley strip cannot
+---     blow the bound the way a multiplicative form did;
+---   * low ground reads richer than high ground.
+---@param heights number[]  terrain height per sample
+---@param amplitude number  peak-to-peak spread in semantic units
+---@param minRange number|nil  flat-field guard, in metres of height range
+---@return number[]|nil deviations  nil when the field is flatter than minRange
+---@return number|nil meanWeight
+---@return number|nil range
+function SoilValueMaps.computeReliefDeviations(heights, amplitude, minRange)
+    local n = heights and #heights or 0
+    if n == 0 or not amplitude or amplitude <= 0 then return nil end
+
+    local minH, maxH = heights[1], heights[1]
+    for i = 2, n do
+        local h = heights[i]
+        if h < minH then minH = h end
+        if h > maxH then maxH = h end
+    end
+
+    local range = maxH - minH
+    -- Flat guard: no relief means no relief information. The caller falls back.
+    if range < (minRange or 0) or range <= 0 then return nil end
+
+    local weights, sum = {}, 0
+    for i = 1, n do
+        local w = (maxH - heights[i]) / range   -- lowest ground weighs 1
+        weights[i] = w
+        sum = sum + w
+    end
+    local meanWeight = sum / n
+
+    local dev = {}
+    for i = 1, n do
+        dev[i] = amplitude * (weights[i] - meanWeight)
+    end
+    return dev, meanWeight, range
+end
+
+--- SF-20: seed a field polygon's layer from terrain relief instead of cosmetic
+--- noise. Two passes over the SAME block set: sample height, then paint
+--- base + deviation. Sharing the block set is what makes the zero-mean exact.
+---
+--- Returns false when relief cannot or should not drive this field (no terrain
+--- node, no samples, a failed sample, or a field flatter than the guard). The
+--- caller then seeds exactly as it does today - a flat field is unchanged.
+function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
+    if not self.available or not verts or #verts < 3 then return false end
+    local entry = self.layers[key]
+    if not entry then return false end
+    if g_terrainNode == nil or g_terrainNode == 0 then return false end
+    if getTerrainHeightAtWorldPos == nil then return false end
+
+    local relief = SoilConstants and SoilConstants.RELIEF or nil
+    local blockSize = (relief and relief.BLOCK_SIZE) or 8
+    local minRange  = (relief and relief.MIN_RANGE) or 0
+
+    -- Pass 1: sample terrain height at every in-polygon block centre.
+    local xs, zs, halves, heights = {}, {}, {}, {}
+    local n = 0
+    local sampleFailed = false
+    forEachPolyBlock(verts, blockSize, function(cx, cz, half)
+        if sampleFailed then return end
+        local ok, h = pcall(getTerrainHeightAtWorldPos, g_terrainNode, cx, 0, cz)
+        if not ok or type(h) ~= "number" then
+            sampleFailed = true
+            return
+        end
+        n = n + 1
+        xs[n], zs[n], halves[n], heights[n] = cx, cz, half, h
+    end)
+    if sampleFailed or n == 0 then return false end
+
+    local dev = SoilValueMaps.computeReliefDeviations(heights, amplitude, minRange)
+    if dev == nil then return false end
+
+    -- BASE COAT FIRST, and it is not optional. The block loop below only paints
+    -- blocks whose CENTRE falls inside the polygon (isPointInPoly), so pixels in
+    -- the boundary blocks would be left untouched. The path this replaces used
+    -- setPolygonRegion, which covers the polygon EXACTLY, so without this the
+    -- organicMatter layer would lose its field edges on every machine where
+    -- engine polygon ops work. paintPolygon takes the precise path when it can
+    -- and the same block fallback when it cannot.
+    self:paintPolygon(key, verts, baseValue)
+
+    -- Pass 2: overlay base + deviation over the same blocks. encode() clamps to
+    -- the layer's range; on a decayed field sitting near its floor the clamp can
+    -- absorb part of the deviation (the brief's measured "clamp residual").
+    local def = entry.def
+    local m   = entry.modifier
+    for i = 1, n do
+        local half = halves[i]
+        m:setParallelogramWorldCoords(
+            xs[i] - half, zs[i] - half, xs[i] + half, zs[i] - half, xs[i] - half, zs[i] + half,
+            DensityCoordType.POINT_POINT_POINT)
+        m:executeSet(encode(baseValue + dev[i], def))
+    end
+    return true
+end
+
 --- Shift every written pixel of a field polygon by a semantic delta while
 --- preserving spatial variation (daily processes, rain leaching, harvest
 --- extraction). Deltas smaller than one raw step must be accumulated by the
