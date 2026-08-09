@@ -55,6 +55,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- and the daily pass; consumes SCS positional moisture (absent = inert).
     self.establishment = EstablishmentFailure and EstablishmentFailure.new(self) or nil
 
+    -- SF-52 v1 the viability mask: reads the soil's own data per period and
+    -- publishes getCellGrowthInfo / getFieldGrowthSummary, the contract SF-53,
+    -- SF-54 and SCS-020 all bind to. No engine write in v1 (that is v2, held).
+    self.viability = ViabilityMask and ViabilityMask.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -680,6 +685,17 @@ function SoilFertilityManager:activateSoilSystem()
             self.establishment:initialize()
             if g_server ~= nil then
                 self.establishment:registerDailyAccrual()
+            end
+        end
+
+        -- SF-52 v1 viability mask: same shape, priority 96 so its pass runs
+        -- after the moisture store has settled and after establishment has
+        -- counted the dead. Server-authoritative: the pass reads server truth
+        -- and the published getters are answered from it.
+        if self.viability then
+            self.viability:initialize()
+            if g_server ~= nil then
+                self.viability:registerDailyAccrual()
             end
         end
 
