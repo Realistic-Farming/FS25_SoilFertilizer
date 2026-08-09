@@ -81,6 +81,7 @@ source(modDirectory .. "src/SpatialPressures.lua")
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
 -- drive it. Consumes SCS positional moisture (absent = inert).
 source(modDirectory .. "src/EstablishmentFailure.lua")
+source(modDirectory .. "src/ViabilityMask.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
