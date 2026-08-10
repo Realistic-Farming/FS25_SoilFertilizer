@@ -98,9 +98,9 @@
 
             <!-- CS page chrome (BUILD 18:48): Fields | Pivot. Straight twin of the WC and
                  MDM subnavs - sibling under Modules, never inside rfFilterBox, host-owned.
-                 Visible only while seasonalCropStress is the active module. PIVOT lives on
-                 page 2 because Wizard asked for it off the home seat; a new Esc rail page
-                 (addPageTab) is a hard engine VETO, so this is the sanctioned second surface. -->
+                 csSubnavShell is RETIRED as of BUILD 21:06: Crop Stress is one desk and the
+                 Fields | Pivot selector selected nothing, so the host never shows it. Kept in
+                 place so the ids bind and the WC / MDM twins keep their shared profiles. -->
             <GuiElement profile="RF_WcSubnavShell" id="csSubnavShell" visible="false">
                 <MultiTextOption profile="RF_WcSubnavSelector" id="csSubnavSelector"
                                  disableButtonsOnSingleText="false"
@@ -108,6 +108,16 @@
                 <BoxLayout profile="RF_WcSubnavDotBox" id="csSubnavDotBox" visible="false">
                     <RoundCorner profile="fs25_subCategorySelectorDot"/>
                 </BoxLayout>
+                <!-- RETIRED BUILD 21:06. The CS teach moved back to rfSideInfoShell in
+                     rfFilterBox once the subnav it was avoiding was retired. This element is
+                     kept, never shown, and cleared every refresh, so the id still binds and a
+                     stale nested copy cannot surface behind the live one. -->
+                <GuiElement profile="RF_WcSideInfoShell" id="csSideInfoShell" visible="false"
+                            handleFocus="false" clipChildren="true">
+                    <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
+                    <Text profile="RF_WcSideBody" id="csSideInfoBody" position="8px -8px" size="364px 224px"
+                          textMaxNumLines="12" textVerticalAlignment="top" text=""/>
+                </GuiElement>
             </GuiElement>
 
             <!-- RIGHT: suite content plane (RF_MainColShell flushes X˜406 to side-info right). -->
@@ -599,9 +609,21 @@
                             <Text profile="RF_ProductsTitle" id="csPivotTitle" position="10px -4px" size="1110px 18px" text=""/>
                             <!-- Left band: dial + status. -->
                             <Bitmap profile="RF_CsPivotDialFace" id="csPivotDialFace" position="10px -28px" size="92px 92px"/>
-                            <Bitmap profile="RF_CsPivotNeedleCur" id="csPivotNeedleCur" position="52px -28px" size="8px 46px"/>
-                            <Bitmap profile="RF_CsPivotNeedleMin" id="csPivotNeedleMin" position="53px -28px" size="6px 42px"/>
-                            <Bitmap profile="RF_CsPivotNeedleMax" id="csPivotNeedleMax" position="53px -28px" size="6px 42px"/>
+                            <!-- BUILD 16:44d (Vera F1): inline size overrides the profile via loadFromXML, so the
+                                 short hands had to be set HERE, not only on the profile. 92px face,
+                                 radius 46: arm 31 = 67%, limits 27 = 59%. -->
+                            <!-- BUILD 15:30: hands now BASE on the dial hub instead of hanging from the
+                                 face top, because the rotation origin moved to the bar base (customPivot
+                                 {w/2, 0} in CsRfPdaGuest). Face is 92x92 at 10,-28 so the hub is (56,-74);
+                                 a 31px hand with its base there has its top at -74+31 = -43, and x is
+                                 hub minus half the bar width. Change these three and the pivot maths in
+                                 the guest together - they are one geometry. -->
+                            <Text profile="RF_CsPivotDialLabel" id="csPivotDialLabel" position="10px -14px" size="92px 14px"
+                                  text="$l10n_cs_rf_pda_pivot_dial_position"/>
+                            <Bitmap profile="RF_CsPivotNeedleCur" id="csPivotNeedleCur" position="53.5px -43px" size="5px 31px"/>
+                            <Bitmap profile="RF_CsPivotNeedleMin" id="csPivotNeedleMin" position="54px -47px" size="4px 27px"/>
+                            <Bitmap profile="RF_CsPivotNeedleMax" id="csPivotNeedleMax" position="54px -47px" size="4px 27px"/>
+                            <Bitmap profile="RF_CsPivotHubDot" id="csPivotHubDot" position="53px -71px" size="6px 6px"/>
                             <Text profile="RF_ProductCell" id="csPivotDialCur" position="114px -30px" size="250px 16px" text=""/>
                             <Text profile="RF_ProductCell" id="csPivotDialMin" position="114px -50px" size="250px 16px" text=""/>
                             <Text profile="RF_ProductCell" id="csPivotDialMax" position="114px -70px" size="250px 16px" text=""/>

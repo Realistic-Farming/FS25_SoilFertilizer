@@ -238,7 +238,34 @@ function RfEscModules:registerModule(def)
         -- silently discarded and active.onPivotRemote was always nil. The Esc
         -- PIVOT buttons only worked through the global CsRfPdaGuest fallback.
         onPivotRemote = def.onPivotRemote,
+        -- Fourth time, BUILD 23:51 (Vera F1/F2): the MD guest registers onLightTick for
+        -- the quiet 2s price refresh. Without it here the field was dropped, so
+        -- active.onLightTick was nil and every soft refresh fell back to the fat onShow -
+        -- which made the whole 23:43 soft path a no-op.
+        -- Fifth instance, found by the warning below on its first run: the MD guest has
+        -- always registered onMoverChanged and it has always been dropped. Nothing in the
+        -- suite consumes it today, so carrying it is a one-line no-risk fix - safer than
+        -- deleting a registration in case a consumer turns up - and it keeps the new
+        -- warning meaningful instead of crying wolf every session.
+        onMoverChanged = def.onMoverChanged,
+        -- BUILD 12:59 independence contract: a guest that registers its own selection
+        -- callback can be driven straight off the registry, so the host never has to find
+        -- the guest object at all. That is the level that works with no globals, no env
+        -- scanning and no mod names; the resolver in the host is only the fallback for
+        -- companions that predate this.
+        selectCommodityIndex = def.selectCommodityIndex,
+        onLightTick = def.onLightTick,
     }
+    -- BUILD 23:51: this whitelist has now silently eaten a handler four times, so stop
+    -- letting it do that quietly. Anything a caller passed that is not carried above gets
+    -- named once, at register time, instead of turning into a handler that does nothing.
+    for k in pairs(def) do
+        if self.modules[def.id][k] == nil and def[k] ~= nil then
+            print(string.format(
+                "[RfEscModules] WARNING module '%s' passed '%s' but registerModule does not carry it - dropped",
+                tostring(def.id), tostring(k)))
+        end
+    end
     -- Product default is resolveHomeModuleId (Soil / last / hub), not first-register.
     -- Leave activeModuleId nil until applyHomeModuleQuiet / selectModule.
     self:_notify()

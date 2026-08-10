@@ -287,29 +287,61 @@
         <frameBottomColor value="1 1 1 0.85"/>
     </Profile>
 
-    <!-- Esc CS PIVOT dial + compact remote buttons (2026-08-09). blank.png only. -->
-    <Profile name="RF_CsPivotDialFace" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+    <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
+         art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
+         measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
+         word POSITION. imageUVs takes the pixel rect and GuiUtils.getUVs normalises it.
+         filename is deliberately absent: CsRfPdaGuest resolves the live Reinke mod path
+         at runtime, so nothing is redistributed and the face simply does not paint when
+         that mod is not installed. -->
+    <!-- BUILD 15:30: the panel prints POSITION above its dial; the UV crop deliberately
+         excludes that word (cropping it in clipped a cardinal), so it is set as text. -->
+    <Profile name="RF_CsPivotDialLabel" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="11px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.78 0.80 0.82 1"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="1"/>
+    </Profile>
+
+    <!-- Hub cap: hides where the three bars meet, the way the panel's boss does. -->
+    <Profile name="RF_CsPivotHubDot" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
-        <imageColor value="0.18 0.20 0.22 0.95"/>
-        <size value="88px 88px"/>
+        <imageColor value="0.86 0.87 0.89 1"/>
+        <size value="6px 6px"/>
         <handleFocus value="false"/>
     </Profile>
+
+    <Profile name="RF_CsPivotDialFace" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <imageUVs value="288 354 400 400"/>
+        <imageColor value="1 1 1 1"/>
+        <size value="92px 92px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- BUILD 16:44c current arm: neutral chrome, ~68% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleCur" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
-        <imageColor value="0.66 0.88 0.29 1"/>
-        <size value="8px 44px"/>
+        <imageColor value="0.86 0.87 0.89 1"/>
+        <size value="5px 30px"/>
         <handleFocus value="false"/>
     </Profile>
+    <!-- BUILD 16:44c LimitA: green, ~59% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleMin" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
-        <imageColor value="0.95 0.75 0.20 1"/>
-        <size value="6px 40px"/>
+        <imageColor value="0.35 0.72 0.31 1"/>
+        <size value="4px 26px"/>
         <handleFocus value="false"/>
     </Profile>
+    <!-- BUILD 16:44c LimitB: red, ~59% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleMax" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
-        <imageColor value="0.90 0.40 0.25 1"/>
-        <size value="6px 40px"/>
+        <imageColor value="0.83 0.24 0.20 1"/>
+        <size value="4px 26px"/>
         <handleFocus value="false"/>
     </Profile>
     <!-- Pivot remotes: buttonActivate plate + hideKeyboardGlyph (SPACE off). Option A fs25_wideButton alone = chrome FAIL. -->
