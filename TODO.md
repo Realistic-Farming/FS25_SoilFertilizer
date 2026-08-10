@@ -84,3 +84,9 @@
 - [x] `establishment_window_spec_test.lua` at 25 assertions (brief certs 23): window machine, threshold/compaction/severity, no-signal-no-thinning, kill-once, re-drill, live green close, positional per-cell kill with surviving cells keeping the window open, whole-stand close. Suite 2328/0 across 50 files; syntax + lint clean. Built and deployed.
 - [~] In-game verification owed (the brief's in-game items): waterlogged seedbed yields bare ground following the water's contour (state-0 look), re-sow onto a killed region works, dedicated-server propagation of the density write, frame cost at a mass-sowing spring rollover.
 
+## Water Record read on the manager (2026-08-10)
+- [x] `SoilFertilityManager:getWaterDaysInLast(days, throughDay)` publishes SF-49's Water Record at the cross-mod boundary (`g_currentMission.soilFertilityManager`), delegating to the already-built `MaterialWetness:waterDaysInLast`. Returns `(count, known)`; nil on every unknown path (closed ground_material gate, missing or unarmed subsystem, throwing read, `known == 0`).
+- [x] `water_record_delegate_test.lua` at 12 assertions. Suite 2516/0 across 53 files; syntax + lint clean.
+- [~] Not ours to build: SeasonalCropStress's `getSkipRainHours` (SCS-037 round 2) goes live when it calls this delegate. In-game skip test is theirs.
+
+
