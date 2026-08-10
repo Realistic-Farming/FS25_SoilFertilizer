@@ -258,6 +258,7 @@ function RfPdaMenuPage.new()
     self.wcSubPageIndex = 1
     self.wcAboutTabIndex = 1
     self.mdSubPageIndex = 1
+    self.csSubPageIndex = 1
     self.mdCommodityData = {}
     self.mdSelectedFillType = nil
     self._panelCache = {}
@@ -269,6 +270,8 @@ function RfPdaMenuPage.new()
     self._wcSubnavSeeded = false
     self._mdSubnavSeeding = false
     self._mdSubnavSeeded = false
+    self._csSubnavSeeding = false
+    self._csSubnavSeeded = false
     self._lastModuleSelectId = nil
     self._lastModuleSelectAt = 0
     self._frameDebug = false
@@ -332,6 +335,14 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.csFieldsEmptyHint = self:getDescendantById("csFieldsEmptyHint") or self.csFieldsEmptyHint
     self.rfHostTableRegion = self:getDescendantById("rfHostTableRegion") or self.rfHostTableRegion
     self.csDetailStrip = self:getDescendantById("csDetailStrip") or self.csDetailStrip
+    self.csActionBar = self:getDescendantById("csActionBar") or self.csActionBar
+    self.csBtnConsultant = self:getDescendantById("csBtnConsultant") or self.csBtnConsultant
+    self.csBtnSchedule = self:getDescendantById("csBtnSchedule") or self.csBtnSchedule
+    self.csDetailNoCoverage = self:getDescendantById("csDetailNoCoverage") or self.csDetailNoCoverage
+    self.csConsultPanel = self:getDescendantById("csConsultPanel") or self.csConsultPanel
+    self.csPivotCard = self:getDescendantById("csPivotCard") or self.csPivotCard
+    self.csAgronomistCard = self:getDescendantById("csAgronomistCard") or self.csAgronomistCard
+    self.csFieldDetailCard = self:getDescendantById("csFieldDetailCard") or self.csFieldDetailCard
     self.mdGraphRegion = self:getDescendantById("mdGraphRegion") or self.mdGraphRegion
     self.mdGraphArea = self:getDescendantById("mdGraphArea") or self.mdGraphArea
     self.mdDetailStrip = self:getDescendantById("mdDetailStrip") or self.mdDetailStrip
@@ -346,6 +357,9 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.mdSubnavShell = self:getDescendantById("mdSubnavShell") or self.mdSubnavShell
     self.mdSubnavSelector = self:getDescendantById("mdSubnavSelector") or self.mdSubnavSelector
     self.mdSubnavDotBox = self:getDescendantById("mdSubnavDotBox") or self.mdSubnavDotBox
+    self.csSubnavShell = self:getDescendantById("csSubnavShell") or self.csSubnavShell
+    self.csSubnavSelector = self:getDescendantById("csSubnavSelector") or self.csSubnavSelector
+    self.csSubnavDotBox = self:getDescendantById("csSubnavDotBox") or self.csSubnavDotBox
     self.mdSideInfoShell = self:getDescendantById("mdSideInfoShell") or self.mdSideInfoShell
     self.mdSideInfoBody = self:getDescendantById("mdSideInfoBody") or self.mdSideInfoBody
     self.wcGlanceShell = self:getDescendantById("wcGlanceShell") or self.wcGlanceShell
@@ -589,6 +603,16 @@ function RfPdaMenuPage:initialize()
             end
         end
     }
+    -- SPACE (MENU_EXTRA_1): Crop Stress consultant is secondary only — never default home.
+    -- EXTRA_1 free on CS (Help is Soil-only). SmoothList would swallow MENU_ACTIVATE.
+    self.btnCsConsultant = {
+        inputAction = InputAction.MENU_EXTRA_1,
+        showWhenPaused = true,
+        text = tr("cs_rf_pda_btn_consultant", "Crop consultant"),
+        callback = function()
+            self:onClickCsConsultant()
+        end
+    }
 
     -- Back only. Help is Soil-only and _syncHostGuestChrome adds it when the Soil
     -- module is the active one; seeding it here leaked Help onto every module's
@@ -616,11 +640,20 @@ end
 
 function RfPdaMenuPage:onFrameOpen()
     RfPdaMenuPage:superClass().onFrameOpen(self)
-    self.isOpen = true
     self._liveTimer = 0
     self._rfSoilPanelMissingWarned = false
     self:_bindHostListener()
     self:_applyChromeL10n()
+    -- Module home BEFORE isOpen so select/notify cannot dual-fire refresh + onShow.
+    do
+        local host = self:_getHost()
+        if host ~= nil and type(host.applyHomeModuleQuiet) == "function" then
+            pcall(function()
+                host:applyHomeModuleQuiet()
+            end)
+        end
+    end
+    self.isOpen = true
     -- F11: lime arrows before and after first refresh (engine may disable on open).
     self:_ensureSelectorArrowsVisible()
     self:refreshPanelSelector(true)
@@ -629,6 +662,19 @@ function RfPdaMenuPage:onFrameOpen()
 end
 
 function RfPdaMenuPage:onFrameClose()
+    do
+        local host = self:_getHost()
+        if host ~= nil and host.activeModuleId ~= nil then
+            if type(host.rememberClosedModule) == "function" then
+                pcall(function()
+                    host:rememberClosedModule(host.activeModuleId)
+                end)
+            else
+                host._lastClosedModuleId = host.activeModuleId
+                host._userHasChosenModule = true
+            end
+        end
+    end
     self.isOpen = false
     RfPdaMenuPage:superClass().onFrameClose(self)
 end
@@ -672,7 +718,36 @@ function RfPdaMenuPage:draw(clipX1, clipY1, clipX2, clipY2)
                     ft = MdRfPdaGuest.getSelectedFillType()
                 end
                 if ft ~= nil then
-                    MDMMarketScreenGraph.draw(ft, area.absPosition[1], area.absPosition[2], area.absSize[1], area.absSize[2])
+                    local gx = area.absPosition[1]
+                    local gy = area.absPosition[2]
+                    local gw = area.absSize[1]
+                    local gh = area.absSize[2]
+                    local sampleCount = 0
+                    if type(MDMMarketScreenGraph.getSampleCount) == "function" then
+                        sampleCount = MDMMarketScreenGraph.getSampleCount(ft) or 0
+                    end
+                    if sampleCount >= 2 then
+                        MDMMarketScreenGraph.draw(ft, gx, gy, gw, gh)
+                    else
+                        -- Mirror deep MarketScreen: draw from engine history when ring is thin.
+                        local mdm = g_currentMission and g_currentMission.MarketDynamics or g_MarketDynamics
+                        local engine = mdm and mdm.marketEngine
+                        if engine ~= nil and type(engine.getPriceHistory) == "function"
+                                and type(MDMMarketScreenGraph._drawLineChart) == "function" then
+                            local history = engine:getPriceHistory(ft)
+                            if type(history) == "table" and #history >= 2 then
+                                local series = {}
+                                for _, h in ipairs(history) do
+                                    if h ~= nil and type(h.price) == "number" then
+                                        series[#series + 1] = h.price
+                                    end
+                                end
+                                if #series >= 2 then
+                                    MDMMarketScreenGraph._drawLineChart(series, gx, gy, gw, gh)
+                                end
+                            end
+                        end
+                    end
                 end
             end
         end
@@ -1147,10 +1222,10 @@ function RfPdaMenuPage:_refreshSideInfo(activeId)
     if self.rfSideInfoBody and self.rfSideInfoBody.setText then
         if isSoil then
             self.rfSideInfoBody:setText(tr("rf_pda_side_info_soil",
-                "Soil Fertilizer\n\nThis screen shows the soil on your owned fields. Each line is one field. Press X HELP for the full Field Guide.\n\nThe table shows Field, Area, N, P, K, pH, Status, FERT, Weeds, Pests, and Disease. Status is Good, Fair, or Poor from the worst nutrient or pressure. Work the weakest Status first. When FERT says IN NEED, that field needs fertilizer.\n\nClick a field to open Treatment. PRODUCTS lists what to use, top first. RATE is per area. TOTAL is for the whole field. Next is the first job. Target is healthy. Fix lime or gypsum before nutrients. Dry goes in a spreader. Liquid goes in a sprayer. High Weeds, Pests, or Disease means spray first.\n\nWhat-if lets you try the next crop. Press SPACE for detail. Press C for rotation. N falls every harvest. P and K move slower. Organic matter builds over seasons. Aim for pH 6.5 to 7.0. Check worst fields, treat top-down, recheck.\n\nLime raises acid soil. Gypsum lowers alkaline soil. Use N often. Use P and K every few seasons. Press X HELP for lists, HUD tips, and FAQ."))
+                "Soil Fertilizer\n\nThis screen shows the soil on your owned fields. Each line is one field. Press X HELP for the full Field Guide.\n\nThe table shows Field, Area, N, P, K, pH, Status, FERT, Weeds, Pests, and Disease. Status is Good, Fair, or Poor from the worst nutrient or pressure. Work the weakest Status first. When FERT says IN NEED, that field needs fertilizer.\n\nClick a field to open Treatment. PRODUCTS lists what to use, top first. RATE is per area. TOTAL is for the whole field. Next is the first job. Target is healthy. Fix lime or gypsum before nutrients. Dry goes in a spreader. Liquid goes in a sprayer. High Weeds, Pests, or Disease means spray first.\n\nWhat-if lets you try the next crop. Field plan and rotation are on the cards. N falls every harvest. P and K move slower. Organic matter builds over seasons. Aim for pH 6.5 to 7.0. Check worst fields, treat top-down, recheck.\n\nLime raises acid soil. Gypsum lowers alkaline soil. Use N often. Use P and K every few seasons. Press X HELP for lists, HUD tips, and FAQ."))
         elseif isCs then
             self.rfSideInfoBody:setText(tr("rf_pda_side_info_crop_stress",
-                "Crop Stress\n\nThis table lists every field you own. One row = one field.\n\nColumns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).\n\nClick a row. The strip below names the field, then Next says what to do first:\n- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)\n- High Stress or a sensitive growth window → protect now; stress today cuts harvest later\n- Looking fine → recheck later; worse fields first\n\nIrrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. Edit systems on Farm Tablet / Crop Consultant when you need to change them.\n\nIf Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.\n\nStart with Critical Status, follow Next, then work up the list."))
+                "Crop Stress\n\nThis table lists every field you own. One row = one field. The field table is the home desk.\n\nColumns: Field / Crop / Moisture / Stress / Irrigated / Status.\n\nClick a row. The strip below names that same field. Next says what to do first. The bottom-right PIVOT card drives the covering pivot (dial, watering now, schedule, remote controls).\n\nIrrigated = coverage can reach this field. Watering now lives on the PIVOT card (not the Status column).\n\nSPACE opens Alex Chen consultant as a secondary view. Closing it returns to the same field row and PIVOT card. No Farm Tablet required.\n\nStart with Critical Status, follow Next, then work up the list."))
         else
             self.rfSideInfoBody:setText("")
         end
@@ -1174,6 +1249,28 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
         end
     end
     setVis(self.rfHostTableRegion, isCs)
+    -- Action bar rides the CS module only; the guest decides the two buttons.
+    setVis(self.csActionBar, isCs)
+    if not isCs then
+        setVis(self.csBtnSchedule, false)
+        setVis(self.csDetailNoCoverage, false)
+        setVis(self.csConsultPanel, false)
+        setVis(self.csPivotCard, false)
+        setVis(self.csAgronomistCard, false)
+        self._csConsultOpen = false
+    else
+        -- BUILD 18:48: the table-hiding consultant view is dead (George HARD VETO).
+        -- csConsultPanel is never shown again; the agronomist content moved into the
+        -- ROTATION-seat card, and the field table stays visible on every CS subpage.
+        -- rfHostTableRegion is still gated above by module id only, which is the gate
+        -- George kept; what is banned is the intra-CS swap that emptied the table slot.
+        setVis(self.csConsultPanel, false)
+        self._csConsultOpen = false
+        if type(self._seedCsSubnavTexts) == "function" then
+            self:_seedCsSubnavTexts()
+        end
+        self:_syncCsSubPageVisibility()
+    end
     setVis(self.csFieldOverviewList, isCs)
     setVis(self.csDetailStrip, isCs)
     -- MDM three-page chrome (TOP table + BOTTOM bands + secondary subnav).
@@ -1254,6 +1351,40 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
                 self.mdSubnavSelector:setCanChangeState(false)
             end
             self._mdSubnavSeeded = false
+        end
+    end
+    -- CS subnav twin (Fields | Pivot); exclusive with the WC and MDM subnavs.
+    setVis(self.csSubnavShell, isCs)
+    setVis(self.csSubnavSelector, isCs)
+    setVis(self.csSubnavDotBox, isCs)
+    if self.csSubnavSelector ~= nil then
+        if isCs then
+            self.csSubnavSelector.disableButtonsOnSingleText = false
+            self.csSubnavSelector.hideLeftRightButtons = false
+            if type(self.csSubnavSelector.setDisabled) == "function" then
+                self.csSubnavSelector:setDisabled(false)
+            end
+            if type(self.csSubnavSelector.setCanChangeState) == "function" then
+                self.csSubnavSelector:setCanChangeState(true)
+            end
+            if self.csSubnavShell ~= nil and type(self.csSubnavShell.updateAbsolutePosition) == "function" then
+                self.csSubnavShell:updateAbsolutePosition()
+            end
+            if type(self.csSubnavSelector.updateAbsolutePosition) == "function" then
+                self.csSubnavSelector:updateAbsolutePosition()
+            end
+            if type(self._ensureCsSubnavArrowsVisible) == "function" then
+                self:_ensureCsSubnavArrowsVisible()
+            end
+        else
+            self.csSubnavSelector.hideLeftRightButtons = true
+            if type(self.csSubnavSelector.setDisabled) == "function" then
+                self.csSubnavSelector:setDisabled(true)
+            end
+            if type(self.csSubnavSelector.setCanChangeState) == "function" then
+                self.csSubnavSelector:setCanChangeState(false)
+            end
+            self._csSubnavSeeded = false
         end
     end
     if self.wcSubnavSelector ~= nil then
@@ -1351,8 +1482,16 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
         end
     elseif isWc and self.btnOpenWorkerManager ~= nil then
         self.menuButtonInfo = { self.btnBack, self.btnOpenWorkerManager }
+    elseif isCs then
+        -- BUILD 18:48: SPACE no longer swaps panes. The consultant button owned the
+        -- table-hiding path, so it comes off the CS footer entirely rather than being
+        -- left pointing at a no-op the player can still press.
+        self.menuButtonInfo = { self.btnBack }
     elseif isSoil then
-        self.menuButtonInfo = { self.btnBack, self.btnHelp, self.btnRotationPlanner, self.btnFieldDetail }
+        -- BUILD 18:52: Rotation Planner and Field Detail come off the Soil footer.
+        -- Both dialogs stay registered and still open from the PDA/joiner; only the
+        -- duplicate bottom-bar buttons go, since the cards now carry that content.
+        self.menuButtonInfo = { self.btnBack, self.btnHelp }
     else
         self.menuButtonInfo = { self.btnBack }
     end
@@ -1842,6 +1981,234 @@ function RfPdaMenuPage:onClickWcWageReset()
     end
 end
 
+
+--- Esc Crop Stress actions. The host never speaks CsDialogLoader (SCS-env-scoped,
+--- George binding); it delegates to the active guest, which routes through the
+--- CropStress manager. Same shape as onClickWcWageReset.
+--- Toggle the inline consultant readout against the field table. Exactly one of
+--- {csConsultPanel, rfHostTableRegion} is visible; the host never unloads either,
+--- it only flips setVisible, so no list rebuild and no reloadData thrash.
+--- Closing consultant restores the same field-row selection (SoT) + PIVOT card.
+--- BUILD 18:48: dead by design, kept callable.
+--- George HARD VETO on any path that hides rfHostTableRegion to paint consultant
+--- content in the main pane. This used to be that path. It is not deleted because
+--- the SCS guest still calls it on show and wraps it, and a nil call there would
+--- take the whole Crop Stress paint down with it. It now always leaves the field
+--- table visible and the old consult panel hidden, whatever it is passed.
+function RfPdaMenuPage:setCsConsultView(_open)
+    self._csConsultOpen = false
+    if self.csConsultPanel ~= nil and self.csConsultPanel.setVisible then
+        self.csConsultPanel:setVisible(false)
+    end
+    if self.rfHostTableRegion ~= nil and self.rfHostTableRegion.setVisible then
+        self.rfHostTableRegion:setVisible(true)
+    end
+    self:_syncCsSubPageVisibility()
+end
+
+--- Kept so any stale binding resolves to something inert rather than erroring.
+function RfPdaMenuPage:onClickCsConsultant()
+    return
+end
+
+function RfPdaMenuPage:_csPageSel()
+    return self.csSubnavSelector
+end
+
+function RfPdaMenuPage:_ensureCsSubnavArrowsVisible()
+    self:_ensureMtoArrowsVisible(self:_csPageSel())
+end
+
+--- Seed Fields | Pivot once per CS entry (twin of _seedMdSubnavTexts).
+function RfPdaMenuPage:_seedCsSubnavTexts()
+    local sel = self:_csPageSel()
+    if sel == nil then
+        return
+    end
+    if self._csSubnavSeeded then
+        return
+    end
+    local trFn = self._rfTr
+    local function t(key, fb)
+        if type(trFn) == "function" then
+            return trFn(key, fb)
+        end
+        return fb
+    end
+    if sel.setVisible then
+        sel:setVisible(true)
+    end
+    sel.disableButtonsOnSingleText = false
+    sel.hideLeftRightButtons = false
+    if sel.setCanChangeState then
+        sel:setCanChangeState(true)
+    end
+    if sel.setDisabled then
+        sel:setDisabled(false)
+    end
+    local texts = {
+        t("cs_rf_pda_page_fields", "Fields"),
+        t("cs_rf_pda_page_pivot", "Pivot"),
+    }
+    self._csSubnavSeeding = true
+    if sel.setTexts then
+        sel:setTexts(texts)
+    end
+    local idx = tonumber(self.csSubPageIndex) or 1
+    if idx < 1 then idx = 1 end
+    if idx > 2 then idx = 2 end
+    self.csSubPageIndex = idx
+    if sel.setState then
+        sel:setState(idx, false)
+    end
+    self._csSubnavSeeding = false
+    self._csSubnavSeeded = true
+    self:_ensureCsSubnavArrowsVisible()
+    self:_rebuildCsSubnavDots(2)
+    if self.csSubnavShell ~= nil and self.csSubnavShell.updateAbsolutePosition then
+        self.csSubnavShell:updateAbsolutePosition()
+    end
+    if sel.updateAbsolutePosition then
+        sel:updateAbsolutePosition()
+    end
+end
+
+function RfPdaMenuPage:_rebuildCsSubnavDots(count)
+    local dotBox = self.csSubnavDotBox
+    if dotBox == nil or dotBox.elements == nil or #dotBox.elements == 0 then
+        return
+    end
+    if type(dotBox.setVisible) == "function" then
+        dotBox:setVisible(true)
+    end
+    local elements = dotBox.elements
+    local expectedCount = math.max(1, count or 1)
+    while #elements < expectedCount do
+        local seed = elements[1]
+        if seed == nil or seed.clone == nil then
+            break
+        end
+        local ok, clone = pcall(function()
+            return seed:clone(dotBox)
+        end)
+        if not ok or clone == nil then
+            break
+        end
+        if FocusManager and FocusManager.loadElementFromCustomValues then
+            pcall(FocusManager.loadElementFromCustomValues, FocusManager, clone)
+        end
+        elements = dotBox.elements
+    end
+    while #elements > expectedCount do
+        local last = elements[#elements]
+        if last ~= nil and last.delete then
+            last:delete()
+        end
+        elements = dotBox.elements
+    end
+    for i, dot in ipairs(dotBox.elements) do
+        local index = i
+        function dot.getIsSelected()
+            local sel = self:_csPageSel()
+            if sel == nil or sel.getState == nil then
+                return index == 1
+            end
+            return sel:getState() == index
+        end
+        if dot.setVisible then
+            dot:setVisible(true)
+        end
+    end
+    if dotBox.invalidateLayout then
+        dotBox:invalidateLayout()
+    end
+    if type(dotBox.updateAbsolutePosition) == "function" then
+        dotBox:updateAbsolutePosition()
+    end
+end
+
+--- Esc CS breath (2026-08-09): Agronomist (upper-right) + Pivot (lower-right) are
+--- both visible on the CS bottom band. Subnav may still track Fields|Pivot focus,
+--- but must not exclusive-hide either card. Table + detail strip stay up; never
+--- touch rfHostTableRegion here (table-hide consult remains VETO).
+function RfPdaMenuPage:_syncCsSubPageVisibility()
+    local idx = tonumber(self.csSubPageIndex) or 1
+    if idx < 1 then idx = 1 end
+    if idx > 2 then idx = 2 end
+    self.csSubPageIndex = idx
+    local function setVis(el, visible)
+        if el ~= nil and type(el.setVisible) == "function" then
+            el:setVisible(visible)
+        end
+    end
+    setVis(self.csAgronomistCard, true)
+    setVis(self.csPivotCard, true)
+end
+
+--- Sibling-shell CS page MTO. Page index only - never Brand / selectPanel.
+--- setState(idx, false): forceEvent re-entry is the WC arrow-crash shape.
+function RfPdaMenuPage:onClickCsSubnavSelector()
+    if self._csSubnavSeeding then
+        return
+    end
+    local sel = self:_csPageSel()
+    if sel == nil or sel.getState == nil then
+        return
+    end
+    if sel ~= self.csSubnavSelector then
+        return
+    end
+    self:_ensureCsSubnavArrowsVisible()
+    local idx = sel:getState() or 1
+    if idx < 1 then idx = 1 end
+    if idx > 2 then idx = 2 end
+    self.csSubPageIndex = idx
+    if sel.setState and sel:getState() ~= idx then
+        sel:setState(idx, false)
+    end
+    self:_syncCsSubPageVisibility()
+    -- Light onShow only: a full seed here would rebuild the field SmoothList on
+    -- every page flick, which is the reload thrash the hang fences ban.
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active ~= nil and active.id == "seasonalCropStress" and type(active.onShow) == "function" then
+        pcall(active.onShow, self.rfHostPlaceholder, true)
+    end
+end
+
+function RfPdaMenuPage:onClickCsSchedule()
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active ~= nil and type(active.onOpenSchedule) == "function" then
+        pcall(active.onOpenSchedule, self.rfHostPlaceholder)
+    end
+end
+
+--- Esc PIVOT remote clicks → guest → CropStressPivotRemoteEvent (server authority).
+local function _csPivotRemote(self, action)
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active ~= nil and type(active.onPivotRemote) == "function" then
+        pcall(active.onPivotRemote, self.rfHostPlaceholder, action)
+    elseif CsRfPdaGuest ~= nil and type(CsRfPdaGuest.onPivotRemote) == "function" then
+        pcall(CsRfPdaGuest.onPivotRemote, self.rfHostPlaceholder, action)
+    end
+end
+
+function RfPdaMenuPage:onClickCsPivotDoor()    _csPivotRemote(self, "DOOR_TOGGLE") end
+function RfPdaMenuPage:onClickCsPivotPower()   _csPivotRemote(self, "POWER_TOGGLE") end
+function RfPdaMenuPage:onClickCsPivotSpray()   _csPivotRemote(self, "SPRAY_TOGGLE") end
+function RfPdaMenuPage:onClickCsPivotEndGun()  _csPivotRemote(self, "END_GUN_TOGGLE") end
+function RfPdaMenuPage:onClickCsPivotSpeed()   _csPivotRemote(self, "SPEED_CYCLE") end
+function RfPdaMenuPage:onClickCsPivotStart()   _csPivotRemote(self, "AUTO_START") end
+function RfPdaMenuPage:onClickCsPivotStop()    _csPivotRemote(self, "AUTO_STOP") end
+function RfPdaMenuPage:onClickCsPivotMinUp()   _csPivotRemote(self, "SWEEP_MIN_UP") end
+function RfPdaMenuPage:onClickCsPivotMinDn()   _csPivotRemote(self, "SWEEP_MIN_DN") end
+function RfPdaMenuPage:onClickCsPivotMaxUp()   _csPivotRemote(self, "SWEEP_MAX_UP") end
+function RfPdaMenuPage:onClickCsPivotMaxDn()   _csPivotRemote(self, "SWEEP_MAX_DN") end
+function RfPdaMenuPage:onClickCsPivotArmPlus() _csPivotRemote(self, "ARM_STEP_PLUS") end
+function RfPdaMenuPage:onClickCsPivotArmMinus() _csPivotRemote(self, "ARM_STEP_MINUS") end
+
 --- @param rebuildLists boolean|nil when true (default), rebuild field SmoothList data
 function RfPdaMenuPage:refreshContent(rebuildLists)
     if rebuildLists == nil then
@@ -1855,8 +2222,18 @@ function RfPdaMenuPage:refreshContent(rebuildLists)
     local prevId = self._lastShownPanelId
     local enteringSoil = isSoil and prevId ~= "soilFertilizer"
     local enteringCs = panelId == "seasonalCropStress" and prevId ~= "seasonalCropStress"
+    local enteringMd = panelId == "marketDynamics" and prevId ~= "marketDynamics"
     local doSoilListRebuild = rebuildLists or enteringSoil
     local doCsListRebuild = rebuildLists or enteringCs
+    local doMdListRebuild = rebuildLists or enteringMd
+
+    -- Crop Stress home = field table + AGRONOMIST card (Samantha DESIGN 18:48).
+    -- Entering CS always lands on subpage 1; PIVOT is never a sticky home.
+    if enteringCs then
+        self._csConsultOpen = false
+        self.csSubPageIndex = 1
+        self._csSubnavSeeded = false
+    end
 
     self:_refreshPageHeader(active)
     self:_applyChromeL10n()
@@ -1956,7 +2333,12 @@ function RfPdaMenuPage:refreshContent(rebuildLists)
         if active ~= nil and type(active.onShow) == "function" then
             if active.id == "seasonalCropStress" then
                 -- Full CS field list reload only on enter / rebuildLists (lightOnly otherwise).
+                -- Guest onShow paints consultant when entering (default-home lock).
                 pcall(active.onShow, self.rfHostPlaceholder, not doCsListRebuild)
+            elseif active.id == "marketDynamics" then
+                -- Full MD commodity reload only on enter / rebuildLists (lightOnly otherwise).
+                -- Soft refreshContent(false) must not forceReload → SmoothList jump (BUILD 10:10).
+                pcall(active.onShow, self.rfHostPlaceholder, not doMdListRebuild)
             else
                 pcall(active.onShow, self.rfHostPlaceholder)
             end

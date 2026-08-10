@@ -273,9 +273,91 @@
         <size value="560px 248px"/>
         <clipChildren value="true"/>
     </Profile>
+
+    <!-- Esc card frame so the three Soil cards read as one family (BUILD 12:59).
+         hasFrame / frameThickness / frame*Color are real GuiElement profile keys
+         (GuiElement.lua loadProfile 176-183) - verified against the decompile,
+         not invented. Thin white rule; the grey fills underneath are unchanged. -->
+    <Profile name="RF_EscCardFrame" extends="RF_ProductsShell">
+        <hasFrame value="true"/>
+        <frameThickness value="1dp 1dp 1dp 1dp"/>
+        <frameLeftColor value="1 1 1 0.85"/>
+        <frameTopColor value="1 1 1 0.85"/>
+        <frameRightColor value="1 1 1 0.85"/>
+        <frameBottomColor value="1 1 1 0.85"/>
+    </Profile>
+
+    <!-- Esc CS PIVOT dial + compact remote buttons (2026-08-09). blank.png only. -->
+    <Profile name="RF_CsPivotDialFace" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.18 0.20 0.22 0.95"/>
+        <size value="88px 88px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_CsPivotNeedleCur" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.66 0.88 0.29 1"/>
+        <size value="8px 44px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_CsPivotNeedleMin" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.95 0.75 0.20 1"/>
+        <size value="6px 40px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_CsPivotNeedleMax" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.90 0.40 0.25 1"/>
+        <size value="6px 40px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- Pivot remotes: buttonActivate plate + hideKeyboardGlyph (SPACE off). Option A fs25_wideButton alone = chrome FAIL. -->
+    <!-- Pivot remotes: vanilla ButtonOverlay SPACE chrome; labels painted as key
+         chips from CsRfPdaGuest, not as TextElement text. The BUILD 23:59 v2
+         colorPreset plate is deliberately gone - it was a different chrome family.
+         iconSize stays non-zero: 0x0 collapses the chip height. -->
+    <Profile name="RF_CsPivotBtn" extends="buttonActivate" with="anchorTopLeft pivotTopLeft">
+        <size value="80px 32px"/>
+        <textSize value="13px"/>
+        <textBold value="true"/>
+        <textUpperCase value="false"/>
+        <fitToContent value="false"/>
+        <textAutoWidth value="false"/>
+        <hideKeyboardGlyph value="true"/>
+        <isTriggerableByGlobalAction value="false"/>
+        <iconSize value="30px 30px"/>
+    </Profile>
     <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 160px"/>
         <clipChildren value="true"/>
+    </Profile>
+
+    <!-- BUILD 16:19 card padding + zone splits.
+         RF_EscCardRule: the 1px hairline between a card's upper and lower zone.
+         George ranked "gap only" first and a thin blank.png rule second, both GO;
+         Samantha asked for air AND one rule, so this is the rule half. Real
+         filename + explicit imageColor per the fence (a nil Bitmap paints purple).
+         Size is set per instance because middle is 540 wide and right is 270.
+         RF_ProductCellDense / *Right / RF_ProductColHeaderDense: 14px twins of the
+         normal cells, used ONLY by the middle PRODUCTS rows. Eight rows at the old
+         20px pitch do not fit the 248px card once the split lands, so the rows
+         densify to a 15px pitch and the text drops with them. The right card keeps
+         the original 17px cells because it has the room. -->
+    <Profile name="RF_EscCardRule" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.478 0.502 0.533 0.55"/>
+        <size value="540px 1px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_ProductCellDense" extends="RF_ProductCell">
+        <textSize value="14px"/>
+    </Profile>
+    <Profile name="RF_ProductCellDenseRight" extends="RF_ProductCellRight">
+        <textSize value="14px"/>
+    </Profile>
+    <Profile name="RF_ProductColHeaderDense" extends="RF_ProductColHeader">
+        <textSize value="14px"/>
     </Profile>
     <Profile name="RF_ProductRow" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 20px"/>
@@ -406,6 +488,11 @@
         <height value="384px"/>
         <position value="0px 0px"/>
         <clipChildren value="true"/>
+    </Profile>
+
+    <!-- CS-only taller bottom band (Esc CS breath 2026-08-09). Do not use on Soil/MDM. -->
+    <Profile name="RF_CsDetailStrip" extends="RF_TreatmentStrip">
+        <height value="520px"/>
     </Profile>
 
     <!-- Wizard swatches: blank.png + imageColor (never nil filename); stretch fill parents -->
