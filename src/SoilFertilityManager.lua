@@ -2102,3 +2102,35 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
     if not ok then return nil end
     return summary
 end
+
+-- ============================================================
+-- SF-49 THE WATER RECORD READ (cross-mod surface)
+--
+-- SeasonalCropStress's caught-up-hour (SCS-037 round 2) reconstructs the rain
+-- switch across a skipped day from SoilFertilizer's Water Record. The record
+-- lives on the wetness subsystem, three internal field names deep, which is
+-- exactly the coupling SoilFertilizer's own cross-boundary rule forbids. So it
+-- is delegated here, on the manager, at the same boundary the growth contract
+-- above crosses: `g_currentMission.soilFertilityManager`.
+--
+-- NEUTRAL, not a claim. nil means "we do not know", never "it was dry". A
+-- closed ground_material gate, a missing or unarmed wetness subsystem, a
+-- throwing read, and an empty record all return nil so the consumer falls back
+-- to the honest approximation instead of trusting a zero it did not earn.
+-- ============================================================
+
+--- How many of the last `days` days (through `throughDay`) brought water.
+---@param days number how many trailing days to ask about
+---@param throughDay number|nil day cursor; nil means the record's own applied-through
+---@return number|nil count number of wet days, nil when unknown
+---@return number|nil known how many of the window the record covers
+function SoilFertilityManager:getWaterDaysInLast(days, throughDay)
+    local mw = self.soilSystem and self.soilSystem.materialWetness
+    if mw == nil or type(mw.waterDaysInLast) ~= 'function' then return nil end
+    if not mw:isArmed() then return nil end
+    if not ReleaseGate.isSystemLive("ground_material") then return nil end
+    local ok, count, known = pcall(mw.waterDaysInLast, mw, days, throughDay)
+    if not ok then return nil end
+    if known == nil or known <= 0 then return nil end
+    return count, known
+end
