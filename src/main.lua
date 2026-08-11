@@ -82,6 +82,12 @@ source(modDirectory .. "src/SpatialPressures.lua")
 -- calls SpatialNutrients from the leach and harvest paths. Consumes SCS
 -- positional moisture and the field-level soil type (absent = uniform today).
 source(modDirectory .. "src/SpatialNutrients.lua")
+-- SF-21 NEIGHBOUR CROSSING: what arrives at a field's edge depends on what is
+-- actually across it. Upgrades the SF-19 edge mechanism (the reserved slot) with
+-- the crossing pre-pass, the pest arc weight recomposition, and the
+-- conducive-gated disease boundary seeding. Loaded before SoilFertilitySystem,
+-- which runs the daily crossing pass ahead of the mutation batches.
+source(modDirectory .. "src/NeighbourCrossing.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that

@@ -102,3 +102,8 @@
 - [x] Tier-0 texture via SCS soil type (loam fallback, F157 gap); spine Agronomy multiplier neutral 1.0; reciprocal getSoilValueAtWorld published on the manager.
 - [x] 13 assertions in `sf23_spatial_nutrients_test.lua`. Suite 2550/0 across 56 files.
 - [~] In-game: banded flush frame cost, hull edge behaviour, wet/dry nutrient picture. Maturity-asks: tier-1/2 texture, SCS consuming the reciprocal read.
+
+## SF-21 neighbour crossing (2026-08-11)
+- [x] Crossing pre-pass (completion gate LAW) + transient per-day snapshot; B2 pest arc weight recomposition; B3 conducive-gated disease boundary seeding with the protection fence; B4 constants.
+- [x] `SpatialPressures:seedBoundaryOrigin` added (the reserved origin entry). Suite 2549/0 across 56 files.
+- [~] In-game: bias over several days, clean-district parity, protection-window hold, no-moisture-mod, pre-pass frame cost.
