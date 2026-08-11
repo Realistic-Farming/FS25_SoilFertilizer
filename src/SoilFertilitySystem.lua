@@ -4032,6 +4032,14 @@ function SoilFertilitySystem:updateDailySoil(elapsedDays)
     self._pendingDailyUpdate = true
     self._dailyBatchCursor   = 0
 
+    -- [SF-23] SPATIAL NUTRIENTS: refresh the cached moisture bands once per day,
+    -- before the per-field batch runs, so the leach path reads settled water.
+    -- Server-only (the daily pass is server-authoritative). Bands that cannot be
+    -- derived collapse to the one-band uniform fallback. Neutral when absent.
+    if g_server ~= nil and SpatialNutrients and SpatialNutrients.ENABLED then
+        SpatialNutrients:refreshAllBands(self)
+    end
+
     SoilLogger.debug("[PERF-P4] Day %d: queued daily update for %d active field(s) (batch=%d/frame)",
         currentDay, #self._activeFieldList, self.DAILY_BATCH_SIZE)
 end
@@ -4773,11 +4781,33 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                     -- far below one raw map step, so they accumulate in field._vmPend and
                     -- flush as a uniform polygon shift once large enough.
                     if self:vmAvailable() then
-                        self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
-                        self:_vmFlushFieldDeltas(fieldId, field)
+                        -- [SF-23] SPATIAL NUTRIENTS: split the leach across the field's
+                        -- cached moisture bands so the wet hollow loses more than the dry
+                        -- knoll, normalised to the field-level loss. Phosphorus does NOT
+                        -- go banded here: it binds, and the field-level 0.5 multiplier is
+                        -- its only leach path (its spatial moves are application and crop
+                        -- removal). One band (no SCS / no bands) is byte-identical to the
+                        -- old uniform queue below.
+                        if SpatialNutrients and SpatialNutrients.ENABLED
+                           and field._snBands and #field._snBands > 1 then
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "nitrogen",  -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "potassium", -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                            -- pH rides the same banded distribution downward.
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "pH",        -(leachFactor * rain.PH_ACIDIFICATION))
+                            SpatialNutrients:flushBands(self, fieldId, field)
+                            -- Phosphorus: uniform, it binds.
+                            self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                            self:_vmFlushFieldDeltas(fieldId, field)
+                        else
+                            self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
+                            self:_vmFlushFieldDeltas(fieldId, field)
+                        end
                     end
                     count = count + 1
                 end
@@ -4904,9 +4934,24 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     -- to the map's raw quantisation.
     if self:vmAvailable() then
         local tunD = getTuningMult(self.settings, "tuningNutrientDepletion", "RATE_MULT")
-        self:_vmQueueFieldDelta(field, "nitrogen",   -rates.N * factor * tunD)
-        self:_vmQueueFieldDelta(field, "phosphorus", -rates.P * factor * tunD)
-        self:_vmQueueFieldDelta(field, "potassium",  -rates.K * factor * tunD)
+        -- [SF-23] SPATIAL NUTRIENTS: split the harvest removal across the field's
+        -- cached moisture bands so the ground the machine actually worked (and the
+        -- wetter ground that grew heavier) loses more. Phosphorus IS banded here:
+        -- crop removal is one of its two spatial pathways (application is the
+        -- other). One band = the old uniform queue.
+        if SpatialNutrients and SpatialNutrients.ENABLED
+           and field._snBands and #field._snBands > 1 then
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "nitrogen",   -rates.N * factor * tunD)
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "phosphorus", -rates.P * factor * tunD)
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "potassium",  -rates.K * factor * tunD)
+            SpatialNutrients:flushBands(self, fieldId, field)
+            -- OM is not banded: chopped straw distributes with the swath, uniform
+            -- (queued in Step 4 below, unchanged).
+        else
+            self:_vmQueueFieldDelta(field, "nitrogen",   -rates.N * factor * tunD)
+            self:_vmQueueFieldDelta(field, "phosphorus", -rates.P * factor * tunD)
+            self:_vmQueueFieldDelta(field, "potassium",  -rates.K * factor * tunD)
+        end
     end
 
     -- Step 4: Chopped straw/chaff adds organic matter.

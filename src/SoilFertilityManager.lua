@@ -2134,3 +2134,18 @@ function SoilFertilityManager:getWaterDaysInLast(days, throughDay)
     if known == nil or known <= 0 then return nil end
     return count, known
 end
+
+--- [SF-23] Positional nutrient/OM sample for cross-mod consumers (the brief's
+--- reciprocal read). SeasonalCropStress reads SF's spatial state the way SF reads
+--- its moisture: read-only, nil when the value maps are unavailable or the pixel
+--- is unwritten. Never a write across the firewall.
+---@param key string  "nitrogen" | "phosphorus" | "potassium" | "pH" | "organicMatter"
+---@param x number
+---@param z number
+---@return number|nil
+function SoilFertilityManager:getSoilValueAtWorld(key, x, z)
+    if SpatialNutrients == nil or SpatialNutrients.getSoilValueAtWorld == nil then return nil end
+    local ok, v = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
+    if not ok then return nil end
+    return v
+end
