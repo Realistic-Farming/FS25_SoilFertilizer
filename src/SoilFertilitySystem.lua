@@ -903,8 +903,14 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     if not fieldId or fieldId <= 0 then return end
 
     if farmId == nil or farmId == 0 then
-        -- Field sold / abandoned - pull it out of the active simulation set.
-        -- fieldData intentionally kept: new owner inherits the soil conditions.
+        -- Field sold / abandoned - pull it out of the active simulation set,
+        -- UNLESS it is NPC-managed ground (the designation keeps it active; the
+        -- symmetric leave only fires on a designation lapse, never on a farm
+        -- release while an NPC works it). fieldData intentionally kept.
+        if NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then
+            SoilLogger.debug("[PERF-P1] Field %d released by farm but NPC-managed - stays active", fieldId)
+            return
+        end
         self:_removeFromActiveSet(fieldId)
         -- Clear GRLE so unmasked DMV no longer colours this unowned field.
         if self.layerSystem and self.layerSystem.available then
@@ -2399,8 +2405,13 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
     end
 
     -- Charge cost (server authoritative). area × $/ha, gated by fertilizerCosts.
+    -- [SF-27] B4 attribution: an NPC-attributed treatment never moves the player's
+    -- money. Fail-closed: UNKNOWN attribution (designated or uncertain) skips the
+    -- charge entirely. The explicit opts.charge=false path is the NPC-treatment
+    -- build's own; this predicate is the safety net for the player-facing path.
     local cost = 0
-    if opts.charge ~= false and self.settings.fertilizerCosts and g_server then
+    local npcAttributed = NpcSoilBridge and NpcSoilBridge:isNPCAttributed(fieldId) == true
+    if opts.charge ~= false and not npcAttributed and self.settings.fertilizerCosts and g_server then
         local area = field.fieldArea or 1.0
         cost = (chem.costPerHa or 0) * area
         if cost > 0 then
@@ -2762,11 +2773,13 @@ function SoilFertilitySystem:scanFields()
                     end
                 end
 
-                -- PHASE 1: only owned farmlands enter the active simulation set.
-                -- Unowned land still gets fieldData but is excluded from daily updates.
+                -- PHASE 1/2: owned farmlands AND NPC-managed farmlands enter the
+                -- active simulation set. Unowned, unmanaged land still gets
+                -- fieldData but is excluded from daily updates.
                 if g_farmlandManager then
                     local farmlandOwner = g_farmlandManager:getFarmlandOwner(actualFieldId)
-                    if farmlandOwner and farmlandOwner > 0 then
+                    local isNpc = NpcSoilBridge and NpcSoilBridge:isNPCManaged(actualFieldId) == true
+                    if (farmlandOwner and farmlandOwner > 0) or isNpc then
                         self:_addToActiveSet(actualFieldId)
                     end
                 end
@@ -2787,7 +2800,8 @@ function SoilFertilitySystem:scanFields()
                     self.layerSystem:readFieldFromLayers(farmlandId, self.fieldData[farmlandId], farmlandObj)
                 end
                 local farmlandOwner2 = g_farmlandManager:getFarmlandOwner(farmlandId)
-                if farmlandOwner2 and farmlandOwner2 > 0 then
+                local isNpc2 = NpcSoilBridge and NpcSoilBridge:isNPCManaged(farmlandId) == true
+                if (farmlandOwner2 and farmlandOwner2 > 0) or isNpc2 then
                     self:_addToActiveSet(farmlandId)
                 end
                 fieldCount = fieldCount + 1
@@ -3228,6 +3242,11 @@ function SoilFertilitySystem:rerollUnownedFields()
             local owner = g_farmlandManager and g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == playerFarmId then
                 -- Player's own field - leave its soil and progress alone.
+                skipped = skipped + 1
+            elseif NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then
+                -- B5: designated NPC ground is SKIPPED, never rerolled. This
+                -- protects the disease/pest reservoir history the feature exists
+                -- to create.
                 skipped = skipped + 1
             else
                 local soil = self:_computeInitialSoil(fieldId)

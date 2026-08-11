@@ -885,14 +885,17 @@ function SoilFieldBatchSyncEvent:run(connection)
         -- scanFields() may have run before the server's ownership data arrived on
         -- the client, leaving activeFieldIds empty and the overlay blank. Now that
         -- fieldData is fully populated we re-check ownership and fill the set.
+        -- [SF-27] B4a: NPC-managed ground is client-visible through the designation
+        -- surface (NPCFavor syncs its handle), so the widened gate paints it on join.
         if g_farmlandManager then
             for farmlandId in pairs(soilSystem.fieldData) do
                 local owner = g_farmlandManager:getFarmlandOwner(farmlandId)
-                if owner and owner > 0 then
+                local isNpc = NpcSoilBridge and NpcSoilBridge:isNPCManaged(farmlandId) == true
+                if (owner and owner > 0) or isNpc then
                     soilSystem:_addToActiveSet(farmlandId)
                 end
             end
-            SoilLogger.info("Client: activeFieldIds rebuilt (%d owned fields)", (function()
+            SoilLogger.info("Client: activeFieldIds rebuilt (%d active fields)", (function()
                 local n = 0; for _ in pairs(soilSystem.activeFieldIds) do n = n + 1 end; return n
             end)())
         end
