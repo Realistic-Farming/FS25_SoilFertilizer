@@ -6464,6 +6464,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
     local fromZoneCell = false
+    local posPest = nil
+    local posDisease = nil
+    local posCompaction = nil
     if x and z and self:vmAvailable() then
         -- REFINED: per-pixel reads from the runtime value maps (~2 m/px)
         local vm = self.valueMaps
@@ -6472,12 +6475,22 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         local vk  = vm:readValueAtWorld("potassium",     x, z)
         local vph = vm:readValueAtWorld("pH",            x, z)
         local vom = vm:readValueAtWorld("organicMatter", x, z)
-        if vn or vp or vk or vph or vom then
+        -- [SF-19 item 4] Tooltip parity: pest, disease and compaction are spatial
+        -- on the display maps, so a positional read returns the per-cell truth the
+        -- map paints instead of the field scalar. Disease honours the discovery
+        -- gate below; here we only capture the raw positional value.
+        local vpest = vm:readValueAtWorld("pestPressure",    x, z)
+        local vdis  = vm:readValueAtWorld("diseasePressure", x, z)
+        local vcomp = vm:readValueAtWorld("compaction",      x, z)
+        if vn or vp or vk or vph or vom or vpest or vdis or vcomp then
             n  = vn  or n
             p  = vp  or p
             k  = vk  or k
             ph = vph or ph
             om = vom or om
+            posPest = vpest
+            posDisease = vdis
+            posCompaction = vcomp
             fromZoneCell = true
         end
     elseif x and z and field.zoneData then
@@ -6661,17 +6674,19 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         yieldEfficiency = yieldEfficiency,
         weedPressure = isNonCropField and 0 or (field.weedPressure or 0),
         herbicideActive = (field.herbicideDaysLeft or 0) > 0,
-        pestPressure = field.pestPressure or 0,
+        pestPressure = posPest or (field.pestPressure or 0),
         insecticideActive = (field.insecticideDaysLeft or 0) > 0,
-        diseasePressure = field.diseasePressure or 0,
+        diseasePressure = posDisease or (field.diseasePressure or 0),
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         activeDisease = field.activeDisease,  -- DISEASE_DEFS id of the named infection, or nil
         diseaseDiscovered = field.diseaseDiscovered or false,  -- discovery gate: false = named infection not yet scouted (HUD shows "?")
         -- Scouting-gated display value: nil = unscouted (UI shows "Unscouted"); a
         -- number once scouted. Disease-off shows the value (nothing to hide). The
         -- RAW diseasePressure above stays ungated for the NPC roll and scouting.
+        -- The positional disease read, when present, is gated the same way so the
+        -- tooltip never leaks an unscouted patch that the map hides.
         shownDiseasePressure = (field.diseaseDiscovered or not (self.settings and self.settings.diseasePressure))
-            and (field.diseasePressure or 0) or nil,
+            and (posDisease or (field.diseasePressure or 0)) or nil,
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
@@ -6685,7 +6700,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         coverageFraction        = field.coverageFraction or 0,
         sessionCoverageFraction = field.sessionCoverageFraction or 0,
         sessionLastProduct      = field.sessionLastProduct,
-        compaction = field.compaction or 0,
+        compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
         needsFertilization = (
             field.nitrogen < fertThresholds.nitrogen or
