@@ -3482,6 +3482,32 @@ local VM_SEED_SPREAD = {
     compaction    = 0,
 }
 
+-- SF-20 RELIEF WEIGHT: seed one nutrient layer. Organic matter is painted from
+-- the field's own terrain relief (low ground is richer); every other layer keeps
+-- the cosmetic Perlin spread. Relief REPLACES the spread only where relief
+-- exists - on a field flatter than the guard, seedPolygonByRelief declines and
+-- this falls through to exactly today's behaviour.
+--
+-- Organic matter is the ONE property where a static terrain-derived deviation is
+-- honest. Nitrogen here is plant-available N, a seasonal weather-driven
+-- quantity, not a landscape-structural one: do NOT extend this to N/P/K/pH.
+local function vmSeedNutrient(vm, key, verts, baseValue, spread)
+    if key == "organicMatter" and baseValue and baseValue > 0 then
+        local relief = SoilConstants.RELIEF
+        -- Guarded on the method as well as the constants: seeding must degrade
+        -- to the existing path on any value-maps object that predates SF-20
+        -- rather than take a field's seeding down with it.
+        if relief and vm.seedPolygonByRelief then
+            local amplitude = baseValue * relief.AMPLITUDE_FRACTION * relief.AGRONOMY_SCALE
+            if amplitude >= (relief.MIN_AMPLITUDE or 0)
+               and vm:seedPolygonByRelief(key, verts, baseValue, amplitude) then
+                return
+            end
+        end
+    end
+    vm:seedPolygon(key, verts, baseValue, spread)
+end
+
 --- True when the per-pixel value maps are usable.
 function SoilFertilitySystem:vmAvailable()
     return self.valueMaps ~= nil and self.valueMaps.available
@@ -3574,10 +3600,14 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
             end
         end
         if migrated then
-            -- Base fill first so gaps between stamped cells are covered
+            -- Base fill first so gaps between stamped cells are covered.
+            -- [SF-20] The OM base fill is relief-painted; the legacy per-cell
+            -- stamp below then lands ON TOP of it, so a migrated save's real
+            -- stored soil always beats the derived relief picture and only the
+            -- gaps between stamped cells take the terrain-true fill.
             for _, key in ipairs(VM_NUTRIENT_KEYS) do
                 if vmShouldSeed(vm, key, force) then
-                    vm:seedPolygon(key, verts, field[key]
+                    vmSeedNutrient(vm, key, verts, field[key]
                         or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
                 end
             end
@@ -3633,7 +3663,7 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
     if not migrated then
         for _, key in ipairs(VM_NUTRIENT_KEYS) do
             if vmShouldSeed(vm, key, force) then
-                vm:seedPolygon(key, verts, field[key]
+                vmSeedNutrient(vm, key, verts, field[key]
                     or SoilConstants.FIELD_DEFAULTS[key], VM_SEED_SPREAD[key])
             end
         end
@@ -4001,6 +4031,25 @@ function SoilFertilitySystem:updateDailySoil(elapsedDays)
 
     self._pendingDailyUpdate = true
     self._dailyBatchCursor   = 0
+
+    -- [SF-23] SPATIAL NUTRIENTS: refresh the cached moisture bands once per day,
+    -- before the per-field batch runs, so the leach path reads settled water.
+    -- Server-only (the daily pass is server-authoritative). Bands that cannot be
+    -- derived collapse to the one-band uniform fallback. Neutral when absent.
+    if g_server ~= nil and SpatialNutrients and SpatialNutrients.ENABLED then
+        SpatialNutrients:refreshAllBands(self)
+    end
+
+    -- [SF-21] NEIGHBOUR CROSSING: the crossing PRE-PASS runs once per day, before
+    -- the mutation batches (the completion gate is LAW: no mutation before the
+    -- snapshot). The transient snapshot lives on self for the batch's read; it is
+    -- never saved or synced. Neutral when absent.
+    if g_server ~= nil and NeighbourCrossing and NeighbourCrossing.ENABLED then
+        local hookMgr = self.hookManager
+        if hookMgr then
+            self._neighbourSnapshot = NeighbourCrossing:runPrePass(hookMgr, self)
+        end
+    end
 
     SoilLogger.debug("[PERF-P4] Day %d: queued daily update for %d active field(s) (batch=%d/frame)",
         currentDay, #self._activeFieldList, self.DAILY_BATCH_SIZE)
@@ -4546,6 +4595,21 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         self:_updateActiveDisease(fieldId, field, season, isRaining, currentDay)
     end
 
+    -- [SF-21] NEIGHBOUR CROSSING: roll the conducive-gated disease boundary
+    -- seeding before the pressure pass runs, so a fresh boundary origin gets
+    -- spread the same day. Uses the day's transient snapshot (the pre-pass ran
+    -- in updateDailySoil ahead of the batch). Protection fence is LAW inside.
+    -- Neutral when absent / no snapshot / protected field.
+    if g_server ~= nil and NeighbourCrossing and NeighbourCrossing.ENABLED
+       and ReleaseGate.isSystemLive("spatial_soil")
+       and self._neighbourSnapshot and self._neighbourSnapshot[fieldId] then
+        local hookMgr = self.hookManager
+        if hookMgr then
+            NeighbourCrossing:rollDiseaseCrossing(self, fieldId, field,
+                self._neighbourSnapshot[fieldId], currentDay)
+        end
+    end
+
     -- [SF-19] VARIABLE PEST AND DISEASE PRESSURE: distribute the field-level
     -- pressure onto the per-cell store with ORIGIN and SPREAD. Server-only
     -- (the daily pass is server-authoritative), after the field aggregate is
@@ -4556,7 +4620,8 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED
        and ReleaseGate.isSystemLive("spatial_soil") then
         local poly = self:_getFieldPolyVerts(fieldId, field)
-        SpatialPressures:run(self, fieldId, field, currentDay, poly)
+        SpatialPressures:run(self, fieldId, field, currentDay, poly,
+            self._neighbourSnapshot and self._neighbourSnapshot[fieldId])
     end
 
     -- ── Burn warning countdown ───────────────────────────────────────────────
@@ -4743,11 +4808,33 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                     -- far below one raw map step, so they accumulate in field._vmPend and
                     -- flush as a uniform polygon shift once large enough.
                     if self:vmAvailable() then
-                        self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-                        self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
-                        self:_vmFlushFieldDeltas(fieldId, field)
+                        -- [SF-23] SPATIAL NUTRIENTS: split the leach across the field's
+                        -- cached moisture bands so the wet hollow loses more than the dry
+                        -- knoll, normalised to the field-level loss. Phosphorus does NOT
+                        -- go banded here: it binds, and the field-level 0.5 multiplier is
+                        -- its only leach path (its spatial moves are application and crop
+                        -- removal). One band (no SCS / no bands) is byte-identical to the
+                        -- old uniform queue below.
+                        if SpatialNutrients and SpatialNutrients.ENABLED
+                           and field._snBands and #field._snBands > 1 then
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "nitrogen",  -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "potassium", -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                            -- pH rides the same banded distribution downward.
+                            SpatialNutrients:queueBandedDelta(self, fieldId, field,
+                                "pH",        -(leachFactor * rain.PH_ACIDIFICATION))
+                            SpatialNutrients:flushBands(self, fieldId, field)
+                            -- Phosphorus: uniform, it binds.
+                            self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                            self:_vmFlushFieldDeltas(fieldId, field)
+                        else
+                            self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
+                            self:_vmFlushFieldDeltas(fieldId, field)
+                        end
                     end
                     count = count + 1
                 end
@@ -4874,9 +4961,24 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     -- to the map's raw quantisation.
     if self:vmAvailable() then
         local tunD = getTuningMult(self.settings, "tuningNutrientDepletion", "RATE_MULT")
-        self:_vmQueueFieldDelta(field, "nitrogen",   -rates.N * factor * tunD)
-        self:_vmQueueFieldDelta(field, "phosphorus", -rates.P * factor * tunD)
-        self:_vmQueueFieldDelta(field, "potassium",  -rates.K * factor * tunD)
+        -- [SF-23] SPATIAL NUTRIENTS: split the harvest removal across the field's
+        -- cached moisture bands so the ground the machine actually worked (and the
+        -- wetter ground that grew heavier) loses more. Phosphorus IS banded here:
+        -- crop removal is one of its two spatial pathways (application is the
+        -- other). One band = the old uniform queue.
+        if SpatialNutrients and SpatialNutrients.ENABLED
+           and field._snBands and #field._snBands > 1 then
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "nitrogen",   -rates.N * factor * tunD)
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "phosphorus", -rates.P * factor * tunD)
+            SpatialNutrients:queueBandedDelta(self, fieldId, field, "potassium",  -rates.K * factor * tunD)
+            SpatialNutrients:flushBands(self, fieldId, field)
+            -- OM is not banded: chopped straw distributes with the swath, uniform
+            -- (queued in Step 4 below, unchanged).
+        else
+            self:_vmQueueFieldDelta(field, "nitrogen",   -rates.N * factor * tunD)
+            self:_vmQueueFieldDelta(field, "phosphorus", -rates.P * factor * tunD)
+            self:_vmQueueFieldDelta(field, "potassium",  -rates.K * factor * tunD)
+        end
     end
 
     -- Step 4: Chopped straw/chaff adds organic matter.
@@ -6434,6 +6536,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
     local fromZoneCell = false
+    local posPest = nil
+    local posDisease = nil
+    local posCompaction = nil
     if x and z and self:vmAvailable() then
         -- REFINED: per-pixel reads from the runtime value maps (~2 m/px)
         local vm = self.valueMaps
@@ -6442,12 +6547,22 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         local vk  = vm:readValueAtWorld("potassium",     x, z)
         local vph = vm:readValueAtWorld("pH",            x, z)
         local vom = vm:readValueAtWorld("organicMatter", x, z)
-        if vn or vp or vk or vph or vom then
+        -- [SF-19 item 4] Tooltip parity: pest, disease and compaction are spatial
+        -- on the display maps, so a positional read returns the per-cell truth the
+        -- map paints instead of the field scalar. Disease honours the discovery
+        -- gate below; here we only capture the raw positional value.
+        local vpest = vm:readValueAtWorld("pestPressure",    x, z)
+        local vdis  = vm:readValueAtWorld("diseasePressure", x, z)
+        local vcomp = vm:readValueAtWorld("compaction",      x, z)
+        if vn or vp or vk or vph or vom or vpest or vdis or vcomp then
             n  = vn  or n
             p  = vp  or p
             k  = vk  or k
             ph = vph or ph
             om = vom or om
+            posPest = vpest
+            posDisease = vdis
+            posCompaction = vcomp
             fromZoneCell = true
         end
     elseif x and z and field.zoneData then
@@ -6631,17 +6746,19 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         yieldEfficiency = yieldEfficiency,
         weedPressure = isNonCropField and 0 or (field.weedPressure or 0),
         herbicideActive = (field.herbicideDaysLeft or 0) > 0,
-        pestPressure = field.pestPressure or 0,
+        pestPressure = posPest or (field.pestPressure or 0),
         insecticideActive = (field.insecticideDaysLeft or 0) > 0,
-        diseasePressure = field.diseasePressure or 0,
+        diseasePressure = posDisease or (field.diseasePressure or 0),
         fungicideActive = (field.fungicideDaysLeft or 0) > 0,
         activeDisease = field.activeDisease,  -- DISEASE_DEFS id of the named infection, or nil
         diseaseDiscovered = field.diseaseDiscovered or false,  -- discovery gate: false = named infection not yet scouted (HUD shows "?")
         -- Scouting-gated display value: nil = unscouted (UI shows "Unscouted"); a
         -- number once scouted. Disease-off shows the value (nothing to hide). The
         -- RAW diseasePressure above stays ungated for the NPC roll and scouting.
+        -- The positional disease read, when present, is gated the same way so the
+        -- tooltip never leaks an unscouted patch that the map hides.
         shownDiseasePressure = (field.diseaseDiscovered or not (self.settings and self.settings.diseasePressure))
-            and (field.diseasePressure or 0) or nil,
+            and (posDisease or (field.diseasePressure or 0)) or nil,
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
@@ -6655,7 +6772,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         coverageFraction        = field.coverageFraction or 0,
         sessionCoverageFraction = field.sessionCoverageFraction or 0,
         sessionLastProduct      = field.sessionLastProduct,
-        compaction = field.compaction or 0,
+        compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
         needsFertilization = (
             field.nitrogen < fertThresholds.nitrogen or
@@ -7687,4 +7804,87 @@ function SoilFertilitySystem:recordTillageTrailPoint(fieldId, wx, wz, isPlow)
         field.tillageCells      = nil
         field.tillageSessionDay = nil
     end
+end
+
+-- ============================================================
+-- SF-20 RELIEF CHECK (acceptance instrument)
+--
+-- The relief weight's acceptance is three in-game checks that were, until now,
+-- "look at the map and judge". That is not a test anybody can pass or fail
+-- honestly, and it is not something a second person can verify the same way.
+-- This runs all three and reports numbers.
+--
+--   DIRECTION     low ground must read HIGHER organic matter than high ground
+--   CONSERVATION  the field-level figure must not move while cells vary
+--   MAGNITUDE     peak-to-peak spread should be about the amplitude, no more
+--
+-- Read-only. Samples terrain height and the organicMatter value map on the same
+-- bounded grid the painter used, so it measures the thing that shipped rather
+-- than recomputing what it thinks should be there.
+-- ============================================================
+function SoilFertilitySystem:reliefCheck(fieldId)
+    if not self:vmAvailable() then return nil, "value maps unavailable" end
+    local field = self.fieldData[fieldId]
+    if field == nil then return nil, string.format("field %s not tracked", tostring(fieldId)) end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if verts == nil or #verts < 3 then return nil, "field has no usable polygon" end
+    if g_terrainNode == nil or getTerrainHeightAtWorldPos == nil then
+        return nil, "terrain unavailable"
+    end
+
+    local relief = SoilConstants.RELIEF or {}
+    local step = relief.BLOCK_SIZE or 8
+    local minX, maxX, minZ, maxZ = verts[1].x, verts[1].x, verts[1].z, verts[1].z
+    for i = 2, #verts do
+        local v = verts[i]
+        if v.x < minX then minX = v.x end
+        if v.x > maxX then maxX = v.x end
+        if v.z < minZ then minZ = v.z end
+        if v.z > maxZ then maxZ = v.z end
+    end
+
+    local vm = self.valueMaps
+    local lo, hi = nil, nil        -- lowest / highest GROUND, with their OM
+    local omMin, omMax = nil, nil  -- OM extremes regardless of height
+    local n, omSum = 0, 0
+    local x = minX + step * 0.5
+    while x <= maxX and n < 4000 do
+        local z = minZ + step * 0.5
+        while z <= maxZ and n < 4000 do
+            if _isPointInPoly(x, z, verts) then
+                local okH, h = pcall(getTerrainHeightAtWorldPos, g_terrainNode, x, 0, z)
+                local om = vm:readValueAtWorld("organicMatter", x, z)
+                if okH and type(h) == "number" and type(om) == "number" then
+                    n = n + 1
+                    omSum = omSum + om
+                    if lo == nil or h < lo.h then lo = { h = h, om = om, x = x, z = z } end
+                    if hi == nil or h > hi.h then hi = { h = h, om = om, x = x, z = z } end
+                    if omMin == nil or om < omMin then omMin = om end
+                    if omMax == nil or om > omMax then omMax = om end
+                end
+            end
+            z = z + step
+        end
+        x = x + step
+    end
+
+    if n < 2 then return nil, "not enough readable samples" end
+
+    local reliefRange = hi.h - lo.h
+    local flatGuard = relief.MIN_RANGE or 0
+    local amplitude = (field.organicMatter or 0)
+        * (relief.AMPLITUDE_FRACTION or 0) * (relief.AGRONOMY_SCALE or 1)
+
+    return {
+        samples      = n,
+        reliefRange  = reliefRange,
+        flatGuard    = flatGuard,
+        isFlat       = reliefRange < flatGuard,
+        lowGroundOM  = lo.om,
+        highGroundOM = hi.om,
+        omSpread     = (omMax or 0) - (omMin or 0),
+        omSampledMean= omSum / n,
+        fieldOM      = field.organicMatter or 0,
+        amplitude    = amplitude,
+    }
 end

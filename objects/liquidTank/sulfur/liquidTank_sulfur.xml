@@ -3,6 +3,8 @@
 
     <parentFile xmlFilename="$data/objects/pallets/liquidTank/herbicideTankHelm.xml">
         <attributes>
+            <set path="vehicle.base.filename"                   value="objects/liquidTank/sulfur/liquidTank.i3d"/>
+            <set path="vehicle.storeData.brand"                      value="LIZARD"/>
             <set path="vehicle.storeData.name"                        value="$l10n_sf_bigBag_sulfur_name"/>
             <set path="vehicle.storeData.image"                       value="$data/objects/pallets/liquidTank/store_herbicideTankHelm.png"/>
             <set path="vehicle.storeData.price"                       value="2200"/>
@@ -21,7 +23,7 @@
     <storeData>
         <name>$l10n_sf_bigBag_sulfur_name</name>
         <image>$data/objects/pallets/liquidTank/store_herbicideTankHelm.png</image>
-        <brand>HELM</brand>
+        <brand>LIZARD</brand>
         <category>ibc palletFertilizerHerbicide</category>
         <storeIconRendering>
             <settings cameraXRot="-15" cameraYRot="25"/>

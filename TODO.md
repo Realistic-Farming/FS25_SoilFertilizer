@@ -84,3 +84,26 @@
 - [x] `establishment_window_spec_test.lua` at 25 assertions (brief certs 23): window machine, threshold/compaction/severity, no-signal-no-thinning, kill-once, re-drill, live green close, positional per-cell kill with surviving cells keeping the window open, whole-stand close. Suite 2328/0 across 50 files; syntax + lint clean. Built and deployed.
 - [~] In-game verification owed (the brief's in-game items): waterlogged seedbed yields bare ground following the water's contour (state-0 look), re-sow onto a killed region works, dedicated-server propagation of the density write, frame cost at a mass-sowing spring rollover.
 
+## Water Record read on the manager (2026-08-10)
+- [x] `SoilFertilityManager:getWaterDaysInLast(days, throughDay)` publishes SF-49's Water Record at the cross-mod boundary (`g_currentMission.soilFertilityManager`), delegating to the already-built `MaterialWetness:waterDaysInLast`. Returns `(count, known)`; nil on every unknown path (closed ground_material gate, missing or unarmed subsystem, throwing read, `known == 0`).
+- [x] `water_record_delegate_test.lua` at 12 assertions. Suite 2516/0 across 53 files; syntax + lint clean.
+- [~] Not ours to build: SeasonalCropStress's `getSkipRainHours` (SCS-037 round 2) goes live when it calls this delegate. In-game skip test is theirs.
+
+
+
+## SF-19 visibility parity (2026-08-11)
+- [x] `getFieldInfo(fieldId, x, z)` positional pest/disease/compaction reads from the value maps (tooltip parity); disease discovery gate holds on the positional read.
+- [x] `HookManager.resolveCellPressure` reads pest/disease from the synced display maps first, then the cell, then the field scalar (see-and-spray client fidelity).
+- [x] 21 new assertions across `sf19_tooltip_parity_test.lua` and `sf19_see_and_spray_repoint_test.lua`. Suite 2537/0 across 55 files.
+- [~] In-game: scout reveal check on the PDA tooltip; MP client section-sprayer parity check.
+
+## SF-23 spatial nutrients (2026-08-11)
+- [x] Banded leach/pH/harvest distribution across cached moisture bands (`src/SpatialNutrients.lua`); conservation + floor rule pinned; one band = uniform.
+- [x] Tier-0 texture via SCS soil type (loam fallback, F157 gap); spine Agronomy multiplier neutral 1.0; reciprocal getSoilValueAtWorld published on the manager.
+- [x] 13 assertions in `sf23_spatial_nutrients_test.lua`. Suite 2550/0 across 56 files.
+- [~] In-game: banded flush frame cost, hull edge behaviour, wet/dry nutrient picture. Maturity-asks: tier-1/2 texture, SCS consuming the reciprocal read.
+
+## SF-21 neighbour crossing (2026-08-11)
+- [x] Crossing pre-pass (completion gate LAW) + transient per-day snapshot; B2 pest arc weight recomposition; B3 conducive-gated disease boundary seeding with the protection fence; B4 constants.
+- [x] `SpatialPressures:seedBoundaryOrigin` added (the reserved origin entry). Suite 2549/0 across 56 files.
+- [~] In-game: bias over several days, clean-district parity, protection-window hold, no-moisture-mod, pre-pass frame cost.

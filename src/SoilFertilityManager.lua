@@ -55,6 +55,13 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- and the daily pass; consumes SCS positional moisture (absent = inert).
     self.establishment = EstablishmentFailure and EstablishmentFailure.new(self) or nil
 
+    -- SF-52 v1 the viability mask: reads the soil's own data per period and
+    -- publishes getCellGrowthInfo / getFieldGrowthSummary, the contract SF-53,
+    -- SF-54 and SCS-020 all bind to. No engine write in v1 (that is v2, held).
+    self.viability = ViabilityMask and ViabilityMask.new(self) or nil
+    -- The published surface for the getters lives on this manager, not on the
+    -- `viability` field: see getCellGrowthInfo / getFieldGrowthSummary below.
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -680,6 +687,17 @@ function SoilFertilityManager:activateSoilSystem()
             self.establishment:initialize()
             if g_server ~= nil then
                 self.establishment:registerDailyAccrual()
+            end
+        end
+
+        -- SF-52 v1 viability mask: same shape, priority 96 so its pass runs
+        -- after the moisture store has settled and after establishment has
+        -- counted the dead. Server-authoritative: the pass reads server truth
+        -- and the published getters are answered from it.
+        if self.viability then
+            self.viability:initialize()
+            if g_server ~= nil then
+                self.viability:registerDailyAccrual()
             end
         end
 
@@ -2044,4 +2062,90 @@ function SoilFertilityManager:delete()
     -- #730). Real persistence is already covered: every change point saves immediately
     -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
+end
+-- ============================================================
+-- SF-52 THE PUBLISHED GROWTH CONTRACT (cross-mod surface)
+--
+-- SF-53, SF-54 and SCS-020 bind to these two, and two of them live in other
+-- mods. They are delegates on the MANAGER rather than reads of the `viability`
+-- field on purpose: `g_currentMission.soilFertilityManager` is the only handle
+-- that crosses the mod boundary (g_SoilFertilityManager is per-mod scoped via
+-- getfenv(0) and is not reachable from another mod), and a consumer reaching
+-- through `.viability` would be binding to an internal field name that a
+-- refactor here could rename out from under three mods at once.
+--
+-- Both are nil-safe in every direction: absent subsystem, absent field, mask
+-- disabled, or a value map that is not carrying data all return nil rather
+-- than throwing across the boundary.
+--
+-- Consumers should call these as:
+--   local sfm = g_currentMission and g_currentMission.soilFertilityManager
+--   local info = sfm and sfm:getCellGrowthInfo(fieldId, x, z)
+-- ============================================================
+
+--- Per-cell growth judgement at a world position.
+--- @return table|nil { blocked, blockedBy, bands, credit, capturedEfficiency }
+function SoilFertilityManager:getCellGrowthInfo(fieldId, x, z)
+    local v = self.viability
+    if v == nil or type(v.getCellGrowthInfo) ~= 'function' then return nil end
+    local ok, info = pcall(function() return v:getCellGrowthInfo(fieldId, x, z) end)
+    if not ok then return nil end
+    return info
+end
+
+--- Field-level area fractions in the outer bands.
+--- @return table|nil { blockedFrac, excellentFrac }
+function SoilFertilityManager:getFieldGrowthSummary(fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummary) ~= 'function' then return nil end
+    local ok, summary = pcall(function() return v:getFieldGrowthSummary(fieldId) end)
+    if not ok then return nil end
+    return summary
+end
+
+-- ============================================================
+-- SF-49 THE WATER RECORD READ (cross-mod surface)
+--
+-- SeasonalCropStress's caught-up-hour (SCS-037 round 2) reconstructs the rain
+-- switch across a skipped day from SoilFertilizer's Water Record. The record
+-- lives on the wetness subsystem, three internal field names deep, which is
+-- exactly the coupling SoilFertilizer's own cross-boundary rule forbids. So it
+-- is delegated here, on the manager, at the same boundary the growth contract
+-- above crosses: `g_currentMission.soilFertilityManager`.
+--
+-- NEUTRAL, not a claim. nil means "we do not know", never "it was dry". A
+-- closed ground_material gate, a missing or unarmed wetness subsystem, a
+-- throwing read, and an empty record all return nil so the consumer falls back
+-- to the honest approximation instead of trusting a zero it did not earn.
+-- ============================================================
+
+--- How many of the last `days` days (through `throughDay`) brought water.
+---@param days number how many trailing days to ask about
+---@param throughDay number|nil day cursor; nil means the record's own applied-through
+---@return number|nil count number of wet days, nil when unknown
+---@return number|nil known how many of the window the record covers
+function SoilFertilityManager:getWaterDaysInLast(days, throughDay)
+    local mw = self.soilSystem and self.soilSystem.materialWetness
+    if mw == nil or type(mw.waterDaysInLast) ~= 'function' then return nil end
+    if not mw:isArmed() then return nil end
+    if not ReleaseGate.isSystemLive("ground_material") then return nil end
+    local ok, count, known = pcall(mw.waterDaysInLast, mw, days, throughDay)
+    if not ok then return nil end
+    if known == nil or known <= 0 then return nil end
+    return count, known
+end
+
+--- [SF-23] Positional nutrient/OM sample for cross-mod consumers (the brief's
+--- reciprocal read). SeasonalCropStress reads SF's spatial state the way SF reads
+--- its moisture: read-only, nil when the value maps are unavailable or the pixel
+--- is unwritten. Never a write across the firewall.
+---@param key string  "nitrogen" | "phosphorus" | "potassium" | "pH" | "organicMatter"
+---@param x number
+---@param z number
+---@return number|nil
+function SoilFertilityManager:getSoilValueAtWorld(key, x, z)
+    if SpatialNutrients == nil or SpatialNutrients.getSoilValueAtWorld == nil then return nil end
+    local ok, v = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
+    if not ok then return nil end
+    return v
 end
