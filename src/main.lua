@@ -76,6 +76,12 @@ source(modDirectory .. "src/HandfulRead.lua")
 -- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
 -- daily pass.
 source(modDirectory .. "src/SpatialPressures.lua")
+-- SF-23 SPATIAL NUTRIENTS: the last un-flattening of soil chemistry. Banded
+-- leach / pH / harvest depletion across the field's moisture bands, on top of
+-- the untouched field-level model. Loaded before SoilFertilitySystem, which
+-- calls SpatialNutrients from the leach and harvest paths. Consumes SCS
+-- positional moisture and the field-level soil type (absent = uniform today).
+source(modDirectory .. "src/SpatialNutrients.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
