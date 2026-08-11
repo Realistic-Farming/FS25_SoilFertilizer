@@ -468,6 +468,9 @@
     <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
     <e k="sf_pda_col_om" v="OM" eh="bfbebc07" />
     <e k="sf_pda_col_status" v="Estado" eh="ec53a8c4" />
+		<e k="sf_pda_col_weeds" v="[EN] Weeds" eh="324181de" />
+		<e k="sf_pda_col_pests" v="Pragas" eh="2fed5101" />
+		<e k="sf_pda_col_disease" v="Doença" eh="e7067a8c" />
     <e k="sf_pda_no_fields" v="Ainda sem dados de campo registados." eh="72265670" />
     <e k="sf_pda_status_good" v="Boa" eh="0c6ad70b" />
     <e k="sf_pda_status_fair" v="Razoável" eh="f7f20cf0" />
@@ -477,8 +480,8 @@
     <e k="sf_pda_col_priority" v="Urgência" eh="c94e3850" />
     <e k="sf_pda_col_needs" v="Necessidades" eh="94d6125d" />
     <e k="sf_pda_no_treatment" v="Todos os campos estão em boas condições." eh="fa985166" />
-    <e k="sf_pda_treatment_hint" v="Os campos listados à direita precisam de tratamento. Selecione uma linha para ver o plano abaixo." eh="008230a2" />
-    <e k="sf_pda_treatment_select" v="Selecione um campo acima para ver a prescrição de tratamento." eh="522cca27" />
+    <e k="sf_pda_treatment_hint" v="[EN] Fields listed on the right need treatment. Select a row to see the plan below." eh="8b708629" />
+    <e k="sf_pda_treatment_select" v="[EN] Select a field above to see the treatment prescription." eh="c191c750" />
     <e k="sf_pda_need_n" v="Nitrogénio" eh="1e9ef3ba" />
     <e k="sf_pda_need_p" v="Fósforo" eh="eb4f2688" />
     <e k="sf_pda_need_k" v="Potássio" eh="3a4edc67" />
@@ -1318,13 +1321,14 @@
     <e k="rf_pda_module_tag_loaded" v="[EN] ready" eh="b2fdab23" />
     <e k="rf_pda_module_list_label" v="[EN] Modules" eh="bf17ac14" />
     <e k="rf_pda_col_area" v="[EN] Area" eh="deec4ff1" />
-    <e k="rf_pda_col_fert" v="[EN] Fertilizer" eh="cd248829" />
+    <e k="rf_pda_col_fert" v="[EN] FERT" eh="cd248829" />
     <e k="rf_pda_section_treatment" v="[EN] Treatment" eh="4c4ac06f" />
     <e k="rf_pda_treat_products" v="[EN] Products" eh="068f80c7" />
     <e k="rf_pda_sample_hint" v="[EN] Soil sample dates appear here when available." eh="fa51cbfd" />
     <e k="rf_pda_status_urgent" v="[EN] URGENT" eh="e395eb26" />
     <e k="rf_pda_status_ok" v="[EN] OK" eh="e0aa021e" />
     <e k="rf_pda_fert_chip" v="[EN] FERT" eh="c7185b0b" />
+    <e k="rf_pda_fert_in_need" v="PRECISA" eh="a7e4c912" />
     <e k="rf_pda_treatment_selected" v="[EN] Selected field: Field %s" eh="0c01ba54" />
 		<e k="rf_pda_treatment_next" v="[EN] Next: %s" eh="6914fabe" />
 		<e k="rf_pda_treatment_selected_next" v="[EN] Field %s · Next: %s" eh="1bfc779c" />
@@ -1360,9 +1364,9 @@
 		<e k="rf_pda_treat_pest_active" v="[EN] Insecticide still active - recheck later" eh="c1ee2552" />
 		<e k="rf_pda_treat_disease" v="[EN] FUNGICIDE · sprayer" eh="47f19736" />
 		<e k="rf_pda_treat_disease_active" v="[EN] Fungicide still active - recheck later" eh="8ee03e99" />
-		<e k="rf_pda_side_info_soil" v="[EN] Soil Fertilizer&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field #, Area, N/P/K (% of a healthy target), pH (like the soil monitor - e.g. 6.2), Status (Good / Fair / Poor), Fertilizer need (short cue for what still looks short).&#10;&#10;Click a row. Treatment (below) is the plan for that field:&#10;- PRODUCT = what to buy (first is preferred; &quot;or ...&quot; is an alternate)&#10;- RATE = amount per area / TOTAL = amount for this field&#10;- Selected names the field; Next (under it) says what to do first&#10;&#10;How to apply: dry goods (urea, MAP, potash, lime) go through a fertilizer spreader; liquids go in a sprayer tank. If pH and nutrients both show, fix lime or gypsum first so nutrients can work. Weed, pest, or disease lines mean spray (or weed mechanically) before you expect a full crop.&#10;&#10;Start with the weakest Status, open Treatment, follow Next, then the rest of the list." eh="3eba26e2" />
-		<e k="rf_pda_side_info_crop_stress" v="[EN] Crop Stress&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).&#10;&#10;Click a row. The strip below names the field, then Next says what to do first:&#10;- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)&#10;- High Stress or a sensitive growth window → protect now; stress today cuts harvest later&#10;- Looking fine → recheck later; worse fields first&#10;&#10;Irrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. Edit systems on Farm Tablet / Crop Consultant when you need to change them.&#10;&#10;If Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.&#10;&#10;Start with Critical Status, follow Next, then work up the list." />
-		<e k="rf_pda_side_info_market_dynamics" v="[EN] Market Dynamics&amp;#10;&amp;#10;This is a pause market glance, not the full Market desk.&amp;#10;&amp;#10;Graph = price path for the crop you pick.&amp;#10;&amp;#10;Movers = biggest swings right now. Click one to change the graph.&amp;#10;&amp;#10;Events = world events still driving prices. Empty means nothing active (normal).&amp;#10;&amp;#10;Bottom strip = facts for the crop you selected.&amp;#10;&amp;#10;Contracts line = open count only. Full contracts live deeper.&amp;#10;&amp;#10;Open full Market when you need Prices / Events / Contracts admin." eh="699dc7b5" />
+		<e k="rf_pda_side_info_soil" v="[EN] Soil Fertilizer&#10;&#10;This screen shows the soil on your owned fields. Each line is one field. Press X HELP for the full Field Guide.&#10;&#10;Work the weakest Status first. When FERT says IN NEED, that field needs fertilizer. Click a field to open Treatment and see what to use." eh="99561509" />
+		<e k="rf_pda_side_info_crop_stress" v="[EN] Crop Stress&#10;&#10;This table lists every field you own. One row = one field.&#10;&#10;Columns: Field # / Crop, Moisture (how wet the soil is), Stress (how hard the crop is fighting dry spells), Irrigation (water help covering this field), Status (Healthy / Warning / Critical).&#10;&#10;Click a row. The strip below names the field, then Next says what to do first:&#10;- Critical or Warning Moisture → water that field (turn on irrigation if covered, or spray WATER / place coverage)&#10;- High Stress or a sensitive growth window → protect now; stress today cuts harvest later&#10;- Looking fine → recheck later; worse fields first&#10;&#10;Irrigation: Yes means a system can cover this field. The strip under the table shows this field's schedule, water rate, yield keep, and air dry-pull. The buttons here open the same Consultant and irrigation schedule desk - no Crop Stress action needs the Farm Tablet. Shop coverage when a field needs water, then schedule it from Esc.&#10;&#10;If Soil Fertilizer is also loaded, check nutrients there too. Dry soil drains faster when soil health is poor.&#10;&#10;Start with Critical Status, follow Next, then work up the list." />
+		<e k="rf_pda_side_info_market_dynamics" v="[EN] Market Dynamics&#10;&#10;This is a pause market glance, not the full Market desk.&#10;&#10;Graph under the table = price path for the crop you pick. A new crop's line appears once it has price history.&#10;&#10;Movers = biggest swings right now. Click one to change the graph.&#10;&#10;Events = world events still driving prices. Empty means nothing active (normal).&#10;&#10;Bottom strip = facts for the crop you selected.&#10;&#10;Contracts line = open count only. Full contracts live deeper.&#10;&#10;Open full Market when you need Prices / Events / Contracts admin." eh="699dc7b5" />
 </elements>
 
 
