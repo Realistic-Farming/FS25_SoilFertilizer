@@ -88,6 +88,12 @@ source(modDirectory .. "src/SpatialNutrients.lua")
 -- conducive-gated disease boundary seeding. Loaded before SoilFertilitySystem,
 -- which runs the daily crossing pass ahead of the mutation batches.
 source(modDirectory .. "src/NeighbourCrossing.lua")
+-- SF-27 NPC SOIL: NPC-managed farmland joins the daily soil simulation like
+-- owned land, with attribution. The bridge widens SF's phase-2 gate (owned OR
+-- NPC-managed), reads NPCFavor's designation surface, and fails closed on
+-- attribution. Loaded before SoilFertilitySystem, which consults it at the
+-- membership and charge sites. Neutral when NPCFavor is absent.
+source(modDirectory .. "src/NpcSoilBridge.lua")
 -- POSITIONAL HARVEST CAPTURE: the load remembers where it grew. The tally
 -- accumulates area-weighted contamination on the harvesting vehicle from the
 -- harvest hook. Independently buildable and inert (the handoff rides the
@@ -570,6 +576,11 @@ local function load(mission)
         -- #83 Cross-mod bridge for the FarmTablet FieldSentry app (read status + request toggles).
         if FieldSentry_API and FieldSentry_API.attachBridge then
             FieldSentry_API.attachBridge(mission)
+        end
+        -- [SF-27] NPC soil bridge: publishes the phase-2 capability marker and the
+        -- designation / attribution surfaces NPCFavor probes (the handshake).
+        if NpcSoilBridge and NpcSoilBridge.attach then
+            NpcSoilBridge:attach(mission)
         end
 
         -- Cross-mod harvest bus: lets the ecosystem diseased-food / feed model read a

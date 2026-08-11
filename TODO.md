@@ -107,3 +107,9 @@
 - [x] Crossing pre-pass (completion gate LAW) + transient per-day snapshot; B2 pest arc weight recomposition; B3 conducive-gated disease boundary seeding with the protection fence; B4 constants.
 - [x] `SpatialPressures:seedBoundaryOrigin` added (the reserved origin entry). Suite 2549/0 across 56 files.
 - [~] In-game: bias over several days, clean-district parity, protection-window hold, no-moisture-mod, pre-pass frame cost.
+
+## SF-27 NPC soil (2026-08-11)
+- [x] NpcSoilBridge: designation read, phase-2 capability marker, fail-closed attribution; membership widened (owned OR NPC-managed); leave-path + reroll skip; treatment charge gated.
+- [x] NPCFavor: isNPCManaged/getWorkingState/getNPCForFarmland published; flip uses a guarded real farm id (Lane B).
+- [x] 24 assertions across npc_soil_gate + npc_soil_designation. Suite 2586/0 across 59 files.
+- [~] In-game: NPC field survives daily pass/reroll/save-load; zero player money on NPC ops; buy-in inherits history; MP client paints NPC ground.

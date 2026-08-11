@@ -38,8 +38,8 @@
                 <!-- Soil/CS left info (George: inside rfFilterBox, BEFORE moduleList; Text + blank.png). -->
                 <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 284px"
-                          textMaxNumLines="16" textVerticalAlignment="top" text=""/>
+                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 644px"
+                          textMaxNumLines="36" textVerticalAlignment="top" text=""/>
                 </GuiElement>
 
                 <GuiElement profile="fs25_subCategoryListContainer" id="rfModuleListShell">
@@ -96,6 +96,30 @@
                 </GuiElement>
             </GuiElement>
 
+            <!-- CS page chrome (BUILD 18:48): Fields | Pivot. Straight twin of the WC and
+                 MDM subnavs - sibling under Modules, never inside rfFilterBox, host-owned.
+                 csSubnavShell is RETIRED as of BUILD 21:06: Crop Stress is one desk and the
+                 Fields | Pivot selector selected nothing, so the host never shows it. Kept in
+                 place so the ids bind and the WC / MDM twins keep their shared profiles. -->
+            <GuiElement profile="RF_WcSubnavShell" id="csSubnavShell" visible="false">
+                <MultiTextOption profile="RF_WcSubnavSelector" id="csSubnavSelector"
+                                 disableButtonsOnSingleText="false"
+                                 onClick="onClickCsSubnavSelector"/>
+                <BoxLayout profile="RF_WcSubnavDotBox" id="csSubnavDotBox" visible="false">
+                    <RoundCorner profile="fs25_subCategorySelectorDot"/>
+                </BoxLayout>
+                <!-- RETIRED BUILD 21:06. The CS teach moved back to rfSideInfoShell in
+                     rfFilterBox once the subnav it was avoiding was retired. This element is
+                     kept, never shown, and cleared every refresh, so the id still binds and a
+                     stale nested copy cannot surface behind the live one. -->
+                <GuiElement profile="RF_WcSideInfoShell" id="csSideInfoShell" visible="false"
+                            handleFocus="false" clipChildren="true">
+                    <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
+                    <Text profile="RF_WcSideBody" id="csSideInfoBody" position="8px -8px" size="364px 224px"
+                          textMaxNumLines="12" textVerticalAlignment="top" text=""/>
+                </GuiElement>
+            </GuiElement>
+
             <!-- RIGHT: suite content plane (RF_MainColShell flushes X˜406 to side-info right). -->
             <GuiElement profile="RF_MainColShell" id="rfMainCol">
                 <GuiElement profile="fs25_menuHeaderPanel" position="0px 74px">
@@ -123,14 +147,17 @@
 
                         <!-- F12: all headers centered; AREA/STATUS/Fertilizer body centered.
                              IDs: Lua _applyChromeL10n rebinds when CS/WC created the Esc door. -->
-                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="16px -8px"    size="100px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="100px 24px"/>
-                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" text="P"                       position="350px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" text="K"                       position="470px -8px"   size="110px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="590px -8px"   size="100px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="700px -8px"   size="140px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="860px -8px"  size="160px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
+                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
+                        <Text profile="RF_ColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
 
                         <GuiElement profile="fs25_subCategoryListContainer" position="0px -32px"
                                     absoluteSizeOffset="0px 40px">
@@ -139,14 +166,17 @@
                                         endClipperElementName="rfListEnd">
                                 <ListItem profile="RF_ListRowTall" onClick="onClickFieldRow">
                                     <Bitmap profile="RF_RowBg" name="alternating"/>
-                                    <Text profile="RF_CellLeft"   name="fieldRowId"     size="100px 44px"/>
-                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="100px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="350px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="470px 0px"  size="110px 44px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="590px 0px"  size="100px 44px"/>
-                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="700px 0px" size="140px 44px"/>
-                                    <Text profile="RF_FertChip"   name="fieldRowFert"   position="860px 0px" size="160px 44px"/>
+                                    <Text profile="RF_CellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
+                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
+                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
+                                    <Text profile="RF_FertChip"   name="fieldRowFert"   position="702px 0px" size="106px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
+                                    <Text profile="RF_CellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
                                 </ListItem>
                             </SmoothList>
                             <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfListStart"/>
@@ -163,97 +193,127 @@
                     <!-- TREATMENT PLAN (F8: clip shell keeps PRODUCTS rows inside panel) -->
                     <GuiElement profile="RF_TreatmentStrip" id="rfTreatmentStrip">
                         <Bitmap profile="RF_TreatmentBoxBg"/>
-                        <Text profile="RF_SectionTitle" id="soilSectionTreatment" position="10px -6px" text="$l10n_rf_pda_section_treatment"/>
-
-                        <!-- Col 1: vertical target stack (F11 positions held; Selected field moved right) -->
-                        <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -56px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetN" position="10px -88px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetP" position="10px -120px" size="250px 20px"/>
-                        <Text profile="RF_TreatTargetLine" id="treatTargetK" position="10px -152px" size="250px 20px"/>
+                        <!-- Card 1 of 3 (BUILD 12:59): TREATMENT + target levels share the
+                             -22 top line with PRODUCTS and ROTATION. Children re-based inside. -->
+                        <GuiElement profile="RF_EscCardFrame" id="soilTreatmentCard" position="10px -22px" size="200px 248px">
+                            <Text profile="RF_SectionTitle" id="soilSectionTreatment" position="10px -6px" size="180px 24px" text="$l10n_rf_pda_section_treatment"/>
+                            <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -40px" size="180px 20px"/>
+                            <Text profile="RF_TreatTargetLine" id="treatTargetN" position="10px -62px" size="180px 20px"/>
+                            <Text profile="RF_TreatTargetLine" id="treatTargetP" position="10px -84px" size="180px 20px"/>
+                            <Text profile="RF_TreatTargetLine" id="treatTargetK" position="10px -106px" size="180px 20px"/>
+                            <Text profile="RF_TreatTargetLine" id="treatTargetPH" position="10px -128px" size="180px 20px"/>
+                        </GuiElement>
                         <!-- Legacy bind kept hidden (F5 replaces single multiline Text) -->
                         <Text profile="RF_HintText" id="treatTargetsLabel" position="10px -54px" size="1px 1px"
                               visible="false"/>
 
-                        <!-- Eyes-on 2026-08-03: Field on line 1, Next tip on line 2 (separate Text ids). -->
-                        <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="270px -22px" size="560px 20px"
-                              textAlignment="left"/>
-                        <Text profile="RF_TreatNext" id="treatNextLabel" position="270px -42px" size="560px 40px"
-                              textAlignment="left" textMaxNumLines="2" textVerticalAlignment="top"/>
-
-                        <!-- Col 2: PRODUCTS table — wider Name; Rate/Total kept readable (no SmoothList) -->
-                        <GuiElement profile="RF_ProductsShell" id="treatProductsShell" position="270px -88px">
-                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="0px 0px" size="560px 18px"
+                        <!-- Card 2 of 3 (BUILD 12:59): Selected + Next now live INSIDE the
+                             PRODUCTS card, so the card owns the whole middle column. -->
+                        <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -22px">
+                            <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="10px -6px" size="540px 20px"
+                                  textAlignment="left"/>
+                            <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -26px" size="540px 36px"
+                                  textAlignment="left" textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <!-- Zone split (BUILD 16:19): Selected + Next stay on top, then ~16px of
+                                 air with one 1px hairline centred in it, then the PRODUCTS table.
+                                 One outer outline only; the rule is a Bitmap, not a second frame.
+                                 Bodies inset X 0 -> 10 and widths 560 -> 540 so nothing kisses the
+                                 white stroke on either side. -->
+                            <Bitmap profile="RF_EscCardRule" id="treatProductsRule" position="10px -70px" size="540px 1px"/>
+                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="10px -80px" size="540px 18px"
                                   text="$l10n_rf_pda_treat_products"/>
-                            <Text profile="RF_ProductColHeader" position="0px -20px" size="40px 16px" text="NUT"/>
-                            <Text profile="RF_ProductColHeader" position="44px -20px" size="290px 16px" text="PRODUCT"/>
-                            <Text profile="RF_ProductColHeader" position="340px -20px" size="100px 16px"
+                            <Text profile="RF_ProductColHeaderDense" position="10px -100px" size="40px 16px" text="NUT"/>
+                            <Text profile="RF_ProductColHeaderDense" position="54px -100px" size="270px 16px" text="PRODUCT"/>
+                            <Text profile="RF_ProductColHeaderDense" position="330px -100px" size="100px 16px"
                                   textAlignment="right" text="RATE"/>
-                            <Text profile="RF_ProductColHeader" position="450px -20px" size="100px 16px"
+                            <Text profile="RF_ProductColHeaderDense" position="440px -100px" size="110px 16px"
                                   textAlignment="right" text="TOTAL"/>
-                            <Text profile="RF_ProductOk" id="treatPlanLines" position="0px -40px" size="560px 22px"
+                            <Text profile="RF_ProductOk" id="treatPlanLines" position="10px -120px" size="540px 22px"
                                   visible="false"/>
-                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="0px -40px">
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow1" position="0px 0px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd1Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd1Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd1Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd1Total" position="450px 0px" size="100px 20px"/>
+                            <!-- Clip sized to exactly the eight densified rows (8 x 15 = 120), so the
+                                 card bottom keeps 8px of air instead of cutting row 8 mid-glyph. -->
+                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="10px -120px" size="540px 120px">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow1" position="0px 0px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd1Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd1Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd1Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd1Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow2" position="0px -20px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd2Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd2Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd2Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd2Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow2" position="0px -15px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd2Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd2Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd2Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd2Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow3" position="0px -40px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd3Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd3Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd3Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd3Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow3" position="0px -30px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd3Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd3Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd3Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd3Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow4" position="0px -60px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd4Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd4Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd4Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd4Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow4" position="0px -45px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd4Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd4Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd4Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd4Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow5" position="0px -80px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd5Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd5Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd5Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd5Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow5" position="0px -60px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd5Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd5Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd5Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd5Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow6" position="0px -100px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd6Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd6Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd6Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd6Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow6" position="0px -75px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd6Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd6Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd6Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd6Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow7" position="0px -120px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd7Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd7Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd7Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd7Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow7" position="0px -90px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd7Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd7Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd7Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd7Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow8" position="0px -140px" visible="false">
-                                    <Text profile="RF_ProductCell" id="treatProd8Nut" position="0px 0px" size="40px 20px"/>
-                                    <Text profile="RF_ProductCell" id="treatProd8Name" position="44px 0px" size="290px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd8Rate" position="340px 0px" size="100px 20px"/>
-                                    <Text profile="RF_ProductCellRight" id="treatProd8Total" position="450px 0px" size="100px 20px"/>
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow8" position="0px -105px" size="540px 15px" visible="false">
+                                    <Text profile="RF_ProductCellDense" id="treatProd8Nut" position="0px 0px" size="40px 15px"/>
+                                    <Text profile="RF_ProductCellDense" id="treatProd8Name" position="44px 0px" size="270px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd8Rate" position="320px 0px" size="100px 15px"/>
+                                    <Text profile="RF_ProductCellDenseRight" id="treatProd8Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
                             </GuiElement>
                         </GuiElement>
 
-                        <!-- Col 3: read-only crop rotation card (Wizard red square 2026-08-07,
-                             Samantha DESIGN ACK). Reuses RotationPlannerData copy so the words
-                             match the deep planner. Read-only: no SmoothList, no apply controls. -->
-                        <GuiElement profile="RF_ProductsShell" id="soilRotationCard" position="850px -88px" size="290px 248px">
-                            <Text profile="RF_ProductsTitle" id="soilRotationTitle" position="0px 0px" size="290px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationLast" position="0px -24px" size="290px 40px"
+                        <!-- Col 3: read-only rotation glance + What-if (Wizard eyes-on 2026-08-08 pics 1-3,
+                             Samantha DESIGN + George ENGINE ACK). Footprint held at George's
+                             850px -88px / 290px 248px - never grows left into PRODUCTS.
+                             Soil grey via RF_TreatmentBoxBg (mock blue vetoed). Fixed Text only,
+                             no SmoothList. Read-only: no apply-rotation controls. -->
+                        <GuiElement profile="RF_EscCardFrame" id="soilRotationCard" position="850px -22px" size="290px 248px">
+                            <!-- Zone split (BUILD 16:19): ROTATION glance on top, then 14px of air
+                                 with one 1px hairline, then WHAT IF. Same recipe as the middle card
+                                 so the two read as one family. All bodies inset X 0 -> 10, widths
+                                 290 -> 270, title Y 0 -> -10, standing block shifted 10px down to
+                                 keep its spacing under the lowered title. -->
+                            <Text profile="RF_ProductsTitle" id="soilRotationTitle" position="10px -10px" size="270px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationLast" position="10px -34px" size="270px 20px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationStatus" position="10px -56px" size="270px 20px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationTip" position="10px -76px" size="270px 32px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCell" id="soilRotationStatus" position="0px -68px" size="290px 20px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationTip" position="0px -92px" size="290px 60px"
-                                  textMaxNumLines="3" textVerticalAlignment="top"/>
+                            <Bitmap profile="RF_EscCardRule" id="soilRotationRule" position="10px -116px" size="270px 1px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationWhatIfHeader" position="10px -124px" size="270px 16px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColCrop" position="10px -144px" size="92px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColStatus" position="106px -144px" size="60px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColEffect" position="170px -144px" size="110px 14px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Crop" position="10px -162px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Status" position="106px -162px" size="60px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Effect" position="170px -162px" size="110px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Crop" position="10px -184px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Status" position="106px -184px" size="60px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Effect" position="170px -184px" size="110px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Crop" position="10px -206px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Status" position="106px -206px" size="60px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Effect" position="170px -206px" size="110px 18px"/>
                         </GuiElement>
 
                         <!-- Col 3: sampling — shifted right so widened PRODUCTS does not overlap -->
@@ -359,15 +419,15 @@
                     <GuiElement profile="RF_WcPageShell" id="rfFrameworkGlanceShell" visible="false" position="0px 0px">
                         <GuiElement id="rfFwStatusBlock" visible="true" position="0px 0px" size="1140px 580px">
                             <Text profile="RF_SectionTitle" id="rfFwStatusTitle" position="0px 0px" size="1140px 24px" text="" visible="false"/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="0px 0px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="0px -48px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="0px -96px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="0px -144px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="0px -192px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="0px -240px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="0px -288px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="0px -336px" size="1140px 22px" text=""/>
-                            <Text profile="RF_HintText" id="rfFwHint" position="0px -384px" size="1140px 120px"
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="0px 0px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="0px -48px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="0px -96px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="0px -144px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="580px 0px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="580px -48px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="580px -96px" size="560px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="580px -144px" size="560px 22px" text=""/>
+                            <Text profile="RF_HintText" id="rfFwHint" position="0px -200px" size="1140px 120px"
                                   textMaxNumLines="4" textVerticalAlignment="top" text=""/>
                         </GuiElement>
                         <GuiElement id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 580px">
@@ -418,8 +478,55 @@
 
                     <!-- CS table: top-flush with 404 bottom reserve so the last rows clear the
                          FIELD DETAIL band title (CS FieldDetail fix, applied in the HOST page). -->
-                    <GuiElement profile="RF_TableRegionShell" id="rfHostTableRegion" position="0px 0px"
-                                absoluteSizeOffset="0px 404px">
+                    <GuiElement profile="emptyPanel" id="csActionBar" position="0px 0px" size="1140px 44px">
+                        <!-- BUILD 18:48: this button owned the table-hiding consultant swap, which
+                             is now a hard engine VETO. Hidden rather than deleted so any stale
+                             binding still resolves; its job belongs to the Fields|Pivot subnav. -->
+                        <Button profile="buttonActivate" id="csBtnConsultant" position="884px -4px" size="256px 36px"
+                                visible="false" text="" onClick="onClickCsConsultant"/>
+                    </GuiElement>
+
+                    <!-- Inline Alex Chen consultant readout. Exclusive with rfHostTableRegion:
+                         csBtnConsultant toggles which of the two is visible. Fixed Texts only -
+                         George NO-GO on TextElement.new rebuild, dialog XML nest, or SmoothList. -->
+                    <GuiElement profile="RF_TableRegionShell" id="csConsultPanel" position="0px -44px"
+                                absoluteSizeOffset="0px 584px" visible="false">
+                        <Text profile="RF_SectionTitle"   id="csConsTitle"    position="16px -12px"  size="700px 26px"  text=""/>
+                        <Text profile="RF_TreatTargetLine" id="csConsRelation" position="16px -36px"  size="1140px 20px" visible="false" text=""/>
+                        <Text profile="RF_ColHeader" id="csConsColField"    position="16px -64px"  size="280px 22px" text=""/>
+                        <Text profile="RF_ColHeader" id="csConsColRisk"     position="300px -64px" size="220px 22px" text=""/>
+                        <Text profile="RF_ColHeader" id="csConsColMoisture" position="540px -64px" size="240px 22px" text=""/>
+                        <Text profile="RF_ColHeader" id="csConsColYield"    position="800px -64px" size="340px 22px" text=""/>
+                        <Text profile="RF_CellLeft"   id="csConsRow1Field"    position="16px -88px"  size="280px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow1Risk"     position="300px -88px" size="220px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow1Moisture" position="540px -88px" size="240px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow1Yield"    position="800px -88px" size="340px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellLeft"   id="csConsRow2Field"    position="16px -112px"  size="280px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow2Risk"     position="300px -112px" size="220px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow2Moisture" position="540px -112px" size="240px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow2Yield"    position="800px -112px" size="340px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellLeft"   id="csConsRow3Field"    position="16px -136px"  size="280px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow3Risk"     position="300px -136px" size="220px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow3Moisture" position="540px -136px" size="240px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow3Yield"    position="800px -136px" size="340px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellLeft"   id="csConsRow4Field"    position="16px -160px"  size="280px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow4Risk"     position="300px -160px" size="220px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow4Moisture" position="540px -160px" size="240px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow4Yield"    position="800px -160px" size="340px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellLeft"   id="csConsRow5Field"    position="16px -184px"  size="280px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow5Risk"     position="300px -184px" size="220px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow5Moisture" position="540px -184px" size="240px 22px" visible="false" text=""/>
+                        <Text profile="RF_CellCenter" id="csConsRow5Yield"    position="800px -184px" size="340px 22px" visible="false" text=""/>
+                        <Text profile="RF_SectionTitle"    id="csConsRecTitle" position="16px -210px" size="500px 24px"  text=""/>
+                        <Text profile="RF_TreatTargetLine" id="csConsRec1"     position="16px -236px" size="1140px 22px" visible="false" text=""/>
+                        <Text profile="RF_TreatTargetLine" id="csConsRec2"     position="16px -258px" size="1140px 22px" visible="false" text=""/>
+                        <Text profile="RF_TreatTargetLine" id="csConsRec3"     position="16px -280px" size="1140px 22px" visible="false" text=""/>
+                        <Text profile="RF_HintText" id="csConsEmpty" position="16px -140px" size="1000px 44px"
+                              textMaxNumLines="2" visible="false" text=""/>
+                    </GuiElement>
+
+                    <GuiElement profile="RF_TableRegionShell" id="rfHostTableRegion" position="0px -44px"
+                                absoluteSizeOffset="0px 584px">
                         <Text profile="RF_ColHeader" id="csColField" text="" position="16px -8px" size="100px 24px"/>
                         <Text profile="RF_ColHeader" id="csColCrop" text="" position="140px -8px" size="200px 24px"/>
                         <Text profile="RF_ColHeader" id="csColMoisture" text="" position="360px -8px" size="160px 24px"/>
@@ -453,20 +560,109 @@
                               position="16px -80px" size="1100px 44px" visible="false"/>
                     </GuiElement>
 
-                    <!-- CS bottom info band: twin Soil strip chrome, Text-only detail for the
-                         selected field (no SmoothList in band; no Soil PRODUCTS/NPK content).
-                         Texts filled by CsRfPdaGuest; safe on light tick. -->
-                    <GuiElement profile="RF_TreatmentStrip" id="csDetailStrip">
+                    <!-- CS bottom band pivot full-width (2026-08-09): FD|Agro top; Pivot full width bottom.
+                         Abs: Field 10/-16/600×236; Agro 630/-16/510×236; Pivot 10/-264/1130×240.
+                         CS-only strip H=520; Soil stays 384. No SmoothList under cards. -->
+                    <GuiElement profile="RF_CsDetailStrip" id="csDetailStrip">
                         <Bitmap profile="RF_TreatmentBoxBg"/>
-                        <Text profile="RF_SectionTitle" id="csDetailTitle" position="10px -6px" size="700px 24px" text=""/>
-                        <Text profile="RF_TreatSelected" id="csDetailField" position="10px -52px" size="900px 22px"
-                              textAlignment="left" text=""/>
-                        <Text profile="RF_TreatTargetLine" id="csDetailMoisture" position="10px -88px" size="420px 20px" text=""/>
-                        <Text profile="RF_TreatTargetLine" id="csDetailStress" position="10px -112px" size="420px 20px" text=""/>
-                        <Text profile="RF_TreatTargetLine" id="csDetailIrrigated" position="10px -136px" size="420px 20px" text=""/>
-                        <Text profile="RF_TreatTargetLine" id="csDetailStatus" position="10px -160px" size="420px 20px" text=""/>
-                        <Text profile="RF_HintText" id="csDetailEmpty" position="10px -52px" size="1000px 44px"
-                              textMaxNumLines="2" visible="false" text=""/>
+
+                        <!-- Field Detail (yellow): top-left; texts ~580 W; densified into 236 H. -->
+                        <GuiElement profile="RF_EscCardFrame" id="csFieldDetailCard" position="10px -16px" size="600px 236px">
+                            <Text profile="RF_SectionTitle" id="csDetailTitle" position="10px -6px" size="580px 18px" text=""/>
+                            <Text profile="RF_TreatSelected" id="csDetailField" position="10px -28px" size="580px 18px"
+                                  textAlignment="left" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="csDetailMoisture" position="10px -50px" size="580px 36px"
+                                  textMaxNumLines="2" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="csDetailStress" position="10px -92px" size="580px 18px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="csDetailIrrigated" position="10px -114px" size="580px 18px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="csDetailStatus" position="10px -136px" size="580px 18px" text=""/>
+                            <Text profile="RF_HintText" id="csDetailEmpty" position="10px -28px" size="580px 44px"
+                                  textMaxNumLines="2" visible="false" text=""/>
+                            <Text profile="RF_HintText" id="csDetailNoCoverage" position="10px -160px" size="580px 36px"
+                                  textMaxNumLines="2" visible="false" text=""/>
+                        </GuiElement>
+
+                        <!-- Agronomist (blue): top-right beside Field Detail; always visible with Pivot on CS. -->
+                        <GuiElement profile="RF_EscCardFrame" id="csAgronomistCard" position="630px -16px" size="510px 236px">
+                            <Text profile="RF_ProductsTitle" id="csAgroTitle" position="10px -6px" size="490px 18px" text=""/>
+                            <Text profile="RF_ProductCell" id="csAgroRelationship" position="10px -28px" size="490px 14px"
+                                  visible="false" text=""/>
+                            <Bitmap profile="RF_EscCardRule" id="csAgroRuleTop" position="10px -46px" size="490px 1px"/>
+                            <Text profile="RF_ProductColHeader" id="csAgroTopHeader" position="10px -50px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroTop1" position="10px -68px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroTop2" position="10px -86px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroTop3" position="10px -104px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroTop4" position="10px -122px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroTop5" position="10px -140px" size="490px 14px" text=""/>
+                            <Bitmap profile="RF_EscCardRule" id="csAgroRuleMid" position="10px -160px" size="490px 1px"/>
+                            <Text profile="RF_ProductColHeader" id="csAgroRecHeader" position="10px -164px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroRec1" position="10px -182px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroRec2" position="10px -198px" size="490px 14px" text=""/>
+                            <Text profile="RF_ProductCellDense" id="csAgroRec3" position="10px -214px" size="490px 14px" text=""/>
+                            <Text profile="RF_HintText" id="csAgroEmpty" position="10px -68px" size="490px 80px"
+                                  textMaxNumLines="4" textVerticalAlignment="top" visible="false" text=""/>
+                        </GuiElement>
+
+                        <!-- Pivot (red): full-width bottom band. Dial+status left; remotes across width.
+                             Children stay inside 1130×240 (strip clipChildren=true). Prefer 80×32. -->
+                        <GuiElement profile="RF_EscCardFrame" id="csPivotCard" position="10px -264px" size="1130px 240px">
+                            <Text profile="RF_ProductsTitle" id="csPivotTitle" position="10px -4px" size="1110px 18px" text=""/>
+                            <!-- Left band: dial + status. -->
+                            <Bitmap profile="RF_CsPivotDialFace" id="csPivotDialFace" position="10px -28px" size="92px 92px"/>
+                            <!-- BUILD 16:44d (Vera F1): inline size overrides the profile via loadFromXML, so the
+                                 short hands had to be set HERE, not only on the profile. 92px face,
+                                 radius 46: arm 31 = 67%, limits 27 = 59%. -->
+                            <!-- BUILD 15:30: hands now BASE on the dial hub instead of hanging from the
+                                 face top, because the rotation origin moved to the bar base (customPivot
+                                 {w/2, 0} in CsRfPdaGuest). Face is 92x92 at 10,-28 so the hub is (56,-74);
+                                 a 31px hand with its base there has its top at -74+31 = -43, and x is
+                                 hub minus half the bar width. Change these three and the pivot maths in
+                                 the guest together - they are one geometry. -->
+                            <Text profile="RF_CsPivotDialLabel" id="csPivotDialLabel" position="10px -14px" size="92px 14px"
+                                  text="$l10n_cs_rf_pda_pivot_dial_position"/>
+                            <Bitmap profile="RF_CsPivotNeedleCur" id="csPivotNeedleCur" position="53.5px -43px" size="5px 31px"/>
+                            <Bitmap profile="RF_CsPivotNeedleMin" id="csPivotNeedleMin" position="54px -47px" size="4px 27px"/>
+                            <Bitmap profile="RF_CsPivotNeedleMax" id="csPivotNeedleMax" position="54px -47px" size="4px 27px"/>
+                            <Bitmap profile="RF_CsPivotHubDot" id="csPivotHubDot" position="53px -71px" size="6px 6px"/>
+                            <Text profile="RF_ProductCell" id="csPivotDialCur" position="114px -30px" size="250px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotDialMin" position="114px -50px" size="250px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotDialMax" position="114px -70px" size="250px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotCoverage" position="114px -96px" size="250px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotWatering" position="10px -128px" size="354px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotPressure" position="10px -148px" size="354px 16px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotRate" position="10px -168px" size="354px 14px" text=""/>
+                            <Text profile="RF_ProductCell" id="csPivotSchedule" position="10px -186px" size="354px 14px" text=""/>
+                            <Text profile="RF_HintText" id="csPivotWarn" position="10px -204px" size="354px 14px" text=""/>
+                            <!-- Right remotes: 80x32, H/V gaps 20 (George ENGINE remote spacing). Same ids/onClick. -->
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnDoor" position="390px -28px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotDoor"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnPower" position="490px -28px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotPower"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnSpray" position="590px -28px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotSpray"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnEndGun" position="690px -28px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotEndGun"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnSpeed" position="790px -28px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotSpeed"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnStart" position="390px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotStart"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnStop" position="490px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotStop"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnMinUp" position="590px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotMinUp"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnMinDn" position="690px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotMinDn"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnMaxUp" position="790px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotMaxUp"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnMaxDn" position="890px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotMaxDn"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnArmPlus" position="390px -132px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotArmPlus"/>
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnArmMinus" position="490px -132px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotArmMinus"/>
+                            <Button profile="RF_CsPivotBtn" id="csBtnSchedule" position="590px -132px" size="530px 32px"
+                                    text="" onClick="onClickCsSchedule"/>
+                        </GuiElement>
                     </GuiElement>
 
                     <!-- MDM TOP: commodities CROP / PRICE / CHANGE (GuiElement SmoothList parent; quiet reload). -->

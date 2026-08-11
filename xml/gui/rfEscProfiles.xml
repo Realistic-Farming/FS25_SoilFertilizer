@@ -65,7 +65,7 @@
     </Profile>
     <!-- Soil/CS left help (mid-band under Modules MTO; before moduleList in XML). -->
     <Profile name="RF_SideInfoShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
-        <size value="384px 300px"/>
+        <size value="384px 660px"/>
         <position value="10px -148px"/>
         <clipChildren value="false"/>
         <handleFocus value="false"/>
@@ -75,7 +75,7 @@
         <textColor value="0.659 0.678 0.702 1"/>
         <textAlignment value="left"/>
         <textVerticalAlignment value="top"/>
-        <textMaxNumLines value="16"/>
+        <textMaxNumLines value="36"/>
     </Profile>
     <!-- Fresh WC: page band = sibling of rfFilterBox; grow height so side info under MTO is not clipped. -->
     <Profile name="RF_WcSubnavShell" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
@@ -273,9 +273,123 @@
         <size value="560px 248px"/>
         <clipChildren value="true"/>
     </Profile>
+
+    <!-- Esc card frame so the three Soil cards read as one family (BUILD 12:59).
+         hasFrame / frameThickness / frame*Color are real GuiElement profile keys
+         (GuiElement.lua loadProfile 176-183) - verified against the decompile,
+         not invented. Thin white rule; the grey fills underneath are unchanged. -->
+    <Profile name="RF_EscCardFrame" extends="RF_ProductsShell">
+        <hasFrame value="true"/>
+        <frameThickness value="1dp 1dp 1dp 1dp"/>
+        <frameLeftColor value="1 1 1 0.85"/>
+        <frameTopColor value="1 1 1 0.85"/>
+        <frameRightColor value="1 1 1 0.85"/>
+        <frameBottomColor value="1 1 1 0.85"/>
+    </Profile>
+
+    <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
+         art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
+         measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
+         word POSITION. imageUVs takes the pixel rect and GuiUtils.getUVs normalises it.
+         filename is deliberately absent: CsRfPdaGuest resolves the live Reinke mod path
+         at runtime, so nothing is redistributed and the face simply does not paint when
+         that mod is not installed. -->
+    <!-- BUILD 15:30: the panel prints POSITION above its dial; the UV crop deliberately
+         excludes that word (cropping it in clipped a cardinal), so it is set as text. -->
+    <Profile name="RF_CsPivotDialLabel" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="11px"/>
+        <textBold value="true"/>
+        <textUpperCase value="true"/>
+        <textColor value="0.78 0.80 0.82 1"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="top"/>
+        <textMaxNumLines value="1"/>
+    </Profile>
+
+    <!-- Hub cap: hides where the three bars meet, the way the panel's boss does. -->
+    <Profile name="RF_CsPivotHubDot" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.86 0.87 0.89 1"/>
+        <size value="6px 6px"/>
+        <handleFocus value="false"/>
+    </Profile>
+
+    <Profile name="RF_CsPivotDialFace" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <imageUVs value="288 354 400 400"/>
+        <imageColor value="1 1 1 1"/>
+        <size value="92px 92px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- BUILD 16:44c current arm: neutral chrome, ~68% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
+    <Profile name="RF_CsPivotNeedleCur" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.86 0.87 0.89 1"/>
+        <size value="5px 30px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- BUILD 16:44c LimitA: green, ~59% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
+    <Profile name="RF_CsPivotNeedleMin" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.35 0.72 0.31 1"/>
+        <size value="4px 26px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- BUILD 16:44c LimitB: red, ~59% radius. Full-radius ray bars replaced by a short hand;
+         suite lime deliberately absent so the dial reads as the world instrument. -->
+    <Profile name="RF_CsPivotNeedleMax" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.83 0.24 0.20 1"/>
+        <size value="4px 26px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- Pivot remotes: buttonActivate plate + hideKeyboardGlyph (SPACE off). Option A fs25_wideButton alone = chrome FAIL. -->
+    <!-- Pivot remotes: vanilla ButtonOverlay SPACE chrome; labels painted as key
+         chips from CsRfPdaGuest, not as TextElement text. The BUILD 23:59 v2
+         colorPreset plate is deliberately gone - it was a different chrome family.
+         iconSize stays non-zero: 0x0 collapses the chip height. -->
+    <Profile name="RF_CsPivotBtn" extends="buttonActivate" with="anchorTopLeft pivotTopLeft">
+        <size value="80px 32px"/>
+        <textSize value="13px"/>
+        <textBold value="true"/>
+        <textUpperCase value="false"/>
+        <fitToContent value="false"/>
+        <textAutoWidth value="false"/>
+        <hideKeyboardGlyph value="true"/>
+        <isTriggerableByGlobalAction value="false"/>
+        <iconSize value="30px 30px"/>
+    </Profile>
     <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 160px"/>
         <clipChildren value="true"/>
+    </Profile>
+
+    <!-- BUILD 16:19 card padding + zone splits.
+         RF_EscCardRule: the 1px hairline between a card's upper and lower zone.
+         George ranked "gap only" first and a thin blank.png rule second, both GO;
+         Samantha asked for air AND one rule, so this is the rule half. Real
+         filename + explicit imageColor per the fence (a nil Bitmap paints purple).
+         Size is set per instance because middle is 540 wide and right is 270.
+         RF_ProductCellDense / *Right / RF_ProductColHeaderDense: 14px twins of the
+         normal cells, used ONLY by the middle PRODUCTS rows. Eight rows at the old
+         20px pitch do not fit the 248px card once the split lands, so the rows
+         densify to a 15px pitch and the text drops with them. The right card keeps
+         the original 17px cells because it has the room. -->
+    <Profile name="RF_EscCardRule" extends="baseReference" with="anchorTopLeft pivotTopLeft">
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0.478 0.502 0.533 0.55"/>
+        <size value="540px 1px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_ProductCellDense" extends="RF_ProductCell">
+        <textSize value="14px"/>
+    </Profile>
+    <Profile name="RF_ProductCellDenseRight" extends="RF_ProductCellRight">
+        <textSize value="14px"/>
+    </Profile>
+    <Profile name="RF_ProductColHeaderDense" extends="RF_ProductColHeader">
+        <textSize value="14px"/>
     </Profile>
     <Profile name="RF_ProductRow" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 20px"/>
@@ -375,7 +489,7 @@
 
     <!-- Table viewport reserve. -->
     <Profile name="RF_TableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
-        <absoluteSizeOffset value="0px 392px"/>
+        <absoluteSizeOffset value="0px 372px"/>
         <position value="0px 0px"/>
     </Profile>
 
@@ -406,6 +520,11 @@
         <height value="384px"/>
         <position value="0px 0px"/>
         <clipChildren value="true"/>
+    </Profile>
+
+    <!-- CS-only taller bottom band (Esc CS breath 2026-08-09). Do not use on Soil/MDM. -->
+    <Profile name="RF_CsDetailStrip" extends="RF_TreatmentStrip">
+        <height value="520px"/>
     </Profile>
 
     <!-- Wizard swatches: blank.png + imageColor (never nil filename); stretch fill parents -->
@@ -514,7 +633,7 @@
 
     <!-- F8: taller rows for +2 textSize -->
     <Profile name="RF_ListRowTall" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
-        <height value="44px"/>
+        <height value="48px"/>
     </Profile>
 
     <!-- F12: STATUS body cells centered. -->

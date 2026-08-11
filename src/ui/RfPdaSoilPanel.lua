@@ -237,104 +237,221 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
 
     if fertEl then
         if info.needsFertilization then
-            fertEl:setText(tr("rf_pda_fert_chip", "FERT"))
+            fertEl:setText(tr("rf_pda_fert_in_need", "IN NEED"))
             fertEl:setTextColor(unpack(COLOR_FAIR))
         else
             fertEl:setText("-")
             fertEl:setTextColor(unpack(COLOR_DIM))
         end
     end
+
+    -- Crop pressure columns. Bands copied from SoilFieldDetailDialog:_setPressure so the
+    -- overview and the deep desk can never disagree: under 20 Good, under 50 Fair, else High.
+    -- HONESTY (George + Samantha veto): these read info.weedPressure / info.pestPressure /
+    -- info.shownDiseasePressure ONLY. The mock shows Weeds looking like N and Pests like P,
+    -- but that is placeholder art - nutrients must never be copied into these cells.
+    local weedEl    = cell:getDescendantByName("fieldRowWeed")
+    local pestEl    = cell:getDescendantByName("fieldRowPest")
+    local diseaseEl = cell:getDescendantByName("fieldRowDisease")
+
+    local function colorForPressure(p)
+        if p < 20 then
+            return COLOR_GOOD
+        elseif p < 50 then
+            return COLOR_FAIR
+        end
+        return COLOR_POOR
+    end
+
+    local function setPressureCell(el, value)
+        if el == nil then return end
+        local p = math.floor(tonumber(value) or 0)
+        el:setText(string.format("%d%%", p))
+        el:setTextColor(unpack(colorForPressure(p)))
+    end
+
+    setPressureCell(weedEl, info.weedPressure)
+    setPressureCell(pestEl, info.pestPressure)
+
+    -- Disease is scouting-gated. shownDiseasePressure is nil exactly when the field has not
+    -- been scouted; that is honest absence and must read as the word, never as 0% and never
+    -- as the ungated raw info.diseasePressure (which exists but is not ours to show).
+    if diseaseEl then
+        if info.shownDiseasePressure == nil then
+            diseaseEl:setText(tr("sf_unscouted", "Unscouted"))
+            diseaseEl:setTextColor(unpack(COLOR_DIM))
+        else
+            setPressureCell(diseaseEl, info.shownDiseasePressure)
+        end
+    end
 end
 
--- =========================================================
--- ROTATION CARD (Wizard rotation-card call site, 2026-08-08)
--- Populates the read-only crop rotation card in the Soil Esc
--- glance (soilRotationTitle / soilRotationLast /
--- soilRotationStatus / soilRotationTip). Reuses
--- RotationPlannerData so the words match the deep planner.
--- Nil-safe: older door XML without the card ids renders nothing.
--- =========================================================
+--- Paint the three What-if rows (crop / status / effect) from RotationPlannerData.
+--- Read-only projection only: pickCandidates + project + statusWord + effectText.
+--- Never invents a crop - a candidate with no projection prints honest dashes.
+local function paintWhatIfRows(page, entry, tr, clip)
+    local rows = page.soilRotationIfRows
+    local hdr  = page.soilRotationWhatIfHeader
+    if rows == nil then return end
 
-function RfPdaSoilPanel.refreshRotationCard(page, entry)
-    local tr = page._rfTr or function(k, fb) return fb or k end
-    local card = page.soilRotationCard
-    local titleEl = page.soilRotationTitle
-    local lastEl = page.soilRotationLast
-    local statusEl = page.soilRotationStatus
-    local tipEl = page.soilRotationTip
-    if card == nil or titleEl == nil or lastEl == nil or statusEl == nil or tipEl == nil then
-        return
-    end
-
-    titleEl:setText(tr("sf_rp_title", "Rotation Planner"))
-
-    local fieldId = entry and entry.fieldId or page.selectedFieldId
-    local sfm = g_SoilFertilityManager
-    if sfm == nil and type(getfenv) == "function" then
-        local env0 = getfenv(0)
-        if env0 ~= nil then sfm = env0.g_SoilFertilityManager end
-    end
-    if sfm == nil or sfm.soilSystem == nil or fieldId == nil or fieldId <= 0 then
-        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
-        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
-        tipEl:setText("")
-        return
-    end
-
-    -- FieldInfo via the same public payload the deep planner reads.
-    local info = nil
-    local ok, res = pcall(function()
-        return sfm.soilSystem:getFieldInfo(fieldId)
-    end)
-    if ok and res ~= nil then info = res end
-
-    if info == nil then
-        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
-        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
-        tipEl:setText(tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted."))
-        return
-    end
-
-    -- One-line standing (crops + bonus) and the status word, from the same
-    -- data the deep planner renders, so the glance and the planner agree.
-    local line = tr("sf_rp_no_history", "No crop history yet")
-    local statusWord = tr("sf_rp_status_unknown", "Unknown")
-    local colorKey = "unknown"
-    if RotationPlannerData ~= nil then
-        pcall(function()
-            line, colorKey = RotationPlannerData.standingLine(info)
-            local word = RotationPlannerData.statusWord(info.rotationStatus)
-            if word then statusWord = word end
-        end)
-    else
-        if info.lastCrop ~= nil and info.lastCrop ~= "" then
-            line = info.lastCrop
+    local function setEl(el, s)
+        if el ~= nil then
+            if el.setVisible then el:setVisible(true) end
+            if el.setText then el:setText(s or "") end
         end
-        if info.rotationStatus ~= nil then statusWord = info.rotationStatus end
     end
 
-    lastEl:setText(line)
-    statusEl:setText(statusWord)
+    setEl(hdr, tr("sf_rp_what_if", "What if (next crop)"))
+    setEl(page.soilRotationIfColCrop,   tr("sf_rp_col_crop", "Crop"))
+    setEl(page.soilRotationIfColStatus, tr("sf_rp_col_status", "Status"))
+    setEl(page.soilRotationIfColEffect, tr("sf_rp_col_effect", "Effect"))
 
-    -- Tip: bonus days remaining when a rotation bonus is live, else the hint.
-    local tip = tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted.")
-    if info.rotationBonusDaysLeft ~= nil and tonumber(info.rotationBonusDaysLeft) ~= nil
-        and tonumber(info.rotationBonusDaysLeft) > 0 then
-        tip = string.format(tr("sf_rp_bonus_days", "bonus %dd"),
-            math.floor(tonumber(info.rotationBonusDaysLeft)))
+    local rpd = RotationPlannerData
+    local info = entry ~= nil and entry.info or nil
+    local fieldId = entry ~= nil and entry.fieldId or nil
+
+    local cands, cache = nil, nil
+    if rpd ~= nil and info ~= nil and fieldId ~= nil then
+        if type(rpd.pickCandidates) == "function" then
+            local ok, c = pcall(rpd.pickCandidates, info.lastCrop, nil)
+            if ok then cands = c end
+        end
+        if type(rpd.cacheForFields) == "function" then
+            local ok, cc = pcall(rpd.cacheForFields, { fieldId })
+            if ok then cache = cc end
+        end
     end
-    tipEl:setText(tip)
 
-    if colorKey == "bonus" then
-        statusEl:setTextColor(unpack(COLOR_LIME_BRIGHT))
-        lastEl:setTextColor(unpack(COLOR_GOOD))
-    elseif colorKey == "fatigue" then
-        statusEl:setTextColor(unpack(COLOR_POOR))
-        lastEl:setTextColor(unpack(COLOR_FAIR))
+    for i = 1, 3 do
+        local r = rows[i]
+        if r ~= nil then
+            local cand = cands and cands[i] or nil
+            if cand == nil or cand == "" then
+                setEl(r.crop, "-"); setEl(r.status, ""); setEl(r.effect, "")
+            else
+                local label = (type(rpd.cropLabel) == "function") and rpd.cropLabel(cand) or tostring(cand)
+                local proj
+                if cache ~= nil and type(rpd.project) == "function" then
+                    local ok, pr = pcall(rpd.project, cache, fieldId, cand)
+                    if ok then proj = pr end
+                end
+                local word = (proj ~= nil and type(rpd.statusWord) == "function")
+                    and rpd.statusWord(proj.status) or tr("sf_rp_status_unknown", "Unknown")
+                local eff = (type(rpd.effectText) == "function") and rpd.effectText(proj) or ""
+                setEl(r.crop,   clip(label, 16))
+                setEl(r.status, clip(word, 10))
+                setEl(r.effect, clip(eff, 18))
+            end
+        end
+    end
+end
+
+--- Read-only crop rotation card in the TREATMENT strip (Samantha DESIGN CLOSED +
+--- George ENGINE ACK 2026-08-08; Tyson eyes-on shot 01).
+--- Restored after PR #800 landed a tree where the call site survived but this
+--- definition did not, so every TREATMENT refresh was calling a nil value.
+--- Read-only by law: no rotation apply, no SmoothList, no invented crops.
+---@param page table RfPdaMenuPage instance (may be a thin door without the card ids)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshRotationCard(page, entry)
+    if page == nil then return end
+    local tr = page._rfTr or function(k, fb) return fb or k end
+
+    -- Col 3 ownership for THIS refresh. Cleared first so a door without the card,
+    -- or a painter that throws before claiming, never leaves a stale claim behind.
+    page._rotationCardOwnsCol3 = false
+
+    local cardEl   = page.soilRotationCard
+    local titleEl  = page.soilRotationTitle
+    local lastEl   = page.soilRotationLast
+    local statusEl = page.soilRotationStatus
+    local tipEl    = page.soilRotationTip
+
+    -- Thin doors (Income / Tax / Dairy / NPC / Depot) may host without the card ids.
+    -- Hide what exists, clear, and return. Never throw - PRODUCTS must still paint.
+    if titleEl == nil and lastEl == nil and statusEl == nil and tipEl == nil then
+        if cardEl ~= nil and cardEl.setVisible then cardEl:setVisible(false) end
+        if not page._rotationCardWarned then
+            page._rotationCardWarned = true
+            print("[SoilFertilizer] rotation card ids absent on this door - skipping card (PRODUCTS unaffected)")
+        end
+        return
+    end
+
+    -- George: the sampling box sits at the SAME x=850 as this card, so while Col 3 is the
+    -- rotation card the sampling chrome must stay hidden or it paints over it. This is the
+    -- likely cause of the orphaned look in Tyson shot 01.
+    -- Vera F1: hiding here is necessary but NOT sufficient - refreshTreatmentPlan re-shows
+    -- sampling later in the same refresh whenever sample dates exist, and it runs after us.
+    -- Claiming Col 3 is what actually holds; the hide below just makes the claim immediate.
+    page._rotationCardOwnsCol3 = true
+    local page2 = page
+    for _, sid in ipairs({ "samplingInfoBox", "samplingInfoFallback" }) do
+        local sEl = page2[sid] or (page2.getDescendantById and page2:getDescendantById(sid))
+        if sEl ~= nil and sEl.setVisible then sEl:setVisible(false) end
+    end
+
+    --- Trim to fit the narrow What-if effect column (pic 1 feel).
+    local function clip(s, n)
+        s = tostring(s or "")
+        if #s <= n then return s end
+        return s:sub(1, math.max(1, n - 3)) .. "..."
+    end
+
+    local function set(el, text)
+        if el ~= nil then
+            if el.setVisible then el:setVisible(true) end
+            if el.setText then el:setText(text or "") end
+        end
+    end
+
+    if cardEl ~= nil and cardEl.setVisible then cardEl:setVisible(true) end
+    set(titleEl, tr("rf_pda_treat_rotation", "ROTATION"))
+
+    -- Soft-detect only; never hard-require the planner module.
+    local rpd = RotationPlannerData
+    local info = entry ~= nil and entry.info or nil
+
+    -- No field selected or no planner: Samantha's honest empty map.
+    if info == nil or rpd == nil then
+        set(lastEl, tr("sf_rp_no_history", "No crop history yet"))
+        set(statusEl, tr("sf_rp_status_unknown", "Unknown"))
+        set(tipEl, tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue."))
+        paintWhatIfRows(page, entry, tr, clip)
+        return
+    end
+
+    local cropLabel = type(rpd.cropLabel) == "function" and rpd.cropLabel or nil
+    local hasHistory = info.lastCrop ~= nil and info.lastCrop ~= ""
+
+    if not hasHistory then
+        set(lastEl, tr("sf_rp_no_history", "No crop history yet"))
+        set(statusEl, tr("sf_rp_status_unknown", "Unknown"))
+        set(tipEl, tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue."))
+        paintWhatIfRows(page, entry, tr, clip)
+        return
+    end
+
+    local c1 = cropLabel and cropLabel(info.lastCrop) or tostring(info.lastCrop)
+    local c2 = (info.lastCrop2 ~= nil and info.lastCrop2 ~= "")
+        and (cropLabel and cropLabel(info.lastCrop2) or tostring(info.lastCrop2)) or nil
+    local story = (c2 ~= nil) and string.format("%s / %s", c1, c2) or c1
+    set(lastEl, string.format("%s %s", tr("rf_pda_rotation_last", "Last:"), story))
+
+    local word = type(rpd.statusWord) == "function" and rpd.statusWord(info.rotationStatus) or nil
+    set(statusEl, word or tr("sf_rp_status_unknown", "Unknown"))
+    paintWhatIfRows(page, entry, tr, clip)
+
+    -- One quiet tip, keyed off the same status the deep planner reports.
+    local tip
+    if info.rotationStatus == "Fatigue" then
+        tip = tr("rf_pda_rotation_tip_fatigue", "Same family too long. Change crop next season.")
+    elseif info.rotationStatus == "Bonus" then
+        tip = tr("rf_pda_rotation_tip_bonus", "Rotation bonus active. Keep the sequence going.")
     else
-        statusEl:setTextColor(unpack(COLOR_DIM))
-        lastEl:setTextColor(unpack(COLOR_GOOD))
+        tip = tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue.")
     end
+    set(tipEl, tip)
 end
 
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
@@ -348,13 +465,27 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         end
     end
 
-    RfPdaSoilPanel.refreshRotationCard(page, entry)
+    -- Cleared per refresh: if refreshRotationCard is missing entirely (the PR #800 shape)
+    -- the claim must not survive from the previous paint and hide sampling forever.
+    page._rotationCardOwnsCol3 = false
+
+    -- Guarded: the card is a nice-to-have glance, PRODUCTS is the load-bearing panel.
+    -- PR #800 shipped a tree where this call site survived but the definition did not,
+    -- so an unguarded call took the whole TREATMENT paint down with it.
+    if type(RfPdaSoilPanel.refreshRotationCard) == "function" then
+        local okCard, errCard = pcall(RfPdaSoilPanel.refreshRotationCard, page, entry)
+        if not okCard and not page._rotationCardErrLogged then
+            page._rotationCardErrLogged = true
+            print("[SoilFertilizer] rotation card paint failed (PRODUCTS continues): " .. tostring(errCard))
+        end
+    end
 
     local function clearTargets()
         if page.treatTargetsHeading then page.treatTargetsHeading:setText("") end
         if page.treatTargetN then page.treatTargetN:setText("") end
         if page.treatTargetP then page.treatTargetP:setText("") end
         if page.treatTargetK then page.treatTargetK:setText("") end
+        if page.treatTargetPH then page.treatTargetPH:setText("") end
         if page.treatTargetsLabel then
             page.treatTargetsLabel:setText("")
             if page.treatTargetsLabel.setVisible then
@@ -496,6 +627,13 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
     if page.treatTargetK then
         page.treatTargetK:setText(string.format("K %d-%d%%", kLo, kHi))
     end
+    -- Target pH band from constants only (never live info.pH)
+    if page.treatTargetPH then
+        local limits = SoilConstants and SoilConstants.NUTRIENT_LIMITS or {}
+        local phLo = limits.PH_NEUTRAL_LOW or 6.5
+        local phHi = limits.PH_NEUTRAL_HIGH or 7.0
+        page.treatTargetPH:setText(string.format("pH %.1f-%.1f", phLo, phHi))
+    end
     if page.treatTargetsLabel and page.treatTargetsLabel.setVisible then
         page.treatTargetsLabel:setVisible(false)
     end
@@ -529,12 +667,17 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         sampleText = table.concat(bits, "\n")
     end
 
-    -- F1: show sampling only when real dates exist; never show empty fallback over PRODUCTS
+    -- F1: show sampling only when real dates exist; never show empty fallback over PRODUCTS.
+    -- Vera F1 (resubmit): sampling sits at x=850, the same x as the rotation card. This block
+    -- runs AFTER refreshRotationCard, so a painter-only hide loses the moment sample dates
+    -- exist. Ownership decides for the whole refresh - card up means sampling stays down,
+    -- dates or not. George's ruling stands: hide, never move the sampling x.
+    local cardOwnsCol3 = page._rotationCardOwnsCol3 == true
     if page.samplingInfoFallback then
         page.samplingInfoFallback:setVisible(false)
     end
     if page.samplingInfoBox then
-        page.samplingInfoBox:setVisible(sampleText ~= nil)
+        page.samplingInfoBox:setVisible(not cardOwnsCol3 and sampleText ~= nil)
     end
     if page.samplingInfoText and sampleText ~= nil then
         page.samplingInfoText:setText(sampleText)
