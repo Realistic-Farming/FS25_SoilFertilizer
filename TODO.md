@@ -90,3 +90,9 @@
 - [~] Not ours to build: SeasonalCropStress's `getSkipRainHours` (SCS-037 round 2) goes live when it calls this delegate. In-game skip test is theirs.
 
 
+
+## SF-19 visibility parity (2026-08-11)
+- [x] `getFieldInfo(fieldId, x, z)` positional pest/disease/compaction reads from the value maps (tooltip parity); disease discovery gate holds on the positional read.
+- [x] `HookManager.resolveCellPressure` reads pest/disease from the synced display maps first, then the cell, then the field scalar (see-and-spray client fidelity).
+- [x] 21 new assertions across `sf19_tooltip_parity_test.lua` and `sf19_see_and_spray_repoint_test.lua`. Suite 2537/0 across 55 files.
+- [~] In-game: scout reveal check on the PDA tooltip; MP client section-sprayer parity check.
