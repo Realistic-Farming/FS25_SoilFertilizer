@@ -4040,6 +4040,17 @@ function SoilFertilitySystem:updateDailySoil(elapsedDays)
         SpatialNutrients:refreshAllBands(self)
     end
 
+    -- [SF-21] NEIGHBOUR CROSSING: the crossing PRE-PASS runs once per day, before
+    -- the mutation batches (the completion gate is LAW: no mutation before the
+    -- snapshot). The transient snapshot lives on self for the batch's read; it is
+    -- never saved or synced. Neutral when absent.
+    if g_server ~= nil and NeighbourCrossing and NeighbourCrossing.ENABLED then
+        local hookMgr = self.hookManager
+        if hookMgr then
+            self._neighbourSnapshot = NeighbourCrossing:runPrePass(hookMgr, self)
+        end
+    end
+
     SoilLogger.debug("[PERF-P4] Day %d: queued daily update for %d active field(s) (batch=%d/frame)",
         currentDay, #self._activeFieldList, self.DAILY_BATCH_SIZE)
 end
@@ -4584,6 +4595,21 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         self:_updateActiveDisease(fieldId, field, season, isRaining, currentDay)
     end
 
+    -- [SF-21] NEIGHBOUR CROSSING: roll the conducive-gated disease boundary
+    -- seeding before the pressure pass runs, so a fresh boundary origin gets
+    -- spread the same day. Uses the day's transient snapshot (the pre-pass ran
+    -- in updateDailySoil ahead of the batch). Protection fence is LAW inside.
+    -- Neutral when absent / no snapshot / protected field.
+    if g_server ~= nil and NeighbourCrossing and NeighbourCrossing.ENABLED
+       and ReleaseGate.isSystemLive("spatial_soil")
+       and self._neighbourSnapshot and self._neighbourSnapshot[fieldId] then
+        local hookMgr = self.hookManager
+        if hookMgr then
+            NeighbourCrossing:rollDiseaseCrossing(self, fieldId, field,
+                self._neighbourSnapshot[fieldId], currentDay)
+        end
+    end
+
     -- [SF-19] VARIABLE PEST AND DISEASE PRESSURE: distribute the field-level
     -- pressure onto the per-cell store with ORIGIN and SPREAD. Server-only
     -- (the daily pass is server-authoritative), after the field aggregate is
@@ -4594,7 +4620,8 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED
        and ReleaseGate.isSystemLive("spatial_soil") then
         local poly = self:_getFieldPolyVerts(fieldId, field)
-        SpatialPressures:run(self, fieldId, field, currentDay, poly)
+        SpatialPressures:run(self, fieldId, field, currentDay, poly,
+            self._neighbourSnapshot and self._neighbourSnapshot[fieldId])
     end
 
     -- ── Burn warning countdown ───────────────────────────────────────────────
