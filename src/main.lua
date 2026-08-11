@@ -94,6 +94,11 @@ source(modDirectory .. "src/NeighbourCrossing.lua")
 -- attribution. Loaded before SoilFertilitySystem, which consults it at the
 -- membership and charge sites. Neutral when NPCFavor is absent.
 source(modDirectory .. "src/NpcSoilBridge.lua")
+-- POSITIONAL HARVEST CAPTURE: the load remembers where it grew. The tally
+-- accumulates area-weighted contamination on the harvesting vehicle from the
+-- harvest hook. Independently buildable and inert (the handoff rides the
+-- feed-provenance build). Loaded before HookManager, which calls it per cutter.
+source(modDirectory .. "src/PositionalCapture.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
