@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussion
+    url: https://github.com/TheCodingDad-TisonK/FS25_SoilFertilizer/discussions
+    about: Ask questions or talk through ideas before opening an issue.
+  - name: Roadmap
+    url: https://github.com/TheCodingDad-TisonK/FS25_SoilFertilizer#roadmap
+    about: Check whether your request is already planned.

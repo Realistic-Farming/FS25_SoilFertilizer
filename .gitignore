@@ -1,0 +1,30 @@
+# Claude Code files
+.claude/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+*.skill
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+*.zip
+*.zip.old
+*_temp/
+
+# Tool outputs
+GLOBAL_LEAK_AUDIT.md
+
+# Session handoff notes (local working notes, never shipped to the public repo)
+SESSION-HANDOFF.md
+
+# Test harness deps (tools/test/ - installed via `npm install`, never shipped)
+node_modules/
+
+translations/translations/

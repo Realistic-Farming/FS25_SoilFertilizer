@@ -1,0 +1,935 @@
+# ============================================================================
+# GitHub Repository Traffic Stats - Reusable Template
+# ============================================================================
+#
+# WHAT THIS IS:
+#   A copy-paste-ready GitHub Actions workflow that archives your repository's
+#   traffic data (views, clones, downloads, referrers, stars, forks) beyond
+#   GitHub's default 14-day retention window, and generates a visual dashboard
+#   with charts.
+#
+# HOW TO USE:
+#   1. Copy this file to: .github/workflows/traffic-stats.yml
+#   2. Create a Personal Access Token (classic) with `repo` scope
+#   3. Add it as a repository secret named TRAFFIC_TOKEN
+#   4. Push to your default branch - the workflow runs hourly on schedule
+#   5. After the first run, check the `traffic-stats` branch for your dashboard
+#      at .github/traffic/SUMMARY.md
+#
+# WHAT IT COLLECTS:
+#   - Hourly:  Release download counts (lightweight snapshot)
+#   - Every 6h: Full dashboard - views, clones, referrers, stars, forks,
+#               watchers, popular paths + chart generation
+#   - Manual:  Trigger anytime via workflow_dispatch for a full collection
+#
+# DATA STORAGE:
+#   All data is committed to an orphan branch called `traffic-stats` so it
+#   never clutters your main branch. Data files:
+#     - daily.json       - Views & clones per day (preserved forever)
+#     - downloads.json   - Release download snapshots (hourly)
+#     - referrers.json   - Referrer snapshots (daily)
+#     - metadata.json    - Stars, forks, watchers (daily)
+#     - stats.json       - Combined legacy snapshots (6-hourly)
+#     - charts/*.png     - Auto-generated dashboard charts
+#     - SUMMARY.md       - Markdown dashboard with embedded charts
+#
+# SMART DEDUPLICATION:
+#   Download snapshots are only recorded when the count changes, with a
+#   heartbeat entry every 6 hours to keep the timeline alive. Daily data
+#   uses date-keyed upserts so re-runs don't create duplicates.
+#
+# REQUIREMENTS:
+#   - Repository secret: TRAFFIC_TOKEN (PAT with `repo` scope)
+#   - The PAT owner must have push access to the repository
+#
+# CHARTS GENERATED (6 total):
+#   1. Views & Clones - dual-panel time series
+#   2. Total Acquisition per Release - stacked bars + daily clone timeline
+#   3. Referrers - horizontal bar chart
+#   4. Repository Growth - stars, forks, watchers line chart
+#   5. Visitor Engagement - pages per visitor with trend line
+#   6. Conversion Funnel - visitors vs downloaders with conversion rate
+#
+# ============================================================================
+
+name: Traffic Stats Archive
+
+on:
+  schedule:
+    # Hourly: lightweight download snapshot
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger (runs full collection)
+
+permissions:
+  contents: write
+
+jobs:
+  collect-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout traffic-stats branch
+        uses: actions/checkout@v4
+        with:
+          ref: traffic-stats
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Create branch if it doesn't exist
+        run: |
+          if ! git rev-parse --verify traffic-stats >/dev/null 2>&1; then
+            git checkout --orphan traffic-stats
+            git rm -rf . 2>/dev/null || true
+            echo "# Traffic Stats" > README.md
+            echo "This branch contains archived traffic data for this repository." >> README.md
+            echo "" >> README.md
+            echo "Hourly download tracking + full dashboard every 6 hours." >> README.md
+            echo "See [SUMMARY.md](.github/traffic/SUMMARY.md) for the latest dashboard." >> README.md
+            git add README.md
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: Initialize traffic-stats branch"
+            git push origin traffic-stats
+          fi
+
+      - name: Determine collection mode
+        id: mode
+        run: |
+          HOUR=$(date -u +%H)
+          # Full collection at 00, 06, 12, 18 UTC and on manual trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "$HOUR" = "00" ] || [ "$HOUR" = "06" ] || \
+             [ "$HOUR" = "12" ] || [ "$HOUR" = "18" ]; then
+            echo "full=true" >> $GITHUB_OUTPUT
+            echo "Mode: FULL collection (hour=$HOUR)"
+          else
+            echo "full=false" >> $GITHUB_OUTPUT
+            echo "Mode: DOWNLOAD-ONLY snapshot (hour=$HOUR)"
+          fi
+
+      # ── Always: Hourly download snapshot ────────────────────────
+      - name: Snapshot release downloads
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          mkdir -p .github/traffic/charts
+
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Fetch release download counts WITH publish dates
+          RELEASES=$(gh api repos/${{ github.repository }}/releases \
+            --jq '[.[] | {tag: .tag_name, published_at: .published_at, assets: [.assets[] | {name: .name, downloads: .download_count}]}]' \
+            2>/dev/null || echo '[]')
+
+          TOTAL_DL=$(echo "$RELEASES" | jq '[.[].assets[].downloads] | add // 0')
+
+          # Store/update release timeline (maps release tags to their publish dates)
+          RELEASES_TIMELINE=".github/traffic/releases_timeline.json"
+          if [ -f "$RELEASES_TIMELINE" ]; then
+            RT_EXISTING=$(cat "$RELEASES_TIMELINE")
+          else
+            RT_EXISTING='{}'
+          fi
+          # Merge current release data into timeline (preserves historical releases)
+          # Also tracks peak download count per release (survives release deletion)
+          RT_UPDATED=$(echo "$RELEASES" | jq --argjson existing "$RT_EXISTING" '
+            reduce .[] as $r ($existing;
+              ($r.assets | map(.downloads) | add // 0) as $dl |
+              .[$r.tag] = {
+                published_at: $r.published_at,
+                tag: $r.tag,
+                peak_downloads: ([($dl), (.[$r.tag].peak_downloads // 0)] | max)
+              }
+            )
+          ')
+          echo "$RT_UPDATED" > "$RELEASES_TIMELINE"
+
+          # Append to downloads timeline
+          DOWNLOADS_FILE=".github/traffic/downloads.json"
+          if [ -f "$DOWNLOADS_FILE" ]; then
+            DL_EXISTING=$(cat "$DOWNLOADS_FILE")
+          else
+            DL_EXISTING="[]"
+          fi
+
+          # Only append if total changed (avoid duplicate flat-line entries)
+          LAST_TOTAL=$(echo "$DL_EXISTING" | jq '.[-1].total_downloads // -1')
+
+          if [ "$TOTAL_DL" != "$LAST_TOTAL" ] || [ "$DL_EXISTING" = "[]" ]; then
+            DL_UPDATED=$(echo "$DL_EXISTING" | jq \
+              --arg ts "$TIMESTAMP" \
+              --argjson total "$TOTAL_DL" \
+              --argjson releases "$RELEASES" \
+              '. + [{timestamp: $ts, total_downloads: $total, per_release: $releases}]')
+            echo "$DL_UPDATED" > "$DOWNLOADS_FILE"
+            echo "Download snapshot saved: $TOTAL_DL total (changed from $LAST_TOTAL)"
+          else
+            # Still save a heartbeat entry every 6 hours even if unchanged
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "00" ] || [ "$HOUR" = "06" ] || \
+               [ "$HOUR" = "12" ] || [ "$HOUR" = "18" ]; then
+              DL_UPDATED=$(echo "$DL_EXISTING" | jq \
+                --arg ts "$TIMESTAMP" \
+                --argjson total "$TOTAL_DL" \
+                --argjson releases "$RELEASES" \
+                '. + [{timestamp: $ts, total_downloads: $total, per_release: $releases}]')
+              echo "$DL_UPDATED" > "$DOWNLOADS_FILE"
+              echo "Heartbeat snapshot saved: $TOTAL_DL total (unchanged, 6hr checkpoint)"
+            else
+              echo "No change in downloads ($TOTAL_DL) - skipping snapshot"
+            fi
+          fi
+
+      # ── Full collection: every 6 hours ──────────────────────────
+      - name: Collect full traffic stats
+        if: steps.mode.outputs.full == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DATE=$(date -u +%Y-%m-%d)
+
+          # ── Fetch all API data ──
+          VIEWS=$(gh api repos/${{ github.repository }}/traffic/views 2>/dev/null || echo '{"count":0,"uniques":0,"views":[]}')
+          CLONES=$(gh api repos/${{ github.repository }}/traffic/clones 2>/dev/null || echo '{"count":0,"uniques":0,"clones":[]}')
+          REFERRERS=$(gh api repos/${{ github.repository }}/traffic/popular/referrers 2>/dev/null || echo '[]')
+          PATHS=$(gh api repos/${{ github.repository }}/traffic/popular/paths 2>/dev/null || echo '[]')
+          RELEASES=$(gh api repos/${{ github.repository }}/releases --jq '[.[] | {tag: .tag_name, assets: [.assets[] | {name: .name, downloads: .download_count}]}]' 2>/dev/null || echo '[]')
+          STARGAZERS=$(gh api repos/${{ github.repository }} --jq '.stargazers_count' 2>/dev/null || echo '0')
+          FORKS=$(gh api repos/${{ github.repository }} --jq '.forks_count' 2>/dev/null || echo '0')
+          WATCHERS=$(gh api repos/${{ github.repository }} --jq '.subscribers_count' 2>/dev/null || echo '0')
+          OPEN_ISSUES=$(gh api repos/${{ github.repository }} --jq '.open_issues_count' 2>/dev/null || echo '0')
+
+          # ── Daily views/clones (preserved beyond 14-day window) ──
+          DAILY_FILE=".github/traffic/daily.json"
+          if [ -f "$DAILY_FILE" ]; then
+            DAILY_EXISTING=$(cat "$DAILY_FILE")
+          else
+            DAILY_EXISTING='{}'
+          fi
+
+          DAILY_UPDATED=$(echo "$VIEWS" | jq --argjson clones "$CLONES" --argjson existing "$DAILY_EXISTING" '
+            $existing as $base |
+            reduce (.views[]? // empty) as $v ($base;
+              ($v.timestamp | split("T")[0]) as $day |
+              .[$day] = (.[$day] // {}) |
+              .[$day].views_total = $v.count |
+              .[$day].views_unique = $v.uniques
+            ) |
+            reduce ($clones.clones[]? // empty) as $c (.;
+              ($c.timestamp | split("T")[0]) as $day |
+              .[$day] = (.[$day] // {}) |
+              .[$day].clones_total = $c.count |
+              .[$day].clones_unique = $c.uniques
+            )
+          ')
+          echo "$DAILY_UPDATED" > "$DAILY_FILE"
+
+          # ── Referrer history (one snapshot per day) ──
+          REFERRER_FILE=".github/traffic/referrers.json"
+          if [ -f "$REFERRER_FILE" ]; then
+            REF_EXISTING=$(cat "$REFERRER_FILE")
+          else
+            REF_EXISTING='{}'
+          fi
+          REF_UPDATED=$(echo "$REF_EXISTING" | jq --arg date "$DATE" --argjson refs "$REFERRERS" '.[$date] = $refs')
+          echo "$REF_UPDATED" > "$REFERRER_FILE"
+
+          # ── Repo metadata (one snapshot per day) ──
+          META_FILE=".github/traffic/metadata.json"
+          if [ -f "$META_FILE" ]; then
+            META_EXISTING=$(cat "$META_FILE")
+          else
+            META_EXISTING="[]"
+          fi
+
+          META_UPDATED=$(echo "$META_EXISTING" | jq --arg date "$DATE" \
+            --argjson stars "$STARGAZERS" --argjson forks "$FORKS" \
+            --argjson watchers "$WATCHERS" --argjson issues "$OPEN_ISSUES" \
+            '[.[] | select(.date != $date)] + [{
+              date: $date, stars: $stars, forks: $forks,
+              watchers: $watchers, open_issues: $issues
+            }] | sort_by(.date)')
+          echo "$META_UPDATED" > "$META_FILE"
+
+          # ── Legacy combined snapshot ──
+          STATS_FILE=".github/traffic/stats.json"
+          if [ -f "$STATS_FILE" ]; then
+            EXISTING=$(cat "$STATS_FILE")
+          else
+            EXISTING="[]"
+          fi
+
+          TODAY_SNAPSHOT=$(jq -n \
+            --arg ts "$TIMESTAMP" --arg date "$DATE" \
+            --argjson views "$VIEWS" --argjson clones "$CLONES" \
+            --argjson referrers "$REFERRERS" --argjson paths "$PATHS" \
+            --argjson releases "$RELEASES" --argjson stars "$STARGAZERS" \
+            --argjson forks "$FORKS" --argjson watchers "$WATCHERS" \
+            '{
+              timestamp: $ts, date: $date,
+              views: { count: $views.count, uniques: $views.uniques },
+              clones: { count: $clones.count, uniques: $clones.uniques },
+              referrers: $referrers, popular_paths: $paths,
+              releases: $releases,
+              stars: $stars, forks: $forks, watchers: $watchers
+            }')
+
+          UPDATED=$(echo "$EXISTING" | jq --arg date "$DATE" --argjson snapshot "$TODAY_SNAPSHOT" \
+            '[.[] | select(.date != $date)] + [$snapshot] | sort_by(.date)')
+          echo "$UPDATED" > "$STATS_FILE"
+
+      # ── Charts: only on full collection ─────────────────────────
+      - name: Set up Python
+        if: steps.mode.outputs.full == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install charting dependencies
+        if: steps.mode.outputs.full == 'true'
+        run: pip install matplotlib
+
+      - name: Generate charts
+        if: steps.mode.outputs.full == 'true'
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          from datetime import datetime, timedelta
+
+          import matplotlib
+          matplotlib.use('Agg')
+          import matplotlib.pyplot as plt
+          import matplotlib.dates as mdates
+
+          TRAFFIC_DIR = ".github/traffic"
+          CHARTS_DIR = os.path.join(TRAFFIC_DIR, "charts")
+          os.makedirs(CHARTS_DIR, exist_ok=True)
+
+          # ── Shared dark theme (GitHub style) ──
+          plt.rcParams.update({
+              'figure.facecolor': '#0d1117',
+              'axes.facecolor': '#161b22',
+              'axes.edgecolor': '#30363d',
+              'axes.labelcolor': '#c9d1d9',
+              'text.color': '#c9d1d9',
+              'xtick.color': '#8b949e',
+              'ytick.color': '#8b949e',
+              'grid.color': '#21262d',
+              'grid.alpha': 0.8,
+              'font.size': 11,
+          })
+
+          # ── Chart 1: Views & Clones ──
+          daily_file = os.path.join(TRAFFIC_DIR, "daily.json")
+          if os.path.exists(daily_file):
+              with open(daily_file) as f:
+                  daily = json.load(f)
+
+              if daily:
+                  dates = sorted(daily.keys())
+                  date_objs = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
+                  views = [daily[d].get("views_total", 0) or 0 for d in dates]
+                  views_uniq = [daily[d].get("views_unique", 0) or 0 for d in dates]
+                  clones = [daily[d].get("clones_total", 0) or 0 for d in dates]
+                  clones_uniq = [daily[d].get("clones_unique", 0) or 0 for d in dates]
+
+                  fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+                  fig.suptitle("Repository Traffic Dashboard", fontsize=16, fontweight='bold', color='#58a6ff')
+
+                  ax1.fill_between(date_objs, views, alpha=0.3, color='#58a6ff')
+                  ax1.plot(date_objs, views, 'o-', color='#58a6ff', linewidth=2, markersize=5, label='Total Views')
+                  ax1.plot(date_objs, views_uniq, 's--', color='#3fb950', linewidth=1.5, markersize=4, label='Unique Visitors')
+                  ax1.set_ylabel("Page Views")
+                  ax1.legend(loc='upper left', framealpha=0.8)
+                  ax1.grid(True, linestyle='--')
+                  ax1.set_ylim(bottom=0)
+
+                  ax2.fill_between(date_objs, clones, alpha=0.3, color='#d29922')
+                  ax2.plot(date_objs, clones, 'o-', color='#d29922', linewidth=2, markersize=5, label='Total Clones')
+                  ax2.plot(date_objs, clones_uniq, 's--', color='#f85149', linewidth=1.5, markersize=4, label='Unique Cloners')
+                  ax2.set_ylabel("Git Clones")
+                  ax2.legend(loc='upper left', framealpha=0.8)
+                  ax2.grid(True, linestyle='--')
+                  ax2.set_ylim(bottom=0)
+
+                  ax2.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+                  ax2.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+                  plt.xticks(rotation=45)
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "views_clones.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+                  print("Generated: views_clones.png")
+
+          # ── Chart 2: Total Acquisition per Release Era ──
+          # Combines zip downloads + git clones, attributed to whichever
+          # release was current at the time
+          dl_file = os.path.join(TRAFFIC_DIR, "downloads.json")
+          rt_file = os.path.join(TRAFFIC_DIR, "releases_timeline.json")
+
+          # Load release timeline (tag → publish date + peak downloads)
+          release_eras = []
+          rt = {}
+          if os.path.exists(rt_file):
+              with open(rt_file) as f:
+                  rt = json.load(f)
+              for tag, info in rt.items():
+                  pub = info.get("published_at")
+                  if pub:
+                      release_eras.append({
+                          "tag": tag,
+                          "start": datetime.strptime(pub.split("T")[0], "%Y-%m-%d"),
+                          "peak_downloads": info.get("peak_downloads", 0)
+                      })
+              release_eras.sort(key=lambda r: r["start"])
+
+          # Load daily clones
+          daily_clones = {}
+          if os.path.exists(daily_file):
+              with open(daily_file) as f:
+                  daily = json.load(f)
+              for d, vals in daily.items():
+                  daily_clones[d] = vals.get("clones_total", 0) or 0
+
+          # Load download snapshots
+          downloads = []
+          if os.path.exists(dl_file):
+              with open(dl_file) as f:
+                  downloads = json.load(f)
+
+          # Helper: which release era does a date belong to?
+          def get_release_era(date_obj):
+              current_tag = None
+              for era in release_eras:
+                  if date_obj >= era["start"]:
+                      current_tag = era["tag"]
+              return current_tag or (release_eras[0]["tag"] if release_eras else "pre-release")
+
+          # Build per-release-era acquisition totals
+          era_colors = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#bc8cff',
+                        '#56d364', '#79c0ff', '#e3b341', '#ff7b72', '#d2a8ff']
+
+          if release_eras and (daily_clones or downloads):
+              # Aggregate clones per era from daily data
+              era_clones = {}
+              era_clone_days = {}  # track daily breakdown for chart
+              for date_str, clone_count in sorted(daily_clones.items()):
+                  date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                  era_tag = get_release_era(date_obj)
+                  era_clones[era_tag] = era_clones.get(era_tag, 0) + clone_count
+                  if era_tag not in era_clone_days:
+                      era_clone_days[era_tag] = []
+                  era_clone_days[era_tag].append((date_obj, clone_count))
+
+              # Get latest download total per release from most recent snapshot
+              era_downloads = {}
+              if downloads:
+                  latest = downloads[-1]
+                  for rel in (latest.get("per_release") or latest.get("releases", [])):
+                      era_downloads[rel["tag"]] = sum(a["downloads"] for a in rel.get("assets", []))
+
+              # Fallback: use peak_downloads from timeline for deleted releases
+              for era in release_eras:
+                  if era["tag"] not in era_downloads and era.get("peak_downloads", 0) > 0:
+                      era_downloads[era["tag"]] = era["peak_downloads"]
+
+              # ── Main chart: stacked bars per release era ──
+              tags = [era["tag"] for era in release_eras]
+              clone_vals = [era_clones.get(t, 0) for t in tags]
+              dl_vals = [era_downloads.get(t, 0) for t in tags]
+              total_vals = [c + d for c, d in zip(clone_vals, dl_vals)]
+
+              fig, (ax_bars, ax_timeline) = plt.subplots(2, 1, figsize=(12, 9),
+                  gridspec_kw={'height_ratios': [1, 1.2]})
+              fig.suptitle("Total Acquisition per Release", fontsize=16, fontweight='bold', color='#58a6ff')
+
+              # Top: stacked bar chart per release
+              x = list(range(len(tags)))
+              bar_w = 0.5
+              bars_clones = ax_bars.bar(x, clone_vals, bar_w, color='#3fb950', alpha=0.8, label='Git Clones')
+              bars_dls = ax_bars.bar(x, dl_vals, bar_w, bottom=clone_vals, color='#d29922', alpha=0.8, label='Zip Downloads')
+
+              ax_bars.set_xticks(x)
+              ax_bars.set_xticklabels(tags, fontsize=11)
+              ax_bars.set_ylabel("Total Acquisitions")
+              ax_bars.legend(loc='upper left', framealpha=0.8)
+              ax_bars.grid(True, axis='y', linestyle='--')
+              ax_bars.set_ylim(bottom=0)
+
+              # Value labels on bars
+              for i, (ct, dt, tt) in enumerate(zip(clone_vals, dl_vals, total_vals)):
+                  # Clone count inside green bar
+                  if ct > 0:
+                      ax_bars.text(i, ct/2, f'{ct} clones', ha='center', va='center',
+                                   fontsize=10, color='white', fontweight='bold')
+                  # Download count inside gold bar
+                  if dt > 0:
+                      ax_bars.text(i, ct + dt/2, f'{dt} zips', ha='center', va='center',
+                                   fontsize=10, color='white', fontweight='bold')
+                  # Total on top
+                  ax_bars.text(i, tt + max(total_vals)*0.02, str(tt), ha='center',
+                               fontsize=12, fontweight='bold', color='#c9d1d9')
+
+              # Bottom: daily clones timeline with release era shading
+              all_dates = sorted(daily_clones.keys())
+              if all_dates:
+                  date_objs = [datetime.strptime(d, "%Y-%m-%d") for d in all_dates]
+                  clone_series = [daily_clones.get(d, 0) for d in all_dates]
+
+                  ax_timeline.bar(date_objs, clone_series, width=0.8, color='#3fb950', alpha=0.6, label='Daily Clones')
+
+                  # Shade release eras with colors + labels
+                  for i, era in enumerate(release_eras):
+                      era_start = era["start"]
+                      # Era ends when next release starts, or today
+                      if i + 1 < len(release_eras):
+                          era_end = release_eras[i+1]["start"]
+                      else:
+                          era_end = max(date_objs) + timedelta(days=1)
+                      color = era_colors[i % len(era_colors)]
+                      ax_timeline.axvspan(era_start, era_end, alpha=0.08, color=color)
+                      # Label at top of shaded region
+                      mid = era_start + (era_end - era_start) / 2
+                      ax_timeline.text(mid, ax_timeline.get_ylim()[1] if ax_timeline.get_ylim()[1] > 0 else max(clone_series) * 0.95,
+                                       era["tag"], ha='center', va='top', fontsize=10,
+                                       color=color, fontweight='bold', alpha=0.9)
+                      # Vertical line at release boundary
+                      ax_timeline.axvline(x=era_start, color=color, linestyle='--', alpha=0.5, linewidth=1)
+
+                  ax_timeline.set_ylabel("Daily Git Clones")
+                  ax_timeline.set_xlabel("")
+                  ax_timeline.grid(True, axis='y', linestyle='--')
+                  ax_timeline.set_ylim(bottom=0)
+                  ax_timeline.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+                  ax_timeline.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+                  plt.xticks(rotation=45)
+
+              fig.tight_layout()
+              fig.savefig(os.path.join(CHARTS_DIR, "downloads.png"), dpi=150, bbox_inches='tight')
+              plt.close()
+
+              total_all = sum(total_vals)
+              print(f"Generated: downloads.png ({len(tags)} releases, {total_all} total acquisitions)")
+
+          elif downloads:
+              # No release timeline yet - fallback to simple download chart
+              if len(downloads) >= 2:
+                  timestamps = [datetime.strptime(d["timestamp"], "%Y-%m-%dT%H:%M:%SZ") for d in downloads]
+                  totals = [d["total_downloads"] for d in downloads]
+
+                  fig, ax = plt.subplots(figsize=(12, 4))
+                  fig.suptitle("Release Downloads", fontsize=14, fontweight='bold', color='#58a6ff')
+                  ax.fill_between(timestamps, totals, alpha=0.2, color='#3fb950')
+                  ax.plot(timestamps, totals, 'o-', color='#3fb950', linewidth=2, markersize=4)
+                  ax.set_ylabel("Total Downloads")
+                  ax.set_ylim(bottom=0)
+                  ax.grid(True, linestyle='--')
+                  ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d %H:%M'))
+                  plt.xticks(rotation=45)
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "downloads.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+                  print(f"Generated: downloads.png (fallback, {len(downloads)} snapshots)")
+
+              elif len(downloads) == 1:
+                  d = downloads[0]
+                  total = d["total_downloads"]
+                  releases = d.get("per_release") or d.get("releases", [])
+                  labels, values = [], []
+                  for rel in releases:
+                      for asset in rel.get("assets", []):
+                          labels.append(f'{rel.get("tag","?")}\n{asset["name"]}')
+                          values.append(asset["downloads"])
+                  if not labels:
+                      labels, values = ["Total"], [total]
+
+                  fig, ax = plt.subplots(figsize=(8, 4))
+                  fig.suptitle("Release Downloads", fontsize=14, fontweight='bold', color='#58a6ff')
+                  bars = ax.bar(labels, values, color='#3fb950', width=0.4)
+                  ax.set_ylabel("Downloads")
+                  ax.grid(True, axis='y', linestyle='--')
+                  ax.set_ylim(bottom=0)
+                  for bar, val in zip(bars, values):
+                      ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+                              str(val), ha='center', fontsize=14, fontweight='bold', color='#3fb950')
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "downloads.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+                  print(f"Generated: downloads.png (single snapshot: {total})")
+
+          # ── Chart 3: Referrers ──
+          ref_file = os.path.join(TRAFFIC_DIR, "referrers.json")
+          if os.path.exists(ref_file):
+              with open(ref_file) as f:
+                  referrers = json.load(f)
+
+              if referrers:
+                  latest_date = sorted(referrers.keys())[-1]
+                  refs = referrers[latest_date]
+
+                  if refs:
+                      names = [r["referrer"] for r in refs]
+                      counts = [r["count"] for r in refs]
+                      colors = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff',
+                                '#79c0ff', '#56d364', '#e3b341', '#ff7b72', '#d2a8ff']
+
+                      fig, ax = plt.subplots(figsize=(8, 5))
+                      fig.suptitle(f"Traffic Referrers ({latest_date})", fontsize=14, fontweight='bold', color='#58a6ff')
+                      bars = ax.barh(names[::-1], counts[::-1], color=colors[:len(names)][::-1])
+                      ax.set_xlabel("Page Views")
+                      ax.grid(True, axis='x', linestyle='--')
+
+                      for bar, count in zip(bars, counts[::-1]):
+                          ax.text(bar.get_width() + max(counts)*0.02, bar.get_y() + bar.get_height()/2,
+                                  str(count), va='center', color='#c9d1d9', fontsize=10)
+
+                      fig.tight_layout()
+                      fig.savefig(os.path.join(CHARTS_DIR, "referrers.png"), dpi=150, bbox_inches='tight')
+                      plt.close()
+                      print("Generated: referrers.png")
+
+          # ── Chart 4: Stars/Forks growth (always line chart) ──
+          meta_file = os.path.join(TRAFFIC_DIR, "metadata.json")
+          if os.path.exists(meta_file):
+              with open(meta_file) as f:
+                  metadata = json.load(f)
+
+              if metadata:
+                  dates = [datetime.strptime(m["date"], "%Y-%m-%d") for m in metadata]
+                  stars = [m.get("stars", 0) for m in metadata]
+                  forks = [m.get("forks", 0) for m in metadata]
+                  watchers = [m.get("watchers", 0) for m in metadata]
+
+                  fig, ax = plt.subplots(figsize=(12, 4))
+                  fig.suptitle("Repository Growth", fontsize=14, fontweight='bold', color='#58a6ff')
+                  ax.plot(dates, stars, 'o-', color='#d29922', linewidth=2, markersize=6, label='Stars')
+                  ax.plot(dates, forks, 's-', color='#58a6ff', linewidth=2, markersize=5, label='Forks')
+                  ax.plot(dates, watchers, '^-', color='#3fb950', linewidth=2, markersize=5, label='Watchers')
+                  ax.set_ylabel("Count")
+                  ax.legend(loc='upper left', framealpha=0.8)
+                  ax.grid(True, linestyle='--')
+                  ax.set_ylim(bottom=0)
+                  ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+                  # Explicitly set ticks to actual dates (auto-locator misses with few points)
+                  ax.set_xticks(dates)
+                  plt.xticks(rotation=45)
+
+                  # Value labels at each point
+                  for d, s, f, w in zip(dates, stars, forks, watchers):
+                      ax.annotate(str(s), (d, s), textcoords="offset points",
+                                  xytext=(0, 8), ha='center', fontsize=9, color='#d29922', fontweight='bold')
+                      if f > 0:
+                          ax.annotate(str(f), (d, f), textcoords="offset points",
+                                      xytext=(0, 8), ha='center', fontsize=9, color='#58a6ff', fontweight='bold')
+                      if w > 0:
+                          ax.annotate(str(w), (d, w), textcoords="offset points",
+                                      xytext=(0, -14), ha='center', fontsize=9, color='#3fb950', fontweight='bold')
+
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "growth.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+                  print(f"Generated: growth.png ({len(metadata)} data points)")
+
+          # ── Chart 5: Engagement (pages per visitor) ──
+          if os.path.exists(daily_file):
+              with open(daily_file) as f:
+                  daily = json.load(f)
+
+              if daily:
+                  dates = sorted(daily.keys())
+                  date_objs = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
+                  views = [daily[d].get("views_total", 0) or 0 for d in dates]
+                  uniques = [daily[d].get("views_unique", 0) or 0 for d in dates]
+                  pages_per_visitor = [v / u if u > 0 else 0 for v, u in zip(views, uniques)]
+
+                  fig, ax1 = plt.subplots(figsize=(12, 6))
+                  fig.suptitle("Visitor Engagement - Are People Exploring?",
+                               fontsize=15, fontweight='bold', color='#58a6ff')
+
+                  # Stacked area: unique visitors vs total views
+                  ax1.fill_between(date_objs, uniques, alpha=0.4, color='#3fb950', label='Unique Visitors')
+                  ax1.fill_between(date_objs, views, alpha=0.2, color='#58a6ff', label='Total Page Views')
+                  ax1.plot(date_objs, views, '-', color='#58a6ff', linewidth=1.5, alpha=0.7)
+                  ax1.plot(date_objs, uniques, '-', color='#3fb950', linewidth=1.5, alpha=0.7)
+                  ax1.set_ylabel("Count", color='#c9d1d9')
+                  ax1.set_ylim(bottom=0)
+                  ax1.grid(True, linestyle='--')
+
+                  # Pages per visitor on secondary axis
+                  ax2 = ax1.twinx()
+                  ax2.plot(date_objs, pages_per_visitor, 'D-', color='#d29922', linewidth=2.5,
+                           markersize=7, label='Pages / Visitor', zorder=5)
+                  ax2.set_ylabel("Avg Pages per Visitor", color='#d29922')
+                  ax2.set_ylim(bottom=0)
+
+                  # Add value labels on the engagement line
+                  for i, (d, ppv) in enumerate(zip(date_objs, pages_per_visitor)):
+                      if ppv > 0:
+                          ax2.annotate(f'{ppv:.1f}', (d, ppv),
+                                       textcoords="offset points", xytext=(0, 10),
+                                       ha='center', fontsize=9, color='#d29922', fontweight='bold')
+
+                  # Average engagement line
+                  valid_ppv = [p for p in pages_per_visitor if p > 0]
+                  if valid_ppv:
+                      avg_ppv = sum(valid_ppv) / len(valid_ppv)
+                      ax2.axhline(y=avg_ppv, color='#d29922', linestyle=':', alpha=0.5, linewidth=1)
+                      ax2.text(date_objs[-1], avg_ppv, f'  avg: {avg_ppv:.1f}',
+                               va='bottom', color='#d29922', fontsize=9, alpha=0.7)
+
+                  # Combine legends
+                  lines1, labels1 = ax1.get_legend_handles_labels()
+                  lines2, labels2 = ax2.get_legend_handles_labels()
+                  ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', framealpha=0.8)
+
+                  ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+                  ax1.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+                  plt.xticks(rotation=45)
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "engagement.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+                  print(f"Generated: engagement.png (avg {avg_ppv:.1f} pages/visitor)" if valid_ppv else "Generated: engagement.png")
+
+          # ── Chart 6: Conversion funnel (visitor → clone/download) ──
+          if os.path.exists(daily_file):
+              with open(daily_file) as f:
+                  daily = json.load(f)
+
+              # Compute daily download deltas from cumulative snapshots
+              daily_dl_deltas = {}
+              if os.path.exists(dl_file):
+                  with open(dl_file) as f:
+                      downloads = json.load(f)
+                  if len(downloads) >= 2:
+                      for i in range(1, len(downloads)):
+                          prev = downloads[i-1]
+                          curr = downloads[i]
+                          delta = max(0, curr["total_downloads"] - prev["total_downloads"])
+                          if delta > 0:
+                              day = curr["timestamp"].split("T")[0]
+                              daily_dl_deltas[day] = daily_dl_deltas.get(day, 0) + delta
+
+              if daily:
+                  dates = sorted(daily.keys())
+                  date_objs = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
+                  visitors = [daily[d].get("views_unique", 0) or 0 for d in dates]
+                  cloners = [daily[d].get("clones_unique", 0) or 0 for d in dates]
+                  dls = [daily_dl_deltas.get(d, 0) for d in dates]
+                  # Combined acquisitions = unique cloners + download deltas
+                  acquisitions = [c + dl for c, dl in zip(cloners, dls)]
+                  # Conversion rate
+                  conversion = [a / v * 100 if v > 0 else 0 for a, v in zip(acquisitions, visitors)]
+
+                  fig, ax1 = plt.subplots(figsize=(12, 6))
+                  fig.suptitle("Conversion Funnel - Visitors Who Download",
+                               fontsize=15, fontweight='bold', color='#58a6ff')
+
+                  # Grouped bars: visitors vs acquisitions
+                  bar_width = 0.35
+                  x_indices = list(range(len(dates)))
+                  x_visitors = [x - bar_width/2 for x in x_indices]
+                  x_acquired = [x + bar_width/2 for x in x_indices]
+
+                  ax1.bar(x_visitors, visitors, bar_width, color='#58a6ff', alpha=0.7, label='Unique Visitors')
+                  # Stack clones and downloads in the acquired bar
+                  ax1.bar(x_acquired, cloners, bar_width, color='#3fb950', alpha=0.8, label='Unique Cloners')
+                  if any(dl > 0 for dl in dls):
+                      ax1.bar(x_acquired, dls, bar_width, bottom=cloners, color='#d29922', alpha=0.8, label='Release Downloads')
+
+                  ax1.set_ylabel("People")
+                  ax1.set_ylim(bottom=0)
+                  ax1.grid(True, axis='y', linestyle='--')
+
+                  # X-axis labels
+                  ax1.set_xticks(x_indices)
+                  short_dates = [datetime.strptime(d, "%Y-%m-%d").strftime('%b %d') for d in dates]
+                  ax1.set_xticklabels(short_dates, rotation=45, ha='right')
+
+                  # Conversion rate line on secondary axis
+                  ax2 = ax1.twinx()
+                  ax2.plot(x_indices, conversion, 'D-', color='#f85149', linewidth=2.5,
+                           markersize=8, label='Conversion %', zorder=5)
+                  ax2.set_ylabel("Conversion Rate %", color='#f85149')
+                  ax2.set_ylim(bottom=0, top=max(max(conversion) * 1.3, 10) if conversion else 100)
+
+                  # Value labels on conversion points
+                  for x, pct in zip(x_indices, conversion):
+                      if pct > 0:
+                          ax2.annotate(f'{pct:.0f}%', (x, pct),
+                                       textcoords="offset points", xytext=(0, 12),
+                                       ha='center', fontsize=10, color='#f85149', fontweight='bold')
+
+                  # Average conversion line
+                  valid_conv = [c for c in conversion if c > 0]
+                  if valid_conv:
+                      avg_conv = sum(valid_conv) / len(valid_conv)
+                      ax2.axhline(y=avg_conv, color='#f85149', linestyle=':', alpha=0.4, linewidth=1)
+                      ax2.text(x_indices[-1] + 0.1, avg_conv, f' avg: {avg_conv:.0f}%',
+                               va='center', color='#f85149', fontsize=9, alpha=0.7)
+
+                  # Combine legends
+                  lines1, labels1 = ax1.get_legend_handles_labels()
+                  lines2, labels2 = ax2.get_legend_handles_labels()
+                  ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', framealpha=0.8)
+
+                  fig.tight_layout()
+                  fig.savefig(os.path.join(CHARTS_DIR, "conversion.png"), dpi=150, bbox_inches='tight')
+                  plt.close()
+
+                  # Print summary
+                  total_visitors = sum(visitors)
+                  total_acquired = sum(acquisitions)
+                  overall_conv = (total_acquired / total_visitors * 100) if total_visitors > 0 else 0
+                  print(f"Generated: conversion.png ({overall_conv:.0f}% overall conversion)")
+
+          print("Chart generation complete!")
+          PYEOF
+
+      # ── Summary: only on full collection ────────────────────────
+      - name: Generate summary dashboard
+        if: steps.mode.outputs.full == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          SUMMARY_FILE=".github/traffic/SUMMARY.md"
+          DATE=$(date -u +%Y-%m-%d)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          VIEWS=$(gh api repos/${{ github.repository }}/traffic/views 2>/dev/null || echo '{"count":0,"uniques":0}')
+          CLONES=$(gh api repos/${{ github.repository }}/traffic/clones 2>/dev/null || echo '{"count":0,"uniques":0}')
+          REFERRERS=$(gh api repos/${{ github.repository }}/traffic/popular/referrers 2>/dev/null || echo '[]')
+          PATHS=$(gh api repos/${{ github.repository }}/traffic/popular/paths 2>/dev/null || echo '[]')
+          # Read download total from our own data (gh api --jq has issues with nested arrays)
+          TOTAL_DL=$(jq '.[-1].total_downloads // 0' .github/traffic/downloads.json 2>/dev/null || echo '0')
+          STARGAZERS=$(gh api repos/${{ github.repository }} --jq '.stargazers_count' 2>/dev/null || echo '0')
+          FORKS=$(gh api repos/${{ github.repository }} --jq '.forks_count' 2>/dev/null || echo '0')
+          WATCHERS=$(gh api repos/${{ github.repository }} --jq '.subscribers_count' 2>/dev/null || echo '0')
+
+          DAYS_TRACKED=$(jq 'length' .github/traffic/metadata.json 2>/dev/null || echo '1')
+          DL_SNAPSHOTS=$(jq 'length' .github/traffic/downloads.json 2>/dev/null || echo '1')
+
+          {
+            echo "# Repository Traffic Dashboard"
+            echo ""
+            echo "**Last updated:** ${TIMESTAMP}"
+            echo "**Days tracked:** ${DAYS_TRACKED} | **Download snapshots:** ${DL_SNAPSHOTS} (hourly)"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Views & Clones (14-day window, preserved forever)"
+            echo ""
+            echo "![Views & Clones](charts/views_clones.png)"
+            echo ""
+            echo "| Metric | 14-Day Total | Unique |"
+            echo "|--------|-------------|--------|"
+            echo "| Page Views | $(echo "$VIEWS" | jq '.count') | $(echo "$VIEWS" | jq '.uniques') |"
+            echo "| Git Clones | $(echo "$CLONES" | jq '.count') | $(echo "$CLONES" | jq '.uniques') |"
+            echo ""
+            TOTAL_VIEWS=$(echo "$VIEWS" | jq '.count')
+            UNIQUE_VISITORS=$(echo "$VIEWS" | jq '.uniques')
+            if [ "$UNIQUE_VISITORS" -gt 0 ] 2>/dev/null; then
+              AVG_PAGES=$(echo "scale=1; $TOTAL_VIEWS / $UNIQUE_VISITORS" | bc)
+              echo "> **Engagement:** ${AVG_PAGES} pages per visitor (14-day avg)"
+              echo ""
+            fi
+            echo "---"
+            echo ""
+            echo "## Visitor Engagement"
+            echo ""
+            echo "![Engagement](charts/engagement.png)"
+            echo ""
+            echo "> Higher = visitors exploring more pages. 1.0 = bounce. 3.0+ = deeply engaged."
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Conversion Funnel"
+            echo ""
+            echo "![Conversion](charts/conversion.png)"
+            echo ""
+            UNIQUE_CLONERS=$(echo "$CLONES" | jq '.uniques')
+            if [ "$UNIQUE_VISITORS" -gt 0 ] 2>/dev/null; then
+              CONV_ACQUIRED=$((UNIQUE_CLONERS + TOTAL_DL))
+              CONV_PCT=$(echo "scale=1; $CONV_ACQUIRED * 100 / $UNIQUE_VISITORS" | bc)
+              echo "> **14-day conversion:** ${CONV_ACQUIRED} of ${UNIQUE_VISITORS} visitors cloned or downloaded (**${CONV_PCT}%**)"
+              echo ">"
+              echo "> Unique cloners: ${UNIQUE_CLONERS} | Release downloads: ${TOTAL_DL}"
+            fi
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Total Acquisition per Release (Downloads + Clones)"
+            echo ""
+            echo "![Acquisition](charts/downloads.png)"
+            echo ""
+            TOTAL_CLONES_14D=$(echo "$CLONES" | jq '.count')
+            TOTAL_ACQUIRED=$((TOTAL_DL + TOTAL_CLONES_14D))
+            echo "| Channel | Count |"
+            echo "|---------|-------|"
+            echo "| Zip Downloads | ${TOTAL_DL} |"
+            echo "| Git Clones (14-day) | ${TOTAL_CLONES_14D} |"
+            echo "| **Total Acquisitions** | **${TOTAL_ACQUIRED}** |"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Referrers"
+            echo ""
+            echo "![Referrers](charts/referrers.png)"
+            echo ""
+            echo "| Source | Views | Unique |"
+            echo "|--------|-------|--------|"
+            echo "$REFERRERS" | jq -r '.[] | "| \(.referrer) | \(.count) | \(.uniques) |"' 2>/dev/null || echo "| No data | - | - |"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Repository Growth"
+            echo ""
+            echo "![Growth](charts/growth.png)"
+            echo ""
+            echo "| Metric | Current |"
+            echo "|--------|---------|"
+            echo "| Stars | ${STARGAZERS} |"
+            echo "| Forks | ${FORKS} |"
+            echo "| Watchers | ${WATCHERS} |"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Top Pages (14-day)"
+            echo ""
+            echo "| Page | Views | Unique |"
+            echo "|------|-------|--------|"
+            echo "$PATHS" | jq -r '.[:10][] | "| `\(.path)` | \(.count) | \(.uniques) |"' 2>/dev/null || echo "| No data | - | - |"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Data Files"
+            echo ""
+            echo "| File | Description | Granularity |"
+            echo "|------|-------------|-------------|"
+            echo "| [daily.json](daily.json) | Views & clones per day (never expires) | Daily |"
+            echo "| [downloads.json](downloads.json) | Release download snapshots | Hourly |"
+            echo "| [referrers.json](referrers.json) | Referrer snapshots | Daily |"
+            echo "| [metadata.json](metadata.json) | Stars, forks, watchers | Daily |"
+            echo "| [stats.json](stats.json) | Combined legacy snapshots | 6-hourly |"
+            echo ""
+            echo "---"
+            echo "*Hourly download tracking + full dashboard with engagement metrics every 6 hours*"
+            echo "*Auto-generated by [traffic-stats.yml](../../.github/workflows/traffic-stats.yml)*"
+          } > "$SUMMARY_FILE"
+
+      # ── Commit ──────────────────────────────────────────────────
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/traffic/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            MODE="${{ steps.mode.outputs.full }}"
+            if [ "$MODE" = "true" ]; then
+              git commit -m "chore: Full traffic snapshot $(date -u +%Y-%m-%d_%H:%M)"
+            else
+              git commit -m "chore: Download snapshot $(date -u +%Y-%m-%d_%H:%M)"
+            fi
+            git push origin traffic-stats
+          fi

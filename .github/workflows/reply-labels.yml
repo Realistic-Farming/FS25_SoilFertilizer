@@ -1,0 +1,48 @@
+name: Reply Labels
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.sender.type == 'Bot' && github.event.issue.pull_request == null }}
+    steps:
+      - name: Determine commenter role
+        id: role
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sender = context.payload.sender;
+            // Skip bots
+            if (sender.type === 'Bot') {
+              core.setOutput('skip', 'true');
+              return;
+            }
+            core.setOutput('skip', 'false');
+            const assoc = context.payload.comment.author_association;
+            // OWNER, MEMBER, COLLABORATOR = owner side
+            const isOwner = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(assoc);
+            core.setOutput('is_owner', isOwner ? 'true' : 'false');
+
+      - name: Apply owner-replied label
+        if: steps.role.outputs.skip == 'false' && steps.role.outputs.is_owner == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue.number;
+            await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, labels: ['owner-replied'] });
+            try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, name: 'user-replied' }); } catch {}
+
+      - name: Apply user-replied label
+        if: steps.role.outputs.skip == 'false' && steps.role.outputs.is_owner == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue.number;
+            await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, labels: ['user-replied'] });
+            try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue, name: 'owner-replied' }); } catch {}

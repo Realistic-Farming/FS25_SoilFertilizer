@@ -1,0 +1,97 @@
+name: Bug Report
+description: Something is broken or behaving incorrectly in-game.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before opening this issue:**
+        - Check that you are on the latest version of this mod.
+        - Check that the bug has not already been reported.
+        - Read the log. The game log is at `%USERPROFILE%\Documents\My Games\FarmingSimulator2025\log.txt`. Filter for `[SoilFertilizer]` lines.
+
+        Issues opened without a log snippet will be closed without response.
+
+  - type: input
+    id: mod_version
+    attributes:
+      label: Mod Version
+      description: Found in modDesc.xml or the in-game mod manager.
+      placeholder: "e.g. 1.0.8.0"
+    validations:
+      required: true
+
+  - type: input
+    id: game_version
+    attributes:
+      label: Farming Simulator 25 Version
+      description: Found in the main menu bottom-right corner.
+      placeholder: "e.g. 1.4.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game Mode
+      options:
+        - Singleplayer
+        - Multiplayer (host)
+        - Multiplayer (client)
+        - Dedicated Server
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly. What did you see? What did you expect to see?
+      placeholder: "Soil fertility never changes even after applying fertilizer multiple times."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Exact steps that trigger the bug. If you cannot reproduce it reliably, say so.
+      placeholder: |
+        1. Start a new game on Elmcreek
+        2. Apply fertilizer to field 3
+        3. Open the soil report
+        4. Fertility shows no change
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log Snippet
+      description: |
+        Paste all `[SoilFertilizer]` lines from your log.txt covering the session where the bug occurred.
+        If there are errors (lines containing "Error" or "attempt to"), include the full stack trace.
+      render: text
+      placeholder: |
+        [SoilFertilizer] Initialized. Fields scanned: 12
+        [SoilFertilizer] Field 3 fertility updated: 0.42 -> 0.58
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: other_mods
+    attributes:
+      label: Other Mods Loaded
+      description: List any other mods active in this save. You can paste the mod list from the game's mod manager.
+      placeholder: "FS25_SeasonalCropStress, Courseplay, AutoDrive, ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Anything Else?
+      description: Screenshots, save files, or any other context that might help.
+    validations:
+      required: false

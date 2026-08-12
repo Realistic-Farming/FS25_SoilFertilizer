@@ -1,0 +1,54 @@
+name: Issue - Welcome & Label
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Apply user-replied label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['user-replied']
+            });
+
+      - name: Post welcome comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.issue.user.login;
+            const repoName = context.repo.repo;
+            const modName = repoName.replace('FS25_', '').replace(/([A-Z])/g, ' $1').trim();
+
+            const body = [
+              `Hey @${author}, thanks for opening this issue! 👋`,
+              ``,
+              `@TheCodingDad-TisonK has been notified and will take a look as soon as possible.`,
+              ``,
+              `**While you wait, please double-check the following:**`,
+              ``,
+              `- [ ] You are running the latest version of ${modName} (visible in the mod manager)`,
+              `- [ ] Your issue includes relevant lines from \`log.txt\``,
+              `  - Log location: \`Documents/My Games/FarmingSimulator2025/log.txt\``,
+              `  - Search for \`[${modName}]\` - paste the relevant section in your issue`,
+              `- [ ] You have searched [existing issues](https://github.com/${context.repo.owner}/${repoName}/issues) for a similar report`,
+              ``,
+              `> **Important:** If this issue is missing a log snippet, it may be closed without investigation. A log is almost always required to reproduce bugs.`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

@@ -1,0 +1,18 @@
+{
+  "name": "fs25-soilfertilizer-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-test harness for FS25_SoilFertilizer (excluded from the mod zip via build.py EXCLUDE_DIRS=tools).",
+  "scripts": {
+    "check": "node syntax-check.mjs && node lint.mjs",
+    "syntax": "node syntax-check.mjs",
+    "lint": "node lint.mjs",
+    "test": "node run-tests.mjs",
+    "all": "node syntax-check.mjs && node lint.mjs && node run-tests.mjs"
+  },
+  "devDependencies": {
+    "fengari": "^0.1.4",
+    "luaparse": "^0.3.1"
+  }
+}

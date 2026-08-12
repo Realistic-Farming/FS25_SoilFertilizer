@@ -1,0 +1,91 @@
+name: Issue - Auto-close on No Response
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  close-unresponded:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Close issues with owner-replied but no user follow-up after 24h
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const now = Date.now();
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'owner-replied',
+                per_page: 100
+              }
+            );
+
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                per_page: 100
+              });
+
+              // Find when owner last replied
+              const ownerAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+              const ownerComments = comments.data.filter(c =>
+                ownerAssociations.includes(c.author_association) && c.user.type !== 'Bot'
+              );
+              if (ownerComments.length === 0) continue;
+
+              const lastOwnerReply = Math.max(...ownerComments.map(c => new Date(c.created_at).getTime()));
+              const age = now - lastOwnerReply;
+              if (age < twentyFourHours) continue;
+
+              // Check if user replied after the owner's last comment
+              const author = issue.user.login;
+              const userRepliedAfter = comments.data.some(c =>
+                c.user.login === author &&
+                new Date(c.created_at).getTime() > lastOwnerReply
+              );
+              if (userRepliedAfter) continue;
+
+              const closeBody = [
+                `Hey @${author} - this issue has been automatically closed because there was no follow-up within **24 hours** of the last response.`,
+                ``,
+                `This is not a rejection. If you still have the problem, please **reopen this issue** and include:`,
+                ``,
+                `- The relevant lines from your \`log.txt\``,
+                `  - Location: \`Documents/My Games/FarmingSimulator2025/log.txt\``,
+                `- Your mod version (visible in the mod manager)`,
+                `- Steps to reproduce the issue`,
+                ``,
+                `We look forward to helping you once we have the details!`,
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: closeBody
+              });
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned'
+              });
+
+              core.info(`Closed issue #${issue.number} - no user follow-up after owner replied`);
+            }

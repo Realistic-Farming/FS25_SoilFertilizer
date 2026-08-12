@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Lua 5.1 syntax (+ repo lint where present) pre-commit gate.
+#
+# WHY THIS EXISTS: a Lua parse error does not stop FS25 loading the mod. The mod
+# loads, the game runs, and the offending FILE is silently dropped, so one feature
+# is simply absent with nothing but a single compiler line nobody reads. Two such
+# errors sat unnoticed in this suite until 2026-07-30 (FarmTablet's ProStaffApp and
+# WorkplaceTriggers' WTNetworkSyncBridge), each dead in EVERY session since it
+# shipped. Sub-second here beats a deploy plus a multi-minute load, and beats never
+# noticing at all.
+#
+# Install:   bash tools/test/install-hooks.sh
+# Skip once: git commit --no-verify
+# Remove:    rm "$(git rev-parse --git-path hooks)/pre-commit"
+set -e
+
+staged_lua="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.lua$' || true)"
+[ -z "$staged_lua" ] && exit 0
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root/tools/test"
+[ -d node_modules ] || npm install --silent
+
+echo "pre-commit: Lua 5.1 syntax (staged)…"
+# Absolute paths, NUL-safe against spaces in the repo path.
+printf '%s\n' "$staged_lua" | while IFS= read -r f; do
+  [ -n "$f" ] && printf '%s\0' "$repo_root/$f"
+done | xargs -0 node ./check-staged.mjs
+
+# Repo-wide lint pass on top, when the repo has one. Non-fatal to keep the gate's
+# job crisp: syntax blocks, style advises.
+if node -e "process.exit(require('./package.json').scripts.lint ? 0 : 1)" 2>/dev/null; then
+  npm run --silent lint || echo "  (lint reported findings; not blocking the commit)"
+fi
