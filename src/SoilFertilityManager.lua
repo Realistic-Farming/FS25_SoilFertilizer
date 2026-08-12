@@ -62,6 +62,25 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- The published surface for the getters lives on this manager, not on the
     -- `viability` field: see getCellGrowthInfo / getFieldGrowthSummary below.
 
+    -- SF-53 GROWTH CREDIT: the reward half of the SF-2M pair. A daily
+    -- bookkeeper counts days of excellence; the period hand advances credit
+    -- cells one step at the drained FINISHED_GROWTH_PERIOD delivery, bucketed
+    -- on the engine's own fruit plane. Inert unless the growth_modulation
+    -- release gate is open and the mask is enabled.
+    self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
+
+    -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
+    -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
+    -- the family write machine; blocked cells fall behind the field. Inert
+    -- unless the growth_modulation release gate is open and the mask enabled.
+    self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
+
+    -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+    -- distance-to-water). Built once at activation, invalidated on terrain
+    -- edits, consumed by SF-76 (field genesis) and SCS-042 (runoff). Neutral
+    -- until a consumer wires in.
+    self.topography = TopographyCache and TopographyCache.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -701,6 +720,40 @@ function SoilFertilityManager:activateSoilSystem()
             end
         end
 
+        -- SF-53 GROWTH CREDIT: initialize + register both clocks (the daily
+        -- bookkeeper with Time Guard, the period bell with the message center).
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthCredit then
+            self.growthCredit:initialize()
+            if g_server ~= nil then
+                self.growthCredit:register()
+            end
+        end
+
+        -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthBlock then
+            self.growthBlock:initialize()
+            if g_server ~= nil then
+                self.growthBlock:register()
+            end
+        end
+
+        -- SF-77 TOPOGRAPHY CACHE: build once at activation (server-only by the
+        -- distance-to-water's nature; clients receive the table through
+        -- NetworkSync), then install the terrain-edit listener. Neutral until a
+        -- consumer wires in.
+        if self.topography then
+            self.topography:initialize()
+            if g_server ~= nil then
+                if self.topography:build() then
+                    self.topography:installTerrainListener()
+                end
+            end
+        end
+
         -- DMV minimap heatmap - must init AFTER soilSystem so layerSystem is ready
         if self.soilMinimapLayer then
             self.soilMinimapLayer:initialize()
@@ -787,6 +840,18 @@ function SoilFertilityManager:onMissionStarted()
         if not self.settings.enabled then
             SoilLogger.info("Mod disabled in settings - skipping soil system init")
             return
+        end
+
+        -- SF-76 FIELD GENESIS: a NEW save (no soilData.xml yet) seeds its
+        -- starting soil FROM TERRAIN, deterministically from a per-save seed
+        -- (the savegame directory hash, stable across two loads of one save).
+        -- An existing save is untouched: genesis stays off and the fieldData
+        -- that exists loads as always. Server-derived only.
+        if g_server ~= nil and not self:_hasSavedSoilData() then
+            self.soilSystem.genesisActive = true
+            self.soilSystem.genesisSeed   = self:_genesisSeed()
+            SoilLogger.info("[SF-76] Field genesis ACTIVE for this new save (seed %d)",
+                self.soilSystem.genesisSeed)
         end
 
         SoilLogger.info("Initializing soil system (fields guaranteed populated)...")
@@ -1334,11 +1399,38 @@ function SoilFertilityManager:saveSoilData()
     end
 end
 
+-- SF-76: does this save already carry soil data? A new save has neither a
+-- soilData.xml nor a StateLedger soil block, so genesis may seed from terrain.
+function SoilFertilityManager:_hasSavedSoilData()
+    if SoilStateLedgerBridge ~= nil and SoilStateLedgerBridge.hasLedgerState ~= nil
+        and SoilStateLedgerBridge.hasLedgerState() then
+        return true
+    end
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory
+    if path == nil then return false end
+    return fileExists(path .. "/soilData.xml")
+end
+
+-- SF-76: the deterministic per-save seed. The savegame directory path is the
+-- save's stable identity across two loads of one save, so hashing it yields
+-- the same seed twice (the byte-identical acceptance). Stable across reloads,
+-- differs between saves.
+function SoilFertilityManager:_genesisSeed()
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory or ""
+    local seed = 0
+    for i = 1, #path do
+        local c = string.byte(path, i)
+        seed = (seed * 31 + c) % 2147483647
+    end
+    return seed
+end
+
 --- Load soil data from XML file
 --- Reads from {savegame}/soilData.xml if exists
 --- Falls back to defaults if file not found
-function SoilFertilityManager:loadSoilData()
-    if not self.soilSystem then
+function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
         SoilLogger.error("loadSoilData: soilSystem is nil")
         return
     end
@@ -2055,6 +2147,24 @@ function SoilFertilityManager:delete()
 
     if self.soilSystem then
         self.soilSystem:delete()
+    end
+
+    -- SF-53 growth credit: drop the message-center subscription and the store.
+    if self.growthCredit then
+        self.growthCredit:delete()
+        self.growthCredit = nil
+    end
+
+    -- SF-78 growth block: drop both message subscriptions and the capture.
+    if self.growthBlock then
+        self.growthBlock:delete()
+        self.growthBlock = nil
+    end
+
+    -- SF-77 topography cache: drop the terrain listener and the grids.
+    if self.topography then
+        self.topography:delete()
+        self.topography = nil
     end
     -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
     -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step

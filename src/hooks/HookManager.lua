@@ -2449,6 +2449,23 @@ function HookManager:installHarvestHook()
                     SoilLogger.error("Harvest hook (nutrient update) failed: %s", tostring(errMsg))
                 end
 
+                -- POSITIONAL HARVEST CAPTURE: accumulate the area-weighted
+                -- contamination tally on the vehicle. Server-side only. Inert
+                -- when the module is absent (the handoff rides the
+                -- feed-provenance build). Never touches the yield path.
+                if combineSelf.isServer and PositionalCapture and PositionalCapture.ENABLED
+                   and detectedX and detectedZ and area and area > 0 then
+                    local okPc = pcall(function()
+                        local soil = g_SoilFertilityManager.soilSystem
+                        local field = soil and soil.fieldData and soil.fieldData[detectedFieldId]
+                        PositionalCapture:accumulate(combineSelf, detectedFieldId, field, soil,
+                            detectedX, detectedZ, area)
+                    end)
+                    if not okPc then
+                        SoilLogger.debug("Harvest hook (positional capture) skipped: %s", tostring(errMsg))
+                    end
+                end
+
                 -- OM-213 organic premium provenance: fold this harvest pass into the
                 -- owning farm's organic fraction for the harvested fill type. The farmId
                 -- is the engine-passed argument (dedi-safe; never the local-player read),

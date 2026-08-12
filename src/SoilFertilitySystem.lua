@@ -126,6 +126,13 @@ function SoilFertilitySystem.new(settings)
     -- Monotonic day of the last processed daily pass, for skipped-day catch-up.
     -- 0 means "not yet observed" so the first day-change never spuriously catches up.
     self.lastUpdateMonotonicDay = 0
+    -- SF-76 FIELD GENESIS: when active, the starting soil profile is seeded
+    -- FROM TERRAIN (height-relative, slope, sink proximity) instead of the
+    -- smooth regional gradient. Set by the manager on a NEW save (no soilData
+    -- yet), server-derived, deterministic from the savegame directory hash.
+    -- Off by default: an existing save is untouched (zero writes).
+    self.genesisActive = false
+    self.genesisSeed   = 0
     self.hookManager = HookManager.new()
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -903,8 +910,14 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     if not fieldId or fieldId <= 0 then return end
 
     if farmId == nil or farmId == 0 then
-        -- Field sold / abandoned - pull it out of the active simulation set.
-        -- fieldData intentionally kept: new owner inherits the soil conditions.
+        -- Field sold / abandoned - pull it out of the active simulation set,
+        -- UNLESS it is NPC-managed ground (the designation keeps it active; the
+        -- symmetric leave only fires on a designation lapse, never on a farm
+        -- release while an NPC works it). fieldData intentionally kept.
+        if NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then
+            SoilLogger.debug("[PERF-P1] Field %d released by farm but NPC-managed - stays active", fieldId)
+            return
+        end
         self:_removeFromActiveSet(fieldId)
         -- Clear GRLE so unmasked DMV no longer colours this unowned field.
         if self.layerSystem and self.layerSystem.available then
@@ -2399,8 +2412,13 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
     end
 
     -- Charge cost (server authoritative). area × $/ha, gated by fertilizerCosts.
+    -- [SF-27] B4 attribution: an NPC-attributed treatment never moves the player's
+    -- money. Fail-closed: UNKNOWN attribution (designated or uncertain) skips the
+    -- charge entirely. The explicit opts.charge=false path is the NPC-treatment
+    -- build's own; this predicate is the safety net for the player-facing path.
     local cost = 0
-    if opts.charge ~= false and self.settings.fertilizerCosts and g_server then
+    local npcAttributed = NpcSoilBridge and NpcSoilBridge:isNPCAttributed(fieldId) == true
+    if opts.charge ~= false and not npcAttributed and self.settings.fertilizerCosts and g_server then
         local area = field.fieldArea or 1.0
         cost = (chem.costPerHa or 0) * area
         if cost > 0 then
@@ -2762,11 +2780,13 @@ function SoilFertilitySystem:scanFields()
                     end
                 end
 
-                -- PHASE 1: only owned farmlands enter the active simulation set.
-                -- Unowned land still gets fieldData but is excluded from daily updates.
+                -- PHASE 1/2: owned farmlands AND NPC-managed farmlands enter the
+                -- active simulation set. Unowned, unmanaged land still gets
+                -- fieldData but is excluded from daily updates.
                 if g_farmlandManager then
                     local farmlandOwner = g_farmlandManager:getFarmlandOwner(actualFieldId)
-                    if farmlandOwner and farmlandOwner > 0 then
+                    local isNpc = NpcSoilBridge and NpcSoilBridge:isNPCManaged(actualFieldId) == true
+                    if (farmlandOwner and farmlandOwner > 0) or isNpc then
                         self:_addToActiveSet(actualFieldId)
                     end
                 end
@@ -2787,7 +2807,8 @@ function SoilFertilitySystem:scanFields()
                     self.layerSystem:readFieldFromLayers(farmlandId, self.fieldData[farmlandId], farmlandObj)
                 end
                 local farmlandOwner2 = g_farmlandManager:getFarmlandOwner(farmlandId)
-                if farmlandOwner2 and farmlandOwner2 > 0 then
+                local isNpc2 = NpcSoilBridge and NpcSoilBridge:isNPCManaged(farmlandId) == true
+                if (farmlandOwner2 and farmlandOwner2 > 0) or isNpc2 then
                     self:_addToActiveSet(farmlandId)
                 end
                 fieldCount = fieldCount + 1
@@ -2969,6 +2990,54 @@ end
 -- Lua 5.1 primitive that breaks the progression) so values are genuinely independent
 -- per (field, nutrient), while staying stable across save/load and avoiding
 -- math.randomseed (which would pollute the shared global PRNG).
+-- SF-76 FIELD GENESIS: a terrain-derived deviation in [-1.0, 1.0] replacing the
+-- smooth regional gradient on a new save. Height-relative, slope and sink
+-- proximity from SF-77's TopographyCache when present; one direct terrain
+-- sample when not. Deterministic from the per-save genesis seed: the same seed
+-- twice yields identical soil (the acceptance's byte-identical bar). Same
+-- amplitude bounds as regionalField, so every value stays inside the shipped
+-- clamps.
+function SoilFertilitySystem:_genesisDeviation(fieldId, slot)
+    local cx, cz = nil, nil
+    local farmlandObj = g_farmlandManager and g_farmlandManager:getFarmlandById(fieldId)
+    if farmlandObj and self.bundledMaps then
+        cx, cz = self.bundledMaps:getFarmlandCenter(farmlandObj)
+    end
+
+    -- Terrain facts: height-relative value, slope class, sink proximity.
+    local heightNorm, slopeN, sink = 0, 0, false
+    local topo = g_SoilFertilityManager and g_SoilFertilityManager.topography
+    if topo ~= nil and type(topo.getCellInfo) == "function" and cx ~= nil then
+        local ok, info = pcall(function() return topo:getCellInfo(cx, cz) end)
+        if ok and info ~= nil then
+            -- Height-relative: low ground deviates negative (collects), high positive.
+            heightNorm = math.max(-1.0, math.min(1.0, (info.height or 0) / 50.0))
+            -- Slope classes are strings; compare against known names without
+            -- requiring the TopographyCache module to be present (SF-77 absent
+            -- degrades to the direct sample path below).
+            local slopeClass = info.slope
+            if slopeClass == "gentle" then slopeN = 0.25
+            elseif slopeClass == "moderate" then slopeN = 0.5
+            elseif slopeClass == "steep" then slopeN = 1.0 end
+            sink = info.sink == true
+        end
+    else
+        -- One direct sample when the cache is absent.
+        local gs = g_terrainNode
+        if gs ~= nil then
+            local ok, h = pcall(getTerrainHeightAtWorldPos, gs, cx or 0, 0, cz or 0)
+            if ok then heightNorm = math.max(-1.0, math.min(1.0, (h or 0) / 50.0)) end
+        end
+    end
+
+    -- Compose with the per-save seed + per-slot jitter (the same hash01 the
+    -- noise field uses, so it stays deterministic and PRNG-pure).
+    local seedMix = math.sin(self.genesisSeed * 1.13 + slot * 7.7) * 43758.5453
+    seedMix = seedMix - math.floor(seedMix)   -- [0,1)
+    local dev = heightNorm * 0.5 + slopeN * 0.3 - (sink and 0.4 or 0.0) + (seedMix * 2.0 - 1.0) * 0.2
+    return math.max(-1.0, math.min(1.0, dev))
+end
+
 function SoilFertilitySystem:_computeInitialSoil(fieldId, farmlandObj)
     if farmlandObj == nil and g_farmlandManager then
         farmlandObj = g_farmlandManager:getFarmlandById(fieldId)
@@ -3004,6 +3073,9 @@ function SoilFertilitySystem:_computeInitialSoil(fieldId, farmlandObj)
         return math.max(-1.0, math.min(1.0, a * 0.7 + b * 0.3))
     end
     local function randomize(baseValue, regionalAmt, noiseAmt, slot)
+        if self.genesisActive then
+            return baseValue + self:_genesisDeviation(fieldId, slot) * regionalAmt + noiseField(slot) * noiseAmt
+        end
         return baseValue + regionalField(slot) * regionalAmt + noiseField(slot) * noiseAmt
     end
 
@@ -3228,6 +3300,11 @@ function SoilFertilitySystem:rerollUnownedFields()
             local owner = g_farmlandManager and g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == playerFarmId then
                 -- Player's own field - leave its soil and progress alone.
+                skipped = skipped + 1
+            elseif NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then
+                -- B5: designated NPC ground is SKIPPED, never rerolled. This
+                -- protects the disease/pest reservoir history the feature exists
+                -- to create.
                 skipped = skipped + 1
             else
                 local soil = self:_computeInitialSoil(fieldId)

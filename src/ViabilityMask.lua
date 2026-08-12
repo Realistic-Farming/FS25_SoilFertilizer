@@ -221,10 +221,17 @@ function ViabilityMask:getFieldGrowthSummary(fieldId)
     return { blockedFrac = s.blockedFrac, excellentFrac = s.excellentFrac }
 end
 
---- SF-53's growth credit. Not built; nil is neutral and every consumer treats
---- it as such. One line to wire when SF-53 lands.
-function ViabilityMask:_readCredit(_fieldId, _x, _z)
-    return nil
+--- SF-53's growth credit, resolved through the same header snap SF-53 itself
+--- derives (origin from the survey's first sample centre, floor index, step
+--- coarsening per MAX_SAMPLES). Reads the ephemeral store only; nil is neutral
+--- (no accrual yet, or the field is not tracked) and every consumer treats it
+--- as such. Returns days of credit at the cell, or nil.
+function ViabilityMask:_readCredit(fieldId, x, z)
+    local gc = self.manager and self.manager.growthCredit
+    if gc == nil or type(gc.readCreditAt) ~= 'function' then return nil end
+    local ok, credit = pcall(function() return gc:readCreditAt(fieldId, x, z) end)
+    if not ok then return nil end
+    return credit
 end
 
 --- SF-14's captured yield efficiency. Not built; same contract.

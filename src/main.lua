@@ -76,12 +76,51 @@ source(modDirectory .. "src/HandfulRead.lua")
 -- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
 -- daily pass.
 source(modDirectory .. "src/SpatialPressures.lua")
+-- SF-23 SPATIAL NUTRIENTS: the last un-flattening of soil chemistry. Banded
+-- leach / pH / harvest depletion across the field's moisture bands, on top of
+-- the untouched field-level model. Loaded before SoilFertilitySystem, which
+-- calls SpatialNutrients from the leach and harvest paths. Consumes SCS
+-- positional moisture and the field-level soil type (absent = uniform today).
+source(modDirectory .. "src/SpatialNutrients.lua")
+-- SF-21 NEIGHBOUR CROSSING: what arrives at a field's edge depends on what is
+-- actually across it. Upgrades the SF-19 edge mechanism (the reserved slot) with
+-- the crossing pre-pass, the pest arc weight recomposition, and the
+-- conducive-gated disease boundary seeding. Loaded before SoilFertilitySystem,
+-- which runs the daily crossing pass ahead of the mutation batches.
+source(modDirectory .. "src/NeighbourCrossing.lua")
+-- SF-27 NPC SOIL: NPC-managed farmland joins the daily soil simulation like
+-- owned land, with attribution. The bridge widens SF's phase-2 gate (owned OR
+-- NPC-managed), reads NPCFavor's designation surface, and fails closed on
+-- attribution. Loaded before SoilFertilitySystem, which consults it at the
+-- membership and charge sites. Neutral when NPCFavor is absent.
+source(modDirectory .. "src/NpcSoilBridge.lua")
+-- POSITIONAL HARVEST CAPTURE: the load remembers where it grew. The tally
+-- accumulates area-weighted contamination on the harvesting vehicle from the
+-- harvest hook. Independently buildable and inert (the handoff rides the
+-- feed-provenance build). Loaded before HookManager, which calls it per cutter.
+source(modDirectory .. "src/PositionalCapture.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
 -- drive it. Consumes SCS positional moisture (absent = inert).
 source(modDirectory .. "src/EstablishmentFailure.lua")
 source(modDirectory .. "src/ViabilityMask.lua")
+-- SF-53 GROWTH CREDIT: the reward half of the SF-2M family, a peer of
+-- ViabilityMask (same class idiom). Consumes SF-52's getter and lattice at
+-- runtime; publishes nothing. Inert unless the growth_modulation release gate
+-- is open and the mask is enabled.
+source(modDirectory .. "src/GrowthCredit.lua")
+-- SF-78 GROWTH BLOCK: the hold half of the SF-2M family. Capture at
+-- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through the
+-- family write machine. No Time Guard registration; the engine's own bracket
+-- is the clock. Inert unless the growth_modulation release gate is open and
+-- the mask is enabled.
+source(modDirectory .. "src/GrowthBlock.lua")
+-- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+-- distance-to-water) consumed by SF-76 (field genesis) and SCS-042 (runoff).
+-- Neutral until a consumer wires in; its own StateLedger + NetworkSync
+-- registration sits beside the soil bridges.
+source(modDirectory .. "src/TopographyCache.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -113,7 +152,6 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
 source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
-source(modDirectory .. "src/ui/FarmPatchUtil.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
@@ -147,6 +185,9 @@ source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
+-- SF-77 TOPOGRAPHY CACHE's own bridges (StateLedger persistence of the static
+-- water-dist table + NetworkSync delivery). No-ops when those mods are absent.
+source(modDirectory .. "src/integrations/SoilTopographyBridge.lua")
 
 -- Register our custom density map height types with the DMHM mod file list.
 -- DensityMapHeightManager:loadMapData iterates modDensityHeightMapTypeFilenames and
@@ -295,6 +336,12 @@ local function loadedMission(mission, node)
     -- sync stay live as the fallback. No-ops when NetworkSync is absent.
     if SoilNetworkSyncBridge then
         SoilNetworkSyncBridge.register(sfm)
+    end
+
+    -- SF-77 TOPOGRAPHY CACHE's own bridges: StateLedger persists the static
+    -- water-dist table, NetworkSync delivers it to clients. No-ops when absent.
+    if SoilTopographyBridge then
+        SoilTopographyBridge.register(sfm)
     end
 
     -- TIP ON GROUND FIX: directly inject our solid fill types into the
@@ -554,6 +601,11 @@ local function load(mission)
         -- #83 Cross-mod bridge for the FarmTablet FieldSentry app (read status + request toggles).
         if FieldSentry_API and FieldSentry_API.attachBridge then
             FieldSentry_API.attachBridge(mission)
+        end
+        -- [SF-27] NPC soil bridge: publishes the phase-2 capability marker and the
+        -- designation / attribution surfaces NPCFavor probes (the handshake).
+        if NpcSoilBridge and NpcSoilBridge.attach then
+            NpcSoilBridge:attach(mission)
         end
 
         -- Cross-mod harvest bus: lets the ecosystem diseased-food / feed model read a

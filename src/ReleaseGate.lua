@@ -33,6 +33,9 @@ ReleaseGate.EXPERIMENTAL = {
     ground_material = { name = "Ground material",    status = "awaiting bale + wetness checks" },
     spatial_soil    = { name = "Spatial soil",       status = "awaiting the rest of its family" },
     read_the_dirt   = { name = "Read the Dirt",      status = "awaiting its reading panel" },
+    -- SF-2M growth family (SF-53 credit + SF-78 block). LOCKED until the
+    -- reading surface (SF-54) exists, per the ratified family ruling 2026-08-12.
+    growth_modulation = { name = "Growth modulation", status = "awaiting its reading surface (SF-54)" },
 }
 
 -- Console command -> systemId, so command refusals route through the same registry.
