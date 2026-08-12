@@ -69,6 +69,7 @@
 - [x] Rotation Planner and Field Detail open from the Esc RF panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), selectedFieldId passed through (nil allowed). DONE in code, deployed.
 - [x] Map sidebar report/treatment buttons restored via retained-page pattern (SoilPDAScreen._retainedDeepScreen + _ensureDeepPageInjectable). DONE in code, deployed.
 - [x] 2026-08-12: the map sidebar report/treatment buttons removed again (the soil layer tab now draws only Disable Overlay and Help). The retained-page pattern stays for the Esc deep screens; the PDA deep page remains reachable from the Esc panel. In-game observation pending for the trimmed sidebar.
+- [x] 2026-08-12: health summary re-anchored to stack under the sidebar column (was sitting well below the layer buttons), and a black per-layer info box added under it, shown when a layer is selected (12 new sf_map_layer_desc_* keys in all 27 translation files). In-game observation pending for both.
 
 ## SF #764 Courseplay empty-tank (2026-08-07)
 - [x] Root-caused via diagnostic trace: tank hits zero but fill type stays LIME (sub-threshold residual above the 0.00001 reset line); AI out-of-fill stop never fires. FIXED in code (complete the drain in appended onEndWorkAreaProcessing), built and deployed.

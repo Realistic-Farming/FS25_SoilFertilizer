@@ -348,16 +348,27 @@
 
     <e k="sf_map_layer_off" v="Jordkort: Fra" eh="3e654ade" />
     <e k="sf_map_layer_n" v="Kvælstof" eh="1e9ef3ba" />
+    <e k="sf_map_layer_desc_n" v="[EN] Nitrogen. Depletes fast, every harvest. Apply UAN, urea or manure." />
     <e k="sf_map_layer_p" v="Fosfor" eh="eb4f2688" />
+    <e k="sf_map_layer_desc_p" v="[EN] Phosphorus. Slow depletion, root crops. Apply MAP or DAP." />
     <e k="sf_map_layer_k" v="Kalium" eh="3a4edc67" />
+    <e k="sf_map_layer_desc_k" v="[EN] Potassium. Root crops deplete heavily. Apply Potash." />
     <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
+    <e k="sf_map_layer_desc_ph" v="[EN] Soil acidity. Target range 6.5 - 7.0." />
     <e k="sf_map_layer_om" v="Organisk materiale" eh="6305f4bb" />
+    <e k="sf_map_layer_desc_om" v="[EN] Organic matter. Builds slowly over many seasons." />
     <e k="sf_map_layer_urgency" v="Markhastegrad" eh="419ea5af" />
+    <e k="sf_map_layer_desc_urgency" v="[EN] Fields that need treatment soonest, highest first." />
     <e k="sf_map_layer_weed" v="Ukrudtstryk" eh="53f8b936" />
+    <e k="sf_map_layer_desc_weed" v="[EN] Weed pressure per field." />
     <e k="sf_map_layer_pest" v="Skadedyrstryk" eh="18a7c2be" />
+    <e k="sf_map_layer_desc_pest" v="[EN] Pest pressure per field." />
     <e k="sf_map_layer_disease" v="Sygdomstryk" eh="2b805cc9" />
+    <e k="sf_map_layer_desc_disease" v="[EN] Disease pressure per field." />
     <e k="sf_map_layer_compaction" v="Pakning" eh="19cf3ee7" />
+    <e k="sf_map_layer_desc_compaction" v="[EN] Soil compaction from heavy machinery." />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
+    <e k="sf_map_layer_desc_yield" v="[EN] Expected yield level." />
     <e k="sf_map_overlay_cycle" v="Skift+M: Skift jordlag" eh="032fdac7" />
     <e k="sf_map_page_title" v="Jordlag" eh="04a675fb" />
     <e k="sf_map_sidebar_header" v="Jordkortlag" eh="81332549" />
@@ -1132,6 +1143,7 @@
     <e k="sf_bigBag_copper_hydroxide_function" v="[EN] Copper Hydroxide fungicide, organic-approved (liquid)" eh="ee1a16b8" />
     <e k="sf_unscouted" v="[EN] Unscouted" eh="a773e76d" />
 <e k="sf_map_layer_organic_status" v="[EN] Organic Status" eh="037de0fd" />
+<e k="sf_map_layer_desc_organic_status" v="[EN] Organic certification: conventional, transition or certified." />
     
 <e k="sf_layer_12" v="[EN] Organic Status" eh="037de0fd" />
     

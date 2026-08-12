@@ -19,6 +19,31 @@ local function tr(key, fallback)
     return fallback or key
 end
 
+-- Word-wrap a string into lines that fit maxWidth at the given size. Uses the
+-- engine's getTextWidth so measurement matches renderText exactly; keeps the
+-- current bold state, so callers set setTextBold before this.
+local function wrapText(text, size, maxWidth)
+    if type(text) ~= "string" or text == "" then return { "" } end
+    if getTextWidth == nil or maxWidth <= 0 then return { text } end
+    local words = {}
+    for w in text:gmatch("%S+") do
+        words[#words + 1] = w
+    end
+    if #words == 0 then return { "" } end
+    local lines, cur = {}, ""
+    for _, w in ipairs(words) do
+        local probe = cur == "" and w or (cur .. " " .. w)
+        if cur ~= "" and getTextWidth(size, probe) > maxWidth then
+            lines[#lines + 1] = cur
+            cur = w
+        else
+            cur = probe
+        end
+    end
+    if cur ~= "" then lines[#lines + 1] = cur end
+    return lines
+end
+
 -- ── Constants ─────────────────────────────────────────────
 SoilMapOverlay.LAYER_COUNT    = 12
 SoilMapOverlay.ALPHA          = 0.72
@@ -144,6 +169,39 @@ SoilMapOverlay.LAYER_KEYS = {
     [10] = "sf_map_layer_compaction",
     [11] = "sf_map_layer_yield",
     [12] = "sf_map_layer_organic_status",
+}
+
+-- i18n key per layer description, shown in the info box under the health
+-- summary when that layer is selected (mirrors LAYER_KEYS indices).
+SoilMapOverlay.LAYER_DESC_KEYS = {
+    [1]  = "sf_map_layer_desc_n",
+    [2]  = "sf_map_layer_desc_p",
+    [3]  = "sf_map_layer_desc_k",
+    [4]  = "sf_map_layer_desc_ph",
+    [5]  = "sf_map_layer_desc_om",
+    [6]  = "sf_map_layer_desc_urgency",
+    [7]  = "sf_map_layer_desc_weed",
+    [8]  = "sf_map_layer_desc_pest",
+    [9]  = "sf_map_layer_desc_disease",
+    [10] = "sf_map_layer_desc_compaction",
+    [11] = "sf_map_layer_desc_yield",
+    [12] = "sf_map_layer_desc_organic_status",
+}
+
+-- English fallback so the info box still reads if a translation is missing.
+SoilMapOverlay.LAYER_DESC_FALLBACK = {
+    [1]  = "Nitrogen. Depletes fast, every harvest. Apply UAN, urea or manure.",
+    [2]  = "Phosphorus. Slow depletion, root crops. Apply MAP or DAP.",
+    [3]  = "Potassium. Root crops deplete this heavily. Apply Potash.",
+    [4]  = "Soil acidity. Target range: 6.5 - 7.0.",
+    [5]  = "Organic matter. Builds slowly over many seasons.",
+    [6]  = "Fields that need treatment soonest, highest first.",
+    [7]  = "Weed pressure per field.",
+    [8]  = "Pest pressure per field.",
+    [9]  = "Disease pressure per field. Unscouted ground reads unknown.",
+    [10] = "Soil compaction from heavy machinery.",
+    [11] = "Expected yield level from current soil.",
+    [12] = "Organic certification: conventional, transition or certified.",
 }
 
 -- Inverted layers: high value = bad (urgency / pressures). Yield (11) is NOT here:
@@ -1544,21 +1602,27 @@ function SoilMapOverlay:onDrawHud(frame)
         self:drawLegend(panelX, currentY - sepGap, panelWidth)
     end
 
-    -- 5. Draw Health Summary (Anchored to BOTTOM area per DMF pattern)
-    local _, summaryH = getNormalizedScreenValues(0, 74)
-    local _, panelMargin = getNormalizedScreenValues(0, 8)
-    local _, safeY = getNormalizedScreenValues(0, 6)
-    local _, upOffset = getNormalizedScreenValues(0, 15) -- Extra push up
-    
-    local summaryY = safeY + panelMargin + upOffset
-    -- Check if native buttons exist and are visible
-    if frame.buttonDeselectAllText ~= nil and frame.buttonDeselectAllText:getIsVisible() then
-        summaryY = frame.buttonDeselectAllText.absPosition[2] + frame.buttonDeselectAllText.absSize[2] + panelMargin + upOffset
-    elseif frame.buttonHelpText ~= nil and frame.buttonHelpText:getIsVisible() then
-        summaryY = frame.buttonHelpText.absPosition[2] + frame.buttonHelpText.absSize[2] + panelMargin + upOffset
+    -- 5. Draw Health Summary (stacked directly under the column content so it
+    --    aligns with the layer buttons instead of hanging near the map footer)
+    local _, summaryH   = getNormalizedScreenValues(0, 74)
+    local _, summaryGap = getNormalizedScreenValues(0, 8)
+    local _, legendH    = getNormalizedScreenValues(0, 24)
+
+    local summaryY = currentY
+    if activeIdx > 0 then
+        -- legend occupies [currentY - sepGap - legendH, currentY - sepGap]
+        summaryY = currentY - sepGap - legendH
     end
-    
+    summaryY = summaryY - summaryGap - summaryH
+
     self:drawSummaryAt(frame, panelX, summaryY, panelWidth, summaryH)
+
+    -- 6. Layer info box: a small black box (Wizard's RF_InfoBoxBg style) that
+    --    explains the selected layer, shown under the health summary.
+    if activeIdx > 0 then
+        local _, infoGap = getNormalizedScreenValues(0, 8)
+        self:drawLayerInfoBox(panelX, summaryY - infoGap, panelWidth, activeIdx)
+    end
 end
 
 function SoilMapOverlay:drawSummaryAt(frame, panelX, panelY, panelWidth, panelHeight)
@@ -1606,6 +1670,55 @@ function SoilMapOverlay:drawSummaryAt(frame, panelX, panelY, panelWidth, panelHe
     renderText(barX, statusY, statusSize, statusText)
     
     setTextColor(1, 1, 1, 1)
+end
+
+--- Draw a small black info box (Wizard's RF_InfoBoxBg style: blank.png tinted
+--- 0 0 0 0.35) explaining the selected layer. Panel Y is the bottom edge; the
+--- box grows upward. Returns the height drawn, so callers can stack under it.
+function SoilMapOverlay:drawLayerInfoBox(panelX, panelY, panelWidth, layerIdx)
+    local nameKey = SoilMapOverlay.LAYER_KEYS[layerIdx]
+    local descKey = SoilMapOverlay.LAYER_DESC_KEYS[layerIdx]
+    if nameKey == nil or descKey == nil then return 0 end
+
+    local padX, padY = getNormalizedScreenValues(10, 5)
+    local _, titleSize = getNormalizedScreenValues(0, 13)
+    local _, bodySize  = getNormalizedScreenValues(0, 11)
+    local _, lineGap   = getNormalizedScreenValues(0, 3)
+
+    local name = tr(nameKey, "Layer")
+    local desc = tr(descKey, SoilMapOverlay.LAYER_DESC_FALLBACK[layerIdx] or "")
+
+    -- Wrap the description to the panel width (bold off for the body measure).
+    setTextBold(false)
+    local maxTextW = panelWidth - padX * 2
+    local lines = wrapText(desc, bodySize, maxTextW)
+    local bodyH = #lines * (bodySize + lineGap)
+    local titleH = titleSize + lineGap
+    local boxH = padY * 2 + titleH + bodyH
+
+    -- Wizard's black info box: blank.png tinted 0 0 0 0.35, thin border.
+    drawFilledRect(panelX, panelY, panelWidth, boxH, 0, 0, 0, 0.35)
+    self:drawThinBorder(panelX, panelY, panelWidth, boxH, 0.62, 0.62, 0.62, 0.5)
+
+    -- Title: the layer name, bold.
+    setTextBold(true)
+    setTextColor(0.93, 0.93, 0.93, 1)
+    setTextAlignment(RenderText.ALIGN_LEFT)
+    renderText(panelX + padX, panelY + boxH - padY - titleSize, titleSize, name)
+
+    -- Body: the wrapped description, below the title.
+    setTextBold(false)
+    setTextColor(0.80, 0.80, 0.80, 1)
+    local lineY = panelY + boxH - padY - titleSize - lineGap - bodySize
+    for _, line in ipairs(lines) do
+        renderText(panelX + padX, lineY, bodySize, line)
+        lineY = lineY - (bodySize + lineGap)
+    end
+
+    setTextBold(false)
+    setTextColor(1, 1, 1, 1)
+    setTextAlignment(RenderText.ALIGN_LEFT)
+    return boxH
 end
 
 -- ── Color Legend ─────────────────────────────────────────
