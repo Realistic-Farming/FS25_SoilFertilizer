@@ -116,6 +116,11 @@ source(modDirectory .. "src/GrowthCredit.lua")
 -- is the clock. Inert unless the growth_modulation release gate is open and
 -- the mask is enabled.
 source(modDirectory .. "src/GrowthBlock.lua")
+-- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+-- distance-to-water) consumed by SF-76 (field genesis) and SCS-042 (runoff).
+-- Neutral until a consumer wires in; its own StateLedger + NetworkSync
+-- registration sits beside the soil bridges.
+source(modDirectory .. "src/TopographyCache.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -180,6 +185,9 @@ source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
+-- SF-77 TOPOGRAPHY CACHE's own bridges (StateLedger persistence of the static
+-- water-dist table + NetworkSync delivery). No-ops when those mods are absent.
+source(modDirectory .. "src/integrations/SoilTopographyBridge.lua")
 
 -- Register our custom density map height types with the DMHM mod file list.
 -- DensityMapHeightManager:loadMapData iterates modDensityHeightMapTypeFilenames and
@@ -328,6 +336,12 @@ local function loadedMission(mission, node)
     -- sync stay live as the fallback. No-ops when NetworkSync is absent.
     if SoilNetworkSyncBridge then
         SoilNetworkSyncBridge.register(sfm)
+    end
+
+    -- SF-77 TOPOGRAPHY CACHE's own bridges: StateLedger persists the static
+    -- water-dist table, NetworkSync delivers it to clients. No-ops when absent.
+    if SoilTopographyBridge then
+        SoilTopographyBridge.register(sfm)
     end
 
     -- TIP ON GROUND FIX: directly inject our solid fill types into the

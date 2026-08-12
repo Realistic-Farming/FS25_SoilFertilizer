@@ -75,6 +75,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- unless the growth_modulation release gate is open and the mask enabled.
     self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
 
+    -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+    -- distance-to-water). Built once at activation, invalidated on terrain
+    -- edits, consumed by SF-76 (field genesis) and SCS-042 (runoff). Neutral
+    -- until a consumer wires in.
+    self.topography = TopographyCache and TopographyCache.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -732,6 +738,19 @@ function SoilFertilityManager:activateSoilSystem()
             self.growthBlock:initialize()
             if g_server ~= nil then
                 self.growthBlock:register()
+            end
+        end
+
+        -- SF-77 TOPOGRAPHY CACHE: build once at activation (server-only by the
+        -- distance-to-water's nature; clients receive the table through
+        -- NetworkSync), then install the terrain-edit listener. Neutral until a
+        -- consumer wires in.
+        if self.topography then
+            self.topography:initialize()
+            if g_server ~= nil then
+                if self.topography:build() then
+                    self.topography:installTerrainListener()
+                end
             end
         end
 
@@ -2101,6 +2120,12 @@ function SoilFertilityManager:delete()
     if self.growthBlock then
         self.growthBlock:delete()
         self.growthBlock = nil
+    end
+
+    -- SF-77 topography cache: drop the terrain listener and the grids.
+    if self.topography then
+        self.topography:delete()
+        self.topography = nil
     end
     -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
     -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step
