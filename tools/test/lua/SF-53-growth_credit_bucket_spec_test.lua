@@ -214,6 +214,51 @@ do
   g_fruitTypeManager = prevFtm
 end
 
+-- 5b. F165 THE STORE HAS AN INVALIDATION PATH. A cell credited while bare
+--     (fruitIndex nil) must never spend its bank on a crop sown later: the
+--     guard treats a nil stored index as a RESET, clearing the credit, and a
+--     cell that reads fruit UNKNOWN at the bell is invalidated the same way.
+do
+  local fruitDesc = {
+    terrainDataPlaneId = 5, cutState = 0, maxHarvestingGrowthState = 7,
+    getIsCut = function(_self, s) return s == 0 end,
+    getIsWithered = function() return false end,
+  }
+  local prevFtm = g_fruitTypeManager
+  g_fruitTypeManager = { getFruitTypeByIndex = function() return fruitDesc end }
+  local gc = GC.new({})
+  gc.isInitialized = true
+  local entry = { originX = 4, originZ = 4, step = 8, cells = {} }
+  local vmClear = { getCellGrowthInfo = function() return { blocked = false } end }
+
+  -- A cell with a NIL stored fruitIndex and a full bank is reset, never spent:
+  -- the guard refuses and the credit is cleared.
+  local bare = { credit = 60, fruitIndex = nil }
+  T.ok('f165.nilIndexRefuses', gc:_guardCell(7, 1, 2, bare, entry, 0, 0, vmClear) == false)
+  T.eq('f165.nilIndexClearsCredit', bare.credit, 0)
+
+  -- A matching stored index still passes (the normal path is untouched).
+  local banked = { credit = 40, fruitIndex = 1 }
+  T.ok('f165.matchingStillPasses', gc:_guardCell(7, 1, 2, banked, entry, 0, 0, vmClear) == true)
+  T.eq('f165.matchingKeepsCredit', banked.credit, 40)
+
+  -- A cell that reads fruit UNKNOWN at the bell is invalidated in the stroke:
+  -- its bank is cleared so a gsFieldSetState or cultivated-to-UNKNOWN field
+  -- cannot carry credit into the next sowing.
+  local prevUtil = FSDensityMapUtil
+  FSDensityMapUtil = { getFruitTypeIndexAtWorldPos = function() return nil, nil end }
+  local store = {
+    originX = 4, originZ = 4, step = 8, maxX = 24, maxZ = 24,
+    cells = { [0] = { [0] = { credit = 50, fruitIndex = nil } } },
+  }
+  local stroked = gc:_strokeField(7, store, vmClear, 1)
+  T.ok('f165.unknownAtBellStrokes', stroked == false or stroked == nil)
+  T.eq('f165.unknownAtBellCleared', store.cells[0][0].credit, 0)
+  FSDensityMapUtil = prevUtil
+
+  g_fruitTypeManager = prevFtm
+end
+
 -- 6. THE WRITE BUCKET: rings over a bucket's cells, feed the stored header.
 do
   local gc = GC.new({})
