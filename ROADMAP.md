@@ -70,6 +70,10 @@
 ## 2026-08-12 (Fred): map sidebar trimmed to Disable Overlay + Help
 - [x] The soil layer tab sidebar drew four action buttons (Farm Overview, Treatment Plan, Disable Overlay, Help). The first two were redundant doors to the deep PDA screen and are removed: the sidebar now draws only Disable Overlay and Help, and the dead report/treatment click branches in onSideBarClick are gone. The deep screen remains reachable from the Esc panel (Rotation Planner and Field Detail buttons). Untested in-game.
 
+## 2026-08-12 (Fred): map sidebar footer - health summary aligned + per-layer info box
+- [x] The Average Soil Health summary was anchored to the map footer buttons, so it sat well below the layer buttons. It now stacks directly under the column content (below the legend when a layer is active), so it aligns with the sidebar. In-game observation pending.
+- [x] A small black info box (matching Wizard's RF_InfoBoxBg style) now renders under the health summary when a layer is selected, showing the layer name plus a one-line explanation. Twelve new sf_map_layer_desc_* keys ship across all 27 translation files. Untested in-game.
+
 ## 2026-08-07 (Fred): module page dots always visible
 - [x] The Esc RF module selector hid its page dots when Worker Costs or Market Dynamics was the active module. Soil and Crop Stress always showed theirs, so WC never read as the 3rd module and the left panel was inconsistent. All four RfPdaMenuPage copies now keep the dots visible (dots = N, chrome unchanged, per the esc-rf-pda umbrella brief). Built, deployed, PR open.
 
