@@ -68,7 +68,7 @@
 ## Esc doors + map buttons (2026-08-06)
 - [x] Rotation Planner and Field Detail open from the Esc RF panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), selectedFieldId passed through (nil allowed). DONE in code, deployed.
 - [x] Map sidebar report/treatment buttons restored via retained-page pattern (SoilPDAScreen._retainedDeepScreen + _ensureDeepPageInjectable). DONE in code, deployed.
-- [~] In-game observation pending: confirm all three surfaces open with no Farm Tablet installed, and that the Esc rail still shows exactly one Realistic Farming tab.
+- [x] 2026-08-12: the map sidebar report/treatment buttons removed again (the soil layer tab now draws only Disable Overlay and Help). The retained-page pattern stays for the Esc deep screens; the PDA deep page remains reachable from the Esc panel. In-game observation pending for the trimmed sidebar.
 
 ## SF #764 Courseplay empty-tank (2026-08-07)
 - [x] Root-caused via diagnostic trace: tank hits zero but fill type stays LIME (sub-threshold residual above the 0.00001 reset line); AI out-of-fill stop never fires. FIXED in code (complete the drain in appended onEndWorkAreaProcessing), built and deployed.

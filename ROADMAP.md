@@ -65,7 +65,10 @@
 ## 2026-08-06 (Fred): Esc RF dialogs + map buttons reachable again
 - [x] With the RF Esc door live, the legacy menuSoilFertilizer Esc page is stood down, which also nilled inGameMenu[pageName]. That killed three openers: the Rotation Planner dialog, the per-field detail dialog, and the map sidebar report/treatment buttons (they read the nil page and returned silently).
 - [x] Rotation Planner and Field Detail now open from the Esc panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), passing the panel's selectedFieldId (nil allowed).
-- [x] The map sidebar report/treatment buttons work again via the retained-page pattern: stand-down keeps the deep page on SoilPDAScreen._retainedDeepScreen, and show/toggle/showTreatment re-inject it into InGameMenu paging without restoring the Esc tab icon. In-game observation still pending.
+- [x] The map sidebar report/treatment buttons were restored via the retained-page pattern (stand-down keeps the deep page on SoilPDAScreen._retainedDeepScreen). That door was then retired on 2026-08-12: the sidebar now draws only Disable Overlay and Help, the report/treatment buttons and their click handlers are gone, and the deep screen stays reachable from the Esc panel. See the 2026-08-12 entry below.
+
+## 2026-08-12 (Fred): map sidebar trimmed to Disable Overlay + Help
+- [x] The soil layer tab sidebar drew four action buttons (Farm Overview, Treatment Plan, Disable Overlay, Help). The first two were redundant doors to the deep PDA screen and are removed: the sidebar now draws only Disable Overlay and Help, and the dead report/treatment click branches in onSideBarClick are gone. The deep screen remains reachable from the Esc panel (Rotation Planner and Field Detail buttons). Untested in-game.
 
 ## 2026-08-07 (Fred): module page dots always visible
 - [x] The Esc RF module selector hid its page dots when Worker Costs or Market Dynamics was the active module. Soil and Crop Stress always showed theirs, so WC never read as the 3rd module and the left panel was inconsistent. All four RfPdaMenuPage copies now keep the dots visible (dots = N, chrome unchanged, per the esc-rf-pda umbrella brief). Built, deployed, PR open.
