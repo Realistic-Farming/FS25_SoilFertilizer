@@ -126,6 +126,13 @@ function SoilFertilitySystem.new(settings)
     -- Monotonic day of the last processed daily pass, for skipped-day catch-up.
     -- 0 means "not yet observed" so the first day-change never spuriously catches up.
     self.lastUpdateMonotonicDay = 0
+    -- SF-76 FIELD GENESIS: when active, the starting soil profile is seeded
+    -- FROM TERRAIN (height-relative, slope, sink proximity) instead of the
+    -- smooth regional gradient. Set by the manager on a NEW save (no soilData
+    -- yet), server-derived, deterministic from the savegame directory hash.
+    -- Off by default: an existing save is untouched (zero writes).
+    self.genesisActive = false
+    self.genesisSeed   = 0
     self.hookManager = HookManager.new()
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -2983,6 +2990,54 @@ end
 -- Lua 5.1 primitive that breaks the progression) so values are genuinely independent
 -- per (field, nutrient), while staying stable across save/load and avoiding
 -- math.randomseed (which would pollute the shared global PRNG).
+-- SF-76 FIELD GENESIS: a terrain-derived deviation in [-1.0, 1.0] replacing the
+-- smooth regional gradient on a new save. Height-relative, slope and sink
+-- proximity from SF-77's TopographyCache when present; one direct terrain
+-- sample when not. Deterministic from the per-save genesis seed: the same seed
+-- twice yields identical soil (the acceptance's byte-identical bar). Same
+-- amplitude bounds as regionalField, so every value stays inside the shipped
+-- clamps.
+function SoilFertilitySystem:_genesisDeviation(fieldId, slot)
+    local cx, cz = nil, nil
+    local farmlandObj = g_farmlandManager and g_farmlandManager:getFarmlandById(fieldId)
+    if farmlandObj and self.bundledMaps then
+        cx, cz = self.bundledMaps:getFarmlandCenter(farmlandObj)
+    end
+
+    -- Terrain facts: height-relative value, slope class, sink proximity.
+    local heightNorm, slopeN, sink = 0, 0, false
+    local topo = g_SoilFertilityManager and g_SoilFertilityManager.topography
+    if topo ~= nil and type(topo.getCellInfo) == "function" and cx ~= nil then
+        local ok, info = pcall(function() return topo:getCellInfo(cx, cz) end)
+        if ok and info ~= nil then
+            -- Height-relative: low ground deviates negative (collects), high positive.
+            heightNorm = math.max(-1.0, math.min(1.0, (info.height or 0) / 50.0))
+            -- Slope classes are strings; compare against known names without
+            -- requiring the TopographyCache module to be present (SF-77 absent
+            -- degrades to the direct sample path below).
+            local slopeClass = info.slope
+            if slopeClass == "gentle" then slopeN = 0.25
+            elseif slopeClass == "moderate" then slopeN = 0.5
+            elseif slopeClass == "steep" then slopeN = 1.0 end
+            sink = info.sink == true
+        end
+    else
+        -- One direct sample when the cache is absent.
+        local gs = g_terrainNode
+        if gs ~= nil then
+            local ok, h = pcall(getTerrainHeightAtWorldPos, gs, cx or 0, 0, cz or 0)
+            if ok then heightNorm = math.max(-1.0, math.min(1.0, (h or 0) / 50.0)) end
+        end
+    end
+
+    -- Compose with the per-save seed + per-slot jitter (the same hash01 the
+    -- noise field uses, so it stays deterministic and PRNG-pure).
+    local seedMix = math.sin(self.genesisSeed * 1.13 + slot * 7.7) * 43758.5453
+    seedMix = seedMix - math.floor(seedMix)   -- [0,1)
+    local dev = heightNorm * 0.5 + slopeN * 0.3 - (sink and 0.4 or 0.0) + (seedMix * 2.0 - 1.0) * 0.2
+    return math.max(-1.0, math.min(1.0, dev))
+end
+
 function SoilFertilitySystem:_computeInitialSoil(fieldId, farmlandObj)
     if farmlandObj == nil and g_farmlandManager then
         farmlandObj = g_farmlandManager:getFarmlandById(fieldId)
@@ -3018,6 +3073,9 @@ function SoilFertilitySystem:_computeInitialSoil(fieldId, farmlandObj)
         return math.max(-1.0, math.min(1.0, a * 0.7 + b * 0.3))
     end
     local function randomize(baseValue, regionalAmt, noiseAmt, slot)
+        if self.genesisActive then
+            return baseValue + self:_genesisDeviation(fieldId, slot) * regionalAmt + noiseField(slot) * noiseAmt
+        end
         return baseValue + regionalField(slot) * regionalAmt + noiseField(slot) * noiseAmt
     end
 
