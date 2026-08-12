@@ -1597,30 +1597,25 @@ function SoilMapOverlay:onDrawHud(frame)
         currentY = currentY - actionH - actionMargin
     end
 
-    -- 4. Color legend (only when a layer is active)
+    -- 5. Health Summary + 6. Layer info box, in a FIXED slot below the column.
+    --    The legend slot is always reserved (sepGap + legendH), so toggling a
+    --    layer on or off never moves the summary or the info box.
+    local _, legendH    = getNormalizedScreenValues(0, 24)
+    local _, summaryH   = getNormalizedScreenValues(0, 74)
+    local _, summaryGap = getNormalizedScreenValues(0, 16)
+
+    local summaryY = currentY - sepGap - legendH - summaryGap - summaryH
+
+    -- Legend goes into the reserved slot above the summary when a layer is on.
     if activeIdx > 0 then
         self:drawLegend(panelX, currentY - sepGap, panelWidth)
     end
 
-    -- 5. Draw Health Summary (stacked directly under the column content so it
-    --    aligns with the layer buttons instead of hanging near the map footer)
-    local _, summaryH   = getNormalizedScreenValues(0, 74)
-    local _, summaryGap = getNormalizedScreenValues(0, 8)
-    local _, legendH    = getNormalizedScreenValues(0, 24)
-
-    local summaryY = currentY
-    if activeIdx > 0 then
-        -- legend occupies [currentY - sepGap - legendH, currentY - sepGap]
-        summaryY = currentY - sepGap - legendH
-    end
-    summaryY = summaryY - summaryGap - summaryH
-
     self:drawSummaryAt(frame, panelX, summaryY, panelWidth, summaryH)
 
-    -- 6. Layer info box: a small black box (Wizard's RF_InfoBoxBg style) that
-    --    explains the selected layer, shown under the health summary.
+    -- Info box: fixed below the summary, drawn only when a layer is selected.
     if activeIdx > 0 then
-        local _, infoGap = getNormalizedScreenValues(0, 8)
+        local _, infoGap = getNormalizedScreenValues(0, 10)
         self:drawLayerInfoBox(panelX, summaryY - infoGap, panelWidth, activeIdx)
     end
 end
@@ -1673,9 +1668,9 @@ function SoilMapOverlay:drawSummaryAt(frame, panelX, panelY, panelWidth, panelHe
 end
 
 --- Draw a small black info box (Wizard's RF_InfoBoxBg style: blank.png tinted
---- 0 0 0 0.35) explaining the selected layer. Panel Y is the bottom edge; the
---- box grows upward. Returns the height drawn, so callers can stack under it.
-function SoilMapOverlay:drawLayerInfoBox(panelX, panelY, panelWidth, layerIdx)
+--- 0 0 0 0.35) explaining the selected layer. Panel Y is the TOP edge; the box
+--- grows downward, so it never climbs over the summary panel above it.
+function SoilMapOverlay:drawLayerInfoBox(panelX, panelTopY, panelWidth, layerIdx)
     local nameKey = SoilMapOverlay.LAYER_KEYS[layerIdx]
     local descKey = SoilMapOverlay.LAYER_DESC_KEYS[layerIdx]
     if nameKey == nil or descKey == nil then return 0 end
@@ -1697,19 +1692,20 @@ function SoilMapOverlay:drawLayerInfoBox(panelX, panelY, panelWidth, layerIdx)
     local boxH = padY * 2 + titleH + bodyH
 
     -- Wizard's black info box: blank.png tinted 0 0 0 0.35, thin border.
-    drawFilledRect(panelX, panelY, panelWidth, boxH, 0, 0, 0, 0.35)
-    self:drawThinBorder(panelX, panelY, panelWidth, boxH, 0.62, 0.62, 0.62, 0.5)
+    local boxY = panelTopY - boxH
+    drawFilledRect(panelX, boxY, panelWidth, boxH, 0, 0, 0, 0.35)
+    self:drawThinBorder(panelX, boxY, panelWidth, boxH, 0.62, 0.62, 0.62, 0.5)
 
-    -- Title: the layer name, bold.
+    -- Title: the layer name, bold, near the top of the box.
     setTextBold(true)
     setTextColor(0.93, 0.93, 0.93, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
-    renderText(panelX + padX, panelY + boxH - padY - titleSize, titleSize, name)
+    renderText(panelX + padX, panelTopY - padY - titleSize, titleSize, name)
 
     -- Body: the wrapped description, below the title.
     setTextBold(false)
     setTextColor(0.80, 0.80, 0.80, 1)
-    local lineY = panelY + boxH - padY - titleSize - lineGap - bodySize
+    local lineY = panelTopY - padY - titleSize - lineGap - bodySize
     for _, line in ipairs(lines) do
         renderText(panelX + padX, lineY, bodySize, line)
         lineY = lineY - (bodySize + lineGap)
