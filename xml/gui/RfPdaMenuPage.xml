@@ -12,9 +12,13 @@
     <GuiElement profile="RF_PageRoot" id="rfPageRoot">
         <GuiElement profile="fs25_subCategorySelectorTabbedContainer" id="rfContentHost" absoluteSizeOffset="0px 0px">
 
-            <!-- BUILD 22:25: Map glass shell restored (463 + notch). Flat RF_SideColUnderlay retired. -->
-            <ThreePartBitmap profile="fs25_subCategoryContainerBg" id="rfSideGlass">
-                <Bitmap profile="fs25_subCategoryContainerArrow"/>
+            <!-- Round 2 D2: opaque column fill painted FIRST (x 0..404, full height, behind nest/cards). -->
+            <Bitmap profile="RF_SideColUnderlay"/>
+
+            <!-- LEFT nest glass hidden (round 3): sidebar is one flat RF_SideColUnderlay tone.
+                 Element kept in tree for structure; no Lua re-shows it. -->
+            <ThreePartBitmap profile="RF_SubCategoryContainerBg" visible="false">
+                <Bitmap profile="fs25_subCategoryContainerArrow" visible="false"/>
             </ThreePartBitmap>
 
             <Bitmap profile="fs25_subCategoryContainer" id="rfFilterBox">
@@ -31,7 +35,7 @@
                 <ThreePartBitmap profile="fs25_lineSeparatorTop" id="rfSideMidSeparator"
                                  position="8px -130px" width="380px" visible="false"/>
 
-                <!-- Soil/CS left info (George: inside rfFilterBox, BEFORE moduleList; glass-back InfoBoxBg). -->
+                <!-- Soil/CS left info (George: inside rfFilterBox, BEFORE moduleList; Text + blank.png). -->
                 <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
                     <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 644px"
@@ -42,15 +46,14 @@
                     <Text profile="fs25_textGrey" id="wcSideVersion" visible="false" text=""/>
                     <Bitmap profile="fs25_subCategoryStartClipper" name="rfModListStart"/>
                     <Bitmap profile="fs25_subCategoryStopClipper" name="rfModListEnd"/>
-                    <!-- Hang fence: GuiElement parent. Map-family RF_MapList* clones (~56px radio rows). -->
-                    <SmoothList id="moduleList" profile="RF_MapList"
+                    <SmoothList id="moduleList" profile="fs25_subCategoryList"
                                 startClipperElementName="rfModListStart"
                                 endClipperElementName="rfModListEnd">
-                        <ListItem profile="RF_MapListItem" onClick="onClickModuleRow">
-                            <Bitmap profile="RF_MapListItemIconBg" name="iconBg"/>
-                            <Bitmap profile="RF_MapListColorTemplate" name="colorTemplate"/>
-                            <Bitmap profile="RF_MapListItemIcon" name="icon"/>
-                            <Text profile="RF_MapListItemName" name="name"/>
+                        <!-- Compact rows (34px) so Soil stays clickable under taller side shell; not vanilla 100px items. -->
+                        <ListItem profile="RF_ModuleListRow" onClick="onClickModuleRow">
+                            <Bitmap profile="RF_ModuleRowBg" name="alternating"/>
+                            <Text profile="RF_ModuleItemText" name="moduleRowTitle"/>
+                            <Text profile="RF_ModuleItemTag" name="moduleRowTag"/>
                         </ListItem>
                     </SmoothList>
                     <ThreePartBitmap profile="fs25_subCategoryListSliderBox">

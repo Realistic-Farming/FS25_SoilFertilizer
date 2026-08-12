@@ -1125,9 +1125,6 @@ function RfPdaMenuPage:refreshPanelSelector(forceRebuildDots)
         -- Module SmoothList: only when panel set actually changes or forced open.
         if (forceRebuildDots or setChanged) and self.moduleList then
             self.moduleList:reloadData()
-        elseif self.moduleList then
-            -- Quiet radio paint (lit iconBg + name) without thrash reload.
-            self:_paintModuleListSelection()
         end
     end)
     self._refreshing = false
@@ -2735,19 +2732,14 @@ end
 function RfPdaMenuPage:_populateModuleRow(index, cell)
     local panel = self._panelCache[index]
     if panel == nil then return end
-    -- BUILD 22:25 Map-family rows: name = title; iconBg = radio lit plate.
-    local titleEl = cell:getDescendantByName("name")
-            or cell:getDescendantByName("moduleRowTitle")
-    local iconBg = cell:getDescendantByName("iconBg")
-    local icon = cell:getDescendantByName("icon")
+    local titleEl = cell:getDescendantByName("moduleRowTitle")
     local tagEl = cell:getDescendantByName("moduleRowTag")
     local short = safePanelTitle(panel)
     if panel.id == "soilFertilizer" then
         short = tr("rf_pda_module_soil_short", "Soil")
     end
     if titleEl then titleEl:setText(short) end
-    if tagEl and tagEl.setText then
-        -- Legacy compact-row tag (retired Map anatomy); keep nil-safe if old XML binds.
+    if tagEl then
         if panel.id == "soilFertilizer" then
             tagEl:setText(tr("rf_pda_module_tag_host", "open"))
         else
@@ -2758,40 +2750,6 @@ function RfPdaMenuPage:_populateModuleRow(index, cell)
     local selected = host and host.activeModuleId == panel.id
     if titleEl and titleEl.setTextColor then
         titleEl:setTextColor(unpack(selected and COLOR_LIME_BRIGHT or COLOR_DIM))
-    end
-    -- Radio plate: Map iconBg lit = white overlay; unlit = black (one lit at a time).
-    if iconBg ~= nil and iconBg.setImageColor then
-        if selected then
-            iconBg:setImageColor(1, 1, 1, 1)
-        else
-            iconBg:setImageColor(0, 0, 0, 1)
-        end
-    end
-    -- Icon slot stays blank.png (never nil → purple); no per-module art this pass.
-    if icon ~= nil then
-        if (icon.filename == nil or icon.filename == "") and icon.setImageFilename then
-            pcall(function()
-                icon:setImageFilename("$dataS/menu/blank.png")
-            end)
-        end
-        if icon.setImageColor then
-            icon:setImageColor(0, 0, 0, 0)
-        end
-    end
-end
-
---- Light-only: re-paint visible module cells for radio lit/dim without reloadData.
-function RfPdaMenuPage:_paintModuleListSelection()
-    local list = self.moduleList
-    if list == nil then return end
-    local elements = list.elements
-    if type(elements) ~= "table" then return end
-    for i = 1, #elements do
-        local cell = elements[i]
-        local idx = cell and cell.rowDataIndex
-        if type(idx) == "number" and idx > 0 then
-            self:_populateModuleRow(idx, cell)
-        end
     end
 end
 
