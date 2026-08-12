@@ -105,6 +105,11 @@ source(modDirectory .. "src/PositionalCapture.lua")
 -- drive it. Consumes SCS positional moisture (absent = inert).
 source(modDirectory .. "src/EstablishmentFailure.lua")
 source(modDirectory .. "src/ViabilityMask.lua")
+-- SF-53 GROWTH CREDIT: the reward half of the SF-2M family, a peer of
+-- ViabilityMask (same class idiom). Consumes SF-52's getter and lattice at
+-- runtime; publishes nothing. Inert unless the growth_modulation release gate
+-- is open and the mask is enabled.
+source(modDirectory .. "src/GrowthCredit.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
