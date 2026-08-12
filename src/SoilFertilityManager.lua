@@ -69,6 +69,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- release gate is open and the mask is enabled.
     self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
 
+    -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
+    -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
+    -- the family write machine; blocked cells fall behind the field. Inert
+    -- unless the growth_modulation release gate is open and the mask enabled.
+    self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -716,6 +722,16 @@ function SoilFertilityManager:activateSoilSystem()
             self.growthCredit:initialize()
             if g_server ~= nil then
                 self.growthCredit:register()
+            end
+        end
+
+        -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthBlock then
+            self.growthBlock:initialize()
+            if g_server ~= nil then
+                self.growthBlock:register()
             end
         end
 
@@ -2079,6 +2095,12 @@ function SoilFertilityManager:delete()
     if self.growthCredit then
         self.growthCredit:delete()
         self.growthCredit = nil
+    end
+
+    -- SF-78 growth block: drop both message subscriptions and the capture.
+    if self.growthBlock then
+        self.growthBlock:delete()
+        self.growthBlock = nil
     end
     -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
     -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step
