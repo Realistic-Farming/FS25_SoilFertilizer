@@ -842,6 +842,18 @@ function SoilFertilityManager:onMissionStarted()
             return
         end
 
+        -- SF-76 FIELD GENESIS: a NEW save (no soilData.xml yet) seeds its
+        -- starting soil FROM TERRAIN, deterministically from a per-save seed
+        -- (the savegame directory hash, stable across two loads of one save).
+        -- An existing save is untouched: genesis stays off and the fieldData
+        -- that exists loads as always. Server-derived only.
+        if g_server ~= nil and not self:_hasSavedSoilData() then
+            self.soilSystem.genesisActive = true
+            self.soilSystem.genesisSeed   = self:_genesisSeed()
+            SoilLogger.info("[SF-76] Field genesis ACTIVE for this new save (seed %d)",
+                self.soilSystem.genesisSeed)
+        end
+
         SoilLogger.info("Initializing soil system (fields guaranteed populated)...")
         self:activateSoilSystem()
 
@@ -1387,11 +1399,38 @@ function SoilFertilityManager:saveSoilData()
     end
 end
 
+-- SF-76: does this save already carry soil data? A new save has neither a
+-- soilData.xml nor a StateLedger soil block, so genesis may seed from terrain.
+function SoilFertilityManager:_hasSavedSoilData()
+    if SoilStateLedgerBridge ~= nil and SoilStateLedgerBridge.hasLedgerState ~= nil
+        and SoilStateLedgerBridge.hasLedgerState() then
+        return true
+    end
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory
+    if path == nil then return false end
+    return fileExists(path .. "/soilData.xml")
+end
+
+-- SF-76: the deterministic per-save seed. The savegame directory path is the
+-- save's stable identity across two loads of one save, so hashing it yields
+-- the same seed twice (the byte-identical acceptance). Stable across reloads,
+-- differs between saves.
+function SoilFertilityManager:_genesisSeed()
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory or ""
+    local seed = 0
+    for i = 1, #path do
+        local c = string.byte(path, i)
+        seed = (seed * 31 + c) % 2147483647
+    end
+    return seed
+end
+
 --- Load soil data from XML file
 --- Reads from {savegame}/soilData.xml if exists
 --- Falls back to defaults if file not found
-function SoilFertilityManager:loadSoilData()
-    if not self.soilSystem then
+function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
         SoilLogger.error("loadSoilData: soilSystem is nil")
         return
     end
