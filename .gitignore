@@ -28,3 +28,6 @@ SESSION-HANDOFF.md
 node_modules/
 
 translations/translations/
+
+.local/
+
