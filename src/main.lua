@@ -110,6 +110,12 @@ source(modDirectory .. "src/ViabilityMask.lua")
 -- runtime; publishes nothing. Inert unless the growth_modulation release gate
 -- is open and the mask is enabled.
 source(modDirectory .. "src/GrowthCredit.lua")
+-- SF-78 GROWTH BLOCK: the hold half of the SF-2M family. Capture at
+-- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through the
+-- family write machine. No Time Guard registration; the engine's own bracket
+-- is the clock. Inert unless the growth_modulation release gate is open and
+-- the mask is enabled.
+source(modDirectory .. "src/GrowthBlock.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
