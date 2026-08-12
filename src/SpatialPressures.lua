@@ -159,48 +159,6 @@ end
 -- The daily pass
 -- =========================================================
 
---- [SF-21] Seed a BOUNDARY-CELL ORIGIN through the pressure build's own entry.
---- SF-21 reserves this entry ("built so it can later ask what is on the other
---- side of a boundary"); the crossing pre-pass calls it after a conducive roll.
---- Picks an edge-weighted cell (the same weighting the daily pest origin uses)
---- and stamps the neighbour's pressure onto it. Never a direct interior write.
----@param selfSoilSystem table the SoilFertilitySystem
----@param fieldId number
----@param field table
----@param day number
----@return boolean seeded
-function SpatialPressures:seedBoundaryOrigin(selfSoilSystem, fieldId, field, day)
-    if not selfSoilSystem or not field or not field.zoneData then return false end
-    local cells = self:enumerateCells(field)
-    if #cells == 0 then return false end
-    local poly = selfSoilSystem:_getFieldPolyVerts(fieldId, field)
-    local distances = {}
-    if poly and #poly >= 3 then
-        for i, c in ipairs(cells) do
-            distances[i] = self:_distanceToPoly(c.x, c.z, poly)
-        end
-    end
-    local weights, totalW = {}, 0
-    for i, c in ipairs(cells) do
-        local w = 0.5 + self:pestEdgeWeight(distances[i])
-        weights[i] = w
-        totalW = totalW + w
-    end
-    local r = self:hash(fieldId, day * 13 + 7, 1)
-    local acc, pick, guard = 0, nil, 0
-    while pick == nil and guard < #cells do
-        guard = guard + 1
-        acc = acc + (weights[guard] or 1.0)
-        if acc >= r * (totalW or 1.0) then pick = guard end
-    end
-    if pick then
-        local c = cells[pick]
-        c.cell.diseasePressure = math.max(c.cell.diseasePressure or 0, field.diseasePressure or 0)
-        return true
-    end
-    return false
-end
-
 --- Run the spatial pass for one field on one day. Server-only, called from
 --- _processOneDailyField AFTER the field-level pest/disease values are computed.
 ---
@@ -213,11 +171,8 @@ end
 ---@param field table
 ---@param day number
 ---@param fieldPoly table|nil  { x, z } verts or nil (edge distance disabled)
----@param neighbourArcs table|nil  [SF-21] the day's crossing snapshot arcs for
----        this field; when present, the pest origin weight is recomposed as
----        baseline x neighbour modifier (B2). nil = today's behaviour exactly.
 ---@return table result  { origins, seeds, ceilingReached }
-function SpatialPressures:run(selfSoilSystem, fieldId, field, day, fieldPoly, neighbourArcs)
+function SpatialPressures:run(selfSoilSystem, fieldId, field, day, fieldPoly)
     if not SpatialPressures.ENABLED then return { origins = 0, seeds = 0, ceilingReached = false } end
     if not field or not field.zoneData then
         return { origins = 0, seeds = 0, ceilingReached = false }
@@ -279,21 +234,10 @@ function SpatialPressures:run(selfSoilSystem, fieldId, field, day, fieldPoly, ne
     end
 
     if pestRaised then
-        -- pest origin: edge-weighted pick, recomposed by the SF-21 neighbour
-        -- modifier when a crossing snapshot is available (baseline x modifier).
-        local neighbourMod = 1.0
-        if neighbourArcs and NeighbourCrossing and NeighbourCrossing.ENABLED then
-            -- Average the arc modifiers (bounded, monotonic); 1.0 when all empty.
-            local sum, count = 0, 0
-            for _, arc in ipairs(neighbourArcs) do
-                sum = sum + NeighbourCrossing:neighbourPestModifier(arc)
-                count = count + 1
-            end
-            if count > 0 then neighbourMod = sum / count end
-        end
+        -- pest origin: edge-weighted pick
         local weights, totalW = {}, 0
         for i, c in ipairs(cells) do
-            local w = (0.5 + self:pestEdgeWeight(distances[i])) * neighbourMod
+            local w = 0.5 + self:pestEdgeWeight(distances[i])
             weights[i] = w
             totalW = totalW + w
         end

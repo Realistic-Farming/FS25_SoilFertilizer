@@ -10,32 +10,6 @@
 HookManager = {}
 local HookManager_mt = Class(HookManager)
 
---- [SF-19 item 5] Resolve the per-section pest/disease pressure for See & Spray.
---- Preference order: the synced per-pixel display maps (readValueAtWorld, nil on
---- unwritten pixels) -> the zoneData cell -> the field scalar. On a client the
---- zoneData cell is the flattened copy, so the value maps carry the real per-cell
---- truth the map paints, which is exactly the fidelity this re-point exists to add.
----@param soilSys table|nil  the SoilFertilitySystem (for valueMaps)
----@param fd table|nil       the fieldData entry
----@param cell table|nil     the zoneData cell (may be nil)
----@param sx number          world X of the section tip
----@param sz number          world Z of the section tip
----@return number pest, number disease
-function HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
-    local pest, disease
-    local vm = nil
-    if soilSys and soilSys.valueMaps and soilSys.vmAvailable and soilSys:vmAvailable() then
-        vm = soilSys.valueMaps
-    end
-    if vm then
-        pest    = vm:readValueAtWorld("pestPressure",    sx, sz)
-        disease = vm:readValueAtWorld("diseasePressure", sx, sz)
-    end
-    if pest    == nil then pest    = (cell and cell.pestPressure)    or (fd and fd.pestPressure    or 0) end
-    if disease == nil then disease = (cell and cell.diseasePressure) or (fd and fd.diseasePressure or 0) end
-    return pest, disease
-end
-
 function HookManager.new()
     local self = setmetatable({}, HookManager_mt)
     self.hooks = {}
@@ -1557,13 +1531,8 @@ function HookManager:installSeeAndSprayHook()
                                 math.floor(sz / zone.CELL_SIZE))
                             local cell = fd.zoneData and fd.zoneData[cellKey]
 
-                            -- [SF-19 item 5] Client fidelity: prefer the synced
-                            -- per-pixel display maps, then the cell, then the field
-                            -- scalar. See resolveCellPressure for the contract.
-                            local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
-                            -- Weed stays on the cell/field path: the brief leaves weed to
-                            -- the game-native weed density map (queried below), so it is
-                            -- not part of the pressure re-point.
+                            local cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
+                            local cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
                             local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
 
                             local skip = false

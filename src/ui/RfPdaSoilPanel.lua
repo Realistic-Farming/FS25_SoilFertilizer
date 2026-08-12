@@ -75,9 +75,182 @@ local function appendFieldEntry(page, sfm, fieldId)
     end
     table.insert(page.fieldData, {
         fieldId = fieldId,
+        memberFieldIds = { fieldId },
+        patchLabel = nil,
         info = info,
         urgency = urgency or 0,
     })
+end
+
+--- Worst nutrient status across members (min value / worst band).
+local function mergeFieldInfoWorst(sfm, memberIds)
+    if sfm == nil or sfm.soilSystem == nil or memberIds == nil or #memberIds == 0 then
+        return nil, 0
+    end
+    local bestInfo = nil
+    local maxUrgency = 0
+    local sumArea = 0
+    local minN, minP, minK = nil, nil, nil
+    local worstPh = nil
+    local worstPhDist = -1
+    local needsFert = false
+    local lastSample, nextSample = nil, nil
+    local cropTargets = nil
+
+    for _, fid in ipairs(memberIds) do
+        local ok, info = pcall(function()
+            return sfm.soilSystem:getFieldInfo(fid)
+        end)
+        if ok and info ~= nil then
+            if bestInfo == nil then
+                bestInfo = info
+                cropTargets = info.cropTargets
+            end
+            sumArea = sumArea + (info.fieldArea or 0)
+            local nVal = info.nitrogen and info.nitrogen.value or 0
+            local pVal = info.phosphorus and info.phosphorus.value or 0
+            local kVal = info.potassium and info.potassium.value or 0
+            if minN == nil or nVal < minN then minN = nVal end
+            if minP == nil or pVal < minP then minP = pVal end
+            if minK == nil or kVal < minK then minK = kVal end
+            local phNum = tonumber(info.pH)
+            if phNum ~= nil then
+                local dist = 0
+                if phNum < 6.5 then
+                    dist = 6.5 - phNum
+                elseif phNum > 7.0 then
+                    dist = phNum - 7.0
+                end
+                if dist > worstPhDist then
+                    worstPhDist = dist
+                    worstPh = phNum
+                end
+            end
+            if info.needsFertilization then
+                needsFert = true
+            end
+            if info.lastSampleDate ~= nil then
+                lastSample = info.lastSampleDate
+            end
+            if info.nextSampleSuggested ~= nil then
+                nextSample = info.nextSampleSuggested
+            end
+        end
+        local urgOk, urgVal = pcall(function()
+            return sfm.soilSystem:getFieldUrgency(fid)
+        end)
+        if urgOk and urgVal ~= nil and urgVal > maxUrgency then
+            maxUrgency = urgVal
+        end
+    end
+
+    if bestInfo == nil then
+        return nil, 0
+    end
+
+    -- Shallow copy with worst nutrients / summed area for table display.
+    local merged = {}
+    for k, v in pairs(bestInfo) do
+        merged[k] = v
+    end
+    merged.fieldArea = sumArea
+    merged.needsFertilization = needsFert
+    merged.lastSampleDate = lastSample
+    merged.nextSampleSuggested = nextSample
+    merged.cropTargets = cropTargets
+    if minN ~= nil then
+        merged.nitrogen = { value = minN, status = (bestInfo.nitrogen and bestInfo.nitrogen.status) or "Poor" }
+        if minN < 30 then merged.nitrogen.status = "Poor"
+        elseif minN < 50 then merged.nitrogen.status = "Fair"
+        else merged.nitrogen.status = "Good" end
+    end
+    if minP ~= nil then
+        merged.phosphorus = { value = minP, status = "Poor" }
+        if minP < 25 then merged.phosphorus.status = "Poor"
+        elseif minP < 45 then merged.phosphorus.status = "Fair"
+        else merged.phosphorus.status = "Good" end
+    end
+    if minK ~= nil then
+        merged.potassium = { value = minK, status = "Poor" }
+        if minK < 20 then merged.potassium.status = "Poor"
+        elseif minK < 40 then merged.potassium.status = "Fair"
+        else merged.potassium.status = "Good" end
+    end
+    if worstPh ~= nil then
+        merged.pH = worstPh
+    end
+    return merged, maxUrgency
+end
+
+local COLOR_RANK = { poor = 3, urgent = 3, fair = 2, warn = 2, good = 1, ok = 1 }
+
+--- Merge treatment plan rows across patch members (worst colorKey per nutrient).
+local function mergeWorstPlanRows(memberIds)
+    local byKey = {}
+    for _, fid in ipairs(memberIds or {}) do
+        local rows = {}
+        if SoilTreatmentRates and SoilTreatmentRates.buildPlanTableRows then
+            rows = SoilTreatmentRates.buildPlanTableRows(fid) or {}
+        end
+        for _, row in ipairs(rows) do
+            local key = tostring(row.nutrient or row.product or row.profileKey or "?")
+            local rank = COLOR_RANK[row.colorKey] or 0
+            local prev = byKey[key]
+            if prev == nil or rank > (COLOR_RANK[prev.colorKey] or 0) then
+                byKey[key] = row
+            end
+        end
+    end
+    local out = {}
+    for _, row in pairs(byKey) do
+        out[#out + 1] = row
+    end
+    if SoilTreatmentRates and SoilTreatmentRates.sortPlanRows then
+        -- sortPlanRows may be local; fall back to buildPlanTableRows sort via one field
+        pcall(function()
+            -- Prefer calling through a public sort if exposed; otherwise leave unsorted here
+            -- and re-sort via a dummy single-field call path below.
+        end)
+    end
+    -- Sort like SoilTreatmentRates: sortGroup then nutrient.
+    table.sort(out, function(a, b)
+        local ga, gb = a.sortGroup or 99, b.sortGroup or 99
+        if ga ~= gb then return ga < gb end
+        local sa, sb = a.sortSub or 99, b.sortSub or 99
+        if sa ~= sb then return sa < sb end
+        return tostring(a.nutrient or "") < tostring(b.nutrient or "")
+    end)
+    return out
+end
+
+--- Count irrigation systems covering any member (SCS soft-detect).
+local function countCoveringPivots(memberIds)
+    local mgr = g_currentMission and g_currentMission.cropStressManager
+    if mgr == nil then
+        mgr = rawget(_G, "g_cropStressManager")
+    end
+    if mgr == nil or mgr.irrigationManager == nil or mgr.irrigationManager.systems == nil then
+        return 0
+    end
+    local seen = {}
+    local n = 0
+    for sysId, sys in pairs(mgr.irrigationManager.systems) do
+        local covered = sys and sys.coveredFields
+        if covered ~= nil then
+            for _, mid in ipairs(memberIds or {}) do
+                for i = 1, #covered do
+                    if covered[i] == mid or tonumber(covered[i]) == tonumber(mid) then
+                        if not seen[sysId] then
+                            seen[sysId] = true
+                            n = n + 1
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end
+    return n
 end
 
 local function countFieldDataKeys(fieldData)
@@ -88,11 +261,9 @@ local function countFieldDataKeys(fieldData)
     return n
 end
 
---- Rebuild page.fieldData from SoilFertilitySystem (sorted by fieldId).
---- Prefer owned fields (Wizard ruling): fieldData keys are farmland ids, so
---- ownership is g_farmlandManager:getFarmlandOwner(fieldId), same as RfSoilFrame.
---- If owned filter yields 0 but soilSystem.fieldData has entries, fall back to
---- all fields with data (farmId mismatch / MP join edge).
+--- Rebuild page.fieldData as farm patches (session aggregates of owned farmland ids).
+--- Prefer owned fields (Wizard ruling): fieldData keys are farmland ids.
+--- Falls back to all fields with data when owned filter is empty.
 ---@param page table RfPdaMenuPage instance
 function RfPdaSoilPanel.rebuildFieldData(page)
     page.fieldData = {}
@@ -112,26 +283,28 @@ function RfPdaSoilPanel.rebuildFieldData(page)
         return
     end
 
+    local tr = page._rfTr or function(k, fb) return fb or k end
     local farmId = resolveFarmId()
+    local ownedIds = {}
     local usedOwnedFilter = false
     if farmId ~= nil and farmId ~= 0 and g_farmlandManager ~= nil then
         usedOwnedFilter = true
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
             local owner = g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == farmId then
-                appendFieldEntry(page, sfm, fieldId)
+                ownedIds[#ownedIds + 1] = fieldId
             end
         end
     end
 
-    if #page.fieldData == 0 then
+    if #ownedIds == 0 then
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
-            appendFieldEntry(page, sfm, fieldId)
+            ownedIds[#ownedIds + 1] = fieldId
         end
-        if usedOwnedFilter and #page.fieldData > 0 then
+        if usedOwnedFilter and #ownedIds > 0 then
             local msg = string.format(
                 "RfPdaSoilPanel: owned filter empty; falling back to all fields with soil data (%d)",
-                #page.fieldData
+                #ownedIds
             )
             if SoilLogger ~= nil and type(SoilLogger.info) == "function" then
                 SoilLogger.info("%s", msg)
@@ -141,8 +314,41 @@ function RfPdaSoilPanel.rebuildFieldData(page)
         end
     end
 
+    local patchList = nil
+    if FarmPatchUtil ~= nil and type(FarmPatchUtil.buildPatches) == "function" then
+        local ok, result = pcall(function()
+            return FarmPatchUtil.buildPatches(ownedIds, {
+                useDensmapConfirm = true,
+                tr = tr,
+            })
+        end)
+        if ok then
+            patchList = result
+        end
+    end
+
+    if patchList == nil or #patchList == 0 then
+        for _, fieldId in ipairs(ownedIds) do
+            appendFieldEntry(page, sfm, fieldId)
+        end
+    else
+        for _, patch in ipairs(patchList) do
+            local members = patch.memberFieldIds or { patch.patchId }
+            local info, urgency = mergeFieldInfoWorst(sfm, members)
+            if info ~= nil then
+                table.insert(page.fieldData, {
+                    fieldId = patch.patchId,
+                    memberFieldIds = members,
+                    patchLabel = patch.label,
+                    info = info,
+                    urgency = urgency or 0,
+                })
+            end
+        end
+    end
+
     table.sort(page.fieldData, function(a, b)
-        return a.fieldId < b.fieldId
+        return (a.fieldId or 0) < (b.fieldId or 0)
     end)
 end
 
@@ -175,7 +381,16 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
     local fertEl   = cell:getDescendantByName("fieldRowFert")
 
     if idEl then
-        idEl:setText(string.format("Field %s", tostring(entry.fieldId)))
+        local label = entry.patchLabel
+        if label == nil or label == "" then
+            local members = entry.memberFieldIds
+            if FarmPatchUtil ~= nil and members ~= nil and #members > 0 then
+                label = FarmPatchUtil.formatPatchLabel(members, tr)
+            else
+                label = string.format("Field %s", tostring(entry.fieldId))
+            end
+        end
+        idEl:setText(label)
     end
 
     if areaEl then
@@ -237,104 +452,221 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
 
     if fertEl then
         if info.needsFertilization then
-            fertEl:setText(tr("rf_pda_fert_chip", "FERT"))
+            fertEl:setText(tr("rf_pda_fert_in_need", "IN NEED"))
             fertEl:setTextColor(unpack(COLOR_FAIR))
         else
             fertEl:setText("-")
             fertEl:setTextColor(unpack(COLOR_DIM))
         end
     end
+
+    -- Crop pressure columns. Bands copied from SoilFieldDetailDialog:_setPressure so the
+    -- overview and the deep desk can never disagree: under 20 Good, under 50 Fair, else High.
+    -- HONESTY (George + Samantha veto): these read info.weedPressure / info.pestPressure /
+    -- info.shownDiseasePressure ONLY. The mock shows Weeds looking like N and Pests like P,
+    -- but that is placeholder art - nutrients must never be copied into these cells.
+    local weedEl    = cell:getDescendantByName("fieldRowWeed")
+    local pestEl    = cell:getDescendantByName("fieldRowPest")
+    local diseaseEl = cell:getDescendantByName("fieldRowDisease")
+
+    local function colorForPressure(p)
+        if p < 20 then
+            return COLOR_GOOD
+        elseif p < 50 then
+            return COLOR_FAIR
+        end
+        return COLOR_POOR
+    end
+
+    local function setPressureCell(el, value)
+        if el == nil then return end
+        local p = math.floor(tonumber(value) or 0)
+        el:setText(string.format("%d%%", p))
+        el:setTextColor(unpack(colorForPressure(p)))
+    end
+
+    setPressureCell(weedEl, info.weedPressure)
+    setPressureCell(pestEl, info.pestPressure)
+
+    -- Disease is scouting-gated. shownDiseasePressure is nil exactly when the field has not
+    -- been scouted; that is honest absence and must read as the word, never as 0% and never
+    -- as the ungated raw info.diseasePressure (which exists but is not ours to show).
+    if diseaseEl then
+        if info.shownDiseasePressure == nil then
+            diseaseEl:setText(tr("sf_unscouted", "Unscouted"))
+            diseaseEl:setTextColor(unpack(COLOR_DIM))
+        else
+            setPressureCell(diseaseEl, info.shownDiseasePressure)
+        end
+    end
 end
 
--- =========================================================
--- ROTATION CARD (Wizard rotation-card call site, 2026-08-08)
--- Populates the read-only crop rotation card in the Soil Esc
--- glance (soilRotationTitle / soilRotationLast /
--- soilRotationStatus / soilRotationTip). Reuses
--- RotationPlannerData so the words match the deep planner.
--- Nil-safe: older door XML without the card ids renders nothing.
--- =========================================================
+--- Paint the three What-if rows (crop / status / effect) from RotationPlannerData.
+--- Read-only projection only: pickCandidates + project + statusWord + effectText.
+--- Never invents a crop - a candidate with no projection prints honest dashes.
+local function paintWhatIfRows(page, entry, tr, clip)
+    local rows = page.soilRotationIfRows
+    local hdr  = page.soilRotationWhatIfHeader
+    if rows == nil then return end
 
-function RfPdaSoilPanel.refreshRotationCard(page, entry)
-    local tr = page._rfTr or function(k, fb) return fb or k end
-    local card = page.soilRotationCard
-    local titleEl = page.soilRotationTitle
-    local lastEl = page.soilRotationLast
-    local statusEl = page.soilRotationStatus
-    local tipEl = page.soilRotationTip
-    if card == nil or titleEl == nil or lastEl == nil or statusEl == nil or tipEl == nil then
-        return
-    end
-
-    titleEl:setText(tr("sf_rp_title", "Rotation Planner"))
-
-    local fieldId = entry and entry.fieldId or page.selectedFieldId
-    local sfm = g_SoilFertilityManager
-    if sfm == nil and type(getfenv) == "function" then
-        local env0 = getfenv(0)
-        if env0 ~= nil then sfm = env0.g_SoilFertilityManager end
-    end
-    if sfm == nil or sfm.soilSystem == nil or fieldId == nil or fieldId <= 0 then
-        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
-        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
-        tipEl:setText("")
-        return
-    end
-
-    -- FieldInfo via the same public payload the deep planner reads.
-    local info = nil
-    local ok, res = pcall(function()
-        return sfm.soilSystem:getFieldInfo(fieldId)
-    end)
-    if ok and res ~= nil then info = res end
-
-    if info == nil then
-        lastEl:setText(tr("sf_rp_no_history", "No crop history yet"))
-        statusEl:setText(tr("sf_rp_status_unknown", "Unknown"))
-        tipEl:setText(tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted."))
-        return
-    end
-
-    -- One-line standing (crops + bonus) and the status word, from the same
-    -- data the deep planner renders, so the glance and the planner agree.
-    local line = tr("sf_rp_no_history", "No crop history yet")
-    local statusWord = tr("sf_rp_status_unknown", "Unknown")
-    local colorKey = "unknown"
-    if RotationPlannerData ~= nil then
-        pcall(function()
-            line, colorKey = RotationPlannerData.standingLine(info)
-            local word = RotationPlannerData.statusWord(info.rotationStatus)
-            if word then statusWord = word end
-        end)
-    else
-        if info.lastCrop ~= nil and info.lastCrop ~= "" then
-            line = info.lastCrop
+    local function setEl(el, s)
+        if el ~= nil then
+            if el.setVisible then el:setVisible(true) end
+            if el.setText then el:setText(s or "") end
         end
-        if info.rotationStatus ~= nil then statusWord = info.rotationStatus end
     end
 
-    lastEl:setText(line)
-    statusEl:setText(statusWord)
+    setEl(hdr, tr("sf_rp_what_if", "What if (next crop)"))
+    setEl(page.soilRotationIfColCrop,   tr("sf_rp_col_crop", "Crop"))
+    setEl(page.soilRotationIfColStatus, tr("sf_rp_col_status", "Status"))
+    setEl(page.soilRotationIfColEffect, tr("sf_rp_col_effect", "Effect"))
 
-    -- Tip: bonus days remaining when a rotation bonus is live, else the hint.
-    local tip = tr("sf_rp_hint", "Same candidates as the field-detail foresight. Read-only; nothing is planted.")
-    if info.rotationBonusDaysLeft ~= nil and tonumber(info.rotationBonusDaysLeft) ~= nil
-        and tonumber(info.rotationBonusDaysLeft) > 0 then
-        tip = string.format(tr("sf_rp_bonus_days", "bonus %dd"),
-            math.floor(tonumber(info.rotationBonusDaysLeft)))
+    local rpd = RotationPlannerData
+    local info = entry ~= nil and entry.info or nil
+    local fieldId = entry ~= nil and entry.fieldId or nil
+
+    local cands, cache = nil, nil
+    if rpd ~= nil and info ~= nil and fieldId ~= nil then
+        if type(rpd.pickCandidates) == "function" then
+            local ok, c = pcall(rpd.pickCandidates, info.lastCrop, nil)
+            if ok then cands = c end
+        end
+        if type(rpd.cacheForFields) == "function" then
+            local ok, cc = pcall(rpd.cacheForFields, { fieldId })
+            if ok then cache = cc end
+        end
     end
-    tipEl:setText(tip)
 
-    if colorKey == "bonus" then
-        statusEl:setTextColor(unpack(COLOR_LIME_BRIGHT))
-        lastEl:setTextColor(unpack(COLOR_GOOD))
-    elseif colorKey == "fatigue" then
-        statusEl:setTextColor(unpack(COLOR_POOR))
-        lastEl:setTextColor(unpack(COLOR_FAIR))
+    for i = 1, 3 do
+        local r = rows[i]
+        if r ~= nil then
+            local cand = cands and cands[i] or nil
+            if cand == nil or cand == "" then
+                setEl(r.crop, "-"); setEl(r.status, ""); setEl(r.effect, "")
+            else
+                local label = (type(rpd.cropLabel) == "function") and rpd.cropLabel(cand) or tostring(cand)
+                local proj
+                if cache ~= nil and type(rpd.project) == "function" then
+                    local ok, pr = pcall(rpd.project, cache, fieldId, cand)
+                    if ok then proj = pr end
+                end
+                local word = (proj ~= nil and type(rpd.statusWord) == "function")
+                    and rpd.statusWord(proj.status) or tr("sf_rp_status_unknown", "Unknown")
+                local eff = (type(rpd.effectText) == "function") and rpd.effectText(proj) or ""
+                setEl(r.crop,   clip(label, 16))
+                setEl(r.status, clip(word, 10))
+                setEl(r.effect, clip(eff, 18))
+            end
+        end
+    end
+end
+
+--- Read-only crop rotation card in the TREATMENT strip (Samantha DESIGN CLOSED +
+--- George ENGINE ACK 2026-08-08; Tyson eyes-on shot 01).
+--- Restored after PR #800 landed a tree where the call site survived but this
+--- definition did not, so every TREATMENT refresh was calling a nil value.
+--- Read-only by law: no rotation apply, no SmoothList, no invented crops.
+---@param page table RfPdaMenuPage instance (may be a thin door without the card ids)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshRotationCard(page, entry)
+    if page == nil then return end
+    local tr = page._rfTr or function(k, fb) return fb or k end
+
+    -- Col 3 ownership for THIS refresh. Cleared first so a door without the card,
+    -- or a painter that throws before claiming, never leaves a stale claim behind.
+    page._rotationCardOwnsCol3 = false
+
+    local cardEl   = page.soilRotationCard
+    local titleEl  = page.soilRotationTitle
+    local lastEl   = page.soilRotationLast
+    local statusEl = page.soilRotationStatus
+    local tipEl    = page.soilRotationTip
+
+    -- Thin doors (Income / Tax / Dairy / NPC / Depot) may host without the card ids.
+    -- Hide what exists, clear, and return. Never throw - PRODUCTS must still paint.
+    if titleEl == nil and lastEl == nil and statusEl == nil and tipEl == nil then
+        if cardEl ~= nil and cardEl.setVisible then cardEl:setVisible(false) end
+        if not page._rotationCardWarned then
+            page._rotationCardWarned = true
+            print("[SoilFertilizer] rotation card ids absent on this door - skipping card (PRODUCTS unaffected)")
+        end
+        return
+    end
+
+    -- George: the sampling box sits at the SAME x=850 as this card, so while Col 3 is the
+    -- rotation card the sampling chrome must stay hidden or it paints over it. This is the
+    -- likely cause of the orphaned look in Tyson shot 01.
+    -- Vera F1: hiding here is necessary but NOT sufficient - refreshTreatmentPlan re-shows
+    -- sampling later in the same refresh whenever sample dates exist, and it runs after us.
+    -- Claiming Col 3 is what actually holds; the hide below just makes the claim immediate.
+    page._rotationCardOwnsCol3 = true
+    local page2 = page
+    for _, sid in ipairs({ "samplingInfoBox", "samplingInfoFallback" }) do
+        local sEl = page2[sid] or (page2.getDescendantById and page2:getDescendantById(sid))
+        if sEl ~= nil and sEl.setVisible then sEl:setVisible(false) end
+    end
+
+    --- Trim to fit the narrow What-if effect column (pic 1 feel).
+    local function clip(s, n)
+        s = tostring(s or "")
+        if #s <= n then return s end
+        return s:sub(1, math.max(1, n - 3)) .. "..."
+    end
+
+    local function set(el, text)
+        if el ~= nil then
+            if el.setVisible then el:setVisible(true) end
+            if el.setText then el:setText(text or "") end
+        end
+    end
+
+    if cardEl ~= nil and cardEl.setVisible then cardEl:setVisible(true) end
+    set(titleEl, tr("rf_pda_treat_rotation", "ROTATION"))
+
+    -- Soft-detect only; never hard-require the planner module.
+    local rpd = RotationPlannerData
+    local info = entry ~= nil and entry.info or nil
+
+    -- No field selected or no planner: Samantha's honest empty map.
+    if info == nil or rpd == nil then
+        set(lastEl, tr("sf_rp_no_history", "No crop history yet"))
+        set(statusEl, tr("sf_rp_status_unknown", "Unknown"))
+        set(tipEl, tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue."))
+        paintWhatIfRows(page, entry, tr, clip)
+        return
+    end
+
+    local cropLabel = type(rpd.cropLabel) == "function" and rpd.cropLabel or nil
+    local hasHistory = info.lastCrop ~= nil and info.lastCrop ~= ""
+
+    if not hasHistory then
+        set(lastEl, tr("sf_rp_no_history", "No crop history yet"))
+        set(statusEl, tr("sf_rp_status_unknown", "Unknown"))
+        set(tipEl, tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue."))
+        paintWhatIfRows(page, entry, tr, clip)
+        return
+    end
+
+    local c1 = cropLabel and cropLabel(info.lastCrop) or tostring(info.lastCrop)
+    local c2 = (info.lastCrop2 ~= nil and info.lastCrop2 ~= "")
+        and (cropLabel and cropLabel(info.lastCrop2) or tostring(info.lastCrop2)) or nil
+    local story = (c2 ~= nil) and string.format("%s / %s", c1, c2) or c1
+    set(lastEl, string.format("%s %s", tr("rf_pda_rotation_last", "Last:"), story))
+
+    local word = type(rpd.statusWord) == "function" and rpd.statusWord(info.rotationStatus) or nil
+    set(statusEl, word or tr("sf_rp_status_unknown", "Unknown"))
+    paintWhatIfRows(page, entry, tr, clip)
+
+    -- One quiet tip, keyed off the same status the deep planner reports.
+    local tip
+    if info.rotationStatus == "Fatigue" then
+        tip = tr("rf_pda_rotation_tip_fatigue", "Same family too long. Change crop next season.")
+    elseif info.rotationStatus == "Bonus" then
+        tip = tr("rf_pda_rotation_tip_bonus", "Rotation bonus active. Keep the sequence going.")
     else
-        statusEl:setTextColor(unpack(COLOR_DIM))
-        lastEl:setTextColor(unpack(COLOR_GOOD))
+        tip = tr("rf_pda_rotation_tip_generic", "Rotate crops to avoid fatigue.")
     end
+    set(tipEl, tip)
 end
 
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
@@ -348,13 +680,27 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         end
     end
 
-    RfPdaSoilPanel.refreshRotationCard(page, entry)
+    -- Cleared per refresh: if refreshRotationCard is missing entirely (the PR #800 shape)
+    -- the claim must not survive from the previous paint and hide sampling forever.
+    page._rotationCardOwnsCol3 = false
+
+    -- Guarded: the card is a nice-to-have glance, PRODUCTS is the load-bearing panel.
+    -- PR #800 shipped a tree where this call site survived but the definition did not,
+    -- so an unguarded call took the whole TREATMENT paint down with it.
+    if type(RfPdaSoilPanel.refreshRotationCard) == "function" then
+        local okCard, errCard = pcall(RfPdaSoilPanel.refreshRotationCard, page, entry)
+        if not okCard and not page._rotationCardErrLogged then
+            page._rotationCardErrLogged = true
+            print("[SoilFertilizer] rotation card paint failed (PRODUCTS continues): " .. tostring(errCard))
+        end
+    end
 
     local function clearTargets()
         if page.treatTargetsHeading then page.treatTargetsHeading:setText("") end
         if page.treatTargetN then page.treatTargetN:setText("") end
         if page.treatTargetP then page.treatTargetP:setText("") end
         if page.treatTargetK then page.treatTargetK:setText("") end
+        if page.treatTargetPH then page.treatTargetPH:setText("") end
         if page.treatTargetsLabel then
             page.treatTargetsLabel:setText("")
             if page.treatTargetsLabel.setVisible then
@@ -410,7 +756,7 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         end
     end
 
-    local function setSelectedLabel(nextTip)
+    local function setSelectedLabel(nextTip, patchLabel, pivotBadge)
         if not page.treatSelectedLabel and not page.treatNextLabel then
             return
         end
@@ -430,12 +776,22 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
             return
         end
 
-        -- Line 1: Field only
+        -- Line 1: patch / field label (+ optional pivot badge)
         if page.treatSelectedLabel then
-            local tpl = tr("rf_pda_treatment_selected", "Selected field: Field %s")
-            local okFmt, formatted = pcall(string.format, tpl, tostring(fieldId))
-            local text = okFmt and formatted or ("Field " .. tostring(fieldId))
-            page.treatSelectedLabel:setText(text)
+            local name = patchLabel
+            if name == nil or name == "" then
+                local tpl = tr("rf_pda_treatment_selected", "Selected field: Field %s")
+                local okFmt, formatted = pcall(string.format, tpl, tostring(fieldId))
+                name = okFmt and formatted or ("Field " .. tostring(fieldId))
+            else
+                local tpl = tr("rf_pda_treatment_selected_patch", "Selected: %s")
+                local okFmt, formatted = pcall(string.format, tpl, name)
+                name = okFmt and formatted or ("Selected: " .. tostring(name))
+            end
+            if pivotBadge ~= nil and pivotBadge ~= "" then
+                name = name .. "  ·  " .. pivotBadge
+            end
+            page.treatSelectedLabel:setText(name)
             if page.treatSelectedLabel.setTextColor then
                 page.treatSelectedLabel:setTextColor(unpack(COLOR_LIME_BRIGHT))
             end
@@ -464,7 +820,7 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
     end
 
     if entry == nil or entry.info == nil then
-        setSelectedLabel(nil)
+        setSelectedLabel(nil, nil, nil)
         clearTargets()
         setProductOk(tr("sf_pda_no_fields", "No field data"), COLOR_DIM)
         -- F1: never draw empty sampling hint (it overlapped PRODUCTS). Hide both.
@@ -474,6 +830,7 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
     end
 
     local info = entry.info
+    local members = entry.memberFieldIds or { fieldId }
     local thresh = SoilConstants and SoilConstants.STATUS_THRESHOLDS or {}
     local ct = info.cropTargets
     local nLo = (ct and ct.N and ct.N.opt) or (thresh.nitrogen and thresh.nitrogen.fair) or 50
@@ -496,20 +853,56 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
     if page.treatTargetK then
         page.treatTargetK:setText(string.format("K %d-%d%%", kLo, kHi))
     end
+    -- Target pH band from constants only (never live info.pH)
+    if page.treatTargetPH then
+        local limits = SoilConstants and SoilConstants.NUTRIENT_LIMITS or {}
+        local phLo = limits.PH_NEUTRAL_LOW or 6.5
+        local phHi = limits.PH_NEUTRAL_HIGH or 7.0
+        page.treatTargetPH:setText(string.format("pH %.1f-%.1f", phLo, phHi))
+    end
     if page.treatTargetsLabel and page.treatTargetsLabel.setVisible then
         page.treatTargetsLabel:setVisible(false)
     end
 
-    local rows = {}
-    if SoilTreatmentRates and SoilTreatmentRates.buildPlanTableRows then
-        rows = SoilTreatmentRates.buildPlanTableRows(fieldId) or {}
-    end
+    local rows = mergeWorstPlanRows(members)
 
     local nextTip = nil
     if #rows > 0 and SoilTreatmentRates and SoilTreatmentRates.buildNextStepLine then
-        nextTip = SoilTreatmentRates.buildNextStepLine(fieldId)
+        -- Tip from the highest-urgency member so Next matches the weak corner.
+        local tipFid = fieldId
+        local tipUrg = -1
+        local sfm = g_SoilFertilityManager
+        if sfm == nil and type(getfenv) == "function" then
+            local env0 = getfenv(0)
+            if env0 ~= nil then sfm = env0.g_SoilFertilityManager end
+        end
+        if sfm ~= nil and sfm.soilSystem ~= nil then
+            for _, mid in ipairs(members) do
+                local urgOk, urgVal = pcall(function()
+                    return sfm.soilSystem:getFieldUrgency(mid)
+                end)
+                if urgOk and urgVal ~= nil and urgVal > tipUrg then
+                    tipUrg = urgVal
+                    tipFid = mid
+                end
+            end
+        end
+        nextTip = SoilTreatmentRates.buildNextStepLine(tipFid)
     end
-    setSelectedLabel(nextTip)
+
+    local pivotBadge = nil
+    local pivotCount = countCoveringPivots(members)
+    if pivotCount > 0 then
+        local tpl = tr("rf_farm_patch_pivots_badge", "%d pivots cover this block")
+        local okFmt, formatted = pcall(string.format, tpl, pivotCount)
+        pivotBadge = okFmt and formatted or (tostring(pivotCount) .. " pivots cover this block")
+    end
+
+    local patchLabel = entry.patchLabel
+    if patchLabel == nil and FarmPatchUtil ~= nil then
+        patchLabel = FarmPatchUtil.formatPatchLabel(members, tr)
+    end
+    setSelectedLabel(nextTip, patchLabel, pivotBadge)
 
     if #rows == 0 then
         setProductOk(tr("sf_treat_action_ok", "OK - no treatment needed"), COLOR_GOOD)
@@ -529,12 +922,17 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         sampleText = table.concat(bits, "\n")
     end
 
-    -- F1: show sampling only when real dates exist; never show empty fallback over PRODUCTS
+    -- F1: show sampling only when real dates exist; never show empty fallback over PRODUCTS.
+    -- Vera F1 (resubmit): sampling sits at x=850, the same x as the rotation card. This block
+    -- runs AFTER refreshRotationCard, so a painter-only hide loses the moment sample dates
+    -- exist. Ownership decides for the whole refresh - card up means sampling stays down,
+    -- dates or not. George's ruling stands: hide, never move the sampling x.
+    local cardOwnsCol3 = page._rotationCardOwnsCol3 == true
     if page.samplingInfoFallback then
         page.samplingInfoFallback:setVisible(false)
     end
     if page.samplingInfoBox then
-        page.samplingInfoBox:setVisible(sampleText ~= nil)
+        page.samplingInfoBox:setVisible(not cardOwnsCol3 and sampleText ~= nil)
     end
     if page.samplingInfoText and sampleText ~= nil then
         page.samplingInfoText:setText(sampleText)

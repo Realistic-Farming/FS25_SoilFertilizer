@@ -76,18 +76,6 @@ source(modDirectory .. "src/HandfulRead.lua")
 -- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
 -- daily pass.
 source(modDirectory .. "src/SpatialPressures.lua")
--- SF-23 SPATIAL NUTRIENTS: the last un-flattening of soil chemistry. Banded
--- leach / pH / harvest depletion across the field's moisture bands, on top of
--- the untouched field-level model. Loaded before SoilFertilitySystem, which
--- calls SpatialNutrients from the leach and harvest paths. Consumes SCS
--- positional moisture and the field-level soil type (absent = uniform today).
-source(modDirectory .. "src/SpatialNutrients.lua")
--- SF-21 NEIGHBOUR CROSSING: what arrives at a field's edge depends on what is
--- actually across it. Upgrades the SF-19 edge mechanism (the reserved slot) with
--- the crossing pre-pass, the pest arc weight recomposition, and the
--- conducive-gated disease boundary seeding. Loaded before SoilFertilitySystem,
--- which runs the daily crossing pass ahead of the mutation batches.
-source(modDirectory .. "src/NeighbourCrossing.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
@@ -125,6 +113,7 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
 source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
+source(modDirectory .. "src/ui/FarmPatchUtil.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
