@@ -1,4 +1,4 @@
--- =========================================================
+﻿-- =========================================================
 -- FS25 Realistic Soil & Fertilizer - Entry Point
 -- =========================================================
 -- Loads all modules in dependency order, hooks FS25 mission
@@ -152,6 +152,7 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
 source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
+source(modDirectory .. "src/ui/FarmPatchUtil.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
@@ -484,8 +485,8 @@ local function loadedMission(mission, node)
     -- the HUD icon filenames AND overlay handles directly via Lua.
     --
     -- WHY BOTH FIELDS:
-    --   ft.hudOverlayFilename  – the path string stored on the fill type object.
-    --   ft.hudOverlay          – the pre-loaded overlay handle that FS25's native
+    --   ft.hudOverlayFilename  â€“ the path string stored on the fill type object.
+    --   ft.hudOverlay          â€“ the pre-loaded overlay handle that FS25's native
     --                            fill-level HUD (bottom-right) actually renders from.
     --
     -- FS25 creates ft.hudOverlay at mission load from the <image hud="..."/> entry
@@ -650,11 +651,11 @@ local function hookSaveLoadEvents()
     --
     -- FS25 1.17+ save flow:
     --   FSBaseMission:saveSavegame()
-    --     → g_savegameController:saveSavegame()
-    --       → saveWriteSavegameStart() (C++)
-    --         → SavegameController:onSaveStartComplete(errorCode, savegameDirectory)
-    --           → missionInfo:setSavegameDirectory(savegameDirectory)   ← sets tempsavegame path
-    --           → missionInfo:saveToXMLFile()                           ← THIS is what we hook
+    --     â†’ g_savegameController:saveSavegame()
+    --       â†’ saveWriteSavegameStart() (C++)
+    --         â†’ SavegameController:onSaveStartComplete(errorCode, savegameDirectory)
+    --           â†’ missionInfo:setSavegameDirectory(savegameDirectory)   â† sets tempsavegame path
+    --           â†’ missionInfo:saveToXMLFile()                           â† THIS is what we hook
     --
     -- The old Mission00.saveToXMLFile hook was a ghost - that method does not exist on
     -- Mission00 and was never called by FS25 1.17, so soilData.xml was never written.
@@ -680,7 +681,7 @@ local function hookSaveLoadEvents()
                     -- file was only ever written on-change to the live dir, so that copy step
                     -- clobbered it and difficulty/replenishment/enabled reverted to defaults
                     -- after a normal save+reload. Writing it here makes settings ride the
-                    -- canonical save into tempsavegame → real dir like everything else.
+                    -- canonical save into tempsavegame â†’ real dir like everything else.
                     if g_SoilFertilityManager.settings then
                         g_SoilFertilityManager.settings:save()
                     end
