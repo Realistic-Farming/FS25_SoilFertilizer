@@ -62,6 +62,13 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- The published surface for the getters lives on this manager, not on the
     -- `viability` field: see getCellGrowthInfo / getFieldGrowthSummary below.
 
+    -- SF-53 GROWTH CREDIT: the reward half of the SF-2M pair. A daily
+    -- bookkeeper counts days of excellence; the period hand advances credit
+    -- cells one step at the drained FINISHED_GROWTH_PERIOD delivery, bucketed
+    -- on the engine's own fruit plane. Inert unless the growth_modulation
+    -- release gate is open and the mask is enabled.
+    self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -698,6 +705,17 @@ function SoilFertilityManager:activateSoilSystem()
             self.viability:initialize()
             if g_server ~= nil then
                 self.viability:registerDailyAccrual()
+            end
+        end
+
+        -- SF-53 GROWTH CREDIT: initialize + register both clocks (the daily
+        -- bookkeeper with Time Guard, the period bell with the message center).
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthCredit then
+            self.growthCredit:initialize()
+            if g_server ~= nil then
+                self.growthCredit:register()
             end
         end
 
@@ -2055,6 +2073,12 @@ function SoilFertilityManager:delete()
 
     if self.soilSystem then
         self.soilSystem:delete()
+    end
+
+    -- SF-53 growth credit: drop the message-center subscription and the store.
+    if self.growthCredit then
+        self.growthCredit:delete()
+        self.growthCredit = nil
     end
     -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
     -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step

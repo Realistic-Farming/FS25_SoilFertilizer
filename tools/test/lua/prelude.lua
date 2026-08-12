@@ -86,6 +86,7 @@ DensityMapFilter = DensityMapFilter or {
 }
 DensityValueCompareType = DensityValueCompareType or { GREATER = 1, BETWEEN = 2, EQUAL = 3 }
 DensityRoundingMode = DensityRoundingMode or { INCLUSIVE = 1 }
+GrowthMode = GrowthMode or { SEASONAL = 1, DAILY = 2, DISABLED = 3 }
 FieldDensityMap = FieldDensityMap or { GROUND_TYPE = 1, SPRAY_TYPE = 2 }
 FSDensityMapUtil = FSDensityMapUtil or { removeWeedArea = function() return true end }
 g_fieldManager = g_fieldManager or { fields = {} }
