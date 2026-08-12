@@ -522,13 +522,7 @@ end
 function SoilMapOverlay:onSideBarClick(posX, posY)
     for _, rect in ipairs(self.buttonRects) do
         if posX >= rect.x1 and posX <= rect.x2 and posY >= rect.y1 and posY <= rect.y2 then
-            if rect.action == "report" then
-                if SoilPDAScreen then SoilPDAScreen.toggle() end
-                return true
-            elseif rect.action == "treatment" then
-                if SoilPDAScreen then SoilPDAScreen.showTreatment() end
-                return true
-            elseif rect.action == "disable" then
+            if rect.action == "disable" then
                 self:setLayer(0)
                 return true
             elseif rect.action == "help" then
@@ -1521,8 +1515,6 @@ function SoilMapOverlay:onDrawHud(frame)
     local _, actionMargin = getNormalizedScreenValues(0, 3)
 
     local actionButtons = {
-        { key = "sf_map_btn_report",    label = "Farm Overview",   action = "report"    },
-        { key = "sf_map_btn_treatment", label = "Treatment Plan",  action = "treatment" },
         { key = "sf_map_btn_disable",   label = "Disable Overlay", action = "disable"   },
         { key = "sf_map_btn_help",      label = "Help",            action = "help"      },
     }
