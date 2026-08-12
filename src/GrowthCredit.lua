@@ -363,6 +363,12 @@ function GrowthCredit:_strokeField(fieldId, entry, vm, _finishedPeriod)
                     }
                 end
             end
+        else
+            -- F165: the cell reads fruit UNKNOWN at the bell (no fruit, or the
+            -- read fails). Its bank was accrued against a crop that is no longer
+            -- there, so invalidate it: a gsFieldSetState or a cultivated-to-UNKNOWN
+            -- field must never carry credit into the next sowing.
+            e.cell.credit = 0
         end
     end
     if #candidates == 0 then return end
@@ -418,8 +424,18 @@ end
 --           scalar cutState compare sits beside it as defense in depth),
 --   never at or past maxHarvestingGrowthState,
 --   never a blocked cell (one getCellGrowthInfo at the bell, on the real field).
+--
+-- F165: a nil stored fruitIndex is a RESET, not a pass. Credit is only ever
+-- banked against a known crop; a cell that accrued while bare (or whose crop
+-- left since) must never spend that bank on whatever is sown later.
 function GrowthCredit:_guardCell(fieldId, fruitIndex, state, cell, entry, gx, gz, vm)
-    if cell.fruitIndex ~= nil and cell.fruitIndex ~= fruitIndex then return false end
+    if cell.fruitIndex == nil then
+        -- The bank was accrued with no fruit on the cell. Invalidate it: the
+        -- credit was never attached to a crop, so it cannot be spent on one now.
+        cell.credit = 0
+        return false
+    end
+    if cell.fruitIndex ~= fruitIndex then return false end
     local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
     if fruitDesc == nil then return false end
     if fruitDesc:getIsCut(state) then return false end
