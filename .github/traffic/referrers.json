@@ -5977,33 +5977,33 @@
   "2026-08-12": [
     {
       "referrer": "github.com",
-      "count": 1600,
-      "uniques": 268
+      "count": 1592,
+      "uniques": 261
     },
     {
       "referrer": "Google",
-      "count": 1368,
-      "uniques": 446
+      "count": 1362,
+      "uniques": 465
     },
     {
       "referrer": "youtube.com",
-      "count": 262,
-      "uniques": 115
+      "count": 295,
+      "uniques": 130
     },
     {
       "referrer": "Bing",
-      "count": 222,
-      "uniques": 89
+      "count": 210,
+      "uniques": 84
     },
     {
       "referrer": "kingmods.net",
-      "count": 131,
-      "uniques": 61
+      "count": 129,
+      "uniques": 63
     },
     {
       "referrer": "DuckDuckGo",
-      "count": 87,
-      "uniques": 9
+      "count": 79,
+      "uniques": 8
     },
     {
       "referrer": "yandex.ru",
@@ -6017,8 +6017,8 @@
     },
     {
       "referrer": "l.facebook.com",
-      "count": 26,
-      "uniques": 14
+      "count": 25,
+      "uniques": 13
     },
     {
       "referrer": "search.brave.com",
