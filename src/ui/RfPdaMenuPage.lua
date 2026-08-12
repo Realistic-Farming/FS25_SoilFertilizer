@@ -656,14 +656,24 @@ function RfPdaMenuPage:initialize()
             end
         end
     }
-    -- SPACE (MENU_EXTRA_1): Crop Stress consultant is secondary only — never default home.
-    -- EXTRA_1 free on CS (Help is Soil-only). SmoothList would swallow MENU_ACTIVATE.
+    -- Dead candidate: Crop Stress consultant footer chip. Kept constructed so stale
+    -- bindings resolve; never assigned to menuButtonInfo (table-hide path VETO).
     self.btnCsConsultant = {
         inputAction = InputAction.MENU_EXTRA_1,
         showWhenPaused = true,
         text = tr("cs_rf_pda_btn_consultant", "Crop consultant"),
         callback = function()
             self:onClickCsConsultant()
+        end
+    }
+    -- CS footer Help (MENU_EXTRA_1). Soft-detects guest onOpenHelp → CsHelpDialog.
+    -- Do not reuse Soil btnHelp (wrong dialog content).
+    self.btnHelpCs = {
+        inputAction = InputAction.MENU_EXTRA_1,
+        showWhenPaused = true,
+        text = tr("cs_pda_btn_help", "Help"),
+        callback = function()
+            self:onClickHelpCs()
         end
     }
 
@@ -1684,10 +1694,12 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     elseif isWc and self.btnOpenWorkerManager ~= nil then
         self.menuButtonInfo = { self.btnBack, self.btnOpenWorkerManager }
     elseif isCs then
-        -- BUILD 18:48: SPACE no longer swaps panes. The consultant button owned the
-        -- table-hiding path, so it comes off the CS footer entirely rather than being
-        -- left pointing at a no-op the player can still press.
-        self.menuButtonInfo = { self.btnBack }
+        -- BUILD Help restore 2026-08-12: Back + Help. Consultant chip stays off footer.
+        self.menuButtonInfo = { self.btnBack, self.btnHelpCs }
+        local trFn = self._rfTr
+        if type(trFn) == "function" and self.btnHelpCs ~= nil then
+            self.btnHelpCs.text = trFn("cs_pda_btn_help", "Help")
+        end
     elseif isSoil then
         -- BUILD 18:52: Rotation Planner and Field Detail come off the Soil footer.
         -- Both dialogs stay registered and still open from the PDA/joiner; only the
@@ -2210,6 +2222,21 @@ end
 --- Kept so any stale binding resolves to something inert rather than erroring.
 function RfPdaMenuPage:onClickCsConsultant()
     return
+end
+
+--- Esc CS Help → guest onOpenHelp → CsHelpDialog (inside SCS env). Never bare CsDialogLoader.
+function RfPdaMenuPage:onClickHelpCs()
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active ~= nil and type(active.onOpenHelp) == "function" then
+        pcall(active.onOpenHelp, self.rfHostPlaceholder)
+        return
+    end
+    local csGuest = (type(mdResolve) == "function")
+            and mdResolve(CsRfPdaGuest, "CsRfPdaGuest") or CsRfPdaGuest
+    if csGuest ~= nil and type(csGuest.onOpenHelp) == "function" then
+        pcall(csGuest.onOpenHelp, self.rfHostPlaceholder)
+    end
 end
 
 function RfPdaMenuPage:_csPageSel()

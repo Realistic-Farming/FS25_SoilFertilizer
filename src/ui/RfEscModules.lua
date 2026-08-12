@@ -232,6 +232,7 @@ function RfEscModules:registerModule(def)
         -- discarded and the Esc Crop Stress buttons would do nothing.
         onOpenConsultant = def.onOpenConsultant,
         onOpenSchedule = def.onOpenSchedule,
+        onOpenHelp = def.onOpenHelp,
         onPaintConsultant = def.onPaintConsultant,
         -- Same trap again, BUILD 15:46: the CS guest registers onPivotRemote on
         -- its module def (CsRfPdaGuest.lua) but it was missing here, so it was
