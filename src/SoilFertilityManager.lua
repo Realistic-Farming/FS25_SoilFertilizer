@@ -1780,28 +1780,54 @@ function SoilFertilityManager:updateAutoRates(dt)
     self._autoRateTimer = 0
 
     -- Need HUD for fill-type and field-id access (client-only objects)
-    if not self.soilHUD then return end
+    if not self.soilHUD then
+        SoilLogger.debug("Auto-rate trace: bail - soilHUD nil")
+        return
+    end
 
     -- Find the player's active applicator vehicle
     local vehicle = getApplicatorVehicle()
-    if not vehicle then return end
+    if not vehicle then
+        SoilLogger.debug("Auto-rate trace: bail - no applicator vehicle (not in one, or rootVehicle nil)")
+        return
+    end
 
     -- Only act when auto mode is engaged for this vehicle
     local rm = self.sprayerRateManager
-    if not rm or not rm:getAutoMode(vehicle.id) then return end
+    if not rm then
+        SoilLogger.debug("Auto-rate trace: bail - sprayerRateManager nil")
+        return
+    end
+    if not rm:getAutoMode(vehicle.id) then
+        SoilLogger.debug("Auto-rate trace: bail - auto mode OFF for vehicle %d (toggle with the AUTO key)", vehicle.id)
+        return
+    end
 
     -- Use the HUD's cached field id (updated every frame in SoilHUD:update)
     local fieldId = self.soilHUD.cachedFieldId
-    if not fieldId or fieldId <= 0 then return end
+    if not fieldId or fieldId <= 0 then
+        SoilLogger.debug("Auto-rate trace: bail - cachedFieldId nil/0 (field detection not resolving)")
+        return
+    end
 
     -- Retrieve live soil data for this field
-    if not self.soilSystem then return end
+    if not self.soilSystem then
+        SoilLogger.debug("Auto-rate trace: bail - soilSystem nil")
+        return
+    end
     local fieldData = self.soilSystem:getFieldInfo(fieldId)
-    if not fieldData then return end
+    if not fieldData then
+        SoilLogger.debug("Auto-rate trace: bail - getFieldInfo(%s) nil", tostring(fieldId))
+        return
+    end
 
     -- Get the fill type currently loaded in the vehicle
     local fillType = self.soilHUD:getSprayerFillType(vehicle)
-    if not fillType then return end
+    if not fillType then
+        SoilLogger.debug("Auto-rate trace: bail - getSprayerFillType nil for vehicle %d (field %s)",
+            vehicle.id, tostring(fieldId))
+        return
+    end
 
     -- Calculate the ideal index and send if it changed
     local newIdx = self:calculateAutoRateIndex(fieldData, fillType)
@@ -1815,6 +1841,11 @@ function SoilFertilityManager:updateAutoRates(dt)
             "Auto-rate: vehicle %d → index %d (%.2fx) [%s on field %d]",
             vehicle.id, newIdx,
             SoilConstants.SPRAYER_RATE.STEPS[newIdx],
+            fillType.name, fieldId)
+    else
+        SoilLogger.debug("Auto-rate: vehicle %d holds index %d (%.2fx) [%s on field %d] - no change",
+            vehicle.id, currentIdx,
+            SoilConstants.SPRAYER_RATE.STEPS[currentIdx] or 1.0,
             fillType.name, fieldId)
     end
 end
@@ -1946,8 +1977,13 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
         if herbTypes and herbTypes[fillType.name] then
             -- Herbicide: always apply at full rate (preventive/knockdown - not weed-pressure-scaled)
             multiplier = 1.0
+        else
+            -- Unknown product type: leave at 1.0 (no adjustment). Traced so a nil-profile
+            -- fill type (e.g. a seeder resolving its seed hopper instead of the fertilizer)
+            -- is visible in a debug run (#809).
+            SoilLogger.debug("Auto-rate calc: %s NOT in FERTILIZER_PROFILES - holding 1.0x (pinned rate)",
+                tostring(fillType.name))
         end
-        -- Unknown product type: leave at 1.0 (no adjustment)
     end
 
     -- Clamp to safe range before finding closest step
