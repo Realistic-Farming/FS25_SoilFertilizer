@@ -1383,6 +1383,13 @@
     <e k="wc_rf_pda_open_manager" v="Abrir gerenciador de trabalhadores" eh="1c6592d5" />
     <e k="sf_pda_btn_rotation_planner" v="Planejador de rotação" eh="5404f1c2" />
     <e k="sf_pda_btn_field_detail" v="Detalhe do campo" eh="03b5acd7" />
+    <e k="sf_exp_confirm_title" v="Experimental Systems" />
+    <e k="sf_exp_confirm_yes" v="Confirm" />
+    <e k="sf_exp_confirm_no" v="Abort" />
+    <e k="sf_exp_confirm_on" v="This turns on systems that are NOT finished. They can behave oddly, change without warning, or affect this savegame in ways that cannot be undone. Keep a backup save." />
+    <e k="sf_exp_confirm_off" v="Experimental systems will stop running on this savegame. Anything they already wrote stays where it is, but it will no longer be updated." />
+    <e k="sf_exp_confirm_q_on" v="Turn experimental systems ON?" />
+    <e k="sf_exp_confirm_q_off" v="Turn experimental systems OFF?" />
     <e k="sf_handful_title" v="The Handful" />
     <e k="sf_handful_sec_nutrients" v="NUTRIENTS" />
     <e k="sf_handful_sec_ground" v="GROUND" />
