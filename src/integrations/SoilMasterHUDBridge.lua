@@ -29,9 +29,43 @@ SoilMasterHUDBridge.active = false   -- MasterHUD present and we registered
 -- The full SF HUD draw stack. Byte-for-byte the same order as the standalone
 -- FSBaseMission.draw hook. Resolves the manager from the canonical global so it
 -- can be driven either by MasterHUD or by SF's own hook.
+--- Is a full-screen drawn panel currently owning the screen?
+---@return boolean
+local function fullScreenPanelOpen(sfm)
+    for _, p in ipairs({ sfm.settingsPanel, sfm.tuningPanel, sfm.cropTuningPanel }) do
+        if p ~= nil and type(p.isOpen) == "function" and p:isOpen() then
+            return true
+        end
+    end
+    return false
+end
+
 function SoilMasterHUDBridge.drawStack()
     local sfm = g_SoilFertilityManager
     if sfm == nil then return end
+
+    -- A FULL-SCREEN PANEL OWNS THE SCREEN, so the HUD stands down while one is up.
+    --
+    -- Without this the Soil Monitor's own text (the Good / Fair / Poor labels and
+    -- the nutrient rows) reads straight THROUGH the panel drawn over it. A panel
+    -- background is an overlay, and an overlay does not cover text that was
+    -- already rendered underneath it, so a HUD cannot be hidden by painting on
+    -- top of it. It has to not draw.
+    --
+    -- The rule is not new here. SoilHUD:draw already stands down for a base-game
+    -- GUI (SoilHUD.lua:1302), and the four in-vehicle panels each carry the same
+    -- getIsGuiVisible guard. None of them could see OUR panels, because those are
+    -- drawn surfaces rather than g_gui ones, so the rule they all follow simply
+    -- had a blind spot. This closes it in the one place that owns draw order.
+    --
+    -- The three panels are mutually exclusive by construction: the settings panel
+    -- calls close() on itself before opening either tuning editor.
+    if fullScreenPanelOpen(sfm) then
+        if sfm.settingsPanel then sfm.settingsPanel:draw() end
+        if sfm.tuningPanel then sfm.tuningPanel:draw() end
+        if sfm.cropTuningPanel then sfm.cropTuningPanel:draw() end
+        return
+    end
 
     if sfm.soilHUD then sfm.soilHUD:draw() end
     if sfm.settingsPanel then sfm.settingsPanel:draw() end
