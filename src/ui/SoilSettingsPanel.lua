@@ -668,8 +668,13 @@ function SoilSettingsPanel:draw()
     self:drawRect(PX,          PY,          bw, PH, C.border)
     self:drawRect(PX + PW - bw, PY,         bw, PH, C.border)
 
-    -- Page content (skipped when popup is open - popup draws its own dim overlay)
-    if not self.popupVisible then
+    -- Page content, skipped while a modal is up. Both modals draw their own dim
+    -- overlay, but that overlay only covers what was drawn as an OVERLAY: text
+    -- from the page underneath still reads straight through a box painted on top
+    -- of it, which is why the popup has always skipped the page rather than
+    -- covering it. The confirmation has to do the same or the settings rows show
+    -- through its body copy.
+    if not self.popupVisible and not self.confirmVisible then
         if self.page == PAGE_LANDING then
             self:drawLandingPage()
         elseif self.page == PAGE_CATEGORY then
