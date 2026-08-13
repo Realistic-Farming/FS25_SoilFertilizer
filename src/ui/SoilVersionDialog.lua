@@ -24,6 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- The Soil Monitor no longer shows through the settings and tuning panels.",
+    "    HUD text was rendering over the panel drawn on top of it, which made",
+    "    both hard to read. The HUD now stands down while a panel is open.",
     "- READ THE DIRT can finally be read. Kneel down in a field and press the",
     "    handful key (Shift+G by default) to get everything the mod knows about",
     "    that exact spot: nutrients, pH, organic matter, compaction, moisture,",
