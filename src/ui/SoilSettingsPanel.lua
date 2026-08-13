@@ -474,7 +474,84 @@ function SoilSettingsPanel:isAdmin()
     return SoilUtils.isPlayerAdmin()
 end
 
-function SoilSettingsPanel:requestChange(id, value)
+--- Every setting change from this panel funnels through here, which is why the
+--- experimental gate is intercepted at this one point rather than at each of the
+--- five call sites that can flip a boolean.
+---
+--- @param skipConfirm boolean|nil  bypass the experimental confirmation. Used by
+---   resetCurrentCategory, which is already an explicit deliberate action and
+---   only ever restores the LOCKED default, so it never needs to ask.
+function SoilSettingsPanel:requestChange(id, value, skipConfirm)
+    local def = SettingsSchema.byId[id]
+    if not def then return end
+
+    -- THE EXPERIMENTAL GATE NEVER FLIPS ON ONE CLICK. It arms unfinished systems
+    -- on a live save, so it asks first and a refusal leaves the toggle untouched.
+    if id == "experimentalSystems" and skipConfirm ~= true and value ~= self.settings[id] then
+        -- Refuse BEFORE we warn: putting a scary confirmation in front of someone
+        -- whose change we are about to reject anyway is worse than refusing now.
+        if not def.localOnly and not self:isAdmin() then
+            self:_warnNotAdmin()
+            return
+        end
+        self:_confirmExperimental(value)
+        return
+    end
+
+    self:_applyChange(id, value)
+end
+
+function SoilSettingsPanel:_warnNotAdmin()
+    if g_currentMission and g_currentMission.hud and
+       g_currentMission.hud.showBlinkingWarning then
+        g_currentMission.hud:showBlinkingWarning(
+            "Only server admins can change this setting", 4000)
+    end
+end
+
+--- Ask before arming or disarming the experimental systems. Abort leaves the
+--- setting exactly as it was; only Confirm reaches _applyChange.
+function SoilSettingsPanel:_confirmExperimental(value)
+    -- FAIL CLOSED. If the dialog is unavailable we do NOT fall through to the
+    -- change: a gate that cannot ask is a gate that does not open.
+    if YesNoDialog == nil or type(YesNoDialog.show) ~= "function" then
+        SoilLogger.warning("SoilSettingsPanel: YesNoDialog unavailable, experimental toggle refused")
+        return
+    end
+
+    local text = value == true
+        and tr("sf_exp_confirm_on",
+            "This turns on systems that are NOT finished. They can behave oddly, " ..
+            "change without warning, or affect this savegame in ways that cannot be " ..
+            "undone. Use a backup save.\n\nTurn experimental systems ON?")
+        or tr("sf_exp_confirm_off",
+            "Experimental systems will stop running on this savegame. Anything they " ..
+            "wrote stays where it is, but it will no longer be updated.\n\n" ..
+            "Turn experimental systems OFF?")
+
+    YesNoDialog.show(
+        SoilSettingsPanel._onExperimentalConfirm, self,
+        text,
+        tr("sf_exp_confirm_title", "Experimental Systems"),
+        tr("sf_exp_confirm_yes", "Confirm"),
+        tr("sf_exp_confirm_no", "Abort"),
+        DialogElement.TYPE_WARNING,
+        nil, nil,
+        { value = value }
+    )
+end
+
+--- YesNoDialog callback. With a target set the engine calls this as
+--- callback(target, value, callbackArgs) (gui/dialogs/YesNoDialog.lua:82-86).
+function SoilSettingsPanel:_onExperimentalConfirm(confirmed, args)
+    if confirmed ~= true then return end          -- Abort: the toggle never moves.
+    if type(args) ~= "table" or args.value == nil then return end
+    self:_applyChange("experimentalSystems", args.value)
+end
+
+--- The original change path, unchanged. Reached directly for every setting
+--- except the experimental gate, and via the confirmation for that one.
+function SoilSettingsPanel:_applyChange(id, value)
     local def = SettingsSchema.byId[id]
     if not def then return end
     if def.localOnly then
@@ -485,12 +562,10 @@ function SoilSettingsPanel:requestChange(id, value)
         end
         return
     end
+    -- Re-checked here rather than trusted from the caller: the confirmation
+    -- dialog is modal but not instant, and admin status can change under it.
     if not self:isAdmin() then
-        if g_currentMission and g_currentMission.hud and
-           g_currentMission.hud.showBlinkingWarning then
-            g_currentMission.hud:showBlinkingWarning(
-                "Only server admins can change this setting", 4000)
-        end
+        self:_warnNotAdmin()
         return
     end
     if SoilNetworkEvents_RequestSettingChange then
@@ -2049,7 +2124,10 @@ function SoilSettingsPanel:resetCurrentCategory()
         for _, settingId in ipairs(sec.items) do
             local def = SettingsSchema.byId[settingId]
             if def and def.default ~= nil then
-                self:requestChange(settingId, def.default)
+                -- skipConfirm: a reset is already a deliberate act, it runs in a
+                -- loop that a modal would break, and for the experimental gate it
+                -- only ever restores the LOCKED default. Nothing to warn about.
+                self:requestChange(settingId, def.default, true)
             end
         end
     end

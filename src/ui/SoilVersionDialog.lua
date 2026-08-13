@@ -24,6 +24,9 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Turning Experimental Systems on or off now asks first. The gate arms",
+    "    unfinished systems on a live save, so it warns you and waits for a",
+    "    Confirm. Abort leaves the setting exactly as it was.",
     "- Release gate: disease resistance, hybrids, tank mixes, ground material,",
     "    spatial soil and Read the Dirt now ship LOCKED until you release them.",
     "    Turn them on under Settings > Experimental, at your own risk. A stable",
