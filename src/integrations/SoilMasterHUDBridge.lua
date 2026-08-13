@@ -26,16 +26,19 @@ SoilMasterHUDBridge = {}
 SoilMasterHUDBridge.HUD_ID = "SoilFertilizer_HUD"
 SoilMasterHUDBridge.active = false   -- MasterHUD present and we registered
 
--- The full SF HUD draw stack. Byte-for-byte the same order as the standalone
--- FSBaseMission.draw hook. Resolves the manager from the canonical global so it
--- can be driven either by MasterHUD or by SF's own hook.
 --- Does SoilFertilizer currently own the whole screen?
 ---
---- Passed to MasterHUD as the subscribe spec's isFullscreen so that while one of
---- our full-screen panels is open, EVERY other companion's HUD stands down too.
---- Our own HUD is handled inside drawStack; this is the cross-mod half, and it
---- only has an effect when MasterHUD is present, since MasterHUD is what owns
---- cross-mod ordering. Standalone, each mod still draws its own stack.
+--- ONE implementation, two callers, and they ask the same question:
+---   * drawStack, below, to stand OUR OWN HUD down (the single-mod half, #834).
+---   * MasterHUD, as the subscribe spec's isFullscreen, to stand every OTHER
+---     companion's HUD down (the cross-mod half, #835).
+--- The two arrived on separate branches and each had its own copy of this check.
+--- They are collapsed here rather than left side by side, because two functions
+--- answering one question is how they drift apart later.
+---
+--- The cross-mod half only has an effect when MasterHUD is present, since
+--- MasterHUD is what owns cross-mod ordering. Standalone, each mod draws its own
+--- stack and cannot see the others.
 ---
 --- Called every frame from MasterHUD's draw loop, so it stays a cheap read of
 --- state that already exists and never computes anything.
@@ -54,6 +57,29 @@ end
 function SoilMasterHUDBridge.drawStack()
     local sfm = g_SoilFertilityManager
     if sfm == nil then return end
+
+    -- A FULL-SCREEN PANEL OWNS THE SCREEN, so the HUD stands down while one is up.
+    --
+    -- Without this the Soil Monitor's own text (the Good / Fair / Poor labels and
+    -- the nutrient rows) reads straight THROUGH the panel drawn over it. A panel
+    -- background is an overlay, and an overlay does not cover text that was
+    -- already rendered underneath it, so a HUD cannot be hidden by painting on
+    -- top of it. It has to not draw.
+    --
+    -- The rule is not new here. SoilHUD:draw already stands down for a base-game
+    -- GUI (SoilHUD.lua:1302), and the four in-vehicle panels each carry the same
+    -- getIsGuiVisible guard. None of them could see OUR panels, because those are
+    -- drawn surfaces rather than g_gui ones, so the rule they all follow simply
+    -- had a blind spot. This closes it in the one place that owns draw order.
+    --
+    -- The three panels are mutually exclusive by construction: the settings panel
+    -- calls close() on itself before opening either tuning editor.
+    if SoilMasterHUDBridge.isFullscreen() then
+        if sfm.settingsPanel then sfm.settingsPanel:draw() end
+        if sfm.tuningPanel then sfm.tuningPanel:draw() end
+        if sfm.cropTuningPanel then sfm.cropTuningPanel:draw() end
+        return
+    end
 
     if sfm.soilHUD then sfm.soilHUD:draw() end
     if sfm.settingsPanel then sfm.settingsPanel:draw() end
