@@ -1395,5 +1395,60 @@
     <e k="wc_rf_pda_open_manager" v="開啟工人管理員" eh="1c6592d5" />
     <e k="sf_pda_btn_rotation_planner" v="輪作規劃" eh="5404f1c2" />
     <e k="sf_pda_btn_field_detail" v="田地詳情" eh="03b5acd7" />
+    <e k="sf_handful_title" v="The Handful" />
+    <e k="sf_handful_sec_nutrients" v="NUTRIENTS" />
+    <e k="sf_handful_sec_ground" v="GROUND" />
+    <e k="sf_handful_sec_pressure" v="PRESSURE" />
+    <e k="sf_handful_sec_history" v="FIELD HISTORY" />
+    <e k="sf_handful_sec_material" v="UNDER THE HAND" />
+    <e k="sf_handful_need_kneel" v="Kneel down to read the soil" />
+    <e k="sf_handful_no_read" v="Nothing to read here" />
+    <e k="sf_handful_n" v="N" />
+    <e k="sf_handful_p" v="P" />
+    <e k="sf_handful_k" v="K" />
+    <e k="sf_handful_ph" v="pH" />
+    <e k="sf_handful_om" v="Organic matter" />
+    <e k="sf_handful_compaction" v="Compaction" />
+    <e k="sf_handful_moisture" v="Moisture" />
+    <e k="sf_handful_disease" v="Disease pressure" />
+    <e k="sf_handful_pest" v="Pests" />
+    <e k="sf_handful_weed" v="Weeds" />
+    <e k="sf_handful_last_crops" v="Last crops" />
+    <e k="sf_handful_rotation" v="Rotation" />
+    <e k="sf_handful_bonus_days" v="%d bonus days left" />
+    <e k="sf_handful_since_harvest" v="Days since harvest" />
+    <e k="sf_handful_organic" v="Organic" />
+    <e k="sf_handful_org_certified" v="Certified organic" />
+    <e k="sf_handful_org_transition" v="In transition" />
+    <e k="sf_handful_org_conventional" v="Conventional" />
+    <e k="sf_handful_org_breaches" v="%d breaches" />
+    <e k="sf_handful_mat_wetness" v="Wetness" />
+    <e k="sf_handful_mat_days" v="Days down" />
+    <e k="sf_handful_mat_verdict" v="Verdict" />
+    <e k="sf_handful_mat_spoiled" v="Spoiled" />
+    <e k="sf_handful_mat_sound" v="Sound" />
+    <e k="sf_handful_grain_spot" v="spot" />
+    <e k="sf_handful_grain_cell" v="this cell" />
+    <e k="sf_handful_grain_field" v="field average" />
+    <e k="sf_handful_unscouted" v="Unscouted" />
+    <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
+    <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
+    <e k="sf_handful_band_good" v="Good" />
+    <e k="sf_handful_band_fair" v="Fair" />
+    <e k="sf_handful_band_poor" v="Poor" />
+    <e k="sf_handful_band_unknown" v="Unknown" />
+    <e k="sf_handful_band_acidic" v="Acidic" />
+    <e k="sf_handful_band_alkaline" v="Alkaline" />
+    <e k="sf_handful_band_low" v="Low" />
+    <e k="sf_handful_band_moderate" v="Moderate" />
+    <e k="sf_handful_band_high" v="High" />
+    <e k="sf_handful_band_soaked" v="Soaked" />
+    <e k="sf_handful_band_damp" v="Damp" />
+    <e k="sf_handful_band_curing" v="Curing" />
+    <e k="sf_handful_band_fit" v="Fit" />
+    <e k="sf_handful_rot_bonus" v="Bonus" />
+    <e k="sf_handful_rot_ok" v="OK" />
+    <e k="sf_handful_rot_fatigue" v="Fatigue" />
+    <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
 </elements>
 </l10n>

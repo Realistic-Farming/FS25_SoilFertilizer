@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK (Refined edition: WizardlyPayload)</author>
-    <version>2.5.0.61</version>
+    <version>2.5.0.63</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -95,6 +95,7 @@
         <action name="SF_MINIMAP_ZOOM"      category="ONFOOT" />
         <action name="SF_SCOUT"             category="ONFOOT" />
         <action name="SF_TREATMENT"         category="ONFOOT" />
+        <action name="SF_HANDFUL"           category="ONFOOT" />
     </actions>
 
     <l10n filenamePrefix="translations/translation" />
@@ -111,6 +112,15 @@
         <actionBinding action="SF_MINIMAP_ZOOM" />
         <actionBinding action="SF_SCOUT" />
         <actionBinding action="SF_TREATMENT" />
+        <!-- SF-39: the only SF action that ships a DEFAULT key. The engine reads
+             a default from a nested <binding> child (InputBinding:loadBindingsFromXML
+             -> Binding.createFromXML); the bare actionBinding entries above have
+             never had one, which is why every other SF hotkey must be bound by
+             hand despite what the code comments claim. Retro-fitting the rest is
+             a change to shipped behaviour and is deliberately not done here. -->
+        <actionBinding action="SF_HANDFUL">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_g" />
+        </actionBinding>
     </inputBinding>
 
     <!-- Custom fill types declared in external file (FS25 requires filename= attribute) -->
