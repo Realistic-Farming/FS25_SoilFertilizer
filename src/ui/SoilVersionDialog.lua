@@ -24,6 +24,13 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- READ THE DIRT can finally be read. Kneel down in a field and press the",
+    "    handful key (Shift+G by default) to get everything the mod knows about",
+    "    that exact spot: nutrients, pH, organic matter, compaction, moisture,",
+    "    pressure, crop history and whatever cut material lies under your hand.",
+    "    You have to actually be crouching, and readings are qualitative until",
+    "    a soil test kit exists. Part of Read the Dirt, so it needs Experimental",
+    "    Systems turned on under Settings > Experimental.",
     "- Turning Experimental Systems on or off now asks first. The gate arms",
     "    unfinished systems on a live save, so it warns you and waits for a",
     "    Confirm. Abort leaves the setting exactly as it was.",
