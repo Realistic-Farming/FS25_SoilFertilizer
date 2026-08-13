@@ -29,6 +29,28 @@ SoilMasterHUDBridge.active = false   -- MasterHUD present and we registered
 -- The full SF HUD draw stack. Byte-for-byte the same order as the standalone
 -- FSBaseMission.draw hook. Resolves the manager from the canonical global so it
 -- can be driven either by MasterHUD or by SF's own hook.
+--- Does SoilFertilizer currently own the whole screen?
+---
+--- Passed to MasterHUD as the subscribe spec's isFullscreen so that while one of
+--- our full-screen panels is open, EVERY other companion's HUD stands down too.
+--- Our own HUD is handled inside drawStack; this is the cross-mod half, and it
+--- only has an effect when MasterHUD is present, since MasterHUD is what owns
+--- cross-mod ordering. Standalone, each mod still draws its own stack.
+---
+--- Called every frame from MasterHUD's draw loop, so it stays a cheap read of
+--- state that already exists and never computes anything.
+---@return boolean
+function SoilMasterHUDBridge.isFullscreen()
+    local sfm = g_SoilFertilityManager
+    if sfm == nil then return false end
+    for _, p in ipairs({ sfm.settingsPanel, sfm.tuningPanel, sfm.cropTuningPanel }) do
+        if p ~= nil and type(p.isOpen) == "function" and p:isOpen() then
+            return true
+        end
+    end
+    return false
+end
+
 function SoilMasterHUDBridge.drawStack()
     local sfm = g_SoilFertilityManager
     if sfm == nil then return end
@@ -67,6 +89,13 @@ function SoilMasterHUDBridge.register(mgr)
     local ok, err = pcall(function()
         hud:subscribe(SoilMasterHUDBridge.HUD_ID, {
             draw = SoilMasterHUDBridge.drawStack,
+            -- Declares that SF owns the whole screen while one of its panels is
+            -- open, so MasterHUD stands every OTHER companion's HUD down. Without
+            -- it, the Income and Tax HUDs render their text before our panel and
+            -- read straight through it, because an overlay does not cover text
+            -- already drawn underneath. Optional on MasterHUD's side, so an older
+            -- MasterHUD simply ignores it and behaves exactly as before.
+            isFullscreen = SoilMasterHUDBridge.isFullscreen,
         })
     end)
 
