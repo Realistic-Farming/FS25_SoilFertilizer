@@ -27,6 +27,29 @@ local function tr(key, fallback)
     return fallback or key
 end
 
+-- Word-wrap a string into lines that fit maxWidth at the given size. Uses the
+-- engine's getTextWidth so measurement matches renderText exactly. Same helper
+-- shape as SoilMapOverlay's, so the two surfaces wrap identically.
+local function wrapText(text, size, maxWidth)
+    if type(text) ~= "string" or text == "" then return { "" } end
+    if getTextWidth == nil or maxWidth <= 0 then return { text } end
+    local words = {}
+    for w in text:gmatch("%S+") do words[#words + 1] = w end
+    if #words == 0 then return { "" } end
+    local lines, cur = {}, ""
+    for _, w in ipairs(words) do
+        local probe = cur == "" and w or (cur .. " " .. w)
+        if cur ~= "" and getTextWidth(size, probe) > maxWidth then
+            lines[#lines + 1] = cur
+            cur = w
+        else
+            cur = probe
+        end
+    end
+    if cur ~= "" then lines[#lines + 1] = cur end
+    return lines
+end
+
 -- ── Panel geometry (normalized, Y=0 at bottom) ────────────
 local PW    = 0.60
 local PH    = 0.74
@@ -433,6 +456,10 @@ function SoilSettingsPanel:open()
 end
 
 function SoilSettingsPanel:close()
+    -- Closing the panel ABORTS any pending confirmation. Escape, the [X], the
+    -- hotkey and the auto-close in update() all land here, and none of them is
+    -- an answer to the question. A pending value must never outlive the panel.
+    self:_dismissConfirm()
     self.isVisible = false
     self.savedCamRotX, self.savedCamRotY, self.savedCamRotZ = nil, nil, nil
     if g_inputBinding and g_inputBinding.setShowMouseCursor then
@@ -474,7 +501,89 @@ function SoilSettingsPanel:isAdmin()
     return SoilUtils.isPlayerAdmin()
 end
 
-function SoilSettingsPanel:requestChange(id, value)
+--- Every setting change from this panel funnels through here, which is why the
+--- experimental gate is intercepted at this one point rather than at each of the
+--- five call sites that can flip a boolean.
+---
+--- @param skipConfirm boolean|nil  bypass the experimental confirmation. Used by
+---   resetCurrentCategory, which is already an explicit deliberate action and
+---   only ever restores the LOCKED default, so it never needs to ask.
+function SoilSettingsPanel:requestChange(id, value, skipConfirm)
+    local def = SettingsSchema.byId[id]
+    if not def then return end
+
+    -- THE EXPERIMENTAL GATE NEVER FLIPS ON ONE CLICK. It arms unfinished systems
+    -- on a live save, so it asks first and a refusal leaves the toggle untouched.
+    if id == "experimentalSystems" and skipConfirm ~= true and value ~= self.settings[id] then
+        -- Refuse BEFORE we warn: putting a scary confirmation in front of someone
+        -- whose change we are about to reject anyway is worse than refusing now.
+        if not def.localOnly and not self:isAdmin() then
+            self:_warnNotAdmin()
+            return
+        end
+        self:_confirmExperimental(value)
+        return
+    end
+
+    self:_applyChange(id, value)
+end
+
+function SoilSettingsPanel:_warnNotAdmin()
+    if g_currentMission and g_currentMission.hud and
+       g_currentMission.hud.showBlinkingWarning then
+        g_currentMission.hud:showBlinkingWarning(
+            "Only server admins can change this setting", 4000)
+    end
+end
+
+--- Ask before arming or disarming the experimental systems. Abort leaves the
+--- setting exactly as it was; only Confirm reaches _applyChange.
+---
+--- THIS IS A DRAWN CONFIRMATION, NOT A BASE-GAME YesNoDialog, for two reasons.
+--- The style one: this panel is immediate-mode with its own frame, palette and
+--- hit-tested click ids, and it already owns a modal idiom in drawPopupDialog,
+--- so a GUI dialog would open in a different visual language on top of it.
+--- The functional one, which settles it: SoilSettingsPanel:update() closes the
+--- panel whenever g_gui reports a dialog visible, so showing a YesNoDialog
+--- would dismiss the very panel the player is answering for.
+function SoilSettingsPanel:_confirmExperimental(value)
+    self.confirmVisible = true
+    self.confirmValue   = value
+    self.confirmText    = value == true
+        and tr("sf_exp_confirm_on",
+            "This turns on systems that are NOT finished. They can behave oddly, " ..
+            "change without warning, or affect this savegame in ways that cannot be " ..
+            "undone. Keep a backup save.")
+        or tr("sf_exp_confirm_off",
+            "Experimental systems will stop running on this savegame. Anything they " ..
+            "already wrote stays where it is, but it will no longer be updated.")
+    self.confirmQuestion = value == true
+        and tr("sf_exp_confirm_q_on", "Turn experimental systems ON?")
+        or tr("sf_exp_confirm_q_off", "Turn experimental systems OFF?")
+end
+
+--- Dismiss without acting. EVERY exit that is not the Confirm button lands here,
+--- so a pending answer can never survive to be applied later.
+function SoilSettingsPanel:_dismissConfirm()
+    self.confirmVisible  = false
+    self.confirmValue    = nil
+    self.confirmText     = nil
+    self.confirmQuestion = nil
+end
+
+--- The Confirm button, and the only path that reaches the change. The pending
+--- value is cleared BEFORE applying, so a failure inside _applyChange cannot
+--- leave a live confirmation behind.
+function SoilSettingsPanel:_acceptConfirm()
+    local value = self.confirmValue
+    self:_dismissConfirm()
+    if value == nil then return end
+    self:_applyChange("experimentalSystems", value)
+end
+
+--- The original change path, unchanged. Reached directly for every setting
+--- except the experimental gate, and via the confirmation for that one.
+function SoilSettingsPanel:_applyChange(id, value)
     local def = SettingsSchema.byId[id]
     if not def then return end
     if def.localOnly then
@@ -485,12 +594,10 @@ function SoilSettingsPanel:requestChange(id, value)
         end
         return
     end
+    -- Re-checked here rather than trusted from the caller: the confirmation
+    -- dialog is modal but not instant, and admin status can change under it.
     if not self:isAdmin() then
-        if g_currentMission and g_currentMission.hud and
-           g_currentMission.hud.showBlinkingWarning then
-            g_currentMission.hud:showBlinkingWarning(
-                "Only server admins can change this setting", 4000)
-        end
+        self:_warnNotAdmin()
         return
     end
     if SoilNetworkEvents_RequestSettingChange then
@@ -561,8 +668,13 @@ function SoilSettingsPanel:draw()
     self:drawRect(PX,          PY,          bw, PH, C.border)
     self:drawRect(PX + PW - bw, PY,         bw, PH, C.border)
 
-    -- Page content (skipped when popup is open - popup draws its own dim overlay)
-    if not self.popupVisible then
+    -- Page content, skipped while a modal is up. Both modals draw their own dim
+    -- overlay, but that overlay only covers what was drawn as an OVERLAY: text
+    -- from the page underneath still reads straight through a box painted on top
+    -- of it, which is why the popup has always skipped the page rather than
+    -- covering it. The confirmation has to do the same or the settings rows show
+    -- through its body copy.
+    if not self.popupVisible and not self.confirmVisible then
         if self.page == PAGE_LANDING then
             self:drawLandingPage()
         elseif self.page == PAGE_CATEGORY then
@@ -587,6 +699,14 @@ function SoilSettingsPanel:draw()
         self._clickRects = {}
     end
     self:drawPopupDialog()
+
+    -- The experimental confirmation sits above everything, including the popup.
+    -- Click zones are cleared first for the same reason: nothing behind a modal
+    -- may be clicked through it, so its two buttons are the only live targets.
+    if self.confirmVisible then
+        self._clickRects = {}
+        self:drawConfirmDialog()
+    end
 end
 
 -- ── Title bar ─────────────────────────────────────────────
@@ -1499,6 +1619,81 @@ function SoilSettingsPanel:drawPopupDialog()
     self:registerClick("popup_close", btnX, btnY, btnW, btnH)
 end
 
+-- ── Experimental confirmation (drawn, in this panel's frame) ──────────────
+-- Same construction as drawPopupDialog: dim overlay, shadow, bordered box,
+-- accent title bar, hit-tested buttons registered by click id. The accent is
+-- the panel's own warning amber (C.lock_text), the colour this panel already
+-- uses to mark a locked system, so the prompt reads as part of that language.
+function SoilSettingsPanel:drawConfirmDialog()
+    if not self.confirmVisible then return end
+
+    local WARN = {C.lock_text[1], C.lock_text[2], C.lock_text[3]}
+
+    local DW, DH = 0.44, 0.26
+    local DX, DY = (1 - DW) / 2, (1 - DH) / 2
+    local DPAD   = 0.016
+
+    -- Dim everything behind, including the panel itself.
+    self:drawRect(0, 0, 1, 1, {0, 0, 0, 0.60})
+    self:drawRect(DX + 0.004, DY - 0.004, DW, DH, C.shadow, 0.65)
+    self:drawRect(DX, DY, DW, DH, {0.06, 0.07, 0.11, 0.99})
+
+    local bw = 0.0015
+    self:drawRect(DX,            DY,             DW, bw, WARN, 0.85)
+    self:drawRect(DX,            DY + DH - bw,   DW, bw, WARN, 0.85)
+    self:drawRect(DX,            DY,             bw, DH, WARN, 0.85)
+    self:drawRect(DX + DW - bw,  DY,             bw, DH, WARN, 0.85)
+
+    -- Title bar
+    local TH = 0.036
+    local TY = DY + DH - TH
+    self:drawRect(DX, TY, DW, TH, {0.10, 0.08, 0.04, 1.0})
+    self:drawRect(DX, TY, 0.004, TH, WARN)
+    self:drawText(DX + DPAD, TY + TH * 0.28, TS_SMALL,
+        tr("sf_exp_confirm_title", "Experimental Systems"),
+        {WARN[1], WARN[2], WARN[3], 1.0}, RenderText.ALIGN_LEFT, true)
+
+    -- Body: wrapped so a long translation cannot run past the box.
+    local textW = DW - DPAD * 2
+    local LINE_H = TS_SMALL + 0.006
+    local curY = TY - 0.014
+    for _, line in ipairs(wrapText(self.confirmText or "", TS_SMALL, textW)) do
+        curY = curY - LINE_H
+        self:drawText(DX + DPAD, curY, TS_SMALL, line, C.white, RenderText.ALIGN_LEFT, false)
+    end
+
+    -- The question, set apart from the warning body.
+    curY = curY - LINE_H * 1.2
+    self:drawText(DX + DW * 0.5, curY, TS_BODY, self.confirmQuestion or "",
+        {WARN[1], WARN[2], WARN[3], 1.0}, RenderText.ALIGN_CENTER, true)
+
+    -- Buttons. Abort sits left and is styled as the safe, ordinary choice;
+    -- Confirm sits right in warning amber, because it is the one with teeth.
+    local btnW, btnH = 0.130, 0.030
+    local gap = 0.014
+    local btnY = DY + 0.020
+    local abortX = DX + (DW - (btnW * 2 + gap)) * 0.5
+    local okX    = abortX + btnW + gap
+
+    local abortHov = self:hitTest(abortX, btnY, btnW, btnH, self.mouseX, self.mouseY)
+    self:drawRect(abortX, btnY, btnW, btnH,
+        abortHov and {0.22, 0.50, 0.28, 0.95} or {0.12, 0.16, 0.13, 0.92})
+    self:drawRect(abortX, btnY, 0.002, btnH, C.green_dim)
+    self:drawText(abortX + btnW * 0.5, btnY + btnH * 0.22, TS_SMALL,
+        tr("sf_exp_confirm_no", "Abort"),
+        abortHov and C.white or {0.80, 0.85, 0.80, 1}, RenderText.ALIGN_CENTER, true)
+    self:registerClick("exp_confirm_no", abortX, btnY, btnW, btnH)
+
+    local okHov = self:hitTest(okX, btnY, btnW, btnH, self.mouseX, self.mouseY)
+    self:drawRect(okX, btnY, btnW, btnH,
+        okHov and {0.70, 0.45, 0.10, 0.95} or {0.22, 0.15, 0.05, 0.92})
+    self:drawRect(okX, btnY, 0.002, btnH, WARN)
+    self:drawText(okX + btnW * 0.5, btnY + btnH * 0.22, TS_SMALL,
+        tr("sf_exp_confirm_yes", "Confirm"),
+        okHov and C.white or {0.90, 0.80, 0.65, 1}, RenderText.ALIGN_CENTER, true)
+    self:registerClick("exp_confirm_yes", okX, btnY, btnW, btnH)
+end
+
 -- ── Setting row ────────────────────────────────────────────
 function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
     local def = SettingsSchema.byId[settingId]
@@ -1739,8 +1934,11 @@ function SoilSettingsPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventU
         end
     end
 
-    -- Click outside panel = close (but not when popup is active)
-    if not self.popupVisible and not self:hitTest(PX, PY, PW, PH, posX, posY) then
+    -- Click outside panel = close (but not while a modal is asking something).
+    -- The confirmation must be answered or aborted on its own buttons; closing
+    -- the panel out from under it would leave the question unanswered.
+    if not self.popupVisible and not self.confirmVisible
+       and not self:hitTest(PX, PY, PW, PH, posX, posY) then
         self:close()
         return true
     end
@@ -1749,7 +1947,13 @@ function SoilSettingsPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventU
 end
 
 function SoilSettingsPanel:handleClick(id, data)
-    if id == "close" then
+    if id == "exp_confirm_yes" then
+        self:_acceptConfirm()
+
+    elseif id == "exp_confirm_no" then
+        self:_dismissConfirm()
+
+    elseif id == "close" then
         self:close()
 
     elseif id == "back" then
@@ -2049,7 +2253,10 @@ function SoilSettingsPanel:resetCurrentCategory()
         for _, settingId in ipairs(sec.items) do
             local def = SettingsSchema.byId[settingId]
             if def and def.default ~= nil then
-                self:requestChange(settingId, def.default)
+                -- skipConfirm: a reset is already a deliberate act, it runs in a
+                -- loop that a modal would break, and for the experimental gate it
+                -- only ever restores the LOCKED default. Nothing to warn about.
+                self:requestChange(settingId, def.default, true)
             end
         end
     end
