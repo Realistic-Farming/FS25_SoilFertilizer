@@ -1369,8 +1369,10 @@
     <e k="sf_exp_confirm_title" v="Experimental Systems" />
     <e k="sf_exp_confirm_yes" v="Confirm" />
     <e k="sf_exp_confirm_no" v="Abort" />
-    <e k="sf_exp_confirm_on" v="This turns on systems that are NOT finished. They can behave oddly, change without warning, or affect this savegame in ways that cannot be undone. Use a backup save.&#10;&#10;Turn experimental systems ON?" />
-    <e k="sf_exp_confirm_off" v="Experimental systems will stop running on this savegame. Anything they wrote stays where it is, but it will no longer be updated.&#10;&#10;Turn experimental systems OFF?" />
+    <e k="sf_exp_confirm_on" v="This turns on systems that are NOT finished. They can behave oddly, change without warning, or affect this savegame in ways that cannot be undone. Keep a backup save." />
+    <e k="sf_exp_confirm_off" v="Experimental systems will stop running on this savegame. Anything they already wrote stays where it is, but it will no longer be updated." />
+    <e k="sf_exp_confirm_q_on" v="Turn experimental systems ON?" />
+    <e k="sf_exp_confirm_q_off" v="Turn experimental systems OFF?" />
 </elements>
 
 
