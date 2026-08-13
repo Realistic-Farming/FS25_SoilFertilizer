@@ -147,6 +147,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Soil Scout dialog registered")
         end
 
+        -- [SF-39] The Handful panel (opened from the SF_HANDFUL hotkey, kneeling only)
+        if SoilHandfulDialog and g_gui then
+            SoilHandfulDialog.register(modDirectory)
+            SoilLogger.info("Soil Handful panel registered")
+        end
+
         -- Version/changelog dialog (shown once per version on load)
         if SoilVersionDialog and g_gui then
             SoilVersionDialog.register(modDirectory)
@@ -349,6 +355,21 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                         g_SoilFertilityManager.treatmentEventId = trId
                         g_inputBinding:setActionEventTextVisibility(trId, false)
                         SoilLogger.info("Treatment panel (Shift+T) registered in PLAYER context")
+                    end
+                end
+
+                -- [SF-39] The Handful panel (SF_HANDFUL, default Shift+G) - PLAYER
+                -- context. Opens only while crouched; the ladder lives in the callback.
+                if InputAction.SF_HANDFUL then
+                    local hfOk, hfId = g_inputBinding:registerActionEvent(
+                        InputAction.SF_HANDFUL, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onHandfulInput,
+                        false, true, false, true
+                    )
+                    if hfOk and hfId then
+                        g_SoilFertilityManager.handfulEventId = hfId
+                        g_inputBinding:setActionEventTextVisibility(hfId, false)
+                        SoilLogger.info("Handful panel (Shift+G) registered in PLAYER context")
                     end
                 end
 
@@ -1106,6 +1127,93 @@ end
 function SoilFertilityManager:onMinimapZoomInput()
     if self.soilMapOverlay then
         self.soilMapOverlay:cycleMinimapZoom()
+    end
+end
+
+--- [SF-39] THE HANDFUL PANEL. Input callback for SF_HANDFUL (default Shift+G).
+--- Kneel, read, show. The order is load bearing: the reveal must complete before
+--- the assemble so diseaseKnown reflects the just-knelt cell and never a stale
+--- pre-reveal read (SF-38 rule 5).
+---
+--- Every refusal SPEAKS. A silent no-op teaches the player the key is broken;
+--- a blinking warning teaches them the rule.
+function SoilFertilityManager:onHandfulInput()
+    if not (self.settings and self.settings.enabled) then return end
+    if not (self.soilSystem and self.soilHUD) then return end
+
+    local function warn(text)
+        if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
+            g_currentMission.hud:showBlinkingWarning(text, 3000)
+        end
+    end
+
+    -- Gate 1: the family is LOCKED unless the player opted into experimental
+    -- systems. Same registry the rest of Read the Dirt checks.
+    if ReleaseGate and not ReleaseGate.isSystemLive("read_the_dirt") then
+        local msg = ReleaseGate.lockMessage and ReleaseGate.lockMessage("read_the_dirt", ReleaseGate.liveOptIn())
+        if msg then warn(msg) end
+        return
+    end
+
+    -- Gate 2: you have to actually be kneeling. PlayerStateCrouch flips this flag
+    -- on entry/exit (player/PlayerMover.lua setIsCrouching); crouch is a HOLD in
+    -- FS25, not a toggle, so the player holds crouch and presses the key. A hand
+    -- tool whose canCrouch is false blocks the crouch state outright - that is
+    -- the engine's rule and we do not work around it.
+    local player = g_localPlayer
+    local kneeling = player ~= nil and player.mover ~= nil and player.mover.isCrouching == true
+    if not kneeling then
+        warn(g_i18n:getText("sf_handful_need_kneel"))
+        return
+    end
+
+    -- Gate 3: a field and a resolved spot underfoot.
+    local fieldId, x, z = nil, nil, nil
+    if self.soilHUD.detectCurrentFieldId then
+        local ok, cur, cx, cz = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur; x, z = cx, cz end
+    end
+    if fieldId and fieldId <= 0 then fieldId = nil end
+    if not fieldId or x == nil or z == nil then
+        warn(g_i18n:getText("sf_scout_no_field"))
+        return
+    end
+
+    local day = g_currentMission and g_currentMission.environment
+        and g_currentMission.environment.currentDay
+
+    -- THE KNEEL, first. Server-authoritative: direct on the host, a request on a
+    -- client. Identical to the SF_SCOUT path, which is the shipped kneel.
+    local scouting = self.soilSystem.spatialScouting
+    if g_server ~= nil then
+        if scouting and scouting:isArmed() and day then
+            scouting:revealCellAt(nil, x, z, day)
+        end
+    elseif g_client ~= nil and SoilKneelEvent then
+        pcall(function()
+            g_client:getServerConnection():sendEvent(SoilKneelEvent.new(x, z))
+        end)
+    end
+
+    -- THE READ, after. Pure assembly, zero writes. materialFillType is left nil
+    -- when we cannot name what lies at the spot; the verdict then returns its
+    -- honest refusal rather than a guess.
+    if HandfulRead == nil or type(HandfulRead.assemble) ~= "function" then return end
+    local payload = HandfulRead.assemble({
+        fieldId = fieldId,
+        x = x,
+        z = z,
+        farmId = player.farmId,
+        currentDay = day,
+    })
+    if payload == nil then
+        warn(g_i18n:getText("sf_handful_no_read"))
+        return
+    end
+
+    -- THE PANEL.
+    if SoilHandfulDialog and SoilHandfulDialog.show then
+        SoilHandfulDialog.show(payload)
     end
 end
 

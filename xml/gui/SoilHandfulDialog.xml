@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    THE HANDFUL PANEL (SF-39)
+    The reading surface for the kneel. Renders the frozen SF-38 payload.
+    Controller: SoilHandfulDialog (src/ui/SoilHandfulDialog.lua)
+
+    Five sections in payload order, each carrying its own grain tag in the
+    section header, because a FIELD clause must never read as a spot measurement.
+    The "Under the hand" section is hidden by the controller when no cut
+    material lies at the spot.
+-->
+<GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
+  <GuiElement profile="newLayer"/>
+  <Bitmap profile="dialogFullscreenBg" id="dialogBg"/>
+
+  <GuiElement profile="sfHandful_bg" id="dialogElement">
+
+    <ThreePartBitmap profile="fs25_dialogBgMiddle"/>
+    <ThreePartBitmap profile="fs25_dialogBgTop"/>
+    <ThreePartBitmap profile="fs25_dialogBgBottom"/>
+
+    <GuiElement profile="fs25_dialogContentContainer">
+
+      <!-- Title -->
+      <Text profile="fs25_dialogTitle" id="hfTitle"
+            text="$l10n_sf_handful_title" position="0px -26px"/>
+
+      <!-- Field + refinement grain for the nutrient row -->
+      <Text profile="sfHandful_header" id="hfHeader"
+            text="" position="0px -60px" size="660px 24px"/>
+
+      <!-- ── Nutrients (SPOT) ── -->
+      <Text profile="sfHandful_section" id="hfSecNutrients"
+            text="$l10n_sf_handful_sec_nutrients" position="0px -96px" size="660px 20px"/>
+      <Text profile="sfHandful_row" id="hfNutrients" text="" position="0px -120px" size="660px 24px"/>
+      <Text profile="sfHandful_row" id="hfPhOm"     text="" position="0px -146px" size="660px 24px"/>
+
+      <!-- ── Ground ── -->
+      <Text profile="sfHandful_section" id="hfSecGround"
+            text="$l10n_sf_handful_sec_ground" position="0px -182px" size="660px 20px"/>
+      <Text profile="sfHandful_row" id="hfGround" text="" position="0px -206px" size="660px 24px"/>
+
+      <!-- ── Pressure ── -->
+      <Text profile="sfHandful_section" id="hfSecPressure"
+            text="$l10n_sf_handful_sec_pressure" position="0px -242px" size="660px 20px"/>
+      <Text profile="sfHandful_row" id="hfDisease"  text="" position="0px -266px" size="660px 24px"/>
+      <Text profile="sfHandful_row" id="hfPestWeed" text="" position="0px -292px" size="660px 24px"/>
+
+      <!-- ── History (FIELD) ── -->
+      <Text profile="sfHandful_section" id="hfSecHistory"
+            text="$l10n_sf_handful_sec_history" position="0px -328px" size="660px 20px"/>
+      <Text profile="sfHandful_row" id="hfCrops"    text="" position="0px -352px" size="660px 24px"/>
+      <Text profile="sfHandful_row" id="hfRotation" text="" position="0px -378px" size="660px 24px"/>
+      <Text profile="sfHandful_row" id="hfOrganic"  text="" position="0px -404px" size="660px 24px"/>
+
+      <!-- ── Under the hand (SPOT) - hidden when no material lies there ── -->
+      <Text profile="sfHandful_section" id="hfSecMaterial"
+            text="$l10n_sf_handful_sec_material" position="0px -440px" size="660px 20px"/>
+      <Text profile="sfHandful_row" id="hfMaterial" text="" position="0px -464px" size="660px 24px"/>
+
+      <!-- Footer: why the readings are words and not numbers -->
+      <Text profile="sfHandful_footer" id="hfFooter"
+            text="" position="0px -502px" size="660px 40px" wrapText="true"/>
+
+    </GuiElement>
+
+    <BoxLayout profile="fs25_dialogButtonBox">
+      <Button profile="buttonBack" id="hfCloseBtn" text="$l10n_sf_detail_close" onClick="onClickClose"/>
+    </BoxLayout>
+
+  </GuiElement>
+
+  <GUIProfiles>
+
+    <Profile name="sfHandful_bg" extends="fs25_dialogBg">
+      <size value="720px 620px"/>
+    </Profile>
+
+    <Profile name="sfHandful_header" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="17px"/>
+      <textBold value="true"/>
+      <textColor value="0.35 0.85 0.40 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="sfHandful_section" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="0.65 0.62 0.50 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="sfHandful_row" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="15px"/>
+      <textColor value="1 1 1 1"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="sfHandful_footer" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="12px"/>
+      <textColor value="0.65 0.65 0.65 1"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+  </GUIProfiles>
+</GUI>
