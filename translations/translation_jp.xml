@@ -1416,6 +1416,7 @@
     <e k="sf_handful_rot_bonus" v="Bonus" />
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
+    <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
 </elements>
 
 

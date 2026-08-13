@@ -4,10 +4,17 @@
     The reading surface for the kneel. Renders the frozen SF-38 payload.
     Controller: SoilHandfulDialog (src/ui/SoilHandfulDialog.lua)
 
-    Five sections in payload order, each carrying its own grain tag in the
-    section header, because a FIELD clause must never read as a spot measurement.
-    The "Under the hand" section is hidden by the controller when no cut
-    material lies at the spot.
+    Five sections in payload order. Each is a tinted panel with a lime accent
+    rail down its left edge and its GRAIN TAG in the header, because a FIELD
+    clause must never read as a spot measurement.
+
+    Banded clauses render as stat TILES (dim label over a coloured value); the
+    wordy history clauses stay as text rows. Value colour is set at runtime by
+    the controller via TextElement:setTextColor, so the profiles below only
+    carry size and weight, never a value colour.
+
+    The "Under the hand" section is a container the controller hides wholesale
+    when no cut material lies at the spot; hiding it hides its children.
 -->
 <GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
   <GuiElement profile="newLayer"/>
@@ -21,46 +28,85 @@
 
     <GuiElement profile="fs25_dialogContentContainer">
 
-      <!-- Title -->
+      <!-- ══ Header ══════════════════════════════════════════ -->
       <Text profile="fs25_dialogTitle" id="hfTitle"
-            text="$l10n_sf_handful_title" position="0px -26px"/>
+            text="$l10n_sf_handful_title" position="0px -22px"/>
+      <Text profile="sfHandful_field" id="hfField" text="" position="0px -58px" size="660px 26px"/>
+      <Text profile="sfHandful_grain" id="hfGrain" text="" position="0px -82px" size="660px 18px"/>
 
-      <!-- Field + refinement grain for the nutrient row -->
-      <Text profile="sfHandful_header" id="hfHeader"
-            text="" position="0px -60px" size="660px 24px"/>
+      <!-- ══ Nutrients (SPOT) ════════════════════════════════ -->
+      <GuiElement profile="sfHandful_section" position="0px -110px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 84px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 84px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_nutrients" position="16px -8px"/>
 
-      <!-- ── Nutrients (SPOT) ── -->
-      <Text profile="sfHandful_section" id="hfSecNutrients"
-            text="$l10n_sf_handful_sec_nutrients" position="0px -96px" size="660px 20px"/>
-      <Text profile="sfHandful_row" id="hfNutrients" text="" position="0px -120px" size="660px 24px"/>
-      <Text profile="sfHandful_row" id="hfPhOm"     text="" position="0px -146px" size="660px 24px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblN"  text="" position="-260px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValN"  text="" position="-260px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblP"  text="" position="-130px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValP"  text="" position="-130px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblK"  text="" position="0px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValK"  text="" position="0px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblPh" text="" position="130px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValPh" text="" position="130px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblOm" text="" position="260px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValOm" text="" position="260px -52px"/>
+      </GuiElement>
 
-      <!-- ── Ground ── -->
-      <Text profile="sfHandful_section" id="hfSecGround"
-            text="$l10n_sf_handful_sec_ground" position="0px -182px" size="660px 20px"/>
-      <Text profile="sfHandful_row" id="hfGround" text="" position="0px -206px" size="660px 24px"/>
+      <!-- ══ Ground ══════════════════════════════════════════ -->
+      <GuiElement profile="sfHandful_section" position="0px -204px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 84px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 84px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_ground" position="16px -8px"/>
 
-      <!-- ── Pressure ── -->
-      <Text profile="sfHandful_section" id="hfSecPressure"
-            text="$l10n_sf_handful_sec_pressure" position="0px -242px" size="660px 20px"/>
-      <Text profile="sfHandful_row" id="hfDisease"  text="" position="0px -266px" size="660px 24px"/>
-      <Text profile="sfHandful_row" id="hfPestWeed" text="" position="0px -292px" size="660px 24px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblComp"  text="" position="-165px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValComp"  text="" position="-165px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblMoist" text="" position="165px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValMoist" text="" position="165px -52px"/>
+      </GuiElement>
 
-      <!-- ── History (FIELD) ── -->
-      <Text profile="sfHandful_section" id="hfSecHistory"
-            text="$l10n_sf_handful_sec_history" position="0px -328px" size="660px 20px"/>
-      <Text profile="sfHandful_row" id="hfCrops"    text="" position="0px -352px" size="660px 24px"/>
-      <Text profile="sfHandful_row" id="hfRotation" text="" position="0px -378px" size="660px 24px"/>
-      <Text profile="sfHandful_row" id="hfOrganic"  text="" position="0px -404px" size="660px 24px"/>
+      <!-- ══ Pressure ════════════════════════════════════════ -->
+      <GuiElement profile="sfHandful_section" position="0px -298px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 98px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 98px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_pressure" position="16px -8px"/>
 
-      <!-- ── Under the hand (SPOT) - hidden when no material lies there ── -->
-      <Text profile="sfHandful_section" id="hfSecMaterial"
-            text="$l10n_sf_handful_sec_material" position="0px -440px" size="660px 20px"/>
-      <Text profile="sfHandful_row" id="hfMaterial" text="" position="0px -464px" size="660px 24px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblDis"  text="" position="-220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValDis"  text="" position="-220px -52px"/>
+        <Text profile="sfHandful_tileGrain" id="hfDisGrain" text="" position="-220px -74px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblPest" text="" position="0px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValPest" text="" position="0px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblWeed" text="" position="220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValWeed" text="" position="220px -52px"/>
+      </GuiElement>
 
-      <!-- Footer: why the readings are words and not numbers -->
+      <!-- ══ Field history (FIELD) ═══════════════════════════ -->
+      <GuiElement profile="sfHandful_section" position="0px -406px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 104px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 104px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_history" position="16px -8px"/>
+
+        <Text profile="sfHandful_row" id="hfCrops" text="" position="18px -32px"/>
+        <Text profile="sfHandful_row" id="hfRotation" text="" position="18px -54px"/>
+        <Text profile="sfHandful_row" id="hfOrganic"  text="" position="18px -76px"/>
+      </GuiElement>
+
+      <!-- ══ Under the hand (SPOT) - hidden when bare ════════ -->
+      <GuiElement profile="sfHandful_section" id="hfSecMaterial" position="0px -520px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 84px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 84px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_material" position="16px -8px"/>
+
+        <Text profile="sfHandful_tileLbl" id="hfLblWet"     text="" position="-220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValWet"     text="" position="-220px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblDown"    text="" position="0px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValDown"    text="" position="0px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblVerdict" text="" position="220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValVerdict" text="" position="220px -52px"/>
+      </GuiElement>
+
+      <!-- ══ Footer ══════════════════════════════════════════ -->
       <Text profile="sfHandful_footer" id="hfFooter"
-            text="" position="0px -502px" size="660px 40px" wrapText="true"/>
+            text="" position="0px -616px" size="660px 34px" wrapText="true"/>
 
     </GuiElement>
 
@@ -73,32 +119,73 @@
   <GUIProfiles>
 
     <Profile name="sfHandful_bg" extends="fs25_dialogBg">
-      <size value="720px 620px"/>
+      <size value="720px 764px"/>
     </Profile>
 
-    <Profile name="sfHandful_header" extends="fs25_textDefault" with="anchorTopCenter">
+    <!-- Section shell: a transparent anchor the panel, rail and tiles sit in. -->
+    <Profile name="sfHandful_section" extends="emptyPanel" with="anchorTopCenter">
+      <size value="680px 84px"/>
+    </Profile>
+    <Profile name="sfHandful_sectionBg" extends="baseReference" with="anchorTopCenter">
+      <imageColor value="0.08 0.09 0.07 0.72"/>
+    </Profile>
+    <!-- The lime rail is the one piece of brand colour per section. -->
+    <Profile name="sfHandful_rail" extends="baseReference" with="anchorTopLeft">
+      <imageColor value="0.659 0.878 0.290 0.85"/>
+    </Profile>
+
+    <Profile name="sfHandful_secHdr" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="400px 16px"/>
+      <textSize value="12px"/>
+      <textBold value="true"/>
+      <textColor value="0.659 0.878 0.290 0.80"/>
+      <textAlignment value="left"/>
+    </Profile>
+
+    <!-- Header block -->
+    <Profile name="sfHandful_field" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="22px"/>
+      <textBold value="true"/>
+      <textColor value="0.95 0.95 0.92 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+    <Profile name="sfHandful_grain" extends="fs25_textDefault" with="anchorTopCenter">
+      <textSize value="12px"/>
+      <textColor value="0.60 0.60 0.55 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <!-- Stat tile: dim label over a value the controller colours at runtime. -->
+    <Profile name="sfHandful_tileLbl" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="126px 16px"/>
+      <textSize value="12px"/>
+      <textColor value="0.58 0.58 0.54 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+    <Profile name="sfHandful_tileVal" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="126px 22px"/>
       <textSize value="17px"/>
       <textBold value="true"/>
-      <textColor value="0.35 0.85 0.40 1.0"/>
-      <textAlignment value="center"/>
-    </Profile>
-
-    <Profile name="sfHandful_section" extends="fs25_textDefault" with="anchorTopCenter">
-      <textSize value="13px"/>
-      <textBold value="true"/>
-      <textColor value="0.65 0.62 0.50 1.0"/>
-      <textAlignment value="center"/>
-    </Profile>
-
-    <Profile name="sfHandful_row" extends="fs25_textDefault" with="anchorTopCenter">
-      <textSize value="15px"/>
       <textColor value="1 1 1 1"/>
       <textAlignment value="center"/>
+    </Profile>
+    <Profile name="sfHandful_tileGrain" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="200px 14px"/>
+      <textSize value="10px"/>
+      <textColor value="0.52 0.52 0.48 1.0"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="sfHandful_row" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="644px 20px"/>
+      <textSize value="14px"/>
+      <textColor value="0.88 0.88 0.85 1.0"/>
+      <textAlignment value="left"/>
     </Profile>
 
     <Profile name="sfHandful_footer" extends="fs25_textDefault" with="anchorTopCenter">
       <textSize value="12px"/>
-      <textColor value="0.65 0.65 0.65 1"/>
+      <textColor value="0.62 0.62 0.58 1"/>
       <textAlignment value="center"/>
     </Profile>
 
