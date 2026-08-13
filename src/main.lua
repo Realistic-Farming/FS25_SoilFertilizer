@@ -164,6 +164,10 @@ source(modDirectory .. "src/ui/SoilFieldDetailDialog.lua")
 source(modDirectory .. "src/ui/RotationPlannerDialog.lua")
 source(modDirectory .. "src/ui/SoilTreatmentDialog.lua")
 source(modDirectory .. "src/ui/SoilScoutDialog.lua")
+-- SF-39 THE HANDFUL PANEL: the reading surface for the kneel. Renders the
+-- frozen SF-38 payload; loaded like any other dialog, gated at the input
+-- callback by read_the_dirt so a locked family never opens it.
+source(modDirectory .. "src/ui/SoilHandfulDialog.lua")
 source(modDirectory .. "src/ui/SoilVersionDialog.lua")
 source(modDirectory .. "src/ui/SoilHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilGuideDialog.lua")
