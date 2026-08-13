@@ -669,6 +669,121 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
     set(tipEl, tip)
 end
 
+-- =========================================================
+-- CD-11 resistance glance (BUILD 16:59)
+-- =========================================================
+-- One line for the selected field, painted into treatTargetsLabel: the 1x1 hidden stub
+-- left in the shared XML when F5 replaced the single multiline target Text with the four
+-- per-nutrient lines. It is soil-only and already bound, so borrowing it costs ZERO
+-- shared-XML edit under the nine-door freeze, which is the whole reason this slot was
+-- chosen over a new sibling Text.
+--
+-- Placement is runtime-owned. The TREATMENT card is 200px wide; two honest sentences at
+-- 17px truncate there in half the supported languages, so the line sits full width in the
+-- free band under the three cards. Restore on hide is setText("") + setVisible(false) -
+-- the stub has no live baseline to drift back to, only a dead 1x1.
+local CD11_POS  = { "20px", "-280px" }
+local CD11_SIZE = "1120px 44px"
+
+--- Worst band across the FRAC modes, from the sanctioned getter only.
+---
+--- MODE_RISK is keyed by mode and is the one canonical FRAC list in constants, so it is
+--- the mode set rather than a list retyped here. Every value comes from
+--- soilSystem:getResistanceBand: a pure client renders what the server sent and NEVER
+--- bands a raw field.resistance score itself.
+---
+--- UNKNOWN is not a band on this scale, it is the gate being shut, so it is never
+--- "worst": an unrevealed field returns UNKNOWN on every mode and reports UNKNOWN, while
+--- a revealed field never returns UNKNOWN at all. Missing must never fall through to
+--- WORKING.
+---@return number   a SoilConstants.RESISTANCE.BANDS value
+local function worstResistanceBand(fieldId)
+    local BANDS = SoilConstants and SoilConstants.RESISTANCE and SoilConstants.RESISTANCE.BANDS
+    if BANDS == nil or fieldId == nil then
+        return -1
+    end
+    local sfm = g_SoilFertilityManager
+    if sfm == nil and type(getfenv) == "function" then
+        local env0 = getfenv(0)
+        if env0 ~= nil then sfm = env0.g_SoilFertilityManager end
+    end
+    local soilSystem = sfm and sfm.soilSystem or nil
+    if soilSystem == nil or type(soilSystem.getResistanceBand) ~= "function" then
+        return BANDS.UNKNOWN
+    end
+    local modes = SoilConstants.RESISTANCE.MODE_RISK
+    if type(modes) ~= "table" then
+        return BANDS.UNKNOWN
+    end
+    local worst = nil
+    for mode, _ in pairs(modes) do
+        local ok, band = pcall(function() return soilSystem:getResistanceBand(fieldId, mode) end)
+        if ok and type(band) == "number" and band ~= BANDS.UNKNOWN then
+            if worst == nil or band > worst then
+                worst = band
+            end
+        end
+    end
+    return worst or BANDS.UNKNOWN
+end
+
+--- Paint (or hide) the glance. Light setText only, on the same cadence as the rest of the
+--- treatment refresh: no SmoothList touched, no reloadData, no timer.
+local function paintResistanceGlance(page, tr, fieldId)
+    local el = page.treatTargetsLabel
+    if el == nil then
+        return
+    end
+    local BANDS = SoilConstants and SoilConstants.RESISTANCE and SoilConstants.RESISTANCE.BANDS
+    if fieldId == nil or BANDS == nil then
+        el:setText("")
+        if el.setVisible then el:setVisible(false) end
+        return
+    end
+
+    local band = worstResistanceBand(fieldId)
+    local word, colour
+    if band == BANDS.FINISHED then
+        word, colour = tr("rf_pda_resist_finished", "finished here"), COLOR_POOR
+    elseif band == BANDS.SLIPPING then
+        word, colour = tr("rf_pda_resist_slipping", "losing its edge"), COLOR_FAIR
+    elseif band == BANDS.WORKING then
+        word, colour = tr("rf_pda_resist_working", "still works"), COLOR_GOOD
+    else
+        -- UNKNOWN gets its own word and a neutral tone. It must never wear the green of
+        -- WORKING: that would tell a player their fungicide is fine about ground nobody
+        -- has scouted.
+        word, colour = tr("rf_pda_resist_unknown", "UNKNOWN (field not scouted)"), COLOR_DIM
+    end
+
+    local tpl = tr("rf_pda_resist_line", "Fungicide resistance: %s")
+    local okFmt, line = pcall(string.format, tpl, word)
+    if not okFmt then
+        line = "Fungicide resistance: " .. tostring(word)
+    end
+    local cue = tr("rf_pda_resist_cue",
+        "A Treatment menu cure is not a tank mix. Only spraying builds resistance.")
+
+    if GuiUtils ~= nil and type(GuiUtils.getNormalizedXValue) == "function"
+            and type(GuiUtils.getNormalizedYValue) == "function"
+            and type(el.setPosition) == "function" then
+        el:setPosition(GuiUtils.getNormalizedXValue(CD11_POS[1], 0),
+                       GuiUtils.getNormalizedYValue(CD11_POS[2], 0))
+    end
+    if GuiUtils ~= nil and type(GuiUtils.getNormalizedScreenValues) == "function"
+            and type(el.setSize) == "function" then
+        local norms = GuiUtils.getNormalizedScreenValues(CD11_SIZE)
+        if type(norms) == "table" and norms[1] ~= nil and norms[2] ~= nil then
+            el:setSize(norms[1], norms[2])
+        end
+    end
+    el.textMaxNumLines = 2
+    el:setText(line .. "\n" .. cue)
+    if el.setTextColor then el:setTextColor(unpack(colour)) end
+    if el.setVisible then el:setVisible(true) end
+    if type(el.updateAbsolutePosition) == "function" then el:updateAbsolutePosition() end
+end
+
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
     local tr = page._rfTr or function(k, fb) return fb or k end
     local fieldId = page.selectedFieldId
@@ -860,9 +975,8 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         local phHi = limits.PH_NEUTRAL_HIGH or 7.0
         page.treatTargetPH:setText(string.format("pH %.1f-%.1f", phLo, phHi))
     end
-    if page.treatTargetsLabel and page.treatTargetsLabel.setVisible then
-        page.treatTargetsLabel:setVisible(false)
-    end
+    -- CD-11: the stub stops being dead here and carries the resistance glance.
+    paintResistanceGlance(page, tr, fieldId)
 
     local rows = mergeWorstPlanRows(members)
 

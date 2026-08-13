@@ -1445,6 +1445,22 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
+    <e k="rf_pda_resist_line" v="Rezistență la fungicide: %s" eh="9f9d6ffa" />
+    <e k="rf_pda_resist_working" v="încă funcționează" eh="9e90e022" />
+    <e k="rf_pda_resist_slipping" v="își pierde eficacitatea" eh="0c6ee28e" />
+    <e k="rf_pda_resist_finished" v="aici nu mai funcționează" eh="661308da" />
+    <e k="rf_pda_resist_unknown" v="NECUNOSCUT (parcela nu a fost cercetată)" eh="1480a486" />
+    <e k="rf_pda_resist_cue" v="Un tratament din meniu nu este o stropire. Doar stropirea creează rezistență." eh="86da0ba9" />
+    <e k="sf_handful_sec_growth" v="CREȘTERE" eh="c845effc" />
+    <e k="sf_handful_growth" v="Creștere" eh="699aed86" />
+    <e k="sf_handful_growth_held" v="Încetinită" eh="47a1b570" />
+    <e k="sf_handful_growth_free" v="Nimic nu o încetinește" eh="b2eeafb9" />
+    <e k="sf_handful_growth_why" v="De ce" eh="91164770" />
+    <e k="sf_handful_growth_cause_n" v="azot puțin" eh="c8407616" />
+    <e k="sf_handful_growth_cause_compaction" v="compactare" eh="859c01b4" />
+    <e k="sf_handful_growth_cause_none" v="încetinită, cauza nu a fost raportată" eh="f381c172" />
+    <e k="sf_handful_growth_credit" v="Credit de creștere" eh="30ce7482" />
+    <e k="sf_handful_growth_credit_days" v="%d zile" eh="cdca48ec" />
 </elements>
 
 

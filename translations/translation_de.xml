@@ -1415,6 +1415,22 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
+    <e k="rf_pda_resist_line" v="Fungizid-Resistenz: %s" eh="9f9d6ffa" />
+    <e k="rf_pda_resist_working" v="wirkt noch" eh="9e90e022" />
+    <e k="rf_pda_resist_slipping" v="lässt nach" eh="0c6ee28e" />
+    <e k="rf_pda_resist_finished" v="hier wirkungslos" eh="661308da" />
+    <e k="rf_pda_resist_unknown" v="UNBEKANNT (Feld nicht untersucht)" eh="1480a486" />
+    <e k="rf_pda_resist_cue" v="Eine Behandlung über das Menü ist keine Spritzung. Nur Spritzen baut Resistenz auf." eh="86da0ba9" />
+    <e k="sf_handful_sec_growth" v="WACHSTUM" eh="c845effc" />
+    <e k="sf_handful_growth" v="Wachstum" eh="699aed86" />
+    <e k="sf_handful_growth_held" v="Gebremst" eh="47a1b570" />
+    <e k="sf_handful_growth_free" v="Nichts bremst es" eh="b2eeafb9" />
+    <e k="sf_handful_growth_why" v="Warum" eh="91164770" />
+    <e k="sf_handful_growth_cause_n" v="wenig Stickstoff" eh="c8407616" />
+    <e k="sf_handful_growth_cause_compaction" v="Verdichtung" eh="859c01b4" />
+    <e k="sf_handful_growth_cause_none" v="gebremst, Ursache nicht gemeldet" eh="f381c172" />
+    <e k="sf_handful_growth_credit" v="Wachstumsguthaben" eh="30ce7482" />
+    <e k="sf_handful_growth_credit_days" v="%d Tage" eh="cdca48ec" />
 </elements>
 
 

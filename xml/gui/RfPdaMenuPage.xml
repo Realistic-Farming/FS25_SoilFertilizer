@@ -341,58 +341,80 @@
                     <!-- Worker Costs page bodies only (page chrome = left sibling band). -->
                     <GuiElement profile="RF_WcPageShell" id="wcPageShell" visible="false">
                         <!-- Dashboard -->
-                        <GuiElement profile="RF_WcPage" id="wcPageDashboard" visible="true">
-                            <Text profile="RF_TreatTargetLine" id="wcDashStatus" position="0px 0px" size="1140px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashMode" position="0px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashWage" position="580px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashRate" position="0px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashWorkers" position="580px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashEstimate" position="0px -144px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashCountdown" position="580px -144px" size="560px 22px" text=""/>
-                            <Text profile="RF_HintText" id="wcDashWorkerNames" position="0px -200px" size="1140px 280px"
+                        <!-- Dashboard is the only WC page that gets the white card (Ash 15:35 #2):
+                             Wages/Workers/About carry MTOs and their own chrome. Framed on
+                             wcPageDashboard itself, not a new inner shell, so nothing double-frames.
+                             Body cells inset 10px L/R and 8px down; worker names still 280 tall and
+                             end at -488 of 500, so 12px of bottom air and no clip. -->
+                        <GuiElement profile="RF_EscCardFrameWide" id="wcPageDashboard" visible="true">
+                            <Text profile="RF_TreatTargetLine" id="wcDashStatus" position="10px -8px" size="1120px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashMode" position="10px -56px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashWage" position="580px -56px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashRate" position="10px -104px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashWorkers" position="580px -104px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashEstimate" position="10px -152px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="wcDashCountdown" position="580px -152px" size="550px 22px" text=""/>
+                            <Text profile="RF_HintText" id="wcDashWorkerNames" position="10px -208px" size="1120px 280px"
                                   textMaxNumLines="12" textVerticalAlignment="top" text=""/>
                         </GuiElement>
 
                         <!-- Wages: tight label+option rows; summary/help/Reset UNDER stack (no 760 side column). -->
+                        <!-- Two cards, not one: settings stack up, summary/help/Reset below, 16px of
+                             clear air between the strokes. The page itself stays unframed - a frame on
+                             RF_WcPage would be the mega-shell over the MTOs George vetoed. Wrappers carry
+                             handleFocus=false so nothing between the player and an option can take a click,
+                             and the MTOs are still found by getDescendantById, which does not care how deep
+                             they sit. Card B trims one internal gap by 8px, which is exactly what the two
+                             strokes plus their air cost, so wcBtnWageReset lands back on -536 and the page
+                             stays 580 tall. Nothing grew to make room. -->
                         <GuiElement profile="RF_WcPage" id="wcPageWages" size="1140px 580px" visible="false">
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblEnabled" position="0px 8px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptEnabled" position="220px 0px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblMode" position="0px -44px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptCostMode" position="220px -52px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblLevel" position="0px -96px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptWageLevel" position="220px -104px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblNotify" position="0px -148px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptNotifications" position="220px -156px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblDebug" position="0px -200px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptDebugMode" position="220px -208px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageLblSalary" position="0px -252px" size="200px 22px" text=""/>
-                            <MultiTextOption profile="RF_WcWageOption" id="wcOptMonthlySalary" position="220px -260px"
-                                             disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
-                            <!-- Summary band under last option (~-260); full width; not overlapping options. -->
-                            <Text profile="RF_SectionTitle" id="wcWageBigRate" position="0px -340px" size="1140px 36px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcWageRateLabel" position="0px -384px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcWagePayInterval" position="580px -384px" size="560px 22px" text=""/>
-                            <Text profile="RF_HintText" id="wcWageHelpBody" position="0px -420px" size="1140px 100px"
-                                  textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                            <Button profile="buttonActivate" id="wcBtnWageReset" position="0px -536px" size="200px 36px"
-                                    text="Reset" onClick="onClickWcWageReset"/>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardA" position="0px 0px" size="1140px 326px" handleFocus="false">
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblEnabled" position="10px -10px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptEnabled" position="230px -18px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblMode" position="10px -62px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptCostMode" position="230px -70px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblLevel" position="10px -114px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptWageLevel" position="230px -122px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblNotify" position="10px -166px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptNotifications" position="230px -174px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblDebug" position="10px -218px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptDebugMode" position="230px -226px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageLblSalary" position="10px -270px" size="200px 22px" text=""/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptMonthlySalary" position="230px -278px"
+                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardB" position="0px -342px" size="1140px 238px" handleFocus="false">
+                                <Text profile="RF_SectionTitle" id="wcWageBigRate" position="10px -6px" size="1120px 36px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageRateLabel" position="10px -50px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcWagePayInterval" position="580px -50px" size="550px 22px" text=""/>
+                                <Text profile="RF_HintText" id="wcWageHelpBody" position="10px -86px" size="1120px 100px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Button profile="buttonActivate" id="wcBtnWageReset" position="10px -194px" size="200px 36px"
+                                        text="Reset" onClick="onClickWcWageReset"/>
+                            </GuiElement>
                         </GuiElement>
 
                         <!-- Workers -->
+                        <!-- Same family as Wages: stats card, 16px of air, then the worker list card.
+                             wcStatsWorkerList stays fixed Text rows, no SmoothList. -->
                         <GuiElement profile="RF_WcPage" id="wcPageWorkers" visible="false">
-                            <Text profile="RF_TreatTargetLine" id="wcStatsMode" position="0px 0px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcStatsWage" position="580px 0px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcStatsInterval" position="0px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcStatsCount" position="580px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcStatsCostPer" position="0px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcStatsTotal" position="580px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_HintText" id="wcStatsWorkerList" position="0px -160px" size="1140px 320px"
-                                  textMaxNumLines="14" textVerticalAlignment="top" text=""/>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardA" position="0px 0px" size="1140px 136px" handleFocus="false">
+                                <Text profile="RF_TreatTargetLine" id="wcStatsMode" position="10px -10px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsWage" position="580px -10px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsInterval" position="10px -58px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsCount" position="580px -58px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsCostPer" position="10px -106px" size="550px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsTotal" position="580px -106px" size="550px 22px" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardB" position="0px -152px" size="1140px 338px" handleFocus="false">
+                                <Text profile="RF_HintText" id="wcStatsWorkerList" position="10px -10px" size="1120px 320px"
+                                      textMaxNumLines="14" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
                         </GuiElement>
 
                         <!-- About page retired 2026-08-02: copy lives in wcSideInfoShell. Keep shell for nil-safe ids. -->
@@ -417,61 +439,84 @@
                          Text-only; no onClick. Visible only for framework module ids.
                          George 2026-08-05: shell 0/-20 (X flush + B1 blurb-48 clearance); titles hidden; rows +36. -->
                     <GuiElement profile="RF_WcPageShell" id="rfFrameworkGlanceShell" visible="false" position="0px 0px">
-                        <GuiElement id="rfFwStatusBlock" visible="true" position="0px 0px" size="1140px 580px">
-                            <Text profile="RF_SectionTitle" id="rfFwStatusTitle" position="0px 0px" size="1140px 24px" text="" visible="false"/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="0px 0px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="0px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="0px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="0px -144px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="580px 0px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="580px -48px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="580px -96px" size="560px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="580px -144px" size="560px 22px" text=""/>
-                            <Text profile="RF_HintText" id="rfFwHint" position="0px -200px" size="1140px 120px"
+                        <!-- Income / Tax / Depot status glance. 580 was taller than the shell (520);
+                             the card is sized to its content instead: hint ends at -328, so 340
+                             leaves 12px of bottom air inside the stroke. -->
+                        <GuiElement profile="RF_EscCardFrameWide" id="rfFwStatusBlock" visible="true" position="0px 0px" size="1140px 340px">
+                            <Text profile="RF_SectionTitle" id="rfFwStatusTitle" position="10px -8px" size="1120px 24px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine1" position="10px -8px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine2" position="10px -56px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine3" position="10px -104px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine4" position="10px -152px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine5" position="580px -8px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine6" position="580px -56px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine7" position="580px -104px" size="550px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwLine8" position="580px -152px" size="550px 22px" text=""/>
+                            <Text profile="RF_HintText" id="rfFwHint" position="10px -208px" size="1120px 120px"
                                   textMaxNumLines="4" textVerticalAlignment="top" text=""/>
                         </GuiElement>
-                        <GuiElement id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 580px">
-                            <Text profile="RF_SectionTitle" id="rfFwTableTitle" position="0px 0px" size="1140px 24px" text="" visible="false"/>
-                            <Text profile="RF_ColHeader" id="rfFwColA" position="0px -32px" size="280px 22px" text=""/>
-                            <Text profile="RF_ColHeader" id="rfFwColB" position="300px -32px" size="280px 22px" text=""/>
-                            <Text profile="RF_ColHeader" id="rfFwColC" position="600px -32px" size="220px 22px" text=""/>
-                            <Text profile="RF_ColHeader" id="rfFwColD" position="840px -32px" size="280px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1A" position="0px -60px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1B" position="300px -60px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1C" position="600px -60px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1D" position="840px -60px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2A" position="0px -88px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2B" position="300px -88px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2C" position="600px -88px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2D" position="840px -88px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3A" position="0px -116px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3B" position="300px -116px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3C" position="600px -116px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3D" position="840px -116px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4A" position="0px -144px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4B" position="300px -144px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4C" position="600px -144px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4D" position="840px -144px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5A" position="0px -172px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5B" position="300px -172px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5C" position="600px -172px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5D" position="840px -172px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6A" position="0px -200px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6B" position="300px -200px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6C" position="600px -200px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6D" position="840px -200px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7A" position="0px -228px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7B" position="300px -228px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7C" position="600px -228px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7D" position="840px -228px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8A" position="0px -256px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8B" position="300px -256px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="600px -256px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="840px -256px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwMore" position="0px -292px" size="1140px 20px" text=""/>
-                            <Text profile="RF_HintText" id="rfFwEmptyHint" position="0px -60px" size="1140px 44px"
+                        <!-- Dairy / NPC Favor table glance. Content runs to -416 (hint under the rows),
+                             so 428 gives the same 12px of bottom air. Only one of the two blocks is
+                             ever visible (setVis is an either/or), so no card is ever naked beside
+                             another - Ash 15:35 #1 sibling framing has nothing to bite on here. -->
+                        <GuiElement profile="RF_EscCardFrameWide" id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 428px">
+                            <Text profile="RF_SectionTitle" id="rfFwTableTitle" position="10px -8px" size="1120px 24px" text="" visible="false"/>
+                            <!-- Excel sheet: the outer border is rfFwTableBlock's own hasFrame; these 11 hairlines
+                                 are the inner grid. RF_EscCardRule is already blank.png + soft grey 0.55, so they
+                                 take it with an inline size rather than one profile per orientation. Declared
+                                 before the cells so text paints over them. Per-cell hasFrame would have been 144
+                                 frame rects for the same picture. -->
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleHead" position="10px -64px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow1" position="10px -92px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow2" position="10px -120px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow3" position="10px -148px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow4" position="10px -176px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow5" position="10px -204px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow6" position="10px -232px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow7" position="10px -260px" size="1120px 1px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol1" position="300px -36px" size="1px 250px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol2" position="600px -36px" size="1px 250px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol3" position="840px -36px" size="1px 250px"/>
+                            <Text profile="RF_FwColHeader" id="rfFwColA" position="10px -40px" size="280px 22px" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwColB" position="310px -40px" size="280px 22px" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwColC" position="610px -40px" size="220px 22px" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwColD" position="850px -40px" size="280px 22px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1A" position="10px -68px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1B" position="310px -68px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1C" position="610px -68px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1D" position="850px -68px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2A" position="10px -96px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2B" position="310px -96px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2C" position="610px -96px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2D" position="850px -96px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3A" position="10px -124px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3B" position="310px -124px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3C" position="610px -124px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3D" position="850px -124px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4A" position="10px -152px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4B" position="310px -152px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4C" position="610px -152px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4D" position="850px -152px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5A" position="10px -180px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5B" position="310px -180px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5C" position="610px -180px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5D" position="850px -180px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6A" position="10px -208px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6B" position="310px -208px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6C" position="610px -208px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6D" position="850px -208px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7A" position="10px -236px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7B" position="310px -236px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7C" position="610px -236px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7D" position="850px -236px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8A" position="10px -264px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8B" position="310px -264px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -300px" size="1120px 20px" text=""/>
+                            <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
-                            <Text profile="RF_HintText" id="rfFwHintTable" position="0px -328px" size="1140px 80px"
+                            <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"
                                   textMaxNumLines="3" textVerticalAlignment="top" text=""/>
                         </GuiElement>
                     </GuiElement>
@@ -710,23 +755,23 @@
                         <Bitmap profile="RF_TreatmentBoxBg"/>
 
                         <!-- Page A — Prices -->
-                        <GuiElement id="mdPricesBand" visible="true" position="0px 0px" size="100% 100%">
+                        <GuiElement profile="RF_EscCardFrameWide" id="mdPricesBand" visible="true" position="10px -10px" size="1130px 344px">
                             <Text profile="RF_SectionTitle" id="mdGraphTitle" position="10px -6px" size="700px 22px" text=""/>
-                            <GuiElement profile="RF_MdGraphArea" id="mdGraphArea"/>
-            <Text profile="RF_EmptyHint" id="mdGraphEmptyHint" position="40px -96px" size="720px 40px"
+                            <GuiElement profile="RF_MdGraphArea" id="mdGraphArea" position="30px -28px"/>
+            <Text profile="RF_EmptyHint" id="mdGraphEmptyHint" position="30px -86px" size="720px 40px"
                   visible="false" text=""/>
-            <Text profile="RF_TreatSelected" id="mdDetailCommodity" position="770px -32px" size="380px 22px"
+            <Text profile="RF_TreatSelected" id="mdDetailCommodity" position="770px -32px" size="350px 22px"
                   textAlignment="left" text=""/>
-            <Text profile="RF_TreatTargetLine" id="mdDetailPrice" position="770px -64px" size="380px 20px" text=""/>
-            <Text profile="RF_TreatTargetLine" id="mdDetailPressure" position="770px -92px" size="380px 20px" text=""/>
-            <Text profile="RF_HintText" id="mdDetailEmpty" position="770px -64px" size="380px 44px"
+            <Text profile="RF_TreatTargetLine" id="mdDetailPrice" position="770px -64px" size="350px 20px" text=""/>
+            <Text profile="RF_TreatTargetLine" id="mdDetailPressure" position="770px -92px" size="350px 20px" text=""/>
+            <Text profile="RF_HintText" id="mdDetailEmpty" position="770px -64px" size="350px 44px"
                   textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtn" position="770px -280px" size="360px 36px"
+            <Button profile="buttonActivate" id="mdOpenMarketBtn" position="770px -280px" size="350px 36px"
                     onClick="onClickMdOpenMarket"/>
                         </GuiElement>
 
                         <!-- Page B — Events (fixed Text rows; no SmoothList thrash). -->
-                        <GuiElement id="mdEventsBand" visible="false" position="0px 0px" size="100% 100%">
+                        <GuiElement profile="RF_EscCardFrameWide" id="mdEventsBand" visible="false" position="10px -10px" size="1130px 344px">
                             <Text profile="RF_SectionTitle" id="mdEventsTitle" position="10px -6px" size="700px 22px" text=""/>
                             <Text profile="RF_ColHeader" id="mdEvColName" position="10px -36px" size="420px 20px" text=""/>
                             <Text profile="RF_ColHeader" id="mdEvColIntensity" position="450px -36px" size="220px 20px" text=""/>
@@ -752,12 +797,12 @@
                             <Text profile="RF_TreatTargetLine" id="mdEvMore" position="10px -240px" size="1100px 20px" text=""/>
                             <Text profile="RF_HintText" id="mdEventsEmpty" position="10px -64px" size="1100px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtnEvents" position="770px -280px" size="360px 36px"
+            <Button profile="buttonActivate" id="mdOpenMarketBtnEvents" position="770px -280px" size="350px 36px"
                     onClick="onClickMdOpenMarket"/>
                         </GuiElement>
 
                         <!-- Page C — Contracts (read-only fixed rows). -->
-                        <GuiElement id="mdContractsBand" visible="false" position="0px 0px" size="100% 100%">
+                        <GuiElement profile="RF_EscCardFrameWide" id="mdContractsBand" visible="false" position="10px -10px" size="1130px 344px">
                             <Text profile="RF_SectionTitle" id="mdContractsTitle" position="10px -6px" size="900px 22px" text=""/>
                             <Text profile="RF_ColHeader" id="mdCtColCrop" position="10px -36px" size="280px 20px" text=""/>
                             <Text profile="RF_ColHeader" id="mdCtColQty" position="300px -36px" size="220px 20px" text=""/>
@@ -786,7 +831,7 @@
                             <Text profile="RF_TreatTargetLine" id="mdCtMore" position="10px -212px" size="1100px 20px" text=""/>
                             <Text profile="RF_HintText" id="mdContractsEmpty" position="10px -64px" size="1100px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtnContracts" position="770px -280px" size="360px 36px"
+            <Button profile="buttonActivate" id="mdOpenMarketBtnContracts" position="770px -280px" size="350px 36px"
                     onClick="onClickMdOpenMarket"/>
                         </GuiElement>
                     </GuiElement>

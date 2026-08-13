@@ -1445,6 +1445,22 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
+    <e k="rf_pda_resist_line" v="Resistência a fungicidas: %s" eh="9f9d6ffa" />
+    <e k="rf_pda_resist_working" v="ainda funciona" eh="9e90e022" />
+    <e k="rf_pda_resist_slipping" v="está perdendo eficácia" eh="0c6ee28e" />
+    <e k="rf_pda_resist_finished" v="não funciona mais aqui" eh="661308da" />
+    <e k="rf_pda_resist_unknown" v="DESCONHECIDO (talhão não explorado)" eh="1480a486" />
+    <e k="rf_pda_resist_cue" v="Um tratamento pelo menu não é uma pulverização. Só pulverizar cria resistência." eh="86da0ba9" />
+    <e k="sf_handful_sec_growth" v="CRESCIMENTO" eh="c845effc" />
+    <e k="sf_handful_growth" v="Crescimento" eh="699aed86" />
+    <e k="sf_handful_growth_held" v="Travado" eh="47a1b570" />
+    <e k="sf_handful_growth_free" v="Nada o trava" eh="b2eeafb9" />
+    <e k="sf_handful_growth_why" v="Por quê" eh="91164770" />
+    <e k="sf_handful_growth_cause_n" v="nitrogênio baixo" eh="c8407616" />
+    <e k="sf_handful_growth_cause_compaction" v="compactação" eh="859c01b4" />
+    <e k="sf_handful_growth_cause_none" v="travado, causa não informada" eh="f381c172" />
+    <e k="sf_handful_growth_credit" v="Crédito de crescimento" eh="30ce7482" />
+    <e k="sf_handful_growth_credit_days" v="%d dias" eh="cdca48ec" />
 </elements>
 
 

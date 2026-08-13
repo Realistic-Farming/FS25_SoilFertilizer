@@ -40,6 +40,8 @@ HandfulRead.CLAUSES = {
     "materialWetness", "materialDaysDown", "materialVerdict",
     "diseaseKnown",
     "testKitActive",
+    -- SF-54 (BUILD 16:59). A deliberate re-open of the frozen list, not a quiet edit.
+    "growthBlocked", "growthBlockedByN", "growthBlockedByCompaction", "growthCredit",
 }
 
 -- =========================================================
@@ -198,6 +200,39 @@ function HandfulRead.assemble(ctx)
         if ok and v ~= nil then compaction = v end
     end
 
+    -- SF-54: the growth-cell read. Spot grain, and the manager getter is the only door
+    -- to it (ViabilityMask is not called directly) so the pcall guard and the disabled /
+    -- off-field nil both come from one place.
+    local growth = nil
+    if g_SoilFertilityManager ~= nil and type(g_SoilFertilityManager.getCellGrowthInfo) == "function" then
+        local okG, g = pcall(function()
+            return g_SoilFertilityManager:getCellGrowthInfo(ctx.fieldId, ctx.x, ctx.z)
+        end)
+        if okG then growth = g end
+    end
+
+    -- nil and false are DIFFERENT answers here and the split is load-bearing: nil means
+    -- there was no growth read at this spot (mask off, disabled, off-field), false means
+    -- we read it and nothing is holding growth back. Folding them together would print
+    -- "you are fine" over ground nobody measured.
+    --
+    -- blockedBy.moisture is never read. ViabilityMask.bandMoisture returns nil on purpose
+    -- (an SCS 0..1 fraction against fruitDesc litres-per-sqm would mark every crop
+    -- blocked), so the flag is always false and showing water would be inventing a cause.
+    -- capturedEfficiency is never read either; it is always nil.
+    local growthBlocked, growthByN, growthByCompaction, growthCredit
+    if type(growth) == "table" then
+        growthBlocked = growth.blocked == true
+        local by = growth.blockedBy
+        if type(by) == "table" then
+            growthByN = by.n == true
+            growthByCompaction = by.compaction == true
+        end
+        if type(growth.credit) == "number" then
+            growthCredit = growth.credit
+        end
+    end
+
     local farmId = farmIdOf(ctx)
 
     return {
@@ -243,6 +278,13 @@ function HandfulRead.assemble(ctx)
         x = ctx.x,
         z = ctx.z,
         currentDay = ctx.currentDay,
+        -- SF-54 spot grain. nil throughout means "no growth read here", never "fine",
+        -- and growthCredit is a real number or nothing at all - never a zero standing in
+        -- for a measurement that was not taken.
+        growthBlocked = growthBlocked,
+        growthBlockedByN = growthByN,
+        growthBlockedByCompaction = growthByCompaction,
+        growthCredit = growthCredit,
         -- the frozen clause list rides the payload so the panel can iterate it
         clauses = HandfulRead.CLAUSES,
     }

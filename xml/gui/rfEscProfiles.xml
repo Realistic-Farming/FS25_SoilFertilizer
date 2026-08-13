@@ -287,6 +287,22 @@
         <frameBottomColor value="1 1 1 0.85"/>
     </Profile>
 
+    <!-- Wide sibling of RF_EscCardFrame. Same stroke knobs, different box: extends
+         RF_WcPage (1140x500, clip false) instead of Soil's RF_ProductsShell, so a
+         1140-wide shell does not collapse to 560x248 and tall children are not cut.
+         clipChildren is restated here on purpose - inheriting it would leave the
+         clip of every wide card at the mercy of an unrelated edit to RF_WcPage.
+         Callers set their own size inline; inline beats profile. -->
+    <Profile name="RF_EscCardFrameWide" extends="RF_WcPage">
+        <clipChildren value="false"/>
+        <hasFrame value="true"/>
+        <frameThickness value="1dp 1dp 1dp 1dp"/>
+        <frameLeftColor value="1 1 1 0.85"/>
+        <frameTopColor value="1 1 1 0.85"/>
+        <frameRightColor value="1 1 1 0.85"/>
+        <frameBottomColor value="1 1 1 0.85"/>
+    </Profile>
+
     <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
          art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
          measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
@@ -585,6 +601,13 @@
         <textUpperCase value="true"/>
         <textColor value="0.478 0.502 0.533 1"/>
         <textAlignment value="center"/>
+    </Profile>
+
+    <!-- Framework table headers only (rfFwColA..D). RF_ColHeader stays CENTER because
+         Soil, Crop Stress and Market Dynamics all read from it; left alignment is a
+         framework-table decision, so it gets a sibling instead of a global flip. -->
+    <Profile name="RF_FwColHeader" extends="RF_ColHeader">
+        <textAlignment value="left"/>
     </Profile>
 
     <!-- Kept for other pages; fields table uses centered RF_ColHeader (F12). -->

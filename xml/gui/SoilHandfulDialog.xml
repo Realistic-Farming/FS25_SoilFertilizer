@@ -64,8 +64,22 @@
         <Text profile="sfHandful_tileVal" id="hfValMoist" text="" position="165px -52px"/>
       </GuiElement>
 
-      <!-- ══ Pressure ════════════════════════════════════════ -->
+      <!-- ══ Growth (SPOT) - SF-54 ═══════════════════════════ -->
       <GuiElement profile="sfHandful_section" position="0px -298px">
+        <Bitmap profile="sfHandful_sectionBg" size="680px 84px"/>
+        <Bitmap profile="sfHandful_rail"      size="3px 84px" position="0px 0px"/>
+        <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_growth" position="16px -8px"/>
+
+        <Text profile="sfHandful_tileLbl" id="hfLblGrowth"       text="" position="-220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValGrowth"       text="" position="-220px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblGrowthWhy"    text="" position="0px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValGrowthWhy"    text="" position="0px -52px"/>
+        <Text profile="sfHandful_tileLbl" id="hfLblGrowthCredit" text="" position="220px -34px"/>
+        <Text profile="sfHandful_tileVal" id="hfValGrowthCredit" text="" position="220px -52px"/>
+      </GuiElement>
+
+      <!-- ══ Pressure ════════════════════════════════════════ -->
+      <GuiElement profile="sfHandful_section" position="0px -392px">
         <Bitmap profile="sfHandful_sectionBg" size="680px 98px"/>
         <Bitmap profile="sfHandful_rail"      size="3px 98px" position="0px 0px"/>
         <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_pressure" position="16px -8px"/>
@@ -80,7 +94,7 @@
       </GuiElement>
 
       <!-- ══ Field history (FIELD) ═══════════════════════════ -->
-      <GuiElement profile="sfHandful_section" position="0px -406px">
+      <GuiElement profile="sfHandful_section" position="0px -500px">
         <Bitmap profile="sfHandful_sectionBg" size="680px 104px"/>
         <Bitmap profile="sfHandful_rail"      size="3px 104px" position="0px 0px"/>
         <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_history" position="16px -8px"/>
@@ -91,7 +105,7 @@
       </GuiElement>
 
       <!-- ══ Under the hand (SPOT) - hidden when bare ════════ -->
-      <GuiElement profile="sfHandful_section" id="hfSecMaterial" position="0px -520px">
+      <GuiElement profile="sfHandful_section" id="hfSecMaterial" position="0px -614px">
         <Bitmap profile="sfHandful_sectionBg" size="680px 84px"/>
         <Bitmap profile="sfHandful_rail"      size="3px 84px" position="0px 0px"/>
         <Text profile="sfHandful_secHdr" text="$l10n_sf_handful_sec_material" position="16px -8px"/>
@@ -106,7 +120,7 @@
 
       <!-- ══ Footer ══════════════════════════════════════════ -->
       <Text profile="sfHandful_footer" id="hfFooter"
-            text="" position="0px -616px" size="660px 34px" wrapText="true"/>
+            text="" position="0px -710px" size="660px 34px" wrapText="true"/>
 
     </GuiElement>
 
@@ -119,7 +133,7 @@
   <GUIProfiles>
 
     <Profile name="sfHandful_bg" extends="fs25_dialogBg">
-      <size value="720px 764px"/>
+      <size value="720px 858px"/>
     </Profile>
 
     <!-- Section shell: a transparent anchor the panel, rail and tiles sit in. -->

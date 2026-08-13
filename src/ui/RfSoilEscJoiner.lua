@@ -15,6 +15,7 @@ local PANEL_ORDER = 10
 
 local _registered = false
 local _legacyStoodDown = false
+local _pfHopDone = false
 
 local function tr(key, fallback)
     local modEnv = g_modEnvironments and g_modEnvironments[MOD_NAME]
@@ -36,6 +37,90 @@ local function getRegistry()
         return g_currentMission.rfEscModules
     end
     return nil
+end
+
+--- Soil already stands its SIMULATION down when Precision Farming is in the save
+--- (SoilFertilityManager sets hasPrecisionFarming, settings.enabled = false and
+--- _disabledByPF), but the Esc row kept answering true, so the Modules list still offered
+--- a page for a mod that had switched itself off. This closes that leak.
+---
+--- LIVE, not a value captured at register: PF is detected during mission start, which
+--- happens AFTER this joiner registers, so anything sampled at registration would read
+--- false forever. Returns a real boolean because RfEscModules._moduleAvailable requires
+--- == true, not merely truthy.
+---
+--- Same detect as the bridge and as Dairy. Four reads because they fail at different
+--- moments: g_modIsLoaded is the engine's own answer, hasPrecisionFarming and pfBridge are
+--- the manager's, and the settings pair catches the case where we disabled ourselves.
+local function soilEscAvailable()
+    if g_modIsLoaded ~= nil and g_modIsLoaded["FS25_precisionFarming"] then
+        return false
+    end
+    local mgr = g_SoilFertilityManager
+    if mgr == nil and type(getfenv) == "function" then
+        local env0 = getfenv(0)
+        if env0 ~= nil then mgr = env0.g_SoilFertilityManager end
+    end
+    if mgr ~= nil then
+        if mgr.hasPrecisionFarming == true then
+            return false
+        end
+        local bridge = mgr.pfBridge
+        if bridge ~= nil and bridge.isActive == true then
+            return false
+        end
+        if mgr._disabledByPF == true and mgr.settings ~= nil and mgr.settings.enabled == false then
+            return false
+        end
+    end
+    return true
+end
+
+--- The sticky-active hole. getModules() filters an unavailable module out of the row, but
+--- getActiveModule() reads self.modules[activeModuleId] WITHOUT re-checking, so a Soil
+--- that was active when PF initialised keeps painting into a row that has gone. Hop off it
+--- once, then one _notify so the module list reloads exactly once: that is the existing
+--- quiet path, not a timer thrash.
+---
+--- MUST live below getRegistry. A local function is only in scope from its own line
+--- onward, so declaring this above it would bind getRegistry as a nil global and throw on
+--- the first PF save.
+local function pfStandDownHop()
+    if _pfHopDone then
+        return
+    end
+    if soilEscAvailable() then
+        return
+    end
+    local reg = getRegistry()
+    if reg == nil then
+        return
+    end
+    _pfHopDone = true
+    if reg.activeModuleId ~= PANEL_ID then
+        return   -- nothing stuck on Soil; dropping the row is the whole stand-down
+    end
+    local moved = false
+    if type(reg.applyHomeModuleQuiet) == "function" then
+        moved = reg:applyHomeModuleQuiet() == true
+    end
+    if not moved and type(reg.getModules) == "function" and type(reg.selectModule) == "function" then
+        local list = reg:getModules()
+        if list ~= nil and list[1] ~= nil then
+            moved = reg:selectModule(list[1].id) == true
+        end
+    end
+    if not moved then
+        -- Soil was the only module. nil is the honest active id; the selector draws its own
+        -- "No modules" label rather than us inventing chrome for an empty door.
+        reg.activeModuleId = nil
+    end
+    if type(reg._notify) == "function" then
+        reg:_notify()
+    end
+    if SoilLogger ~= nil then
+        SoilLogger.info("RfSoilEscJoiner: Precision Farming active - Soil Esc row stood down")
+    end
 end
 
 function RfSoilEscJoiner.standDownLegacyEsc()
@@ -180,9 +265,7 @@ function RfSoilEscJoiner.tryRegister()
             title = tr("rf_pda_panel_soil", "Soil Fertilizer"),
             blurb = tr("rf_pda_menu_blurb", "Field nutrients and treatment glance."),
             order = PANEL_ORDER,
-            isAvailable = function()
-                return true
-            end,
+            isAvailable = soilEscAvailable,
             onShow = function(_container)
                 local page = g_inGameMenu and g_inGameMenu.menuRealisticFarming
                 if page ~= nil and RfPdaSoilPanel ~= nil and type(RfPdaSoilPanel.rebuildFieldData) == "function" then
@@ -215,6 +298,7 @@ end
 function RfSoilEscJoiner.reset()
     _registered = false
     _legacyStoodDown = false
+    _pfHopDone = false
 end
 
 -- Lifecycle: after InGameMenu exists; retry on update until door + module land.
@@ -228,6 +312,9 @@ local function _onMissionLoaded()
 end
 
 local function _onUpdate(_mission, _dt)
+    -- Runs before the _pending gate: PF lands after registration, so the hop stays
+    -- reachable once this joiner has stopped retrying.
+    pfStandDownHop()
     if not _pending then
         return
     end

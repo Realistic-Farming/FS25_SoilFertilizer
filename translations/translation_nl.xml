@@ -1428,6 +1428,22 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
+    <e k="rf_pda_resist_line" v="Fungicideresistentie: %s" eh="9f9d6ffa" />
+    <e k="rf_pda_resist_working" v="werkt nog" eh="9e90e022" />
+    <e k="rf_pda_resist_slipping" v="verliest kracht" eh="0c6ee28e" />
+    <e k="rf_pda_resist_finished" v="werkt hier niet meer" eh="661308da" />
+    <e k="rf_pda_resist_unknown" v="ONBEKEND (perceel niet verkend)" eh="1480a486" />
+    <e k="rf_pda_resist_cue" v="Een behandeling via het menu is geen bespuiting. Alleen spuiten bouwt resistentie op." eh="86da0ba9" />
+    <e k="sf_handful_sec_growth" v="GROEI" eh="c845effc" />
+    <e k="sf_handful_growth" v="Groei" eh="699aed86" />
+    <e k="sf_handful_growth_held" v="Geremd" eh="47a1b570" />
+    <e k="sf_handful_growth_free" v="Niets remt het" eh="b2eeafb9" />
+    <e k="sf_handful_growth_why" v="Waarom" eh="91164770" />
+    <e k="sf_handful_growth_cause_n" v="weinig stikstof" eh="c8407616" />
+    <e k="sf_handful_growth_cause_compaction" v="verdichting" eh="859c01b4" />
+    <e k="sf_handful_growth_cause_none" v="geremd, oorzaak niet gemeld" eh="f381c172" />
+    <e k="sf_handful_growth_credit" v="Groeitegoed" eh="30ce7482" />
+    <e k="sf_handful_growth_credit_days" v="%d dagen" eh="cdca48ec" />
 </elements>
 
 

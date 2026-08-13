@@ -293,6 +293,48 @@ function SoilHandfulDialog:_populate()
     tile(self.hfLblMoist, self.hfValMoist,
         tr("sf_handful_moisture", "Moisture"), moisture, "info")
 
+    -- Growth (SPOT). Three tiles, same family as every other clause: a word first and
+    -- colour only as a second channel. p.growthBlocked is a TRISTATE - nil means nothing
+    -- read this spot and takes the neutral dash, false means read and clear.
+    local gBlocked = p.growthBlocked
+    local gTxt, gSev
+    if gBlocked == true then
+        gTxt, gSev = tr("sf_handful_growth_held", "Held back"), "poor"
+    elseif gBlocked == false then
+        gTxt, gSev = tr("sf_handful_growth_free", "Nothing holding it"), "good"
+    end
+    tile(self.hfLblGrowth, self.hfValGrowth, tr("sf_handful_growth", "Growth"), gTxt, gSev)
+
+    -- Why: named causes only. Blocked with nothing named is said out loud rather than
+    -- guessed at, and water is never a cause in v1.
+    local causeTxt, causeSev
+    if gBlocked == true then
+        local parts = {}
+        if p.growthBlockedByN == true then
+            parts[#parts + 1] = tr("sf_handful_growth_cause_n", "low nitrogen")
+        end
+        if p.growthBlockedByCompaction == true then
+            parts[#parts + 1] = tr("sf_handful_growth_cause_compaction", "compaction")
+        end
+        if #parts > 0 then
+            causeTxt, causeSev = table.concat(parts, " + "), "poor"
+        else
+            causeTxt, causeSev = tr("sf_handful_growth_cause_none", "blocked, cause not reported"), "neutral"
+        end
+    end
+    tile(self.hfLblGrowthWhy, self.hfValGrowthWhy, tr("sf_handful_growth_why", "Why"), causeTxt, causeSev)
+
+    -- Credit: a real number or the neutral dash. floor(+0.5) because a fractional day
+    -- through %d is a truncation in 5.1 and an error in later Lua; neither is a reading.
+    local credTxt
+    if type(p.growthCredit) == "number" then
+        local okC, s = pcall(string.format, tr("sf_handful_growth_credit_days", "%d days"),
+            math.floor(p.growthCredit + 0.5))
+        if okC then credTxt = s end
+    end
+    tile(self.hfLblGrowthCredit, self.hfValGrowthCredit,
+        tr("sf_handful_growth_credit", "Growth credit"), credTxt, "info")
+
     -- Disease: knowledge-gated. shownDiseasePressure is nil while unscouted and
     -- that is the honest answer, not a hole. Unscouted takes the NEUTRAL colour,
     -- never the green of None: an unlooked-at field has not earned a clean bill.
