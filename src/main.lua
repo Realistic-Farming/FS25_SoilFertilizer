@@ -47,6 +47,10 @@ source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/ReleaseGate.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
+-- SF-55 TRAFFIC ON WET GROUND: the pure arithmetic behind the trafficDrag layer
+-- (wetness blend, bounded accrual, cell/day dedupe key, standing-crop test, the
+-- read-time composition contract). Loaded beside the compaction model it serves.
+source(modDirectory .. "src/TrafficDrag.lua")
 
 -- 2. Specializations (must load before core systems so vehicleType registration fires)
 source(modDirectory .. "src/specializations/SFNozzleEffects.lua")

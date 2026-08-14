@@ -24,6 +24,12 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Wet ground now bruises a standing crop. A loaded wheel crossing a wet",
+    "    field leaves the crop standing but quietly worse at harvest, up to a",
+    "    gentle 30% penalty, once per field per day (traffic on wet ground).",
+    "    Compaction also reads real soil moisture when SeasonalCropStress is",
+    "    installed, and now tracks every vehicle on the server, so co-op farms",
+    "    and hired workers compact exactly like your own tractor.",
     "- The Soil Monitor no longer shows through the settings and tuning panels.",
     "    HUD text was rendering over the panel drawn on top of it, which made",
     "    both hard to read. The HUD now stands down while a panel is open.",
