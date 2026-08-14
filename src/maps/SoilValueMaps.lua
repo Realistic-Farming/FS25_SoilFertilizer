@@ -101,6 +101,21 @@ SoilValueMaps.LAYER_DEFS = {
     -- key and getter here carries MATERIAL. advanceWetness is never touched.
     { key = "materialWetness", file = "sfSoilMap_MW.grle",  minVal = 0,   maxVal = 100,
       rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW, serverOnly = true },
+    -- SF-55 TRAFFIC ON WET GROUND (trafficDrag): how bruised a standing crop is by
+    -- loaded wheels on wet ground. Bounded 0.0-0.3 AT THE WRITE; maxVal mirrors the
+    -- constant when Constants is loaded (the real game and the value-map tests) and
+    -- falls back to the same literal otherwise, so the def never blocks loading a
+    -- test that stubs only this module. The binding bound is the write-time clamp in
+    -- the traffic-drag write (accrue against TRAFFIC_DRAG.CAP); encode() here is the
+    -- second net, and any drift toward a HIGHER def maxVal is harmless (the clamp
+    -- still binds). serverOnly like materialAge/materialWetness: no client allocation,
+    -- no sync surface, no display of its own (SF-54 owns any display). Composes
+    -- read-only at SF-14's harvest read (effective = capturedEfficiency * (1 - trafficDrag)),
+    -- never written into yieldEfficiency (the second-writer fence).
+    { key = "trafficDrag", file = "sfSoilMap_TD.grle", minVal = 0,
+      maxVal = (SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
+                and SoilConstants.COMPACTION.TRAFFIC_DRAG.CAP) or 0.3,
+      serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel

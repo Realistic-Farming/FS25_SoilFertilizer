@@ -2533,7 +2533,10 @@ function HookManager:installHarvestHook()
                     return rootVeh:getTotalMass(false)
                 end)
                 if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
-                    local wet = g_SoilFertilityManager._soilWetness01 or 0
+                    -- SF-55 wetness-input substitution (harvest call site): the same
+                    -- positional blend the driving pass uses - SCS field-level moisture
+                    -- for the detected field vs the rain-scalar fallback (confirm 2).
+                    local wet = g_SoilFertilityManager:_blendedWetness01(detectedX, detectedZ, detectedFieldId)
                     local points = SoilCompactionModel.pointsForVehicle(rootVeh, wet)
                     if points and points > 0 then
                         pcall(function()

@@ -130,7 +130,10 @@
 - [x] 11 assertions; suite 2897/0.
 - [~] In-game: three in-game years at a 30-day month. Balance-pass values for the years table pending.
 
-## Organic compost production (2026-08-14)
-- [x] CompostManager: batch lifecycle, Time Guard day accrual + fallback, storage deposit, organic-safe flag, persistence, console.
-- [x] 25 assertions; suite 2922/0.
-- [~] In-game batch flow; FarmTablet organic-app batch display (read-only) pending the app's own work.
+## SF-55 traffic on wet ground (2026-08-14)
+- [x] F111 closed: the driving compaction pass enumerates every server-side vehicle (wheel-on-ground gate, per-vehicle segment continuity) instead of `getPlayerVehicle()`, fixing compaction being dead on dedicated servers and host-only on listen servers.
+- [x] Wetness-input substitution at both compaction call sites (driving + harvest): positional blend of SCS `getMoisture(fieldId)` with the rain-scalar fallback (confirm 2: max rule, rain as the calibrated floor). SoilCompactionModel scoring untouched.
+- [x] `trafficDrag` layer: SoilValueMaps-registered, server-only, persisted, bounded 0.0-0.3 at the write, written on the driving segment walk when wet above threshold AND a standing crop occupies the cell, deduped once per cell per day on TimeGuard monotonicDay (never environment.currentDay). Second-writer fence holds; SF-55 never writes yieldEfficiency.
+- [x] `TrafficDrag.lua` pure arithmetic module; `traffic_drag_test.lua` at 43 assertions. Suite 2962/0 across 73 files (om_213 needs the sibling MarketDynamics repo, absent in the temp clone). Bumped to 2.5.0.76.
+- [~] Read-time composition with SF-14's yieldEfficiency (`effective = capturedEfficiency * (1 - trafficDrag)`) is a documented addendum owed on SF-14's staged brief at travel; until it lands, trafficDrag persists and composes with nothing.
+- [~] In-game (owed): wet-field bruise at harvest, MP join confirms all actors compact, SCS present vs absent parity. Dials (magnitude 0.05, threshold 0.5, cap 0.3, min standing state 1) are AWAITING-SPINE neutral defaults.
