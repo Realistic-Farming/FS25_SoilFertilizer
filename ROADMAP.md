@@ -118,3 +118,25 @@
 - [x] NPCFavor side: `isNPCManaged` / `getWorkingState` / `getNPCForFarmland` published on NPCFavorSystem (from the assignedFarmland records), and the ownership flip targets a GUARDED real farm id (never getFarmId() on a dedicated server, never or-fallback past a possible 0).
 - [x] `npc_soil_gate_spec_test.lua` at 16 assertions (owned/NPC truth table, fail-closed attribution, neutral-when-absent, throwing-surface pcall) and `npc_soil_designation_spec_test.lua` at 8 assertions. Suite 2586/0 across 59 files; syntax and lint clean.
 - [~] In-game (owed): an NPC-designated unowned field survives a daily pass, a reroll run and save/load with state intact and painted; an NPC job runs end to end with zero player money movement; buying the parcel inherits its history; a joined MP client paints NPC ground after full sync.
+
+## 2026-08-14 (Fred): RSF-836 the swept quad painted a third to a half of the boom
+- [x] ROOT CAUSE: paintBoomStrip read the boom line off the ends of the cell sweep array, whose last element is always the vehicle root and whose extent is a world-axis projection, so it painted one tip to the middle of the machine, halved and foreshortened by the heading cosine (36.6 m boom: 18.30 m square, 12.94 m at 45 deg). Mass was conserved, so the covered band ran at 2x to 2.8x the rate and the rest of the boom took nothing.
+- [x] FIX (items 1-4 of the RSF-836 fix doc): the true endpoints are derived like the engine derives a working width (WorkArea.lua:307-314), every collected node transformed into components[1].node, min and max local X are the tips. The fallback lays the working-width half span on the frame's local X. paintBoomStrip consumes the line, never the array ends, with a tip-swap guard. markBoomCells and getBoomCellPositions untouched (cell stamping byte-identical); the partial-width VWW exclusion inherited; the teleport guard widens back.
+- [x] Item 5 (the ~500 ms anchor drop) split out as a design item, NOT in this fix.
+- [x] rsf836_boom_line_test.lua at 11 assertions (0/30/45 deg main path, fallback width, partial-width exclusion, the old array-end read as the RED case). Suite 2886/0 across 69 files; syntax and lint clean.
+- [~] In-game (owed): a wide boom on a diagonal pass, ground read after one pass.
+
+## 2026-08-14 (Fred): organic transition normalized to YEARS via Time Guard
+- [x] The transition term was a raw day count (60/120/240), so 'three years' meant anything from months to decades depending on days-per-month. It is now TRANSITION_YEARS (2/3/5 indicative, values ride the balance pass), resolved at read time through Time Guard's days-per-period. Mid-save days-per-period changes re-normalise from the next period; Time Guard absent degrades to the 30-day reference. State machine and getFieldOrganicState shape unchanged.
+- [x] organic_transition_timeguard_test.lua at 11 assertions; suite 2897/0; deployed 2.5.0.71.
+- [~] In-game (owed): a transition at a 30-day month counts down over three in-game years, not eight months.
+
+## 2026-08-14 (Fred): organic compost production, the managed process
+- [x] A managed compost process (no placeable): batches commit farm organic waste, decompose over in-game days on the Time Guard clock (SF day-tracking fallback when absent), and yield the existing COMPOST fill type into farm storage. SF owns the OM effect unchanged; organic-safe flag per feedstock (biosolids-fed is not cert-safe, breach rides onInputApplied). Server-authoritative, StateLedger + own-XML persistence, sfCompostStatus/Start/Collect console.
+- [x] compost_manager_test.lua at 25 assertions; suite 2922/0; deployed 2.5.0.72.
+- [~] In-game (owed): start a batch, watch it decompose across days, collect the compost, spread it on a field.
+
+## 2026-08-14 (Fred): the drilling-window advisory
+- [x] The field-info line now says whether the coming days are a good or risky window for drilling, from the SCS rain outlook over the season-scaled establishment horizon and the ground moisture against the kill condition. Three hedged verdicts (good / risky / forecast-only), silent when SCS is absent, never gates or writes. Renders in SF's own field-info surface; FarmTablet mirrors the hub read.
+- [x] drilling_advisory_test.lua at 5 assertions; suite 2944/0; deployed 2.5.0.74.
+- [~] In-game (owed): a wet-leaning field under a cloudy sky reads risky; removing SCS silences the line.

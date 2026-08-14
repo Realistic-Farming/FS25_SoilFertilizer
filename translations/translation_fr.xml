@@ -1397,21 +1397,9 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
-    <e k="rf_pda_resist_line" v="Résistance aux fongicides : %s" eh="9f9d6ffa" />
-    <e k="rf_pda_resist_working" v="agit encore" eh="9e90e022" />
-    <e k="rf_pda_resist_slipping" v="perd de son efficacité" eh="0c6ee28e" />
-    <e k="rf_pda_resist_finished" v="sans effet ici" eh="661308da" />
-    <e k="rf_pda_resist_unknown" v="INCONNU (parcelle non explorée)" eh="1480a486" />
-    <e k="rf_pda_resist_cue" v="Un traitement par le menu n'est pas une pulvérisation. Seule la pulvérisation crée de la résistance." eh="86da0ba9" />
-    <e k="sf_handful_sec_growth" v="CROISSANCE" eh="c845effc" />
-    <e k="sf_handful_growth" v="Croissance" eh="699aed86" />
-    <e k="sf_handful_growth_held" v="Freinée" eh="47a1b570" />
-    <e k="sf_handful_growth_free" v="Rien ne la freine" eh="b2eeafb9" />
-    <e k="sf_handful_growth_why" v="Pourquoi" eh="91164770" />
-    <e k="sf_handful_growth_cause_n" v="azote insuffisant" eh="c8407616" />
-    <e k="sf_handful_growth_cause_compaction" v="tassement" eh="859c01b4" />
-    <e k="sf_handful_growth_cause_none" v="freinée, cause non signalée" eh="f381c172" />
-    <e k="sf_handful_growth_credit" v="Crédit de croissance" eh="30ce7482" />
-    <e k="sf_handful_growth_credit_days" v="%d jours" eh="cdca48ec" />
-</elements>
+    <e k="sf_notify_establishment_frost" v="Establishment failed: frost" />
+    <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
+    <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
+    <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
 </l10n>

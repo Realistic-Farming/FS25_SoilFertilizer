@@ -16,7 +16,8 @@
 -- shipped count, exactly the behaviour before this change.
 --
 -- ONLY the absolute chemical day-counts scale here (fungicide, herbicide,
--- insecticide). The organic transition (TRANSITION_DAYS) and the fallow
+-- insecticide). The organic transition (TRANSITION_YEARS, year-normalised via
+-- Time Guard at OrganicCertification:getTransitionDays) and the fallow
 -- threshold are ALREADY season-honest at their read sites and must NOT pass
 -- through this, or they double-scale.
 -- =========================================================

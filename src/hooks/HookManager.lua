@@ -4034,6 +4034,9 @@ function HookManager:installSprayerAreaHook()
 
                                                 if soilSys and fieldId and fieldId > 0 then
                                                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                    -- RSF-836: the true boom line (tip to tip, in the vehicle's frame),
+                                                    -- NOT the ends of the cell sweep array.
+                                                    local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
                                                         if vww and vww.sections and #vww.sections > 0 then
                                                             soilSys:markBoomCells(fieldId, boomPts)
@@ -4042,7 +4045,7 @@ function HookManager:installSprayerAreaHook()
                                                         end
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
-                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName)
+                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
                                                         end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
@@ -4090,10 +4093,12 @@ function HookManager:installSprayerAreaHook()
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    -- RSF-836: the true boom line, never the ends of the cell sweep.
+                    local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                     -- REFINED: paint the real boom-width strip into the per-pixel
                     -- value maps (continuous PF-style work strips at ~2 m/px).
                     if boomPts and soilSys.paintBoomStrip then
-                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name)
+                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
@@ -7604,4 +7609,120 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     table.insert(pts, {x = rootX, z = rootZ})
 
     return (#pts > 1) and pts or nil
+end
+
+-- =========================================================
+-- RSF-836: the true boom line, derived the way the engine derives a working width
+-- =========================================================
+-- paintBoomStrip used to take its boom line off the ends of the cell sweep array,
+-- whose last element is ALWAYS the vehicle root and whose extent is a world-axis
+-- projection, so it painted half the boom, foreshortened by the heading cosine.
+-- The true line is derived in the vehicle's own frame, exactly like the base game
+-- computes workArea.workWidth (WorkArea.lua:307-314): every collected node is
+-- transformed into components[1].node, the min and max local X are the boom's
+-- lateral extent, and those two nodes are the endpoints. No node is classified,
+-- because the engine is symmetric in width/height and local X is lateral by the
+-- working-width definition, not by any modelling convention.
+
+-- The frame is components[1].node explicitly, NOT rootNode: it is the frame the
+-- engine spans for working width. rootNode is a defensive last resort only when a
+-- vehicle has no components array at all. The old fallback branch's
+-- getWorldRotation(vehicle.rootNode) read is not inherited.
+
+--- Collect the boom's spanning node references (workArea corners + active VWW
+--- section tips) from a vehicle and its attached implements. Inactive VWW sections
+--- are excluded on purpose: their nodes sit at the boom tip whether or not they are
+--- spraying, so including them would inflate the line back to full width in Partial
+--- Width mode (#475/#476). Mirrors the node set getBoomCellPositions collects.
+function HookManager:_collectBoomNodes(vehicle)
+    local nodes = {}
+    local function addNode(node)
+        if node then nodes[#nodes + 1] = node end
+    end
+    local function collectFromObj(obj)
+        if not obj then return end
+        if obj.spec_workArea and obj.spec_workArea.workAreas then
+            for _, wa in ipairs(obj.spec_workArea.workAreas) do
+                addNode(wa.start)
+                addNode(wa.width)
+                addNode(wa.height)
+            end
+        end
+        local vww = obj.spec_variableWorkWidth
+        if vww and vww.sections then
+            for _, section in ipairs(vww.sections) do
+                if section.isActive ~= false and section.maxWidthNode then
+                    addNode(section.maxWidthNode)
+                end
+            end
+        end
+    end
+    collectFromObj(vehicle)
+    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements or {}) do
+            collectFromObj(impl and impl.object)
+        end
+    end
+    return nodes
+end
+
+--- The implement working width used by the fallback (broadcast spreader whose work
+--- area nodes are co-located at the centre, so no lateral span exists).
+function HookManager:_implWorkingWidth(vehicle)
+    local spec_s = vehicle and vehicle.spec_sprayer
+    local ww = spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth
+    if not ww and vehicle and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
+            local obj = impl and impl.object
+            local iss = obj and obj.spec_sprayer
+            if iss and iss.usageScale and iss.usageScale.workingWidth then
+                ww = iss.usageScale.workingWidth
+                break
+            end
+        end
+    end
+    return ww
+end
+
+--- The true boom endpoints in world space: { ax, az, bx, bz }. Derived in the
+--- vehicle's own frame from the same node set the cell sweep uses, so a diagonal
+--- pass needs no heading handling and the painted length is the real boom length
+--- at any heading. Falls back to the working-width half span laid along the frame's
+--- local X when no lateral span exists. Returns nil when nothing can be derived.
+function HookManager:getBoomLineEndpoints(vehicle, _rootX, _rootZ)
+    if not vehicle then return nil end
+    local frame = nil
+    if vehicle.components then
+        local c = vehicle.components[1]
+        frame = c and c.node or nil
+    end
+    if frame == nil then frame = vehicle.rootNode end
+    if frame == nil then return nil end
+
+    local nodes = self:_collectBoomNodes(vehicle)
+    if #nodes >= 2 then
+        local minNode, maxNode, minLX, maxLX = nil, nil, nil, nil
+        for _, n in ipairs(nodes) do
+            local lx = 0
+            pcall(function() local x, _, _ = localToLocal(n, frame, 0, 0, 0); lx = x end)
+            if minLX == nil or lx < minLX then minLX, minNode = lx, n end
+            if maxLX == nil or lx > maxLX then maxLX, maxNode = lx, n end
+        end
+        if minNode ~= nil and maxNode ~= nil then
+            local ax, _, az = getWorldTranslation(minNode)
+            local bx, _, bz = getWorldTranslation(maxNode)
+            return { ax = ax, az = az, bx = bx, bz = bz }
+        end
+        return nil
+    end
+
+    -- Fallback: no spanning node pair. Lay the working-width half span along the
+    -- frame's own local X axis and transform it out, which carries the vehicle's
+    -- real orientation instead of quantising onto a world axis.
+    local ww = self:_implWorkingWidth(vehicle)
+    if not ww or ww <= 0 then return nil end
+    local halfW = ww * 0.5
+    local ax, _, az = localToWorld(frame, -halfW, 0, 0)
+    local bx, _, bz = localToWorld(frame, halfW, 0, 0)
+    return { ax = ax, az = az, bx = bx, bz = bz }
 end

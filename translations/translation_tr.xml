@@ -1398,23 +1398,11 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
-    <e k="rf_pda_resist_line" v="Fungisit direnci: %s" eh="9f9d6ffa" />
-    <e k="rf_pda_resist_working" v="hâlâ etkili" eh="9e90e022" />
-    <e k="rf_pda_resist_slipping" v="etkisini yitiriyor" eh="0c6ee28e" />
-    <e k="rf_pda_resist_finished" v="burada artık etkisiz" eh="661308da" />
-    <e k="rf_pda_resist_unknown" v="BİLİNMİYOR (tarla incelenmedi)" eh="1480a486" />
-    <e k="rf_pda_resist_cue" v="Menüden yapılan tedavi ilaçlama değildir. Direnci yalnızca ilaçlama oluşturur." eh="86da0ba9" />
-    <e k="sf_handful_sec_growth" v="BÜYÜME" eh="c845effc" />
-    <e k="sf_handful_growth" v="Büyüme" eh="699aed86" />
-    <e k="sf_handful_growth_held" v="Engelleniyor" eh="47a1b570" />
-    <e k="sf_handful_growth_free" v="Hiçbir şey engellemiyor" eh="b2eeafb9" />
-    <e k="sf_handful_growth_why" v="Neden" eh="91164770" />
-    <e k="sf_handful_growth_cause_n" v="azot düşük" eh="c8407616" />
-    <e k="sf_handful_growth_cause_compaction" v="toprak sıkışması" eh="859c01b4" />
-    <e k="sf_handful_growth_cause_none" v="engelleniyor, neden bildirilmedi" eh="f381c172" />
-    <e k="sf_handful_growth_credit" v="Büyüme kredisi" eh="30ce7482" />
-    <e k="sf_handful_growth_credit_days" v="%d gün" eh="cdca48ec" />
-</elements>
+    <e k="sf_notify_establishment_frost" v="Establishment failed: frost" />
+    <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
+    <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
+    <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
 
 
 </l10n>

@@ -1397,23 +1397,11 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
-    <e k="rf_pda_resist_line" v="Kháng thuốc trừ nấm: %s" eh="9f9d6ffa" />
-    <e k="rf_pda_resist_working" v="vẫn còn tác dụng" eh="9e90e022" />
-    <e k="rf_pda_resist_slipping" v="đang giảm tác dụng" eh="0c6ee28e" />
-    <e k="rf_pda_resist_finished" v="không còn tác dụng ở đây" eh="661308da" />
-    <e k="rf_pda_resist_unknown" v="KHÔNG RÕ (chưa khảo sát thửa ruộng)" eh="1480a486" />
-    <e k="rf_pda_resist_cue" v="Xử lý từ menu không phải là phun thuốc. Chỉ phun thuốc mới tạo ra tính kháng." eh="86da0ba9" />
-    <e k="sf_handful_sec_growth" v="SINH TRƯỞNG" eh="c845effc" />
-    <e k="sf_handful_growth" v="Sinh trưởng" eh="699aed86" />
-    <e k="sf_handful_growth_held" v="Bị kìm hãm" eh="47a1b570" />
-    <e k="sf_handful_growth_free" v="Không có gì kìm hãm" eh="b2eeafb9" />
-    <e k="sf_handful_growth_why" v="Vì sao" eh="91164770" />
-    <e k="sf_handful_growth_cause_n" v="thiếu đạm" eh="c8407616" />
-    <e k="sf_handful_growth_cause_compaction" v="đất bị nén" eh="859c01b4" />
-    <e k="sf_handful_growth_cause_none" v="bị kìm hãm, nguyên nhân không được báo" eh="f381c172" />
-    <e k="sf_handful_growth_credit" v="Tín dụng sinh trưởng" eh="30ce7482" />
-    <e k="sf_handful_growth_credit_days" v="%d ngày" eh="cdca48ec" />
-</elements>
+    <e k="sf_notify_establishment_frost" v="Establishment failed: frost" />
+    <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
+    <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
+    <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
 
 
 </l10n>

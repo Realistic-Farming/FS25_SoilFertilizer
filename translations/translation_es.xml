@@ -1397,23 +1397,11 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
-    <e k="rf_pda_resist_line" v="Resistencia a fungicidas: %s" eh="9f9d6ffa" />
-    <e k="rf_pda_resist_working" v="sigue funcionando" eh="9e90e022" />
-    <e k="rf_pda_resist_slipping" v="pierde eficacia" eh="0c6ee28e" />
-    <e k="rf_pda_resist_finished" v="ya no sirve aquí" eh="661308da" />
-    <e k="rf_pda_resist_unknown" v="DESCONOCIDO (parcela sin explorar)" eh="1480a486" />
-    <e k="rf_pda_resist_cue" v="Un tratamiento desde el menú no es una pulverización. Solo pulverizar genera resistencia." eh="86da0ba9" />
-    <e k="sf_handful_sec_growth" v="CRECIMIENTO" eh="c845effc" />
-    <e k="sf_handful_growth" v="Crecimiento" eh="699aed86" />
-    <e k="sf_handful_growth_held" v="Frenado" eh="47a1b570" />
-    <e k="sf_handful_growth_free" v="Nada lo frena" eh="b2eeafb9" />
-    <e k="sf_handful_growth_why" v="Por qué" eh="91164770" />
-    <e k="sf_handful_growth_cause_n" v="poco nitrógeno" eh="c8407616" />
-    <e k="sf_handful_growth_cause_compaction" v="compactación" eh="859c01b4" />
-    <e k="sf_handful_growth_cause_none" v="frenado, causa no informada" eh="f381c172" />
-    <e k="sf_handful_growth_credit" v="Crédito de crecimiento" eh="30ce7482" />
-    <e k="sf_handful_growth_credit_days" v="%d días" eh="cdca48ec" />
-</elements>
+    <e k="sf_notify_establishment_frost" v="Establishment failed: frost" />
+    <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
+    <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
+    <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
 
 
 </l10n>

@@ -104,6 +104,7 @@ source(modDirectory .. "src/PositionalCapture.lua")
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
 -- drive it. Consumes SCS positional moisture (absent = inert).
 source(modDirectory .. "src/EstablishmentFailure.lua")
+source(modDirectory .. "src/CompostManager.lua")
 source(modDirectory .. "src/ViabilityMask.lua")
 -- SF-53 GROWTH CREDIT: the reward half of the SF-2M family, a peer of
 -- ViabilityMask (same class idiom). Consumes SF-52's getter and lattice at
@@ -603,6 +604,20 @@ local function load(mission)
         -- Cross-mod bridge: g_currentMission is a shared C++ object visible to all mods.
         -- getfenv(0) is per-mod scoped in FS25. Use mission property for reliable cross-mod detection.
         mission.soilFertilityManager = sfm
+        -- [SF organic-compost] The managed compost process. Standalone manager,
+        -- server-authoritative; owns production only (SF owns the OM effect).
+        if CompostManager ~= nil then
+            g_CompostManager = CompostManager.new()
+            local ledger = (mission.stateLedger ~= nil) and mission.stateLedger or g_stateLedger
+            if ledger ~= nil and ledger.registerModule ~= nil then
+                pcall(function()
+                    ledger:registerModule(CompostManager.LEDGER_BATCHES, {
+                        serialize   = function() return g_CompostManager:serialize() end,
+                        deserialize = function(data) g_CompostManager:deserialize(data) end,
+                    })
+                end)
+            end
+        end
         -- #83 Cross-mod bridge for the FarmTablet FieldSentry app (read status + request toggles).
         if FieldSentry_API and FieldSentry_API.attachBridge then
             FieldSentry_API.attachBridge(mission)
@@ -726,9 +741,13 @@ Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, miss
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
-    if sfm then
-        sfm:update(dt)
-        -- [SF-44] Drain the tedder's correction queue at end of frame
+        if sfm then
+            sfm:update(dt)
+            -- [SF organic-compost] Day-tracking fallback when Time Guard is absent.
+            if g_CompostManager ~= nil then
+                g_CompostManager:updateDayFallback()
+            end
+            -- [SF-44] Drain the tedder's correction queue at end of frame
         local hayBet = sfm.soilSystem and sfm.soilSystem.hayBet
         if hayBet then
             hayBet:onUpdate()
@@ -844,6 +863,43 @@ function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed
     return eventUsed
 end
 addModEventListener(soilMouseHandler)
+
+-- [SF organic-compost] Console commands for the managed compost process.
+if addConsoleCommand ~= nil then
+    addConsoleCommand("sfCompostStatus", "Show compost batches", "consoleCompostStatus", nil)
+    addConsoleCommand("sfCompostStart", "Start a batch: sfCompostStart <manureLitres> [biosolidsLitres]", "consoleCompostStart", nil)
+    addConsoleCommand("sfCompostCollect", "Collect a ready batch: sfCompostCollect <batchId>", "consoleCompostCollect", nil)
+end
+
+function consoleCompostStatus()
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    return g_CompostManager:consoleStatus()
+end
+
+function consoleCompostStart(manure, biosolids)
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    if g_currentMission == nil or not g_currentMission:getIsServer() then return "server only" end
+    local farmId = 0
+    if g_currentMission.player ~= nil and g_currentMission.player.getOwnerFarmId ~= nil then
+        farmId = g_currentMission.player:getOwnerFarmId()
+    end
+    if not farmId or farmId == 0 then return "no farm" end
+    local feedstocks = {}
+    if tonumber(manure) and tonumber(manure) > 0 then feedstocks.MANURE = tonumber(manure) end
+    if tonumber(biosolids) and tonumber(biosolids) > 0 then feedstocks.BIOSOLIDS = tonumber(biosolids) end
+    local id, why = g_CompostManager:startBatch(farmId, feedstocks)
+    if id then return string.format("batch %d started (farm %d)", id, farmId) end
+    return "start failed: " .. tostring(why)
+end
+
+function consoleCompostCollect(batchId)
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    local n, why = g_CompostManager:collectBatch(tonumber(batchId))
+    if n ~= nil then
+        return string.format("collected %d L compost", n)
+    end
+    return "collect failed: " .. tostring(why or "unknown")
+end
 
 -- Console commands
 function soilfertility()

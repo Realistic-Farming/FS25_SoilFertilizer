@@ -1425,23 +1425,11 @@
     <e k="sf_handful_rot_ok" v="OK" />
     <e k="sf_handful_rot_fatigue" v="Fatigue" />
     <e k="input_SF_HANDFUL" v="Read the Dirt (kneel down)" />
-    <e k="rf_pda_resist_line" v="살균제 저항성: %s" eh="9f9d6ffa" />
-    <e k="rf_pda_resist_working" v="아직 듣는다" eh="9e90e022" />
-    <e k="rf_pda_resist_slipping" v="효과가 떨어지는 중" eh="0c6ee28e" />
-    <e k="rf_pda_resist_finished" v="여기서는 더 이상 안 듣는다" eh="661308da" />
-    <e k="rf_pda_resist_unknown" v="알 수 없음 (경작지 미조사)" eh="1480a486" />
-    <e k="rf_pda_resist_cue" v="메뉴 치료는 살포가 아닙니다. 저항성은 살포로만 생깁니다." eh="86da0ba9" />
-    <e k="sf_handful_sec_growth" v="생육" eh="c845effc" />
-    <e k="sf_handful_growth" v="생육" eh="699aed86" />
-    <e k="sf_handful_growth_held" v="저해됨" eh="47a1b570" />
-    <e k="sf_handful_growth_free" v="저해 요인 없음" eh="b2eeafb9" />
-    <e k="sf_handful_growth_why" v="이유" eh="91164770" />
-    <e k="sf_handful_growth_cause_n" v="질소 부족" eh="c8407616" />
-    <e k="sf_handful_growth_cause_compaction" v="토양 다짐" eh="859c01b4" />
-    <e k="sf_handful_growth_cause_none" v="저해됨, 원인 미보고" eh="f381c172" />
-    <e k="sf_handful_growth_credit" v="생육 크레딧" eh="30ce7482" />
-    <e k="sf_handful_growth_credit_days" v="%d일" eh="cdca48ec" />
-</elements>
+    <e k="sf_notify_establishment_frost" v="Establishment failed: frost" />
+    <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
+    <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
+    <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
 
 
 </l10n>
