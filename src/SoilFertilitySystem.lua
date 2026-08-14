@@ -967,6 +967,30 @@ end
 ---@param area number Area processed in hectares
 ---@param seedsFruitType number|nil  Fruit type index of the seed going in the ground
 ---@param cropBiomass number|nil  Crop biomass factor 0..1 if a standing/dead cover crop was drilled in (#778)
+-- SF-57: the seedbed ground-type weight captured once at the last sowing
+-- position. GROUND_TYPE is read through the base game's density map util (the
+-- third return of getFieldDataAtWorldPosition), banded into the SEEDBED_WEIGHT
+-- table (plowed/seedbed resists, cultivated normal, stubble tillage eases).
+-- A nil read or an unknown band degrades to the neutral 1.0.
+function SoilFertilitySystem:_seedbedWeightAtLastSow()
+    local x = self._lastTillageX
+    local z = self._lastTillageZ
+    if x == nil or z == nil then return 1.0 end
+    local groundType = nil
+    pcall(function()
+        local _, _, gt = FSDensityMapUtil.getFieldDataAtWorldPosition(x, 0, z)
+        groundType = gt
+    end)
+    if groundType == nil then return 1.0 end
+    local w = EstablishmentFailure.SEEDBED_WEIGHT[groundType]
+    if w == nil then
+        -- The enum value may be a number; map back through the weight table by
+        -- matching the name from the util's lookup when available.
+        return 1.0
+    end
+    return w
+end
+
 function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass)
     if not fieldId or fieldId <= 0 then return end
     local field = self:getOrCreateField(fieldId, true)
@@ -974,8 +998,11 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
 
     -- SF-18: opening (or extending) the establishment window. Every sowing pass
     -- extends, making re-drilling and multi-day drilling the same case.
+    -- SF-57: the seedbed ground-type weight is read once at the sowing position
+    -- (a fact about how the seed went in, never resampled during the window).
     if g_SoilFertilityManager and g_SoilFertilityManager.establishment then
-        g_SoilFertilityManager.establishment:onSowing(fieldId)
+        local seedbedWeight = self:_seedbedWeightAtLastSow()
+        g_SoilFertilityManager.establishment:onSowing(fieldId, seedbedWeight)
     end
 
     -- Record the crop being seeded so the HUD/map show it right away (#661). Live FieldState

@@ -36,6 +36,32 @@ EstablishmentFailure.WATERLOGGED_MOISTURE = 0.85
 EstablishmentFailure.COMPACTION_THRESHOLD_KNOCK = 0.20
 -- Floor on the effective threshold after the compaction knock.
 EstablishmentFailure.THRESHOLD_FLOOR = 0.5
+-- SF-57 FROST: a hard frost during the establishment window kills the seed,
+-- one frost is enough (the exact mirror of one soaking is enough). The read is
+-- WeatherGuard's published field temperature (SF-49's pcall pattern), sampled by
+-- the daily window check; absent WeatherGuard or a nil read = no frost cause.
+-- Below-or-equal to this temperature (in C) is a kill. A named dial (Biological).
+EstablishmentFailure.FROST_THRESHOLD_C = 0.0
+-- SF-57 SEEDBED: the ground-type weight read once at sowing, multiplying the
+-- trip points (moisture and frost). PLOWED/SEEDBED resists (1.0), CULTIVATED
+-- normal (1.0), direct into untilled STUBBLE_TILLAGE eases the trip (0.85 of the
+-- normal trip point). A named dial (Biological).
+EstablishmentFailure.SEEDBED_WEIGHT = {
+    PLOWED = 1.0, SEEDBED = 1.0, ROLLED_SEEDBED = 1.0,
+    CULTIVATED = 1.0, STUBBLE_TILLAGE = 0.85,
+}
+-- SF-57 TENDER/HARDY: per fill type, whether frost is meant to kill it. Frost-
+-- hardy types are exempt from the frost kill during the window and over winter.
+-- Anchors: oilseed radish tender (winterkill-intended), winter wheat hardy. A
+-- dial family; any future cover-crop fill type is vetted onto it before use.
+EstablishmentFailure.FROST_TENDER = {
+    oilseedRadish = true, OILSEEDRADISH = true, mustard = true, MUSTARD = true,
+    phacelia = true, PHACELIA = true,
+}
+EstablishmentFailure.FROST_HARDY = {
+    WHEAT = true, RYE = true, TRITICALE = true, BARLEY = true,
+    wheat = true, rye = true, triticale = true, barley = true,
+}
 -- Severity dial. Neutral == the honest threshold. This is the Biological dial
 -- through the vendered resolver (OptionScalingResolver, FS25_SettingsHub);
 -- until the Option-Scaling Spine builds, the neutral identity (1.0) is the
@@ -78,8 +104,10 @@ end
 -- ============================================================
 
 -- Called from the sowing hook (onSowing). Opens or extends the ESTABLISHING
--- window for the field.
-function EstablishmentFailure:onSowing(fieldId)
+-- window for the field. seedbedWeight is SF-57's ground-type weight captured
+-- once at the sowing position (a fact about how the seed went in, never
+-- resampled during the window).
+function EstablishmentFailure:onSowing(fieldId, seedbedWeight)
     if not fieldId or fieldId <= 0 then return end
     if not self.manager then return end
     local soilSystem = self.manager.soilSystem
@@ -92,7 +120,11 @@ function EstablishmentFailure:onSowing(fieldId)
     field.establishingSowDay = day
     field.establishingKilled = false
     field.establishingKilledCells = {}
-    SoilLogger.debug("[SF-18] field %d establishment window open (sow day %d)", fieldId, day)
+    if seedbedWeight ~= nil then
+        field.seedbedWeight = seedbedWeight
+    end
+    SoilLogger.debug("[SF-18] field %d establishment window open (sow day %d, seedbed weight %.2f)",
+        fieldId, day, field.seedbedWeight or 1.0)
 end
 
 -- The per-fruit first visible green state, derived like the wither precedent
@@ -181,10 +213,41 @@ function EstablishmentFailure:effectiveThreshold(field, compaction)
     local c = compaction or (field and field.compaction) or 0
     local knock = EstablishmentFailure.COMPACTION_THRESHOLD_KNOCK * (c / 100)
     local threshold = EstablishmentFailure.WATERLOGGED_MOISTURE - knock
+    -- SF-57 SEEDBED: the ground-type weight captured once at sowing eases the
+    -- trip point (a rough, untilled seedbed makes the kill fire at less wet).
+    local w = field and field.seedbedWeight or 1.0
+    threshold = threshold * w
     if threshold < EstablishmentFailure.THRESHOLD_FLOOR then
         threshold = EstablishmentFailure.THRESHOLD_FLOOR
     end
     return threshold
+end
+
+-- The effective frost trip point for a field, seedbed-weighted. Below-or-equal
+-- to this is a hard frost kill during the establishment window.
+---@return number|nil  temperature in C, or nil when no frost cause applies
+function EstablishmentFailure:frostTripPoint(field)
+    local w = field and field.seedbedWeight or 1.0
+    return EstablishmentFailure.FROST_THRESHOLD_C * w
+end
+
+-- WeatherGuard's published field temperature (SF-49's pcall pattern). nil when
+-- WeatherGuard is absent or the read fails: no frost cause, everything else
+-- continues exactly as built.
+function EstablishmentFailure:_readTemperature()
+    local wg = (g_currentMission ~= nil and g_currentMission.weatherGuard) or nil
+    if wg == nil or wg.getCurrentSky == nil then return nil end
+    local ok, sky = pcall(function() return wg:getCurrentSky() end)
+    if not ok or sky == nil then return nil end
+    return sky.temperature
+end
+
+-- Is this fill type exempt from the frost kill (frost-hardy overwinter crop)?
+function EstablishmentFailure:_isFrostHardy(fruitName)
+    if not fruitName then return false end
+    local up = string.upper(fruitName)
+    return EstablishmentFailure.FROST_HARDY[fruitName] == true
+        or EstablishmentFailure.FROST_HARDY[up] == true
 end
 
 -- The daily sweep. Builds the establishing-field queue once, processes up to the
@@ -230,8 +293,36 @@ function EstablishmentFailure:dailyKillCheck(elapsedDays)
         self._sweepQueue = nil
         self._sweepIndex = nil
         self._sweepPending = false
+        -- SF-57 WINTERKILL: once per day, after the establishing sweep, a hard
+        -- frost over winter terminates a frost-TENDER cover crop standing
+        -- outside its establishment window. The dead-standing shape is left
+        -- intact so RSF-778's biomass probe still samples it; hardy crops are
+        -- exempt. The crop-density write itself stays a noted refinement: this
+        -- fires the event and the state, and the probe already clamps dead
+        -- standing biomass to a sampleable value.
+        self:_winterkillCheck()
     else
         self._sweepPending = true
+    end
+end
+
+-- SF-57 WINTERKILL: frost-tender cover crops standing outside their window
+-- (typically over winter) die on a hard frost. Tender-only; hardy is exempt.
+function EstablishmentFailure:_winterkillCheck()
+    local soilSystem = self.manager and self.manager.soilSystem
+    if not soilSystem or not soilSystem.fieldData then return end
+    local temp = self:_readTemperature()
+    if temp == nil then return end
+    for fieldId, field in pairs(soilSystem.fieldData) do
+        if not field.establishing
+            and not self:_isFrostHardy(field.sownCrop)
+            and EstablishmentFailure.FROST_TENDER[field.sownCrop] then
+            local trip = self:frostTripPoint(field)
+            if temp <= trip and not field.winterKilled then
+                field.winterKilled = true
+                self:_notify("sf_notify_cover_winterkill", fieldId, "winterkill")
+            end
+        end
     end
 end
 
@@ -245,11 +336,6 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
     self:closeWindowIfEstablished(fieldId, field, fruitDesc)
     if not field.establishing then return end
 
-    -- NO SIGNAL = NO THINNING (absolute): absent SCS, absent read, nil
-    -- moisture -> the stand is perfect.
-    local cs = self:_moistureSource()
-    if cs == nil then return end
-
     local zone = SoilConstants and SoilConstants.ZONE
     local cellSize = zone and zone.CELL_SIZE or 10
 
@@ -261,6 +347,74 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
             cellList[#cellList + 1] = cell
         end
     end
+
+    -- SF-57 FROST: a hard frost during the establishment window kills the seed,
+    -- one frost is enough (the mirror of one soaking is enough). An INDEPENDENT
+    -- cause: it runs whether or not a moisture signal exists, because a frost
+    -- does not need a wet read. Field-uniform temperature, so a hard frost
+    -- kills the establishing region as a whole; frost-hardy crops are exempt.
+    -- Absent WeatherGuard or a nil read = no frost cause.
+    do
+        local temp = self:_readTemperature()
+        if temp ~= nil and not self:_isFrostHardy(field.sownCrop) then
+            local trip = self:frostTripPoint(field)
+            if temp <= trip then
+                local newly = {}
+                if #cellList == 0 then
+                    local verts = self:_fieldPolygonWorld(fieldId)
+                    self:killRegion(fieldId, field, verts, fruitDesc)
+                    field.establishingKilled = true
+                    field.establishing = false
+                    field.establishingSowDay = nil
+                    self:_notify("sf_notify_establishment_frost", fieldId, "frost")
+                else
+                    for _, cell in ipairs(cellList) do
+                        local key = cell.gx .. "," .. cell.gz
+                        if not (field.establishingKilledCells and field.establishingKilledCells[key]) then
+                            newly[#newly + 1] = cell
+                        end
+                    end
+                    if #newly > 0 then
+                        field.establishingKilledCells = field.establishingKilledCells or {}
+                        for _, cell in ipairs(newly) do
+                            field.establishingKilledCells[cell.gx .. "," .. cell.gz] = true
+                        end
+                        local regions = self:_groupRegions(newly)
+                        local killedAny = false
+                        for _, region in ipairs(regions) do
+                            local rings = self:_regionPolygon(region, cellSize)
+                            if rings and #rings > 0 then
+                                self:killRegion(fieldId, field, rings, fruitDesc)
+                                killedAny = true
+                            end
+                        end
+                        if killedAny then
+                            field.establishingKilled = true
+                            local allKilled = true
+                            for _, cell in ipairs(cellList) do
+                                if not field.establishingKilledCells[cell.gx .. "," .. cell.gz] then
+                                    allKilled = false
+                                    break
+                                end
+                            end
+                            if allKilled then
+                                field.establishing = false
+                                field.establishingSowDay = nil
+                            end
+                            self:_notify("sf_notify_establishment_frost", fieldId, "frost")
+                        end
+                    end
+                end
+                if not field.establishing then return end
+            end
+        end
+    end
+
+    -- NO SIGNAL = NO THINNING (absolute): absent SCS, absent read, nil
+    -- moisture -> the moisture cause finds nothing to thin. Frost above has
+    -- already run as its own cause.
+    local cs = self:_moistureSource()
+    if cs == nil then return end
 
     if #cellList == 0 then
         -- Coarser fallback, degrades honestly: the field aggregate decides for
@@ -328,6 +482,21 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
             end
         end
     end
+
+end
+
+-- SF-57 player notification (a new sf_notify_* key through the soil system's
+-- showNotification helper, which gates on the player's showNotifications
+-- setting). Fallback logs when the helper or l10n is unavailable.
+function EstablishmentFailure:_notify(key, fieldId, cause)
+    local ss = self.manager and self.manager.soilSystem
+    if ss ~= nil and ss.showNotification ~= nil then
+        local text = g_i18n and g_i18n:getText(key)
+            or ("Establishment failed: " .. tostring(cause))
+        pcall(function() ss:showNotification(text) end)
+    end
+    SoilLogger.info("[SF-57] field %d establishment FAILED (%s): crop set to never-came-up",
+        fieldId, tostring(cause))
 end
 
 -- Group a list of {gx=,gz=} cells into contiguous 4-connected regions.
