@@ -2644,6 +2644,16 @@ function SoilFertilitySystem:update(dt)
         g_SoilFertilityManager.establishment:checkDayFallback()
     end
 
+    -- [SF-14] ZONE YIELD: daily cadence pump. When Time Guard is present its
+    -- accrual drives the capture; this call runs the capture on SF's own day
+    -- tracking when Time Guard is absent, the brief's named neutral flow.
+    -- Server only: the capture write is server-authoritative.
+    if g_server ~= nil and g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
+        and g_SoilFertilityManager.zoneYield.isInitialized
+        and g_SoilFertilityManager.zoneYield.checkDayFallback then
+        g_SoilFertilityManager.zoneYield:checkDayFallback()
+    end
+
     -- REFINED: round-robin display-layer mirror. Keeps the per-pixel
     -- weed/pest/disease/urgency/yield maps in step with the field-level
     -- simulation values (herbicide passes, burn effects, nutrient changes
@@ -3617,6 +3627,20 @@ function SoilFertilitySystem:vmAvailable()
     return self.valueMaps ~= nil and self.valueMaps.available
 end
 
+--- [SF-14] True when the captured per-cell `yieldEfficiency` layer owns the
+--- value-map layer, i.e. the zone-yield capture is live. When true, the
+--- field-average display mirror and seed must NOT write `yieldEfficiency`
+--- (the captured per-cell truth is the layer's content; a uniform stamp or
+--- whole-field delta would flatten it back to a display average). Fail-open:
+--- no subsystem = not owned = the display stamp stays today's behaviour.
+function SoilFertilitySystem:_zoneYieldOwnsYieldLayer()
+    local zy = g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
+    if zy == nil or type(zy.isLive) ~= 'function' then return false end
+    local ok, live = pcall(function() return zy:isLive() end)
+    if not ok then return false end
+    return live == true
+end
+
 -- Seed this layer? Skips layers restored from savegame files (their pixel
 -- data is newer/finer than anything re-derivable from field averages).
 local function vmShouldSeed(vm, key, force)
@@ -3778,10 +3802,16 @@ function SoilFertilitySystem:vmSeedField(fieldId, force)
 
     -- REFINED display layers: uniform field paint (rawFloor keeps zero-pressure
     -- fields visible as the "good" colour state). The mirror keeps them current.
+    -- [SF-14] The captured per-cell yieldEfficiency layer is NOT seeded from the
+    -- field-average stamp: it carries captured truth only, written by the
+    -- zone-yield capture pass (and restored from the savegame file).
     local disp = self:_vmDisplayValues(field)
+    local yieldOwned = self:_zoneYieldOwnsYieldLayer()
     for _, key in ipairs(VM_DISPLAY_KEYS) do
-        if vmShouldSeed(vm, key, force) then
-            vm:paintPolygon(key, verts, disp[key])
+        if key ~= "yieldEfficiency" or not yieldOwned then
+            if vmShouldSeed(vm, key, force) then
+                vm:paintPolygon(key, verts, disp[key])
+            end
         end
     end
     field._vmDisp = disp   -- prime the mirror cache
@@ -3849,7 +3879,15 @@ function SoilFertilitySystem:_vmMirrorDisplayField(fieldId, field)
     local cur = self:_vmDisplayValues(field)
     local verts
     local changed = false
+    local yieldOwned = self:_zoneYieldOwnsYieldLayer()
     for _, key in ipairs(VM_DISPLAY_KEYS) do
+        -- [SF-14] The captured per-cell yieldEfficiency layer is NOT a display
+        -- mirror surface while the zone-yield capture is live: a whole-field
+        -- delta toward the field-average stamp would flatten the captured
+        -- per-cell truth. The layer then carries captured truth only.
+        if key == "yieldEfficiency" and yieldOwned then
+            prev[key] = cur[key]
+        else
         -- Unscouted<->scouted disease is a state switch (the UNKNOWN sentinel <-> a
         -- real pressure), not a smooth delta, so repaint that field's disease layer
         -- absolutely rather than applying a bogus raw delta across the reserved band.
@@ -3871,6 +3909,7 @@ function SoilFertilitySystem:_vmMirrorDisplayField(fieldId, field)
                 end
             end
         end
+        end  -- yieldEfficiency && yieldOwned skip
     end
     if changed then
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer

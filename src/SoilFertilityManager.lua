@@ -75,6 +75,13 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- unless the growth_modulation release gate is open and the mask enabled.
     self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
 
+    -- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
+    -- yieldEfficiency capture at growth time (riding the family's shared
+    -- read) and the area-weighted harvest read that supersedes the SF-16
+    -- scalar freeze on the spatial path. Inert unless the growth_modulation
+    -- release gate is open and the mask enabled.
+    self.zoneYield = ZoneYield and ZoneYield.new(self) or nil
+
     -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
     -- distance-to-water). Built once at activation, invalidated on terrain
     -- edits, consumed by SF-76 (field genesis) and SCS-042 (runoff). Neutral
@@ -759,6 +766,18 @@ function SoilFertilityManager:activateSoilSystem()
             self.growthBlock:initialize()
             if g_server ~= nil then
                 self.growthBlock:register()
+            end
+        end
+
+        -- SF-14 ZONE YIELD: initialize + register the daily capture accrual.
+        -- Server-only by the value-map write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        -- Time Guard absent: the capture runs on SF's own day tracking via
+        -- checkDayFallback, pumped from the soil system's daily pump.
+        if self.zoneYield then
+            self.zoneYield:initialize()
+            if g_server ~= nil then
+                self.zoneYield:registerDailyAccrual()
             end
         end
 
@@ -2303,6 +2322,12 @@ function SoilFertilityManager:delete()
     if self.growthBlock then
         self.growthBlock:delete()
         self.growthBlock = nil
+    end
+
+    -- SF-14 zone yield: drop the accrual state and the fallback marker.
+    if self.zoneYield then
+        self.zoneYield:delete()
+        self.zoneYield = nil
     end
 
     -- SF-77 topography cache: drop the terrain listener and the grids.

@@ -24,6 +24,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Zone yield is now captured per cell while the crop grows, and the",
+    "    harvest pays per header pass from that captured truth instead of one",
+    "    field-average number. Part of Growth Modulation, so it needs",
+    "    Experimental Systems turned on under Settings > Experimental.",
     "- The Soil Monitor no longer shows through the settings and tuning panels.",
     "    HUD text was rendering over the panel drawn on top of it, which made",
     "    both hard to read. The HUD now stands down while a panel is open.",
