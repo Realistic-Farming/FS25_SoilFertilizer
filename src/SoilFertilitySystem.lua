@@ -3961,9 +3961,14 @@ end
 --- stays (the second HookManager site in the same tick cannot re-apply) and the
 --- sd.time == nowMs stale-dose guard stays.
 ---@param fieldId    number
----@param boomPoints table   Array of {x=,z=} spanning the boom (from getBoomCellPositions)
+---@param boomPoints table   Array of {x=,z=} CELL-SWEEP positions for markBoomCells.
+---   NOT a boom line: its last element is always the vehicle root (RSF-836).
 ---@param fillTypeName string  FERTILIZER_PROFILES key (unused; kept for the call sites)
-function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName)
+---@param boomLine table|nil  { ax, az, bx, bz } the true boom endpoints in world,
+---   derived in the vehicle's own frame (see HookManager:getBoomLineEndpoints).
+---   When present the painted line runs tip to tip at any heading. The array ends
+---   are only a defensive fallback for a caller that supplies no line.
+function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, boomLine)
     if not fieldId or not boomPoints or #boomPoints < 2 then return end
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
@@ -3974,9 +3979,17 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName)
     -- Stale-dose guard stays: only THIS tick's dose may paint, and only once.
     if not sd or sd.time ~= nowMs or not sd.area or sd.area <= 0 then return end
 
-    -- Boom endpoints: first and last of the swept boom line.
-    local ax, az = boomPoints[1].x, boomPoints[1].z
-    local bx, bz = boomPoints[#boomPoints].x, boomPoints[#boomPoints].z
+    -- Boom endpoints: the true boom line when the caller supplies it (RSF-836).
+    -- The cell sweep is NOT a boom line and its last element is the vehicle root,
+    -- so reading it positionally painted one tip to the middle of the machine,
+    -- halved and foreshortened by the heading cosine.
+    local ax, az, bx, bz
+    if boomLine and boomLine.ax ~= nil and boomLine.bx ~= nil then
+        ax, az, bx, bz = boomLine.ax, boomLine.az, boomLine.bx, boomLine.bz
+    else
+        ax, az = boomPoints[1].x, boomPoints[1].z
+        bx, bz = boomPoints[#boomPoints].x, boomPoints[#boomPoints].z
+    end
     local boomLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
     if boomLen < 0.01 then return end
 
@@ -3985,8 +3998,24 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName)
     local areaM2
 
     if anchor then
-        local travX = (ax - anchor.ax + bx - anchor.bx) * 0.5
-        local travZ = (az - anchor.az + bz - anchor.bz) * 0.5
+        -- Tip-swap guard (RSF-836): the endpoint derivation is unordered, so the
+        -- two tips can arrive in either order between frames. Pair each tip with
+        -- whichever anchor point it is nearer to (straight vs swapped) and use the
+        -- closer pairing, so a swapped pair never folds the quad into a bow tie.
+        local dxS = (ax - anchor.ax) + (bx - anchor.bx)
+        local dzS = (az - anchor.az) + (bz - anchor.bz)
+        local dxW = (ax - anchor.bx) + (bx - anchor.ax)
+        local dzW = (az - anchor.bz) + (bz - anchor.az)
+        local straightSq = dxS * dxS + dzS * dzS
+        local swappedSq = dxW * dxW + dzW * dzW
+        local travX, travZ
+        if swappedSq < straightSq then
+            travX = dxW * 0.5
+            travZ = dzW * 0.5
+        else
+            travX = dxS * 0.5
+            travZ = dzS * 0.5
+        end
         local travel = math.sqrt(travX * travX + travZ * travZ)
         if travel < 0.05 then
             anchor = nil   -- no forward progress this frame: seed instead
