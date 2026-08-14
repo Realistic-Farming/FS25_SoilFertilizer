@@ -209,18 +209,30 @@
 
                         <!-- Card 2 of 3 (BUILD 12:59): Selected + Next now live INSIDE the
                              PRODUCTS card, so the card owns the whole middle column. -->
-                        <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -22px">
-                            <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="10px -6px" size="540px 20px"
+                        <!-- GO 21:06 (BUILD 21:01): PRODUCTS was inheriting 560 from
+                             RF_EscCardFrame, so its right edge sat at 220 + 560 = 780 against
+                             ROTATION at 850: a dark 70px canyon down the middle of a three-card
+                             family. The inline 620 lands the right edge on 840, leaving 10px of
+                             air, and TREATMENT already ends at 210 against PRODUCTS at 220, so
+                             both gutters read as the same gap. Family rhythm, not a kiss.
+                             Bodies follow 540 -> 600 in step so the 10px left inset is kept and
+                             nothing is re-centred; RATE and TOTAL keep their left-anchored
+                             recipe and simply gain trailing air.
+                             This edit is in ALL NINE door copies on purpose. The Esc page is
+                             built by whichever mod loads first, from its own copy, so a change
+                             in Soil alone would be overwritten by whoever won the race. -->
+                        <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -22px" size="620px 248px">
+                            <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="10px -6px" size="600px 20px"
                                   textAlignment="left"/>
-                            <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -26px" size="540px 36px"
+                            <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -26px" size="600px 36px"
                                   textAlignment="left" textMaxNumLines="2" textVerticalAlignment="top"/>
                             <!-- Zone split (BUILD 16:19): Selected + Next stay on top, then ~16px of
                                  air with one 1px hairline centred in it, then the PRODUCTS table.
                                  One outer outline only; the rule is a Bitmap, not a second frame.
                                  Bodies inset X 0 -> 10 and widths 560 -> 540 so nothing kisses the
                                  white stroke on either side. -->
-                            <Bitmap profile="RF_EscCardRule" id="treatProductsRule" position="10px -70px" size="540px 1px"/>
-                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="10px -80px" size="540px 18px"
+                            <Bitmap profile="RF_EscCardRule" id="treatProductsRule" position="10px -70px" size="600px 1px"/>
+                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="10px -80px" size="600px 18px"
                                   text="$l10n_rf_pda_treat_products"/>
                             <Text profile="RF_ProductColHeaderDense" position="10px -100px" size="40px 16px" text="NUT"/>
                             <Text profile="RF_ProductColHeaderDense" position="54px -100px" size="270px 16px" text="PRODUCT"/>
@@ -228,54 +240,54 @@
                                   textAlignment="right" text="RATE"/>
                             <Text profile="RF_ProductColHeaderDense" position="440px -100px" size="110px 16px"
                                   textAlignment="right" text="TOTAL"/>
-                            <Text profile="RF_ProductOk" id="treatPlanLines" position="10px -120px" size="540px 22px"
+                            <Text profile="RF_ProductOk" id="treatPlanLines" position="10px -120px" size="600px 22px"
                                   visible="false"/>
                             <!-- Clip sized to exactly the eight densified rows (8 x 15 = 120), so the
                                  card bottom keeps 8px of air instead of cutting row 8 mid-glyph. -->
-                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="10px -120px" size="540px 120px">
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow1" position="0px 0px" size="540px 15px" visible="false">
+                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="10px -120px" size="600px 120px">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow1" position="0px 0px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd1Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd1Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd1Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd1Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow2" position="0px -15px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow2" position="0px -15px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd2Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd2Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd2Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd2Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow3" position="0px -30px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow3" position="0px -30px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd3Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd3Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd3Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd3Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow4" position="0px -45px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow4" position="0px -45px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd4Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd4Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd4Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd4Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow5" position="0px -60px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow5" position="0px -60px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd5Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd5Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd5Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd5Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow6" position="0px -75px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow6" position="0px -75px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd6Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd6Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd6Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd6Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow7" position="0px -90px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow7" position="0px -90px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd7Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd7Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd7Rate" position="320px 0px" size="100px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd7Total" position="430px 0px" size="110px 15px"/>
                                 </GuiElement>
-                                <GuiElement profile="RF_ProductRow" id="treatProdRow8" position="0px -105px" size="540px 15px" visible="false">
+                                <GuiElement profile="RF_ProductRow" id="treatProdRow8" position="0px -105px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd8Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd8Name" position="44px 0px" size="270px 15px"/>
                                     <Text profile="RF_ProductCellDenseRight" id="treatProd8Rate" position="320px 0px" size="100px 15px"/>
