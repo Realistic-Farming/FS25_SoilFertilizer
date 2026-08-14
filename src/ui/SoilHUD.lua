@@ -917,6 +917,24 @@ function SoilHUD:buildFieldInfoLines(info)
         table.insert(lines, { group = "late", label = g_i18n:getText("sf_fieldinfo_burn_risk") or "Amend. burn risk", value = "Yes" })
     end
 
+    -- The drilling-window advisory (SF-55-wave2 brief): whether the coming days
+    -- are a good or risky window for putting seed in this ground. Silent when
+    -- SCS is absent; the verdict is an l10n key. Never gates or writes.
+    if info.fieldId ~= nil and g_SoilFertilityManager ~= nil
+        and g_SoilFertilityManager.soilSystem ~= nil then
+        local ss = g_SoilFertilityManager.soilSystem
+        if ss._drillingAdvisory ~= nil then
+            local verdictKey = ss:_drillingAdvisory(info.fieldId)
+            if verdictKey ~= nil then
+                table.insert(lines, {
+                    group = "late",
+                    label = g_i18n:getText("sf_fieldinfo_drilling") or "Drilling",
+                    value = g_i18n:getText(verdictKey) or verdictKey,
+                })
+            end
+        end
+    end
+
     return lines
 end
 
