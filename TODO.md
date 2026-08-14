@@ -134,3 +134,8 @@
 - [x] CompostManager: batch lifecycle, Time Guard day accrual + fallback, storage deposit, organic-safe flag, persistence, console.
 - [x] 25 assertions; suite 2922/0.
 - [~] In-game batch flow; FarmTablet organic-app batch display (read-only) pending the app's own work.
+
+## Drilling-window advisory (2026-08-14)
+- [x] Advisory verdict from the SCS rain outlook + moisture vs kill condition; three hedged strings in 26 languages; SF field-info line; silent without SCS.
+- [x] 5 assertions; suite 2944/0.
+- [~] In-game; FarmTablet mirror (hub read of the same surface).
