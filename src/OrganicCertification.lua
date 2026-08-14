@@ -131,9 +131,23 @@ function OrganicCertification:getDifficulty()
 end
 
 --- In-game days required to complete the transition at the current difficulty.
+--- The term is expressed in ORGANIC YEARS and resolved through Time Guard's
+--- days-per-period, so a year is an in-game year on any save: a fixed raw day
+--- count turned "three years" into anything from months to decades depending on
+--- the days-per-month setting. Computed at read time so a mid-save days-per-period
+--- change re-normalises from the next period forward. Time Guard absent: falls
+--- back to a 30-day month, the reference calendar.
 function OrganicCertification:getTransitionDays()
-    local list = SoilConstants.ORGANIC.TRANSITION_DAYS
-    return list[self:getDifficulty()] or list[2] or 120
+    local years = SoilConstants.ORGANIC.TRANSITION_YEARS[self:getDifficulty()] or 3
+    local daysPerMonth = 30
+    local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+    if tg ~= nil and tg.getContext ~= nil then
+        local ok, ctx = pcall(function() return tg:getContext() end)
+        if ok and ctx ~= nil and type(ctx.daysPerPeriod) == "number" and ctx.daysPerPeriod > 0 then
+            daysPerMonth = ctx.daysPerPeriod
+        end
+    end
+    return math.max(1, math.floor(years * 12 * daysPerMonth))
 end
 
 --- Is a fill type name allowed under organic rules?

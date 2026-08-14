@@ -51,7 +51,7 @@ T.eq("2x reference season doubles insecticide cover", scaled(30, 6), 60)
 -- the fallow threshold is multiplied by daysPerMonth at its read site. If either
 -- ever gets wrapped in seasonScaled() it double-scales. We assert the raw
 -- constants stay put as a drift tripwire.
-T.eq("organic TRANSITION_DAYS untouched (excluded)", SoilConstants.ORGANIC.TRANSITION_DAYS[2], 120)
+T.eq("organic TRANSITION_YEARS untouched (excluded)", SoilConstants.ORGANIC.TRANSITION_YEARS[2], 3)
 T.eq("fallow threshold untouched (excluded, scaled by daysPerMonth at its site)", SoilConstants.TIMING.FALLOW_THRESHOLD, 7)
 
 -- ── 9. The Time Guard read wrapper (mocked mission) ──────────────────────────

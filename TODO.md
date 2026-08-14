@@ -124,3 +124,8 @@
 - [x] True boom endpoints derived in the vehicle's own frame (components[1].node), main + fallback paths; paintBoomStrip consumes the line with a tip-swap guard; partial-width VWW exclusion inherited; cell stamping byte-identical.
 - [x] rsf836_boom_line_test.lua at 11 assertions; suite 2886/0.
 - [~] In-game: a wide boom on a diagonal pass, ground read after one pass (reporter antler22 offered the R4045 screenshots).
+
+## Organic transition Time Guard normalization (2026-08-14)
+- [x] TRANSITION_YEARS (2/3/5) resolved through Time Guard days-per-period at getTransitionDays; stale comments made true; state machine unchanged.
+- [x] 11 assertions; suite 2897/0.
+- [~] In-game: three in-game years at a 30-day month. Balance-pass values for the years table pending.
