@@ -125,3 +125,8 @@
 - [x] Item 5 (the ~500 ms anchor drop) split out as a design item, NOT in this fix.
 - [x] rsf836_boom_line_test.lua at 11 assertions (0/30/45 deg main path, fallback width, partial-width exclusion, the old array-end read as the RED case). Suite 2886/0 across 69 files; syntax and lint clean.
 - [~] In-game (owed): a wide boom on a diagonal pass, ground read after one pass.
+
+## 2026-08-14 (Fred): organic transition normalized to YEARS via Time Guard
+- [x] The transition term was a raw day count (60/120/240), so 'three years' meant anything from months to decades depending on days-per-month. It is now TRANSITION_YEARS (2/3/5 indicative, values ride the balance pass), resolved at read time through Time Guard's days-per-period. Mid-save days-per-period changes re-normalise from the next period; Time Guard absent degrades to the 30-day reference. State machine and getFieldOrganicState shape unchanged.
+- [x] organic_transition_timeguard_test.lua at 11 assertions; suite 2897/0; deployed 2.5.0.71.
+- [~] In-game (owed): a transition at a 30-day month counts down over three in-game years, not eight months.
