@@ -135,3 +135,8 @@
 - [x] A managed compost process (no placeable): batches commit farm organic waste, decompose over in-game days on the Time Guard clock (SF day-tracking fallback when absent), and yield the existing COMPOST fill type into farm storage. SF owns the OM effect unchanged; organic-safe flag per feedstock (biosolids-fed is not cert-safe, breach rides onInputApplied). Server-authoritative, StateLedger + own-XML persistence, sfCompostStatus/Start/Collect console.
 - [x] compost_manager_test.lua at 25 assertions; suite 2922/0; deployed 2.5.0.72.
 - [~] In-game (owed): start a batch, watch it decompose across days, collect the compost, spread it on a field.
+
+## 2026-08-14 (Fred): the drilling-window advisory
+- [x] The field-info line now says whether the coming days are a good or risky window for drilling, from the SCS rain outlook over the season-scaled establishment horizon and the ground moisture against the kill condition. Three hedged verdicts (good / risky / forecast-only), silent when SCS is absent, never gates or writes. Renders in SF's own field-info surface; FarmTablet mirrors the hub read.
+- [x] drilling_advisory_test.lua at 5 assertions; suite 2944/0; deployed 2.5.0.74.
+- [~] In-game (owed): a wet-leaning field under a cloudy sky reads risky; removing SCS silences the line.
