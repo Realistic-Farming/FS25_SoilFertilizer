@@ -33,8 +33,9 @@ SoilConstants.TIMING = {
 -- REFERENCE_DPP is the days-per-month the shipped duration constants were tuned
 -- against (Tyson's ruling, 2026-07-23). Time Guard absent -> the absolute count.
 -- EXCLUSIONS (already season-honest, must NOT double-scale): the organic
--- TRANSITION_DAYS (year-normalised via Time Guard) and the fallow threshold
--- (multiplied by daysPerMonth at its read site).
+-- TRANSITION_YEARS (year-normalised via Time Guard at its own read site,
+-- OrganicCertification:getTransitionDays) and the fallow threshold (multiplied
+-- by daysPerMonth at its read site).
 SoilConstants.DURATION = {
     REFERENCE_DPP = 3,   -- days-per-month the chemical durations were tuned at
 }
@@ -614,8 +615,15 @@ SoilConstants.ORGANIC = {
     STATE_TRANSITION   = "in_transition",
     STATE_CERTIFIED    = "certified",
 
-    -- Transition length in in-game days, indexed by difficulty (1 Simple / 2 Realistic / 3 Hardcore).
-    TRANSITION_DAYS = { 60, 120, 240 },
+    -- Transition length in ORGANIC YEARS, indexed by difficulty (1 Simple /
+    -- 2 Realistic / 3 Hardcore). Resolved to a day threshold at read time via Time
+    -- Guard's days-per-period, so "N years" means N in-game years on any save
+    -- (OrganicCertification:getTransitionDays). A raw day count silently turned
+    -- the intended multi-year commitment into anything from months to decades
+    -- depending on days-per-month. Values are the INDICATIVE easy<standard<hard
+    -- set (standard ~3 years per the USDA/SARE anchor); the exact per-difficulty
+    -- values ride the Option-Scaling Spine + the balance pass.
+    TRANSITION_YEARS = { 2, 3, 5 },
 
     -- Yield factor vs an optimally synthetic-fertilised field. Organic amendments +
     -- high OM offset part of this through the existing OM_YIELD pipeline, so these
