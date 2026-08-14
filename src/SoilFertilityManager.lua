@@ -1829,53 +1829,82 @@ function SoilFertilityManager:_updateSoilWetness()
     self._soilWetness01 = SoilCompactionModel.advanceWetness(self._soilWetness01, dtH, isRaining)
 end
 
+--- F111 (SF-55): the compaction pass, enumerated across EVERY server-side vehicle.
+--- The old path resolved the vehicle from getPlayerVehicle(), which is nil on a
+--- dedicated server (compaction dead for everyone) and single-vehicle on a listen
+--- server (only the host's tractor laid a trail). Enumerating the mission vehicle
+--- list at the existing CHECK_INTERVAL_MS cadence closes that for every actor:
+--- other farmers, AI helpers, hired workers, convoys. Server-side only, gated by
+--- the caller (update() checks getIsServer()).
 function SoilFertilityManager:_checkVehicleCompaction()
     if not (self.settings.compactionEnabled and SoilConstants.COMPACTION) then return end
     if not (self.soilSystem and self.soilSystem.hookManager) then return end
-    local cp = SoilConstants.COMPACTION
 
     -- Keep the moisture term current even when no heavy vehicle is around.
     self:_updateSoilWetness()
 
-    local vehicle = getPlayerVehicle()
-    if not vehicle or not vehicle.rootNode then return end
+    local vList = TrafficDrag.resolveVehicleList()
+    local checked = 0
+    for _, vehicle in pairs(vList) do
+        if self:_checkOneVehicleCompaction(vehicle) then checked = checked + 1 end
+    end
+    if checked > 0 then
+        SoilLogger.debug("Compaction pass: %d heavy vehicles with a wheel on ground", checked)
+    end
+end
+
+--- Per-vehicle compaction + traffic-drag pass (F111 body). Returns true when the
+--- vehicle was relevant (heavy, wheels on ground, points laid).
+function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
+    local cp = SoilConstants.COMPACTION
+    if not (vehicle and vehicle.rootNode) then return false end
+    if not self:_vehicleHasWheelOnGround(vehicle) then return false end
+
     local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
     -- Cheap relevance gate: skip light vehicles (cars/quads) entirely. This is a perf
     -- floor only - actual compaction is decided by ground pressure, not this threshold.
-    if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
+    if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return false end
     local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
-    if not (ok and x) then return end
+    if not (ok and x) then return false end
+
+    -- SF-55 wetness-input substitution: a real positional wetness read (SCS field-level
+    -- moisture, blended with the rain-scalar fallback per confirm 2) instead of the
+    -- bare global scalar. SCS absent or untracked -> the rain scalar exactly as today.
+    local wet = self:_blendedWetness01(x, z)
 
     -- Ground-pressure points for this vehicle this pass (identical for every sub-step of
     -- the driven segment). Reads Variable Tire Pressure live when installed, else wheel
-    -- geometry. Big flotation tyres / aired-down / dry soil → ~0 → nothing is laid.
-    local points, source = SoilCompactionModel.pointsForVehicle(vehicle, self._soilWetness01 or 0)
+    -- geometry. Big flotation tyres / aired-down / dry soil -> ~0 -> nothing is laid.
+    local points, source = SoilCompactionModel.pointsForVehicle(vehicle, wet)
     if not points or points <= 0 then
-        self._lastCompactionX, self._lastCompactionZ = x, z  -- keep continuity, lay nothing
-        return
+        self:_rememberCompactionPos(vehicle, x, z)  -- keep continuity, lay nothing
+        return false
     end
 
-    -- Compact a single world point if it sits on a field (onCompaction gates each cell to
-    -- once/day and to real field ground, so repeated calls are cheap no-ops).
-    local function compactAt(px, pz)
+    -- One stepped position: write the traffic drag when the gate holds (independent of
+    -- the compaction write), then compact the cell if it sits on a field (onCompaction
+    -- gates each cell to once/day and to real field ground, so repeated calls are cheap
+    -- no-ops).
+    local function stepAt(px, pz)
+        self:_maybeWriteTrafficDrag(px, pz, wet)
         local fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(px, pz, false)
         if fid and fid > 0 then
             pcall(function() self.soilSystem:onCompaction(fid, px, pz, points) end)
         end
     end
 
-    local lx, lz = self._lastCompactionX, self._lastCompactionZ
-    self._lastCompactionX, self._lastCompactionZ = x, z
+    local lx, lz = self:_compactionLastPos(vehicle)
+    self:_rememberCompactionPos(vehicle, x, z)
 
     -- First sample, or a teleport/fast-travel jump: record position but lay NOTHING.
     -- Compaction only accrues along ground actually driven over, so sitting still or
     -- spawning on a field never raises it (Talia: "equipment just sitting raises it").
-    if not (lx and lz) then return end
+    if not (lx and lz) then return false end
 
     local dx, dz = x - lx, z - lz
     local dist   = math.sqrt(dx * dx + dz * dz)
-    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return end   -- parked / barely moved
-    if dist > (cp.MAX_SEGMENT_M or 30.0) then return end        -- discontinuity: no line across the gap
+    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return false end   -- parked / barely moved
+    if dist > (cp.MAX_SEGMENT_M or 30.0) then return false end        -- discontinuity: no line across the gap
 
     -- Walk the driven segment in ~half-cell steps so no cell is skipped at speed.
     -- This is what keeps the trail continuous whether crawling or driving fast.
@@ -1884,11 +1913,98 @@ function SoilFertilityManager:_checkVehicleCompaction()
     local steps    = math.max(1, math.ceil(dist / step))
     for i = 1, steps do
         local t = i / steps
-        compactAt(lx + dx * t, lz + dz * t)
+        stepAt(lx + dx * t, lz + dz * t)
     end
 
     SoilLogger.debug("Compaction: %s pass +%.2f raw pts/cell  wet=%.2f  steps=%d",
-        tostring(source), points, self._soilWetness01 or 0, steps)
+        tostring(source), points, wet, steps)
+    return true
+end
+
+--- Per-vehicle last-position continuity (replaces the old single-vehicle
+--- _lastCompactionX/_lastCompactionZ state).
+function SoilFertilityManager:_compactionLastPos(vehicle)
+    local t = self._compactionLast
+    if not t or not t[vehicle.id] then return nil end
+    return t[vehicle.id].x, t[vehicle.id].z
+end
+
+function SoilFertilityManager:_rememberCompactionPos(vehicle, x, z)
+    local key = vehicle.id
+    if key == nil then return end   -- an id-less entry degrades to "first sample" (lays nothing)
+    if not self._compactionLast then self._compactionLast = {} end
+    self._compactionLast[key] = { x = x, z = z }
+end
+
+--- Wheel-on-ground gate for the F111 enumeration (brief: "for each vehicle with a
+--- wheel on ground"). Reads the live wheel physics contact state; a vehicle whose
+--- wheels are all airborne (jump, teleport) or that has no wheels is skipped.
+--- Verified: WheelPhysics:updateContact sets physics.hasGroundContact from the wheel
+--- shape contact point (LUADOC WheelPhysics.md). RealisticWeather overwrites
+--- WheelPhysics.updateFriction only (RW vehicles/wheels/WheelPhysics.lua:50), never
+--- the contact fields, so this read is RW-safe.
+function SoilFertilityManager:_vehicleHasWheelOnGround(vehicle)
+    local spec = vehicle.spec_wheels
+    if spec == nil or spec.wheels == nil then return false end
+    for _, wheel in pairs(spec.wheels) do
+        local phys = wheel.physics
+        if phys and phys.hasGroundContact then return true end
+    end
+    return false
+end
+
+--- SF-55 wetness-input substitution: blend SCS's field-level moisture for the field
+--- under (x, z) with the rain-scalar fallback (confirm 2). Neutral-when-absent: no
+--- SCS, no field, or a throwing read all fall back to the rain scalar exactly as
+--- before. fieldId, when given, skips the re-lookup (harvest pass already resolved it).
+function SoilFertilityManager:_blendedWetness01(x, z, fieldId)
+    local rainScalar = self._soilWetness01 or 0
+    if TrafficDrag == nil then return rainScalar end
+
+    local fid = fieldId
+    if not (fid and fid > 0) then
+        fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(x, z, false)
+    end
+    if not (fid and fid > 0) then return rainScalar end
+
+    local ok, scsMoisture = pcall(function()
+        local csm = g_cropStressManager
+        if csm == nil or type(csm.getMoisture) ~= "function" then return nil end
+        return csm:getMoisture(fid)
+    end)
+    return TrafficDrag.blendWetness(ok and scsMoisture or nil, rainScalar)
+end
+
+--- SF-55 crop drag: when the stepped position reads wet above the threshold AND a
+--- standing crop occupies it, accrue MAGNITUDE_PER_EVENT on the trafficDrag layer,
+--- once per cell per day (dedupe keyed on TimeGuard monotonicDay, never
+--- environment.currentDay). The cap binds at the write; the write is
+--- addValueAtWorld-shaped (read-modify-write) with the first event birthing the
+--- record. The second-writer fence holds: this never touches yieldEfficiency.
+--- Without TimeGuard's monotonicDay the accrual stands down (no private clock).
+function SoilFertilityManager:_maybeWriteTrafficDrag(px, pz, wet)
+    local td = SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
+    if not td then return end
+    if TrafficDrag == nil then return end
+    if not (self.soilSystem and self.soilSystem:vmAvailable()) then return end
+    if wet < (td.WETNESS_THRESHOLD or 0.5) then return end
+
+    local day = TrafficDrag.getMonotonicDay()
+    if day == nil then return end
+
+    local fruitIndex, growthState = TrafficDrag.readStandingCrop(px, pz)
+    if not TrafficDrag.isStandingCrop(fruitIndex, growthState, td.MIN_STANDING_GROWTH_STATE) then return end
+
+    local cellKey = TrafficDrag.cellKey(px, pz, SoilConstants.ZONE.CELL_SIZE)
+    if TrafficDrag.dedupeFired(self._trafficDragDays, cellKey, day) then return end
+    self._trafficDragDays = TrafficDrag.markDedupe(self._trafficDragDays, cellKey, day)
+
+    local valueMaps = self.soilSystem.valueMaps
+    local current = valueMaps:readValueAtWorld("trafficDrag", px, pz)
+    local nextVal = TrafficDrag.accrue(current, td.MAGNITUDE_PER_EVENT, td.CAP)
+    valueMaps:writeValueAtWorld("trafficDrag", px, pz, nextVal, SoilConstants.ZONE.CELL_SIZE * 0.5)
+    SoilLogger.debug("TrafficDrag: +%.2f at (%.1f, %.1f) day %s",
+        nextVal, px, pz, tostring(day))
 end
 
 --- Auto-rate control update - throttled, client-side only.

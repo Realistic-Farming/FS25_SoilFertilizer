@@ -140,6 +140,14 @@
 - [x] 5 assertions; suite 2944/0.
 - [~] In-game; FarmTablet mirror (hub read of the same surface).
 
+## SF-55 traffic on wet ground (2026-08-14)
+- [x] F111 closed: the driving compaction pass enumerates every server-side vehicle (wheel-on-ground gate, per-vehicle segment continuity) instead of `getPlayerVehicle()`, fixing compaction being dead on dedicated servers and host-only on listen servers.
+- [x] Wetness-input substitution at both compaction call sites (driving + harvest): positional blend of SCS `getMoisture(fieldId)` with the rain-scalar fallback (confirm 2: max rule, rain as the calibrated floor). SoilCompactionModel scoring untouched.
+- [x] `trafficDrag` layer: SoilValueMaps-registered, server-only, persisted, bounded 0.0-0.3 at the write, written on the driving segment walk when wet above threshold AND a standing crop occupies the cell, deduped once per cell per day on TimeGuard monotonicDay (never environment.currentDay). Second-writer fence holds; SF-55 never writes yieldEfficiency.
+- [x] `TrafficDrag.lua` pure arithmetic module; `traffic_drag_test.lua` at 43 assertions. Suite 2962/0 across 73 files (om_213 needs the sibling MarketDynamics repo, absent in the temp clone). Bumped to 2.5.0.76.
+- [~] Read-time composition with SF-14's yieldEfficiency (`effective = capturedEfficiency * (1 - trafficDrag)`) is a documented addendum owed on SF-14's staged brief at travel; until it lands, trafficDrag persists and composes with nothing.
+- [~] In-game (owed): wet-field bruise at harvest, MP join confirms all actors compact, SCS present vs absent parity. Dials (magnitude 0.05, threshold 0.5, cap 0.3, min standing state 1) are AWAITING-SPINE neutral defaults.
+
 ## SF-14 zone yield (2026-08-14)
 - [x] `src/ZoneYield.lua`: per-cell growth-time capture (rides the family's shared read, Time Guard simulation cadence, SF day-tracking fallback), the repurposed `yieldEfficiency` layer as captured truth (band 0.7-1.15, maxVal 115), and the freeze-supersession harvest read: area-weighted positional integral (SF-25's rule) of the captured layer across the header, computed fresh per pass, falling back to the untouched field-average `computeYieldModifier` when the spatial path cannot answer. SF-55 drag composition line applied from day one (nil drag = zero).
 - [x] `ViabilityMask:getCellGrowthInfo` now reads the family's full input set (N/P/K + compaction + moisture) and carries the raw values; the `capturedEfficiency` socket reads through the manager's zone-yield subsystem.

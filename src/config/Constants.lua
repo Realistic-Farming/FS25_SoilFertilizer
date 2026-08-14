@@ -1916,6 +1916,20 @@ SoilConstants.COMPACTION = {
     MIN_MOVE_DISTANCE_M       = 2.0,   -- must move at least this far between samples (skip when parked)
     MAX_SEGMENT_M             = 30.0,  -- if the vehicle jumped more than this between samples assume a
                                        -- teleport/fast-travel and don't paint a compaction line across the gap
+
+    -- SF-55 TRAFFIC ON WET GROUND (trafficDrag): a loaded wheel crossing wet ground
+    -- bruises a standing crop, quietly worse at harvest. Own small layer, bounded
+    -- 0.0-0.3 AT THE WRITE, composed read-only at SF-14's harvest read as
+    -- effective = capturedEfficiency * (1 - trafficDrag), never written into
+    -- yieldEfficiency (the second-writer fence). Dials per Authority #1, all
+    -- AWAITING-SPINE: the cap is SF-55's own small dial; the magnitude and the
+    -- wetness threshold are neutral defaults until the spine lands.
+    TRAFFIC_DRAG = {
+        MAGNITUDE_PER_EVENT = 0.05,    -- trafficDrag accrued per wet-ground traffic event
+        CAP                 = 0.3,     -- layer bound: the composed read never falls more than 30% off SF-14
+        WETNESS_THRESHOLD   = 0.5,     -- blended wetness (0..1) at/above which ground reads "wet" for bruising
+        MIN_STANDING_GROWTH_STATE = 1, -- growthState at/above which a crop is "standing" (confirm 1)
+    },
 }
 
 -- ========================================
