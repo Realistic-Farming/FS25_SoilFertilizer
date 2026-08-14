@@ -119,3 +119,8 @@
 - [x] NPCFavor: isNPCManaged/getWorkingState/getNPCForFarmland published; flip uses a guarded real farm id (Lane B).
 - [x] 24 assertions across npc_soil_gate + npc_soil_designation. Suite 2586/0 across 59 files.
 - [~] In-game: NPC field survives daily pass/reroll/save-load; zero player money on NPC ops; buy-in inherits history; MP client paints NPC ground.
+
+## RSF-836 swept quad boom line (2026-08-14)
+- [x] True boom endpoints derived in the vehicle's own frame (components[1].node), main + fallback paths; paintBoomStrip consumes the line with a tip-swap guard; partial-width VWW exclusion inherited; cell stamping byte-identical.
+- [x] rsf836_boom_line_test.lua at 11 assertions; suite 2886/0.
+- [~] In-game: a wide boom on a diagonal pass, ground read after one pass (reporter antler22 offered the R4045 screenshots).
