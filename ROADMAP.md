@@ -130,3 +130,8 @@
 - [x] The transition term was a raw day count (60/120/240), so 'three years' meant anything from months to decades depending on days-per-month. It is now TRANSITION_YEARS (2/3/5 indicative, values ride the balance pass), resolved at read time through Time Guard's days-per-period. Mid-save days-per-period changes re-normalise from the next period; Time Guard absent degrades to the 30-day reference. State machine and getFieldOrganicState shape unchanged.
 - [x] organic_transition_timeguard_test.lua at 11 assertions; suite 2897/0; deployed 2.5.0.71.
 - [~] In-game (owed): a transition at a 30-day month counts down over three in-game years, not eight months.
+
+## 2026-08-14 (Fred): organic compost production, the managed process
+- [x] A managed compost process (no placeable): batches commit farm organic waste, decompose over in-game days on the Time Guard clock (SF day-tracking fallback when absent), and yield the existing COMPOST fill type into farm storage. SF owns the OM effect unchanged; organic-safe flag per feedstock (biosolids-fed is not cert-safe, breach rides onInputApplied). Server-authoritative, StateLedger + own-XML persistence, sfCompostStatus/Start/Collect console.
+- [x] compost_manager_test.lua at 25 assertions; suite 2922/0; deployed 2.5.0.72.
+- [~] In-game (owed): start a batch, watch it decompose across days, collect the compost, spread it on a field.

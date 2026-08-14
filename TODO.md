@@ -129,3 +129,8 @@
 - [x] TRANSITION_YEARS (2/3/5) resolved through Time Guard days-per-period at getTransitionDays; stale comments made true; state machine unchanged.
 - [x] 11 assertions; suite 2897/0.
 - [~] In-game: three in-game years at a 30-day month. Balance-pass values for the years table pending.
+
+## Organic compost production (2026-08-14)
+- [x] CompostManager: batch lifecycle, Time Guard day accrual + fallback, storage deposit, organic-safe flag, persistence, console.
+- [x] 25 assertions; suite 2922/0.
+- [~] In-game batch flow; FarmTablet organic-app batch display (read-only) pending the app's own work.
