@@ -36,6 +36,16 @@ SoilConstants.TIMING = {
 -- TRANSITION_YEARS (year-normalised via Time Guard at its own read site,
 -- OrganicCertification:getTransitionDays) and the fallow threshold (multiplied
 -- by daysPerMonth at its read site).
+-- The drilling-window advisory: how far ahead the outlook reads (in days,
+-- season-scaled via SoilDuration), the rain-likelihood at which a window turns
+-- risky, and the ground-moisture below which the risky form is softened. These
+-- are honest defaults, not derived agronomy; a balance-pass number.
+SoilConstants.DRILLING = {
+    ESTABLISHMENT_HORIZON_DAYS = 7,
+    RISKY_LIKELIHOOD           = 0.4,
+    WET_GROUND_MOISTURE        = 0.5,
+}
+
 SoilConstants.DURATION = {
     REFERENCE_DPP = 3,   -- days-per-month the chemical durations were tuned at
 }

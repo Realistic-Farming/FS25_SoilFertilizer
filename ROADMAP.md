@@ -136,6 +136,11 @@
 - [x] compost_manager_test.lua at 25 assertions; suite 2922/0; deployed 2.5.0.72.
 - [~] In-game (owed): start a batch, watch it decompose across days, collect the compost, spread it on a field.
 
+## 2026-08-14 (Fred): the drilling-window advisory
+- [x] The field-info line now says whether the coming days are a good or risky window for drilling, from the SCS rain outlook over the season-scaled establishment horizon and the ground moisture against the kill condition. Three hedged verdicts (good / risky / forecast-only), silent when SCS is absent, never gates or writes. Renders in SF's own field-info surface; FarmTablet mirrors the hub read.
+- [x] drilling_advisory_test.lua at 5 assertions; suite 2944/0; deployed 2.5.0.74.
+- [~] In-game (owed): a wet-leaning field under a cloudy sky reads risky; removing SCS silences the line.
+
 ## 2026-08-14 (Fred): SF-55 traffic on wet ground - the build
 - [x] F111, the shipped MP defect, folds in and is closed: the driving compaction pass now enumerates EVERY server-side vehicle (`TrafficDrag.resolveVehicleList`, the codebase's vehicleSystem.vehicles / mission.vehicles shape) at the existing CHECK_INTERVAL_MS cadence, with a wheel-on-ground gate and per-vehicle segment continuity, replacing the single `getPlayerVehicle()` sample that was nil on dedicated servers and host-only on a listen server. Compaction now lays a trail for every actor.
 - [x] Wetness-input substitution at both compaction call sites: the driving pass and the harvest pass now feed `SoilCompactionModel.pointsForVehicle` a positional blend of SCS's field-level `getMoisture(fieldId)` (verified CropStressManager.lua:760) and the rain-scalar fallback, per Engineering confirm 2 (max rule, rain as the calibrated floor; nil SCS or untracked field degrades to the rain scalar exactly as today). `SoilCompactionModel` scoring math untouched.

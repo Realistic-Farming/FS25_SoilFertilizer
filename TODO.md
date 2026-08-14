@@ -130,6 +130,16 @@
 - [x] 11 assertions; suite 2897/0.
 - [~] In-game: three in-game years at a 30-day month. Balance-pass values for the years table pending.
 
+## Organic compost production (2026-08-14)
+- [x] CompostManager: batch lifecycle, Time Guard day accrual + fallback, storage deposit, organic-safe flag, persistence, console.
+- [x] 25 assertions; suite 2922/0.
+- [~] In-game batch flow; FarmTablet organic-app batch display (read-only) pending the app's own work.
+
+## Drilling-window advisory (2026-08-14)
+- [x] Advisory verdict from the SCS rain outlook + moisture vs kill condition; three hedged strings in 26 languages; SF field-info line; silent without SCS.
+- [x] 5 assertions; suite 2944/0.
+- [~] In-game; FarmTablet mirror (hub read of the same surface).
+
 ## SF-55 traffic on wet ground (2026-08-14)
 - [x] F111 closed: the driving compaction pass enumerates every server-side vehicle (wheel-on-ground gate, per-vehicle segment continuity) instead of `getPlayerVehicle()`, fixing compaction being dead on dedicated servers and host-only on listen servers.
 - [x] Wetness-input substitution at both compaction call sites (driving + harvest): positional blend of SCS `getMoisture(fieldId)` with the rain-scalar fallback (confirm 2: max rule, rain as the calibrated floor). SoilCompactionModel scoring untouched.
