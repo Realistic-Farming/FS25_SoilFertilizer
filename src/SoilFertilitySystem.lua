@@ -972,6 +972,34 @@ end
 -- third return of getFieldDataAtWorldPosition), banded into the SEEDBED_WEIGHT
 -- table (plowed/seedbed resists, cultivated normal, stubble tillage eases).
 -- A nil read or an unknown band degrades to the neutral 1.0.
+
+-- The drilling-window advisory (the field-info line): whether the coming days
+-- are a good or risky window for putting seed in this ground. It speaks from the
+-- SCS sky-reading (clouds now, rain now, the season's habits) and the ground
+-- moisture against the establishment kill condition. Advice never gates or
+-- writes; it is silent when SCS is absent (never guessing), and the weaker
+-- forecast-only form is used when the moisture read is unavailable. The verdict
+-- is a stable l10n key.
+function SoilFertilitySystem:_drillingAdvisory(fieldId)
+    local cs = g_currentMission ~= nil and g_currentMission.cropStressManager
+    if cs == nil or cs.getRainOutlook == nil then return nil end
+    local d = SoilConstants.DRILLING
+    local horizon = SoilDuration.seasonScaled(d.ESTABLISHMENT_HORIZON_DAYS)
+    local ok, out = pcall(function() return cs:getRainOutlook(horizon) end)
+    if not ok or out == nil or type(out.likelihood) ~= "number" then return nil end
+    local moist, hasMoisture = 0.5, false
+    if cs.getMoisture ~= nil then
+        local ok2, m = pcall(function() return cs:getMoisture(fieldId) end)
+        if ok2 and type(m) == "number" then moist, hasMoisture = m, true end
+    end
+    if out.likelihood < d.RISKY_LIKELIHOOD then
+        return "sf_notify_drill_good"
+    end
+    if hasMoisture and moist >= d.WET_GROUND_MOISTURE then
+        return "sf_notify_drill_risky"
+    end
+    return "sf_notify_drill_forecast_only"
+end
 function SoilFertilitySystem:_seedbedWeightAtLastSow()
     local x = self._lastTillageX
     local z = self._lastTillageZ
