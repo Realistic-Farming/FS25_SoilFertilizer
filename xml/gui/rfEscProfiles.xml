@@ -287,6 +287,16 @@
         <frameBottomColor value="1 1 1 0.85"/>
     </Profile>
 
+    <Profile name="RF_EscCardFrameWide" extends="RF_WcPage">
+        <clipChildren value="false"/>
+        <hasFrame value="true"/>
+        <frameThickness value="1dp 1dp 1dp 1dp"/>
+        <frameLeftColor value="1 1 1 0.85"/>
+        <frameTopColor value="1 1 1 0.85"/>
+        <frameRightColor value="1 1 1 0.85"/>
+        <frameBottomColor value="1 1 1 0.85"/>
+    </Profile>
+
     <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
          art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
          measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
@@ -590,6 +600,10 @@
     <!-- Kept for other pages; fields table uses centered RF_ColHeader (F12). -->
     <Profile name="RF_ColHeaderRight" extends="RF_ColHeader">
         <textAlignment value="center"/>
+    </Profile>
+
+    <Profile name="RF_FwColHeader" extends="RF_ColHeader">
+        <textAlignment value="left"/>
     </Profile>
 
     <Profile name="RF_SmoothList" extends="emptyPanel" with="anchorStretchingYLeft pivotTopLeft"/>
