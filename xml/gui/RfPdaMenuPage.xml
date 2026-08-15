@@ -535,7 +535,7 @@
 
                     <!-- CS table: top-flush with 404 bottom reserve so the last rows clear the
                          FIELD DETAIL band title (CS FieldDetail fix, applied in the HOST page). -->
-                    <GuiElement profile="emptyPanel" id="csActionBar" position="0px 0px" size="1140px 44px">
+                    <GuiElement profile="emptyPanel" id="csActionBar" position="0px 0px" size="1140px 0px">
                         <!-- BUILD 18:48: this button owned the table-hiding consultant swap, which
                              is now a hard engine VETO. Hidden rather than deleted so any stale
                              binding still resolves; its job belongs to the Fields|Pivot subnav. -->
@@ -546,8 +546,8 @@
                     <!-- Inline Alex Chen consultant readout. Exclusive with rfHostTableRegion:
                          csBtnConsultant toggles which of the two is visible. Fixed Texts only -
                          George NO-GO on TextElement.new rebuild, dialog XML nest, or SmoothList. -->
-                    <GuiElement profile="RF_TableRegionShell" id="csConsultPanel" position="0px -44px"
-                                absoluteSizeOffset="0px 584px" visible="false">
+                    <GuiElement profile="RF_TableRegionShell" id="csConsultPanel" position="0px 0px"
+                                absoluteSizeOffset="0px 514px" visible="false">
                         <Text profile="RF_SectionTitle"   id="csConsTitle"    position="16px -12px"  size="700px 26px"  text=""/>
                         <Text profile="RF_TreatTargetLine" id="csConsRelation" position="16px -36px"  size="1140px 20px" visible="false" text=""/>
                         <Text profile="RF_ColHeader" id="csConsColField"    position="16px -64px"  size="280px 22px" text=""/>
@@ -582,8 +582,8 @@
                               textMaxNumLines="2" visible="false" text=""/>
                     </GuiElement>
 
-                    <GuiElement profile="RF_TableRegionShell" id="rfHostTableRegion" position="0px -44px"
-                                absoluteSizeOffset="0px 584px">
+                    <GuiElement profile="RF_TableRegionShell" id="rfHostTableRegion" position="0px 0px"
+                                absoluteSizeOffset="0px 514px">
                         <Text profile="RF_ColHeader" id="csColField" text="" position="16px -8px" size="100px 24px"/>
                         <Text profile="RF_ColHeader" id="csColCrop" text="" position="140px -8px" size="200px 24px"/>
                         <Text profile="RF_ColHeader" id="csColMoisture" text="" position="360px -8px" size="160px 24px"/>
