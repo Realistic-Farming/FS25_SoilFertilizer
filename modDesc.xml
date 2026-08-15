@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK (Refined edition: WizardlyPayload)</author>
-    <version>2.5.0.77</version>
+    <version>2.5.0.78</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -84,13 +84,13 @@
     </vehicleTypes>
 
     <actions>
-        <action name="SF_TOGGLE_HUD"  category="ONFOOT" />
+        <action name="SF_TOGGLE_HUD"  category="ONFOOT VEHICLE" />
         <action name="SF_RATE_UP"     category="VEHICLE" />
         <action name="SF_RATE_DOWN"   category="VEHICLE" />
         <action name="SF_TOGGLE_AUTO" category="VEHICLE" />
-        <action name="SF_CYCLE_MAP_LAYER"   category="ONFOOT" />
-        <action name="SF_OPEN_SETTINGS"     category="ONFOOT" />
-        <action name="SF_HUD_DRAG"          category="ONFOOT" />
+        <action name="SF_CYCLE_MAP_LAYER"   category="ONFOOT VEHICLE" />
+        <action name="SF_OPEN_SETTINGS"     category="ONFOOT VEHICLE" />
+        <action name="SF_HUD_DRAG"          category="ONFOOT VEHICLE" />
         <action name="SF_VARIABLE_RATE"     category="VEHICLE" />
         <action name="SF_MINIMAP_ZOOM"      category="ONFOOT" />
         <action name="SF_SCOUT"             category="ONFOOT" />
@@ -101,14 +101,30 @@
     <l10n filenamePrefix="translations/translation" />
 
     <inputBinding>
-        <actionBinding action="SF_TOGGLE_HUD" />
-        <actionBinding action="SF_RATE_UP" />
-        <actionBinding action="SF_RATE_DOWN" />
-        <actionBinding action="SF_TOGGLE_AUTO" />
-        <actionBinding action="SF_CYCLE_MAP_LAYER" />
-        <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_HUD_DRAG" />
-        <actionBinding action="SF_VARIABLE_RATE" />
+        <actionBinding action="SF_TOGGLE_HUD">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_j" />
+        </actionBinding>
+        <actionBinding action="SF_RATE_UP">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rightbracket" />
+        </actionBinding>
+        <actionBinding action="SF_RATE_DOWN">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_leftbracket" />
+        </actionBinding>
+        <actionBinding action="SF_TOGGLE_AUTO">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_l" />
+        </actionBinding>
+        <actionBinding action="SF_CYCLE_MAP_LAYER">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_m" />
+        </actionBinding>
+        <actionBinding action="SF_OPEN_SETTINGS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_o" />
+        </actionBinding>
+        <actionBinding action="SF_HUD_DRAG">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
+        </actionBinding>
+        <actionBinding action="SF_VARIABLE_RATE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lalt KEY_7" />
+        </actionBinding>
         <actionBinding action="SF_MINIMAP_ZOOM" />
         <actionBinding action="SF_SCOUT" />
         <actionBinding action="SF_TREATMENT" />

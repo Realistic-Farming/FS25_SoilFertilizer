@@ -400,6 +400,21 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         -- registerActionEvent's built-in dedup handles multiple calls per session gracefully.
         if self.soilHUD and InputBinding and InputBinding.endActionEventsModification then
             local _soilVehicleHookActive = false
+            -- BUILD 21:38: put an event on the in-cab F1 strip. The engine lists an action
+            -- only when it is active, has a binding, and has its text visible. modDesc supplies
+            -- the bindings; this supplies the last two. GS_PRIO_HIGH is not decoration: the
+            -- strip's normal tier is a handful of slots and the cab set is cut without it.
+            local function sfShowOnCabStrip(binding, id)
+                if binding == nil or id == nil then
+                    return
+                end
+                if type(binding.setActionEventTextVisibility) == "function" then
+                    binding:setActionEventTextVisibility(id, true)
+                end
+                if GS_PRIO_HIGH ~= nil and type(binding.setActionEventTextPriority) == "function" then
+                    binding:setActionEventTextPriority(id, GS_PRIO_HIGH)
+                end
+            end
             local originalEndMod = InputBinding.endActionEventsModification
             self._vehicleInputHookOriginal = originalEndMod
             InputBinding.endActionEventsModification = function(binding, ignoreCheck)
@@ -465,6 +480,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if vHudOk and vHudId then
                     g_SoilFertilityManager.vehicleHUDEventId = vHudId
+                    sfShowOnCabStrip(binding, vHudId)
                     SoilLogger.debug("HUD toggle (J) registered in VEHICLE context")
                 end
 
@@ -476,6 +492,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if upOk and upId then
                     g_SoilFertilityManager.rateUpEventId = upId
+                    sfShowOnCabStrip(binding, upId)
                     SoilLogger.debug("Rate UP (]) registered in VEHICLE context")
                 end
 
@@ -487,6 +504,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if downOk and downId then
                     g_SoilFertilityManager.rateDownEventId = downId
+                    sfShowOnCabStrip(binding, downId)
                     SoilLogger.debug("Rate DOWN ([) registered in VEHICLE context")
                 end
 
@@ -498,6 +516,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if autoOk and autoId then
                     g_SoilFertilityManager.toggleAutoEventId = autoId
+                    sfShowOnCabStrip(binding, autoId)
                     SoilLogger.debug("Auto toggle (Shift+L) registered in VEHICLE context")
                 end
 
@@ -505,7 +524,10 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 local vrOk, vrId = binding:registerActionEvent(
                     InputAction.SF_VARIABLE_RATE, g_SoilFertilityManager,
                     g_SoilFertilityManager.onVariableRateInput, false, true, false, true)
-                if vrOk and vrId then g_SoilFertilityManager.variableRateEventId = vrId end
+                if vrOk and vrId then
+                    g_SoilFertilityManager.variableRateEventId = vrId
+                    sfShowOnCabStrip(binding, vrId)
+                end
 
                 -- Settings panel (Shift+O) in VEHICLE context
                 if g_SoilFertilityManager.settingsPanel then
@@ -516,7 +538,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vSpOk and vSpId then
                         g_SoilFertilityManager.vehicleSettingsPanelEventId = vSpId
-                        binding:setActionEventTextVisibility(vSpId, false)
+                        sfShowOnCabStrip(binding, vSpId)
                         SoilLogger.debug("Settings panel (Shift+O) registered in VEHICLE context")
                     end
                 end
@@ -530,7 +552,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vDragOk and vDragId then
                         g_SoilFertilityManager.vehicleHudDragEventId = vDragId
-                        binding:setActionEventTextVisibility(vDragId, false)
+                        sfShowOnCabStrip(binding, vDragId)
                         SoilLogger.debug("HUD drag (Shift+H) registered in VEHICLE context")
                     end
                 end
@@ -558,7 +580,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vMapOk and vMapId then
                         g_SoilFertilityManager.vehicleCycleMapLayerEventId = vMapId
-                        binding:setActionEventTextVisibility(vMapId, false)
+                        sfShowOnCabStrip(binding, vMapId)
                         SoilLogger.debug("Map layer cycle registered in VEHICLE context")
                     end
                 end
@@ -1843,7 +1865,18 @@ function SoilFertilityManager:_checkVehicleCompaction()
     -- Keep the moisture term current even when no heavy vehicle is around.
     self:_updateSoilWetness()
 
-    local vList = TrafficDrag.resolveVehicleList()
+    -- BUILD 21:59: a zip that carried this manager without src/TrafficDrag.lua indexed nil
+    -- here once per update tick. It falls back rather than returning: compaction is the older
+    -- shipped feature and should keep working when the newer module is absent, and the drag
+    -- write already stands down on its own guards.
+    local vList
+    if TrafficDrag ~= nil and type(TrafficDrag.resolveVehicleList) == "function" then
+        vList = TrafficDrag.resolveVehicleList()
+    else
+        vList = (g_currentMission ~= nil and g_currentMission.vehicleSystem
+                 and g_currentMission.vehicleSystem.vehicles)
+                or (g_currentMission ~= nil and g_currentMission.vehicles) or {}
+    end
     local checked = 0
     for _, vehicle in pairs(vList) do
         if self:_checkOneVehicleCompaction(vehicle) then checked = checked + 1 end
