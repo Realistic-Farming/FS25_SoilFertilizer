@@ -61,7 +61,12 @@ SoilValueMaps.LAYER_DEFS = {
     -- when a field is not yet scouted, so unscouted never reads as clean green.
     { key = "diseasePressure", file = "sfSoilMap_DP.grle",  minVal = 0,   maxVal = 100, rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW },
     { key = "urgency",         file = "sfSoilMap_UR.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
-    { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
+    -- yieldEfficiency (SF-14 repurpose): captured truth, not a display stamp.
+    -- Stores the per-cell captured efficiency multiplier as a percentage
+    -- (0.7 .. 1.15 -> 70 .. 115), so maxVal must reach the band ceiling 115,
+    -- not today's display scale of 100. The DMV display migrates to show the
+    -- captured truth (the display-only field-average stamp is retired).
+    { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 115, rawFloor = 16 },
     -- Organic certification status: a categorical 3-state layer (0 conventional,
     -- 1 in-transition, 2 certified) backing the organic map display. EPHEMERAL (no
     -- file): it is a lossless projection of each field's persisted organic state, so

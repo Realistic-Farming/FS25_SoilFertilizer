@@ -147,3 +147,10 @@
 - [x] `TrafficDrag.lua` pure arithmetic module; `traffic_drag_test.lua` at 43 assertions. Suite 2962/0 across 73 files (om_213 needs the sibling MarketDynamics repo, absent in the temp clone). Bumped to 2.5.0.76.
 - [~] Read-time composition with SF-14's yieldEfficiency (`effective = capturedEfficiency * (1 - trafficDrag)`) is a documented addendum owed on SF-14's staged brief at travel; until it lands, trafficDrag persists and composes with nothing.
 - [~] In-game (owed): wet-field bruise at harvest, MP join confirms all actors compact, SCS present vs absent parity. Dials (magnitude 0.05, threshold 0.5, cap 0.3, min standing state 1) are AWAITING-SPINE neutral defaults.
+
+## SF-14 zone yield (2026-08-14)
+- [x] `src/ZoneYield.lua`: per-cell growth-time capture (rides the family's shared read, Time Guard simulation cadence, SF day-tracking fallback), the repurposed `yieldEfficiency` layer as captured truth (band 0.7-1.15, maxVal 115), and the freeze-supersession harvest read: area-weighted positional integral (SF-25's rule) of the captured layer across the header, computed fresh per pass, falling back to the untouched field-average `computeYieldModifier` when the spatial path cannot answer. SF-55 drag composition line applied from day one (nil drag = zero).
+- [x] `ViabilityMask:getCellGrowthInfo` now reads the family's full input set (N/P/K + compaction + moisture) and carries the raw values; the `capturedEfficiency` socket reads through the manager's zone-yield subsystem.
+- [x] The field-average display mirror/seed stand down from `yieldEfficiency` while the capture is live (the display-only stamp is retired).
+- [x] 37 assertions in zone_yield_sf14_test.lua, including the calibration invariant: a uniform field's area-weighted read reconciles against computeYieldModifier output for the same inputs. Suite 2956/0 across 73 files; syntax + lint clean. Deployed 2.5.0.77.
+- [~] In-game (owed): per-patch payout across a non-uniform header, uniform-field reconciliation vs the pre-family harvest, save/reload mid-harvest, harvest-read cost at full header width (named bench item, not asserted).

@@ -121,6 +121,12 @@ source(modDirectory .. "src/GrowthCredit.lua")
 -- is the clock. Inert unless the growth_modulation release gate is open and
 -- the mask is enabled.
 source(modDirectory .. "src/GrowthBlock.lua")
+-- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
+-- yieldEfficiency capture at growth time (riding the family's shared read,
+-- Time Guard simulation cadence) and the area-weighted harvest read that
+-- supersedes the SF-16 scalar freeze on the spatial path. Inert unless the
+-- growth_modulation release gate is open and the mask is enabled.
+source(modDirectory .. "src/ZoneYield.lua")
 -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
 -- distance-to-water) consumed by SF-76 (field genesis) and SCS-042 (runoff).
 -- Neutral until a consumer wires in; its own StateLedger + NetworkSync

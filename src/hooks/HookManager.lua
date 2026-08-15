@@ -2704,7 +2704,28 @@ function HookManager:installYieldModifierHook()
                     end
                     if not fieldId or fieldId <= 0 then return end
 
-                    local yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
+                    -- SF-14 FREEZE SUPERSESSION (spatial path). On the spatial path
+                    -- (value maps present and the captured yieldEfficiency layer is
+                    -- live), the per-pass modifier is the AREA-WEIGHTED READ of the
+                    -- captured, growth-time-static layer under the header, computed
+                    -- fresh each pass. The SF-16 scalar freeze is BYPASSED, not
+                    -- reused; when the spatial read cannot answer (nil), the call
+                    -- falls through to the untouched field-average computeYieldModifier
+                    -- with its scalar freeze (maps absent / no captured data).
+                    local yieldModifier = nil
+                    local zoneYield = g_SoilFertilityManager.zoneYield
+                    if zoneYield ~= nil and type(zoneYield.readHeaderAreaWeighted) == "function"
+                       and zoneYield:isLive() then
+                        local okRead, spatial = pcall(function()
+                            return zoneYield:readHeaderAreaWeighted(combineSelf, fieldId)
+                        end)
+                        if okRead and type(spatial) == "number" then
+                            yieldModifier = spatial
+                        end
+                    end
+                    if yieldModifier == nil then
+                        yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
+                    end
                     if yieldModifier ~= 1.0 then
                         modifiedDelta = fillLevelDelta * yieldModifier
                         SoilLogger.debug("Yield modifier hook: Field %d Fruit %d modifier=%.3f (%.1fL -- %.1fL)",
