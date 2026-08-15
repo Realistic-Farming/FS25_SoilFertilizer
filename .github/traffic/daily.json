@@ -904,5 +904,17 @@
     "views_unique": 201,
     "clones_total": 87,
     "clones_unique": 44
+  },
+  "2026-08-13": {
+    "views_total": 364,
+    "views_unique": 163,
+    "clones_total": 75,
+    "clones_unique": 38
+  },
+  "2026-08-14": {
+    "views_total": 526,
+    "views_unique": 176,
+    "clones_total": 1444,
+    "clones_unique": 990
   }
 }
