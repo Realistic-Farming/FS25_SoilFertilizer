@@ -1881,6 +1881,27 @@ local function sfGetValueMaps()
     return nil
 end
 
+-- BUILD 11:15: these four live here, ABOVE the chunk event, because a Lua local is
+-- only in scope from its own line onward. They used to be declared after
+-- SoilValueMapChunkEvent:run, so that function's four uses of them compiled as
+-- globals and the first one indexed nil on every chunk of a repair stream. The
+-- checksum event below sits after the old declarations and saw the real tables,
+-- which is why a drift warning printed and then the flood started. One set of
+-- tables, visible to both, is the whole fix.
+-- Per-layer client resync attempt counts for this session. Caps the storm when
+-- a layer still cannot converge after clear+reapply (e.g. transient race).
+local sfValueMapResyncAttempts = {}
+-- Per-layer "a resync for this layer is currently in flight" flag. Set when a
+-- request is actually sent, cleared when that layer's chunk stream completes.
+-- Guards the attempt counter so it charges per COMPLETED round trip, never per
+-- checksum event received (#803).
+local sfValueMapResyncInFlight = {}
+-- Distinct layers received in the current value-map send (a send is a full sync
+-- or a single-layer resync reply). Counted so "sync complete (N layers)" reports
+-- the layers actually streamed, not every syncable layer in LAYER_DEFS (#803).
+local sfValueMapSyncRoundLayers = {}
+local SF_VALUE_MAP_RESYNC_MAX = 2
+
 SoilValueMapChunkEvent = {}
 SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
 
@@ -2065,20 +2086,6 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     end
     self:run(connection)
 end
-
--- Per-layer client resync attempt counts for this session. Caps the storm when
--- a layer still cannot converge after clear+reapply (e.g. transient race).
-local sfValueMapResyncAttempts = {}
--- Per-layer "a resync for this layer is currently in flight" flag. Set when a
--- request is actually sent, cleared when that layer's chunk stream completes.
--- Guards the attempt counter so it charges per COMPLETED round trip, never per
--- checksum event received (#803).
-local sfValueMapResyncInFlight = {}
--- Distinct layers received in the current value-map send (a send is a full sync
--- or a single-layer resync reply). Counted so "sync complete (N layers)" reports
--- the layers actually streamed, not every syncable layer in LAYER_DEFS (#803).
-local sfValueMapSyncRoundLayers = {}
-local SF_VALUE_MAP_RESYNC_MAX = 2
 
 function SoilValueMapChecksumEvent:run(connection)
     -- CLIENT ONLY: compare against the local maps; request a resync when a
