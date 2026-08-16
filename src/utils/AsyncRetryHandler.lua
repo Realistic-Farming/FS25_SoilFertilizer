@@ -25,6 +25,10 @@ function AsyncRetryHandler.new(config)
     self.onSuccess = config.onSuccess or function() end
     self.onFailure = config.onFailure or function() end
     self.condition = config.condition or function() return false end
+    -- BUILD 17:59: optional gate. When it returns false the operation is not ready to be
+    -- tried at all, which is different from trying and failing: no attempt is spent and the
+    -- handler stays pending. Defaults to always-open so existing callers are unchanged.
+    self.canAttempt = config.canAttempt or function() return true end
     self.name = config.name or "AsyncOperation"
 
     -- State
@@ -55,6 +59,12 @@ end
 -- Perform single attempt
 function AsyncRetryHandler:attempt()
     if self.state ~= "pending" then return end
+
+    -- BUILD 17:59: checked BEFORE the counter moves. A send that the engine will drop is not
+    -- an attempt that failed, it is an attempt that never happened, and counting it is how
+    -- the Judith join spent its whole budget before the event ids had even arrived.
+    local gateOk, gateOpen = pcall(self.canAttempt)
+    if not gateOk or not gateOpen then return end
 
     self.attempts = self.attempts + 1
     self.lastAttemptTime = g_currentMission and g_currentMission.time or 0
@@ -105,16 +115,37 @@ function AsyncRetryHandler:update(dt)
     self:checkCondition()
     if self.state ~= "pending" then return end
 
+    -- BUILD 18:16 (Vera F1). Before the first successful attempt there is no delay window to
+    -- compute at all: attempts is 0, delays is 1-based, so delays[0] is nil and `elapsed >= nil`
+    -- throws in Lua 5.1. That killed this update loop on the very tick it was meant to be
+    -- polling, so the first legal send after EVENT_IDS never happened. My defect from 17:59:
+    -- gating attempt() broke the old invariant that attempts was always >= 1 by the time
+    -- update() ran, and the delay maths still assumed it.
+    --
+    -- The zero-attempt case therefore gets its own branch, before any delay is looked up.
+    -- Poll the gate every tick; attempt() still checks it before touching the counter, so a
+    -- shut gate stays silent and free, and the tick it opens is attempt 1.
+    if self.attempts == 0 then
+        self:attempt()
+        return
+    end
+
     -- Calculate elapsed time
     local currentTime = g_currentMission and g_currentMission.time or 0
     local elapsed = currentTime - self.lastAttemptTime
 
-    -- Get delay for current attempt
-    local delayIndex = math.min(self.attempts, #self.delays)
-    local retryDelay = self.delays[delayIndex]
+    -- Get delay for current attempt. Clamped to 1 at the bottom as well as to #delays at the
+    -- top: this table is 1-based and index 0 must never be read.
+    local delayIndex = math.max(1, math.min(self.attempts, #self.delays))
+    local retryDelay = self.delays[delayIndex] or 0
 
     -- Check for timeout
     if elapsed >= retryDelay then
+        -- Hold quietly while the gate is shut. Checked before the "attempting again" log so a
+        -- closed gate costs nothing and says nothing.
+        local gateOk, gateOpen = pcall(self.canAttempt)
+        if not gateOk or not gateOpen then return end
+
         if self.attempts < self.maxAttempts then
             SoilLogger.debug("[%s] Retry timeout, attempting again (%d/%d)",
                 self.name, self.attempts + 1, self.maxAttempts)

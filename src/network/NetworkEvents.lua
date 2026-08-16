@@ -1473,7 +1473,34 @@ function SoilNetworkEvents_InitializeRetryHandler()
             SoilConstants.NETWORK.FULL_SYNC_RETRY_INTERVAL
         },
 
+        -- BUILD 17:59: the legal-send gate. Keep InitEventClass; the class eventId is
+        -- assigned by EventIds.assignEventObjectId when the client processes EVENT_IDS,
+        -- which the extract shows happens in FSBaseMission:onConnectionFinishedLoading,
+        -- AFTER the client has finished loading the map. So loadedMission arms this handler
+        -- but the first legal send comes later, and everything before that must cost
+        -- nothing.
+        --
+        -- The class field is the honest test: Event.new does not copy eventId onto the
+        -- instance, so an instance check would read the class through __index anyway and a
+        -- cached "has id" would be a lie. Checked at send time, never cached.
+        --
+        -- Connection state is a belt only. A dedicated client sets isReadyForEvents true the
+        -- moment it connects, long before any id exists, so it was never the missing piece;
+        -- it is here because a disconnect clears it.
+        canAttempt = function()
+            if g_client == nil or g_server ~= nil then return false end
+            if type(SoilRequestFullSyncEvent.eventId) ~= "number" then return false end
+            local conn = g_client.getServerConnection ~= nil and g_client:getServerConnection() or nil
+            if conn == nil then return false end
+            if conn.isConnected == false then return false end
+            if conn.isReadyForEvents == false then return false end
+            return true
+        end,
+
         onAttempt = function()
+            -- canAttempt has already proven the id, the connection and the side. This runs
+            -- only for a send the engine will actually put on the wire, so the attempt
+            -- number in the log below is a real attempt rather than a dropped packet.
             if not g_client or g_server then return end
             g_client:getServerConnection():sendEvent(SoilRequestFullSyncEvent.new())
             SoilLogger.info("Client: Requesting full sync (attempt %d/%d)",
