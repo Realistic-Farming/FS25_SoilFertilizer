@@ -885,14 +885,17 @@ function SoilFieldBatchSyncEvent:run(connection)
         -- scanFields() may have run before the server's ownership data arrived on
         -- the client, leaving activeFieldIds empty and the overlay blank. Now that
         -- fieldData is fully populated we re-check ownership and fill the set.
+        -- [SF-27] B4a: NPC-managed ground is client-visible through the designation
+        -- surface (NPCFavor syncs its handle), so the widened gate paints it on join.
         if g_farmlandManager then
             for farmlandId in pairs(soilSystem.fieldData) do
                 local owner = g_farmlandManager:getFarmlandOwner(farmlandId)
-                if owner and owner > 0 then
+                local isNpc = NpcSoilBridge and NpcSoilBridge:isNPCManaged(farmlandId) == true
+                if (owner and owner > 0) or isNpc then
                     soilSystem:_addToActiveSet(farmlandId)
                 end
             end
-            SoilLogger.info("Client: activeFieldIds rebuilt (%d owned fields)", (function()
+            SoilLogger.info("Client: activeFieldIds rebuilt (%d active fields)", (function()
                 local n = 0; for _ in pairs(soilSystem.activeFieldIds) do n = n + 1 end; return n
             end)())
         end
@@ -1470,7 +1473,34 @@ function SoilNetworkEvents_InitializeRetryHandler()
             SoilConstants.NETWORK.FULL_SYNC_RETRY_INTERVAL
         },
 
+        -- BUILD 17:59: the legal-send gate. Keep InitEventClass; the class eventId is
+        -- assigned by EventIds.assignEventObjectId when the client processes EVENT_IDS,
+        -- which the extract shows happens in FSBaseMission:onConnectionFinishedLoading,
+        -- AFTER the client has finished loading the map. So loadedMission arms this handler
+        -- but the first legal send comes later, and everything before that must cost
+        -- nothing.
+        --
+        -- The class field is the honest test: Event.new does not copy eventId onto the
+        -- instance, so an instance check would read the class through __index anyway and a
+        -- cached "has id" would be a lie. Checked at send time, never cached.
+        --
+        -- Connection state is a belt only. A dedicated client sets isReadyForEvents true the
+        -- moment it connects, long before any id exists, so it was never the missing piece;
+        -- it is here because a disconnect clears it.
+        canAttempt = function()
+            if g_client == nil or g_server ~= nil then return false end
+            if type(SoilRequestFullSyncEvent.eventId) ~= "number" then return false end
+            local conn = g_client.getServerConnection ~= nil and g_client:getServerConnection() or nil
+            if conn == nil then return false end
+            if conn.isConnected == false then return false end
+            if conn.isReadyForEvents == false then return false end
+            return true
+        end,
+
         onAttempt = function()
+            -- canAttempt has already proven the id, the connection and the side. This runs
+            -- only for a send the engine will actually put on the wire, so the attempt
+            -- number in the log below is a real attempt rather than a dropped packet.
             if not g_client or g_server then return end
             g_client:getServerConnection():sendEvent(SoilRequestFullSyncEvent.new())
             SoilLogger.info("Client: Requesting full sync (attempt %d/%d)",
@@ -1851,6 +1881,27 @@ local function sfGetValueMaps()
     return nil
 end
 
+-- BUILD 11:15: these four live here, ABOVE the chunk event, because a Lua local is
+-- only in scope from its own line onward. They used to be declared after
+-- SoilValueMapChunkEvent:run, so that function's four uses of them compiled as
+-- globals and the first one indexed nil on every chunk of a repair stream. The
+-- checksum event below sits after the old declarations and saw the real tables,
+-- which is why a drift warning printed and then the flood started. One set of
+-- tables, visible to both, is the whole fix.
+-- Per-layer client resync attempt counts for this session. Caps the storm when
+-- a layer still cannot converge after clear+reapply (e.g. transient race).
+local sfValueMapResyncAttempts = {}
+-- Per-layer "a resync for this layer is currently in flight" flag. Set when a
+-- request is actually sent, cleared when that layer's chunk stream completes.
+-- Guards the attempt counter so it charges per COMPLETED round trip, never per
+-- checksum event received (#803).
+local sfValueMapResyncInFlight = {}
+-- Distinct layers received in the current value-map send (a send is a full sync
+-- or a single-layer resync reply). Counted so "sync complete (N layers)" reports
+-- the layers actually streamed, not every syncable layer in LAYER_DEFS (#803).
+local sfValueMapSyncRoundLayers = {}
+local SF_VALUE_MAP_RESYNC_MAX = 2
+
 SoilValueMapChunkEvent = {}
 SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
 
@@ -1948,12 +1999,22 @@ function SoilValueMapChunkEvent:run(connection)
         vm:applySyncRow(def.key, self.gyStart + (i - 1), row)
     end
 
+    -- Track this layer as streamed this round (deduped: a layer streams many
+    -- chunks, and the round starts fresh on each send's final chunk).
+    sfValueMapSyncRoundLayers[self.layerIdx] = true
+
     if self.isLast then
+        -- #803: this layer's repair round trip has landed, so a future checksum
+        -- evaluation is a fresh comparison against the applied state, not a
+        -- re-charge of an in-flight repair.
+        sfValueMapResyncInFlight[self.layerIdx] = nil
         local syncedLayers = 0
-        for _, d in ipairs(SoilValueMaps.LAYER_DEFS) do
-            if d.serverOnly ~= true then syncedLayers = syncedLayers + 1 end
+        for layerIdx in pairs(sfValueMapSyncRoundLayers) do
+            local d = SoilValueMaps.LAYER_DEFS[layerIdx]
+            if d and d.serverOnly ~= true then syncedLayers = syncedLayers + 1 end
         end
         SoilLogger.info("Client: value map sync complete (%d layers)", syncedLayers)
+        sfValueMapSyncRoundLayers = {}
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
         local mapOverlay = g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
@@ -2026,11 +2087,6 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     self:run(connection)
 end
 
--- Per-layer client resync attempt counts for this session. Caps the storm when
--- a layer still cannot converge after clear+reapply (e.g. transient race).
-local sfValueMapResyncAttempts = {}
-local SF_VALUE_MAP_RESYNC_MAX = 2
-
 function SoilValueMapChecksumEvent:run(connection)
     -- CLIENT ONLY: compare against the local maps; request a resync when a
     -- layer has drifted (tolerance covers coarse-grid quantisation noise).
@@ -2050,24 +2106,38 @@ function SoilValueMapChecksumEvent:run(connection)
             local sumDrift = math.abs(localSum - cs.sum)
             local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
             if sumDrift > tolerance then
-                local attempts = sfValueMapResyncAttempts[layerIdx] or 0
-                if attempts >= SF_VALUE_MAP_RESYNC_MAX then
-                    if attempts == SF_VALUE_MAP_RESYNC_MAX then
-                        SoilLogger.warning(
-                            "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
-                            def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
-                        sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
-                    end
+                -- A request for this layer is already on the wire and its chunk
+                -- stream has not been applied yet. The drift we are reading is
+                -- the pre-repair state; the fresh full checksum the server sends
+                -- after finishing THIS layer's own reply is the one that judges
+                -- the round trip. Charging now would double-count against the
+                -- trailing checksums of other layers repaired in the same pass
+                -- (#803). Wait for our own stream to land.
+                if sfValueMapResyncInFlight[layerIdx] then
+                    -- still awaiting the in-flight repair; skip re-charging
                 else
-                    sfValueMapResyncAttempts[layerIdx] = attempts + 1
-                    SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
-                        def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
-                    if g_client then
+                    local attempts = sfValueMapResyncAttempts[layerIdx] or 0
+                    if attempts >= SF_VALUE_MAP_RESYNC_MAX then
+                        if attempts == SF_VALUE_MAP_RESYNC_MAX then
+                            SoilLogger.warning(
+                                "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
+                                def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
+                            sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
+                        end
+                    elseif g_client then
+                        -- Charge the attempt ONLY on the branch that actually sends a
+                        -- request, so a checksum that evaluates a layer but sends
+                        -- nothing cannot burn the cap (#803, Claude(A)'s addition).
+                        sfValueMapResyncAttempts[layerIdx] = attempts + 1
+                        sfValueMapResyncInFlight[layerIdx] = true
+                        SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
+                            def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
                         g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
                     end
                 end
             else
                 sfValueMapResyncAttempts[layerIdx] = 0
+                sfValueMapResyncInFlight[layerIdx] = nil
             end
         end
     end

@@ -10,6 +10,32 @@
 HookManager = {}
 local HookManager_mt = Class(HookManager)
 
+--- [SF-19 item 5] Resolve the per-section pest/disease pressure for See & Spray.
+--- Preference order: the synced per-pixel display maps (readValueAtWorld, nil on
+--- unwritten pixels) -> the zoneData cell -> the field scalar. On a client the
+--- zoneData cell is the flattened copy, so the value maps carry the real per-cell
+--- truth the map paints, which is exactly the fidelity this re-point exists to add.
+---@param soilSys table|nil  the SoilFertilitySystem (for valueMaps)
+---@param fd table|nil       the fieldData entry
+---@param cell table|nil     the zoneData cell (may be nil)
+---@param sx number          world X of the section tip
+---@param sz number          world Z of the section tip
+---@return number pest, number disease
+function HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
+    local pest, disease
+    local vm = nil
+    if soilSys and soilSys.valueMaps and soilSys.vmAvailable and soilSys:vmAvailable() then
+        vm = soilSys.valueMaps
+    end
+    if vm then
+        pest    = vm:readValueAtWorld("pestPressure",    sx, sz)
+        disease = vm:readValueAtWorld("diseasePressure", sx, sz)
+    end
+    if pest    == nil then pest    = (cell and cell.pestPressure)    or (fd and fd.pestPressure    or 0) end
+    if disease == nil then disease = (cell and cell.diseasePressure) or (fd and fd.diseasePressure or 0) end
+    return pest, disease
+end
+
 function HookManager.new()
     local self = setmetatable({}, HookManager_mt)
     self.hooks = {}
@@ -1531,8 +1557,13 @@ function HookManager:installSeeAndSprayHook()
                                 math.floor(sz / zone.CELL_SIZE))
                             local cell = fd.zoneData and fd.zoneData[cellKey]
 
-                            local cellPest    = (cell and cell.pestPressure)    or (fd.pestPressure    or 0)
-                            local cellDisease = (cell and cell.diseasePressure) or (fd.diseasePressure or 0)
+                            -- [SF-19 item 5] Client fidelity: prefer the synced
+                            -- per-pixel display maps, then the cell, then the field
+                            -- scalar. See resolveCellPressure for the contract.
+                            local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
+                            -- Weed stays on the cell/field path: the brief leaves weed to
+                            -- the game-native weed density map (queried below), so it is
+                            -- not part of the pressure re-point.
                             local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
 
                             local skip = false
@@ -2449,6 +2480,23 @@ function HookManager:installHarvestHook()
                     SoilLogger.error("Harvest hook (nutrient update) failed: %s", tostring(errMsg))
                 end
 
+                -- POSITIONAL HARVEST CAPTURE: accumulate the area-weighted
+                -- contamination tally on the vehicle. Server-side only. Inert
+                -- when the module is absent (the handoff rides the
+                -- feed-provenance build). Never touches the yield path.
+                if combineSelf.isServer and PositionalCapture and PositionalCapture.ENABLED
+                   and detectedX and detectedZ and area and area > 0 then
+                    local okPc = pcall(function()
+                        local soil = g_SoilFertilityManager.soilSystem
+                        local field = soil and soil.fieldData and soil.fieldData[detectedFieldId]
+                        PositionalCapture:accumulate(combineSelf, detectedFieldId, field, soil,
+                            detectedX, detectedZ, area)
+                    end)
+                    if not okPc then
+                        SoilLogger.debug("Harvest hook (positional capture) skipped: %s", tostring(errMsg))
+                    end
+                end
+
                 -- OM-213 organic premium provenance: fold this harvest pass into the
                 -- owning farm's organic fraction for the harvested fill type. The farmId
                 -- is the engine-passed argument (dedi-safe; never the local-player read),
@@ -2485,7 +2533,10 @@ function HookManager:installHarvestHook()
                     return rootVeh:getTotalMass(false)
                 end)
                 if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
-                    local wet = g_SoilFertilityManager._soilWetness01 or 0
+                    -- SF-55 wetness-input substitution (harvest call site): the same
+                    -- positional blend the driving pass uses - SCS field-level moisture
+                    -- for the detected field vs the rain-scalar fallback (confirm 2).
+                    local wet = g_SoilFertilityManager:_blendedWetness01(detectedX, detectedZ, detectedFieldId)
                     local points = SoilCompactionModel.pointsForVehicle(rootVeh, wet)
                     if points and points > 0 then
                         pcall(function()
@@ -2653,7 +2704,28 @@ function HookManager:installYieldModifierHook()
                     end
                     if not fieldId or fieldId <= 0 then return end
 
-                    local yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
+                    -- SF-14 FREEZE SUPERSESSION (spatial path). On the spatial path
+                    -- (value maps present and the captured yieldEfficiency layer is
+                    -- live), the per-pass modifier is the AREA-WEIGHTED READ of the
+                    -- captured, growth-time-static layer under the header, computed
+                    -- fresh each pass. The SF-16 scalar freeze is BYPASSED, not
+                    -- reused; when the spatial read cannot answer (nil), the call
+                    -- falls through to the untouched field-average computeYieldModifier
+                    -- with its scalar freeze (maps absent / no captured data).
+                    local yieldModifier = nil
+                    local zoneYield = g_SoilFertilityManager.zoneYield
+                    if zoneYield ~= nil and type(zoneYield.readHeaderAreaWeighted) == "function"
+                       and zoneYield:isLive() then
+                        local okRead, spatial = pcall(function()
+                            return zoneYield:readHeaderAreaWeighted(combineSelf, fieldId)
+                        end)
+                        if okRead and type(spatial) == "number" then
+                            yieldModifier = spatial
+                        end
+                    end
+                    if yieldModifier == nil then
+                        yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
+                    end
                     if yieldModifier ~= 1.0 then
                         modifiedDelta = fillLevelDelta * yieldModifier
                         SoilLogger.debug("Yield modifier hook: Field %d Fruit %d modifier=%.3f (%.1fL -- %.1fL)",
@@ -4043,6 +4115,9 @@ function HookManager:installSprayerAreaHook()
 
                                                 if soilSys and fieldId and fieldId > 0 then
                                                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                    -- RSF-836: the true boom line (tip to tip, in the vehicle's frame),
+                                                    -- NOT the ends of the cell sweep array.
+                                                    local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
                                                         if vww and vww.sections and #vww.sections > 0 then
                                                             soilSys:markBoomCells(fieldId, boomPts)
@@ -4051,7 +4126,7 @@ function HookManager:installSprayerAreaHook()
                                                         end
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
-                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName)
+                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
                                                         end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
@@ -4099,10 +4174,12 @@ function HookManager:installSprayerAreaHook()
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
                     local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    -- RSF-836: the true boom line, never the ends of the cell sweep.
+                    local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                     -- REFINED: paint the real boom-width strip into the per-pixel
                     -- value maps (continuous PF-style work strips at ~2 m/px).
                     if boomPts and soilSys.paintBoomStrip then
-                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name)
+                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
@@ -7613,4 +7690,120 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     table.insert(pts, {x = rootX, z = rootZ})
 
     return (#pts > 1) and pts or nil
+end
+
+-- =========================================================
+-- RSF-836: the true boom line, derived the way the engine derives a working width
+-- =========================================================
+-- paintBoomStrip used to take its boom line off the ends of the cell sweep array,
+-- whose last element is ALWAYS the vehicle root and whose extent is a world-axis
+-- projection, so it painted half the boom, foreshortened by the heading cosine.
+-- The true line is derived in the vehicle's own frame, exactly like the base game
+-- computes workArea.workWidth (WorkArea.lua:307-314): every collected node is
+-- transformed into components[1].node, the min and max local X are the boom's
+-- lateral extent, and those two nodes are the endpoints. No node is classified,
+-- because the engine is symmetric in width/height and local X is lateral by the
+-- working-width definition, not by any modelling convention.
+
+-- The frame is components[1].node explicitly, NOT rootNode: it is the frame the
+-- engine spans for working width. rootNode is a defensive last resort only when a
+-- vehicle has no components array at all. The old fallback branch's
+-- getWorldRotation(vehicle.rootNode) read is not inherited.
+
+--- Collect the boom's spanning node references (workArea corners + active VWW
+--- section tips) from a vehicle and its attached implements. Inactive VWW sections
+--- are excluded on purpose: their nodes sit at the boom tip whether or not they are
+--- spraying, so including them would inflate the line back to full width in Partial
+--- Width mode (#475/#476). Mirrors the node set getBoomCellPositions collects.
+function HookManager:_collectBoomNodes(vehicle)
+    local nodes = {}
+    local function addNode(node)
+        if node then nodes[#nodes + 1] = node end
+    end
+    local function collectFromObj(obj)
+        if not obj then return end
+        if obj.spec_workArea and obj.spec_workArea.workAreas then
+            for _, wa in ipairs(obj.spec_workArea.workAreas) do
+                addNode(wa.start)
+                addNode(wa.width)
+                addNode(wa.height)
+            end
+        end
+        local vww = obj.spec_variableWorkWidth
+        if vww and vww.sections then
+            for _, section in ipairs(vww.sections) do
+                if section.isActive ~= false and section.maxWidthNode then
+                    addNode(section.maxWidthNode)
+                end
+            end
+        end
+    end
+    collectFromObj(vehicle)
+    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements or {}) do
+            collectFromObj(impl and impl.object)
+        end
+    end
+    return nodes
+end
+
+--- The implement working width used by the fallback (broadcast spreader whose work
+--- area nodes are co-located at the centre, so no lateral span exists).
+function HookManager:_implWorkingWidth(vehicle)
+    local spec_s = vehicle and vehicle.spec_sprayer
+    local ww = spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth
+    if not ww and vehicle and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
+            local obj = impl and impl.object
+            local iss = obj and obj.spec_sprayer
+            if iss and iss.usageScale and iss.usageScale.workingWidth then
+                ww = iss.usageScale.workingWidth
+                break
+            end
+        end
+    end
+    return ww
+end
+
+--- The true boom endpoints in world space: { ax, az, bx, bz }. Derived in the
+--- vehicle's own frame from the same node set the cell sweep uses, so a diagonal
+--- pass needs no heading handling and the painted length is the real boom length
+--- at any heading. Falls back to the working-width half span laid along the frame's
+--- local X when no lateral span exists. Returns nil when nothing can be derived.
+function HookManager:getBoomLineEndpoints(vehicle, _rootX, _rootZ)
+    if not vehicle then return nil end
+    local frame = nil
+    if vehicle.components then
+        local c = vehicle.components[1]
+        frame = c and c.node or nil
+    end
+    if frame == nil then frame = vehicle.rootNode end
+    if frame == nil then return nil end
+
+    local nodes = self:_collectBoomNodes(vehicle)
+    if #nodes >= 2 then
+        local minNode, maxNode, minLX, maxLX = nil, nil, nil, nil
+        for _, n in ipairs(nodes) do
+            local lx = 0
+            pcall(function() local x, _, _ = localToLocal(n, frame, 0, 0, 0); lx = x end)
+            if minLX == nil or lx < minLX then minLX, minNode = lx, n end
+            if maxLX == nil or lx > maxLX then maxLX, maxNode = lx, n end
+        end
+        if minNode ~= nil and maxNode ~= nil then
+            local ax, _, az = getWorldTranslation(minNode)
+            local bx, _, bz = getWorldTranslation(maxNode)
+            return { ax = ax, az = az, bx = bx, bz = bz }
+        end
+        return nil
+    end
+
+    -- Fallback: no spanning node pair. Lay the working-width half span along the
+    -- frame's own local X axis and transform it out, which carries the vehicle's
+    -- real orientation instead of quantising onto a world axis.
+    local ww = self:_implWorkingWidth(vehicle)
+    if not ww or ww <= 0 then return nil end
+    local halfW = ww * 0.5
+    local ax, _, az = localToWorld(frame, -halfW, 0, 0)
+    local bx, _, bz = localToWorld(frame, halfW, 0, 0)
+    return { ax = ax, az = az, bx = bx, bz = bz }
 end

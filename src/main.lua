@@ -47,6 +47,10 @@ source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/ReleaseGate.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
+-- SF-55 TRAFFIC ON WET GROUND: the pure arithmetic behind the trafficDrag layer
+-- (wetness blend, bounded accrual, cell/day dedupe key, standing-crop test, the
+-- read-time composition contract). Loaded beside the compaction model it serves.
+source(modDirectory .. "src/TrafficDrag.lua")
 
 -- 2. Specializations (must load before core systems so vehicleType registration fires)
 source(modDirectory .. "src/specializations/SFNozzleEffects.lua")
@@ -76,12 +80,58 @@ source(modDirectory .. "src/HandfulRead.lua")
 -- Loaded before SoilFertilitySystem, which calls SpatialPressures:run from the
 -- daily pass.
 source(modDirectory .. "src/SpatialPressures.lua")
+-- SF-23 SPATIAL NUTRIENTS: the last un-flattening of soil chemistry. Banded
+-- leach / pH / harvest depletion across the field's moisture bands, on top of
+-- the untouched field-level model. Loaded before SoilFertilitySystem, which
+-- calls SpatialNutrients from the leach and harvest paths. Consumes SCS
+-- positional moisture and the field-level soil type (absent = uniform today).
+source(modDirectory .. "src/SpatialNutrients.lua")
+-- SF-21 NEIGHBOUR CROSSING: what arrives at a field's edge depends on what is
+-- actually across it. Upgrades the SF-19 edge mechanism (the reserved slot) with
+-- the crossing pre-pass, the pest arc weight recomposition, and the
+-- conducive-gated disease boundary seeding. Loaded before SoilFertilitySystem,
+-- which runs the daily crossing pass ahead of the mutation batches.
+source(modDirectory .. "src/NeighbourCrossing.lua")
+-- SF-27 NPC SOIL: NPC-managed farmland joins the daily soil simulation like
+-- owned land, with attribution. The bridge widens SF's phase-2 gate (owned OR
+-- NPC-managed), reads NPCFavor's designation surface, and fails closed on
+-- attribution. Loaded before SoilFertilitySystem, which consults it at the
+-- membership and charge sites. Neutral when NPCFavor is absent.
+source(modDirectory .. "src/NpcSoilBridge.lua")
+-- POSITIONAL HARVEST CAPTURE: the load remembers where it grew. The tally
+-- accumulates area-weighted contamination on the harvesting vehicle from the
+-- harvest hook. Independently buildable and inert (the handoff rides the
+-- feed-provenance build). Loaded before HookManager, which calls it per cutter.
+source(modDirectory .. "src/PositionalCapture.lua")
 -- SF-18 ESTABLISHMENT FAILURE (the keystone): seed that drowns during the
 -- establishment window is physically absent crop. Loaded before
 -- SoilFertilitySystem, which owns the sowing chain and the daily pass that
 -- drive it. Consumes SCS positional moisture (absent = inert).
 source(modDirectory .. "src/EstablishmentFailure.lua")
+source(modDirectory .. "src/CompostManager.lua")
 source(modDirectory .. "src/ViabilityMask.lua")
+-- SF-53 GROWTH CREDIT: the reward half of the SF-2M family, a peer of
+-- ViabilityMask (same class idiom). Consumes SF-52's getter and lattice at
+-- runtime; publishes nothing. Inert unless the growth_modulation release gate
+-- is open and the mask is enabled.
+source(modDirectory .. "src/GrowthCredit.lua")
+-- SF-78 GROWTH BLOCK: the hold half of the SF-2M family. Capture at
+-- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through the
+-- family write machine. No Time Guard registration; the engine's own bracket
+-- is the clock. Inert unless the growth_modulation release gate is open and
+-- the mask is enabled.
+source(modDirectory .. "src/GrowthBlock.lua")
+-- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
+-- yieldEfficiency capture at growth time (riding the family's shared read,
+-- Time Guard simulation cadence) and the area-weighted harvest read that
+-- supersedes the SF-16 scalar freeze on the spatial path. Inert unless the
+-- growth_modulation release gate is open and the mask is enabled.
+source(modDirectory .. "src/ZoneYield.lua")
+-- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+-- distance-to-water) consumed by SF-76 (field genesis) and SCS-042 (runoff).
+-- Neutral until a consumer wires in; its own StateLedger + NetworkSync
+-- registration sits beside the soil bridges.
+source(modDirectory .. "src/TopographyCache.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
@@ -124,6 +174,10 @@ source(modDirectory .. "src/ui/SoilFieldDetailDialog.lua")
 source(modDirectory .. "src/ui/RotationPlannerDialog.lua")
 source(modDirectory .. "src/ui/SoilTreatmentDialog.lua")
 source(modDirectory .. "src/ui/SoilScoutDialog.lua")
+-- SF-39 THE HANDFUL PANEL: the reading surface for the kneel. Renders the
+-- frozen SF-38 payload; loaded like any other dialog, gated at the input
+-- callback by read_the_dirt so a locked family never opens it.
+source(modDirectory .. "src/ui/SoilHandfulDialog.lua")
 source(modDirectory .. "src/ui/SoilVersionDialog.lua")
 source(modDirectory .. "src/ui/SoilHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilGuideDialog.lua")
@@ -146,6 +200,9 @@ source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
+-- SF-77 TOPOGRAPHY CACHE's own bridges (StateLedger persistence of the static
+-- water-dist table + NetworkSync delivery). No-ops when those mods are absent.
+source(modDirectory .. "src/integrations/SoilTopographyBridge.lua")
 
 -- Register our custom density map height types with the DMHM mod file list.
 -- DensityMapHeightManager:loadMapData iterates modDensityHeightMapTypeFilenames and
@@ -294,6 +351,12 @@ local function loadedMission(mission, node)
     -- sync stay live as the fallback. No-ops when NetworkSync is absent.
     if SoilNetworkSyncBridge then
         SoilNetworkSyncBridge.register(sfm)
+    end
+
+    -- SF-77 TOPOGRAPHY CACHE's own bridges: StateLedger persists the static
+    -- water-dist table, NetworkSync delivers it to clients. No-ops when absent.
+    if SoilTopographyBridge then
+        SoilTopographyBridge.register(sfm)
     end
 
     -- TIP ON GROUND FIX: directly inject our solid fill types into the
@@ -550,9 +613,28 @@ local function load(mission)
         -- Cross-mod bridge: g_currentMission is a shared C++ object visible to all mods.
         -- getfenv(0) is per-mod scoped in FS25. Use mission property for reliable cross-mod detection.
         mission.soilFertilityManager = sfm
+        -- [SF organic-compost] The managed compost process. Standalone manager,
+        -- server-authoritative; owns production only (SF owns the OM effect).
+        if CompostManager ~= nil then
+            g_CompostManager = CompostManager.new()
+            local ledger = (mission.stateLedger ~= nil) and mission.stateLedger or g_stateLedger
+            if ledger ~= nil and ledger.registerModule ~= nil then
+                pcall(function()
+                    ledger:registerModule(CompostManager.LEDGER_BATCHES, {
+                        serialize   = function() return g_CompostManager:serialize() end,
+                        deserialize = function(data) g_CompostManager:deserialize(data) end,
+                    })
+                end)
+            end
+        end
         -- #83 Cross-mod bridge for the FarmTablet FieldSentry app (read status + request toggles).
         if FieldSentry_API and FieldSentry_API.attachBridge then
             FieldSentry_API.attachBridge(mission)
+        end
+        -- [SF-27] NPC soil bridge: publishes the phase-2 capability marker and the
+        -- designation / attribution surfaces NPCFavor probes (the handshake).
+        if NpcSoilBridge and NpcSoilBridge.attach then
+            NpcSoilBridge:attach(mission)
         end
 
         -- Cross-mod harvest bus: lets the ecosystem diseased-food / feed model read a
@@ -668,9 +750,13 @@ Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, miss
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
-    if sfm then
-        sfm:update(dt)
-        -- [SF-44] Drain the tedder's correction queue at end of frame
+        if sfm then
+            sfm:update(dt)
+            -- [SF organic-compost] Day-tracking fallback when Time Guard is absent.
+            if g_CompostManager ~= nil then
+                g_CompostManager:updateDayFallback()
+            end
+            -- [SF-44] Drain the tedder's correction queue at end of frame
         local hayBet = sfm.soilSystem and sfm.soilSystem.hayBet
         if hayBet then
             hayBet:onUpdate()
@@ -786,6 +872,43 @@ function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed
     return eventUsed
 end
 addModEventListener(soilMouseHandler)
+
+-- [SF organic-compost] Console commands for the managed compost process.
+if addConsoleCommand ~= nil then
+    addConsoleCommand("sfCompostStatus", "Show compost batches", "consoleCompostStatus", nil)
+    addConsoleCommand("sfCompostStart", "Start a batch: sfCompostStart <manureLitres> [biosolidsLitres]", "consoleCompostStart", nil)
+    addConsoleCommand("sfCompostCollect", "Collect a ready batch: sfCompostCollect <batchId>", "consoleCompostCollect", nil)
+end
+
+function consoleCompostStatus()
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    return g_CompostManager:consoleStatus()
+end
+
+function consoleCompostStart(manure, biosolids)
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    if g_currentMission == nil or not g_currentMission:getIsServer() then return "server only" end
+    local farmId = 0
+    if g_currentMission.player ~= nil and g_currentMission.player.getOwnerFarmId ~= nil then
+        farmId = g_currentMission.player:getOwnerFarmId()
+    end
+    if not farmId or farmId == 0 then return "no farm" end
+    local feedstocks = {}
+    if tonumber(manure) and tonumber(manure) > 0 then feedstocks.MANURE = tonumber(manure) end
+    if tonumber(biosolids) and tonumber(biosolids) > 0 then feedstocks.BIOSOLIDS = tonumber(biosolids) end
+    local id, why = g_CompostManager:startBatch(farmId, feedstocks)
+    if id then return string.format("batch %d started (farm %d)", id, farmId) end
+    return "start failed: " .. tostring(why)
+end
+
+function consoleCompostCollect(batchId)
+    if g_CompostManager == nil then return "compost manager not initialised" end
+    local n, why = g_CompostManager:collectBatch(tonumber(batchId))
+    if n ~= nil then
+        return string.format("collected %d L compost", n)
+    end
+    return "collect failed: " .. tostring(why or "unknown")
+end
 
 -- Console commands
 function soilfertility()

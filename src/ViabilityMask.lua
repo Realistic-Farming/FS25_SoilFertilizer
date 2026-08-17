@@ -177,9 +177,17 @@ function ViabilityMask:getCellGrowthInfo(fieldId, x, z)
     local vm = self:_valueMaps()
     if vm == nil or x == nil or z == nil then return nil end
 
+    -- THE FAMILY'S FULL INPUT SET, read once per cell per period (the shared
+    -- read SF-14's capture rides): N/P/K + compaction from the value maps,
+    -- moisture from SCS. SF-52's mask consumes three of the five (n, moisture,
+    -- compaction); SF-14's capture consumes all five. The raw values ride on
+    -- the returned table so a member never re-reads the same ground.
     local nitrogen   = vm:readValueAtWorld('nitrogen', x, z)
+    local phosphorus = vm:readValueAtWorld('phosphorus', x, z)
+    local potassium  = vm:readValueAtWorld('potassium', x, z)
     local compaction = vm:readValueAtWorld('compaction', x, z)
-    if nitrogen == nil and compaction == nil then return nil end   -- off-field
+    if nitrogen == nil and compaction == nil
+       and phosphorus == nil and potassium == nil then return nil end   -- off-field
 
     local cs = self:_cropStress()
     local moisture = nil
@@ -203,6 +211,12 @@ function ViabilityMask:getCellGrowthInfo(fieldId, x, z)
             moisture   = bands.moisture   == ViabilityMask.BAND_BLOCKED,
         },
         bands = bands,
+        -- The family's full input set, raw, for members that consume more than
+        -- the mask's three. SF-14's capture reads these; nil means the layer is
+        -- unreadable here, and "we do not know" must never capture as "dead".
+        n = nitrogen,
+        p = phosphorus,
+        k = potassium,
         -- SF-53's layer. nil until it lands, and nil is the neutral reading.
         credit = self:_readCredit(fieldId, x, z),
         -- SF-14's layer. Same contract.
@@ -221,15 +235,29 @@ function ViabilityMask:getFieldGrowthSummary(fieldId)
     return { blockedFrac = s.blockedFrac, excellentFrac = s.excellentFrac }
 end
 
---- SF-53's growth credit. Not built; nil is neutral and every consumer treats
---- it as such. One line to wire when SF-53 lands.
-function ViabilityMask:_readCredit(_fieldId, _x, _z)
-    return nil
+--- SF-53's growth credit, resolved through the same header snap SF-53 itself
+--- derives (origin from the survey's first sample centre, floor index, step
+--- coarsening per MAX_SAMPLES). Reads the ephemeral store only; nil is neutral
+--- (no accrual yet, or the field is not tracked) and every consumer treats it
+--- as such. Returns days of credit at the cell, or nil.
+function ViabilityMask:_readCredit(fieldId, x, z)
+    local gc = self.manager and self.manager.growthCredit
+    if gc == nil or type(gc.readCreditAt) ~= 'function' then return nil end
+    local ok, credit = pcall(function() return gc:readCreditAt(fieldId, x, z) end)
+    if not ok then return nil end
+    return credit
 end
 
---- SF-14's captured yield efficiency. Not built; same contract.
-function ViabilityMask:_readCapturedEfficiency(_fieldId, _x, _z)
-    return nil
+--- SF-14's captured yield efficiency. Reads the captured layer through the
+--- manager's zone-yield subsystem; nil when SF-14 is not live (the neutral
+--- reading every consumer treats as such). Percent on the layer, returned as a
+--- 0.7..1.15 multiplier like the mask's own bands.
+function ViabilityMask:_readCapturedEfficiency(fieldId, x, z)
+    local zy = self.manager and self.manager.zoneYield
+    if zy == nil or type(zy.readCapturedEfficiency) ~= 'function' then return nil end
+    local ok, eff = pcall(function() return zy:readCapturedEfficiency(fieldId, x, z) end)
+    if not ok then return nil end
+    return eff
 end
 
 -- ============================================================

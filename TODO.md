@@ -16,6 +16,11 @@
 - [ ] None open from the audit. Track new ones from GitHub issues here.
 
 ## Features / enhancements
+- [x] F165 growth-credit store invalidation (2026-08-12, Claude(A) finding): a cell credited while bare (fruitIndex nil) is now a RESET, never a pass, and a cell that reads fruit UNKNOWN at the bell is invalidated in the stroke. Closes the fallow bank exploit (a season of bare-ground credit spent at once on a new crop), plus the gsFieldSetState and NPC-sim costumes. `GrowthCredit._guardCell` and `_strokeField`. SF-53 spec bar extended to 61 assertions. PR fix/F165 open.
+- [x] SF-53 growth credit (SF-2M reward half, ratified 2026-08-12): `GrowthCredit.lua` (daily Time Guard bookkeeper at priority 97 + the period hand on the drained FINISHED_GROWTH_PERIOD delivery, bucketed executeSet writes on the engine's own fruit plane, engine-true targets from the crop growthMapping, skip-at-own-cutState, never into cut/withered/max). Wired at manager activation server-side; `ViabilityMask._readCredit` resolves through its socket. Ships LOCKED behind the growth_modulation release gate + SF-52 mask enable; unlock gated on SF-54's reading surface. 54 assertions in SF-53-growth_credit_bucket_spec_test.lua. Merged to development in PR #821.
+- [x] SF-78 growth block (SF-2M hold half, ratified 2026-08-12): `GrowthBlock.lua`, capture at START_GROWTH_PERIOD (write-once across a bracket), restore at the drained FINISHED delivery through the same write machine as the family. R2 three-halves discriminator (fruit unchanged, not cut/withered, strictly above captured); target max(captured, current - cap); unconditional capture-clear at every drained delivery (cert assertion). No Time Guard registration. Inert behind the growth_modulation release gate + SF-52 mask enable. 24 assertions in SF-78-growth_block_restore_spec_test.lua. Merged to development in PR #822.
+- [x] SF-77 topography cache (2026-08-12): `TopographyCache.lua`, the load-time terrain grid (adaptive 12-48 m cell, floor rounding, 180k cap, row-major) built once at map load with per-cell height, slope class, sink and distance-to-water; terrain edits mark cells stale via the terrainDeformationSyncer listener; stale answers are shaped defaults never nil; the static water-dist table persists via its own StateLedger module and delivers via NetworkSync. Consumers: SF-76 first, SCS-042 second. Neutral until a consumer wires in. 54 assertions in SF-77-topography_cache_spec_test.lua. Merged to development in PR #823.
+- [x] SF-76 field genesis (2026-08-12): a new save's starting soil is seeded from terrain (height-relative, slope, sink proximity; from SF-77's cache when present, one direct sample when not). `_genesisDeviation` replaces the regional term in `_computeInitialSoil` only when `genesisActive`; same amplitude bounds, noise and clamps untouched. Manager arms genesis on a new save (no soilData.xml, server-only) with a deterministic savegame-directory-hash seed. Existing saves untouched (zero writes). 23 assertions in SF-76-field_genesis_spec_test.lua. PR feat/SF76 open.
 - [~] Text fitting helper for raw renderText (SF #771): `UIHelper.fitText(text, size, maxWidth, minSizeFactor, ellipsis)` returns fitted text plus the size to draw at, mirroring TextElement RESIZE. `UIHelper.renderTextFitted` is the drop-in for a renderText call with a known width. `SoilSettingsPanel:drawText` takes an optional `maxWidth` and is wired. 38 assertions in text_fitting_771_test.lua. Also added `getfenv`/`setfenv` shims to the test prelude, since FS25 is Lua 5.1 and the harness is fengari 5.3, and UIHelper publishes its handle via `getfenv(0)`.
 - [ ] Adopt the fitting helper in the remaining raw renderText surfaces (#771 follow-up): `SoilHUD.lua` (31 calls, the surface actually in the reporter's screenshot), `SoilMapOverlay.lua` (14), `SoilHarvesterPanel.lua` (14), `SoilSprayerInfoPanel.lua` (11), `SoilVariableRatePanel.lua` (5), `SoilSmartSensorPanel.lua` (4), `SoilMinimapLayer.lua` (2), `SoilTuningPanel.lua` (1), `SoilCropTuningPanel.lua` (1). Each needs a per-column width decided at the call site, which is why it is not a mechanical sweep.
 - [x] Dry products haulable (SF #773, Arissani PARITY ruling): added `BULK` and `AUGERWAGON` category lines to `fillTypes.xml` covering UREA AN AMS MAP DAP POTASH POLIFOSKA GYPSUM COMPOST BIOSOLIDS CHICKEN_MANURE PELLETIZED_MANURE, matching the two transport categories vanilla FERTILIZER sits in. `isBulkType="true"` was already set on all twelve and is not the transport gate. Extension is additive, verified at `FillTypeManager.lua:145` and `:85`. Liquid half already satisfied via the existing LIQUIDFERTILIZER line. Reporter kylemeyer13 asked only for BULK; AUGERWAGON is included because parity with vanilla FERTILIZER is the ruling and vanilla FERTILIZER is in both. Built on development, PR open.
@@ -64,7 +69,8 @@
 ## Esc doors + map buttons (2026-08-06)
 - [x] Rotation Planner and Field Detail open from the Esc RF panel bottom bar (MENU_EXTRA_2 / MENU_ACTIVATE), selectedFieldId passed through (nil allowed). DONE in code, deployed.
 - [x] Map sidebar report/treatment buttons restored via retained-page pattern (SoilPDAScreen._retainedDeepScreen + _ensureDeepPageInjectable). DONE in code, deployed.
-- [~] In-game observation pending: confirm all three surfaces open with no Farm Tablet installed, and that the Esc rail still shows exactly one Realistic Farming tab.
+- [x] 2026-08-12: the map sidebar report/treatment buttons removed again (the soil layer tab now draws only Disable Overlay and Help). The retained-page pattern stays for the Esc deep screens; the PDA deep page remains reachable from the Esc panel. In-game observation pending for the trimmed sidebar.
+- [x] 2026-08-12: health summary re-anchored to stack under the sidebar column (was sitting well below the layer buttons), and a black per-layer info box added under it, shown when a layer is selected (12 new sf_map_layer_desc_* keys in all 27 translation files). In-game observation pending for both.
 
 ## SF #764 Courseplay empty-tank (2026-08-07)
 - [x] Root-caused via diagnostic trace: tank hits zero but fill type stays LIME (sub-threshold residual above the 0.00001 reset line); AI out-of-fill stop never fires. FIXED in code (complete the drain in appended onEndWorkAreaProcessing), built and deployed.
@@ -85,3 +91,67 @@
 - [x] `establishment_window_spec_test.lua` at 25 assertions (brief certs 23): window machine, threshold/compaction/severity, no-signal-no-thinning, kill-once, re-drill, live green close, positional per-cell kill with surviving cells keeping the window open, whole-stand close. Suite 2328/0 across 50 files; syntax + lint clean. Built and deployed.
 - [~] In-game verification owed (the brief's in-game items): waterlogged seedbed yields bare ground following the water's contour (state-0 look), re-sow onto a killed region works, dedicated-server propagation of the density write, frame cost at a mass-sowing spring rollover.
 
+## Water Record read on the manager (2026-08-10)
+- [x] `SoilFertilityManager:getWaterDaysInLast(days, throughDay)` publishes SF-49's Water Record at the cross-mod boundary (`g_currentMission.soilFertilityManager`), delegating to the already-built `MaterialWetness:waterDaysInLast`. Returns `(count, known)`; nil on every unknown path (closed ground_material gate, missing or unarmed subsystem, throwing read, `known == 0`).
+- [x] `water_record_delegate_test.lua` at 12 assertions. Suite 2516/0 across 53 files; syntax + lint clean.
+- [~] Not ours to build: SeasonalCropStress's `getSkipRainHours` (SCS-037 round 2) goes live when it calls this delegate. In-game skip test is theirs.
+
+
+
+## SF-19 visibility parity (2026-08-11)
+- [x] `getFieldInfo(fieldId, x, z)` positional pest/disease/compaction reads from the value maps (tooltip parity); disease discovery gate holds on the positional read.
+- [x] `HookManager.resolveCellPressure` reads pest/disease from the synced display maps first, then the cell, then the field scalar (see-and-spray client fidelity).
+- [x] 21 new assertions across `sf19_tooltip_parity_test.lua` and `sf19_see_and_spray_repoint_test.lua`. Suite 2537/0 across 55 files.
+- [~] In-game: scout reveal check on the PDA tooltip; MP client section-sprayer parity check.
+
+## SF-23 spatial nutrients (2026-08-11)
+- [x] Banded leach/pH/harvest distribution across cached moisture bands (`src/SpatialNutrients.lua`); conservation + floor rule pinned; one band = uniform.
+- [x] Tier-0 texture via SCS soil type (loam fallback, F157 gap); spine Agronomy multiplier neutral 1.0; reciprocal getSoilValueAtWorld published on the manager.
+- [x] 13 assertions in `sf23_spatial_nutrients_test.lua`. Suite 2550/0 across 56 files.
+- [~] In-game: banded flush frame cost, hull edge behaviour, wet/dry nutrient picture. Maturity-asks: tier-1/2 texture, SCS consuming the reciprocal read.
+
+## SF-21 neighbour crossing (2026-08-11)
+- [x] Crossing pre-pass (completion gate LAW) + transient per-day snapshot; B2 pest arc weight recomposition; B3 conducive-gated disease boundary seeding with the protection fence; B4 constants.
+- [x] `SpatialPressures:seedBoundaryOrigin` added (the reserved origin entry). Suite 2549/0 across 56 files.
+- [~] In-game: bias over several days, clean-district parity, protection-window hold, no-moisture-mod, pre-pass frame cost.
+
+## SF-27 NPC soil (2026-08-11)
+- [x] NpcSoilBridge: designation read, phase-2 capability marker, fail-closed attribution; membership widened (owned OR NPC-managed); leave-path + reroll skip; treatment charge gated.
+- [x] NPCFavor: isNPCManaged/getWorkingState/getNPCForFarmland published; flip uses a guarded real farm id (Lane B).
+- [x] 24 assertions across npc_soil_gate + npc_soil_designation. Suite 2586/0 across 59 files.
+- [~] In-game: NPC field survives daily pass/reroll/save-load; zero player money on NPC ops; buy-in inherits history; MP client paints NPC ground.
+
+## RSF-836 swept quad boom line (2026-08-14)
+- [x] True boom endpoints derived in the vehicle's own frame (components[1].node), main + fallback paths; paintBoomStrip consumes the line with a tip-swap guard; partial-width VWW exclusion inherited; cell stamping byte-identical.
+- [x] rsf836_boom_line_test.lua at 11 assertions; suite 2886/0.
+- [~] In-game: a wide boom on a diagonal pass, ground read after one pass (reporter antler22 offered the R4045 screenshots).
+
+## Organic transition Time Guard normalization (2026-08-14)
+- [x] TRANSITION_YEARS (2/3/5) resolved through Time Guard days-per-period at getTransitionDays; stale comments made true; state machine unchanged.
+- [x] 11 assertions; suite 2897/0.
+- [~] In-game: three in-game years at a 30-day month. Balance-pass values for the years table pending.
+
+## Organic compost production (2026-08-14)
+- [x] CompostManager: batch lifecycle, Time Guard day accrual + fallback, storage deposit, organic-safe flag, persistence, console.
+- [x] 25 assertions; suite 2922/0.
+- [~] In-game batch flow; FarmTablet organic-app batch display (read-only) pending the app's own work.
+
+## Drilling-window advisory (2026-08-14)
+- [x] Advisory verdict from the SCS rain outlook + moisture vs kill condition; three hedged strings in 26 languages; SF field-info line; silent without SCS.
+- [x] 5 assertions; suite 2944/0.
+- [~] In-game; FarmTablet mirror (hub read of the same surface).
+
+## SF-55 traffic on wet ground (2026-08-14)
+- [x] F111 closed: the driving compaction pass enumerates every server-side vehicle (wheel-on-ground gate, per-vehicle segment continuity) instead of `getPlayerVehicle()`, fixing compaction being dead on dedicated servers and host-only on listen servers.
+- [x] Wetness-input substitution at both compaction call sites (driving + harvest): positional blend of SCS `getMoisture(fieldId)` with the rain-scalar fallback (confirm 2: max rule, rain as the calibrated floor). SoilCompactionModel scoring untouched.
+- [x] `trafficDrag` layer: SoilValueMaps-registered, server-only, persisted, bounded 0.0-0.3 at the write, written on the driving segment walk when wet above threshold AND a standing crop occupies the cell, deduped once per cell per day on TimeGuard monotonicDay (never environment.currentDay). Second-writer fence holds; SF-55 never writes yieldEfficiency.
+- [x] `TrafficDrag.lua` pure arithmetic module; `traffic_drag_test.lua` at 43 assertions. Suite 2962/0 across 73 files (om_213 needs the sibling MarketDynamics repo, absent in the temp clone). Bumped to 2.5.0.76.
+- [~] Read-time composition with SF-14's yieldEfficiency (`effective = capturedEfficiency * (1 - trafficDrag)`) is a documented addendum owed on SF-14's staged brief at travel; until it lands, trafficDrag persists and composes with nothing.
+- [~] In-game (owed): wet-field bruise at harvest, MP join confirms all actors compact, SCS present vs absent parity. Dials (magnitude 0.05, threshold 0.5, cap 0.3, min standing state 1) are AWAITING-SPINE neutral defaults.
+
+## SF-14 zone yield (2026-08-14)
+- [x] `src/ZoneYield.lua`: per-cell growth-time capture (rides the family's shared read, Time Guard simulation cadence, SF day-tracking fallback), the repurposed `yieldEfficiency` layer as captured truth (band 0.7-1.15, maxVal 115), and the freeze-supersession harvest read: area-weighted positional integral (SF-25's rule) of the captured layer across the header, computed fresh per pass, falling back to the untouched field-average `computeYieldModifier` when the spatial path cannot answer. SF-55 drag composition line applied from day one (nil drag = zero).
+- [x] `ViabilityMask:getCellGrowthInfo` now reads the family's full input set (N/P/K + compaction + moisture) and carries the raw values; the `capturedEfficiency` socket reads through the manager's zone-yield subsystem.
+- [x] The field-average display mirror/seed stand down from `yieldEfficiency` while the capture is live (the display-only stamp is retired).
+- [x] 37 assertions in zone_yield_sf14_test.lua, including the calibration invariant: a uniform field's area-weighted read reconciles against computeYieldModifier output for the same inputs. Suite 2956/0 across 73 files; syntax + lint clean. Deployed 2.5.0.77.
+- [~] In-game (owed): per-patch payout across a non-uniform header, uniform-field reconciliation vs the pre-family harvest, save/reload mid-harvest, harvest-read cost at full header width (named bench item, not asserted).

@@ -62,6 +62,32 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- The published surface for the getters lives on this manager, not on the
     -- `viability` field: see getCellGrowthInfo / getFieldGrowthSummary below.
 
+    -- SF-53 GROWTH CREDIT: the reward half of the SF-2M pair. A daily
+    -- bookkeeper counts days of excellence; the period hand advances credit
+    -- cells one step at the drained FINISHED_GROWTH_PERIOD delivery, bucketed
+    -- on the engine's own fruit plane. Inert unless the growth_modulation
+    -- release gate is open and the mask is enabled.
+    self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
+
+    -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
+    -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
+    -- the family write machine; blocked cells fall behind the field. Inert
+    -- unless the growth_modulation release gate is open and the mask enabled.
+    self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
+
+    -- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
+    -- yieldEfficiency capture at growth time (riding the family's shared
+    -- read) and the area-weighted harvest read that supersedes the SF-16
+    -- scalar freeze on the spatial path. Inert unless the growth_modulation
+    -- release gate is open and the mask enabled.
+    self.zoneYield = ZoneYield and ZoneYield.new(self) or nil
+
+    -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
+    -- distance-to-water). Built once at activation, invalidated on terrain
+    -- edits, consumed by SF-76 (field genesis) and SCS-042 (runoff). Neutral
+    -- until a consumer wires in.
+    self.topography = TopographyCache and TopographyCache.new(self) or nil
+
     -- Organic certification: per-field state layer over the soil substrate.
     self.organic = OrganicCertification and OrganicCertification.new(self.soilSystem) or nil
 
@@ -126,6 +152,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         if SoilScoutDialog and g_gui then
             SoilScoutDialog.register(modDirectory)
             SoilLogger.info("Soil Scout dialog registered")
+        end
+
+        -- [SF-39] The Handful panel (opened from the SF_HANDFUL hotkey, kneeling only)
+        if SoilHandfulDialog and g_gui then
+            SoilHandfulDialog.register(modDirectory)
+            SoilLogger.info("Soil Handful panel registered")
         end
 
         -- Version/changelog dialog (shown once per version on load)
@@ -333,6 +365,21 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     end
                 end
 
+                -- [SF-39] The Handful panel (SF_HANDFUL, default Shift+G) - PLAYER
+                -- context. Opens only while crouched; the ladder lives in the callback.
+                if InputAction.SF_HANDFUL then
+                    local hfOk, hfId = g_inputBinding:registerActionEvent(
+                        InputAction.SF_HANDFUL, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onHandfulInput,
+                        false, true, false, true
+                    )
+                    if hfOk and hfId then
+                        g_SoilFertilityManager.handfulEventId = hfId
+                        g_inputBinding:setActionEventTextVisibility(hfId, false)
+                        SoilLogger.info("Handful panel (Shift+G) registered in PLAYER context")
+                    end
+                end
+
                 g_inputBinding:endActionEventsModification()
                 SoilLogger.info("PLAYER context input registration complete")
             end
@@ -353,6 +400,21 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         -- registerActionEvent's built-in dedup handles multiple calls per session gracefully.
         if self.soilHUD and InputBinding and InputBinding.endActionEventsModification then
             local _soilVehicleHookActive = false
+            -- BUILD 21:38: put an event on the in-cab F1 strip. The engine lists an action
+            -- only when it is active, has a binding, and has its text visible. modDesc supplies
+            -- the bindings; this supplies the last two. GS_PRIO_HIGH is not decoration: the
+            -- strip's normal tier is a handful of slots and the cab set is cut without it.
+            local function sfShowOnCabStrip(binding, id)
+                if binding == nil or id == nil then
+                    return
+                end
+                if type(binding.setActionEventTextVisibility) == "function" then
+                    binding:setActionEventTextVisibility(id, true)
+                end
+                if GS_PRIO_HIGH ~= nil and type(binding.setActionEventTextPriority) == "function" then
+                    binding:setActionEventTextPriority(id, GS_PRIO_HIGH)
+                end
+            end
             local originalEndMod = InputBinding.endActionEventsModification
             self._vehicleInputHookOriginal = originalEndMod
             InputBinding.endActionEventsModification = function(binding, ignoreCheck)
@@ -418,6 +480,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if vHudOk and vHudId then
                     g_SoilFertilityManager.vehicleHUDEventId = vHudId
+                    sfShowOnCabStrip(binding, vHudId)
                     SoilLogger.debug("HUD toggle (J) registered in VEHICLE context")
                 end
 
@@ -429,6 +492,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if upOk and upId then
                     g_SoilFertilityManager.rateUpEventId = upId
+                    sfShowOnCabStrip(binding, upId)
                     SoilLogger.debug("Rate UP (]) registered in VEHICLE context")
                 end
 
@@ -440,6 +504,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if downOk and downId then
                     g_SoilFertilityManager.rateDownEventId = downId
+                    sfShowOnCabStrip(binding, downId)
                     SoilLogger.debug("Rate DOWN ([) registered in VEHICLE context")
                 end
 
@@ -451,6 +516,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 )
                 if autoOk and autoId then
                     g_SoilFertilityManager.toggleAutoEventId = autoId
+                    sfShowOnCabStrip(binding, autoId)
                     SoilLogger.debug("Auto toggle (Shift+L) registered in VEHICLE context")
                 end
 
@@ -458,7 +524,10 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 local vrOk, vrId = binding:registerActionEvent(
                     InputAction.SF_VARIABLE_RATE, g_SoilFertilityManager,
                     g_SoilFertilityManager.onVariableRateInput, false, true, false, true)
-                if vrOk and vrId then g_SoilFertilityManager.variableRateEventId = vrId end
+                if vrOk and vrId then
+                    g_SoilFertilityManager.variableRateEventId = vrId
+                    sfShowOnCabStrip(binding, vrId)
+                end
 
                 -- Settings panel (Shift+O) in VEHICLE context
                 if g_SoilFertilityManager.settingsPanel then
@@ -469,7 +538,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vSpOk and vSpId then
                         g_SoilFertilityManager.vehicleSettingsPanelEventId = vSpId
-                        binding:setActionEventTextVisibility(vSpId, false)
+                        sfShowOnCabStrip(binding, vSpId)
                         SoilLogger.debug("Settings panel (Shift+O) registered in VEHICLE context")
                     end
                 end
@@ -483,7 +552,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vDragOk and vDragId then
                         g_SoilFertilityManager.vehicleHudDragEventId = vDragId
-                        binding:setActionEventTextVisibility(vDragId, false)
+                        sfShowOnCabStrip(binding, vDragId)
                         SoilLogger.debug("HUD drag (Shift+H) registered in VEHICLE context")
                     end
                 end
@@ -511,7 +580,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                     )
                     if vMapOk and vMapId then
                         g_SoilFertilityManager.vehicleCycleMapLayerEventId = vMapId
-                        binding:setActionEventTextVisibility(vMapId, false)
+                        sfShowOnCabStrip(binding, vMapId)
                         SoilLogger.debug("Map layer cycle registered in VEHICLE context")
                     end
                 end
@@ -701,6 +770,52 @@ function SoilFertilityManager:activateSoilSystem()
             end
         end
 
+        -- SF-53 GROWTH CREDIT: initialize + register both clocks (the daily
+        -- bookkeeper with Time Guard, the period bell with the message center).
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthCredit then
+            self.growthCredit:initialize()
+            if g_server ~= nil then
+                self.growthCredit:register()
+            end
+        end
+
+        -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
+        -- Server-only by the fruit-plane write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        if self.growthBlock then
+            self.growthBlock:initialize()
+            if g_server ~= nil then
+                self.growthBlock:register()
+            end
+        end
+
+        -- SF-14 ZONE YIELD: initialize + register the daily capture accrual.
+        -- Server-only by the value-map write's nature; the module's own live
+        -- gate keeps it inert until the growth_modulation release gate opens.
+        -- Time Guard absent: the capture runs on SF's own day tracking via
+        -- checkDayFallback, pumped from the soil system's daily pump.
+        if self.zoneYield then
+            self.zoneYield:initialize()
+            if g_server ~= nil then
+                self.zoneYield:registerDailyAccrual()
+            end
+        end
+
+        -- SF-77 TOPOGRAPHY CACHE: build once at activation (server-only by the
+        -- distance-to-water's nature; clients receive the table through
+        -- NetworkSync), then install the terrain-edit listener. Neutral until a
+        -- consumer wires in.
+        if self.topography then
+            self.topography:initialize()
+            if g_server ~= nil then
+                if self.topography:build() then
+                    self.topography:installTerrainListener()
+                end
+            end
+        end
+
         -- DMV minimap heatmap - must init AFTER soilSystem so layerSystem is ready
         if self.soilMinimapLayer then
             self.soilMinimapLayer:initialize()
@@ -787,6 +902,18 @@ function SoilFertilityManager:onMissionStarted()
         if not self.settings.enabled then
             SoilLogger.info("Mod disabled in settings - skipping soil system init")
             return
+        end
+
+        -- SF-76 FIELD GENESIS: a NEW save (no soilData.xml yet) seeds its
+        -- starting soil FROM TERRAIN, deterministically from a per-save seed
+        -- (the savegame directory hash, stable across two loads of one save).
+        -- An existing save is untouched: genesis stays off and the fieldData
+        -- that exists loads as always. Server-derived only.
+        if g_server ~= nil and not self:_hasSavedSoilData() then
+            self.soilSystem.genesisActive = true
+            self.soilSystem.genesisSeed   = self:_genesisSeed()
+            SoilLogger.info("[SF-76] Field genesis ACTIVE for this new save (seed %d)",
+                self.soilSystem.genesisSeed)
         end
 
         SoilLogger.info("Initializing soil system (fields guaranteed populated)...")
@@ -1041,6 +1168,93 @@ end
 function SoilFertilityManager:onMinimapZoomInput()
     if self.soilMapOverlay then
         self.soilMapOverlay:cycleMinimapZoom()
+    end
+end
+
+--- [SF-39] THE HANDFUL PANEL. Input callback for SF_HANDFUL (default Shift+G).
+--- Kneel, read, show. The order is load bearing: the reveal must complete before
+--- the assemble so diseaseKnown reflects the just-knelt cell and never a stale
+--- pre-reveal read (SF-38 rule 5).
+---
+--- Every refusal SPEAKS. A silent no-op teaches the player the key is broken;
+--- a blinking warning teaches them the rule.
+function SoilFertilityManager:onHandfulInput()
+    if not (self.settings and self.settings.enabled) then return end
+    if not (self.soilSystem and self.soilHUD) then return end
+
+    local function warn(text)
+        if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
+            g_currentMission.hud:showBlinkingWarning(text, 3000)
+        end
+    end
+
+    -- Gate 1: the family is LOCKED unless the player opted into experimental
+    -- systems. Same registry the rest of Read the Dirt checks.
+    if ReleaseGate and not ReleaseGate.isSystemLive("read_the_dirt") then
+        local msg = ReleaseGate.lockMessage and ReleaseGate.lockMessage("read_the_dirt", ReleaseGate.liveOptIn())
+        if msg then warn(msg) end
+        return
+    end
+
+    -- Gate 2: you have to actually be kneeling. PlayerStateCrouch flips this flag
+    -- on entry/exit (player/PlayerMover.lua setIsCrouching); crouch is a HOLD in
+    -- FS25, not a toggle, so the player holds crouch and presses the key. A hand
+    -- tool whose canCrouch is false blocks the crouch state outright - that is
+    -- the engine's rule and we do not work around it.
+    local player = g_localPlayer
+    local kneeling = player ~= nil and player.mover ~= nil and player.mover.isCrouching == true
+    if not kneeling then
+        warn(g_i18n:getText("sf_handful_need_kneel"))
+        return
+    end
+
+    -- Gate 3: a field and a resolved spot underfoot.
+    local fieldId, x, z = nil, nil, nil
+    if self.soilHUD.detectCurrentFieldId then
+        local ok, cur, cx, cz = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
+        if ok then fieldId = cur; x, z = cx, cz end
+    end
+    if fieldId and fieldId <= 0 then fieldId = nil end
+    if not fieldId or x == nil or z == nil then
+        warn(g_i18n:getText("sf_scout_no_field"))
+        return
+    end
+
+    local day = g_currentMission and g_currentMission.environment
+        and g_currentMission.environment.currentDay
+
+    -- THE KNEEL, first. Server-authoritative: direct on the host, a request on a
+    -- client. Identical to the SF_SCOUT path, which is the shipped kneel.
+    local scouting = self.soilSystem.spatialScouting
+    if g_server ~= nil then
+        if scouting and scouting:isArmed() and day then
+            scouting:revealCellAt(nil, x, z, day)
+        end
+    elseif g_client ~= nil and SoilKneelEvent then
+        pcall(function()
+            g_client:getServerConnection():sendEvent(SoilKneelEvent.new(x, z))
+        end)
+    end
+
+    -- THE READ, after. Pure assembly, zero writes. materialFillType is left nil
+    -- when we cannot name what lies at the spot; the verdict then returns its
+    -- honest refusal rather than a guess.
+    if HandfulRead == nil or type(HandfulRead.assemble) ~= "function" then return end
+    local payload = HandfulRead.assemble({
+        fieldId = fieldId,
+        x = x,
+        z = z,
+        farmId = player.farmId,
+        currentDay = day,
+    })
+    if payload == nil then
+        warn(g_i18n:getText("sf_handful_no_read"))
+        return
+    end
+
+    -- THE PANEL.
+    if SoilHandfulDialog and SoilHandfulDialog.show then
+        SoilHandfulDialog.show(payload)
     end
 end
 
@@ -1334,11 +1548,38 @@ function SoilFertilityManager:saveSoilData()
     end
 end
 
+-- SF-76: does this save already carry soil data? A new save has neither a
+-- soilData.xml nor a StateLedger soil block, so genesis may seed from terrain.
+function SoilFertilityManager:_hasSavedSoilData()
+    if SoilStateLedgerBridge ~= nil and SoilStateLedgerBridge.hasLedgerState ~= nil
+        and SoilStateLedgerBridge.hasLedgerState() then
+        return true
+    end
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory
+    if path == nil then return false end
+    return fileExists(path .. "/soilData.xml")
+end
+
+-- SF-76: the deterministic per-save seed. The savegame directory path is the
+-- save's stable identity across two loads of one save, so hashing it yields
+-- the same seed twice (the byte-identical acceptance). Stable across reloads,
+-- differs between saves.
+function SoilFertilityManager:_genesisSeed()
+    local path = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory or ""
+    local seed = 0
+    for i = 1, #path do
+        local c = string.byte(path, i)
+        seed = (seed * 31 + c) % 2147483647
+    end
+    return seed
+end
+
 --- Load soil data from XML file
 --- Reads from {savegame}/soilData.xml if exists
 --- Falls back to defaults if file not found
-function SoilFertilityManager:loadSoilData()
-    if not self.soilSystem then
+function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
         SoilLogger.error("loadSoilData: soilSystem is nil")
         return
     end
@@ -1610,53 +1851,93 @@ function SoilFertilityManager:_updateSoilWetness()
     self._soilWetness01 = SoilCompactionModel.advanceWetness(self._soilWetness01, dtH, isRaining)
 end
 
+--- F111 (SF-55): the compaction pass, enumerated across EVERY server-side vehicle.
+--- The old path resolved the vehicle from getPlayerVehicle(), which is nil on a
+--- dedicated server (compaction dead for everyone) and single-vehicle on a listen
+--- server (only the host's tractor laid a trail). Enumerating the mission vehicle
+--- list at the existing CHECK_INTERVAL_MS cadence closes that for every actor:
+--- other farmers, AI helpers, hired workers, convoys. Server-side only, gated by
+--- the caller (update() checks getIsServer()).
 function SoilFertilityManager:_checkVehicleCompaction()
     if not (self.settings.compactionEnabled and SoilConstants.COMPACTION) then return end
     if not (self.soilSystem and self.soilSystem.hookManager) then return end
-    local cp = SoilConstants.COMPACTION
 
     -- Keep the moisture term current even when no heavy vehicle is around.
     self:_updateSoilWetness()
 
-    local vehicle = getPlayerVehicle()
-    if not vehicle or not vehicle.rootNode then return end
+    -- BUILD 21:59: a zip that carried this manager without src/TrafficDrag.lua indexed nil
+    -- here once per update tick. It falls back rather than returning: compaction is the older
+    -- shipped feature and should keep working when the newer module is absent, and the drag
+    -- write already stands down on its own guards.
+    local vList
+    if TrafficDrag ~= nil and type(TrafficDrag.resolveVehicleList) == "function" then
+        vList = TrafficDrag.resolveVehicleList()
+    else
+        vList = (g_currentMission ~= nil and g_currentMission.vehicleSystem
+                 and g_currentMission.vehicleSystem.vehicles)
+                or (g_currentMission ~= nil and g_currentMission.vehicles) or {}
+    end
+    local checked = 0
+    for _, vehicle in pairs(vList) do
+        if self:_checkOneVehicleCompaction(vehicle) then checked = checked + 1 end
+    end
+    if checked > 0 then
+        SoilLogger.debug("Compaction pass: %d heavy vehicles with a wheel on ground", checked)
+    end
+end
+
+--- Per-vehicle compaction + traffic-drag pass (F111 body). Returns true when the
+--- vehicle was relevant (heavy, wheels on ground, points laid).
+function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
+    local cp = SoilConstants.COMPACTION
+    if not (vehicle and vehicle.rootNode) then return false end
+    if not self:_vehicleHasWheelOnGround(vehicle) then return false end
+
     local okM, totalMass = pcall(function() return vehicle:getTotalMass(false) end)
     -- Cheap relevance gate: skip light vehicles (cars/quads) entirely. This is a perf
     -- floor only - actual compaction is decided by ground pressure, not this threshold.
-    if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return end
+    if not (okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T) then return false end
     local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
-    if not (ok and x) then return end
+    if not (ok and x) then return false end
+
+    -- SF-55 wetness-input substitution: a real positional wetness read (SCS field-level
+    -- moisture, blended with the rain-scalar fallback per confirm 2) instead of the
+    -- bare global scalar. SCS absent or untracked -> the rain scalar exactly as today.
+    local wet = self:_blendedWetness01(x, z)
 
     -- Ground-pressure points for this vehicle this pass (identical for every sub-step of
     -- the driven segment). Reads Variable Tire Pressure live when installed, else wheel
-    -- geometry. Big flotation tyres / aired-down / dry soil → ~0 → nothing is laid.
-    local points, source = SoilCompactionModel.pointsForVehicle(vehicle, self._soilWetness01 or 0)
+    -- geometry. Big flotation tyres / aired-down / dry soil -> ~0 -> nothing is laid.
+    local points, source = SoilCompactionModel.pointsForVehicle(vehicle, wet)
     if not points or points <= 0 then
-        self._lastCompactionX, self._lastCompactionZ = x, z  -- keep continuity, lay nothing
-        return
+        self:_rememberCompactionPos(vehicle, x, z)  -- keep continuity, lay nothing
+        return false
     end
 
-    -- Compact a single world point if it sits on a field (onCompaction gates each cell to
-    -- once/day and to real field ground, so repeated calls are cheap no-ops).
-    local function compactAt(px, pz)
+    -- One stepped position: write the traffic drag when the gate holds (independent of
+    -- the compaction write), then compact the cell if it sits on a field (onCompaction
+    -- gates each cell to once/day and to real field ground, so repeated calls are cheap
+    -- no-ops).
+    local function stepAt(px, pz)
+        self:_maybeWriteTrafficDrag(px, pz, wet)
         local fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(px, pz, false)
         if fid and fid > 0 then
             pcall(function() self.soilSystem:onCompaction(fid, px, pz, points) end)
         end
     end
 
-    local lx, lz = self._lastCompactionX, self._lastCompactionZ
-    self._lastCompactionX, self._lastCompactionZ = x, z
+    local lx, lz = self:_compactionLastPos(vehicle)
+    self:_rememberCompactionPos(vehicle, x, z)
 
     -- First sample, or a teleport/fast-travel jump: record position but lay NOTHING.
     -- Compaction only accrues along ground actually driven over, so sitting still or
     -- spawning on a field never raises it (Talia: "equipment just sitting raises it").
-    if not (lx and lz) then return end
+    if not (lx and lz) then return false end
 
     local dx, dz = x - lx, z - lz
     local dist   = math.sqrt(dx * dx + dz * dz)
-    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return end   -- parked / barely moved
-    if dist > (cp.MAX_SEGMENT_M or 30.0) then return end        -- discontinuity: no line across the gap
+    if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return false end   -- parked / barely moved
+    if dist > (cp.MAX_SEGMENT_M or 30.0) then return false end        -- discontinuity: no line across the gap
 
     -- Walk the driven segment in ~half-cell steps so no cell is skipped at speed.
     -- This is what keeps the trail continuous whether crawling or driving fast.
@@ -1665,11 +1946,98 @@ function SoilFertilityManager:_checkVehicleCompaction()
     local steps    = math.max(1, math.ceil(dist / step))
     for i = 1, steps do
         local t = i / steps
-        compactAt(lx + dx * t, lz + dz * t)
+        stepAt(lx + dx * t, lz + dz * t)
     end
 
     SoilLogger.debug("Compaction: %s pass +%.2f raw pts/cell  wet=%.2f  steps=%d",
-        tostring(source), points, self._soilWetness01 or 0, steps)
+        tostring(source), points, wet, steps)
+    return true
+end
+
+--- Per-vehicle last-position continuity (replaces the old single-vehicle
+--- _lastCompactionX/_lastCompactionZ state).
+function SoilFertilityManager:_compactionLastPos(vehicle)
+    local t = self._compactionLast
+    if not t or not t[vehicle.id] then return nil end
+    return t[vehicle.id].x, t[vehicle.id].z
+end
+
+function SoilFertilityManager:_rememberCompactionPos(vehicle, x, z)
+    local key = vehicle.id
+    if key == nil then return end   -- an id-less entry degrades to "first sample" (lays nothing)
+    if not self._compactionLast then self._compactionLast = {} end
+    self._compactionLast[key] = { x = x, z = z }
+end
+
+--- Wheel-on-ground gate for the F111 enumeration (brief: "for each vehicle with a
+--- wheel on ground"). Reads the live wheel physics contact state; a vehicle whose
+--- wheels are all airborne (jump, teleport) or that has no wheels is skipped.
+--- Verified: WheelPhysics:updateContact sets physics.hasGroundContact from the wheel
+--- shape contact point (LUADOC WheelPhysics.md). RealisticWeather overwrites
+--- WheelPhysics.updateFriction only (RW vehicles/wheels/WheelPhysics.lua:50), never
+--- the contact fields, so this read is RW-safe.
+function SoilFertilityManager:_vehicleHasWheelOnGround(vehicle)
+    local spec = vehicle.spec_wheels
+    if spec == nil or spec.wheels == nil then return false end
+    for _, wheel in pairs(spec.wheels) do
+        local phys = wheel.physics
+        if phys and phys.hasGroundContact then return true end
+    end
+    return false
+end
+
+--- SF-55 wetness-input substitution: blend SCS's field-level moisture for the field
+--- under (x, z) with the rain-scalar fallback (confirm 2). Neutral-when-absent: no
+--- SCS, no field, or a throwing read all fall back to the rain scalar exactly as
+--- before. fieldId, when given, skips the re-lookup (harvest pass already resolved it).
+function SoilFertilityManager:_blendedWetness01(x, z, fieldId)
+    local rainScalar = self._soilWetness01 or 0
+    if TrafficDrag == nil then return rainScalar end
+
+    local fid = fieldId
+    if not (fid and fid > 0) then
+        fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(x, z, false)
+    end
+    if not (fid and fid > 0) then return rainScalar end
+
+    local ok, scsMoisture = pcall(function()
+        local csm = g_cropStressManager
+        if csm == nil or type(csm.getMoisture) ~= "function" then return nil end
+        return csm:getMoisture(fid)
+    end)
+    return TrafficDrag.blendWetness(ok and scsMoisture or nil, rainScalar)
+end
+
+--- SF-55 crop drag: when the stepped position reads wet above the threshold AND a
+--- standing crop occupies it, accrue MAGNITUDE_PER_EVENT on the trafficDrag layer,
+--- once per cell per day (dedupe keyed on TimeGuard monotonicDay, never
+--- environment.currentDay). The cap binds at the write; the write is
+--- addValueAtWorld-shaped (read-modify-write) with the first event birthing the
+--- record. The second-writer fence holds: this never touches yieldEfficiency.
+--- Without TimeGuard's monotonicDay the accrual stands down (no private clock).
+function SoilFertilityManager:_maybeWriteTrafficDrag(px, pz, wet)
+    local td = SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
+    if not td then return end
+    if TrafficDrag == nil then return end
+    if not (self.soilSystem and self.soilSystem:vmAvailable()) then return end
+    if wet < (td.WETNESS_THRESHOLD or 0.5) then return end
+
+    local day = TrafficDrag.getMonotonicDay()
+    if day == nil then return end
+
+    local fruitIndex, growthState = TrafficDrag.readStandingCrop(px, pz)
+    if not TrafficDrag.isStandingCrop(fruitIndex, growthState, td.MIN_STANDING_GROWTH_STATE) then return end
+
+    local cellKey = TrafficDrag.cellKey(px, pz, SoilConstants.ZONE.CELL_SIZE)
+    if TrafficDrag.dedupeFired(self._trafficDragDays, cellKey, day) then return end
+    self._trafficDragDays = TrafficDrag.markDedupe(self._trafficDragDays, cellKey, day)
+
+    local valueMaps = self.soilSystem.valueMaps
+    local current = valueMaps:readValueAtWorld("trafficDrag", px, pz)
+    local nextVal = TrafficDrag.accrue(current, td.MAGNITUDE_PER_EVENT, td.CAP)
+    valueMaps:writeValueAtWorld("trafficDrag", px, pz, nextVal, SoilConstants.ZONE.CELL_SIZE * 0.5)
+    SoilLogger.debug("TrafficDrag: +%.2f at (%.1f, %.1f) day %s",
+        nextVal, px, pz, tostring(day))
 end
 
 --- Auto-rate control update - throttled, client-side only.
@@ -1688,28 +2056,54 @@ function SoilFertilityManager:updateAutoRates(dt)
     self._autoRateTimer = 0
 
     -- Need HUD for fill-type and field-id access (client-only objects)
-    if not self.soilHUD then return end
+    if not self.soilHUD then
+        SoilLogger.debug("Auto-rate trace: bail - soilHUD nil")
+        return
+    end
 
     -- Find the player's active applicator vehicle
     local vehicle = getApplicatorVehicle()
-    if not vehicle then return end
+    if not vehicle then
+        SoilLogger.debug("Auto-rate trace: bail - no applicator vehicle (not in one, or rootVehicle nil)")
+        return
+    end
 
     -- Only act when auto mode is engaged for this vehicle
     local rm = self.sprayerRateManager
-    if not rm or not rm:getAutoMode(vehicle.id) then return end
+    if not rm then
+        SoilLogger.debug("Auto-rate trace: bail - sprayerRateManager nil")
+        return
+    end
+    if not rm:getAutoMode(vehicle.id) then
+        SoilLogger.debug("Auto-rate trace: bail - auto mode OFF for vehicle %d (toggle with the AUTO key)", vehicle.id)
+        return
+    end
 
     -- Use the HUD's cached field id (updated every frame in SoilHUD:update)
     local fieldId = self.soilHUD.cachedFieldId
-    if not fieldId or fieldId <= 0 then return end
+    if not fieldId or fieldId <= 0 then
+        SoilLogger.debug("Auto-rate trace: bail - cachedFieldId nil/0 (field detection not resolving)")
+        return
+    end
 
     -- Retrieve live soil data for this field
-    if not self.soilSystem then return end
+    if not self.soilSystem then
+        SoilLogger.debug("Auto-rate trace: bail - soilSystem nil")
+        return
+    end
     local fieldData = self.soilSystem:getFieldInfo(fieldId)
-    if not fieldData then return end
+    if not fieldData then
+        SoilLogger.debug("Auto-rate trace: bail - getFieldInfo(%s) nil", tostring(fieldId))
+        return
+    end
 
     -- Get the fill type currently loaded in the vehicle
     local fillType = self.soilHUD:getSprayerFillType(vehicle)
-    if not fillType then return end
+    if not fillType then
+        SoilLogger.debug("Auto-rate trace: bail - getSprayerFillType nil for vehicle %d (field %s)",
+            vehicle.id, tostring(fieldId))
+        return
+    end
 
     -- Calculate the ideal index and send if it changed
     local newIdx = self:calculateAutoRateIndex(fieldData, fillType)
@@ -1723,6 +2117,11 @@ function SoilFertilityManager:updateAutoRates(dt)
             "Auto-rate: vehicle %d → index %d (%.2fx) [%s on field %d]",
             vehicle.id, newIdx,
             SoilConstants.SPRAYER_RATE.STEPS[newIdx],
+            fillType.name, fieldId)
+    else
+        SoilLogger.debug("Auto-rate: vehicle %d holds index %d (%.2fx) [%s on field %d] - no change",
+            vehicle.id, currentIdx,
+            SoilConstants.SPRAYER_RATE.STEPS[currentIdx] or 1.0,
             fillType.name, fieldId)
     end
 end
@@ -1854,8 +2253,13 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
         if herbTypes and herbTypes[fillType.name] then
             -- Herbicide: always apply at full rate (preventive/knockdown - not weed-pressure-scaled)
             multiplier = 1.0
+        else
+            -- Unknown product type: leave at 1.0 (no adjustment). Traced so a nil-profile
+            -- fill type (e.g. a seeder resolving its seed hopper instead of the fertilizer)
+            -- is visible in a debug run (#809).
+            SoilLogger.debug("Auto-rate calc: %s NOT in FERTILIZER_PROFILES - holding 1.0x (pinned rate)",
+                tostring(fillType.name))
         end
-        -- Unknown product type: leave at 1.0 (no adjustment)
     end
 
     -- Clamp to safe range before finding closest step
@@ -2056,6 +2460,30 @@ function SoilFertilityManager:delete()
     if self.soilSystem then
         self.soilSystem:delete()
     end
+
+    -- SF-53 growth credit: drop the message-center subscription and the store.
+    if self.growthCredit then
+        self.growthCredit:delete()
+        self.growthCredit = nil
+    end
+
+    -- SF-78 growth block: drop both message subscriptions and the capture.
+    if self.growthBlock then
+        self.growthBlock:delete()
+        self.growthBlock = nil
+    end
+
+    -- SF-14 zone yield: drop the accrual state and the fallback marker.
+    if self.zoneYield then
+        self.zoneYield:delete()
+        self.zoneYield = nil
+    end
+
+    -- SF-77 topography cache: drop the terrain listener and the grids.
+    if self.topography then
+        self.topography:delete()
+        self.topography = nil
+    end
     -- Do NOT flush settings on shutdown. delete() runs on every quit, including a
     -- quit-without-save, so a save here rewrote FS25_SoilFertilizer.xml out of step
     -- with the rest of the savegame (the settings twin of the soilData-on-quit bug,
@@ -2101,4 +2529,51 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
     local ok, summary = pcall(function() return v:getFieldGrowthSummary(fieldId) end)
     if not ok then return nil end
     return summary
+end
+
+-- ============================================================
+-- SF-49 THE WATER RECORD READ (cross-mod surface)
+--
+-- SeasonalCropStress's caught-up-hour (SCS-037 round 2) reconstructs the rain
+-- switch across a skipped day from SoilFertilizer's Water Record. The record
+-- lives on the wetness subsystem, three internal field names deep, which is
+-- exactly the coupling SoilFertilizer's own cross-boundary rule forbids. So it
+-- is delegated here, on the manager, at the same boundary the growth contract
+-- above crosses: `g_currentMission.soilFertilityManager`.
+--
+-- NEUTRAL, not a claim. nil means "we do not know", never "it was dry". A
+-- closed ground_material gate, a missing or unarmed wetness subsystem, a
+-- throwing read, and an empty record all return nil so the consumer falls back
+-- to the honest approximation instead of trusting a zero it did not earn.
+-- ============================================================
+
+--- How many of the last `days` days (through `throughDay`) brought water.
+---@param days number how many trailing days to ask about
+---@param throughDay number|nil day cursor; nil means the record's own applied-through
+---@return number|nil count number of wet days, nil when unknown
+---@return number|nil known how many of the window the record covers
+function SoilFertilityManager:getWaterDaysInLast(days, throughDay)
+    local mw = self.soilSystem and self.soilSystem.materialWetness
+    if mw == nil or type(mw.waterDaysInLast) ~= 'function' then return nil end
+    if not mw:isArmed() then return nil end
+    if not ReleaseGate.isSystemLive("ground_material") then return nil end
+    local ok, count, known = pcall(mw.waterDaysInLast, mw, days, throughDay)
+    if not ok then return nil end
+    if known == nil or known <= 0 then return nil end
+    return count, known
+end
+
+--- [SF-23] Positional nutrient/OM sample for cross-mod consumers (the brief's
+--- reciprocal read). SeasonalCropStress reads SF's spatial state the way SF reads
+--- its moisture: read-only, nil when the value maps are unavailable or the pixel
+--- is unwritten. Never a write across the firewall.
+---@param key string  "nitrogen" | "phosphorus" | "potassium" | "pH" | "organicMatter"
+---@param x number
+---@param z number
+---@return number|nil
+function SoilFertilityManager:getSoilValueAtWorld(key, x, z)
+    if SpatialNutrients == nil or SpatialNutrients.getSoilValueAtWorld == nil then return nil end
+    local ok, v = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
+    if not ok then return nil end
+    return v
 end

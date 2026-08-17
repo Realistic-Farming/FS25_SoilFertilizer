@@ -59,7 +59,17 @@ HookManager = HookManager or { new = function() return {} end }
 -- (SoilLayerSystem.writeFieldToLayers). These stubs keep the decision logic
 -- (window state, threshold, no-signal-no-thinning, per-region kill) testable
 -- without a terrain; a test asserts the write was ATTEMPTED through the stub.
-DensityMapMultiModifier = DensityMapMultiModifier or { new = function() return { sets = 0, executed = 0 } end }
+DensityMapMultiModifier = DensityMapMultiModifier or {
+  new = function()
+    local m = { sets = 0, executed = 0 }
+    m.addExecuteSet = function(_self, value)
+      m.sets = m.sets + 1
+      m._lastTarget = value
+    end
+    m.execute = function(_self) m.executed = m.executed + 1 end
+    return m
+  end,
+}
 DensityMapModifier = DensityMapModifier or {
   new = function()
     local m = { polygons = {}, writes = 0, target = nil }
@@ -86,6 +96,7 @@ DensityMapFilter = DensityMapFilter or {
 }
 DensityValueCompareType = DensityValueCompareType or { GREATER = 1, BETWEEN = 2, EQUAL = 3 }
 DensityRoundingMode = DensityRoundingMode or { INCLUSIVE = 1 }
+GrowthMode = GrowthMode or { SEASONAL = 1, DAILY = 2, DISABLED = 3 }
 FieldDensityMap = FieldDensityMap or { GROUND_TYPE = 1, SPRAY_TYPE = 2 }
 FSDensityMapUtil = FSDensityMapUtil or { removeWeedArea = function() return true end }
 g_fieldManager = g_fieldManager or { fields = {} }

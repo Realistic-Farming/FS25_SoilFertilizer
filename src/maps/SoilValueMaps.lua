@@ -61,7 +61,12 @@ SoilValueMaps.LAYER_DEFS = {
     -- when a field is not yet scouted, so unscouted never reads as clean green.
     { key = "diseasePressure", file = "sfSoilMap_DP.grle",  minVal = 0,   maxVal = 100, rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW },
     { key = "urgency",         file = "sfSoilMap_UR.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
-    { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 100, rawFloor = 16 },
+    -- yieldEfficiency (SF-14 repurpose): captured truth, not a display stamp.
+    -- Stores the per-cell captured efficiency multiplier as a percentage
+    -- (0.7 .. 1.15 -> 70 .. 115), so maxVal must reach the band ceiling 115,
+    -- not today's display scale of 100. The DMV display migrates to show the
+    -- captured truth (the display-only field-average stamp is retired).
+    { key = "yieldEfficiency", file = "sfSoilMap_YE.grle",  minVal = 0,   maxVal = 115, rawFloor = 16 },
     -- Organic certification status: a categorical 3-state layer (0 conventional,
     -- 1 in-transition, 2 certified) backing the organic map display. EPHEMERAL (no
     -- file): it is a lossless projection of each field's persisted organic state, so
@@ -101,6 +106,21 @@ SoilValueMaps.LAYER_DEFS = {
     -- key and getter here carries MATERIAL. advanceWetness is never touched.
     { key = "materialWetness", file = "sfSoilMap_MW.grle",  minVal = 0,   maxVal = 100,
       rawFloor = 32, unknownRaw = SoilValueMaps.UNKNOWN_RAW, serverOnly = true },
+    -- SF-55 TRAFFIC ON WET GROUND (trafficDrag): how bruised a standing crop is by
+    -- loaded wheels on wet ground. Bounded 0.0-0.3 AT THE WRITE; maxVal mirrors the
+    -- constant when Constants is loaded (the real game and the value-map tests) and
+    -- falls back to the same literal otherwise, so the def never blocks loading a
+    -- test that stubs only this module. The binding bound is the write-time clamp in
+    -- the traffic-drag write (accrue against TRAFFIC_DRAG.CAP); encode() here is the
+    -- second net, and any drift toward a HIGHER def maxVal is harmless (the clamp
+    -- still binds). serverOnly like materialAge/materialWetness: no client allocation,
+    -- no sync surface, no display of its own (SF-54 owns any display). Composes
+    -- read-only at SF-14's harvest read (effective = capturedEfficiency * (1 - trafficDrag)),
+    -- never written into yieldEfficiency (the second-writer fence).
+    { key = "trafficDrag", file = "sfSoilMap_TD.grle", minVal = 0,
+      maxVal = (SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
+                and SoilConstants.COMPACTION.TRAFFIC_DRAG.CAP) or 0.3,
+      serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel
