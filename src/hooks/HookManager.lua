@@ -3731,6 +3731,32 @@ function HookManager:installSprayerAreaHook()
                 local fillType = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
                 if not fillType then return end
 
+                -- #780 hardening: if the resolved fill type is NOT a recognized fertilizer /
+                -- protection product but wap.sprayFillType (the type vanilla actually applied
+                -- this frame from the real source) IS, prefer the vanilla value instead of
+                -- silently dropping the credit. The effect classification below re-derives
+                -- isFertilizer / herb / pest / disease from fillType.name after this swap.
+                local _ftName = fillType.name
+                local _isRecognized = SoilConstants.FERTILIZER_PROFILES[_ftName] ~= nil
+                    or (SoilConstants.WEED_PRESSURE and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES[_ftName] ~= nil)
+                    or (SoilConstants.PEST_PRESSURE and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES[_ftName] ~= nil)
+                    or (SoilConstants.DISEASE_PRESSURE and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[_ftName] ~= nil)
+                if not _isRecognized then
+                    local _wapFT = spec.workAreaParameters and spec.workAreaParameters.sprayFillType
+                    if _wapFT and _wapFT > 0 and _wapFT ~= fillTypeIndex then
+                        local _wapFillType = g_fillTypeManager:getFillTypeByIndex(_wapFT)
+                        if _wapFillType then
+                            SoilLogger.debug("SprayerHook: resolved type %s unrecognized - using wap.sprayFillType %s (external/chain supply, #780)",
+                                _ftName, _wapFillType.name)
+                            fillTypeIndex = _wapFT
+                            fillType = _wapFillType
+                            if hookMgrRef and hookMgrRef.customFillTypePrices and hookMgrRef.customFillTypePrices[_wapFT] then
+                                self._soilLastCustomFillType = _wapFT
+                            end
+                        end
+                    end
+                end
+
                 -- Check herbicide first (mutually exclusive with fertilizer profiles)
                 local herbTypes = SoilConstants.WEED_PRESSURE and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES
                 local herbEffectiveness = herbTypes and herbTypes[fillType.name]
