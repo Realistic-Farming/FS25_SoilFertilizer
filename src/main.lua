@@ -617,6 +617,9 @@ local function load(mission)
         -- server-authoritative; owns production only (SF owns the OM effect).
         if CompostManager ~= nil then
             g_CompostManager = CompostManager.new()
+            -- Cross-mod handle on the mission (getfenv(0) is per-mod scoped; the
+            -- FarmTablet organic app reads g_currentMission.compostManager).
+            mission.compostManager = g_CompostManager
             local ledger = (mission.stateLedger ~= nil) and mission.stateLedger or g_stateLedger
             if ledger ~= nil and ledger.registerModule ~= nil then
                 pcall(function()
