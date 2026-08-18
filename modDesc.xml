@@ -101,42 +101,22 @@
     <l10n filenamePrefix="translations/translation" />
 
     <inputBinding>
-        <actionBinding action="SF_TOGGLE_HUD">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_j" />
-        </actionBinding>
-        <actionBinding action="SF_RATE_UP">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rightbracket" />
-        </actionBinding>
-        <actionBinding action="SF_RATE_DOWN">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_leftbracket" />
-        </actionBinding>
-        <actionBinding action="SF_TOGGLE_AUTO">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_l" />
-        </actionBinding>
-        <actionBinding action="SF_CYCLE_MAP_LAYER">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_m" />
-        </actionBinding>
-        <actionBinding action="SF_OPEN_SETTINGS">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_o" />
-        </actionBinding>
-        <actionBinding action="SF_HUD_DRAG">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
-        </actionBinding>
-        <actionBinding action="SF_VARIABLE_RATE">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lalt KEY_7" />
-        </actionBinding>
+        <actionBinding action="SF_TOGGLE_HUD" />
+        <actionBinding action="SF_RATE_UP" />
+        <actionBinding action="SF_RATE_DOWN" />
+        <actionBinding action="SF_TOGGLE_AUTO" />
+        <actionBinding action="SF_CYCLE_MAP_LAYER" />
+        <actionBinding action="SF_OPEN_SETTINGS" />
+        <actionBinding action="SF_HUD_DRAG" />
+        <actionBinding action="SF_VARIABLE_RATE" />
         <actionBinding action="SF_MINIMAP_ZOOM" />
         <actionBinding action="SF_SCOUT" />
         <actionBinding action="SF_TREATMENT" />
-        <!-- SF-39: the only SF action that ships a DEFAULT key. The engine reads
-             a default from a nested <binding> child (InputBinding:loadBindingsFromXML
-             -> Binding.createFromXML); the bare actionBinding entries above have
-             never had one, which is why every other SF hotkey must be bound by
-             hand despite what the code comments claim. Retro-fitting the rest is
-             a change to shipped behaviour and is deliberately not done here. -->
-        <actionBinding action="SF_HANDFUL">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_g" />
-        </actionBinding>
+        <!-- API-6 (input convention): no ecosystem mod ships a default binding, so
+             the player assigns keys in the game's control settings and nothing
+             collides out of the box. All nine former defaults were removed; the
+             actions stay registered and rebindable. -->
+        <actionBinding action="SF_HANDFUL" />
     </inputBinding>
 
     <!-- Custom fill types declared in external file (FS25 requires filename= attribute) -->
