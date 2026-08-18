@@ -1,9 +1,26 @@
 name: Issue - Auto-close on No Response
 
+# Closes an issue ONLY when a maintainer explicitly asked the reporter for
+# something and the reporter went quiet.
+#
+# The gate is the `waiting-on-author` label, applied deliberately. It is NOT
+# `owner-replied`, which any maintainer comment sets: keying on that closed
+# roadmap trackers, design-routed items and fixed-but-unreleased bugs one day
+# after a routine status reply. This matches the pattern already used by
+# FS25_CustomTriggerCreator.
+#
+# To make an issue eligible for auto-close, label it `waiting-on-author`.
+# Nothing else is ever touched.
+
 on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
+
+env:
+  # Grace period before an unanswered request is closed. The welcome message
+  # advertises 24 hours, so change both together if this moves.
+  GRACE_HOURS: '24'
 
 jobs:
   close-unresponded:
@@ -12,12 +29,13 @@ jobs:
       issues: write
 
     steps:
-      - name: Close issues with owner-replied but no user follow-up after 24h
+      - name: Close waiting-on-author issues with no author follow-up
         uses: actions/github-script@v7
         with:
           script: |
             const now = Date.now();
-            const twentyFourHours = 24 * 60 * 60 * 1000;
+            const graceMs = Number(process.env.GRACE_HOURS) * 60 * 60 * 1000;
+            const MAINTAINER = ['OWNER', 'MEMBER', 'COLLABORATOR'];
 
             const issues = await github.paginate(
               github.rest.issues.listForRepo,
@@ -25,13 +43,20 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 state: 'open',
-                labels: 'owner-replied',
+                labels: 'waiting-on-author',
                 per_page: 100
               }
             );
 
             for (const issue of issues) {
               if (issue.pull_request) continue;
+
+              // An issue opened by a maintainer is an internal tracker, never a
+              // request waiting on a reporter. Never auto-close one.
+              if (MAINTAINER.includes(issue.author_association)) {
+                core.info(`Skipping #${issue.number} - maintainer authored`);
+                continue;
+              }
 
               const comments = await github.rest.issues.listComments({
                 owner: context.repo.owner,
@@ -40,36 +65,50 @@ jobs:
                 per_page: 100
               });
 
-              // Find when owner last replied
-              const ownerAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
-              const ownerComments = comments.data.filter(c =>
-                ownerAssociations.includes(c.author_association) && c.user.type !== 'Bot'
+              // When did a maintainer last say something? If never, nobody has
+              // asked this reporter for anything, so there is nothing owed.
+              const maintainerComments = comments.data.filter(c =>
+                MAINTAINER.includes(c.author_association) && c.user.type !== 'Bot'
               );
-              if (ownerComments.length === 0) continue;
+              if (maintainerComments.length === 0) continue;
 
-              const lastOwnerReply = Math.max(...ownerComments.map(c => new Date(c.created_at).getTime()));
-              const age = now - lastOwnerReply;
-              if (age < twentyFourHours) continue;
+              const lastAsk = Math.max(
+                ...maintainerComments.map(c => new Date(c.created_at).getTime())
+              );
 
-              // Check if user replied after the owner's last comment
+              // Did the reporter answer? Then the clock stops and the label goes.
               const author = issue.user.login;
-              const userRepliedAfter = comments.data.some(c =>
+              const answered = comments.data.some(c =>
                 c.user.login === author &&
-                new Date(c.created_at).getTime() > lastOwnerReply
+                new Date(c.created_at).getTime() > lastAsk
               );
-              if (userRepliedAfter) continue;
+              if (answered) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    name: 'waiting-on-author'
+                  });
+                  core.info(`#${issue.number} answered - cleared waiting-on-author`);
+                } catch {}
+                continue;
+              }
 
+              if (now - lastAsk < graceMs) continue;
+
+              const hours = process.env.GRACE_HOURS;
               const closeBody = [
-                `Hey @${author} - this issue has been automatically closed because there was no follow-up within **24 hours** of the last response.`,
+                `Hey @${author}, this issue has been closed automatically because the information we asked for did not arrive within **${hours} hours**.`,
                 ``,
-                `This is not a rejection. If you still have the problem, please **reopen this issue** and include:`,
+                `This is not a rejection and it is not a judgement on the report. If you still have the problem, please **reopen this issue** and add:`,
                 ``,
                 `- The relevant lines from your \`log.txt\``,
                 `  - Location: \`Documents/My Games/FarmingSimulator2025/log.txt\``,
-                `- Your mod version (visible in the mod manager)`,
-                `- Steps to reproduce the issue`,
+                `- Your mod version, visible in the mod manager`,
+                `- Steps to reproduce it`,
                 ``,
-                `We look forward to helping you once we have the details!`,
+                `We would rather help than close, so please do reopen it once you have those.`,
               ].join('\n');
 
               await github.rest.issues.createComment({
@@ -87,5 +126,5 @@ jobs:
                 state_reason: 'not_planned'
               });
 
-              core.info(`Closed issue #${issue.number} - no user follow-up after owner replied`);
+              core.info(`Closed #${issue.number} - no author follow-up`);
             }
