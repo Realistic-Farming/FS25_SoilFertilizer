@@ -391,11 +391,53 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
         if sEl ~= nil and sEl.setVisible then sEl:setVisible(false) end
     end
 
-    --- Trim to fit the narrow What-if effect column (pic 1 feel).
+    --- BUILD 15:39 (PB-09). Fit the narrow What-if columns WITHOUT cutting a
+    --- word in half.
+    ---
+    --- This used to be a flat `s:sub(1, n - 3) .. "..."`, which is how a status
+    --- reached Brian as `burn t...`. Half a word plus three dots is not shorter
+    --- information, it is unreadable information, and DESIGN 15:00 §4 rules it
+    --- out: no mid-word clipping against a neighbour, and an ellipsis only once
+    --- the source is genuinely long.
+    ---
+    --- The order of preference is:
+    ---   1. It fits. Print it.
+    ---   2. It is a comma-joined list (the effect column is). Drop whole items
+    ---      from the end until what is left fits - you lose an item, not half a
+    ---      word, and every item still on screen is complete.
+    ---   3. Single long phrase. Cut at the last space that fits, so the last
+    ---      thing shown is a whole word.
+    ---   4. One unbroken token longer than the column. Only here is a hard cut
+    ---      unavoidable, and only then does the ellipsis appear.
+    local ELLIPSIS_FLOOR = 28   -- DESIGN 15:00 §4
     local function clip(s, n)
         s = tostring(s or "")
         if #s <= n then return s end
-        return s:sub(1, math.max(1, n - 3)) .. "..."
+
+        if string.find(s, ", ", 1, true) ~= nil then
+            local kept = nil
+            for part in string.gmatch(s, "([^,]+)") do
+                part = part:gsub("^%s+", ""):gsub("%s+$", "")
+                local try = (kept == nil) and part or (kept .. ", " .. part)
+                if #try <= n then kept = try else break end
+            end
+            if kept ~= nil then return kept end
+        end
+
+        local cut = string.sub(s, 1, n)
+        local sp  = string.find(string.reverse(cut), " ")
+        if sp ~= nil then
+            local wordEnd = n - sp
+            if wordEnd >= 3 then
+                return string.sub(cut, 1, wordEnd)
+            end
+        end
+
+        -- A single token wider than its column. Ellipsis only past the floor.
+        if #s >= ELLIPSIS_FLOOR then
+            return string.sub(s, 1, math.max(1, n - 3)) .. "..."
+        end
+        return cut
     end
 
     local function set(el, text)
