@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <l10n>
     <elements>
     <e k="sf_section" v="Půda &amp; hnojiva" eh="f31197fb" />
@@ -21,7 +21,7 @@
     <e k="sf_ws_blurb_3" v="Normální: vyvážené sezónní srážky pro krátké měsíce. Výchozí živé klima." />
     <e k="sf_ws_blurb_2" v="Suché: sušší doplňování v krátkých měsících. Živiny vydrží déle, plodiny dříve trpí suchem." />
     <e k="sf_ws_blurb_1" v="Pouze reálná obloha: půda se řídí pouze předpovědí bez doplňování. Krátké měsíce mohou působit suchým dojmem." />
-    <e k="sf_ws_world_note" v="Globální nastavení – v multiplayeru pouze pro správce; mění půdu všem." />
+    <e k="sf_ws_world_note" v="Globální nastavení - v multiplayeru pouze pro správce; mění půdu všem." />
     <e k="sf_plowing_bonus_short" v="Bonus za orbu" eh="541ec752" />
     <e k="sf_plowing_bonus_long" v="Povolit/zakázat přínos orby pro úrodnost půdy (zlepšení dusíku a organické hmoty)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Zapracování posklizňových zbytků" eh="f4352cb5" />
@@ -74,7 +74,7 @@
     <e k="sf_rr_short" v="Rychlost obnovy živin" eh="b363b336" />
     <e k="sf_rr_long" v="Jak rychle hnojivo obnovuje živiny v půdě (0,25x Velmi pomalu až 2,0x Velmi rychle)" eh="afe78a6d" />
     <e k="sf_dm_short" v="Choroby a klima" eh="86eac820" />
-    <e k="sf_dm_long" v="Úroveň vlhkosti klimatu – určuje, jak rychle se šíří houbové choroby a jak dlouho trvá ochrana fungicidy" eh="23424d05" />
+    <e k="sf_dm_long" v="Úroveň vlhkosti klimatu - určuje, jak rychle se šíří houbové choroby a jak dlouho trvá ochrana fungicidy" eh="23424d05" />
     <e k="sf_dm_1" v="Suché" eh="cf9aa4a8" />
     <e k="sf_dm_2" v="Mírné" eh="e8328062" />
     <e k="sf_dm_3" v="Vlhké" eh="ccb2fc34" />
@@ -235,7 +235,7 @@
     <e k="helpLine_sf_ov_p1_intro_title" v="Sledování půdy pro každé pole" eh="8fe3248d" />
     <e k="helpLine_sf_ov_p1_intro_text" v="Každé pole nezávisle sleduje pět vlastností: Dusík (N), Fosfor (P), Draslík (K), Organickou hmotu (OM) a pH. Hodnoty se ukládají s vaší hrou a zůstávají zachovány napříč relacemi." eh="c30216e6" />
     <e k="helpLine_sf_ov_p1_flow_title" v="Koloběh živin" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="Plodiny při sklizni odebírají živiny. Minerální hnojiva, hnojůvka, kejda a vápno je navracejí. Mód sleduje realistický rozpočet živin – co plodiny odeberou, to musíte vrátit." eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="Plodiny při sklizni odebírají živiny. Minerální hnojiva, hnojůvka, kejda a vápno je navracejí. Mód sleduje realistický rozpočet živin - co plodiny odeberou, to musíte vrátit." eh="418041f0" />
 
     <e k="helpLine_sf_ov_p2_title" v="Vlivy prostředí" eh="e139e84f" />
     <e k="helpLine_sf_ov_p2_rain_title" v="Déšť a Vyplavování" eh="33e0d8ea" />
@@ -252,20 +252,20 @@
 
     <e k="helpLine_sf_gs_p2_title" v="Hnojení a sklizeň" eh="1a52ac04" />
     <e k="helpLine_sf_gs_p2_fert_title" v="Hnojení polí" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="Aplikujte hnojivo pomocí jakéhokoli standardního postřikovače nebo rozmetadla. Mód rozpoznává všechny typy ze základní hry plus 9 vlastních typů (UAN-32, MAP, Draselné hnojivo atd.). Každý typ doplňuje jiné živiny – kompletní profily najdete v kategorii Hnojiva." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="Aplikujte hnojivo pomocí jakéhokoli standardního postřikovače nebo rozmetadla. Mód rozpoznává všechny typy ze základní hry plus 9 vlastních typů (UAN-32, MAP, Draselné hnojivo atd.). Každý typ doplňuje jiné živiny - kompletní profily najdete v kategorii Hnojiva." eh="fe906e29" />
     <e k="helpLine_sf_gs_p2_harvest_title" v="Úbytek živin sklizní" eh="a67b6cb5" />
     <e k="helpLine_sf_gs_p2_harvest_text" v="Každá sklizeň odebírá z pole živiny. Náročné plodiny (brambory, cukrová řepa, sója) vyčerpávají půdu výrazně více než méně náročné plodiny (ječmen, oves). Po každém cyklu sklizně zkontrolujte HUD nebo půdní zprávu." eh="63f90ed4" />
 
     <e k="helpLine_sf_gs_p3_title" v="Obtížnost" eh="7b29ca96" />
     <e k="helpLine_sf_gs_p3_levels_title" v="Tři úrovně obtížnosti" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="Jednoduchá (0.7x): O 30 % nižší úbytek – vhodné pro nové hráče. Realistická (1.0x): Vyvážená, kalibrovaná podle reálných zemědělských hodnot. Hardcore (1.5x): O 50 % vyšší úbytek – vyžaduje intenzivní správu půdy." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="Jednoduchá (0.7x): O 30 % nižší úbytek - vhodné pro nové hráče. Realistická (1.0x): Vyvážená, kalibrovaná podle reálných zemědělských hodnot. Hardcore (1.5x): O 50 % vyšší úbytek - vyžaduje intenzivní správu půdy." eh="f4f1ea30" />
     <e k="helpLine_sf_gs_p3_access_title" v="Změna nastavení" eh="b421c88f" />
     <e k="helpLine_sf_gs_p3_access_text" v="Otevřete nastavení přes ESC &gt; Nastavení &gt; Půda &amp; hnojiva. V hře více hráčů může nastavení simulace měnit pouze správce serveru. Všechny možnosti zobrazení HUD jsou pro každého hráče individuální a nesdílejí se." eh="4ba9d860" />
 
     <!-- Category 3: Soil Nutrients -->
     <e k="helpLine_sf_nu_p1_title" v="Dusík a Fosfor" eh="27d37372" />
     <e k="helpLine_sf_nu_p1_n_title" v="Dusík (N) - Stupnice 0 až 100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="Nejpohyblivější živina – vyčerpává se nejrychleji a při dešti se silně vyplavuje. Špatný: pod 30. Dobrý: nad 50. Zvyšte pomocí: kapalného hnojiva, UAN-32, UAN-28, bezvodého amoniaku, močoviny, AMS, hnoje nebo kejdy." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Nejpohyblivější živina - vyčerpává se nejrychleji a při dešti se silně vyplavuje. Špatný: pod 30. Dobrý: nad 50. Zvyšte pomocí: kapalného hnojiva, UAN-32, UAN-28, bezvodého amoniaku, močoviny, AMS, hnoje nebo kejdy." eh="58d62253" />
     <e k="helpLine_sf_nu_p1_p_title" v="Fosfor (P) - Stupnice 0 až 100" eh="979bba64" />
     <e k="helpLine_sf_nu_p1_p_text" v="Silně se váže na půdu a Vyplavuje se velmi pomalu. Vyčerpává se hlavně sklizní. Řepka má nejvyšší nároky na P. Špatný: pod 25. Dobrý: nad 45. Zvyšte pomocí: MAP, DAP, startovacího hnojiva nebo kapalného hnojiva." eh="92c5ac66" />
 
@@ -273,7 +273,7 @@
     <e k="helpLine_sf_nu_p2_k_title" v="Draslík (K) - Stupnice 0 až 100" eh="2a16e8bc" />
     <e k="helpLine_sf_nu_p2_k_text" v="Kritický pro kořenovou a hlíznatou zeleninu. Brambory a cukrová řepa při každé sklizni silně vyčerpávají K. Při dešti se mírně Vyplavuje. Špatný: pod 20. Dobrý: nad 40. Zvyšte pomocí: draselného hnojiva (0-0-60), kejdy, digestátu nebo kapalného hnojiva." eh="7230fee4" />
     <e k="helpLine_sf_nu_p2_ph_title" v="pH - Stupnice 5.0 až 7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="Většina plodin prosperuje při pH 6.5 až 7.0. Déšť s postupem času půdu pomalu zakyseluje. pH se samo neobnovuje – zvyšuje ho pouze vápno nebo tekuté vápno. Špatný: pod 5.5. Pokud pH před dalším osevem klesá, aplikujte vápno." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="Většina plodin prosperuje při pH 6.5 až 7.0. Déšť s postupem času půdu pomalu zakyseluje. pH se samo neobnovuje - zvyšuje ho pouze vápno nebo tekuté vápno. Špatný: pod 5.5. Pokud pH před dalším osevem klesá, aplikujte vápno." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Organická hmota" eh="6305f4bb" />
     <e k="helpLine_sf_nu_p3_om_title" v="Organická hmota (OM) - Stupnice 0 až 10" eh="58f490f3" />
@@ -286,11 +286,11 @@
     <e k="helpLine_sf_fe_p1_base_title" v="Kapalné, pevné, hnůj a kejda" eh="4668dca7" />
     <e k="helpLine_sf_fe_p1_base_text" v="Kapalné hnojivo přidává vyvážený poměr N+P+K. Pevné hnojivo má vyšší obsah N a P. Hnůj a kejda přidávají N, P, K a organickou hmotu. Digestát (vedlejší produkt bioplynu) má vysoký obsah K a také přidává OM. Vše se aplikuje pomocí standardního vybavení." eh="64069a56" />
     <e k="helpLine_sf_fe_p1_lime_title" v="Vápno a úprava pH" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="Vápno je jediný prostředek pro úpravu pH ze základní hry – nepřidává žádné živiny. Vlastní typy Tekuté vápno a Sádrovec také zvyšují pH (Sádrovec navíc přidává malé množství OM). Aplikujte, jakmile pH klesne pod 6.0, abyste udrželi plodiny v optimálním rozmezí." eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="Vápno je jediný prostředek pro úpravu pH ze základní hry - nepřidává žádné živiny. Vlastní typy Tekuté vápno a Sádrovec také zvyšují pH (Sádrovec navíc přidává malé množství OM). Aplikujte, jakmile pH klesne pod 6.0, abyste udrželi plodiny v optimálním rozmezí." eh="833a967f" />
 
     <e k="helpLine_sf_fe_p2_title" v="Vlastní zdroje dusíku a PK" eh="1021f8c9" />
     <e k="helpLine_sf_fe_p2_n_title" v="Zdroje dusíku (vlastní velkoobjemové vaky)" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) a UAN-28 (28-0-0) jsou kapalné dusíkaté roztoky. Bezvodý amoniak (82-0-0) je produkt s nejvyšším obsahem N na litr. Močovina (46-0-0) a AMS (21-0-0-24S) jsou suchá granulovaná hnojiva. Všechna obsahují pouze N – nemají žádný vliv na P, K ani pH." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) a UAN-28 (28-0-0) jsou kapalné dusíkaté roztoky. Bezvodý amoniak (82-0-0) je produkt s nejvyšším obsahem N na litr. Močovina (46-0-0) a AMS (21-0-0-24S) jsou suchá granulovaná hnojiva. Všechna obsahují pouze N - nemají žádný vliv na P, K ani pH." eh="6a100c25" />
     <e k="helpLine_sf_fe_p2_pk_title" v="Zdroje fosforu a draslíku" eh="a2d4091b" />
     <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0): nejvyšší obsah P na litr. DAP (18-46-0): vysoký obsah P s trochou N. Draselné hnojivo (0-0-60): čisté K. Startovací hnojivo (10-34-0): produkt s vysokým obsahem P určený do řádků s vyváženým N+K. Vše je k dispozici jako zakoupitelné velkoobjemové vaky v obchodě." eh="75a86964" />
 
@@ -305,17 +305,17 @@
     <e k="helpLine_sf_hu_p1_toggle_title" v="Přepínání HUD (Klávesa J)" eh="402283ba" />
     <e k="helpLine_sf_hu_p1_toggle_text" v="Stisknutím J zobrazíte nebo skryjete živé překrytí půdy. Detekuje pole, na kterém se nacházíte, a zobrazuje N, P, K, pH a OM. Pokud je v nastavení povolena plevel, škůdci nebo choroby, tyto řádky se zobrazí ve spodní části panelu." eh="3dcb9bfe" />
     <e k="helpLine_sf_hu_p1_status_title" v="Čtení stavu" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="Každá živina zobrazuje stav Dobrý (není vyžadována žádná akce), Ušatý (zvažte brzkou úpravu) nebo Špatný (vyžaduje akci – ovlivňuje výnos). Celkový odznak v záhlaví odráží nejhorší hodnotu napříč všemi sledovanými parametry včetně plevele, škůdců a chorob." eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Každá živina zobrazuje stav Dobrý (není vyžadována žádná akce), Ušatý (zvažte brzkou úpravu) nebo Špatný (vyžaduje akci - ovlivňuje výnos). Celkový odznak v záhlaví odráží nejhorší hodnotu napříč všemi sledovanými parametry včetně plevele, škůdců a chorob." eh="3b8c2c6e" />
 
     <e k="helpLine_sf_hu_p2_title" v="Rizika pro zdraví pole" eh="b4d35b30" />
     <e k="helpLine_sf_hu_p2_press_title" v="Plevel, škůdci a choroby" eh="0a3fae00" />
     <e k="helpLine_sf_hu_p2_press_text" v="Tři ukazatele tlaku (0 až 100) sledují biologické hrozby na daném poli. Bez zásahu snižují výnos při sklizni: Plevel až o -30 %, Škůdci -20 %, Choroby -25 %. Řádky W, I a D v HUD zobrazují barevně rozlišenou závažnost: zelená (nízká), žlutá (střední), červená (vysoká)." eh="3fc3c400" />
     <e k="helpLine_sf_hu_p2_treat_title" v="Ošetření polí" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="Herbicit snižuje tlak plevele – jakákoli kultivace jej navíc resetuje na nulu. Insekticit snižuje tlak škůdců o 25 bodů a potlačuje opětovný výskyt po dobu 10 dnů. Fungicit snižuje choroby o 20 bodů a potlačuje je po dobu 12 dnů. Každý systém lze vypnout v Nastavení." eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="Herbicit snižuje tlak plevele - jakákoli kultivace jej navíc resetuje na nulu. Insekticit snižuje tlak škůdců o 25 bodů a potlačuje opětovný výskyt po dobu 10 dnů. Fungicit snižuje choroby o 20 bodů a potlačuje je po dobu 12 dnů. Každý systém lze vypnout v Nastavení." eh="4d65bdec" />
 
     <e k="helpLine_sf_hu_p3_title" v="Půdní zpráva" eh="35fcce6c" />
     <e k="helpLine_sf_hu_p3_open_title" v="Otevření zprávy (Klávesa K)" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="Stisknutím K otevřete kompletní půdní zprávu farmy. Souhrnný lišta zobrazuje celkový počet sledovaných polí, kolik z nich potřebuje hnojivo, a vážené procento Zdraví farmy. Pole jsou seřazena podle naléhavosti – nejhorší stav jako první." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_open_text" v="Stisknutím K otevřete kompletní půdní zprávu farmy. Souhrnný lišta zobrazuje celkový počet sledovaných polí, kolik z nich potřebuje hnojivo, a vážené procento Zdraví farmy. Pole jsou seřazena podle naléhavosti - nejhorší stav jako první." eh="38a5bd2e" />
     <e k="helpLine_sf_hu_p3_detail_title" v="Detail pole a doporučení" eh="c99d2b89" />
     <e k="helpLine_sf_hu_p3_detail_text" v="Kliknutím na šipku u libovolného řádku otevřete detailní pohled na dané pole: hodnoty živin, úrovně rizika, předpověď ztráty výnosu a odrážkový seznam doporučení, který vám přesně řekne, co aplikovat. Stisknutím Zpět nebo Escape se vrátíte do tabulky." eh="38dd2c6d" />
 
@@ -328,7 +328,7 @@
 
     <e k="helpLine_sf_se_p2_title" v="HUD a řízení dávkování" eh="399f4910" />
     <e k="helpLine_sf_se_p2_hud_title" v="Možnosti HUD pro každého hráče" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="Každý hráč ovládá svůj vlastní HUD – nesynchronizuje se se serverem. Možnosti: Zobrazit HUD (zap/vyp), Pozice (5 předvoleb + přetažení), Barevný motiv (Zelený / Modrý / Jantarový / Jednobarevný), Velikost písma (Malé / Střední / Velké), Průhlednost (25 % až 100 %), Imperiální jednotky (zap/vyp)." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_hud_text" v="Každý hráč ovládá svůj vlastní HUD - nesynchronizuje se se serverem. Možnosti: Zobrazit HUD (zap/vyp), Pozice (5 předvoleb + přetažení), Barevný motiv (Zelený / Modrý / Jantarový / Jednobarevný), Velikost písma (Malé / Střední / Velké), Průhlednost (25 % až 100 %), Imperiální jednotky (zap/vyp)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Řízení dávky postřikovače" eh="5ecdfa23" />
     <e k="helpLine_sf_se_p2_rate_text" v="V postřikovači nebo rozmetadle použijte SF Zvýšit dávku (]) a SF Snížit dávku ([) pro úpravu aplikační dávky od 0.10x do 2.00x. Přepněte Automatické řízení dávkování (Shift+L), aby mód automaticky cílil na optimální úrovně živin a zabránil riziku popálení." eh="dd385e39" />
 
@@ -337,7 +337,7 @@
     <e k="helpLine_sf_mp_p1_auth_title" v="Simulace řízená serverem" eh="8d324792" />
     <e k="helpLine_sf_mp_p1_auth_text" v="Veškerá simulace půdy běží na serveru. Klienti obdrží kompletní data o polích a nastavení při připojení s automatickým opakovaným pokusem, pokud se server ještě načítá. Nastavení zobrazení HUD (pozice, motiv, velikost) jsou pro každého hráče individuální a nikdy se nesynchronizují se serverem." eh="db72a3f9" />
     <e k="helpLine_sf_mp_p1_ded_title" v="Dedicované servery" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="Dedicované servery spouštějí kompletní simulaci bez jakékoli zátěže HUD nebo GUI – to je očekávané a normální. Ke správě a ověření nastavení na dedicovaném serveru použijte konzolové příkazy (soilStatus, SoilSetDifficulty, SoilShowSettings atd.)." eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="Dedicované servery spouštějí kompletní simulaci bez jakékoli zátěže HUD nebo GUI - to je očekávané a normální. Ke správě a ověření nastavení na dedicovaném serveru použijte konzolové příkazy (soilStatus, SoilSetDifficulty, SoilShowSettings atd.)." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="Kompatibilita a pracovní postup" />
     <e k="helpLine_sf_mp_p2_compat_title" v="Kompatibilita módů" />
     <e k="helpLine_sf_mp_p2_compat_text" v="Půda &amp; hnojiva používá připojené funkční háky (hooks), takže funguje po boku Courseplay, AutoDrive a většiny módů vybavení bez konfliktů. Jakmile je v uložené hře aktivní Precision Farming, mód to rozpozná a automaticky se deaktivuje, takže oba módy nikdy nesoutěží o stejná pole." />
@@ -539,7 +539,7 @@
     <e k="sf_treat_section_fert" v="Aplikace živin" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Ochrana plodin" eh="bd3fe9cd" />
     <e k="sf_treat_hint" v="Specializovaná hnojiva najdete v sekci 'Produkty' v obchodě." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="Optimální – Není vyžadována žádná akce." eh="4501a96b" />
+    <e k="sf_treat_action_optimal" v="Optimální - Není vyžadována žádná akce." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Aplikujte VÁPNO nebo TEKUTÉ VÁPNO ke zvýšení pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplikujte SÁDROVEC ke snížení pH / zlepšení struktury." eh="4cb3f0dc" />
     <e k="sf_treat_action_om_low" v="Zaorejte HNŮJ, KOMPOST nebo rozdrcenou slámu." eh="33ec544c" />
@@ -603,9 +603,9 @@
     <e k="sf_notify_burn_body" v="Pole %d: poškození nadměrnou aplikací (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Zjištěn problém se synchronizací dat. Nahlaste prosím, pokud to přetrvává." eh="1a307946" />
     <e k="sf_notify_lime_crop_title" v="Varování ohledně úpravy" eh="33228c86" />
-    <e k="sf_notify_lime_crop_body" v="Pole %d: Vápno na rostoucí plodině – výnos -80%% při sklizni!" eh="9174b3ef" />
+    <e k="sf_notify_lime_crop_body" v="Pole %d: Vápno na rostoucí plodině - výnos -80%% při sklizni!" eh="9174b3ef" />
     <e k="sf_notify_om_crop_title" v="Varování ohledně úpravy" eh="33228c86" />
-    <e k="sf_notify_om_crop_body" v="Pole %d: Organická hmota na rostoucí plodině – výnos -20%% při sklizni." eh="8a78f46a" />
+    <e k="sf_notify_om_crop_body" v="Pole %d: Organická hmota na rostoucí plodině - výnos -20%% při sklizni." eh="8a78f46a" />
 
     <!-- ======================================================
          SETTINGS PANEL - CATEGORIES & SECTION HEADERS
@@ -630,10 +630,10 @@
     <e k="sf_panel_hdr_actions" v="Akce &amp; Nástroje polí" eh="f64ba1c9" />
     <e k="sf_panel_hdr_hud_layout" v="Rozvržení HUD" eh="54e1930b" />
     <e k="sf_hud_enter_drag_label" v="Přesunout &amp; Změnit velikost panelů" eh="be34d24d" />
-    <e k="sf_hud_enter_drag_desc" v="Táhnutím přesunete HUD – táhnutím za roh změníte velikost – Pravým tlačítkem nebo Esc dokončíte" eh="1d7b1dee" />
+    <e k="sf_hud_enter_drag_desc" v="Táhnutím přesunete HUD - táhnutím za roh změníte velikost - Pravým tlačítkem nebo Esc dokončíte" eh="1d7b1dee" />
     <e k="sf_independent_panels_short" v="Volné rozvržení panelů" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Umožňuje v režimu úprav libovolně umístit chytré systémové panely" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="V režimu úprav (Shift+H) přetahujte každý panel volně. Panely sbalíte tlačítkem − v jejich záhlaví." eh="7c60edfc" />
+    <e k="sf_desc_independentPanels" v="V režimu úprav (Shift+H) přetahujte každý panel volně. Panely sbalíte tlačítkem - v jejich záhlaví." eh="7c60edfc" />
 
     <!-- ======================================================
          SETTINGS PANEL - CHROME
@@ -836,11 +836,11 @@
     <e k="action_SF_SEE_SPRAY_DISEASE" v="SF: Přepnout See &amp; Spray na choroby" eh="205a3668" />
     <e k="action_SF_SEE_SPRAY_WEED"   v="SF: Přepnout See &amp; Spray na plevel" />
     <e k="action_SF_VARIABLE_RATE"    v="SF: Přepnout proměnlivé dávkování" />
-    <e k="sf_guide_sub_1" v="Přehled – Co tento mód sleduje a proč na tom záleží" eh="69091cec" />
-    <e k="sf_guide_sub_2" v="Průvodce HUD – Čtení panelů živin a ukazatelů na obrazovce" eh="da09523b" />
-    <e k="sf_guide_sub_3" v="Pracovní postup – Vaše denní a sezónní rutina správy půdy" eh="438cd61b" />
-    <e k="sf_guide_sub_4" v="Produkty – Co jednotlivá hnojiva ovlivňují a kdy je používat" eh="ab1d5b05" />
-    <e k="sf_guide_sub_5" v="Časté dotazy (FAQ) – Odpovědi na běžné otázky" eh="b383de9c" />
+    <e k="sf_guide_sub_1" v="Přehled - Co tento mód sleduje a proč na tom záleží" eh="69091cec" />
+    <e k="sf_guide_sub_2" v="Průvodce HUD - Čtení panelů živin a ukazatelů na obrazovce" eh="da09523b" />
+    <e k="sf_guide_sub_3" v="Pracovní postup - Vaše denní a sezónní rutina správy půdy" eh="438cd61b" />
+    <e k="sf_guide_sub_4" v="Produkty - Co jednotlivá hnojiva ovlivňují a kdy je používat" eh="ab1d5b05" />
+    <e k="sf_guide_sub_5" v="Časté dotazy (FAQ) - Odpovědi na běžné otázky" eh="b383de9c" />
     <e k="sf_guide_p1_01" v="CO JE TENTO MÓD" eh="fe4d3283" />
     <e k="sf_guide_p1_02" v="Sleduje 5 živin v půdě pro každé pole na" eh="93e6595b" />
     <e k="sf_guide_p1_03" v="vaší farmě. Plodiny vyčerpávají živiny při sklizni." eh="5e6dc5a8" />
@@ -851,20 +851,20 @@
     <e k="sf_guide_p1_08" v="P   Fosfor         Pomalé vyčerpání. Okopaniny." eh="651919e6" />
     <e k="sf_guide_p1_09" v="K   Draslík        Okopaniny jej silně vyčerpávají." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="OM  Organická hmota Tvoří se pomalu během mnoha sezón." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="pH  Kyselost půdy. Cílové rozmezí: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="pH  Kyselost půdy. Cílové rozmezí: 6.5 - 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="ÚROVNĚ STAVU" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="DOBRÝ (zelená)  Na nebo nad optimálním cílem plodiny." eh="a081208f" />
     <e k="sf_guide_p1_14" v="  Tato sezóna nevyžaduje žádnou akci." eh="58b36ac2" />
     <e k="sf_guide_p1_15" v="UŠATÝ (žlutá)  Pod optimem." eh="0d30dbe4" />
     <e k="sf_guide_p1_16" v="  Naplánujte doplnění. Výnos je mírně snížen." eh="0363160b" />
     <e k="sf_guide_p1_17" v="ŠPATNÝ (červená) Pod minimální prahovou hodnotou." eh="96f2a246" />
-    <e k="sf_guide_p1_18" v="  Jednejte hned – dopad na výnos je závažný." eh="587bdd4a" />
+    <e k="sf_guide_p1_18" v="  Jednejte hned - dopad na výnos je závažný." eh="587bdd4a" />
     <e k="sf_guide_p1_19" v="RYCHLÝ START (5 KROKŮ)" eh="f1bcfcdb" />
     <e k="sf_guide_p1_20" v="1. Otevřete PDA (herní menu) > Půda &amp; Hnojivo." eh="22539c14" />
     <e k="sf_guide_p1_21" v="2. Zkontrolujte přehled farmy na červeně označená pole." eh="d4e823e8" />
     <e k="sf_guide_p1_22" v="3. Použijte plán ošetření k zjištění, co je potřeba." eh="1a0c7961" />
     <e k="sf_guide_p1_23" v="4. Aplikujte správný hnojivý produkt." eh="b44bcac2" />
-    <e k="sf_guide_p1_24" v="5. Sklízejte normálně – živiny se odečtou automaticky." eh="fa399c0f" />
+    <e k="sf_guide_p1_24" v="5. Sklízejte normálně - živiny se odečtou automaticky." eh="fa399c0f" />
     <e k="sf_guide_p1_25" v="NÁSTROJE V PŘEHLEDU" eh="103ce1b5" />
     <e k="sf_guide_p1_26" v="HUD bary       Půdní úrovně pro vaše aktuální pole." eh="4d0661d7" />
     <e k="sf_guide_p1_27" v="  Klávesa: Přepnout půdní HUD (ve výchozím stavu nepřiřazeno)." eh="4e3fc48e" />
@@ -891,15 +891,15 @@
     <e k="sf_guide_p2_04" v="Barva baru vám na první pohled řekne stav." eh="e07e4240" />
     <e k="sf_guide_p2_05" v="TŘI ZNAČKY" eh="70556f5d" />
     <e k="sf_guide_p2_06" v="Každý bar má tři malé svislé značky." eh="65bb2211" />
-    <e k="sf_guide_p2_07" v="ORANŽOVÁ značka – Hranice špatného/ušatého stavu." eh="5f9f1409" />
+    <e k="sf_guide_p2_07" v="ORANŽOVÁ značka - Hranice špatného/ušatého stavu." eh="5f9f1409" />
     <e k="sf_guide_p2_08" v="  Pod touto čárou je bar ČERVENÝ." eh="4cebe452" />
     <e k="sf_guide_p2_09" v="  Vaše půda je ve ŠPATNÉM stavu." eh="7a3175e4" />
     <e k="sf_guide_p2_10" v="  Akce: okamžitě aplikujte hnojivo." eh="209e2635" />
-    <e k="sf_guide_p2_11" v="ŽLUTÁ značka – Hranice ušatého/dobrého stavu." eh="f7a41325" />
+    <e k="sf_guide_p2_11" v="ŽLUTÁ značka - Hranice ušatého/dobrého stavu." eh="f7a41325" />
     <e k="sf_guide_p2_12" v="  Mezi oranžovou a žlutou značkou je bar ŽLUTÝ." eh="cac82a8d" />
-    <e k="sf_guide_p2_13" v="  Půda je v UŠATÉM stavu – pod optimem plodiny." eh="320016a7" />
+    <e k="sf_guide_p2_13" v="  Půda je v UŠATÉM stavu - pod optimem plodiny." eh="320016a7" />
     <e k="sf_guide_p2_14" v="  Akce: naplánujte na tuto sezónu doplnění." eh="3cf7dfa3" />
-    <e k="sf_guide_p2_15" v="AZUROVÁ značka – Optimální cíl pro vaši zasazenou plodinu." eh="6a0b26f8" />
+    <e k="sf_guide_p2_15" v="AZUROVÁ značka - Optimální cíl pro vaši zasazenou plodinu." eh="6a0b26f8" />
     <e k="sf_guide_p2_16" v="  Dosáhněte tohoto bodu pro maximální výnos." eh="cc7c263f" />
     <e k="sf_guide_p2_17" v="  Když jej dosáhnete, bar je ZELENÝ." eh="b5e669ea" />
     <e k="sf_guide_p2_18" v="  Každá plodina má jiné cíle pro N/P/K." eh="d25b96a5" />
@@ -999,13 +999,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="KOREKCE pH" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 ├óÔé¼ÔÇ£ 7.0 for most crops." eh="142248c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 - 7.0 for most crops." eh="7d422dfe" />
     <e k="sf_guide_p4_19" v="" eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="pH příliš NÍZKÉ (kyselé, pod 6,5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="pH příliš VYSOKÉ (alkalické, nad 7,5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1├óÔé¼ÔÇ£2 seasons for full normalization." eh="b64ec970" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1-2 seasons for full normalization." eh="a35d71d3" />
     <e k="sf_guide_p4_25" v="ORGANICKÁ HMOTA (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="Hnůj          Nejlepší budovatel OM. Také přidává N." eh="99834812" />
     <e k="sf_guide_p4_27" v="Kompost       Střední OM, dobře vyvážený." eh="d9b0e2f9" />
@@ -1045,9 +1045,9 @@
     <e k="sf_guide_p5_22" v="MUSÍM HNOJIT KAŽDOU SEZÓNU?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="Dusík: Ano, každou sezónu pokud možno." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2├óÔé¼ÔÇ£3 seasons is usually enough." eh="8863dc51" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2-3 seasons is usually enough." eh="d6e2db5f" />
     <e k="sf_guide_p5_26" v="Organická OM: Dlouhodobě. Přidávejte hnůj jednou ročně." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5├óÔé¼ÔÇ£7.0 range." eh="2dcf1b6d" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5-7.0 range." eh="66a52606" />
     <e k="sf_guide_p5_28" v="JAK FUNGUJÍ SYSTÉMY CHYTRÝCH SENZORŮ?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="Chytrý senzor blokuje jednotlivé sekce ramene, pokud" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="není zjištěna potřeba (žádný škůdce, choroba ani deficit živin" eh="22de015a" />
@@ -1062,7 +1062,7 @@
     <e k="sf_guide_p5_39" v="oprávnění správce v multiplayerových sezeních." eh="a48c5146" />
     <e k="sf_guide_p5_40" v="JAK PŮDA OVLIVŇUJE VÝNOS?" eh="456d3c9f" />
     <e k="sf_guide_p5_41" v="[EN] GOOD soil: full yield - no penalty." eh="49e249c2" />
-    <e k="sf_guide_p5_42" v="PRŮMĚRNÁ půda: ~5–15% postih výnosu na živinu." eh="bced6a1c" />
+    <e k="sf_guide_p5_42" v="PRŮMĚRNÁ půda: ~5-15% postih výnosu na živinu." eh="bced6a1c" />
     <e k="sf_guide_p5_43" v="ŠPATNÁ půda: až 40% postih. Opravte to rychle." eh="244d5bf2" />
     <e k="sf_guide_p5_44" v="Postihy se sčítají: ŠPATNÝ N + PRŮMĚRNÝ P = velká ztráta." eh="8afb61f9" />
     <e k="sf_guide_title" v="[EN] Soil &amp; Fertilizer - Field Guide" eh="0e662248" />
