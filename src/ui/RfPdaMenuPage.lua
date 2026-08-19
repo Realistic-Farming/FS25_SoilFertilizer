@@ -1033,13 +1033,56 @@ function RfPdaMenuPage:_ensureMtoArrowsVisible(sel)
         return
     end
 
-    sel.disableButtonsOnSingleText = false
-    sel.hideLeftRightButtons = false
-    if sel.setCanChangeState then
-        sel:setCanChangeState(true)
+    -- BUILD 17:50 (PB-06). The item count decides everything below this line.
+    --
+    -- Before 17:50 this helper forced the arrows enabled and full lime unconditionally,
+    -- which was the fault it fixed: with a single entry the arrow cannot change state, so
+    -- the player saw a bright, clickable-looking arrow that could never act.
+    --
+    -- 17:50 leaned on disableButtonsOnSingleText to express that. BUILD 20:39 takes it back
+    -- off (see the note below the empty-list guard) and drives disabled from here alone.
+    -- Line references throughout are
+    -- .local/ref/FS25-lua-scripting/elements/MultiTextOptionElement.lua unless named
+    -- otherwise. Nothing here is guessed.
+    local texts = sel.texts or {}
+
+    -- BUILD 20:39. An empty text list means "not seeded yet", not "one page", and the two
+    -- must not be treated the same. Every caller below runs this helper both BEFORE and
+    -- AFTER the texts are set, so the early call used to latch the pager disabled from a
+    -- count that was about to change - and if the seeding path then failed or threw, the
+    -- pager stayed disabled for the rest of the session while the arrows below still got
+    -- painted. That is one of the three ways George's TASK 20:38 lime-but-dead read is
+    -- reachable. With no texts there is nothing to page through, so write nothing and let
+    -- the seeded call decide.
+    if #texts == 0 then
+        return
     end
+    local multi = #texts > 1
+
+    -- BUILD 20:39: disableButtonsOnSingleText stays FALSE (Sam feel lock DESIGN 20:00,
+    -- re-stated in BUILD 20:39; the XML declares false on every MTO in this page).
+    -- 17:50 read it as a free engine helper, but it is not free: with it true the engine
+    -- writes setDisabled(#texts <= 1) from inside updateContentElement (:831-833), and
+    -- updateContentElement runs on every setTexts, setState and arrow click. That is a
+    -- second writer on the one flag that decides whether the pager takes input at all,
+    -- firing on the same frame as our own write - "state reset in the same frame", the
+    -- third cause George named. With it false this function is the only writer.
+    -- The single-page focus guard 17:50 wanted from it is not lost: canReceiveFocus (:774)
+    -- also returns false on a disabled element, and one page still sets disabled below.
+    sel.disableButtonsOnSingleText = false
+    sel.hideLeftRightButtons = false   -- never remove the control, only dim it
+    if sel.setCanChangeState then
+        sel:setCanChangeState(multi)
+    end
+    -- This is the gate that decides whether a click ever reaches the arrows. A disabled
+    -- MTO swallows the whole mouse event before it can descend to its buttons:
+    -- MultiTextOptionElement:mouseEvent wraps its entire body in getIsActive() (:434) and
+    -- GuiElement:getIsActive is "not disabled and visible" (GuiElement.lua:1338-1340).
+    -- The GuiOverlay.setColor tint further down does NOT go through that gate, so a
+    -- disabled pager still paints lime - which is exactly the reported defect: lime arrows,
+    -- dead clicks. Multi-page must therefore end this call with disabled == false.
     if sel.setDisabled then
-        sel:setDisabled(false)
+        sel:setDisabled(not multi)
     end
 
     -- Extract: GuiUtils.getNormalizedScreenValues(values, default) - values = "Wpx Hpx" or array; returns table.
@@ -1053,11 +1096,22 @@ function RfPdaMenuPage:_ensureMtoArrowsVisible(sel)
     end
 
     -- ButtonElement extends TextElement (not Bitmap); tint via GuiOverlay on .overlay.
-    local r, g, b, a = 0.549, 0.776, 0.247, 1
+    --
+    -- Enabled keeps George's lime. Disabled goes to Samantha's neutral 45% rather than a faded
+    -- lime, so "cannot act" reads as absence of colour instead of a dimmed affordance. The
+    -- brief writes the enabled state as {1,1,1,1}, which would drop the lime this file already
+    -- carries; that is not what PB-06 is about, so the lime stays and the reading is flagged
+    -- in the reply rather than decided silently.
+    local r, g, b, a
+    if multi then
+        r, g, b, a = 0.549, 0.776, 0.247, 1
+    else
+        r, g, b, a = 1, 1, 1, 0.45
+    end
     for _, btn in ipairs({ sel.leftButtonElement, sel.rightButtonElement }) do
         if btn ~= nil then
             if btn.setVisible then btn:setVisible(true) end
-            if btn.setDisabled then btn:setDisabled(false) end
+            if btn.setDisabled then btn:setDisabled(not multi) end
             -- Size THEN lime (George Plan A). Absolute target - do not ratio current size.
             if type(btn.setSize) == "function" and tw ~= nil and th ~= nil then
                 btn:setSize(tw, th)
@@ -1073,8 +1127,19 @@ function RfPdaMenuPage:_ensureMtoArrowsVisible(sel)
 end
 
 --- Keep Map circle arrows enabled + lime on first open (not near-black grey).
+--- BUILD 20:39: also the wrap lock for the left-pane pager. Wrap is engine-native and on
+--- by default (MultiTextOptionElement.lua:55) - onRightButtonClicked rolls #texts -> 1 and
+--- onLeftButtonClicked rolls 1 -> #texts (:670-679 / :721-730) - but XML #wrap and profile
+--- "wrap" can both turn it off (:111 / :141), and with it off the last page clamps and the
+--- arrow reads dead at exactly one end. The ask is explicit that both ends wrap, so state
+--- it rather than inherit it. Set here on the pager only: _ensureMtoArrowsVisible is shared
+--- with the WC wage / About / subnav MTOs, and their wrap is not this token's business.
 function RfPdaMenuPage:_ensureSelectorArrowsVisible()
-    self:_ensureMtoArrowsVisible(self.rfPanelSelector)
+    local sel = self.rfPanelSelector
+    if sel ~= nil then
+        sel.wrap = true
+    end
+    self:_ensureMtoArrowsVisible(sel)
 end
 
 --- Stable id list fingerprint for quiet SmoothList reload decisions.
@@ -1114,7 +1179,10 @@ function RfPdaMenuPage:refreshPanelSelector(forceRebuildDots)
             activeIndex = 1
         end
 
-        self:_ensureSelectorArrowsVisible()
+        -- BUILD 20:39: the pre-setTexts ensure call that used to sit here is gone. It fed
+        -- _ensureMtoArrowsVisible the PREVIOUS text count - on first open an empty one - so
+        -- it decided the pager's disabled state from a number that the next line was about
+        -- to replace. The post-setState call below is the one that matters and it stays.
         -- setTexts can re-apply profile single-text disable; always follow with force-enable.
         self.rfPanelSelector:setTexts(texts)
         if self.rfPanelSelector.setState then
@@ -1270,14 +1338,43 @@ function RfPdaMenuPage:_applySelectorState()
 
     local state = self.rfPanelSelector:getState()
     local panel = self._panelCache[state]
-    if panel == nil then return end
+    if panel == nil then
+        -- BUILD 20:39: this is the second half of the defect. The arrow has already moved
+        -- the label and the dots by the time we get here (the engine advances state, then
+        -- raises this callback), so returning empty-handed leaves the page NAME on one
+        -- module and the page CONTENT on another - the "content does not move" read. A
+        -- cache one module older than the MTO texts is enough to hit it. Re-read the
+        -- registry once before giving up.
+        local panels = (type(host.getPanels) == "function") and host:getPanels() or nil
+        if panels ~= nil then
+            self._panelCache = panels
+            panel = panels[state]
+        end
+    end
+    if panel == nil then
+        -- Still nothing at this index: put the pager back on the page that is actually
+        -- showing. An honest snap-back beats a label pointing at a page that never loaded.
+        self:_restoreBrandToActivePanel()
+        return
+    end
 
     if host.activeModuleId ~= panel.id then
         if not self:_allowModuleSelect(panel.id) then
+            -- Refused by the dual-fire debounce. The MTO state has still moved, so snap it
+            -- back or label, dots and content stay disagreeing until the next full refresh.
+            self:_restoreBrandToActivePanel()
             return
         end
         -- Host notify refreshes selector + content (quiet lists).
-        host:selectPanel(panel.id)
+        local switched = host:selectPanel(panel.id)
+        if switched == false then
+            -- Registry refused (module gone or isAvailable false): no notify fires, so
+            -- nothing downstream would ever correct the advanced label. Snap it back.
+            SoilLogger.warning("RfPdaMenuPage: selectPanel %s refused, restoring pager state",
+                tostring(panel.id))
+            self:_restoreBrandToActivePanel()
+            return
+        end
         SoilLogger.info("RfPdaMenuPage: selectPanel %s (arrow/selector)", tostring(panel.id))
     else
         self:refreshContent(false)
