@@ -2230,16 +2230,13 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
         return checksums
     end
 
-    if g_dedicatedServer ~= nil or g_currentMission == nil
-       or g_currentMission.addUpdateable == nil then
-        -- Synchronous path (connection lifetime guaranteed - see issue #228)
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
         for i, item in ipairs(work) do
             connection:sendEvent(buildChunk(item, i == #work))
         end
         connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
         SoilLogger.info("Server: value maps sent synchronously (%d chunks)", #work)
     else
-        -- Listen server: drip-feed chunks across frames
         local dispatcher = {
             index      = 1,
             timer      = 0,
@@ -2248,6 +2245,10 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
             connection = connection,
             update = function(dsp, dt)
                 if not dsp.connection or dsp.index > #dsp.work then
+                    g_currentMission:removeUpdateable(dsp)
+                    return
+                end
+                if dsp.connection.isConnected == false then
                     g_currentMission:removeUpdateable(dsp)
                     return
                 end
