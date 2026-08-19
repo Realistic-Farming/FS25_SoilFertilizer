@@ -4135,7 +4135,8 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         areaM2 = boomLen * (h * 2)
     end
 
-    if areaM2 and areaM2 > 0.001 then
+    local minArea = boomLen * 0.02
+    if areaM2 and areaM2 > minArea then
         local areaHa = areaM2 / 10000
         local scale = sd.area / areaHa
         local vm = self.valueMaps
