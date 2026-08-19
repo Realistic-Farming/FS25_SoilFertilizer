@@ -1570,23 +1570,22 @@ function HookManager:installSeeAndSprayHook()
                             if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
                             if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
                             if weedSS    then
-                                local herbicideActive = (fd.herbicideDaysLeft or 0) > 0
-                                local weedsGone = herbicideActive
-                                if not weedsGone then
-                                    -- Ground truth: query the game's weed density map at this exact position.
-                                    -- weedState 0=none, 1-6=alive, 7-9=withered/dying → suppress 0 or >=7.
-                                    local fs = getWeedFieldState(fieldId)
-                                    if fs then
-                                        local uok = pcall(function() fs:update(sx, sz) end)
-                                        if uok then
-                                            local ws = fs.weedState or -1
+                                local weedsGone = false
+                                local groundTruth = false
+                                local fs = getWeedFieldState(fieldId)
+                                if fs then
+                                    local uok = pcall(function() fs:update(sx, sz) end)
+                                    if uok then
+                                        local ws = fs.weedState or -1
+                                        if ws >= 0 then
+                                            groundTruth = true
                                             weedsGone = (ws == 0 or ws >= 7)
                                         end
                                     end
-                                    -- Fallback to stale cell pressure if weed system unavailable.
-                                    if not weedsGone then
-                                        weedsGone = (cellWeed < ssCfg.WEED_THRESHOLD)
-                                    end
+                                end
+                                if not groundTruth then
+                                    weedsGone = (fd.herbicideDaysLeft or 0) > 0
+                                        or (cellWeed < ssCfg.WEED_THRESHOLD)
                                 end
                                 skip = skip or weedsGone
                             end
@@ -3894,6 +3893,7 @@ function HookManager:installSprayerAreaHook()
                 local scratchN = 0
                 local vrSectionRates = nil
                 local vrWeightSum = 0.0
+                local herbAreaFraction = 1
 
                 local function applySingle(fId, sectionLiters, spx, spz)
                     if not fId or fId <= 0 then return end
@@ -3907,7 +3907,7 @@ function HookManager:installSprayerAreaHook()
                         soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters)
                     end
                     if herbOnlyDirect and soilSys.onHerbicideAppliedDirect then
-                        soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters)
+                        soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
                     end
                     if pestOnlyDirect and soilSys.onInsecticideAppliedDirect then
                         soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters)
@@ -3941,6 +3941,7 @@ function HookManager:installSprayerAreaHook()
                         end
                     end
                     for i = scratchN + 1, #scratch do scratch[i] = nil end
+                    herbAreaFraction = scratchN / #vww.sections
 
                     if scratchN > 0 then
                         -- Variable Rate (System 3): look up per-section weights if active
@@ -4069,7 +4070,7 @@ function HookManager:installSprayerAreaHook()
                                                         soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2)
                                                     end
                                                     if herbOnly2 and soilSys.onHerbicideAppliedDirect then
-                                                        soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2)
+                                                        soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2 * herbAreaFraction)
                                                     end
                                                     if pestOnly2 and soilSys.onInsecticideAppliedDirect then
                                                         soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2)
