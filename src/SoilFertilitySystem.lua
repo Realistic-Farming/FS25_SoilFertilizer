@@ -5221,16 +5221,15 @@ function SoilFertilitySystem:isAmendmentBurnRisk(fruitTypeIndex, growthState)
     local fruitName    = fruitDesc.name and string.lower(fruitDesc.name)
     local perennialSet = SoilConstants.PERENNIAL_FORAGE_NAMES
     local gs = growthState or 0
+    local cutStates = fruitDesc.cutStates
+    if cutStates and cutStates[gs] then return false end
+    if fruitDesc.witheredState and gs == fruitDesc.witheredState then return false end
     if fruitName and perennialSet and perennialSet[fruitName] then
-        -- Perennial forage: burnable only inside the harvest window (tall sward).
         local minH = fruitDesc.minHarvestingGrowthState
         local maxH = fruitDesc.maxHarvestingGrowthState
-        local cutStates = fruitDesc.cutStates
         return (minH and minH > 0 and gs >= minH
-            and (not maxH or maxH <= 0 or gs <= maxH)
-            and not (cutStates and cutStates[gs])) or false
+            and (not maxH or maxH <= 0 or gs <= maxH)) or false
     end
-    -- Annual: burnable once established past the early seedling stage.
     local minH = fruitDesc.minHarvestingGrowthState or 6
     local frac = (SoilConstants.AMEND_BURN and SoilConstants.AMEND_BURN.ANNUAL_SEEDLING_FRACTION) or 0.33
     local establishedState = math.max(2, math.ceil(minH * frac))
