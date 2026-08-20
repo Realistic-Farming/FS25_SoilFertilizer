@@ -16,17 +16,29 @@
 local MOD_DIR = g_currentModDirectory
 local MOD_NAME = g_currentModName
 
--- Soft log when sourced from WC/CS joiners (SoilLogger may be absent).
+-- Soft log when sourced from a non-Soil joiner (SoilLogger may be absent).
+-- BUILD 17:08: the stub's signature must match Soil's real logger, which is DOT-called
+-- with the format first (src/utils/Logger.lua: function SoilLogger.info(msg, ...)), and
+-- every call in this file is dot-style. The old stub took (_, fmt, ...) as if colon-called,
+-- so on every non-Soil-hosted door the message landed in the discarded first slot and the
+-- log printed only the leftover arguments - or nothing at all. That is why the host's
+-- [RfEsc] lines have never appeared in a Dairy-door log, and it would have eaten the
+-- selector diagnostics this build ships. pcall on the format so a stray % in a runtime
+-- value can never turn a log line into the only traceback on the page.
 if SoilLogger == nil then
+    local function stubLine(fmt, ...)
+        local ok, text = pcall(string.format, fmt or "", ...)
+        return "[RfEsc] " .. (ok and text or tostring(fmt))
+    end
     SoilLogger = {
-        info = function(_, fmt, ...)
-            if Logging and Logging.info then Logging.info("[RfEsc] " .. string.format(fmt or "", ...)) end
+        info = function(fmt, ...)
+            if Logging and Logging.info then Logging.info(stubLine(fmt, ...)) end
         end,
-        warning = function(_, fmt, ...)
-            if Logging and Logging.warning then Logging.warning("[RfEsc] " .. string.format(fmt or "", ...)) end
+        warning = function(fmt, ...)
+            if Logging and Logging.warning then Logging.warning(stubLine(fmt, ...)) end
         end,
-        error = function(_, fmt, ...)
-            if Logging and Logging.error then Logging.error("[RfEsc] " .. string.format(fmt or "", ...)) end
+        error = function(fmt, ...)
+            if Logging and Logging.error then Logging.error(stubLine(fmt, ...)) end
         end,
     }
 end
@@ -198,7 +210,9 @@ local function mdResolve(bare, name)
             MdRfPdaGuest = "FS25_MarketDynamics",
             MDMMarketScreenGraph = "FS25_MarketDynamics",
             MDMMarketScreen = "FS25_MarketDynamics",
+            MDMPriceFormat = "FS25_MarketDynamics",
             CsRfPdaGuest = "FS25_SeasonalCropStress",
+            NpcRfPdaGuest = "FS25_NPCFavor",
         }
         local env = g_modEnvironments[OWNER[name] or "FS25_MarketDynamics"]
         if env ~= nil and env[name] ~= nil then
@@ -212,16 +226,69 @@ local function mdResolve(bare, name)
             end
         end
     end
-    -- 4. real global table: MarketDynamics publishes here from BUILD 11:43.
+    -- 4. _G. BUILD 14:04 (George TASK 10:53): Vera's live gate read via=mission, which
+    --    means belts 2 and 3 miss on the live engine (g_modEnvironments carries nothing
+    --    there) and getfenv(0) is the per-mod sandbox, not a shared root. _G read from mod
+    --    code resolves through the sandbox chain, so when the engine backs it with the real
+    --    global table this belt sees a publisher's _G write; when the sandbox loops _G onto
+    --    itself it degenerates to the bare lookup and costs one table index.
+    if type(_G) == "table" and _G[name] ~= nil then
+        return _G[name]
+    end
+    -- 5. sandbox root: MarketDynamics publishes here from BUILD 11:43.
     local okEnv, root = pcall(getfenv, 0)
     if okEnv and type(root) == "table" and root[name] ~= nil then
         return root[name]
     end
-    -- 5. mission handle, same publish.
+    -- 6. mission handle, same publish. The one belt Vera's live gate has actually seen
+    --    resolve on a non-MD door (via=mission), so it must stay last-resort-but-present.
     if g_currentMission ~= nil and g_currentMission[name] ~= nil then
         return g_currentMission[name]
     end
     return nil
+end
+
+--- BUILD 14:04 fence for _populateMdCommodityRow: 2dp currency when MDMPriceFormat cannot
+--- be resolved at all. George's constraint on the failed probe is "degrades to 2dp path -
+--- never formatMoney(..., 0)". This is the Vera-F2 pad rule in miniature (formatNumber and
+--- formatMoney both round-then-tostring, so neither ever pads a whole number to .00): split
+--- the digits by hand, let formatNumber group the integer half only, take the locale's own
+--- decimal mark. No x1000, no litre suffix, no animal test - that display policy lives in
+--- MDMPriceFormat and duplicating it here would put two dialects back on screen. This fence
+--- should be unreachable: the Prices rows only paint under a registered MD guest, and
+--- registration publishes MDMPriceFormat to the mission handle every attempt.
+local function mdMoney2(value)
+    local rounded = value
+    if MathUtil ~= nil and type(MathUtil.round) == "function" then
+        rounded = MathUtil.round(value, 2)
+    end
+    local negative = rounded < 0
+    local magnitude = negative and -rounded or rounded
+    local whole = math.floor(magnitude)
+    local frac = math.floor((magnitude - whole) * 100 + 0.5)
+    if frac >= 100 then
+        whole = whole + 1
+        frac = frac - 100
+    end
+    local wholeStr = tostring(whole)
+    local separator = "."
+    local symbol = ""
+    if g_i18n ~= nil then
+        if type(g_i18n.formatNumber) == "function" then
+            wholeStr = g_i18n:formatNumber(whole, 0)
+        end
+        if type(g_i18n.decimalSeparator) == "string" and g_i18n.decimalSeparator ~= "" then
+            separator = g_i18n.decimalSeparator
+        end
+        if type(g_i18n.getCurrencySymbol) == "function" then
+            symbol = g_i18n:getCurrencySymbol(true) or ""
+        end
+    end
+    local out = symbol .. wholeStr .. separator .. string.format("%02d", frac)
+    if negative then
+        out = "-" .. out
+    end
+    return out
 end
 
 local function tr(key, fallback)
@@ -1283,6 +1350,13 @@ function RfPdaMenuPage:_rebuildDots(count)
 end
 
 function RfPdaMenuPage:onClickRfPanelSelector()
+    -- BUILD 17:08 diagnostic, one line per real selector input (forceEvent is false on
+    -- every internal setState in this file, so this callback only fires for the player).
+    -- If a live test still shows dead arrows AND this line never appears in the log, the
+    -- click is being consumed ABOVE this page (menu-level), which the in-page shield in
+    -- mouseEvent cannot reach - that finding goes to George, not to more host code.
+    SoilLogger.info("RfPdaMenuPage: selector input received, state=%s",
+        tostring(self.rfPanelSelector ~= nil and self.rfPanelSelector:getState() or "?"))
     self:_ensureSelectorArrowsVisible()
     self:_applySelectorState()
 end
@@ -1551,6 +1625,17 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
         end
     end
     setVis(self.rfHostTableRegion, isCs)
+    -- BUILD 09:19 (PB-07): the shared row pager is OFF by default, every refresh, for every
+    -- module. Only a guest that implements onPageStep turns it back on, from inside its own
+    -- onShow, which runs after this. That ordering is what stops the pager following the
+    -- player from NPC Favor onto Income or Dairy - those guests do not know the buttons
+    -- exist and would never have hidden them.
+    for _, id in ipairs({ "rfFwPagePrev", "rfFwPageNext" }) do
+        local btn = self:getDescendantById(id)
+        if btn ~= nil and type(btn.setVisible) == "function" then
+            btn:setVisible(false)
+        end
+    end
     -- Action bar rides the CS module only; the guest decides the two buttons.
     setVis(self.csActionBar, isCs)
     if not isCs then
@@ -2336,6 +2421,136 @@ function RfPdaMenuPage:onClickHelpCs()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- BUILD 09:19 (PB-07): shared Table-mode row pager.
+--
+-- rfFwTableBlock is a STATIC eight-row table (rfFwRow1..rfFwRow8) - not a SmoothList - and
+-- four guests paint into it: Income, Dairy, NPC Favor and Fertilizer Depot. When a guest has
+-- more rows than eight it prints "showing 8 of 11" into rfFwMore and the other three rows
+-- were unreachable: no scrollbar, no page control, no route of any kind. Sam's law is that a
+-- list which prints a range must be navigable to the end of that range.
+--
+-- This is a PAGER and deliberately not a SmoothList. George's standing hang lesson is that a
+-- SmoothList nested under the Map-style Bitmap shell in this page can hang the frame, and the
+-- existing csConsultPanel carries the same NO-GO ("George NO-GO on TextElement.new rebuild,
+-- dialog XML nest, or SmoothList"). Two Buttons plus a window offset held by the guest costs
+-- no new list machinery and cannot re-enter the layout.
+--
+-- The host owns only the click. It knows nothing about roster size, page count or labels -
+-- it forwards a step to whichever guest is active and then repaints. A guest that does not
+-- implement onPageStep is simply not pageable and the buttons stay hidden, which is why the
+-- other three Table guests need no change to keep working exactly as before.
+-- ---------------------------------------------------------------------------
+
+--- Forward one page step to the active guest, then repaint the page it just moved.
+---@param delta number -1 for previous page, +1 for next
+---@return boolean moved true when the window moved and a repaint ran
+function RfPdaMenuPage:_rfFwPageStep(delta)
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active == nil then
+        return false
+    end
+    local step = active.onPageStep
+    -- BUILD 14:04 (Brian TEST 10:29). This is why the live MORE was a painted no-op: the
+    -- guest registered onPageStep exactly as BUILD 09:19 described, and
+    -- RfEscModules:registerModule silently dropped it - the sixth handler that whitelist
+    -- has eaten (onOpenFullMarket, onOpenConsultant/Schedule/Help, onPivotRemote,
+    -- onLightTick, onMoverChanged before it). The whitelist now carries onPageStep, and
+    -- this belt is the same shape as the 23:51 onLightTick belt directly below in
+    -- refreshContent: if the registry instance was created by a mod still running an old
+    -- RfEscModules copy, reach the guest class itself rather than shipping a dead button
+    -- again. npcFavor is the only pageable guest today, so the belt names it.
+    if type(step) ~= "function" and active.id == "npcFavor" then
+        local npcGuest = (type(mdResolve) == "function")
+                and mdResolve(NpcRfPdaGuest, "NpcRfPdaGuest") or NpcRfPdaGuest
+        if npcGuest ~= nil and type(npcGuest.onPageStep) == "function" then
+            step = npcGuest.onPageStep
+        end
+    end
+    if type(step) ~= "function" then
+        return false
+    end
+    -- The guest owns the clamp/wrap: it is the only side that knows how many rows it has.
+    -- It returns true when the window actually moved, so a click at a hard end does not
+    -- trigger a pointless full repaint.
+    local ok, moved = pcall(step, delta)
+    if not ok then
+        SoilLogger.warning("RfPdaMenuPage: onPageStep failed on %s: %s",
+            tostring(active.id), tostring(moved))
+        return false
+    end
+    if moved == false then
+        return false
+    end
+    -- Soft refresh: same path the module pager uses, so the guest repaints its rows and its
+    -- own footer range without a full enter/rebuild.
+    self:refreshContent(false)
+    return true
+end
+
+function RfPdaMenuPage:onClickRfFwPagePrev()
+    self:_rfFwPageStep(-1)
+end
+
+function RfPdaMenuPage:onClickRfFwPageNext()
+    self:_rfFwPageStep(1)
+end
+
+--- BUILD 14:04 (PB-07): Space and ">" advance the row pager, per the brief's
+--- "click/Space/>" acceptance. keyEvent walks children first via the superclass
+--- (GuiElement.lua:772-784, children in reverse order, eventUsed carried), so a focused
+--- control that consumes the key - including the pager Button itself activating on Space -
+--- wins before this fires and nothing double-steps. Only an unclaimed press reaches the
+--- step, and only a step that actually moved marks the event used; on every page without a
+--- pageable guest _rfFwPageStep returns false immediately and the key passes through
+--- untouched. unicode 32 is Space, 62 is ">", taken from the event's own unicode so the
+--- layout that produced ">" does not matter.
+function RfPdaMenuPage:keyEvent(unicode, sym, modifier, isDown, eventUsed)
+    local used = RfPdaMenuPage:superClass().keyEvent(self, unicode, sym, modifier, isDown, eventUsed)
+    if not used and isDown == true and (unicode == 32 or unicode == 62) then
+        used = self:_rfFwPageStep(1) == true
+    end
+    return used
+end
+
+--- BUILD 17:08 (Brian TEST 16:53, George TASK 17:03 GO): click shield for the module
+--- selector. Brian measured both selector arrows hover-highlighting but never advancing,
+--- with no Lua traceback. The engine split that allows exactly that: ButtonElement paints
+--- its hover state regardless of eventUsed (ButtonElement.lua:450-459) but fires its click
+--- only "if not eventUsed" (:469-491), and FocusManager highlight on the MTO is likewise
+--- move-driven (MultiTextOptionElement.lua:465-469). So hover-alive-click-dead means the
+--- CLICK half of the event is being consumed before the selector's walk position - George's
+--- hit-steal read. Event order in this engine is reverse declaration order with no z-index,
+--- and Sam's lock forbids moving any geometry, so the fix is delivery order, not layout:
+--- the page offers every click that lands inside the selector's rect to the selector FIRST,
+--- then runs the normal child walk with the event marked used, so whichever sibling was
+--- eating the click can still clear its own pressed state but can no longer act on it.
+--- Moves are NOT pre-offered - hover behavior is untouched, and a second visit of the MTO
+--- during the normal walk with eventUsed=true only re-computes identical press flags
+--- (:441-446, not eventUsed-gated), so nothing double-fires and no wrapper element is
+--- introduced. Clicks outside the selector rect take the walk exactly as before, so the
+--- module list, FW pager and every guest control keep their ownership.
+function RfPdaMenuPage:mouseEvent(posX, posY, isDown, isUp, button, eventUsed)
+    local used = eventUsed
+    local sel = self.rfPanelSelector
+    if not used and (isDown or isUp) and sel ~= nil
+        and sel.absPosition ~= nil and sel.absSize ~= nil
+        and type(sel.getIsActive) == "function" and sel:getIsActive()
+        and GuiUtils ~= nil and type(GuiUtils.checkOverlayOverlap) == "function"
+        and GuiUtils.checkOverlayOverlap(posX, posY,
+            sel.absPosition[1], sel.absPosition[2], sel.absSize[1], sel.absSize[2], nil) then
+        if sel:mouseEvent(posX, posY, isDown, isUp, button, false) then
+            used = true
+            if not self._selShieldLogged then
+                self._selShieldLogged = true
+                SoilLogger.info("RfPdaMenuPage: selector click shield delivered its first click")
+            end
+        end
+    end
+    return RfPdaMenuPage:superClass().mouseEvent(self, posX, posY, isDown, isUp, button, used) or used
+end
+
 function RfPdaMenuPage:_csPageSel()
     return self.csSubnavSelector
 end
@@ -2786,12 +3001,50 @@ function RfPdaMenuPage:_populateMdCommodityRow(index, cell)
         end
     end
     if nameEl then nameEl:setText(entry.title or "-") end
+    -- BUILD 09:19 (PB-02). This cell is the one Brian read as "£0" and "£1".
+    --
+    -- entry.price is the PER-LITRE engine number. formatMoney(price, 0, ...) rounded it to
+    -- whole currency units and printed no unit at all, so a live 0.00037/l commodity became
+    -- an actionable-looking "£0" and soybean at 0.85/l became "£1". Neither is a zero and
+    -- neither says what it is a price OF.
+    --
+    -- MDMPriceFormat is the single place that decides how a market price is written: the
+    -- x1000 display multiply for bulk goods, the forced two decimals built by hand (Vera F2:
+    -- neither formatMoney nor formatNumber forcePrecision actually pads .00), the locale
+    -- decimal mark, and the " / 1,000L" suffix that animal cargo does NOT get. The full
+    -- Market table and the Esc selected-crop line call the same helper, so all three
+    -- surfaces print one string and not three dialects of it.
+    --
+    -- The nil guard matters on this file specifically: this host is mirrored into all nine
+    -- doors and only the Market Dynamics zip ships MdPriceFormat.lua. On the other eight
+    -- doors MDMPriceFormat is nil UNLESS Market Dynamics is also loaded - and if it is not
+    -- loaded there is no Market page to paint anyway. The fallback keeps the old reading
+    -- instead of erroring.
+    --
+    -- BUILD 10:06, Vera FAIL F1. The bare global was doing less than that comment claimed.
+    -- It is nil not only when Market Dynamics is absent, but whenever Market Dynamics is not
+    -- the mod that WON the door race: FS25 gives every mod its own environment and this
+    -- mirrored file executes inside the host's, so on a Dairy-hosted or Income-hosted suite
+    -- the bare lookup misses a fully loaded MdPriceFormat.lua and the cell silently drops to
+    -- the formatMoney fallback - the exact "GBP 0" reading PB-02 was supposed to have fixed.
+    -- Same failure shape, same cause and same cure as MDMMarketScreenGraph on the Dairy door.
+    -- Resolved through mdResolve, which is that cure: bare first (free when Market Dynamics
+    -- hosts), then the named g_modEnvironments["FS25_MarketDynamics"] entry, then the
+    -- name-independent scan and the getfenv(0) / mission belts.
+    local priceFormat = (type(mdResolve) == "function")
+            and mdResolve(MDMPriceFormat, "MDMPriceFormat") or MDMPriceFormat
     local priceText = "-"
     if entry.price ~= nil then
-        if g_i18n and g_i18n.formatMoney then
-            priceText = g_i18n:formatMoney(entry.price, 0, true, true)
+        if priceFormat ~= nil and type(priceFormat.price) == "function" then
+            priceText = priceFormat.price(entry.fillTypeIndex, entry.price)
         else
-            priceText = string.format("%.0f", entry.price)
+            -- BUILD 14:04 (Vera FAIL on SUBMIT 10:16). The old branch here was
+            -- formatMoney(entry.price, 0, ...), which is the exact GBP 0 / GBP 1 reading
+            -- this cell has now shipped twice. George's constraint is verbatim "failed
+            -- probe degrades to 2dp path - never formatMoney(..., 0)", so the raw
+            -- per-litre number prints at two decimals or it does not print through
+            -- an engine rounder at all.
+            priceText = mdMoney2(entry.price)
         end
     end
     if priceEl then priceEl:setText(priceText) end
