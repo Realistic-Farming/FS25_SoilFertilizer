@@ -305,6 +305,11 @@ function SoilFertilitySystem:initialize()
         self:warning("FieldManager not available - will try delayed initialization")
     end
 
+    -- Populate HERBICIDE_TYPES from the engine's spray-type registry so map-added
+    -- herbicides (Roundup, atrazine, etc.) are recognized without a manual table entry.
+    -- Explicit entries in HERBICIDE_TYPES take precedence (custom effectiveness values).
+    self:populateHerbicideTypesFromSprayCategory()
+
     -- Install hooks via HookManager
     self.hookManager:installAll(self)
 
@@ -317,6 +322,28 @@ function SoilFertilitySystem:initialize()
     -- Log multifruit compatibility status
     self:logCropProfileStatus()
 
+end
+
+function SoilFertilitySystem:populateHerbicideTypesFromSprayCategory()
+    if not g_sprayTypeManager then return end
+    local wp = SoilConstants.WEED_PRESSURE
+    if not wp then return end
+    if not wp.HERBICIDE_TYPES then wp.HERBICIDE_TYPES = {} end
+
+    local added = 0
+    for _, sprayType in ipairs(g_sprayTypeManager:getSprayTypes()) do
+        if sprayType.isHerbicide and sprayType.fillType then
+            local name = sprayType.fillType.name
+            if name and wp.HERBICIDE_TYPES[name] == nil then
+                wp.HERBICIDE_TYPES[name] = 1.0
+                added = added + 1
+                self:info("Herbicide '%s' recognized by spray-type category", name)
+            end
+        end
+    end
+    if added > 0 then
+        self:info("Added %d herbicide(s) from spray-type categories", added)
+    end
 end
 
 -- Log which registered fruit types have explicit extraction profiles
