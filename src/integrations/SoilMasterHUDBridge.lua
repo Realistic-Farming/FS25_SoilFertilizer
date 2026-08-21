@@ -21,10 +21,12 @@
 -- fallback hook so the two paths can never diverge.
 -- =========================================================
 
-SoilMasterHUDBridge = {}
+-- BUILD 19:38: reload-safe like the HUD classes - the table AND the active flag
+-- survive Ctrl+R, or the hot-reload delivery block at the end could never fire.
+SoilMasterHUDBridge = SoilMasterHUDBridge or {}
 
 SoilMasterHUDBridge.HUD_ID = "SoilFertilizer_HUD"
-SoilMasterHUDBridge.active = false   -- MasterHUD present and we registered
+SoilMasterHUDBridge.active = SoilMasterHUDBridge.active or false   -- survives reload; register() re-derives it
 
 --- Does SoilFertilizer currently own the whole screen?
 ---
@@ -128,7 +130,38 @@ function SoilMasterHUDBridge.register(mgr)
     if ok then
         SoilMasterHUDBridge.active = true
         SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend)")
+        -- BUILD 19:38 (Income bridge pattern): suite layout edit reaches the Soil
+        -- Monitor - MasterHUD's edit toggle enters/exits SoilHUD's own edit mode.
+        if hud.registerEditListener ~= nil then
+            hud:registerEditListener(SoilMasterHUDBridge.HUD_ID, {
+                enter = function()
+                    local sh = g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil
+                        and g_currentMission.soilFertilityManager.soilHUD or nil
+                    if sh ~= nil and sh.enterEditMode ~= nil then sh:enterEditMode() end
+                end,
+                exit = function()
+                    local sh = g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil
+                        and g_currentMission.soilFertilityManager.soilHUD or nil
+                    if sh ~= nil and sh.editMode and sh.exitEditMode ~= nil then sh:exitEditMode() end
+                end,
+            })
+        end
     else
         SoilLogger.warning("MasterHUD registration failed: %s (using own draw hook)", tostring(err))
     end
+end
+
+-- =========================================================
+-- BUILD 19:38 hot-reload delivery: register() only runs at mission load, so a
+-- Ctrl+R push of this file alone would define the new edit listener without
+-- ever registering it. This top-level block re-runs the registration on reload.
+-- BUILD 20:40 (George 20:35, Brian 20:07): delivery is NOT gated on .active - the
+-- gated shape skips silently whenever the boot-time bridge predates the flag
+-- (exactly how Moisture lost its listener this session). register() is idempotent
+-- (subscribe and registerEditListener both replace by id), so firing on every
+-- live source pass is safe; on a cold source pass the mission handle does not
+-- exist yet and this stays a no-op.
+local __hud = (g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD
+if __hud ~= nil then
+    pcall(function() SoilMasterHUDBridge.register() end)
 end

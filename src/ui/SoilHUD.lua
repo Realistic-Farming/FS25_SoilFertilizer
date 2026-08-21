@@ -9,7 +9,10 @@
 -- =========================================================
 ---@class SoilHUD
 
-SoilHUD = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+SoilHUD = SoilHUD or {}
 local SoilHUD_mt = Class(SoilHUD)
 
 -- ── Scale / resize ──────────────────────────────────────
@@ -18,7 +21,10 @@ SoilHUD.MAX_SCALE          = 1.80
 SoilHUD.RESIZE_HANDLE_SIZE = 0.008
 
 -- ── Base panel dimensions at scale 1.0 ─────────────────
-SoilHUD.BASE_W = 0.190
+-- BUILD 14:39 (Sam DESIGN 14:20): 0.190 -> 0.180. Every panel surface, column and
+-- text anchor in this file derives proportionally from BASE_W * scale, so the whole
+-- layout adapts to the narrower width - no absolute offsets to clip.
+SoilHUD.BASE_W = 0.180
 SoilHUD.BASE_H = 0.228   -- Default fallback height
 
 -- ── Layout constants at scale 1.0 ──────────────────────
@@ -468,6 +474,22 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
             return true
         end
         return false
+    end
+
+    -- BUILD 20:40 one-shot drag diagnostic (Brian 20:07: Soil orange, drag dead).
+    -- Every gate below this comment reads correct from source, so the first LMB
+    -- press in edit mode logs every gate's live value once - whichever one is
+    -- false live is the fault, and if all print true while drag still fails, the
+    -- press is dying UPSTREAM of this handler (listener order), which is engine
+    -- territory, not this file's.
+    if isDown and button == Input.MOUSE_BUTTON_LEFT and self.editMode and not self._dragDiagLogged then
+        self._dragDiagLogged = true
+        local px, py, pw, ph = self:getHUDRect()
+        SoilLogger.info(
+            "SoilHUD drag diag: enabled=%s showHUD=%s visible=%s over=%s click=%.3f,%.3f rect=%.3f,%.3f,%.3f,%.3f",
+            tostring(self.settings.enabled), tostring(self.settings.showHUD),
+            tostring(self.visible), tostring(self:isPointerOverHUD(posX, posY)),
+            posX, posY, px, py, pw, ph)
     end
 
     if not self.settings.enabled then return false end
@@ -2355,3 +2377,15 @@ end
 -- ── Pixel helpers ────────────────────────────────────────
 function SoilHUD:px(pixels) return pixels / 1920 end
 function SoilHUD:py(pixels) return pixels / 1080 end
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - mission.soilFertilityManager published in src/main.lua; holds .soilHUD.
+if g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil and g_currentMission.soilFertilityManager.soilHUD ~= nil then
+    local inst = g_currentMission.soilFertilityManager.soilHUD
+    for k, v in pairs(SoilHUD) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
+end

@@ -902,7 +902,14 @@ SoilConstants.HUD = {
 
     -- Position presets (matched to hudPosition setting values 1-5)
     POSITIONS = {
-        [1] = { x = 0.850, y = 0.70 },  -- Top Right
+        -- BUILD 14:39 (Sam DESIGN 14:20, Vera SUBMIT 14:12): factory default preset
+        -- [1] moves into the mid-right lane at (0.580, 0.480), computed from the
+        -- panel's LIVE dimensions - SoilHUD.BASE_W is now 0.180 (the PANEL_WIDTH 0.15
+        -- above is a stale constant this math must not use): right edge 0.760, and
+        -- with BASE_H 0.228 the top edge is 0.708, inside Sam's <=0.760 / <=0.709
+        -- bounds and AABB-clear of Tax and World Events. y is the overlay BOTTOM.
+        -- Presets 2-5 are player choices and stay untouched.
+        [1] = { x = 0.580, y = 0.48 },  -- Mid Right (suite non-overlap default)
         [2] = { x = 0.010, y = 0.70 },  -- Top Left
         [3] = { x = 0.850, y = 0.20 },  -- Bottom Right
         [4] = { x = 0.010, y = 0.20 },  -- Bottom Left
