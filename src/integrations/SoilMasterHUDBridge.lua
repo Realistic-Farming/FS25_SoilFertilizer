@@ -56,6 +56,29 @@ function SoilMasterHUDBridge.isFullscreen()
     return false
 end
 
+--- Keep every independently positioned Soil vehicle panel in lockstep with the
+--- suite editor.  The standalone SF_HUD_DRAG callback already does this; the
+--- MasterHUD bridge previously toggled only the main Soil Monitor, leaving the
+--- sprayer/spreader/slurry and harvester panels invisible and therefore
+--- impossible to place from the suite-wide editor.
+---@param enabled boolean
+function SoilMasterHUDBridge.setEditMode(enabled)
+    local sfm = g_SoilFertilityManager
+        or (g_currentMission ~= nil and g_currentMission.soilFertilityManager or nil)
+    if sfm == nil then return end
+
+    local panels = { sfm.soilHUD, sfm.sprayerInfoPanel, sfm.harvesterPanel }
+    for _, panel in pairs(panels) do
+        if panel ~= nil then
+            if enabled then
+                if not panel.editMode and panel.enterEditMode ~= nil then panel:enterEditMode() end
+            elseif panel.exitEditMode ~= nil and panel.editMode then
+                panel:exitEditMode()
+            end
+        end
+    end
+end
+
 function SoilMasterHUDBridge.drawStack()
     local sfm = g_SoilFertilityManager
     if sfm == nil then return end
@@ -130,19 +153,16 @@ function SoilMasterHUDBridge.register(mgr)
     if ok then
         SoilMasterHUDBridge.active = true
         SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend)")
-        -- BUILD 19:38 (Income bridge pattern): suite layout edit reaches the Soil
-        -- Monitor - MasterHUD's edit toggle enters/exits SoilHUD's own edit mode.
+        -- Suite layout edit reaches the Soil Monitor and every independent
+        -- in-vehicle panel, including placeholders when no matching implement is
+        -- currently controlled.
         if hud.registerEditListener ~= nil then
             hud:registerEditListener(SoilMasterHUDBridge.HUD_ID, {
                 enter = function()
-                    local sh = g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil
-                        and g_currentMission.soilFertilityManager.soilHUD or nil
-                    if sh ~= nil and sh.enterEditMode ~= nil then sh:enterEditMode() end
+                    SoilMasterHUDBridge.setEditMode(true)
                 end,
                 exit = function()
-                    local sh = g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil
-                        and g_currentMission.soilFertilityManager.soilHUD or nil
-                    if sh ~= nil and sh.editMode and sh.exitEditMode ~= nil then sh:exitEditMode() end
+                    SoilMasterHUDBridge.setEditMode(false)
                 end,
             })
         end

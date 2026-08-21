@@ -909,7 +909,9 @@ SoilConstants.HUD = {
         -- with BASE_H 0.228 the top edge is 0.708, inside Sam's <=0.760 / <=0.709
         -- bounds and AABB-clear of Tax and World Events. y is the overlay BOTTOM.
         -- Presets 2-5 are player choices and stay untouched.
-        [1] = { x = 0.580, y = 0.48 },  -- Mid Right (suite non-overlap default)
+        -- Wizard 2026-08-21: preset [1] updated to the suite layout Wizard
+        -- arranged in-game (right column, above Tax).
+        [1] = { x = 0.800068, y = 0.531852 },  -- Suite home (factory default)
         [2] = { x = 0.010, y = 0.70 },  -- Top Left
         [3] = { x = 0.850, y = 0.20 },  -- Bottom Right
         [4] = { x = 0.010, y = 0.20 },  -- Bottom Left
