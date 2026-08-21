@@ -271,9 +271,12 @@ function SoilDiseaseSystem.computeControl(chemId, diseaseId, opts)
     local timing = SoilDiseaseSystem.timingMult(chemId, opts.growthFrac)
     local stage = SoilDiseaseSystem.stageMult(opts.pressure or 0)
 
-    local diff = SoilConstants.DISEASE_DIFFICULTY[opts.diseaseDifficulty or 2]
-        or SoilConstants.DISEASE_DIFFICULTY[2]
-    local diffMult = diff.fungicideEffMult or 1.0
+    local diffMult = opts.fungicideEffMult
+    if diffMult == nil then
+        local diff = SoilConstants.DISEASE_DIFFICULTY[opts.diseaseDifficulty or 2]
+            or SoilConstants.DISEASE_DIFFICULTY[2]
+        diffMult = diff.fungicideEffMult or 1.0
+    end
 
     local rainMult = 1.0
     if opts.isRaining then rainMult = 1.0 - SoilConstants.DISEASE_TREATMENT.RAIN_PENALTY end
