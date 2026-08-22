@@ -63,6 +63,68 @@ function Settings:allowsBypassTools()
     return self.difficulty == Settings.DIFFICULTY_EASY
 end
 
+Settings.SPINE_DEPLETION = {
+    id   = "sf_depletionRate",
+    dial = "agronomy",
+    base = 1.0,
+}
+
+Settings.SPINE_REPLENISHMENT = {
+    id   = "sf_replenishmentRate",
+    dial = "agronomy",
+    base = 1.0,
+}
+
+Settings.SPINE_DISEASE_PRESSURE = {
+    id   = "sf_diseasePressure",
+    dial = "biological",
+    base = 1.0,
+}
+
+Settings.SPINE_FUNGICIDE_EFF = {
+    id   = "sf_fungicideEff",
+    dial = "biological",
+    base = 1.0,
+    curve = { at0 = 1.15, at1 = 1.0, at2 = 0.90 },
+}
+
+local function _spineResolve(decl)
+    if OptionScalingResolver == nil then return nil end
+    local hub = (g_currentMission ~= nil and g_currentMission.settingsHub) or g_settingsHub
+    local profile = OptionScalingResolver.readProfile(hub)
+    if profile == nil then return nil end
+    return OptionScalingResolver.resolve(decl, profile)
+end
+
+function Settings:getDepletionMultiplier()
+    local v = _spineResolve(Settings.SPINE_DEPLETION)
+    if v ~= nil then return v end
+    return SoilConstants.DIFFICULTY.MULTIPLIERS[self.difficulty] or 1.0
+end
+
+function Settings:getReplenishmentMultiplier()
+    local base = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[self.replenishmentRate] or 1.0
+    local v = _spineResolve(Settings.SPINE_REPLENISHMENT)
+    if v ~= nil then return base * v end
+    return base
+end
+
+function Settings:getDiseasePressureMultiplier()
+    local v = _spineResolve(Settings.SPINE_DISEASE_PRESSURE)
+    if v ~= nil then return v end
+    local diff = SoilConstants.DISEASE_DIFFICULTY[self.diseaseDifficulty or 2]
+        or SoilConstants.DISEASE_DIFFICULTY[2]
+    return diff.pressureMult or 1.0
+end
+
+function Settings:getFungicideEffMultiplier()
+    local v = _spineResolve(Settings.SPINE_FUNGICIDE_EFF)
+    if v ~= nil then return v end
+    local diff = SoilConstants.DISEASE_DIFFICULTY[self.diseaseDifficulty or 2]
+        or SoilConstants.DISEASE_DIFFICULTY[2]
+    return diff.fungicideEffMult or 1.0
+end
+
 --- Force every "simpleOnly" (soften) setting back to its schema default when the current
 --- difficulty does not allow bypass tools. Closes the loophole where a toggle eased on
 --- Simple would carry its softened value into Realistic/Hardcore: greying only DISABLES
