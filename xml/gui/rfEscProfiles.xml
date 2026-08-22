@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <GUIProfiles>
     <!-- ============================================================ -->
     <!-- Realistic Farming PDA profiles — MOCKUP-ESC-RF-PDA swatches  -->
@@ -260,6 +260,16 @@
     </Profile>
     <Profile name="RF_ProductCellRight" extends="RF_ProductCell">
         <textAlignment value="right"/>
+    </Profile>
+    <!-- BUILD 09:19 (PB-05): WHAT IF effect cell only. Two lines at the same 14px the
+         PRODUCTS table already uses for its own cells, so a comma-joined consequence is
+         printed whole instead of losing its last item to a one-line 110px column. Top
+         aligned because a two-line cell that centres would not line up with the one-line
+         Crop and Status cells beside it. -->
+    <Profile name="RF_ProductCellEffect" extends="RF_ProductCell">
+        <textSize value="14px"/>
+        <textMaxNumLines value="2"/>
+        <textVerticalAlignment value="top"/>
     </Profile>
     <Profile name="RF_ProductOk" extends="fs25_textDefault" with="anchorTopLeft">
         <textSize value="18px"/>

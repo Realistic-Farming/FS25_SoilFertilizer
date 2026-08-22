@@ -842,6 +842,12 @@ end
 -- CoursePlay, AutoDrive, and other mods that rely on RMB.
 local soilMouseHandler = {}
 function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed)
+    -- BUILD 20:40 (FcMouseHandler pattern): resolve the manager live per event.
+    -- The captured upvalue goes stale if this chunk is ever re-sourced; the
+    -- module-scope sfm stays the fallback for early events before the global.
+    local sfm = g_SoilFertilityManager
+        or (g_currentMission ~= nil and g_currentMission.soilFertilityManager or nil)
+        or sfm
     -- Tuning panel eats input when open (checked before settings panel - both can't be open simultaneously)
     if sfm and sfm.tuningPanel and sfm.tuningPanel:isOpen() then
         local consumed = sfm.tuningPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)

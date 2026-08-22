@@ -22,9 +22,13 @@
             </ThreePartBitmap>
 
             <Bitmap profile="fs25_subCategoryContainer" id="rfFilterBox">
-                <MultiTextOption profile="fs25_subCategorySelector" id="rfPanelSelector"
-                                 disableButtonsOnSingleText="false"
-                                 onClick="onClickRfPanelSelector" focusInit="onOpen"/>
+                <!-- BUILD 18:16: rfPanelSelector moved to LAST child of rfFilterBox (see below).
+                     George TASK 18:12 asked for z-order ~10-20 on the selector; this engine has no
+                     z attribute of any kind (GuiElement loads none, and no rfHeaderBg element exists
+                     in this page) - draw AND input priority are declaration order, walked in reverse
+                     for events. Declaring the selector last IS the engine's z-raise: it now receives
+                     events before every sibling in this box and draws above them. Positions are
+                     profile-absolute, so nothing moves a pixel. -->
                 <BoxLayout profile="fs25_subCategorySelectorBox" id="rfPanelDotBox">
                     <RoundCorner profile="fs25_subCategorySelectorDot" id="rfPanelDotTemplate"/>
                 </BoxLayout>
@@ -60,6 +64,16 @@
                         <Slider profile="fs25_listSlider" dataElementId="moduleList" hideParentWhenEmpty="true"/>
                     </ThreePartBitmap>
                 </GuiElement>
+
+                <!-- BUILD 18:16 (George TASK 18:12): the module selector is deliberately the LAST
+                     child of rfFilterBox. Events walk children in reverse declaration order, so
+                     last-declared = first offered = this engine's only "z-order raise". Its band
+                     rect (profile-positioned, unchanged) does not overlap any sibling's visible
+                     paint, so drawing on top changes no pixel. The BUILD 17:08 page-level click
+                     shield stays as the guarantee against anything OUTSIDE this box. -->
+                <MultiTextOption profile="fs25_subCategorySelector" id="rfPanelSelector"
+                                 disableButtonsOnSingleText="false"
+                                 onClick="onClickRfPanelSelector" focusInit="onOpen"/>
             </Bitmap>
 
             <!-- WC page chrome: sibling under Modules (NOT inside rfFilterBox — hit hygiene).
@@ -222,29 +236,43 @@
                              built by whichever mod loads first, from its own copy, so a change
                              in Soil alone would be overwritten by whoever won the race. -->
                         <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -22px" size="620px 248px">
-                            <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="10px -6px" size="600px 20px"
+                            <!-- BUILD 09:19 (PB-05). Brian read "Wait: amending now can burn t..." on
+                                 this strip: the sentence that says an apply will scorch the crop was
+                                 cut before its own verb.
+                                 The wrap was not broken. TextElement defaults to LAYOUT_MODE.TRUNCATE
+                                 (TextElement.lua:141) and with textMaxNumLines > 1 that takes the
+                                 limitVerticalLines path (:667-676), wrapping at absSize[1] and then
+                                 chopping characters until the text fits the line budget before adding
+                                 "..." (:679-699). So it wrapped to its two lines exactly as asked and
+                                 the string is simply longer than two lines of 18px across 600px.
+                                 Two allowed 18px lines become three. The 18px comes out of this zone
+                                 rather than out of the table: Selected moves up 2, the hairline and
+                                 the PRODUCTS heading close up, and the eight-row clip drops 4. Row 8
+                                 still ends 4px clear of the card frame (124 + 120 = 244 against 248),
+                                 so nothing is cut mid-glyph and the card does not grow. -->
+                            <Text profile="RF_TreatSelected" id="treatSelectedLabel" position="10px -4px" size="600px 20px"
                                   textAlignment="left"/>
-                            <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -26px" size="600px 36px"
-                                  textAlignment="left" textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <!-- Zone split (BUILD 16:19): Selected + Next stay on top, then ~16px of
-                                 air with one 1px hairline centred in it, then the PRODUCTS table.
+                            <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -24px" size="600px 54px"
+                                  textAlignment="left" textMaxNumLines="3" textVerticalAlignment="top"/>
+                            <!-- Zone split (BUILD 16:19): Selected + Next stay on top, then air with
+                                 one 1px hairline in it, then the PRODUCTS table.
                                  One outer outline only; the rule is a Bitmap, not a second frame.
                                  Bodies inset X 0 -> 10 and widths 560 -> 540 so nothing kisses the
                                  white stroke on either side. -->
-                            <Bitmap profile="RF_EscCardRule" id="treatProductsRule" position="10px -70px" size="600px 1px"/>
-                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="10px -80px" size="600px 18px"
+                            <Bitmap profile="RF_EscCardRule" id="treatProductsRule" position="10px -82px" size="600px 1px"/>
+                            <Text profile="RF_ProductsTitle" id="soilTreatProducts" position="10px -86px" size="600px 18px"
                                   text="$l10n_rf_pda_treat_products"/>
-                            <Text profile="RF_ProductColHeaderDense" position="10px -100px" size="40px 16px" text="NUT"/>
-                            <Text profile="RF_ProductColHeaderDense" position="54px -100px" size="270px 16px" text="PRODUCT"/>
-                            <Text profile="RF_ProductColHeaderDense" position="330px -100px" size="100px 16px"
+                            <Text profile="RF_ProductColHeaderDense" position="10px -106px" size="40px 16px" text="NUT"/>
+                            <Text profile="RF_ProductColHeaderDense" position="54px -106px" size="270px 16px" text="PRODUCT"/>
+                            <Text profile="RF_ProductColHeaderDense" position="330px -106px" size="100px 16px"
                                   textAlignment="right" text="RATE"/>
-                            <Text profile="RF_ProductColHeaderDense" position="440px -100px" size="110px 16px"
+                            <Text profile="RF_ProductColHeaderDense" position="440px -106px" size="110px 16px"
                                   textAlignment="right" text="TOTAL"/>
-                            <Text profile="RF_ProductOk" id="treatPlanLines" position="10px -120px" size="600px 22px"
+                            <Text profile="RF_ProductOk" id="treatPlanLines" position="10px -124px" size="600px 22px"
                                   visible="false"/>
                             <!-- Clip sized to exactly the eight densified rows (8 x 15 = 120), so the
-                                 card bottom keeps 8px of air instead of cutting row 8 mid-glyph. -->
-                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="10px -120px" size="600px 120px">
+                                 card bottom keeps air instead of cutting row 8 mid-glyph. -->
+                            <GuiElement profile="RF_ProductsRowsClip" id="treatProdRowsClip" position="10px -124px" size="600px 120px">
                                 <GuiElement profile="RF_ProductRow" id="treatProdRow1" position="0px 0px" size="600px 15px" visible="false">
                                     <Text profile="RF_ProductCellDense" id="treatProd1Nut" position="0px 0px" size="40px 15px"/>
                                     <Text profile="RF_ProductCellDense" id="treatProd1Name" position="44px 0px" size="270px 15px"/>
@@ -312,20 +340,43 @@
                             <Text profile="RF_ProductCell" id="soilRotationStatus" position="10px -56px" size="270px 20px"/>
                             <Text profile="RF_ProductCell" id="soilRotationTip" position="10px -76px" size="270px 32px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Bitmap profile="RF_EscCardRule" id="soilRotationRule" position="10px -116px" size="270px 1px"/>
-                            <Text profile="RF_ProductColHeader" id="soilRotationWhatIfHeader" position="10px -124px" size="270px 16px"/>
-                            <Text profile="RF_ProductColHeader" id="soilRotationIfColCrop" position="10px -144px" size="92px 14px"/>
-                            <Text profile="RF_ProductColHeader" id="soilRotationIfColStatus" position="106px -144px" size="60px 14px"/>
-                            <Text profile="RF_ProductColHeader" id="soilRotationIfColEffect" position="170px -144px" size="110px 14px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf1Crop" position="10px -162px" size="92px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf1Status" position="106px -162px" size="60px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf1Effect" position="170px -162px" size="110px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf2Crop" position="10px -184px" size="92px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf2Status" position="106px -184px" size="60px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf2Effect" position="170px -184px" size="110px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf3Crop" position="10px -206px" size="92px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf3Status" position="106px -206px" size="60px 18px"/>
-                            <Text profile="RF_ProductCell" id="soilRotationIf3Effect" position="170px -206px" size="110px 18px"/>
+                            <!-- BUILD 09:19 (PB-05). The WHAT IF effect column lost whole consequences.
+                                 RotationPlannerData.effectText joins at most three items with ", " and
+                                 the set is closed: fatigue "x1.15 depletion", nitrogen "+N", and one of
+                                 "less disease" / "more disease". The worst real string is therefore
+                                 "x1.15 depletion, +N, less disease" at 33 characters, and the painter
+                                 capped the cell at 18 - so even the two-item "x1.15 depletion, +N" (19)
+                                 dropped an item and the player was told about the fatigue but not about
+                                 the disease.
+                                 18 was not arbitrary against the OLD cell: this card's own calibration
+                                 is ~6px per glyph at 17px (crop 92px/16, status 60px/10, effect 110px/18),
+                                 so 110px really does hold about 18. One 17px line cannot hold 33 and the
+                                 card cannot grow - George holds the footprint at 290x248 and it must
+                                 never take width back from PRODUCTS. So the effect cell gains a SECOND
+                                 line at 14px instead, which is the size the PRODUCTS table already uses
+                                 for its own cells (RF_ProductCellDense), and about 22 glyphs a line at
+                                 that size gives ~44 against a bounded worst case of 33.
+                                 Row pitch 22 -> 30 to hold the taller cell; the hairline and the two
+                                 header lines close up by 4-8px to pay for it. Row 3 ends at 240 against
+                                 the 248 frame, so the card keeps its 8px of bottom air. Crop and Status
+                                 stay one 17px line and are unchanged. -->
+                            <Bitmap profile="RF_EscCardRule" id="soilRotationRule" position="10px -112px" size="270px 1px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationWhatIfHeader" position="10px -118px" size="270px 16px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColCrop" position="10px -136px" size="92px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColStatus" position="106px -136px" size="60px 14px"/>
+                            <Text profile="RF_ProductColHeader" id="soilRotationIfColEffect" position="170px -136px" size="110px 14px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Crop" position="10px -152px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf1Status" position="106px -152px" size="60px 18px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilRotationIf1Effect" position="170px -152px" size="110px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Crop" position="10px -182px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf2Status" position="106px -182px" size="60px 18px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilRotationIf2Effect" position="170px -182px" size="110px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Crop" position="10px -212px" size="92px 18px"/>
+                            <Text profile="RF_ProductCell" id="soilRotationIf3Status" position="106px -212px" size="60px 18px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilRotationIf3Effect" position="170px -212px" size="110px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
                         </GuiElement>
 
                         <!-- Col 3: sampling — shifted right so widened PRODUCTS does not overlap -->
@@ -526,6 +577,19 @@
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text=""/>
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text=""/>
                             <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -300px" size="1120px 20px" text=""/>
+                            <!-- BUILD 09:19 (PB-07): row pager for this static eight-row table.
+                                 Hidden by default and shown ONLY by a guest that implements
+                                 onPageStep, so Income / Dairy / Depot keep exactly the page they
+                                 have today. Two Buttons, not a SmoothList: George's standing NO-GO
+                                 on nesting a SmoothList in this page (see csConsultPanel below)
+                                 applies here too, and a window offset held by the guest cannot
+                                 re-enter the layout the way a list rebuild can.
+                                 Parked on the rfFwTableTitle band, which every Table-mode guest
+                                 already hides, so the pager collides with nothing that paints. -->
+                            <Button profile="buttonActivate" id="rfFwPagePrev" position="880px -8px" size="120px 24px"
+                                    visible="false" text="" onClick="onClickRfFwPagePrev"/>
+                            <Button profile="buttonActivate" id="rfFwPageNext" position="1010px -8px" size="120px 24px"
+                                    visible="false" text="" onClick="onClickRfFwPageNext"/>
                             <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"

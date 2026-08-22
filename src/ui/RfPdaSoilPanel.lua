@@ -286,13 +286,57 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
     end
 end
 
+--- BUILD 09:19 (PB-05): what the two-line WHAT IF effect cell holds.
+--- 110px wide at 14px is roughly 22 glyphs a line against this card's own ~6px-per-glyph
+--- calibration at 17px, so two lines is ~44. See the XML note on soilRotationIf1Effect.
+local WHATIF_EFFECT_BUDGET = 44
+
 --- Paint the three What-if rows (crop / status / effect) from RotationPlannerData.
 --- Read-only projection only: pickCandidates + project + statusWord + effectText.
 --- Never invents a crop - a candidate with no projection prints honest dashes.
 local function paintWhatIfRows(page, entry, tr, clip)
     local rows = page.soilRotationIfRows
     local hdr  = page.soilRotationWhatIfHeader
-    if rows == nil then return end
+    -- BUILD 09:19 (PB-05). This used to be a bare `if rows == nil then return end`, and that
+    -- silence is the "WHAT IF row not showing" mechanism Brian hit: on a door whose XML lacks
+    -- the soilRotationIf* ids the whole section evaporated with no log line and no on-screen
+    -- trace, leaving the WHAT IF heading and its three column captions standing over nothing.
+    -- Sam's law for this card is that WHAT IF paints or is hidden for a visible reason, never
+    -- silently. So: warn once (the same shape as refreshRotationCard's thin-door guard right
+    -- below) and take the orphaned heading and captions down with it, so the card reads as a
+    -- card that does not have this section rather than as a section that failed to fill.
+    --
+    -- The nil TABLE is only half the thin-door shape and not the half that actually bites.
+    -- The host builds soilRotationIfRows unconditionally (RfPdaMenuPage:_resolveIds seeds it
+    -- to {} and then fills three entries), so on a door whose XML has no soilRotationIf* ids
+    -- the table is present and every crop/status/effect inside it is nil. The loop below then
+    -- ran to completion writing into nothing at all - which is the same invisible failure,
+    -- reached by a different route, and the one that survives a bare nil-table check. Treat a
+    -- first row with no resolved elements as the same absent-section case.
+    local rowsUsable = rows ~= nil and rows[1] ~= nil
+        and (rows[1].crop ~= nil or rows[1].status ~= nil or rows[1].effect ~= nil)
+    if not rowsUsable then
+        for _, el in ipairs({ hdr, page.soilRotationIfColCrop,
+                              page.soilRotationIfColStatus, page.soilRotationIfColEffect }) do
+            if el ~= nil then
+                if el.setText then el:setText("") end
+                if el.setVisible then el:setVisible(false) end
+            end
+        end
+        if not page._whatIfRowsWarned then
+            page._whatIfRowsWarned = true
+            -- Through the logger, not a raw print. The neighbouring rotation-card guard
+            -- still prints directly and the validator has always flagged it for that; this
+            -- one does not add a second DEBUG_CODE warning to the count.
+            local msg = "RfPdaSoilPanel: WHAT IF row ids absent on this door - section hidden (ROTATION glance unaffected)"
+            if SoilLogger ~= nil and type(SoilLogger.warning) == "function" then
+                SoilLogger.warning("%s", msg)
+            elseif Logging ~= nil and type(Logging.warning) == "function" then
+                Logging.warning("[RfEsc] %s", msg)
+            end
+        end
+        return
+    end
 
     local function setEl(el, s)
         if el ~= nil then
@@ -340,7 +384,15 @@ local function paintWhatIfRows(page, entry, tr, clip)
                 local eff = (type(rpd.effectText) == "function") and rpd.effectText(proj) or ""
                 setEl(r.crop,   clip(label, 16))
                 setEl(r.status, clip(word, 10))
-                setEl(r.effect, clip(eff, 18))
+                -- BUILD 09:19 (PB-05). Was clip(eff, 18) against a one-line 110px cell, which
+                -- dropped a whole consequence off the end of a comma-joined list: the player was
+                -- told the fatigue and not the disease. The cell is now two 14px lines (see
+                -- RF_ProductCellEffect), and effectText's output is a closed set whose longest
+                -- real string is "x1.15 depletion, +N, less disease" at 33 characters, so at
+                -- roughly 22 glyphs a line this budget is never actually reached by live data.
+                -- It stays as a fence for a translation longer than the English, and it drops
+                -- whole comma items rather than half a word when it does fire.
+                setEl(r.effect, clip(eff, WHATIF_EFFECT_BUDGET))
             end
         end
     end
@@ -391,11 +443,53 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
         if sEl ~= nil and sEl.setVisible then sEl:setVisible(false) end
     end
 
-    --- Trim to fit the narrow What-if effect column (pic 1 feel).
+    --- BUILD 15:39 (PB-09). Fit the narrow What-if columns WITHOUT cutting a
+    --- word in half.
+    ---
+    --- This used to be a flat `s:sub(1, n - 3) .. "..."`, which is how a status
+    --- reached Brian as `burn t...`. Half a word plus three dots is not shorter
+    --- information, it is unreadable information, and DESIGN 15:00 §4 rules it
+    --- out: no mid-word clipping against a neighbour, and an ellipsis only once
+    --- the source is genuinely long.
+    ---
+    --- The order of preference is:
+    ---   1. It fits. Print it.
+    ---   2. It is a comma-joined list (the effect column is). Drop whole items
+    ---      from the end until what is left fits - you lose an item, not half a
+    ---      word, and every item still on screen is complete.
+    ---   3. Single long phrase. Cut at the last space that fits, so the last
+    ---      thing shown is a whole word.
+    ---   4. One unbroken token longer than the column. Only here is a hard cut
+    ---      unavoidable, and only then does the ellipsis appear.
+    local ELLIPSIS_FLOOR = 28   -- DESIGN 15:00 §4
     local function clip(s, n)
         s = tostring(s or "")
         if #s <= n then return s end
-        return s:sub(1, math.max(1, n - 3)) .. "..."
+
+        if string.find(s, ", ", 1, true) ~= nil then
+            local kept = nil
+            for part in string.gmatch(s, "([^,]+)") do
+                part = part:gsub("^%s+", ""):gsub("%s+$", "")
+                local try = (kept == nil) and part or (kept .. ", " .. part)
+                if #try <= n then kept = try else break end
+            end
+            if kept ~= nil then return kept end
+        end
+
+        local cut = string.sub(s, 1, n)
+        local sp  = string.find(string.reverse(cut), " ")
+        if sp ~= nil then
+            local wordEnd = n - sp
+            if wordEnd >= 3 then
+                return string.sub(cut, 1, wordEnd)
+            end
+        end
+
+        -- A single token wider than its column. Ellipsis only past the floor.
+        if #s >= ELLIPSIS_FLOOR then
+            return string.sub(s, 1, math.max(1, n - 3)) .. "..."
+        end
+        return cut
     end
 
     local function set(el, text)

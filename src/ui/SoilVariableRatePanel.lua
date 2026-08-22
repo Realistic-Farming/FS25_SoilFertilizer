@@ -15,10 +15,10 @@
 -- =========================================================
 
 ---@class SoilVariableRatePanel
-SoilVariableRatePanel = {}
+SoilVariableRatePanel = SoilVariableRatePanel or {}
 local SoilVariableRatePanel_mt = Class(SoilVariableRatePanel)
 
-SoilVariableRatePanel.BAR_H   = 0.030   -- height of the bar chart area
+SoilVariableRatePanel.BAR_H   = 0.030   -- height of the vertical rate chart area
 SoilVariableRatePanel.PAD     = 0.006
 SoilVariableRatePanel.TITLE_H = 0.022
 SoilVariableRatePanel.GAP     = 0.005
@@ -118,15 +118,16 @@ function SoilVariableRatePanel:draw()
 
     local sfm = g_SoilFertilityManager
     if not sfm or not sfm.sensorManager then return end
-    if sfm.settings and sfm.settings.variableRateEnabled == false then return end
+
+    local hud = sfm.soilHUD
+    local inEditMode = hud and hud.editMode
+    if not inEditMode and sfm.settings
+        and sfm.settings.variableRateEnabled == false then return end
 
     -- SF custom settings panel open → hide system panels
     if sfm.settingsPanel and sfm.settingsPanel.isVisible then return end
 
-    local hud = sfm.soilHUD
-    if hud and not hud.visible then return end
-    local inEditMode = hud and hud.editMode
-    local indMode    = sfm.settings and sfm.settings.independentPanels
+    if hud and not hud.visible and not inEditMode then return end
 
     if not inEditMode then
         if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then return end
@@ -137,8 +138,9 @@ function SoilVariableRatePanel:draw()
 
     local sprayer = self:getActiveSprayer()
 
-    -- In edit+independent mode, draw frame for hit-testing even without a sprayer
-    if inEditMode and indMode then
+    -- The suite editor always exposes a placement frame, even without a matching
+    -- applicator. Moving it opts into the existing independent-panels setting.
+    if inEditMode then
         self:drawPanel(sprayer, sfm)
         return
     end
@@ -152,10 +154,10 @@ end
 
 function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     local sensorMgr = sfm.sensorManager
-    local indMode   = sfm.settings and sfm.settings.independentPanels
 
     local hud = sfm.soilHUD
     if not hud then return end
+    local indMode = sfm.settings and sfm.settings.independentPanels == true
 
     -- Apply saved collapsed state on first draw (loaded from hud.xml)
     if hud.savedCollapsed and hud.savedCollapsed.varRate ~= nil then
@@ -164,11 +166,12 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     end
 
     local s  = hud.scale or 1.0
-    local pw = SoilHUD and (SoilHUD.BASE_W * s) or (0.190 * s)
+    local pw = hud.getW and hud:getW()
+        or (SoilHUD and (SoilHUD.BASE_W * s) or (0.190 * s))
 
     -- Rate panel geometry
     local padV    = (5  / 1080) * s
-    local barH_rp = (4  / 1080) * s
+    local barH_rp = (6  / 1080) * s
     local scrollH = (22 / 1080) * s
     local headerH = (16 / 1080) * s
     local ratePanelH = padV + barH_rp + padV + scrollH + padV + headerH
@@ -176,7 +179,8 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
 
     -- Stacked anchor: Variable Rate panel sits directly below the main HUD
     local mainPanelY = hud.panelY
-    local baseY      = mainPanelY - rateGap - ratePanelH
+    local baseY      = hud.appRateDrawRect and hud.appRateDrawRect.y
+        or (mainPanelY - rateGap - ratePanelH)
 
     local titleH     = SoilVariableRatePanel.TITLE_H * s
     local pad        = SoilVariableRatePanel.PAD     * s
@@ -198,6 +202,11 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     else
         panelX, panelY = stackedX, stackedY
     end
+    panelX = math.max(0, math.min(1 - pw, panelX))
+    panelY = math.max(0, math.min(1 - panelH, panelY))
+    if indMode and hud.freePos and hud.freePos.varRate then
+        hud.freePos.varRate.x, hud.freePos.varRate.y = panelX, panelY
+    end
 
     self.lastPanelH   = panelH
     self.lastDrawRect = { x = panelX, y = panelY, w = pw, h = panelH }
@@ -212,15 +221,20 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     local alpha = SoilConstants.HUD and SoilConstants.HUD.TRANSPARENCY_LEVELS
         and SoilConstants.HUD.TRANSPARENCY_LEVELS[self.settings.hudTransparency or 3] or 0.70
 
-    self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilVariableRatePanel.C_SHADOW)
-    self:drawRect(panelX, panelY, pw, panelH, {bgR, bgG, bgB, 1}, alpha)
-    self:drawRect(panelX, panelY + panelH - titleH, pw, titleH, SoilVariableRatePanel.C_TITLE_BG)
+    local renderer = SoilHUD and SoilHUD.getBaseGameRenderer and SoilHUD.getBaseGameRenderer() or nil
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(panelX, panelY, pw, panelH, alpha)
+    if not usedNativePanel then
+        self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilVariableRatePanel.C_SHADOW)
+        self:drawRect(panelX, panelY, pw, panelH, {bgR, bgG, bgB, 1}, alpha)
+        self:drawRect(panelX, panelY + panelH - titleH, pw, titleH, SoilVariableRatePanel.C_TITLE_BG)
 
-    local bw = 0.001
-    self:drawRect(panelX,         panelY,            pw, bw, SoilVariableRatePanel.C_BORDER)
-    self:drawRect(panelX,         panelY+panelH-bw,  pw, bw, SoilVariableRatePanel.C_BORDER)
-    self:drawRect(panelX,         panelY,            bw, panelH, SoilVariableRatePanel.C_BORDER)
-    self:drawRect(panelX+pw-bw,   panelY,            bw, panelH, SoilVariableRatePanel.C_BORDER)
+        local bw = 0.001
+        self:drawRect(panelX,         panelY,            pw, bw, SoilVariableRatePanel.C_BORDER)
+        self:drawRect(panelX,         panelY+panelH-bw,  pw, bw, SoilVariableRatePanel.C_BORDER)
+        self:drawRect(panelX,         panelY,            bw, panelH, SoilVariableRatePanel.C_BORDER)
+        self:drawRect(panelX+pw-bw,   panelY,            bw, panelH, SoilVariableRatePanel.C_BORDER)
+    end
 
     -- Edit mode pulse
     if hud.editMode then
@@ -331,7 +345,8 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     local barGap    = math.max(0, math.min(0.002, totalBarW / n * 0.06))
     local singleW   = (totalBarW - barGap * (n - 1)) / n
 
-    -- Bar background track
+    -- This is a vertical rate chart, not a bounded horizontal gauge. Keep its
+    -- orientation while the surrounding panel adopts base-game chrome.
     self:drawRect(tx, barAreaY, totalBarW, barsH, SoilVariableRatePanel.C_BAR_BG)
 
     local vrCfg   = SoilConstants.VARIABLE_RATE
@@ -363,4 +378,13 @@ function SoilVariableRatePanel:drawPanel(sprayer, sfm)
     setTextColor(1, 1, 1, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextBold(false)
+end
+
+-- Hot-reload: preserve the class table and patch the already-constructed panel.
+local sfm = g_SoilFertilityManager
+if sfm == nil and g_currentMission ~= nil then sfm = g_currentMission.soilFertilityManager end
+if sfm ~= nil and sfm.variableRatePanel ~= nil then
+    for k, v in pairs(SoilVariableRatePanel) do
+        if type(v) == "function" then sfm.variableRatePanel[k] = v end
+    end
 end

@@ -22,7 +22,7 @@
 -- =========================================================
 
 ---@class SoilSmartSensorPanel
-SoilSmartSensorPanel = {}
+SoilSmartSensorPanel = SoilSmartSensorPanel or {}
 local SoilSmartSensorPanel_mt = Class(SoilSmartSensorPanel)
 
 -- Panel geometry at scale 1.0 (normalized screen space, Y=0 bottom)
@@ -166,15 +166,16 @@ function SoilSmartSensorPanel:draw()
 
     local sfm = g_SoilFertilityManager
     if not sfm or not sfm.sensorManager then return end
-    if sfm.settings and sfm.settings.smartSensorEnabled == false then return end
+
+    local hud = sfm.soilHUD
+    local inEditMode = hud and hud.editMode
+    if not inEditMode and sfm.settings
+        and sfm.settings.smartSensorEnabled == false then return end
 
     -- SF custom settings panel open → hide system panels
     if sfm.settingsPanel and sfm.settingsPanel.isVisible then return end
 
-    local hud = sfm.soilHUD
-    if hud and not hud.visible then return end
-    local inEditMode = hud and hud.editMode
-    local indMode    = sfm.settings and sfm.settings.independentPanels
+    if hud and not hud.visible and not inEditMode then return end
 
     if not inEditMode then
         if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then return end
@@ -185,8 +186,9 @@ function SoilSmartSensorPanel:draw()
 
     local sprayer = self:getActiveSprayer()
 
-    -- In edit+independent mode, draw frame for hit-testing even without a sprayer
-    if inEditMode and indMode then
+    -- The suite editor always exposes a placement frame, even without a matching
+    -- applicator. Moving it opts into the existing independent-panels setting.
+    if inEditMode then
         self:drawPanel(sprayer, sfm)
         return
     end
@@ -199,10 +201,9 @@ function SoilSmartSensorPanel:draw()
 end
 
 function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
-    local indMode    = sfm.settings and sfm.settings.independentPanels
-
     local hud = sfm.soilHUD
     if not hud then return end
+    local indMode = sfm.settings and sfm.settings.independentPanels == true
 
     -- Apply saved collapsed state on first draw (loaded from hud.xml)
     if hud.savedCollapsed and hud.savedCollapsed.smartSensor ~= nil then
@@ -211,11 +212,12 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     end
 
     local s  = hud.scale or 1.0
-    local pw = SoilHUD and (SoilHUD.BASE_W * s) or (0.190 * s)
+    local pw = hud.getW and hud:getW()
+        or (SoilHUD and (SoilHUD.BASE_W * s) or (0.190 * s))
 
     -- Compute stacked position (used as freePos default on first enable)
     local padV    = (5  / 1080) * s
-    local barH    = (4  / 1080) * s
+    local barH    = (6  / 1080) * s
     local scrollH = (22 / 1080) * s
     local headerH = (16 / 1080) * s
     local ratePanelH = padV + barH + padV + scrollH + padV + headerH
@@ -238,7 +240,8 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     if vrPanel and vrPanel.lastDrawRect then
         baseY = vrPanel.lastDrawRect.y
     else
-        baseY = hud.panelY - gap - ratePanelH
+        baseY = hud.appRateDrawRect and hud.appRateDrawRect.y
+            or (hud.panelY - gap - ratePanelH)
     end
     local stackedY = baseY - SoilSmartSensorPanel.GAP * s - panelH
 
@@ -248,6 +251,11 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
         panelX, panelY = hud:getFreePos("smartSensor", stackedX, stackedY)
     else
         panelX, panelY = stackedX, stackedY
+    end
+    panelX = math.max(0, math.min(1 - pw, panelX))
+    panelY = math.max(0, math.min(1 - panelH, panelY))
+    if indMode and hud.freePos and hud.freePos.smartSensor then
+        hud.freePos.smartSensor.x, hud.freePos.smartSensor.y = panelX, panelY
     end
 
     -- Store for stacking / hit-testing (read by panels below)
@@ -264,15 +272,20 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     local alpha = SoilConstants.HUD and SoilConstants.HUD.TRANSPARENCY_LEVELS
         and SoilConstants.HUD.TRANSPARENCY_LEVELS[self.settings.hudTransparency or 3] or 0.70
 
-    self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilSmartSensorPanel.C_SHADOW)
-    self:drawRect(panelX, panelY, pw, panelH, {bgR, bgG, bgB, 1}, alpha)
-    self:drawRect(panelX, panelY + panelH - titleH, pw, titleH, SoilSmartSensorPanel.C_TITLE_BG)
+    local renderer = SoilHUD and SoilHUD.getBaseGameRenderer and SoilHUD.getBaseGameRenderer() or nil
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(panelX, panelY, pw, panelH, alpha)
+    if not usedNativePanel then
+        self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilSmartSensorPanel.C_SHADOW)
+        self:drawRect(panelX, panelY, pw, panelH, {bgR, bgG, bgB, 1}, alpha)
+        self:drawRect(panelX, panelY + panelH - titleH, pw, titleH, SoilSmartSensorPanel.C_TITLE_BG)
 
-    local bw = 0.001
-    self:drawRect(panelX,          panelY,               pw, bw, SoilSmartSensorPanel.C_BORDER)
-    self:drawRect(panelX,          panelY + panelH - bw,  pw, bw, SoilSmartSensorPanel.C_BORDER)
-    self:drawRect(panelX,          panelY,               bw, panelH, SoilSmartSensorPanel.C_BORDER)
-    self:drawRect(panelX + pw - bw, panelY,              bw, panelH, SoilSmartSensorPanel.C_BORDER)
+        local bw = 0.001
+        self:drawRect(panelX,          panelY,               pw, bw, SoilSmartSensorPanel.C_BORDER)
+        self:drawRect(panelX,          panelY + panelH - bw,  pw, bw, SoilSmartSensorPanel.C_BORDER)
+        self:drawRect(panelX,          panelY,               bw, panelH, SoilSmartSensorPanel.C_BORDER)
+        self:drawRect(panelX + pw - bw, panelY,              bw, panelH, SoilSmartSensorPanel.C_BORDER)
+    end
 
     if hud.editMode then
         local pulse = 0.55 + 0.45 * math.sin((hud.animTimer or 0) * 0.004)
@@ -364,7 +377,10 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
 
         -- Divider between rows
         if i < #rows then
-            self:drawRect(tx, rowY + (i - 1) * rowH + rowH - 0.0003, pw - pad*2, 0.0003, SoilSmartSensorPanel.C_DIVIDER)
+            local dividerH = SoilHUD and SoilHUD.getSeparatorHeight
+                and SoilHUD.getSeparatorHeight() or (g_pixelSizeY or (1 / 1080))
+            self:drawRect(tx, rowY + i * rowH - dividerH * 0.5, pw - pad*2, dividerH,
+                SoilSmartSensorPanel.C_DIVIDER)
         end
 
         -- Status dot
@@ -387,4 +403,13 @@ function SoilSmartSensorPanel:drawPanel(sprayer, sfm)
     setTextColor(1, 1, 1, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextBold(false)
+end
+
+-- Hot-reload: preserve the class table and patch the already-constructed panel.
+local sfm = g_SoilFertilityManager
+if sfm == nil and g_currentMission ~= nil then sfm = g_currentMission.soilFertilityManager end
+if sfm ~= nil and sfm.smartSensorPanel ~= nil then
+    for k, v in pairs(SoilSmartSensorPanel) do
+        if type(v) == "function" then sfm.smartSensorPanel[k] = v end
+    end
 end

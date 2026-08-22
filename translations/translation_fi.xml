@@ -72,7 +72,7 @@
     <e k="sf_diff_short" v="Vaikeusaste" eh="7b29ca96" />
     <e k="sf_diff_long" v="Maaperänhallinnan vaikeustaso" eh="d6f4560c" />
     <e k="sf_rr_short" v="Täyttymisnopeus" eh="b363b336" />
-    <e k="sf_rr_long" v="Kuinka nopeasti lannoite palauttaa pellon ravinteet (0,25x erittäin hidas – 2,0x erittäin nopea)" eh="afe78a6d" />
+    <e k="sf_rr_long" v="Kuinka nopeasti lannoite palauttaa pellon ravinteet (0,25x erittäin hidas - 2,0x erittäin nopea)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Sato" eh="97345487" />
     <e k="sf_hud_estYield" v="Satoarvio" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimaalinen" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="[EN] Post-harvest ├é┬À Fertilize" eh="61d2d595" />
+    <e k="sf_hud_post_harvest" v="[EN] Post-harvest · Fertilize" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Veto: siirrä   Kulma: koko   RMB/Shift+H: valmis" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: siirrä/muuta kokoa" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
@@ -256,19 +256,19 @@
     <e k="helpLine_sf_gs_p3_access_text" v="Asetukset löytyvät kohdasta ESC &gt; Asetukset &gt; Maaperä ja lannoitus. Moninpelissä vain ylläpitäjä voi muuttaa simulaatiota." eh="4ba9d860" />
 
     <e k="helpLine_sf_nu_p1_title" v="Typpi ja fosfori" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="Typpi (N) - Asteikko 0–100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="Liikkuvin ravinne – kuluu nopeasti ja huuhtoutuu sateella. Huono: alle 30. Hyvä: yli 50. Nosta: nestelannoite, UAN, ammoniakki, urea tai lanta." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="Fosfori (P) - Asteikko 0–100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Typpi (N) - Asteikko 0-100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Liikkuvin ravinne - kuluu nopeasti ja huuhtoutuu sateella. Huono: alle 30. Hyvä: yli 50. Nosta: nestelannoite, UAN, ammoniakki, urea tai lanta." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="Fosfori (P) - Asteikko 0-100" eh="979bba64" />
     <e k="helpLine_sf_nu_p1_p_text" v="Sitoutuu tiukasti maahan, huuhtoutuu hitaasti. Kuluu lähinnä sadon mukana. Rapsi on vaativin. Huono: alle 25. Hyvä: yli 45. Nosta: MAP, DAP tai startteri." eh="92c5ac66" />
 
     <e k="helpLine_sf_nu_p2_title" v="Kalium ja pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Asteikko 0–100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Asteikko 0-100" eh="2a16e8bc" />
     <e k="helpLine_sf_nu_p2_k_text" v="Tärkeä juuri- ja mukulakasveille. Peruna ja juurikas kuluttavat paljon K. Huuhtoutuu jonkin verran. Huono: alle 20. Hyvä: yli 40. Nosta: kaliumsuola, lanta tai nestelannoite." eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Asteikko 5.0–7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="Kasvit viihtyvät pH-arvossa 6.5–7.0. Sade happamoittaa maata. pH ei palaudu itsestään – vain kalkitus auttaa. Huono: alle 5.5. Kalkitse ennen seuraavaa kylvöä." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Asteikko 5.0-7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="Kasvit viihtyvät pH-arvossa 6.5-7.0. Sade happamoittaa maata. pH ei palaudu itsestään - vain kalkitus auttaa. Huono: alle 5.5. Kalkitse ennen seuraavaa kylvöä." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Orgaaninen aines" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="Orgaaninen aines (OM) - Asteikko 0–10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Orgaaninen aines (OM) - Asteikko 0-10" eh="58f490f3" />
     <e k="helpLine_sf_nu_p3_om_text" v="Kertyy hitaasti, ei kulu sadon mukana. Huono: alle 2.5. Hyvä: yli 4.0. Nosta: lanta, komposti, biojäte tai silppuamalla olki takaisin peltoon." eh="f9a02359" />
     <e k="helpLine_sf_nu_p3_fallow_title" v="Kesannon vaikutus" eh="14133b0b" />
     <e k="helpLine_sf_nu_p3_fallow_text" v="Viljelemätön pelto palautuu hitaasti (7+ vrk jälkeen). Päivittäin: N +0,07, P +0,03, K +0,05, OM +0,01. Viljelykierrolla ja levolla on merkitystä." eh="81fa82b3" />
@@ -300,7 +300,7 @@
 
     <e k="helpLine_sf_hu_p2_title" v="Pellon terveyspaineet" eh="b4d35b30" />
     <e k="helpLine_sf_hu_p2_press_title" v="Rikkakasvit, tuholaiset ja taudit" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="Kolme pisteytystä (0–100) seuraa biologisia uhkia. Hoitamattomina ne laskevat satoa: rikkakasvit -30%, tuholaiset -20%, taudit -25%. HUD näyttää vakavuuden värein." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_press_text" v="Kolme pisteytystä (0-100) seuraa biologisia uhkia. Hoitamattomina ne laskevat satoa: rikkakasvit -30%, tuholaiset -20%, taudit -25%. HUD näyttää vakavuuden värein." eh="3fc3c400" />
     <e k="helpLine_sf_hu_p2_treat_title" v="Paineiden hoito" eh="cb24bf50" />
     <e k="helpLine_sf_hu_p2_treat_text" v="Rikkakasvimyrkky poistaa rikkakasvit (samoin muokkaus). Hyönteismyrkky laskee painetta 25 pistettä. Sienimyrkky laskee 20 pistettä. Kaikki voi kytkeä pois päältä." eh="4d65bdec" />
 
@@ -320,7 +320,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Pelaajakohtainen HUD" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Jokainen pelaaja säätää oman HUD-näyttönsä. Valinnat: näyttö päällä, sijainti, väriteema, koko, läpinäkyvyys ja yksiköt." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Ruiskun annostelun hallinta" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Käytä levittimessä näppäimiä ] ja [ säätääksesi määrää välillä 0.10x–2.00x. Shift+L vaihtaa automaattitilan päälle, jolloin modi tähtää optimaaliseen tasoon." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Käytä levittimessä näppäimiä ] ja [ säätääksesi määrää välillä 0.10x-2.00x. Shift+L vaihtaa automaattitilan päälle, jolloin modi tähtää optimaaliseen tasoon." eh="dd385e39" />
 
     <e k="helpLine_sf_mp_p1_title" v="Miten moninpeli toimii" eh="8a4ce30e" />
     <e k="helpLine_sf_mp_p1_auth_title" v="Palvelinkeskeinen simulaatio" eh="8d324792" />
@@ -406,7 +406,7 @@
     <e k="sf_pda_map_layer_n_desc" v="Typen määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="60484ead" />
     <e k="sf_pda_map_layer_p_desc" v="Fosforin määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="9fa2e72d" />
     <e k="sf_pda_map_layer_k_desc" v="Kaliumin määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="Maaperän pH. Optimaalinen alue on 6.5–7.0 (vihreä)." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Maaperän pH. Optimaalinen alue on 6.5-7.0 (vihreä)." eh="ce7009e7" />
     <e k="sf_pda_map_layer_om_desc" v="Orgaanisen aineen määrä. Korkeampi on parempi pitkällä aikavälillä." eh="f64c5706" />
     <e k="sf_pda_map_layer_urgency_desc" v="Yhdistetty hoidon kiireellisyys. Punainen = vaatii pikaista huoltoa." eh="f29ddc2b" />
     <e k="sf_pda_map_layer_weed_desc" v="Rikkakasvipaine. Punainen = paljon rikkakasveja, käytä myrkkyä." eh="24009598" />
@@ -520,7 +520,7 @@
     <e k="sf_treat_section_fert" v="Ravinteiden lisäys" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Kasvinsuojelu" eh="bd3fe9cd" />
     <e k="sf_treat_hint" v="Katso kaupan 'Tuotteet'-osio erikoislannoitteita varten." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="Optimaalinen – ei toimia." eh="4501a96b" />
+    <e k="sf_treat_action_optimal" v="Optimaalinen - ei toimia." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Lisää KALKKIA tai NESTEKALKKIA nostaaksesi pH-arvoa." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Lisää KIPSIÄ laskeaksesi pH-arvoa / parantaaksesi rakennetta." eh="4cb3f0dc" />
     <e k="sf_treat_action_om_low" v="Kynnä LANTAA, KOMPOSTIA tai silppua olki." eh="33ec544c" />
@@ -777,7 +777,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -792,7 +792,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 - 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -940,13 +940,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 - 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1-2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -986,9 +986,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2-3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5-7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
