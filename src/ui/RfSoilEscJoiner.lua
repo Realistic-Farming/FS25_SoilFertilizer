@@ -6,10 +6,10 @@
 -- Stands down legacy menuSoilFertilizer Esc tab when RF door is live.
 -- =========================================================
 
-RfSoilEscJoiner = {}
+RfSoilEscJoiner = RfSoilEscJoiner or {}
 
-local MOD_DIR = g_currentModDirectory
-local MOD_NAME = g_currentModName
+local MOD_DIR = (SoilFertilizerModDirectory or g_currentModDirectory)
+local MOD_NAME = (SoilFertilizerModName or g_currentModName)
 local PANEL_ID = "soilFertilizer"
 local PANEL_ORDER = 10
 

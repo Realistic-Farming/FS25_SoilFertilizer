@@ -11,12 +11,12 @@
 -- =========================================================
 
 ---@class SoilFieldDetailDialog
-SoilFieldDetailDialog = {}
+SoilFieldDetailDialog = SoilFieldDetailDialog or {}
 local SoilFieldDetailDialog_mt = Class(SoilFieldDetailDialog, ScreenElement)
 
 -- Capture mod name at source-time
-local SF_DETAIL_MOD_NAME = g_currentModName
-local SF_DETAIL_MOD_DIR  = g_currentModDirectory
+local SF_DETAIL_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_DETAIL_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 -- Singleton
 SoilFieldDetailDialog.INSTANCE = nil
@@ -95,7 +95,7 @@ function SoilFieldDetailDialog.new(target, customMt)
 end
 
 -- Capture mod directory at source-time (valid during loading only)
-local SF_DETAIL_MOD_DIR = g_currentModDirectory
+local SF_DETAIL_MOD_DIR = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 ---@param modDirectory string  Path to mod directory (with trailing slash)
 function SoilFieldDetailDialog.register(modDirectory)

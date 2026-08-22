@@ -12,12 +12,12 @@
 -- =========================================================
 
 ---@class SoilTreatmentDialog
-SoilTreatmentDialog = {}
+SoilTreatmentDialog = SoilTreatmentDialog or {}
 local SoilTreatmentDialog_mt = Class(SoilTreatmentDialog, ScreenElement)
 
 -- Capture mod name at source-time
-local SF_TREAT_MOD_NAME = g_currentModName
-local SF_TREAT_MOD_DIR  = g_currentModDirectory
+local SF_TREAT_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_TREAT_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 -- Singleton
 SoilTreatmentDialog.INSTANCE = nil

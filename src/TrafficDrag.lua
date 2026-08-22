@@ -14,7 +14,7 @@
 -- SoilFertilityManager:_checkVehicleCompaction (driving pass).
 -- =====================================================================================
 
-TrafficDrag = {}
+TrafficDrag = TrafficDrag or {}
 
 -- -------------------------------------------------------------------------------------
 -- WETNESS BLEND (Engineering confirm 2). SCS's field-level moisture (0..1, nil when

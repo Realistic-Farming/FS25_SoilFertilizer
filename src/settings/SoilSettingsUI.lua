@@ -11,11 +11,11 @@
 -- =========================================================
 ---@class SoilSettingsUI
 
-SoilSettingsUI = {}
+SoilSettingsUI = SoilSettingsUI or {}
 local SoilSettingsUI_mt = Class(SoilSettingsUI)
 
--- Capture mod name at load time - g_currentModName is only valid during loading.
-local SF_MOD_NAME = g_currentModName
+-- Capture mod name at load time - (SoilFertilizerModName or g_currentModName) is only valid during loading.
+local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- The 3 settings injected into the vanilla settings page (Shift+Esc).
 -- Everything else lives in the custom SoilSettingsPanel (Shift+O).

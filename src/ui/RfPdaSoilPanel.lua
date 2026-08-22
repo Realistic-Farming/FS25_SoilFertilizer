@@ -8,7 +8,7 @@
 -- N/P/K/status/fert = colored text only (no nil-filename Bitmaps).
 -- =========================================================
 
-RfPdaSoilPanel = {}
+RfPdaSoilPanel = RfPdaSoilPanel or {}
 -- Cross-mod: WC/CS may source RfPdaMenuPage last (their env has no RfPdaSoilPanel).
 -- getfenv(0) is Soil modEnv only - still publish for same-env callers.
 -- Mission soft-detect is the reliable cross-mod bridge (also set in RfSoilEscJoiner).

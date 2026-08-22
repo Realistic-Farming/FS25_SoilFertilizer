@@ -29,8 +29,10 @@ SoilHarvesterPanel.PANEL_W = 0.210
 SoilHarvesterPanel.STAT_H  = 0.040   -- stats bar (icons + values) at bottom
 SoilHarvesterPanel.EST_H   = 0.012   -- provenance caption above the stats bar
 
-SoilHarvesterPanel.DEFAULT_X = 0.015625
-SoilHarvesterPanel.DEFAULT_Y = 0.340
+-- Default position / scale: the suite layout Wizard arranged in-game (2026-08-22).
+SoilHarvesterPanel.DEFAULT_X     = 0.328646
+SoilHarvesterPanel.DEFAULT_Y     = 0.051111
+SoilHarvesterPanel.DEFAULT_SCALE = 1.171455
 
 SoilHarvesterPanel.WARN_THRESHOLD = 0.85  -- flash warning above this fill ratio
 
@@ -77,7 +79,7 @@ function SoilHarvesterPanel.new(soilSystem, settings)
     self.resizeStartX     = 0
     self.resizeStartY     = 0
     self.resizeStartScale = 1.0
-    self.userScale        = 1.0
+    self.userScale        = SoilHarvesterPanel.DEFAULT_SCALE
     self.movedInEditMode  = false
     self._animTimer       = 0
 
@@ -180,7 +182,7 @@ function SoilHarvesterPanel:loadLayout()
             self.panelX = x
             self.panelY = y
         end
-        self.userScale = xml:getFloat("harvesterPanelLayout.scale", 1.0)
+        self.userScale = xml:getFloat("harvesterPanelLayout.scale", SoilHarvesterPanel.DEFAULT_SCALE)
         xml:delete()
     end
 end

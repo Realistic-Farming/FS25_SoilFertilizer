@@ -98,7 +98,7 @@ function SoilHUD.new(soilSystem, settings)
     self.lastHudPosition = nil
 
     -- Scale & edit state
-    self.scale            = 1.140633   -- factory suite layout (Wizard 2026-08-21)
+    self.scale            = 1.085710   -- factory suite layout (Wizard 2026-08-22)
     self.editMode         = false
     self.dragging         = false
     self.resizing         = false

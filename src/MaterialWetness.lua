@@ -21,7 +21,7 @@
 -- =========================================================
 
 ---@class MaterialWetness
-MaterialWetness = {}
+MaterialWetness = MaterialWetness or {}
 local MaterialWetness_mt = Class(MaterialWetness)
 
 MaterialWetness.LAYER_KEY = "materialWetness"

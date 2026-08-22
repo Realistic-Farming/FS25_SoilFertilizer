@@ -25,7 +25,7 @@
 -- until a consumer wires in.
 -- ============================================================
 
-TopographyCache = {}
+TopographyCache = TopographyCache or {}
 local TopographyCache_mt = Class(TopographyCache)
 
 -- Grid constants (the brief's numbers).

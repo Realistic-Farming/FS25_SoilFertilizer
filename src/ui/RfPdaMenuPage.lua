@@ -13,8 +13,8 @@
 -- SoilPDAScreen coexists untouched.
 -- =========================================================
 
-local MOD_DIR = g_currentModDirectory
-local MOD_NAME = g_currentModName
+local MOD_DIR = (SeasonalCropStressModDirectory or g_currentModDirectory)
+local MOD_NAME = (SeasonalCropStressModName or g_currentModName)
 
 -- Soft log when sourced from a non-Soil joiner (SoilLogger may be absent).
 -- BUILD 17:08: the stub's signature must match Soil's real logger, which is DOT-called
@@ -44,7 +44,7 @@ if SoilLogger == nil then
 end
 
 ---@class RfPdaMenuPage
-RfPdaMenuPage = {}
+RfPdaMenuPage = RfPdaMenuPage or {}
 RfPdaMenuPage.CLASS_NAME = "RfPdaMenuPage"
 -- NO-HOST: shared Esc door name (not Soil-owned menuSoilFertilizer).
 RfPdaMenuPage.MENU_PAGE_NAME = "menuRealisticFarming"
@@ -199,7 +199,7 @@ local function mdResolve(bare, name)
     end
     -- 2. the named environment. Kept first among the fallbacks because it is the cheapest
     --    and correct in the common case, but NOT trusted alone - this hardcodes a mod name
-    --    the guest itself never hardcodes (it uses g_currentModName), so a rename or a
+    --    the guest itself never hardcodes (it uses (SeasonalCropStressModName or g_currentModName)), so a rename or a
     --    differently-named install slips straight past it. That is what produced
     --    "GATE graph=false" on the Dairy door.
     if g_modEnvironments ~= nil then
@@ -1632,8 +1632,20 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     -- exist and would never have hidden them.
     for _, id in ipairs({ "rfFwPagePrev", "rfFwPageNext" }) do
         local btn = self:getDescendantById(id)
-        if btn ~= nil and type(btn.setVisible) == "function" then
-            btn:setVisible(false)
+        if btn ~= nil then
+            btn.inputActionName = nil
+            btn.keyDisplayText = nil
+            btn.keyOverlay = nil
+            btn.hideKeyboardGlyph = true
+            btn.hasLoadedInputGlyph = false
+            btn.isKeyboardMode = false
+            btn.keyGlyphOffsetX = 0
+            btn.keyGlyphSize = { 0, 0 }
+            btn.iconSize = { 0, 0 }
+            btn.icon = {}
+            if type(btn.setVisible) == "function" then
+                btn:setVisible(false)
+            end
         end
     end
     -- Action bar rides the CS module only; the guest decides the two buttons.
@@ -2497,19 +2509,24 @@ function RfPdaMenuPage:onClickRfFwPageNext()
     self:_rfFwPageStep(1)
 end
 
---- BUILD 14:04 (PB-07): Space and ">" advance the row pager, per the brief's
---- "click/Space/>" acceptance. keyEvent walks children first via the superclass
---- (GuiElement.lua:772-784, children in reverse order, eventUsed carried), so a focused
---- control that consumes the key - including the pager Button itself activating on Space -
---- wins before this fires and nothing double-steps. Only an unclaimed press reaches the
---- step, and only a step that actually moved marks the event used; on every page without a
---- pageable guest _rfFwPageStep returns false immediately and the key passes through
---- untouched. unicode 32 is Space, 62 is ">", taken from the event's own unicode so the
---- layout that produced ">" does not matter.
+--- 2026-08-22 (Wizard): pager keys are now . / > for next and , / < for back
+--- (Space is retired - it collided with the engine's global button-activate and its
+--- glyph chip was what overlapped the labels; the buttons themselves now use the
+--- glyph-hidden RF_CsPivotBtn profile). keyEvent walks children first via the
+--- superclass (GuiElement.lua:772-784, children in reverse order, eventUsed carried),
+--- so a focused control that consumes the key wins before this fires and nothing
+--- double-steps. Only an unclaimed press reaches the step, and only a step that
+--- actually moved marks the event used; on every page without a pageable guest
+--- _rfFwPageStep returns false immediately and the key passes through untouched.
+--- unicode 46 is ".", 62 is ">", 44 is ",", 60 is "<" - taken from the event's own
+--- unicode so keyboard layout does not matter.
 function RfPdaMenuPage:keyEvent(unicode, sym, modifier, isDown, eventUsed)
     local used = RfPdaMenuPage:superClass().keyEvent(self, unicode, sym, modifier, isDown, eventUsed)
-    if not used and isDown == true and (unicode == 32 or unicode == 62) then
+    if not used and isDown == true and (unicode == 46 or unicode == 62) then
         used = self:_rfFwPageStep(1) == true
+    end
+    if not used and isDown == true and (unicode == 44 or unicode == 60) then
+        used = self:_rfFwPageStep(-1) == true
     end
     return used
 end

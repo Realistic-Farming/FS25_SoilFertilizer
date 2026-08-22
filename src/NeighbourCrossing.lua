@@ -38,7 +38,7 @@
 -- Author: TisonK
 -- =========================================================
 
-NeighbourCrossing = {}
+NeighbourCrossing = NeighbourCrossing or {}
 
 NeighbourCrossing.ENABLED = true
 

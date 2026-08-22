@@ -380,6 +380,29 @@
         <isTriggerableByGlobalAction value="false"/>
         <iconSize value="30px 30px"/>
     </Profile>
+
+    <!-- 2026-08-22 FAIL-FIX (live screenshot 17:11): the row pager must NOT inherit an
+         inputAction. RF_CsPivotBtn extends buttonActivate, and buttonActivate sets
+         inputAction MENU_ACTIVATE (base game guiProfiles.xml:2084-2087). The engine paints
+         that action's SPACE key chip on every button carrying it, which is what shoved each
+         label out of its own 120px box and into the next button ("< BACK" + the neighbouring
+         chip is what read as "BACKSPACE" on screen). hideKeyboardGlyph did NOT suppress it
+         here - it appears exactly once in the whole base-game profile set, on a disabled
+         gamepad-only selector - and isTriggerableByGlobalAction is not an engine property at
+         all (zero occurrences base game), so both were inert.
+         fs25_wideButton (guiProfiles.xml:2671) is buttonActivate's OWN base minus the
+         inputAction, so this profile is the same chrome with no key chip to draw. The mouse
+         click still works: it runs through onClick, which never needed the input action.
+         Page keys live in RfPdaMenuPage:keyEvent as . / > and , / < . -->
+    <Profile name="RF_FwPagerBtn" extends="fs25_wideButton" with="anchorTopLeft pivotTopLeft">
+        <size value="120px 24px"/>
+        <textSize value="13px"/>
+        <textBold value="true"/>
+        <textUpperCase value="false"/>
+        <fitToContent value="false"/>
+        <textAutoWidth value="false"/>
+        <textAlignment value="center"/>
+    </Profile>
     <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 160px"/>
         <clipChildren value="true"/>

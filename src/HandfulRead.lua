@@ -24,7 +24,7 @@
 -- Author: TisonK
 -- =========================================================
 
-HandfulRead = {}
+HandfulRead = HandfulRead or {}
 
 -- The frozen clause list. The panel renders these; a new clause needs a new
 -- source verification and a contract re-open (rule 1: no phantom fields).

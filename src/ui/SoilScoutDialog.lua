@@ -10,11 +10,11 @@
 -- =========================================================
 
 ---@class SoilScoutDialog
-SoilScoutDialog = {}
+SoilScoutDialog = SoilScoutDialog or {}
 local SoilScoutDialog_mt = Class(SoilScoutDialog, ScreenElement)
 
-local SF_SCOUT_MOD_NAME = g_currentModName
-local SF_SCOUT_MOD_DIR  = g_currentModDirectory
+local SF_SCOUT_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_SCOUT_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilScoutDialog.INSTANCE = nil
 SoilScoutDialog.xmlPath  = nil

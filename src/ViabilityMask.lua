@@ -23,7 +23,7 @@
 -- The family ships LOCKED, so nothing here reaches a player yet.
 -- ============================================================
 
-ViabilityMask = {}
+ViabilityMask = ViabilityMask or {}
 local ViabilityMask_mt = Class(ViabilityMask)
 
 -- ── THE THREE-BAND DIAL FAMILY ──────────────────────────────

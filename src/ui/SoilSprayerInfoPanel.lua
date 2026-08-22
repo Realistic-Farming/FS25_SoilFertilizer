@@ -30,9 +30,10 @@ SoilSprayerInfoPanel.FLAG_W   = 0.0018
 SoilSprayerInfoPanel.FLAG_CAP = 0.0030
 SoilSprayerInfoPanel.STAT_H   = 0.036
 
--- Default position (bottom-left corner, used when no saved position exists)
-SoilSprayerInfoPanel.DEFAULT_X = 0.015625
-SoilSprayerInfoPanel.DEFAULT_Y = 0.520
+-- Default position / scale: the suite layout Wizard arranged in-game (2026-08-22).
+SoilSprayerInfoPanel.DEFAULT_X     = 0.328646
+SoilSprayerInfoPanel.DEFAULT_Y     = 0.122482
+SoilSprayerInfoPanel.DEFAULT_SCALE = 1.290716
 
 -- ── Colors ───────────────────────────────────────────────
 SoilSprayerInfoPanel.C_BG       = {0.05, 0.05, 0.05, 0.82}
@@ -80,7 +81,7 @@ function SoilSprayerInfoPanel.new(soilSystem, settings)
     self.resizeStartX     = 0
     self.resizeStartY     = 0
     self.resizeStartScale = 1.0
-    self.userScale        = 1.0
+    self.userScale        = SoilSprayerInfoPanel.DEFAULT_SCALE
     self.movedInEditMode  = false
     self._animTimer       = 0
 
@@ -184,7 +185,7 @@ function SoilSprayerInfoPanel:loadLayout()
             self.panelY = y
             SoilLogger.info("[SoilSprayerInfoPanel] Layout loaded: (%.3f, %.3f)", x, y)
         end
-        self.userScale = xml:getFloat("sprayerPanelLayout.scale", 1.0)
+        self.userScale = xml:getFloat("sprayerPanelLayout.scale", SoilSprayerInfoPanel.DEFAULT_SCALE)
         xml:delete()
     end
 end

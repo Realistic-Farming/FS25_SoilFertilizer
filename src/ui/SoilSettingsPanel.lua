@@ -9,10 +9,10 @@
 -- =========================================================
 
 ---@class SoilSettingsPanel
-SoilSettingsPanel = {}
+SoilSettingsPanel = SoilSettingsPanel or {}
 local SoilSettingsPanel_mt = Class(SoilSettingsPanel)
 
-local SF_MOD_NAME = g_currentModName
+local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- ── i18n helper ───────────────────────────────────────────
 local function tr(key, fallback)

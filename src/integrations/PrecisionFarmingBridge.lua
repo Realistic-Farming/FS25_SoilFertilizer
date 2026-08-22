@@ -13,7 +13,7 @@
 -- =========================================================
 
 ---@class PrecisionFarmingBridge
-PrecisionFarmingBridge = {}
+PrecisionFarmingBridge = PrecisionFarmingBridge or {}
 local PrecisionFarmingBridge_mt = { __index = PrecisionFarmingBridge }
 
 -- PF's mod directory name. Both g_modIsLoaded and missionDynamicInfo.mods

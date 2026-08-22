@@ -22,7 +22,7 @@
 -- pure and unit-tested under tools/test.
 -- =====================================================================================
 
-SoilCompactionModel = {}
+SoilCompactionModel = SoilCompactionModel or {}
 
 local function clamp(v, lo, hi)
     if v < lo then return lo end

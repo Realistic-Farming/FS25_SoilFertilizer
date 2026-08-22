@@ -8,7 +8,7 @@
 -- =========================================================
 
 ---@class SoilLogger
-SoilLogger = {}
+SoilLogger = SoilLogger or {}
 
 local PREFIX = "[SoilFertilizer]"
 

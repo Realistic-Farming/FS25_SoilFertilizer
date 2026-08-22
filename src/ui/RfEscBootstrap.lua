@@ -5,7 +5,7 @@
 -- No Soil privilege; no rfPdaHost. Option B equal-bootstrap path.
 -- =========================================================
 
-RfEscBootstrap = {}
+RfEscBootstrap = RfEscBootstrap or {}
 
 local PAGE_NAME = "menuRealisticFarming"
 local CLASS_NAME = "RfPdaMenuPage"
@@ -154,7 +154,7 @@ local function addIngameMenuPage(frame, pageName, iconPath, uvs, position, predi
 end
 
 --- Ensure shared Esc door exists. Idempotent: skip create if already present.
----@param modDir string g_currentModDirectory of the calling joiner
+---@param modDir string (SoilFertilizerModDirectory or g_currentModDirectory) of the calling joiner
 ---@param opts table|nil { profilesXml?, iconPath?, uvs? }
 ---@return boolean true if door exists after call
 function RfEscBootstrap.ensureDoor(modDir, opts)

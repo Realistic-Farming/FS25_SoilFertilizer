@@ -12,11 +12,11 @@
 -- =========================================================
 
 ---@class SoilVersionDialog
-SoilVersionDialog = {}
+SoilVersionDialog = SoilVersionDialog or {}
 local SoilVersionDialog_mt = Class(SoilVersionDialog, ScreenElement)
 
-local SF_VER_MOD_NAME = g_currentModName
-local SF_VER_MOD_DIR  = g_currentModDirectory
+local SF_VER_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_VER_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilVersionDialog.INSTANCE = nil
 

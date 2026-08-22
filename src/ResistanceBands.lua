@@ -24,7 +24,7 @@
 -- survive the wholesale-replace handlers. Bands ride every payload the way organic does
 -- rather than being side-cached, because a value that travels cannot be wiped by a replace.
 
-ResistanceBands = {}
+ResistanceBands = ResistanceBands or {}
 
 local BANDS = SoilConstants.RESISTANCE.BANDS
 

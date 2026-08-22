@@ -9,7 +9,7 @@
 -- =========================================================
 
 ---@class SoilFertilitySystem
-SoilFertilitySystem = {}
+SoilFertilitySystem = SoilFertilitySystem or {}
 local SoilFertilitySystem_mt = Class(SoilFertilitySystem)
 
 local COVERAGE_MILESTONES = { 0.10, 0.25, 0.50, 0.75, 1.0 }

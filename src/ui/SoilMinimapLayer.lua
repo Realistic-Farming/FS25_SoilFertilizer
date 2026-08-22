@@ -25,7 +25,7 @@
 -- (older engine builds) SoilMapOverlay falls back to polygon dots.
 -- =========================================================
 
-SoilMinimapLayer = {}
+SoilMinimapLayer = SoilMinimapLayer or {}
 SoilMinimapLayer_mt = Class(SoilMinimapLayer)
 
 SoilMinimapLayer.OVERLAY_RESOLUTION  = 512   -- texture resolution (width = height)

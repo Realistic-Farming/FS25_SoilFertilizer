@@ -20,7 +20,7 @@
 -- we register before or after it parses the master file.
 -- =========================================================
 
-SoilStateLedgerBridge = {}
+SoilStateLedgerBridge = SoilStateLedgerBridge or {}
 
 -- Provisional module id. This is the persistence KEY inside the master file, so it
 -- must be locked with Claude(A) before any release (a later rename orphans saved

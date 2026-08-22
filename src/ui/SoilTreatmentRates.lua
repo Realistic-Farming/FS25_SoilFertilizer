@@ -7,7 +7,7 @@
 -- Hang fence: callers keep <=8 fixed Text rows (no SmoothList).
 -- =========================================================
 
-SoilTreatmentRates = {}
+SoilTreatmentRates = SoilTreatmentRates or {}
 
 local function tr(key, fallback)
     if g_i18n ~= nil then

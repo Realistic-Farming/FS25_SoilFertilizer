@@ -7,7 +7,7 @@
 -- =========================================================
 
 ---@class HookManager
-HookManager = {}
+HookManager = HookManager or {}
 local HookManager_mt = Class(HookManager)
 
 --- [SF-19 item 5] Resolve the per-section pest/disease pressure for See & Spray.

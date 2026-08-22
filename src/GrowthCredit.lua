@@ -24,7 +24,7 @@
 -- by one. DensityMapMultiModifier batching is sanctioned.
 -- ============================================================
 
-GrowthCredit = {}
+GrowthCredit = GrowthCredit or {}
 local GrowthCredit_mt = Class(GrowthCredit)
 
 -- Time Guard accrual. Priority 97 lands one behind the foundation's 96
