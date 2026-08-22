@@ -8,11 +8,11 @@
 -- =========================================================
 
 ---@class SoilOverlayHelpDialog
-SoilOverlayHelpDialog = {}
+SoilOverlayHelpDialog = SoilOverlayHelpDialog or {}
 local SoilOverlayHelpDialog_mt = Class(SoilOverlayHelpDialog, ScreenElement)
 
-local SF_OVHELP_MOD_NAME = g_currentModName
-local SF_OVHELP_MOD_DIR  = g_currentModDirectory
+local SF_OVHELP_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_OVHELP_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilOverlayHelpDialog.INSTANCE = nil
 

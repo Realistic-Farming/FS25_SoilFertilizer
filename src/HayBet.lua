@@ -16,7 +16,7 @@
 -- =========================================================
 
 ---@class HayBet
-HayBet = {}
+HayBet = HayBet or {}
 local HayBet_mt = Class(HayBet)
 
 -- The fit boundary: moisture at or below this threshold means the

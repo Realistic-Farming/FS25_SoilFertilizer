@@ -43,7 +43,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SpatialNutrients = {}
+SpatialNutrients = SpatialNutrients or {}
 
 SpatialNutrients.ENABLED = true
 

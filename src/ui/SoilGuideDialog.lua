@@ -12,11 +12,11 @@
 -- =========================================================
 
 ---@class SoilGuideDialog
-SoilGuideDialog = {}
+SoilGuideDialog = SoilGuideDialog or {}
 local SoilGuideDialog_mt = Class(SoilGuideDialog, ScreenElement)
 
-local SF_GUIDE_MOD_NAME = g_currentModName
-local SF_GUIDE_MOD_DIR  = g_currentModDirectory
+local SF_GUIDE_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_GUIDE_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilGuideDialog.INSTANCE = nil
 

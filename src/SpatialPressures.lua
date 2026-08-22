@@ -30,7 +30,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SpatialPressures = {}
+SpatialPressures = SpatialPressures or {}
 
 SpatialPressures.ENABLED = true
 

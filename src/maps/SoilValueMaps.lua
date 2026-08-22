@@ -25,7 +25,7 @@
 -- =========================================================
 
 ---@class SoilValueMaps
-SoilValueMaps = {}
+SoilValueMaps = SoilValueMaps or {}
 local SoilValueMaps_mt = Class(SoilValueMaps)
 
 -- Unscouted-disease marker (Unscouted Indicator). The diseasePressure DISPLAY

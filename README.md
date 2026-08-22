@@ -90,9 +90,9 @@ Three pressure scores (0–100) track threats to each field independently. Left 
 
 All three are visible in the HUD and the full Soil Report. Each can be toggled off in settings.
 
-**Named diseases and fungicide chemistry** - disease pressure isn't just a number. Each crop can catch specific real-world diseases (wheat gets septoria, rust, and fusarium head blight; potatoes get late and early blight; soybeans get frogeye and white mould, and so on - around 40 in total). Press **Scout** (`SF_SCOUT`, default **Shift+K**) on a field to identify the active disease, then choose from a catalog of **23 fungicides** across seven chemistry families (triazoles, strobilurins, SDHIs, contact protectants, specialty, preventatives, and seed treatments). Each product has its own cost, per-disease effectiveness, and application window, and works best applied early, on-window, and not in the rain. Rotate chemistry families to keep them working.
+**Named diseases and fungicide chemistry** - disease pressure isn't just a number. Each crop can catch specific real-world diseases (wheat gets septoria, rust, and fusarium head blight; potatoes get late and early blight; soybeans get frogeye and white mould, and so on - around 40 in total). Press **Scout** (`SF_SCOUT` - no default key, assign one under Options > Controls > Mods) on a field to identify the active disease, then choose from a catalog of **23 fungicides** across seven chemistry families (triazoles, strobilurins, SDHIs, contact protectants, specialty, preventatives, and seed treatments). Each product has its own cost, per-disease effectiveness, and application window, and works best applied early, on-window, and not in the rain. Rotate chemistry families to keep them working.
 
-**Treatment panel** - press **Open Soil Treatment Panel** (`SF_TREATMENT`, default **Shift+T**) for a per-field prescription: exactly which nutrients, lime, and protection products a field needs right now.
+**Treatment panel** - press **Open Soil Treatment Panel** (`SF_TREATMENT` - no default key, assign one under Options > Controls > Mods) for a per-field prescription: exactly which nutrients, lime, and protection products a field needs right now.
 
 ### 💊 Fertilizer Types
 
@@ -202,11 +202,11 @@ Three in-vehicle overlay panels that appear when you enter a supported sprayer. 
 |---|---|---|
 | **Smart Sensor** | Monitors pest, disease, and nutrient need per section. Blocks spraying on sections with no active need detected. | Settings → Admin → Smart Systems. Works with any VWW sprayer. |
 | **See & Spray** | Shows live per-cell pressure for pest, disease, and weed at the sprayer's current position. Colour-coded per section. | Buy any sprayer with the *See & Spray* shop configuration selected. |
-| **Variable Rate** | Adjusts boom output rate per section based on soil deficits for the loaded product. Green bar = low rate; red bar = high rate. | Default key **Alt+7** (rebind `SF_VARIABLE_RATE` in **Controls → Mods**). Enable in Admin → Smart Systems. |
+| **Variable Rate** | Adjusts boom output rate per section based on soil deficits for the loaded product. Green bar = low rate; red bar = high rate. | No default key (bind `SF_VARIABLE_RATE` in **Controls → Mods**). Enable in Admin → Smart Systems. |
 
 Smart Sensor and Variable Rate work with any VWW-capable sprayer. **See & Spray is available on any sprayer** with the See & Spray option selected at purchase.
 
-**Free Panel Layout** - Enable in Settings → Display → Position, then use the Shift+H edit mode to drag each panel independently. Press **[−]** in any panel's title bar to collapse it to the title bar only. Positions and collapse states are saved to `hud.xml`.
+**Free Panel Layout** - Enable in Settings → Display → Position, then use the HUD drag edit mode (`SF_HUD_DRAG`, bind it in Controls → Mods) to drag each panel independently. Press **[−]** in any panel's title bar to collapse it to the title bar only. Positions and collapse states are saved to `hud.xml`.
 
 ### 📊 Soil HUD
 
@@ -218,7 +218,7 @@ The **yield forecast row** (e.g. `Yield ~-18%`) is not just a warning - it refle
 
 Additional rows appear contextually: **Coverage** (`Coverage: X% / 70% min`) while a sprayer is active on a field, and **Compaction** (when soil compaction is above 0% and the setting is enabled). Both are colour-coded with the same green/amber/red tiers as nutrients.
 
-Fully customisable: 6 positions, 4 colour themes, 5 transparency levels, 3 font sizes, and a compact mode that shrinks to one line per nutrient. The HUD drag mode (`SF_HUD_DRAG`, default **Shift+H**) lets you reposition panels in Free Panel Layout and is rebindable through the standard FS25 key bindings menu.
+Fully customisable: 6 positions, 4 colour themes, 5 transparency levels, 3 font sizes, and a compact mode that shrinks to one line per nutrient. The HUD drag mode (`SF_HUD_DRAG` - no default key, assign one through the standard FS25 key bindings menu; note **Shift+H** is taken by FS25_MasterHUD's hide-all-HUDs toggle) lets you reposition panels in Free Panel Layout. With FS25_MasterHUD installed, the suite *Edit HUD Layout* action also enters this edit mode.
 
 ### 📋 Full Farm Soil Report
 
@@ -305,7 +305,7 @@ The full panel ships with its key **unbound** to avoid clashing with other mods.
 | **Harvester info panel** | On / Off | In-vehicle panel showing yield forecast and soil status while harvesting |
 | **Field info box** | On / Off | Small on-screen box summarising the current field |
 | **Colourblind mode** | On / Off | Swaps the status palette for colourblind-friendly colours |
-| **Free Panel Layout** | On / Off | Drag each in-vehicle panel to its own position (Shift+H edit mode) |
+| **Free Panel Layout** | On / Off | Drag each in-vehicle panel to its own position (`SF_HUD_DRAG` edit mode) |
 
 **🗺️ Map** - controls the PDA map overlay
 
@@ -337,7 +337,7 @@ Every core rate has its own multiplier: nutrient depletion, fertilizer efficienc
 
 ## 🖥️ Console Commands
 
-Open the developer console with **`~`** and type `soilfertility` for the full list, or press **`Shift+O`** → **Admin** to access all commands as buttons directly in-game.
+Open the developer console with **`~`** and type `soilfertility` for the full list, or press your **Open Soil Settings** key (`SF_OPEN_SETTINGS`, bound in Controls → Mods) → **Admin** to access all commands as buttons directly in-game.
 
 | Command | Arguments | Description |
 |---|---|---|
@@ -406,7 +406,7 @@ All integrations are detected automatically at runtime and fail gracefully if th
 4. Apply lime first - it unlocks the full value of everything else
 5. Apply fertilizer → watch N/P/K climb in real time
 6. Open the tablet → Soil & Fertilizer → Farm Overview to see all fields by urgency
-7. Press Shift+O → open the full settings panel to tune the simulation
+7. Press your Open Soil Settings key (bind SF_OPEN_SETTINGS in Controls → Mods) → open the full settings panel to tune the simulation
 8. Let a field go fallow for a season → it slowly recovers on its own
 9. At harvest → healthy soil means the full yield you worked for
 ```

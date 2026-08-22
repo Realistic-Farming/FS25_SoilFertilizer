@@ -1,9 +1,9 @@
 ---@class SoilMapOverlay
-SoilMapOverlay = {}
+SoilMapOverlay = SoilMapOverlay or {}
 local SoilMapOverlay_mt = Class(SoilMapOverlay)
 
 -- ── i18n helper ───────────────────────────────────────────
-local SF_MOD_NAME = g_currentModName
+local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 local function tr(key, fallback)
     local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]

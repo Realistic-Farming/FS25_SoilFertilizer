@@ -11,7 +11,7 @@
 -- always call IngameMapElement.draw superFunc.
 -- =========================================================
 
-SoilMapHooks = {}
+SoilMapHooks = SoilMapHooks or {}
 
 local function logNilOnce(key, msg)
     if InGameMenuMapFrame == nil then

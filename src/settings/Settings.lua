@@ -7,7 +7,7 @@
 -- =========================================================
 ---@class Settings
 
-Settings = {}
+Settings = Settings or {}
 local Settings_mt = Class(Settings)
 
 Settings.DIFFICULTY_EASY = SoilConstants.DIFFICULTY.EASY

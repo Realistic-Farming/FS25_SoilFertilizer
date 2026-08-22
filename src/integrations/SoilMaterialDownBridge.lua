@@ -15,7 +15,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SoilMaterialDownBridge = {}
+SoilMaterialDownBridge = SoilMaterialDownBridge or {}
 
 -- =========================================================
 -- Time Guard

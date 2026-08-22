@@ -4,10 +4,10 @@
 -- its threshold 1m ahead. Mirrors PF's ExtendedSprayerEffects pattern.
 -- No PF dependency - ever.
 
-SFNozzleEffects = {}
+SFNozzleEffects = SFNozzleEffects or {}
 -- Derive the spec table name from the actual mod environment so the spec keeps
 -- working regardless of the mod folder/zip name (REFINED rename safety).
-SFNozzleEffects.SPEC_TABLE_NAME = "spec_" .. (g_currentModName or "FS25_SoilFertilizer_Refined") .. ".sfNozzleEffects"
+SFNozzleEffects.SPEC_TABLE_NAME = "spec_" .. ((SoilFertilizerModName or g_currentModName) or "FS25_SoilFertilizer_Refined") .. ".sfNozzleEffects"
 
 -- Fade direction vectors (mirrors PF ESE constants)
 SFNozzleEffects.FADE_DIR_OFF   = {0,  0}
@@ -118,14 +118,14 @@ function SFNozzleEffects.registerGlobally()
     SFNozzleEffects._didRegisterGlobally = true
 
     local shortName = "sfNozzleEffects"
-    local fullName  = (g_currentModName or "FS25_SoilFertilizer") .. "." .. shortName
+    local fullName  = ((SoilFertilizerModName or g_currentModName) or "FS25_SoilFertilizer") .. "." .. shortName
 
     -- The spec is normally registered via modDesc <specialization>; register it here as
     -- a fallback only if that did not happen (never double-register - that errors).
     if g_specializationManager and
        g_specializationManager:getSpecializationByName(fullName) == nil then
         local filename = Utils.getFilename(
-            "src/specializations/SFNozzleEffects.lua", g_currentModDirectory)
+            "src/specializations/SFNozzleEffects.lua", (SoilFertilizerModDirectory or g_currentModDirectory))
         g_specializationManager:addSpecialization(fullName, "SFNozzleEffects", filename, nil)
     end
 

@@ -26,7 +26,7 @@
 -- =========================================================
 
 ---@class EstablishmentFailure
-EstablishmentFailure = {}
+EstablishmentFailure = EstablishmentFailure or {}
 local EstablishmentFailure_mt = Class(EstablishmentFailure)
 
 -- The daily kill threshold: SCS moisture (0-1) above which an establishing crop

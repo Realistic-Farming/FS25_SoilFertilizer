@@ -26,7 +26,7 @@
 -- Author: TisonK
 -- =========================================================
 
-NpcSoilBridge = {}
+NpcSoilBridge = NpcSoilBridge or {}
 
 --- The mission-handle capability marker NPCFavor probes before deleting its flip.
 --- Published once the mission handle is available (Mission00.load hook).

@@ -8,7 +8,7 @@
 -- =========================================================
 
 ---@class SprayerRateManager
-SprayerRateManager = {}
+SprayerRateManager = SprayerRateManager or {}
 SprayerRateManager.__index = SprayerRateManager
 
 function SprayerRateManager.new()

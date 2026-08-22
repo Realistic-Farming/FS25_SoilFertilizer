@@ -31,7 +31,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SpatialScouting = {}
+SpatialScouting = SpatialScouting or {}
 
 -- Age limit default. The brief says "N in XML, ratio-pass-tuned, never infinite
 -- by default". The ratio pass has not run; this is the flagged placeholder, one

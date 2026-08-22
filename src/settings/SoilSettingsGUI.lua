@@ -5,7 +5,7 @@
 -- =========================================================
 ---@class SoilSettingsGUI
 
-SoilSettingsGUI = {}
+SoilSettingsGUI = SoilSettingsGUI or {}
 local SoilSettingsGUI_mt = Class(SoilSettingsGUI)
 
 -- Route a setting change through the network layer so all MP clients are notified.

@@ -8,7 +8,7 @@
 -- soil bridges use: no-op when StateLedger / NetworkSync is absent.
 -- =========================================================
 
-SoilTopographyBridge = {}
+SoilTopographyBridge = SoilTopographyBridge or {}
 
 -- Provisional module ids (must be locked with Claude(A) before release, the
 -- same <Mod>_<Thing> convention as the soil bridges).

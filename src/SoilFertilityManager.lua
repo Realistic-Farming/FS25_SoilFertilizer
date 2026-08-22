@@ -6,7 +6,7 @@
 -- COPYRIGHT NOTICE: All rights reserved.
 -- =========================================================
 ---@class SoilFertilityManager
-SoilFertilityManager = {}
+SoilFertilityManager = SoilFertilityManager or {}
 local SoilFertilityManager_mt = Class(SoilFertilityManager)
 
 

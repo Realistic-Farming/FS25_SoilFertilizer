@@ -46,7 +46,7 @@
 -- =========================================================
 
 ---@class YardLadder
-YardLadder = {}
+YardLadder = YardLadder or {}
 local YardLadder_mt = Class(YardLadder)
 
 -- Ruled numbers (SF-46 brief, NUMBERS ADDENDUM 2026-07-31).

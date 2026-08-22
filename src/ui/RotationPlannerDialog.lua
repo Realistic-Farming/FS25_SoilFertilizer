@@ -7,10 +7,10 @@
 -- =========================================================
 
 ---@class RotationPlannerDialog
-RotationPlannerDialog = {}
+RotationPlannerDialog = RotationPlannerDialog or {}
 local RotationPlannerDialog_mt = Class(RotationPlannerDialog, ScreenElement)
 
-local SF_RP_MOD_DIR = g_currentModDirectory
+local SF_RP_MOD_DIR = (SoilFertilizerModDirectory or g_currentModDirectory)
 RotationPlannerDialog.INSTANCE = nil
 RotationPlannerDialog.xmlPath = nil
 

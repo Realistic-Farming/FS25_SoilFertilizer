@@ -29,7 +29,7 @@
 -- =========================================================
 
 ---@class MaterialDown
-MaterialDown = {}
+MaterialDown = MaterialDown or {}
 local MaterialDown_mt = Class(MaterialDown)
 
 MaterialDown.LAYER_KEY = "materialAge"

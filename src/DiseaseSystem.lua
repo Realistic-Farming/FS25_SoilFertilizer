@@ -14,7 +14,7 @@
 -- =========================================================
 
 ---@class SoilDiseaseSystem
-SoilDiseaseSystem = {}
+SoilDiseaseSystem = SoilDiseaseSystem or {}
 
 local function clamp(v, lo, hi)
     if v < lo then return lo end

@@ -24,7 +24,7 @@
 -- (steward condition 2), not a comment.
 -- ============================================================
 
-GrowthBlock = {}
+GrowthBlock = GrowthBlock or {}
 local GrowthBlock_mt = Class(GrowthBlock)
 
 -- The restore cap: max growth steps held back per bracket. Default 1. Neutral

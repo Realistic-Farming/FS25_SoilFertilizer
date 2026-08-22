@@ -9,11 +9,11 @@
 -- =========================================================
 
 ---@class SoilReleaseDialog
-SoilReleaseDialog = {}
+SoilReleaseDialog = SoilReleaseDialog or {}
 local SoilReleaseDialog_mt = Class(SoilReleaseDialog, ScreenElement)
 
-local SF_RLS_MOD_NAME = g_currentModName
-local SF_RLS_MOD_DIR  = g_currentModDirectory
+local SF_RLS_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_RLS_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilReleaseDialog.INSTANCE = nil
 

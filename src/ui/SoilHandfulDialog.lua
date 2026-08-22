@@ -33,11 +33,11 @@
 -- =========================================================
 
 ---@class SoilHandfulDialog
-SoilHandfulDialog = {}
+SoilHandfulDialog = SoilHandfulDialog or {}
 local SoilHandfulDialog_mt = Class(SoilHandfulDialog, ScreenElement)
 
-local SF_HANDFUL_MOD_NAME = g_currentModName
-local SF_HANDFUL_MOD_DIR  = g_currentModDirectory
+local SF_HANDFUL_MOD_NAME = (SoilFertilizerModName or g_currentModName)
+local SF_HANDFUL_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilHandfulDialog.INSTANCE = nil
 SoilHandfulDialog.xmlPath  = nil

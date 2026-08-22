@@ -19,7 +19,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SoilScoutingBridge = {}
+SoilScoutingBridge = SoilScoutingBridge or {}
 
 -- =========================================================
 -- Time Guard

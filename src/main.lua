@@ -11,11 +11,18 @@
 -- or claiming this code as your own is strictly prohibited.
 -- =========================================================
 
-local modDirectory = g_currentModDirectory
-local modName = g_currentModName
+-- Hot-reload latch (FuelCosts reference): g_currentModDirectory and
+-- g_currentModName are nil on a live re-source, so they are latched into
+-- module globals on first load, with a g_modsDirectory loose-folder fallback.
+SoilFertilizerModDirectory = SoilFertilizerModDirectory
+    or g_currentModDirectory
+    or (g_modsDirectory ~= nil and (g_modsDirectory .. "FS25_SoilFertilizer/") or nil)
+SoilFertilizerModName = SoilFertilizerModName or g_currentModName or "FS25_SoilFertilizer"
+local modDirectory = SoilFertilizerModDirectory
+local modName = SoilFertilizerModName
 
 -- Menu icon global (resolved by XML imageFilename="g_SFIconMenu" via GuiOverlay hook below)
-g_SFIconMenu = Utils.getFilename("textures/ui/menuIcon.dds", g_currentModDirectory)
+g_SFIconMenu = Utils.getFilename("textures/ui/menuIcon.dds", (SoilFertilizerModDirectory or g_currentModDirectory))
 
 -- Resolve g_SFIconMenu in XML imageFilename attributes (EmployeeManager/MDM pattern)
 local SF_ICON_GLOBALS = { g_SFIconMenu = true }
@@ -837,7 +844,7 @@ end
 --   patching working in the same callback).
 
 -- Route mouse events to SoilHUD (for drag/resize edit mode).
--- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) - not via RMB.
+-- Edit mode is entered via the SF_HUD_DRAG input action (player-assigned key) - not via RMB.
 -- RMB only exits edit mode (and only when this mod is already in edit mode).
 -- This guarantees RMB is never consumed during normal play, preserving
 -- CoursePlay, AutoDrive, and other mods that rely on RMB.

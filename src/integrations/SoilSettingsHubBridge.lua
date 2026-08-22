@@ -24,7 +24,7 @@
 -- FarmTablet's System Settings app is read-only for now.
 -- =========================================================
 
-SoilSettingsHubBridge = {}
+SoilSettingsHubBridge = SoilSettingsHubBridge or {}
 
 -- FarmTablet's System Settings app renders the label string as-is (no l10n
 -- lookup on its end), so resolve each setting's human-readable name here from

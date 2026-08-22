@@ -586,9 +586,16 @@
                                  re-enter the layout the way a list rebuild can.
                                  Parked on the rfFwTableTitle band, which every Table-mode guest
                                  already hides, so the pager collides with nothing that paints. -->
-                            <Button profile="buttonActivate" id="rfFwPagePrev" position="880px -8px" size="120px 24px"
+                            <!-- 2026-08-22 FAIL-FIX (live screenshot 17:11): bottom-right placement inside
+                                 the 1140x428 table frame was correct and is kept; the profile was not.
+                                 RF_CsPivotBtn inherits inputAction MENU_ACTIVATE from buttonActivate, so the
+                                 engine painted a SPACE key chip on BOTH buttons and each chip pushed its own
+                                 label out of its 120px box into the neighbour. RF_FwPagerBtn extends
+                                 fs25_wideButton instead - identical chrome, no inputAction, so no chip.
+                                 See rfEscProfiles.xml. Page keys: . / > next, , / < back. -->
+                            <Button profile="RF_FwPagerBtn" id="rfFwPagePrev" position="880px -396px" size="120px 24px"
                                     visible="false" text="" onClick="onClickRfFwPagePrev"/>
-                            <Button profile="buttonActivate" id="rfFwPageNext" position="1010px -8px" size="120px 24px"
+                            <Button profile="RF_FwPagerBtn" id="rfFwPageNext" position="1010px -396px" size="120px 24px"
                                     visible="false" text="" onClick="onClickRfFwPageNext"/>
                             <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>

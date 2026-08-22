@@ -12,7 +12,7 @@
 -- Singleton: only one mod installs (prefer Soil; else first).
 -- =========================================================
 
-RfEscUiDebugger = {}
+RfEscUiDebugger = RfEscUiDebugger or {}
 
 local PAGE_NAME = "menuRealisticFarming"
 local CLASS_NAME = "RfPdaMenuPage"
@@ -65,8 +65,8 @@ local function _getSoilModDirectory()
             return d
         end
     end
-    if g_currentModName == SOIL_MOD_NAME and g_currentModDirectory ~= nil then
-        return g_currentModDirectory
+    if (SoilFertilizerModName or g_currentModName) == SOIL_MOD_NAME and (SoilFertilizerModDirectory or g_currentModDirectory) ~= nil then
+        return (SoilFertilizerModDirectory or g_currentModDirectory)
     end
     if g_modManager ~= nil and type(g_modManager.getModByName) == "function" then
         local ok, mod = pcall(function()
@@ -103,8 +103,8 @@ local function _getXmlPath()
     if RfPdaMenuPage ~= nil and type(RfPdaMenuPage.getXmlFilename) == "function" then
         return RfPdaMenuPage.getXmlFilename()
     end
-    if g_currentModDirectory ~= nil then
-        return g_currentModDirectory .. "xml/gui/" .. CLASS_NAME .. ".xml"
+    if (SoilFertilizerModDirectory or g_currentModDirectory) ~= nil then
+        return (SoilFertilizerModDirectory or g_currentModDirectory) .. "xml/gui/" .. CLASS_NAME .. ".xml"
     end
     return nil
 end
@@ -133,7 +133,7 @@ local function _getProfilesXml()
     if fromSoil ~= nil then
         return fromSoil
     end
-    return _profilesCandidate(g_currentModDirectory)
+    return _profilesCandidate((SoilFertilizerModDirectory or g_currentModDirectory))
 end
 
 local function _captureActiveModuleId()
@@ -707,7 +707,7 @@ function RfEscUiDebugger.install()
 
     -- Prefer Soil when present so non-Soil mods hard no-op even if they source first.
     local soilDir = _getSoilModDirectory()
-    local myDir = g_currentModDirectory
+    local myDir = (SoilFertilizerModDirectory or g_currentModDirectory)
     if soilDir ~= nil and myDir ~= nil and _normDir(soilDir) ~= _normDir(myDir) then
         return
     end
@@ -719,7 +719,7 @@ function RfEscUiDebugger.install()
     end
     _listenerInstalled = true
     _markInstalledGlobally()
-    local owner = (g_currentModName ~= nil and g_currentModName) or "unknown"
+    local owner = ((SoilFertilizerModName or g_currentModName) ~= nil and (SoilFertilizerModName or g_currentModName)) or "unknown"
     _log("info", "installed by %s (F6 / rfEscReloadGui). Dev-only; frame-replace path; not Vera F1 substitute.", tostring(owner))
 end
 

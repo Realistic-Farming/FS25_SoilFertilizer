@@ -43,7 +43,7 @@
 -- release gate is open AND the mask is enabled.
 -- ============================================================
 
-ZoneYield = {}
+ZoneYield = ZoneYield or {}
 local ZoneYield_mt = Class(ZoneYield)
 
 -- ── THE EFFICIENCY BAND ──────────────────────────────────────

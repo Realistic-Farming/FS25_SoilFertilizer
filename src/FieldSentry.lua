@@ -21,7 +21,7 @@
 -- =========================================================
 
 ---@class FieldSentry_Core
-FieldSentry_Core = {}
+FieldSentry_Core = FieldSentry_Core or {}
 
 -- Blacklist reason enum. Phase 1 uses NONE and MANUAL; the rest are reserved so the
 -- API shape is stable as later phases add structural/classification rules.
@@ -205,7 +205,7 @@ end
 -- Public API
 -- =========================================================
 ---@class FieldSentry_API
-FieldSentry_API = {}
+FieldSentry_API = FieldSentry_API or {}
 
 --- Hot path (O(1)): is this field's simulation currently disabled?
 ---@param fieldId number

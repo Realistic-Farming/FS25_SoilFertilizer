@@ -9,7 +9,7 @@
 -- lottery is NOT the product default.
 -- =========================================================
 
-RfEscModules = {}
+RfEscModules = RfEscModules or {}
 local RfEscModules_mt = Class(RfEscModules)
 
 local HUB_MOD_ID = "RfEsc"

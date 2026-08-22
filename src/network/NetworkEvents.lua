@@ -11,7 +11,7 @@
 -- ========================================
 -- SETTING CHANGE EVENT (Client -> Server)
 -- ========================================
-SoilSettingChangeEvent = {}
+SoilSettingChangeEvent = SoilSettingChangeEvent or {}
 SoilSettingChangeEvent_mt = Class(SoilSettingChangeEvent, Event)
 
 InitEventClass(SoilSettingChangeEvent, "SoilSettingChangeEvent")
@@ -121,7 +121,7 @@ end
 -- ========================================
 -- SETTING SYNC EVENT (Server -> Clients)
 -- ========================================
-SoilSettingSyncEvent = {}
+SoilSettingSyncEvent = SoilSettingSyncEvent or {}
 SoilSettingSyncEvent_mt = Class(SoilSettingSyncEvent, Event)
 
 InitEventClass(SoilSettingSyncEvent, "SoilSettingSyncEvent")
@@ -200,7 +200,7 @@ end
 -- ========================================
 -- FULL SYNC REQUEST (Client -> Server)
 -- ========================================
-SoilRequestFullSyncEvent = {}
+SoilRequestFullSyncEvent = SoilRequestFullSyncEvent or {}
 SoilRequestFullSyncEvent_mt = Class(SoilRequestFullSyncEvent, Event)
 
 InitEventClass(SoilRequestFullSyncEvent, "SoilRequestFullSyncEvent")
@@ -356,7 +356,7 @@ end
 -- ========================================
 -- FULL SYNC RESPONSE (Server -> Client)
 -- ========================================
-SoilFullSyncEvent = {}
+SoilFullSyncEvent = SoilFullSyncEvent or {}
 SoilFullSyncEvent_mt = Class(SoilFullSyncEvent, Event)
 
 InitEventClass(SoilFullSyncEvent, "SoilFullSyncEvent")
@@ -643,7 +643,7 @@ end
 -- The server sends one of these per batch of fields after the initial
 -- SoilFullSyncEvent (which carries settings + signals sync start).
 -- isLast=true on the final batch so the client can finalise.
-SoilFieldBatchSyncEvent = {}
+SoilFieldBatchSyncEvent = SoilFieldBatchSyncEvent or {}
 SoilFieldBatchSyncEvent_mt = Class(SoilFieldBatchSyncEvent, Event)
 
 InitEventClass(SoilFieldBatchSyncEvent, "SoilFieldBatchSyncEvent")
@@ -958,7 +958,7 @@ end
 -- FIELD UPDATE EVENT (Server -> Clients)
 -- ========================================
 -- Sent when soil data changes (harvest, fertilizer) for a single field
-SoilFieldUpdateEvent = {}
+SoilFieldUpdateEvent = SoilFieldUpdateEvent or {}
 SoilFieldUpdateEvent_mt = Class(SoilFieldUpdateEvent, Event)
 
 InitEventClass(SoilFieldUpdateEvent, "SoilFieldUpdateEvent")
@@ -1228,7 +1228,7 @@ end
 -- menu. The server is authoritative: it validates the chemical, applies the
 -- effectiveness/pressure/protection math, charges the requesting farm, and
 -- broadcasts the resulting field state via SoilFieldUpdateEvent.
-SoilTreatFieldEvent = {}
+SoilTreatFieldEvent = SoilTreatFieldEvent or {}
 SoilTreatFieldEvent_mt = Class(SoilTreatFieldEvent, Event)
 
 InitEventClass(SoilTreatFieldEvent, "SoilTreatFieldEvent")
@@ -1287,7 +1287,7 @@ end
 -- (single-writer): the server validates and calls optIn/optOut, and those methods
 -- self-broadcast the resulting field state to every peer. Mirrors SoilTreatFieldEvent.
 -- ==========================================================================
-SoilOrganicOptEvent = {}
+SoilOrganicOptEvent = SoilOrganicOptEvent or {}
 SoilOrganicOptEvent_mt = Class(SoilOrganicOptEvent, Event)
 
 InitEventClass(SoilOrganicOptEvent, "SoilOrganicOptEvent")
@@ -1333,7 +1333,7 @@ end
 -- field so every client's discovery gate opens. Discovery is monotonic, so no
 -- validation beyond a known field is needed.
 -- ==========================================================================
-SoilScoutFieldEvent = {}
+SoilScoutFieldEvent = SoilScoutFieldEvent or {}
 SoilScoutFieldEvent_mt = Class(SoilScoutFieldEvent, Event)
 
 InitEventClass(SoilScoutFieldEvent, "SoilScoutFieldEvent")
@@ -1374,7 +1374,7 @@ end
 -- passively). Nothing else changes: no field scout fee, no diseaseDiscovered
 -- write, no other state.
 -- ==========================================================================
-SoilKneelEvent = {}
+SoilKneelEvent = SoilKneelEvent or {}
 SoilKneelEvent_mt = Class(SoilKneelEvent, Event)
 
 InitEventClass(SoilKneelEvent, "SoilKneelEvent")
@@ -1544,7 +1544,7 @@ end
 -- ========================================
 -- Sent when the local player changes the application rate on a sprayer.
 -- Server applies the change and rebroadcasts so all clients stay in sync.
-SoilSprayerRateEvent = {}
+SoilSprayerRateEvent = SoilSprayerRateEvent or {}
 SoilSprayerRateEvent_mt = Class(SoilSprayerRateEvent, Event)
 
 InitEventClass(SoilSprayerRateEvent, "SoilSprayerRateEvent")
@@ -1616,7 +1616,7 @@ end
 -- ========================================
 -- SPRAYER AUTO-MODE EVENT (Client <-> Server)
 -- ========================================
-SoilSprayerAutoModeEvent = {}
+SoilSprayerAutoModeEvent = SoilSprayerAutoModeEvent or {}
 SoilSprayerAutoModeEvent_mt = Class(SoilSprayerAutoModeEvent, Event)
 
 InitEventClass(SoilSprayerAutoModeEvent, "SoilSprayerAutoModeEvent")
@@ -1683,7 +1683,7 @@ end
 -- Server-authoritative. A pure client sends a request; the server validates (admin),
 -- applies it on FieldSentry, then broadcasts so every client mirrors the state for the
 -- map-tab status readout. The server/host applies directly via the Send wrapper below.
-SoilFieldSentryEvent = {}
+SoilFieldSentryEvent = SoilFieldSentryEvent or {}
 SoilFieldSentryEvent_mt = Class(SoilFieldSentryEvent, Event)
 
 InitEventClass(SoilFieldSentryEvent, "SoilFieldSentryEvent")
@@ -1752,7 +1752,7 @@ end
 -- ========================================
 -- Server-authoritative, mirrors the manual-blacklist toggle. A meadow field still
 -- simulates (on grassland rules), so this only carries the persistent player intent.
-SoilFieldMeadowEvent = {}
+SoilFieldMeadowEvent = SoilFieldMeadowEvent or {}
 SoilFieldMeadowEvent_mt = Class(SoilFieldMeadowEvent, Event)
 
 InitEventClass(SoilFieldMeadowEvent, "SoilFieldMeadowEvent")
@@ -1819,7 +1819,7 @@ end
 -- Server -> clients only. The contract mask is evaluated server-side (refreshContract);
 -- this mirrors the resulting reason enum to clients for the map-tab readout. Carries a
 -- per-field sequence so clients drop stale / out-of-order packets (FieldSentry FIFO guard).
-SoilFieldSentryStatusEvent = {}
+SoilFieldSentryStatusEvent = SoilFieldSentryStatusEvent or {}
 SoilFieldSentryStatusEvent_mt = Class(SoilFieldSentryStatusEvent, Event)
 
 InitEventClass(SoilFieldSentryStatusEvent, "SoilFieldSentryStatusEvent")
@@ -1902,7 +1902,7 @@ local sfValueMapResyncInFlight = {}
 local sfValueMapSyncRoundLayers = {}
 local SF_VALUE_MAP_RESYNC_MAX = 2
 
-SoilValueMapChunkEvent = {}
+SoilValueMapChunkEvent = SoilValueMapChunkEvent or {}
 SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
 
 InitEventClass(SoilValueMapChunkEvent, "SoilValueMapChunkEvent")
@@ -2042,7 +2042,7 @@ local function sfComputeLayerChecksum(vm, layerKey)
     return sum, nonZero
 end
 
-SoilValueMapChecksumEvent = {}
+SoilValueMapChecksumEvent = SoilValueMapChecksumEvent or {}
 SoilValueMapChecksumEvent_mt = Class(SoilValueMapChecksumEvent, Event)
 
 InitEventClass(SoilValueMapChecksumEvent, "SoilValueMapChecksumEvent")
@@ -2145,7 +2145,7 @@ end
 
 -- ── Layer resync request (Client -> Server) ───────────────
 
-SoilRequestValueMapEvent = {}
+SoilRequestValueMapEvent = SoilRequestValueMapEvent or {}
 SoilRequestValueMapEvent_mt = Class(SoilRequestValueMapEvent, Event)
 
 InitEventClass(SoilRequestValueMapEvent, "SoilRequestValueMapEvent")

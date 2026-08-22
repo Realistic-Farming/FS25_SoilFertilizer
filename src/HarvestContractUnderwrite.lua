@@ -42,7 +42,7 @@
 -- =========================================================
 
 ---@class HarvestContractUnderwrite
-HarvestContractUnderwrite = {}
+HarvestContractUnderwrite = HarvestContractUnderwrite or {}
 
 -- AbstractMission:updateTick finishes a mission SUCCESS at completion >= 0.995 (the base
 -- game's own "99.5% shows as 100%" margin). We mirror it so the messaging fires exactly

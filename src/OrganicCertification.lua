@@ -19,7 +19,7 @@
 -- downstream consumers in their own repos and only READ getFieldOrganicState().
 -- =========================================================
 
-OrganicCertification = {}
+OrganicCertification = OrganicCertification or {}
 local OrganicCertification_mt = Class(OrganicCertification)
 
 --- Constructor

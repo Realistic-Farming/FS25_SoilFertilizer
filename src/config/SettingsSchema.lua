@@ -8,7 +8,7 @@
 -- =========================================================
 
 ---@class SettingsSchema
-SettingsSchema = {}
+SettingsSchema = SettingsSchema or {}
 
 -- Schema entries: each defines a setting completely
 -- Order matters for UI display and network sync

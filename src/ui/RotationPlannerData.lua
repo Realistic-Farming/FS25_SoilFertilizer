@@ -7,7 +7,7 @@
 -- Stores nothing, writes nothing, plants nothing.
 -- =========================================================
 
-RotationPlannerData = {}
+RotationPlannerData = RotationPlannerData or {}
 
 -- Fallback mirrors (used only when the blessed pool getter is absent).
 RotationPlannerData.LEGUME_CANDIDATES  = { "soybean", "peas", "clover", "alfalfa" }

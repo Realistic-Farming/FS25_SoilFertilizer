@@ -22,7 +22,7 @@
 -- through this, or they double-scale.
 -- =========================================================
 
-SoilDuration = {}
+SoilDuration = SoilDuration or {}
 
 --- Days-per-period from Time Guard's context, or nil when Time Guard is absent.
 -- Reads the suite's single season-length authority; never queries the calendar
