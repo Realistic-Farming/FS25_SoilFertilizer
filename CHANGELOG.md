@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.4.7.0]
 
 ### Added
+- **Control Center actions** (suite Control Center, requires SettingsHub): `SF_TREATMENT`, `SF_SCOUT`, `SF_HANDFUL`, `SF_OPEN_SETTINGS`.
 - **New per-pixel soil engine, adopted from WizardlyPayload's Refined fork (#736).** Soil is now stored at roughly 2 m resolution across the whole map instead of one average per field, with persistence, migration from existing saves, multiplayer delivery, and rendering through the engine's density-map-visualization pipeline (the same one Precision Farming uses). All eleven map layers and the HUD minimap render from it. Our simulation, settings, disease system and economy are unchanged: the engine replaces how soil is *stored and drawn*, not how it behaves.
 - **The Soil Layer Installer is no longer required.** The value maps are built in memory at startup on any map, with no authored terrain layers and no map preparation. Already-patched maps keep working; their layers simply become a fallback.
 - **Six named fungicides as buyable, sprayable IBC tanks** (Propiconazole, Azoxystrobin, Boscalid, Mancozeb, Metalaxyl, Tebuconazole), plus the organic-approved sulfur and copper pair. Scouting names the chemical that best controls the field's actual disease, and spraying routes through the catalog's per-disease control maths.
 
 ### Fixed
+- **AI field-job crash guard.** AI fieldwork could crash when the weed or stone density map resolution mismatched the ground-type map resolution; the fruit-requirement check now guards against the mismatch.
 - **Pest and disease pressure could never reach their own effect thresholds (#737).** Pest gains about 8.52 points a year at the low tier and a harvest reset it to 30% of current, so under an annual harvest it converged on 12.2 against a first costing tier of 20: unreachable at any save length. Disease was suppressed separately by a plough pass worth roughly six years of accumulation, and by a dry-weather branch that *replaced* growth rather than damping it. Harvest reset is now 0.60 (steady peak 21.3), plough disease relief is 15, and a dry day inside the fungal window still grows disease at 40% of the wet rate, with outright decay moved to a second, higher drought threshold. Reported by nitro.
 - **Migration painted negative-coordinate cells at the wrong positions** when converting an existing save to the new engine.
 - **Skipped days were not simulated and the daily batch stranded its tail**, so time away from a save did not move the soil correctly.
