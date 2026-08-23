@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Control Center actions** (suite Control Center, requires SettingsHub): `SF_TREATMENT`, `SF_SCOUT`, `SF_HANDFUL`, `SF_OPEN_SETTINGS`.
+- **Playtest fixes:** SF_TOGGLE_HUD (RShift+O) and SF_HUD_DRAG (RShift+P) chord defaults, HUD bridge/panel polish, in-vehicle panels and vehicle input hook.
 - **New per-pixel soil engine, adopted from WizardlyPayload's Refined fork (#736).** Soil is now stored at roughly 2 m resolution across the whole map instead of one average per field, with persistence, migration from existing saves, multiplayer delivery, and rendering through the engine's density-map-visualization pipeline (the same one Precision Farming uses). All eleven map layers and the HUD minimap render from it. Our simulation, settings, disease system and economy are unchanged: the engine replaces how soil is *stored and drawn*, not how it behaves.
 - **The Soil Layer Installer is no longer required.** The value maps are built in memory at startup on any map, with no authored terrain layers and no map preparation. Already-patched maps keep working; their layers simply become a fallback.
 - **Six named fungicides as buyable, sprayable IBC tanks** (Propiconazole, Azoxystrobin, Boscalid, Mancozeb, Metalaxyl, Tebuconazole), plus the organic-approved sulfur and copper pair. Scouting names the chemical that best controls the field's actual disease, and spraying routes through the catalog's per-disease control maths.
