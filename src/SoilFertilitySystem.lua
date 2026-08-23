@@ -832,7 +832,7 @@ function SoilFertilitySystem:onMow(fieldId, fruitTypeIndex, areaHa)
     -- scenarios that would confuse players (TisonK's review note on PR #265).
     local rates = SoilConstants.CROP_EXTRACTION_FORAGE or SoilConstants.CROP_EXTRACTION_DEFAULT
 
-    local diffMult = self.settings:getDepletionMultiplier()
+    local diffMult = SoilConstants.DIFFICULTY.MULTIPLIERS[self.settings.difficulty] or 1.0
     local haFactor = SoilConstants.MOWER_HA_FACTOR or 6.0
     local fieldAreaHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
 
@@ -2472,7 +2472,6 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
         growthFrac = growthFrac,
         isRaining = isWet,
         diseaseDifficulty = self.settings.diseaseDifficulty or 2,
-        fungicideEffMult = self.settings:getFungicideEffMultiplier(),
     })
 
     local t = SoilConstants.DISEASE_TREATMENT
@@ -4806,7 +4805,9 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             end
 
             -- Named-disease layer modifiers: difficulty, soil health, crop rotation.
-            local diffMult = self.settings:getDiseasePressureMultiplier()
+            local diff = SoilConstants.DISEASE_DIFFICULTY[self.settings.diseaseDifficulty or 2]
+                or SoilConstants.DISEASE_DIFFICULTY[2]
+            local diffMult = diff.pressureMult or 1.0
             local soilMult = SoilDiseaseSystem.soilHealthMult(field)
             local rotMult  = self.settings.cropRotation and SoilDiseaseSystem.rotationMult(field) or 1.0
 
@@ -5141,8 +5142,10 @@ function SoilFertilitySystem:updateFieldNutrients(fieldId, fruitTypeIndex, harve
     -- Simple (0.7x): 30% less depletion, easier for new players
     -- Realistic (1.0x): Balanced depletion based on real agricultural rates
     -- Hardcore (1.5x): 50% more depletion, challenging management
-    local diffMultiplier = self.settings:getDepletionMultiplier()
-    factor = factor * diffMultiplier
+    local diffMultiplier = SoilConstants.DIFFICULTY.MULTIPLIERS[self.settings.difficulty]
+    if diffMultiplier then
+        factor = factor * diffMultiplier
+    end
 
     -- Step 2b: Compaction penalty - compacted soil reduces nutrient uptake efficiency,
     -- causing crops to deplete more of what's available to achieve the same yield.
@@ -5471,7 +5474,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
 
     else
         -- 2. Apply standard nutrients (scaled by the liters applied this frame)
-        local rrMult = self.settings:getReplenishmentMultiplier()
+        local rrIdx  = self.settings.replenishmentRate or 3
+        local rrMult = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
         local factor = (liters / 1000) / areaInHa * rrMult
 
         -- Capture before-values for diagnostic logging (debug mode only).

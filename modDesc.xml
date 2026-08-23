@@ -84,13 +84,13 @@
     </vehicleTypes>
 
     <actions>
-        <action name="SF_TOGGLE_HUD"  category="ONFOOT VEHICLE" />
+        <action name="SF_TOGGLE_HUD" category="ONFOOT VEHICLE" />
         <action name="SF_RATE_UP"     category="VEHICLE" />
         <action name="SF_RATE_DOWN"   category="VEHICLE" />
         <action name="SF_TOGGLE_AUTO" category="VEHICLE" />
         <action name="SF_CYCLE_MAP_LAYER"   category="ONFOOT VEHICLE" />
         <action name="SF_OPEN_SETTINGS"     category="ONFOOT VEHICLE" />
-        <action name="SF_HUD_DRAG"          category="ONFOOT VEHICLE" />
+        <action name="SF_HUD_DRAG" category="ONFOOT VEHICLE" />
         <action name="SF_VARIABLE_RATE"     category="VEHICLE" />
         <action name="SF_MINIMAP_ZOOM"      category="ONFOOT" />
         <action name="SF_SCOUT"             category="ONFOOT" />
@@ -101,13 +101,11 @@
     <l10n filenamePrefix="translations/translation" />
 
     <inputBinding>
-        <actionBinding action="SF_TOGGLE_HUD" />
         <actionBinding action="SF_RATE_UP" />
         <actionBinding action="SF_RATE_DOWN" />
         <actionBinding action="SF_TOGGLE_AUTO" />
         <actionBinding action="SF_CYCLE_MAP_LAYER" />
         <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_HUD_DRAG" />
         <actionBinding action="SF_VARIABLE_RATE" />
         <actionBinding action="SF_MINIMAP_ZOOM" />
         <actionBinding action="SF_SCOUT" />
@@ -117,6 +115,12 @@
              collides out of the box. All nine former defaults were removed; the
              actions stay registered and rebindable. -->
         <actionBinding action="SF_HANDFUL" />
+        <actionBinding action="SF_TOGGLE_HUD">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
+        </actionBinding>
+        <actionBinding action="SF_HUD_DRAG">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_p" />
+        </actionBinding>
     </inputBinding>
 
     <!-- Custom fill types declared in external file (FS25 requires filename= attribute) -->
