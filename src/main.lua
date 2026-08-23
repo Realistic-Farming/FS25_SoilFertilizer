@@ -756,6 +756,56 @@ end
 -- mission object is completely set up before our load() accesses it.
 Mission00.load = Utils.appendedFunction(Mission00.load, load)
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, loadedMission)
+
+-- ---------------------------------------------------------
+-- Realistic Farming Control Center: publish runnable delegates.
+--
+-- Feature actions only. The in-vehicle rate and sensor actions (SF_RATE_UP,
+-- SF_RATE_DOWN, SF_TOGGLE_AUTO, SF_VARIABLE_RATE, SF_MINIMAP_ZOOM) act on the
+-- machine the player is currently driving and mean nothing from a dialog, and
+-- SF_TOGGLE_HUD / SF_HUD_DRAG belong to the suite HUD keys that MasterHUD owns.
+-- Those all keep their directory row and live key readout, just no button.
+--
+-- SF_HANDFUL is wired even though it is gated on crouching and the experimental
+-- opt-in, because onHandfulInput raises its own blinking warning explaining why
+-- when a gate blocks it. The player gets an answer either way, never silence.
+-- ---------------------------------------------------------
+local function registerControlCenterActions()
+    local registry = g_currentMission ~= nil and g_currentMission.rfActionRegistry or nil
+    if registry == nil then return end
+
+    local function run(method)
+        return function()
+            local mgr = g_SoilFertilityManager
+            if mgr ~= nil and mgr[method] ~= nil then
+                mgr[method](mgr)
+            end
+        end
+    end
+
+    registry.registerAction({
+        action = "SF_TREATMENT", button = "Open", order = 1,
+        closeFirst = true, run = run("onTreatmentInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_SCOUT", button = "Open", order = 2,
+        closeFirst = true, run = run("onScoutInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_HANDFUL", button = "Inspect", order = 3,
+        closeFirst = true, run = run("onHandfulInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_OPEN_SETTINGS", button = "Open", order = 4,
+        closeFirst = true, run = run("onOpenSettingsInput"),
+    })
+end
+
+Mission00.loadMission00Finished = Utils.appendedFunction(
+    Mission00.loadMission00Finished, registerControlCenterActions)
 Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, missionStarted)
 -- Prepend so our cleanup runs before FS25 tears down g_inputBinding/HUD (fixes black screen with AGS)
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
