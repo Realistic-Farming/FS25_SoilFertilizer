@@ -911,7 +911,7 @@ SoilConstants.HUD = {
         -- Presets 2-5 are player choices and stay untouched.
         -- Wizard 2026-08-22: preset [1] updated to the suite layout Wizard
         -- arranged in-game (right column, above Tax).
-        [1] = { x = 0.810485, y = 0.567037 },  -- Suite home (factory default)
+        [1] = { x = 0.798902, y = 0.534630 },  -- Suite home (factory default)
         [2] = { x = 0.010, y = 0.70 },  -- Top Left
         [3] = { x = 0.850, y = 0.20 },  -- Bottom Right
         [4] = { x = 0.010, y = 0.20 },  -- Bottom Left

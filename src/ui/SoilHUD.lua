@@ -111,7 +111,7 @@ function SoilHUD.new(soilSystem, settings)
     self.animTimer        = 0
 
     -- Width state (edge-drag, NPCFavor/Workplace pattern)
-    self.widthMult          = 0.909375   -- factory suite layout (Wizard 2026-08-21)
+    self.widthMult          = 0.967188   -- factory suite layout (Wizard 2026-08-22 21:xx capture)
     self.edgeDragging       = nil   -- nil | "left" | "right"
     self.edgeDragStartX     = 0
     self.edgeDragStartWidth = 1.0

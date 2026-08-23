@@ -1,3 +1,12 @@
+-- 2026-08-22 (Wizard): with MasterHUD installed this mod's own HUD hide/move keys must not
+-- merely be inert, they must not REGISTER at all - that is what removes their rows from the
+-- F1 legend and the Controls list. Probed on TaxMod first: skipping registration does remove
+-- the row, so the pattern is used suite-wide. Only HUD hide/move actions are gated; every
+-- other action this mod registers is untouched.
+local function __rfMhOwnsHudKeys()
+    return ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil
+end
+
 -- =========================================================
 -- FS25 Realistic Soil & Fertilizer (FarmlandManager version)
 -- =========================================================
@@ -266,11 +275,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 -- so the PLAYER context is reused and our events survive vehicle transitions.
                 g_inputBinding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
 
-                local hudOk, hudId = g_inputBinding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
+                local hudOk, hudId = false, nil
+                if not __rfMhOwnsHudKeys() then
+                    local hudOk, hudId = g_inputBinding:registerActionEvent(
+                        InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onToggleHUDInput,
+                        false, true, false, true
+                    )
+                end
                 if hudOk and hudId then
                     g_SoilFertilityManager.toggleHUDEventId = hudId
                     SoilLogger.info("HUD toggle (J) registered in PLAYER context")
@@ -310,11 +322,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
 
                 -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - PLAYER context
                 if g_SoilFertilityManager.soilHUD then
-                    local dragOk, dragId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
+                    local dragOk, dragId = false, nil
+                    if not __rfMhOwnsHudKeys() then
+                        local dragOk, dragId = g_inputBinding:registerActionEvent(
+                            InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
+                            g_SoilFertilityManager.onHUDDragInput,
+                            false, true, false, true
+                        )
+                    end
                     if dragOk and dragId then
                         g_SoilFertilityManager.hudDragEventId = dragId
                         g_inputBinding:setActionEventTextVisibility(dragId, false)
@@ -473,11 +488,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 binding:beginActionEventsModification(Vehicle.INPUT_CONTEXT_NAME)
 
                 -- HUD toggle (J) in vehicle
-                local vHudOk, vHudId = binding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
+                local vHudOk, vHudId = false, nil
+                if not __rfMhOwnsHudKeys() then
+                    local vHudOk, vHudId = binding:registerActionEvent(
+                        InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onToggleHUDInput,
+                        false, true, false, true
+                    )
+                end
                 if vHudOk and vHudId then
                     g_SoilFertilityManager.vehicleHUDEventId = vHudId
                     sfShowOnCabStrip(binding, vHudId)
@@ -545,11 +563,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
 
                 -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - VEHICLE context
                 if g_SoilFertilityManager.soilHUD then
-                    local vDragOk, vDragId = binding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
+                    local vDragOk, vDragId = false, nil
+                    if not __rfMhOwnsHudKeys() then
+                        local vDragOk, vDragId = binding:registerActionEvent(
+                            InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
+                            g_SoilFertilityManager.onHUDDragInput,
+                            false, true, false, true
+                        )
+                    end
                     if vDragOk and vDragId then
                         g_SoilFertilityManager.vehicleHudDragEventId = vDragId
                         sfShowOnCabStrip(binding, vDragId)
@@ -593,11 +614,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 -- exit (the PLAYER context is reused, not recreated), so we must do this here.
                 binding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
 
-                local pHudOk, pHudId = binding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
+                local pHudOk, pHudId = false, nil
+                if not __rfMhOwnsHudKeys() then
+                    local pHudOk, pHudId = binding:registerActionEvent(
+                        InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
+                        g_SoilFertilityManager.onToggleHUDInput,
+                        false, true, false, true
+                    )
+                end
                 if pHudOk and pHudId then
                     g_SoilFertilityManager.toggleHUDEventId = pHudId
                     SoilLogger.debug("HUD toggle (J) re-registered in PLAYER context after vehicle exit")
@@ -630,11 +654,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
                 end
 
                 if g_SoilFertilityManager.soilHUD then
-                    local pDragOk, pDragId = binding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
+                    local pDragOk, pDragId = false, nil
+                    if not __rfMhOwnsHudKeys() then
+                        local pDragOk, pDragId = binding:registerActionEvent(
+                            InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
+                            g_SoilFertilityManager.onHUDDragInput,
+                            false, true, false, true
+                        )
+                    end
                     if pDragOk and pDragId then
                         g_SoilFertilityManager.hudDragEventId = pDragId
                         binding:setActionEventTextVisibility(pDragId, false)
@@ -968,8 +995,11 @@ function SoilFertilityManager:registerPlayerContextInputEvents(binding)
     binding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
 
     if not self.toggleHUDEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_TOGGLE_HUD, self, self.onToggleHUDInput, false, true, false, true)
+        local ok, id = false, nil
+        if not __rfMhOwnsHudKeys() then
+            local ok, id = binding:registerActionEvent(
+                InputAction.SF_TOGGLE_HUD, self, self.onToggleHUDInput, false, true, false, true)
+        end
         if ok and id then self.toggleHUDEventId = id; registered = registered + 1 end
     end
 
@@ -994,8 +1024,11 @@ function SoilFertilityManager:registerPlayerContextInputEvents(binding)
     end
 
     if self.soilHUD and not self.hudDragEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_HUD_DRAG, self, self.onHUDDragInput, false, true, false, true)
+        local ok, id = false, nil
+        if not __rfMhOwnsHudKeys() then
+            local ok, id = binding:registerActionEvent(
+                InputAction.SF_HUD_DRAG, self, self.onHUDDragInput, false, true, false, true)
+        end
         if ok and id then
             self.hudDragEventId = id
             binding:setActionEventTextVisibility(id, false)
@@ -1029,6 +1062,13 @@ end
 
 -- Input callback for HUD toggle (J)
 function SoilFertilityManager:onToggleHUDInput()
+    -- 2026-08-22 (Wizard): MasterHUD takeover. When MasterHUD is installed it owns the
+    -- suite-wide hide/move binds, so this mod's own per-mod key is deliberately inert:
+    -- one surface, one way to reach it. Standalone (no MasterHUD) this runs normally.
+    -- Canonical presence check, the same expression the suite's MasterHUD bridges use.
+    if ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil then
+        return
+    end
     if not (self.settings and self.settings.enabled) then return end
     if self.soilHUD then
         self.soilHUD:toggleVisibility()
@@ -1045,6 +1085,13 @@ end
 
 -- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+H)
 function SoilFertilityManager:onHUDDragInput()
+    -- 2026-08-22 (Wizard): MasterHUD takeover. When MasterHUD is installed it owns the
+    -- suite-wide hide/move binds, so this mod's own per-mod key is deliberately inert:
+    -- one surface, one way to reach it. Standalone (no MasterHUD) this runs normally.
+    -- Canonical presence check, the same expression the suite's MasterHUD bridges use.
+    if ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil then
+        return
+    end
     if not self.soilHUD then return end
     if not self.soilHUD.visible then return end
     if not (self.settings and self.settings.showHUD and self.settings.enabled) then return end
