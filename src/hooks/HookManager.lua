@@ -251,6 +251,11 @@ function HookManager:installAll(soilSystem)
 
     SoilLogger.info("Installing event hooks...")
 
+    -- AI fruit requirement guard: must run before any vehicle loads, because a
+    -- mismatched custom density map aborts the process on the first AI field job.
+    local aiGuardOk = self:installAIFruitRequirementGuard()
+    if aiGuardOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Harvest hook: direct-cut combines and forage harvesters (Cutter spec)
     local harvestOk = self:installHarvestHook()
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -473,6 +478,125 @@ end
 
 --- Uninstall all hooks and restore original functions
 --- Called on mod unload to prevent hook accumulation
+-- =========================================================
+-- AI FRUIT REQUIREMENT GUARD: mismatched custom density maps
+-- =========================================================
+-- AIImplement:createFieldCropsQuery builds its query on the ground-type map and
+-- then calls addRequiredDensityMapValue for every fruit requirement carrying a
+-- map of its own. The engine rejects any such map whose resolution differs from
+-- the ground-type map ("Density map must match the size of the ground terrain
+-- detail") and takes the process down with it, so one mismatched map turns every
+-- AI field job on that map into a hard crash.
+--
+-- Three base specializations pass a custom map: Weeder and Sprayer pass the weed
+-- map, StonePicker passes the stone map. Whether a map ships those at the
+-- ground-type resolution is map data, not something any script controls.
+--
+-- The requirement cannot be intercepted where it is added. Vehicle.lua copies
+-- every spec function onto the instance at creation (copyTypeFunctionsInto), so
+-- wrapping AIImplement.addAIFruitRequirement afterwards never reaches the copies
+-- the vehicles actually call. AIVehicleUtil.getAIAreaOfVehicle is a plain module
+-- function resolved at call time and is the only caller of getFieldCropsQuery,
+-- so the offending entries are stripped there, immediately before the query is
+-- built. The job then runs without that filter (the implement works the whole
+-- field rather than only weedy or stony cells) instead of killing the game.
+-- Entries whose resolution cannot be measured are left exactly as they are.
+---@return boolean true when the guard was installed
+function HookManager:installAIFruitRequirementGuard()
+    if not AIVehicleUtil or type(AIVehicleUtil.getAIAreaOfVehicle) ~= "function" then
+        SoilLogger.warning("[AIGuard] AIVehicleUtil.getAIAreaOfVehicle not found - skipping")
+        return false
+    end
+    if getDensityMapSize == nil then
+        SoilLogger.warning("[AIGuard] getDensityMapSize unavailable - skipping")
+        return false
+    end
+
+    local sizeCache = {}   -- [densityMapId] = resolution in px
+    local reported  = {}   -- [densityMapId] = true once measured and logged
+    local groundSize       -- ground-type resolution, measured once
+
+    local function measure(mapId)
+        local cached = sizeCache[mapId]
+        if cached ~= nil then return cached end
+        local ok, size = pcall(getDensityMapSize, mapId)
+        if not ok or size == nil then return nil end
+        sizeCache[mapId] = size
+        return size
+    end
+
+    local function getGroundSize()
+        if groundSize ~= nil then return groundSize end
+        local groundSystem = g_currentMission and g_currentMission.fieldGroundSystem
+        if groundSystem == nil then return nil end
+        local ok, mapId = pcall(function()
+            return groundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
+        end)
+        if not ok or mapId == nil then return nil end
+        groundSize = measure(mapId)
+        return groundSize
+    end
+
+    -- Removes entries the engine would reject. Returns true when the list changed.
+    local function stripMismatched(list, label)
+        if list == nil then return false end
+        local removed = false
+
+        for i = #list, 1, -1 do
+            local mapId = list[i].customMapId
+            if mapId ~= nil then
+                local customSize = measure(mapId)
+                local gSize = getGroundSize()
+
+                if customSize ~= nil and gSize ~= nil then
+                    if not reported[mapId] then
+                        reported[mapId] = true
+                        SoilLogger.info("[AIGuard] AI %s density map %s is %s px, ground-type map is %s px",
+                            label, tostring(mapId), tostring(customSize), tostring(gSize))
+                    end
+
+                    if customSize ~= gSize then
+                        table.remove(list, i)
+                        removed = true
+                        SoilLogger.warning("[AIGuard] Dropped the AI %s requirement on density map %s: the engine aborts the process on this mismatch",
+                            label, tostring(mapId))
+                    end
+                elseif not reported[mapId] then
+                    reported[mapId] = true
+                    SoilLogger.warning("[AIGuard] Could not measure AI %s density map %s (custom=%s, ground=%s) - leaving it in place",
+                        label, tostring(mapId), tostring(customSize), tostring(gSize))
+                end
+            end
+        end
+
+        return removed
+    end
+
+    local original = AIVehicleUtil.getAIAreaOfVehicle
+
+    AIVehicleUtil.getAIAreaOfVehicle = function(vehicle, ...)
+        local spec = vehicle ~= nil and vehicle.spec_aiImplement or nil
+        if spec ~= nil then
+            local strippedRequired   = stripMismatched(spec.requiredFruitTypes,   "required")
+            local strippedProhibited = stripMismatched(spec.prohibitedFruitTypes, "prohibited")
+
+            -- Only an already-built query needs rebuilding; an unbuilt one picks
+            -- up the cleaned list on its first use.
+            if (strippedRequired or strippedProhibited)
+                and spec.fieldCropyQuery ~= nil
+                and vehicle.updateFieldCropsQuery ~= nil then
+                vehicle:updateFieldCropsQuery()
+            end
+        end
+
+        return original(vehicle, ...)
+    end
+
+    self:register(AIVehicleUtil, "getAIAreaOfVehicle", original, "AIFruitRequirementGuard")
+    SoilLogger.info("[AIGuard] AI fruit requirement guard installed on AIVehicleUtil.getAIAreaOfVehicle")
+    return true
+end
+
 function HookManager:uninstallAll()
     if not self.installed then return end
 
