@@ -6545,5 +6545,57 @@
       "count": 20,
       "uniques": 13
     }
+  ],
+  "2026-08-23": [
+    {
+      "referrer": "github.com",
+      "count": 1427,
+      "uniques": 261
+    },
+    {
+      "referrer": "Google",
+      "count": 1282,
+      "uniques": 433
+    },
+    {
+      "referrer": "youtube.com",
+      "count": 363,
+      "uniques": 180
+    },
+    {
+      "referrer": "Bing",
+      "count": 265,
+      "uniques": 76
+    },
+    {
+      "referrer": "kingmods.net",
+      "count": 122,
+      "uniques": 55
+    },
+    {
+      "referrer": "DuckDuckGo",
+      "count": 58,
+      "uniques": 7
+    },
+    {
+      "referrer": "yandex.ru",
+      "count": 33,
+      "uniques": 6
+    },
+    {
+      "referrer": "realisticfarming.com",
+      "count": 23,
+      "uniques": 11
+    },
+    {
+      "referrer": "search.brave.com",
+      "count": 20,
+      "uniques": 11
+    },
+    {
+      "referrer": "symbaloo.com",
+      "count": 18,
+      "uniques": 1
+    }
   ]
 }
