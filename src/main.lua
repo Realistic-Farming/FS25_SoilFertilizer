@@ -149,6 +149,10 @@ source(modDirectory .. "src/OrganicCertification.lua")
 source(modDirectory .. "src/ResistanceBands.lua")
 -- CD-10: after ResistanceBands, whose ceilingForMode it uses for the threshold arithmetic.
 source(modDirectory .. "src/HybridStrains.lua")
+-- CD-13: dog early-warning. Passive, farm-wide crop disease alert when a doghouse
+-- is placed. Reads soilSystem:getFieldInfo; no write path. FarmTablet reads the
+-- published g_currentMission.dogEarlyWarning handle.
+source(modDirectory .. "src/DogEarlyWarning.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
@@ -250,6 +254,7 @@ end
 
 -- Globals
 local sfm = nil
+local dogWarning = nil
 
 -- Declared before unload() so it captures these as upvalues (not globals).
 -- Previously these lived below unload(), so unload() resolved them as globals
@@ -280,6 +285,12 @@ local function loadedMission(mission, node)
         return
     end
     sfm:onMissionLoaded()
+
+    -- CD-13: dog early-warning (passive crop disease alert when a doghouse is placed).
+    if DogEarlyWarning ~= nil and sfm.soilSystem ~= nil then
+        dogWarning = DogEarlyWarning.new(sfm.soilSystem)
+        mission.dogEarlyWarning = dogWarning
+    end
 
     -- FarmTablet System Settings app: mirror our settings into SettingsHub so the
     -- tablet can list them. No-ops when SettingsHub is not installed.
@@ -668,11 +679,13 @@ local function unload()
     if sfm ~= nil then
         sfm:delete()
         sfm = nil
+        dogWarning = nil
         getfenv(0)["g_SoilFertilityManager"] = nil
         if g_currentMission then
             g_currentMission.soilFertilityManager = nil
             g_currentMission.fieldSentry = nil   -- #83 drop the cross-mod bridge
             g_currentMission.soilHarvestBus = nil -- drop the harvest-event bridge
+            g_currentMission.dogEarlyWarning = nil
         end
     end
     -- Restore InputHelpDisplay.draw if we hooked it, so a session reload doesn't accumulate appends.
@@ -813,6 +826,7 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
         if sfm then
             sfm:update(dt)
+            if dogWarning ~= nil then dogWarning:update(dt) end
             -- [SF organic-compost] Day-tracking fallback when Time Guard is absent.
             if g_CompostManager ~= nil then
                 g_CompostManager:updateDayFallback()
