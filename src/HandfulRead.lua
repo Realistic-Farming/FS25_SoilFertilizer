@@ -148,11 +148,16 @@ local function readDiseaseKnown(ctx, soilSystem, field)
     return false, "field"
 end
 
---- testKitActive: neutral-false until the test-kit member ships its flag
---- (silent bridge, per the brief). The panel reads a number only when the kit
---- exists; until then the honest answer is "no test kit in hand".
 ---@return boolean
 local function readTestKit(ctx)
+    local mgr = g_currentMission and g_currentMission.proStaffManager
+    if mgr and type(mgr.hasSoilTestKit) == "function" then
+        local fid = farmIdOf(ctx)
+        if fid then
+            local ok, val = pcall(mgr.hasSoilTestKit, mgr, fid)
+            if ok then return val == true end
+        end
+    end
     return false
 end
 
