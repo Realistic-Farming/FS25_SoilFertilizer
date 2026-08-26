@@ -5593,6 +5593,24 @@ function HookManager:installRidgeTillerHook()
     return true
 end
 
+-- SF-75: soil-class seed-rate factor. Mirrors SpatialNutrients:textureWeight
+-- probe order (getFieldSoilType, then getSoilType); neutral 1.0 when SCS absent.
+function HookManager:_seedRateSoilFactor(fieldId)
+    local tbl = SoilConstants.SEED_RATE_BY_SOIL
+    if not tbl then return 1.0 end
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    if not csMgr then return 1.0 end
+    local soilClass
+    local ok, a = pcall(function() return csMgr:getFieldSoilType(fieldId) end)
+    if ok and type(a) == "string" then soilClass = a end
+    if soilClass == nil then
+        local ok2, b = pcall(function() return csMgr:getSoilType(fieldId) end)
+        if ok2 and type(b) == "string" then soilClass = b end
+    end
+    if soilClass == nil then return 1.0 end
+    return tbl[string.lower(soilClass)] or 1.0
+end
+
 -- =========================================================
 -- HOOK 6: Sowing / planting (SowingMachine)
 -- =========================================================
@@ -5610,8 +5628,36 @@ function HookManager:installSowingHook()
 
     local hookMgrRef = self
     local original = SowingMachine.onEndWorkAreaProcessing
+
+    -- SF-75: wrap original to scale seed usage by soil type BEFORE the drain.
+    -- seedUsageScale is modified before the game code computes `usage`, then
+    -- restored after the original returns. Neutral 1.0 = no-op (ships LOCKED).
+    local seedRateWrapped = function(sowingSelf, dt, hasProcessed)
+        local savedScale = nil
+        local spec75 = sowingSelf.spec_sowingMachine
+        if sowingSelf.isServer and spec75
+           and g_SoilFertilityManager and g_SoilFertilityManager.settings
+           and g_SoilFertilityManager.settings.enabled then
+            local okPos, x75, _, z75 = pcall(getWorldTranslation, sowingSelf.rootNode)
+            if okPos and x75 then
+                local fid75 = hookMgrRef:getFieldIdAtWorldPosition(x75, z75)
+                if fid75 and fid75 > 0 then
+                    local soilFactor = hookMgrRef:_seedRateSoilFactor(fid75)
+                    if soilFactor ~= 1.0 then
+                        savedScale = spec75.seedUsageScale
+                        spec75.seedUsageScale = savedScale * soilFactor
+                    end
+                end
+            end
+        end
+        original(sowingSelf, dt, hasProcessed)
+        if savedScale ~= nil and spec75 then
+            spec75.seedUsageScale = savedScale
+        end
+    end
+
     SowingMachine.onEndWorkAreaProcessing = Utils.appendedFunction(
-        original,
+        seedRateWrapped,
         function(sowingSelf, dt, hasProcessed)
             -- Note: do NOT fast-exit on hasProcessed=false here.
             -- SowingMachine.onEndWorkAreaProcessing also ignores hasProcessed
@@ -5642,9 +5688,6 @@ function HookManager:installSowingHook()
 
                 local statsArea = spec.workAreaParameters.lastStatsArea or spec.workAreaParameters.lastChangedArea or 0
                 if statsArea <= 0 then return end
-                -- Convert density-map pixels → hectares (same as plow/cultivator/mower hooks).
-                -- Passing raw pixels directly caused factor = pixels/fieldAreaHa, exploding
-                -- NPK to max in the first sowing tick (same bug fixed for plow in 51083e7).
                 if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
                 local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
                 if areaHa <= 0 then return end

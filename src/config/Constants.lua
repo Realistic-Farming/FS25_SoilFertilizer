@@ -46,6 +46,13 @@ SoilConstants.DRILLING = {
     WET_GROUND_MOISTURE        = 0.5,
 }
 
+-- SF-75: seed-rate-by-soil-type (ships LOCKED; neutral 1.0 until the balance pass)
+SoilConstants.SEED_RATE_BY_SOIL = {
+    sandy = 1.0,
+    loamy = 1.0,
+    clay  = 1.0,
+}
+
 SoilConstants.DURATION = {
     REFERENCE_DPP = 3,   -- days-per-month the chemical durations were tuned at
 }
