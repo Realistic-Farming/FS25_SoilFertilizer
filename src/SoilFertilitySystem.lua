@@ -1260,16 +1260,18 @@ function SoilFertilitySystem:_applyTillageOxidation(field, oxid, factor, areaHa)
     if not oxid or oxid <= 0 or not field then return false end
     local omDyn  = SoilConstants.OM_DYNAMICS
     local floor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
+    -- SF-56: scale oxidation by the tillage class at the pass location
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    local tillMult = 1.0
+    if tx and tz then tillMult = self:_tillageDecompMult(tx, tz) end
     local before = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-    local after  = math.max(floor, before - oxid * factor)
+    local after  = math.max(floor, before - oxid * tillMult * factor)
     if after >= before then return false end
     field.organicMatter = after
-    -- Positional loss on the OM value map (crop-incorporation precedent).
-    local tx, tz = self._lastTillageX, self._lastTillageZ
     if tx and tz then
         local zone = SoilConstants.ZONE
         local cellFactor = areaHa / zone.CELL_AREA_HA
-        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * cellFactor) }, zone.CELL_SIZE * 0.5)
+        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * tillMult * cellFactor) }, zone.CELL_SIZE * 0.5)
     end
     return true
 end
@@ -4295,6 +4297,27 @@ end
 --- converted field settles. Opt-in per field, so normal crops are never touched. The
 --- shared daily housekeeping (buffer/coverage/freeze reset, compaction decay) runs in
 --- _processOneDailyField before this is called. Coefficients live in SoilConstants.MEADOW.
+--- SF-56: read the engine's PLOW_LEVEL / STUBBLE_SHRED_LEVEL at (x,z) and
+--- return the decomposition multiplier for that cell's tillage class.
+--- plowed > 0: 1.0, stubble > 0 (plow not fresher): 0.8, neither: 0.6.
+--- Returns 1.0 (the baseline identity) when the read fails or is unavailable.
+---@param x number
+---@param z number
+---@return number multiplier
+function SoilFertilitySystem:_tillageDecompMult(x, z)
+    local fgs = g_currentMission and g_currentMission.fieldGroundSystem
+    if not fgs or not FieldDensityMap then return 1.0 end
+    local td = SoilConstants.OM_DYNAMICS and SoilConstants.OM_DYNAMICS.TILLAGE_DECOMPOSITION
+    if not td then return 1.0 end
+    local ok1, plow = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.PLOW_LEVEL, x, 0, z)
+    local ok2, stub = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.STUBBLE_SHRED_LEVEL, x, 0, z)
+    if not ok1 then plow = 0 end
+    if not ok2 then stub = 0 end
+    if (plow or 0) > 0 then return td.PLOWED or 1.0 end
+    if (stub or 0) > 0 then return td.STUBBLE or 0.8 end
+    return td.UNTILLED or 0.6
+end
+
 ---@param field table
 ---@param timeFactor number  1 / daysPerMonth (Issue #349 month normalization)
 ---@param limits table       SoilConstants.NUTRIENT_LIMITS
@@ -4493,6 +4516,13 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         return
     end
 
+    -- ── SF-56: tillage-class decomposition multiplier ──────────────────────
+    local fsField = self:_findFieldObject(fieldId)
+    local tillMult = 1.0
+    if fsField and fsField.posX and fsField.posZ then
+        tillMult = self:_tillageDecompMult(fsField.posX, fsField.posZ)
+    end
+
     -- ── Passive organic-matter oxidation (#695) ──────────────────────────────
     -- Humus oxidizes continuously; without organic returns OM slowly declines. Fallow
     -- recovery (below) adds it back so an idle field still nets positive (+0.005/day),
@@ -4502,7 +4532,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     local omDyn = SoilConstants.OM_DYNAMICS
     if omDyn and (omDyn.DAILY_DECAY or 0) > 0 then
         local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * timeFactor)
+        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * tillMult * timeFactor)
     end
 
     -- ── Fallow recovery ──────────────────────────────────────────────────────
