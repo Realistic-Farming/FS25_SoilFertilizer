@@ -133,6 +133,13 @@ function SoilFertilitySystem.new(settings)
     -- Off by default: an existing save is untouched (zero writes).
     self.genesisActive = false
     self.genesisSeed   = 0
+    -- #880: deferred field re-scan. If the first scan finds no fields (a mod that
+    -- alters the mission-start lifecycle can make onStartMission fire before
+    -- g_fieldManager.fields is populated), the retry pump in update() re-runs the
+    -- scan so the fresh-save seeding is not skipped. False until a deferral.
+    self.fieldsScanPending = false
+    self.scanRetryTimer    = 0
+    self.scanRetryAttempts = 0
     self.hookManager = HookManager.new()
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -2666,6 +2673,11 @@ end
 function SoilFertilitySystem:update(dt)
     if not self.settings.enabled then return end
 
+    -- #880: bounded deferred field re-scan (see _scanRetryTick). Server-side only
+    -- in effect: on a client scanFields returns true immediately and never sets
+    -- the pending flag.
+    self:_scanRetryTick(dt)
+
     self.lastUpdate = self.lastUpdate + dt
 
     if self.lastUpdate >= self.updateInterval then
@@ -2791,6 +2803,14 @@ end
 
 -- Scan all fields from FieldManager
 ---@return boolean True if successfully scanned fields, false if fields not ready yet
+-- #880: bounded deferred field re-scan window. If the first scan finds nothing,
+-- the retry pump in update() re-runs it at this cadence for at most this many
+-- attempts, so a mod that delays g_fieldManager.fields (e.g. one that alters the
+-- mission-start lifecycle) does not strand a fresh save with empty fieldData,
+-- which seeds nothing and reads as every field at zero on the maps.
+local SCAN_RETRY_INTERVAL_MS = 1000  -- retry cadence
+local SCAN_RETRY_MAX         = 20    -- ~20 s window, then give up (lazy path remains)
+
 function SoilFertilitySystem:scanFields()
     -- Guard: clients must not create local fieldData.
     -- Soil values are authoritative on the server and arrive via network sync events.
@@ -2805,11 +2825,13 @@ function SoilFertilitySystem:scanFields()
 
     if not g_fieldManager or not g_fieldManager.fields then
         self:warning("FieldManager not available yet")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
 
     if next(g_fieldManager.fields) == nil then
         self:log("FieldManager fields table empty - not ready yet")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
 
@@ -2831,6 +2853,7 @@ function SoilFertilitySystem:scanFields()
     -- g_currentMission.fieldManager does not exist; use the global g_fieldManager.fields table directly.
     if not g_fieldManager or not g_fieldManager.fields then
         self:warning("g_fieldManager.fields not available - scan deferred")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
     local fields = g_fieldManager.fields
@@ -2924,7 +2947,48 @@ function SoilFertilitySystem:scanFields()
         return true
     end
 
+    self.fieldsScanPending = true   -- #880: nothing usable scanned yet; defer
     return false
+end
+
+-- #880: bounded deferred field re-scan. The initial scan can run while
+-- g_fieldManager.fields is still empty (mods that alter the mission-start
+-- lifecycle); fieldData left empty seeds nothing, which reads as every field at
+-- zero on the maps. Retry at a fixed cadence until the fields appear or the
+-- window closes. No-op unless the pending flag is set.
+function SoilFertilitySystem:_scanRetryTick(dt)
+    if not self.fieldsScanPending then return end
+    self.scanRetryTimer = (self.scanRetryTimer or 0) + dt
+    if self.scanRetryTimer < SCAN_RETRY_INTERVAL_MS then return end
+    self.scanRetryTimer = 0
+    self.scanRetryAttempts = (self.scanRetryAttempts or 0) + 1
+    if self.scanRetryAttempts > SCAN_RETRY_MAX then
+        self.fieldsScanPending = false
+        self:warning("[#880] Field scan still empty after %d retries - giving up (lazy field creation remains)", SCAN_RETRY_MAX)
+        return
+    end
+    if self:scanFields() then
+        self:_reseedAfterDeferredScan()
+    end
+end
+
+-- #880: replay the post-load seed steps that activateSoilSystem skipped when the
+-- initial scan found no fields (they looped over an empty fieldData and painted
+-- nothing). Called once a deferred scan finally populates the field list, so the
+-- maps and per-cell zone data match what a normal fresh save would have had.
+function SoilFertilitySystem:_reseedAfterDeferredScan()
+    local mgr = g_SoilFertilityManager
+    if not mgr or mgr.soilSystem ~= self then return end
+    self:prePopulateAllZoneData()
+    if mgr.seedGRLEFromFieldData then
+        mgr:seedGRLEFromFieldData()
+    end
+    if self:vmAvailable() then
+        self:seedValueMaps()
+    end
+    local mm = mgr.soilMinimapLayer
+    if mm and mm.markDirty then mm:markDirty() end
+    self:info("[#880] Deferred field scan seeded: zone data + GRLE + value maps")
 end
 
 --- Broadcast every tracked field to all connected clients.
