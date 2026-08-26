@@ -363,9 +363,7 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
                 if #cellList == 0 then
                     local verts = self:_fieldPolygonWorld(fieldId)
                     self:killRegion(fieldId, field, verts, fruitDesc)
-                    field.establishingKilled = true
-                    field.establishing = false
-                    field.establishingSowDay = nil
+                    self:_recordFullKill(field)
                     self:_notify("sf_notify_establishment_frost", fieldId, "frost")
                 else
                     for _, cell in ipairs(cellList) do
@@ -398,8 +396,7 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
                                 end
                             end
                             if allKilled then
-                                field.establishing = false
-                                field.establishingSowDay = nil
+                                self:_recordFullKill(field)
                             end
                             self:_notify("sf_notify_establishment_frost", fieldId, "frost")
                         end
@@ -425,9 +422,7 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
         if moisture * self:severity() >= threshold then
             local verts = self:_fieldPolygonWorld(fieldId)
             self:killRegion(fieldId, field, verts, fruitDesc)
-            field.establishingKilled = true
-            field.establishing = false
-            field.establishingSowDay = nil
+            self:_recordFullKill(field)
             SoilLogger.info("[SF-18] field %d establishment FAILED (waterlogged seedbed): crop set to never-came-up", fieldId)
         end
         return
@@ -477,8 +472,7 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
                 end
             end
             if allKilled then
-                field.establishing = false
-                field.establishingSowDay = nil
+                self:_recordFullKill(field)
             end
         end
     end
@@ -659,11 +653,28 @@ function EstablishmentFailure:killRegion(fieldId, field, verts, fruitDesc)
         end
         -- Clean bare contour: clear weed/spray overlays over the dead patch.
         self:_clearWeeds(rings)
-        substrate.growthSystem:setIgnoreDensityChanges(false)
     end)
+    -- #878/#879 HARDENING: the density-change ignore toggle must ALWAYS be
+    -- released, even when a mid-write error throws above. The pcall would
+    -- otherwise leave the growth system ignoring density changes for the rest
+    -- of the session, which freezes crop visibility and re-drilling.
+    substrate.growthSystem:setIgnoreDensityChanges(false)
     if not ok then
         SoilLogger.error("[SF-18] field %d kill write failed: %s", fieldId, tostring(err))
     end
+end
+
+-- #879: a full establishment kill leaves the field genuinely bare (state 0 on
+-- the fruit plane), so SF's own display bridge must agree: clear the drilled
+-- crop so SF stops reporting a planted/growing crop the vanilla PDA correctly
+-- shows as absent. Used at every whole-stand kill site. Partial kills (some
+-- cells still establishing) keep the crop: the window stays open until they
+-- green.
+function EstablishmentFailure:_recordFullKill(field)
+    field.establishingKilled = true
+    field.establishing = false
+    field.establishingSowDay = nil
+    field.sownCrop = nil
 end
 
 -- Best-effort weed clear over the killed region (RWUtils.witherArea's clean
