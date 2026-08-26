@@ -340,6 +340,12 @@ SoilConstants.OM_DYNAMICS = {
     -- loses a little OM day to day but far less than a tilled one, and skips the
     -- per-pass oxidation hit entirely - the season-long reason no-till builds carbon.
     NO_TILL_DAILY_CREDIT = 0.004,
+
+    TILLAGE_DECOMPOSITION = {
+        PLOWED   = 1.0,
+        STUBBLE  = 0.8,
+        UNTILLED = 0.6,
+    },
 }
 
 -- ========================================
