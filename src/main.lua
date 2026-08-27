@@ -776,8 +776,10 @@ Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00
 -- Feature actions only. The in-vehicle rate and sensor actions (SF_RATE_UP,
 -- SF_RATE_DOWN, SF_TOGGLE_AUTO, SF_VARIABLE_RATE, SF_MINIMAP_ZOOM) act on the
 -- machine the player is currently driving and mean nothing from a dialog, and
--- SF_TOGGLE_HUD / SF_HUD_DRAG belong to the suite HUD keys that MasterHUD owns.
--- Those all keep their directory row and live key readout, just no button.
+-- SF_HUD_DRAG belongs to the suite HUD keys that MasterHUD owns and keeps its
+-- directory row and live key readout, just no button. SF_TOGGLE_HUD now grows a
+-- hide/show button below: the physical key stays gated to MasterHUD, but a per-mod
+-- hide is reachable from the Control Center so a player can disable just this HUD.
 --
 -- SF_HANDFUL is wired even though it is gated on crouching and the experimental
 -- opt-in, because onHandfulInput raises its own blinking warning explaining why
@@ -814,6 +816,24 @@ local function registerControlCenterActions()
     registry.registerAction({
         action = "SF_OPEN_SETTINGS", button = "Open", order = 4,
         closeFirst = true, run = run("onOpenSettingsInput"),
+    })
+
+    -- Per-mod HUD hide/show. Toggles soilHUD.visible directly (not onToggleHUDInput,
+    -- which stands down under MasterHUD); SoilHUD:draw honours .visible under both
+    -- the MasterHUD bridge and the standalone hook. Live "Hide"/"Show" caption.
+    registry.registerAction({
+        action = "SF_TOGGLE_HUD", order = 5,
+        button = function()
+            local hud = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilHUD or nil
+            return (hud ~= nil and hud.visible) and "Hide" or "Show"
+        end,
+        run = function()
+            local hud = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilHUD or nil
+            if hud ~= nil and hud.toggleVisibility ~= nil then
+                hud:toggleVisibility()
+                return hud.visible and "Soil HUD shown" or "Soil HUD hidden"
+            end
+        end,
     })
 end
 
