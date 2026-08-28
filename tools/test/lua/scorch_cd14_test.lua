@@ -233,3 +233,25 @@ do
   T.ok("scorch: N docks toward but never below the floor",
        low.nitrogen >= SoilConstants.NUTRIENT_LIMITS.MIN)
 end
+
+-- ── #842: the crop gate samples under the BOOM, not the field reference ───────
+-- A part-harvested field: its stored reference cell (posX/posZ) can carry a crop
+-- the boom is nowhere near. The scorch/burn crop gate must read the ground under
+-- the applicator (_lastSprayX/_lastSprayZ), or it judges a crop that is not there.
+do
+  stubWorld(SULFUR_CERTAIN, WHEAT)
+  -- Put the field's stored reference point well away from the boom (100, 200).
+  g_fieldManager.farmlandIdFieldMapping = { [5] = { posX = 777, posZ = 888 } }
+  local sampledX, sampledZ
+  FieldState.new = function()
+    return {
+      update = function(_self, x, z) sampledX, sampledZ = x, z end,
+      fruitTypeIndex = WHEAT.fruitTypeIndex,
+      growthState    = WHEAT.growthState,
+    }
+  end
+  local sys = newSys({ pH = 7.0, nitrogen = 60 })   -- _lastSprayX=100, _lastSprayZ=200
+  at(0); sys:applyScorchEffect(1, "SULFUR")
+  T.eq("scorch: crop gate samples at the boom X (#842), not the field reference", sampledX, 100)
+  T.eq("scorch: crop gate samples at the boom Z (#842), not the field reference", sampledZ, 200)
+end

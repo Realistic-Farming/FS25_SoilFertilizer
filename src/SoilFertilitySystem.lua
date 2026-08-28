@@ -5426,7 +5426,11 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             if fsField and fsField.posX and fsField.posZ then
                 local ok, fs = pcall(function()
                     local s = FieldState.new()
-                    s:update(fsField.posX, fsField.posZ)
+                    -- Sample at the boom point (#842), not the field's stored reference
+                    -- point: on a part-harvested field the reference cell can read crop
+                    -- while the boom is over stubble (or the reverse), firing the wrong
+                    -- burn verdict. Read the ground actually under the applicator.
+                    s:update(spx, spz)
                     return s
                 end)
                 if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
@@ -6670,7 +6674,10 @@ function SoilFertilitySystem:applyScorchEffect(fieldId, fillTypeName)
         if fsField and fsField.posX and fsField.posZ then
             local ok, fs = pcall(function()
                 local s2 = FieldState.new()
-                s2:update(fsField.posX, fsField.posZ)
+                -- Sample at the boom point (#842), not the field's stored reference
+                -- point, so a part-harvested field reads the crop actually under the
+                -- applicator (see the matching gate in applyFertilizer).
+                s2:update(spx, spz)
                 return s2
             end)
             if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
