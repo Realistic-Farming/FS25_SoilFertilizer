@@ -84,7 +84,7 @@
       </GuiElement>
 
       <!-- ─────────────── FOOTER BAND (edge to edge) ─────────────── -->
-      <GuiElement profile="sfVer_footerSection" position="0px -642px">
+      <GuiElement profile="sfVer_footerSection" position="0px -660px">
         <Bitmap profile="sfVer_footerBg" position="0px 0px"/>
 
         <Text profile="sfVer_footer"   id="sfVer_footer1" text="" position="0px -12px"/>
