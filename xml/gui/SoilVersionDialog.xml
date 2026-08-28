@@ -84,7 +84,7 @@
       </GuiElement>
 
       <!-- ─────────────── FOOTER BAND (edge to edge) ─────────────── -->
-      <GuiElement profile="sfVer_footerSection" position="0px -700px">
+      <GuiElement profile="sfVer_footerSection" position="0px -644px">
         <Bitmap profile="sfVer_footerBg" position="0px 0px"/>
 
         <Text profile="sfVer_footer"   id="sfVer_footer1" text="" position="0px -12px"/>
@@ -227,10 +227,10 @@
 
     <!-- Footer band (edge to edge) -->
     <Profile name="sfVer_footerSection" extends="emptyPanel" with="anchorTopCenter">
-      <size value="1250px 78px"/>
+      <size value="1250px 104px"/>
     </Profile>
     <Profile name="sfVer_footerBg" extends="baseReference" with="anchorTopCenter">
-      <size value="1250px 78px"/>
+      <size value="1250px 104px"/>
       <imageColor value="0.06 0.08 0.10 0.9"/>
     </Profile>
     <Profile name="sfVer_footer" extends="fs25_textDefault" with="anchorTopCenter">
