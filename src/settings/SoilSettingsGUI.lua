@@ -92,6 +92,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
     addConsoleCommand("SoilMaterialBench", "SF-43/49 family gate: time ms per engine call for the ground-material passes: SoilMaterialBench [fieldId] [iterations]", "consoleCommandMaterialBench", self)
     addConsoleCommand("SoilRelease", "Release gate: show which systems are STABLE vs experimental-LOCKED", "consoleCommandRelease", self)
+    addConsoleCommand("SoilVersionShow", "Show the version / What's New dialog (preview the changelog UI)", "consoleCommandShowVersion", self)
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
@@ -780,6 +781,18 @@ function SoilSettingsGUI:consoleCommandRelease()
     local s = g_SoilFertilityManager and g_SoilFertilityManager.settings
     local optIn = s and s.allowsExperimentalSystems and s:allowsExperimentalSystems()
     return ReleaseGate.status(optIn)
+end
+
+-- Force-show the version / What's New dialog (it otherwise only appears once per
+-- version on load), so the changelog UI can be previewed on demand.
+function SoilSettingsGUI:consoleCommandShowVersion()
+    if not (SoilVersionDialog and g_gui) then return "Version dialog not loaded" end
+    local mgr     = g_SoilFertilityManager
+    local modName = (mgr and mgr.modName) or SoilFertilizerModName
+    local modInfo = g_modManager and modName and g_modManager:getModByName(modName)
+    local version = (modInfo and modInfo.version) or "dev"
+    SoilVersionDialog.show(version)
+    return "Version dialog shown (v" .. version .. ")"
 end
 
 function SoilSettingsGUI:consoleCommandBlendCheck()
