@@ -95,6 +95,7 @@ end
 function SoilVersionDialog.new(target, customMt)
     local self = ScreenElement.new(target, customMt or SoilVersionDialog_mt)
     self._changelogLineEls = {}
+    self._statusLineEls    = {}
     return self
 end
 
@@ -141,6 +142,7 @@ function SoilVersionDialog:onGuiSetupFinished()
     self._elTitle           = self:getDescendantById("sfVer_title")
     self._elChangelogHeader = self:getDescendantById("sfVer_changelogHeader")
     self._elChangelogBox    = self:getDescendantById("sfVer_changelogBox")
+    self._elStatusBox       = self:getDescendantById("sfVer_statusBox")
     self._elFooter1         = self:getDescendantById("sfVer_footer1")
     self._elFooter2         = self:getDescendantById("sfVer_footer2")
     self._elFooter3         = self:getDescendantById("sfVer_footer3")
@@ -152,7 +154,7 @@ function SoilVersionDialog:onOpen()
 
     -- Title
     if self._elTitle then
-        self._elTitle:setText("FS25_SoilFertilizer REFINED  |  v" .. (self._version or "?"))
+        self._elTitle:setText("FS25_SoilFertilizer  |  v" .. (self._version or "?"))
     end
 
     -- "What's new" header
@@ -162,6 +164,9 @@ function SoilVersionDialog:onOpen()
 
     -- Build changelog lines dynamically
     self:_buildChangelogLines()
+
+    -- Build the live release-status panel
+    self:_buildStatusLines()
 
     -- Footer
     if self._elFooter1 then
@@ -183,17 +188,18 @@ function SoilVersionDialog:onClose()
     self._version = nil
     -- Remove dynamically created lines so they don't stack on re-open
     self:_clearChangelogLines()
+    self:_clearStatusLines()
 end
 
 -- ── Dynamic changelog builder ─────────────────────────────
 
--- The changelog box (sfVer_changelogBox) is a fixed 260px-tall BoxLayout. A
+-- The changelog box (sfVer_changelogBox) is a fixed 490px-tall BoxLayout. A
 -- BoxLayout stacks its children WITHOUT clipping, so more lines than fit render
--- past the box and over the footer/buttons (#666). At ~23px per line (18px text +
--- 5px spacing) about 11 lines fit; cap there. If CHANGELOG is longer we stop on a
--- bullet boundary (never mid-bullet) and add a "full changelog on GitHub" note.
+-- past the box and over the footer/buttons (#666). At ~21px per line (12px text
+-- + 4px spacing) about 24 lines fit; cap there. If CHANGELOG is longer we stop on
+-- a bullet boundary (never mid-bullet) and add a "full changelog on GitHub" note.
 -- Keep this in sync with the sfVer_changelogBox height in the XML.
-SoilVersionDialog.MAX_VISIBLE_LINES = 11
+SoilVersionDialog.MAX_VISIBLE_LINES = 24
 
 function SoilVersionDialog:_buildChangelogLines()
     if not self._elChangelogBox then return end
@@ -270,6 +276,58 @@ function SoilVersionDialog:_clearChangelogLines()
         end
     end
     self._changelogLineEls = {}
+end
+
+-- ── Live release-status panel ─────────────────────────────
+
+-- Fixed display order for the experimental systems (ReleaseGate.EXPERIMENTAL is
+-- an unordered hash). Names come from ReleaseGate so they never drift.
+SoilVersionDialog.STATUS_ORDER = {
+    "cd9_resistance", "cd10_hybrids", "cd12_tank_mixes",
+    "ground_material", "spatial_soil", "read_the_dirt", "growth_modulation",
+}
+
+function SoilVersionDialog:_buildStatusLines()
+    if not self._elStatusBox then return end
+    if not (ReleaseGate and ReleaseGate.EXPERIMENTAL) then return end
+
+    local profile = g_gui:getProfile("sfVer_statusLine")
+    if not profile then return end
+
+    -- optIn == true -> every experimental system is ON (green); false/nil -> all
+    -- LOCKED (amber). nil is pre-init, treated as stable/locked for display.
+    local on    = (ReleaseGate.liveOptIn() == true)
+    local badge = on and "[ON]  " or "[LOCKED]  "
+    local col   = on and { 0.42, 0.82, 0.46, 1 } or { 0.93, 0.62, 0.28, 1 }
+
+    local function addStatus(text, color)
+        local el = TextElement.new()
+        el:loadProfile(profile, true)
+        el:setText(text)
+        if color and el.setTextColor then
+            el:setTextColor(color[1], color[2], color[3], color[4])
+        end
+        self._elStatusBox:addElement(el)
+        el:onGuiSetupFinished()
+        table.insert(self._statusLineEls, el)
+    end
+
+    addStatus(on and "Experimental Systems:  ON (at your own risk)"
+                  or "Experimental Systems:  OFF (stable only)", col)
+
+    for _, id in ipairs(SoilVersionDialog.STATUS_ORDER) do
+        local entry = ReleaseGate.EXPERIMENTAL[id]
+        if entry then addStatus(badge .. entry.name, col) end
+    end
+
+    self._elStatusBox:invalidateLayout()
+end
+
+function SoilVersionDialog:_clearStatusLines()
+    for _, el in ipairs(self._statusLineEls or {}) do
+        if self._elStatusBox then self._elStatusBox:removeElement(el) end
+    end
+    self._statusLineEls = {}
 end
 
 -- ── Button ────────────────────────────────────────────────

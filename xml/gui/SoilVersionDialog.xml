@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <!--
-    Version / Changelog Dialog
+    Version / Changelog Dialog  (v2 layout - two column)
     Shown once per version on first load of a savegame.
     Controller: SoilVersionDialog (src/ui/SoilVersionDialog.lua)
 
-    Changelog lines are created dynamically in Lua (no fixed slots).
-    sfVer_changelogBox is a vertical BoxLayout - Lua adds TextElements to it.
+    Left column  : WHAT'S NEW - changelog (dynamic TextElements, left aligned).
+    Right column : RELEASE STATUS (live, dynamic) + EXPLORE (label/desc grid).
+    Footer band  : thank-you + tagline (set by Lua via i18n), edge to edge.
+    Painted-section style mirrors SoilTreatmentDialog.
 -->
 <GUI onOpen="onOpen" onClose="onClose" onCreate="onCreate">
   <GuiElement profile="newLayer"/>
@@ -21,44 +23,83 @@
 
       <!-- Title: mod name + version (set at runtime) -->
       <Text profile="sfVer_title" id="sfVer_title"
-            text="FS25_SoilFertilizer" position="0px -30px"/>
+            text="FS25_SoilFertilizer" position="0px -26px"/>
 
-      <!-- Author -->
-      <Text profile="sfVer_author"
-            text="Author: TisonK" position="0px -62px"/>
+      <!-- Identity / at-a-glance strapline -->
+      <Text profile="sfVer_identity"
+            text="A per-pixel soil engine for N, P, K, pH, organic matter and compaction    -    by TisonK"
+            position="0px -54px"/>
 
-      <!-- ─── CHANGELOG section ─── -->
-      <GuiElement profile="sfVer_changelogSection" position="0px -90px">
+      <!-- Gold accent divider (edge to edge) -->
+      <Bitmap profile="sfVer_accentBar" position="0px -74px"/>
+
+      <!-- ─────────────── LEFT COLUMN: WHAT'S NEW ─────────────── -->
+      <GuiElement profile="sfVer_changelogSection" position="-300px -90px">
         <Bitmap profile="sfVer_changelogBg" position="0px 0px"/>
 
         <!-- "What's new" header (set at runtime via i18n) -->
         <Text profile="sfVer_sectionHeader" id="sfVer_changelogHeader"
               text="" position="0px -10px"/>
 
-        <!-- Dynamic changelog lines added here by Lua at onOpen() -->
+        <!-- Dynamic changelog lines added here by Lua; left aligned with padding -->
         <BoxLayout profile="sfVer_changelogBox" id="sfVer_changelogBox"
-                   position="0px -40px"/>
+                   position="21px -42px"/>
       </GuiElement>
 
-      <!-- ─── FOOTER section - anchored below changelog ─── -->
-      <GuiElement profile="sfVer_footerSection" position="0px -420px">
+      <!-- ─────────────── RIGHT COLUMN (top): RELEASE STATUS (live) ─────────────── -->
+      <GuiElement profile="sfVer_statusSection" position="315px -90px">
+        <Bitmap profile="sfVer_statusBg" position="0px 0px"/>
+        <Text profile="sfVer_sectionHeader" text="Release status" position="0px -10px"/>
+
+        <!-- Dynamic status lines added here by Lua at onOpen -->
+        <BoxLayout profile="sfVer_statusBox" id="sfVer_statusBox" position="21px -38px"/>
+
+        <Text profile="sfVer_statusHint"
+              text="Toggle these in Settings &gt; Experimental, at your own risk."
+              position="21px -222px"/>
+      </GuiElement>
+
+      <!-- ─────────────── RIGHT COLUMN (bottom): EXPLORE ─────────────── -->
+      <GuiElement profile="sfVer_exploreSection" position="315px -342px">
+        <Bitmap profile="sfVer_exploreBg" position="0px 0px"/>
+        <Text profile="sfVer_sectionHeader" text="Explore" position="0px -10px"/>
+
+        <Text profile="sfVer_exLabel" text="Field Guide"     position="21px -44px"/>
+        <Text profile="sfVer_exDesc"  text="The full manual, every system explained" position="180px -44px"/>
+
+        <Text profile="sfVer_exLabel" text="Release Gate"    position="21px -74px"/>
+        <Text profile="sfVer_exDesc"  text="Unlock experimental systems in Settings" position="180px -74px"/>
+
+        <Text profile="sfVer_exLabel" text="Read the Dirt"   position="21px -104px"/>
+        <Text profile="sfVer_exDesc"  text="Kneel and press Shift+G to read a spot"  position="180px -104px"/>
+
+        <Text profile="sfVer_exLabel" text="Soil Monitor"    position="21px -134px"/>
+        <Text profile="sfVer_exDesc"  text="Live N, P, K and pH as you drive"        position="180px -134px"/>
+
+        <Text profile="sfVer_exLabel" text="Treatment Plan"  position="21px -164px"/>
+        <Text profile="sfVer_exDesc"  text="What to spray on each field"             position="180px -164px"/>
+
+        <Text profile="sfVer_exLabel" text="Soil Map"        position="21px -194px"/>
+        <Text profile="sfVer_exDesc"  text="Every value, per field"                  position="180px -194px"/>
+      </GuiElement>
+
+      <!-- ─────────────── FOOTER BAND (edge to edge) ─────────────── -->
+      <GuiElement profile="sfVer_footerSection" position="0px -642px">
         <Bitmap profile="sfVer_footerBg" position="0px 0px"/>
 
         <Text profile="sfVer_footer"   id="sfVer_footer1" text="" position="0px -12px"/>
         <Text profile="sfVer_footer"   id="sfVer_footer2" text="" position="0px -30px"/>
-        <Text profile="sfVer_tagline1" id="sfVer_footer3" text="" position="0px -56px"/>
-        <Text profile="sfVer_tagline2" id="sfVer_footer4" text="" position="0px -74px"/>
+        <Text profile="sfVer_tagline1" id="sfVer_footer3" text="" position="0px -52px"/>
+        <Text profile="sfVer_tagline2" id="sfVer_footer4" text="" position="0px -70px"/>
       </GuiElement>
 
     </GuiElement>
 
     <BoxLayout profile="fs25_dialogButtonBox">
-      <Button profile="buttonOK" id="sfVer_releaseBtn"
-              text="Release Gate" onClick="onClickRelease"/>
-      <Button profile="buttonOK" id="sfVer_dontShowBtn"
-              text="Don't show again" onClick="onClickDontShowAgain"/>
-      <Button profile="buttonOK" id="sfVer_guideBtn"
+      <Button profile="buttonActivate" id="sfVer_guideBtn"
               text="Field Guide" onClick="onClickGuide"/>
+      <Button profile="buttonBack" id="sfVer_dontShowBtn"
+              text="Don't show again" onClick="onClickDontShowAgain"/>
       <Button profile="buttonOK" id="sfVer_okBtn"
               text="OK" onClick="onClickOk"/>
     </BoxLayout>
@@ -67,45 +108,9 @@
 
   <GUIProfiles>
 
+    <!-- Dialog frame -->
     <Profile name="sfVer_bg" extends="fs25_dialogBg">
-      <size value="720px 640px"/>
-    </Profile>
-
-    <!-- Changelog section container -->
-    <Profile name="sfVer_changelogSection" extends="emptyPanel" with="anchorTopCenter">
-      <size value="660px 310px"/>
-    </Profile>
-    <Profile name="sfVer_changelogBg" extends="baseReference" with="anchorTopCenter">
-      <size value="660px 310px"/>
-      <imageColor value="0.08 0.08 0.12 0.9"/>
-    </Profile>
-
-    <!-- Footer section -->
-    <Profile name="sfVer_footerSection" extends="emptyPanel" with="anchorTopCenter">
-      <size value="660px 100px"/>
-    </Profile>
-    <Profile name="sfVer_footerBg" extends="baseReference" with="anchorTopCenter">
-      <size value="660px 100px"/>
-      <imageColor value="0.06 0.08 0.10 0.9"/>
-    </Profile>
-
-    <!-- Section header: gold, bold -->
-    <Profile name="sfVer_sectionHeader" extends="fs25_textDefault" with="anchorTopCenter">
-      <size value="620px 22px"/>
-      <textSize value="13px"/>
-      <textBold value="true"/>
-      <textUpperCase value="true"/>
-      <textColor value="1 0.8 0.2 1"/>
-      <textAlignment value="center"/>
-    </Profile>
-
-    <!-- Vertical BoxLayout - Lua adds TextElements here dynamically -->
-    <Profile name="sfVer_changelogBox" extends="emptyPanel" with="anchorTopCenter">
-      <size value="620px 260px"/>
-      <flowDirection value="vertical"/>
-      <useFullVisibility value="false"/>
-      <alignmentX value="center"/>
-      <elementSpacing value="5px"/>
+      <size value="1300px 860px"/>
     </Profile>
 
     <!-- Title: override fs25_dialogTitle to avoid forced uppercase -->
@@ -114,49 +119,134 @@
       <textColor value="0.90 0.90 1.00 1"/>
     </Profile>
 
-    <!-- Each changelog line: fixed width enables word wrap -->
-    <Profile name="sfVer_changelogLine" extends="fs25_textDefault" with="anchorTopLeft">
-      <size value="620px 18px"/>
+    <!-- Identity strapline -->
+    <Profile name="sfVer_identity" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="1240px 20px"/>
       <textSize value="13px"/>
-      <textColor value="0.88 0.88 0.88 1"/>
+      <textColor value="0.62 0.66 0.72 1"/>
+      <textAlignment value="center"/>
     </Profile>
 
-    <!-- Version header line (e.g. "v2.2.2.4"): gold, bold, slightly larger -->
-    <Profile name="sfVer_changelogVersion" extends="fs25_textDefault" with="anchorTopLeft">
-      <size value="620px 22px"/>
+    <!-- Gold accent divider under the title (edge to edge) -->
+    <Profile name="sfVer_accentBar" extends="baseReference" with="anchorTopCenter">
+      <size value="1250px 3px"/>
+      <imageColor value="1.0 0.78 0.18 0.55"/>
+    </Profile>
+
+    <!-- Section header: gold, bold, centered (matches SoilTreatmentDialog) -->
+    <Profile name="sfVer_sectionHeader" extends="fs25_textDefault" with="anchorTopCenter">
+      <size value="540px 22px"/>
       <textSize value="14px"/>
+      <textBold value="true"/>
+      <textUpperCase value="true"/>
+      <textColor value="1 0.8 0.2 1"/>
+      <textAlignment value="center"/>
+    </Profile>
+
+    <!-- LEFT: changelog section -->
+    <Profile name="sfVer_changelogSection" extends="emptyPanel" with="anchorTopCenter">
+      <size value="630px 540px"/>
+    </Profile>
+    <Profile name="sfVer_changelogBg" extends="baseReference" with="anchorTopCenter">
+      <size value="630px 540px"/>
+      <imageColor value="0.08 0.08 0.12 0.9"/>
+    </Profile>
+    <Profile name="sfVer_changelogBox" extends="emptyPanel" with="anchorTopLeft">
+      <size value="588px 490px"/>
+      <flowDirection value="vertical"/>
+      <useFullVisibility value="false"/>
+      <alignmentX value="left"/>
+      <elementSpacing value="4px"/>
+    </Profile>
+
+    <!-- RIGHT top: live release-status section -->
+    <Profile name="sfVer_statusSection" extends="emptyPanel" with="anchorTopCenter">
+      <size value="570px 244px"/>
+    </Profile>
+    <Profile name="sfVer_statusBg" extends="baseReference" with="anchorTopCenter">
+      <size value="570px 244px"/>
+      <imageColor value="0.06 0.10 0.14 0.9"/>
+    </Profile>
+    <Profile name="sfVer_statusBox" extends="emptyPanel" with="anchorTopLeft">
+      <size value="528px 178px"/>
+      <flowDirection value="vertical"/>
+      <useFullVisibility value="false"/>
+      <alignmentX value="left"/>
+      <elementSpacing value="3px"/>
+    </Profile>
+    <Profile name="sfVer_statusLine" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="528px 19px"/>
+      <textSize value="13px"/>
+      <textColor value="0.85 0.85 0.85 1"/>
+    </Profile>
+    <Profile name="sfVer_statusHint" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="528px 18px"/>
+      <textSize value="12px"/>
+      <textColor value="0.58 0.60 0.66 1"/>
+    </Profile>
+
+    <!-- RIGHT bottom: explore section (warm tint) -->
+    <Profile name="sfVer_exploreSection" extends="emptyPanel" with="anchorTopCenter">
+      <size value="570px 288px"/>
+    </Profile>
+    <Profile name="sfVer_exploreBg" extends="baseReference" with="anchorTopCenter">
+      <size value="570px 288px"/>
+      <imageColor value="0.10 0.08 0.07 0.9"/>
+    </Profile>
+
+    <!-- Explore: aligned label + description columns -->
+    <Profile name="sfVer_exLabel" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="150px 20px"/>
+      <textSize value="13px"/>
+      <textBold value="true"/>
+      <textColor value="0.95 0.85 0.45 1"/>
+    </Profile>
+    <Profile name="sfVer_exDesc" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="370px 20px"/>
+      <textSize value="13px"/>
+      <textColor value="0.84 0.86 0.90 1"/>
+    </Profile>
+
+    <!-- Changelog line profiles (left column, dynamic) - 12px fits full lines -->
+    <Profile name="sfVer_changelogLine" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="588px 17px"/>
+      <textSize value="12px"/>
+      <textColor value="0.88 0.88 0.88 1"/>
+    </Profile>
+    <Profile name="sfVer_changelogVersion" extends="fs25_textDefault" with="anchorTopLeft">
+      <size value="588px 20px"/>
+      <textSize value="13px"/>
       <textBold value="true"/>
       <textColor value="1.0 0.78 0.18 1"/>
     </Profile>
-
-    <!-- Indented / continuation lines: dimmer, smaller -->
     <Profile name="sfVer_changelogIndent" extends="fs25_textDefault" with="anchorTopLeft">
-      <size value="620px 17px"/>
-      <textSize value="12px"/>
+      <size value="588px 16px"/>
+      <textSize value="11px"/>
       <textColor value="0.60 0.62 0.68 1"/>
     </Profile>
 
-    <Profile name="sfVer_author" extends="fs25_textDefault" with="anchorTopCenter">
-      <textSize value="13px"/>
-      <textColor value="0.65 0.65 0.65 1"/>
+    <!-- Footer band (edge to edge) -->
+    <Profile name="sfVer_footerSection" extends="emptyPanel" with="anchorTopCenter">
+      <size value="1250px 78px"/>
     </Profile>
-
+    <Profile name="sfVer_footerBg" extends="baseReference" with="anchorTopCenter">
+      <size value="1250px 78px"/>
+      <imageColor value="0.06 0.08 0.10 0.9"/>
+    </Profile>
     <Profile name="sfVer_footer" extends="fs25_textDefault" with="anchorTopCenter">
-      <size value="620px 18px"/>
+      <size value="1220px 18px"/>
       <textSize value="13px"/>
       <textColor value="0.65 0.65 0.65 1"/>
       <textAlignment value="center"/>
     </Profile>
-
     <Profile name="sfVer_tagline1" extends="fs25_textDefault" with="anchorTopCenter">
-      <size value="620px 18px"/>
+      <size value="1220px 18px"/>
       <textSize value="12px"/>
       <textColor value="0.65 0.65 0.65 1"/>
       <textAlignment value="center"/>
     </Profile>
-
     <Profile name="sfVer_tagline2" extends="fs25_textDefault" with="anchorTopCenter">
-      <size value="620px 20px"/>
+      <size value="1220px 20px"/>
       <textSize value="13px"/>
       <textBold value="true"/>
       <textColor value="0.35 0.85 0.40 1.0"/>
