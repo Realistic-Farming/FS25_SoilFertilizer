@@ -36,9 +36,14 @@ function SprayerRateManager:getMultiplier(vehicleId)
 end
 
 --- Returns whether Auto-Mode is enabled for a vehicle.
+--- [SF-46] autoForce is the playtest override (rfAutoRateSet console command):
+--- when non-nil it wins for EVERY vehicle, which is what makes it deterministic
+--- as a harness - it survives vehicle changes, helper hand-off and the HUD
+--- toggle alike. nil = no override, normal per-vehicle behaviour.
 ---@param vehicleId number
 ---@return boolean enabled
 function SprayerRateManager:getAutoMode(vehicleId)
+    if self.autoForce ~= nil then return self.autoForce end
     return self.vehicleAutoModes[vehicleId] == true
 end
 

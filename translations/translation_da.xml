@@ -732,6 +732,9 @@
     <e k="sf_desc_smartSensorEnabled"      v="Tillad spillere at bruge Smart Sensor-bomsektionsstyring baseret på jorddata" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Deaktivér bomsektioner over områder, der ikke har behov for sprøjtning" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
+    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
+    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
+    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
     <e k="sf_config_seeSprayWeed"          v="See &amp; Spray: Weed" />
     <e k="sf_config_seeSprayPest"          v="See &amp; Spray: Pest" />
     <e k="sf_config_seeSprayDisease"       v="See &amp; Spray: Disease" />    <e k="sf_desc_variableRateEnabled"     v="Juster udbringningsmængden pr. sektion baseret på jordens næringsstofunderskud" />

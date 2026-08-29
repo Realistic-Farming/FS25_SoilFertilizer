@@ -743,9 +743,23 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
     end
     setSelectedLabel(nextTip)
 
+    -- [SF-33] When the average reads fine but the map does not, say so rather
+    -- than showing a bare "OK". A player who has just looked at a patchy SOIL
+    -- LAYERS map and then reads "no treatment needed" stops trusting the plan.
+    local mismatchLine = nil
+    if SoilTreatmentRates and SoilTreatmentRates.getSpatialMismatchLine then
+        local okM, m = pcall(SoilTreatmentRates.getSpatialMismatchLine, fieldId)
+        if okM then mismatchLine = m end
+    end
+
     if #rows == 0 then
-        setProductOk(tr("sf_treat_action_ok", "OK - no treatment needed"), COLOR_GOOD)
+        if mismatchLine then
+            setProductOk(mismatchLine, COLOR_FAIR)
+        else
+            setProductOk(tr("sf_treat_action_ok", "OK - no treatment needed"), COLOR_GOOD)
+        end
     else
+        if mismatchLine then setSelectedLabel(mismatchLine) end
         fillProductRows(rows)
     end
 

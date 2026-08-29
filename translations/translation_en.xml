@@ -450,6 +450,7 @@
     <e k="sf_map_btn_cycle_layer" v="Cycle Layer" eh="875dbf22" />
     <e k="sf_map_btn_treatment" v="Treatment Plan" eh="4ba012e2" />
     <e k="sf_map_btn_disable" v="Disable Overlay" eh="8e75dec5" />
+    <e k="rf_pda_treat_spatial_mismatch" v="Field average looks fine, but the soil map has patches below target. The plan follows the map." />
     <e k="sf_treat_action_ok" v="OK" eh="e0aa021e" />
     <e k="sf_help_title" v="Soil Quick Reference" eh="8986bb6d" />
     <e k="sf_help_nutrients_header" v="NUTRIENTS" eh="9aeb39bf" />
@@ -788,6 +789,9 @@
     <e k="sf_desc_smartSensorEnabled"      v="Allow players to use Smart Sensor boom-section control based on live soil data" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Suppress boom sections over areas that do not need spraying" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
+    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
+    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
+    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
     <e k="sf_config_seeSprayWeed"          v="See &amp; Spray: Weed" />
     <e k="sf_config_seeSprayPest"          v="See &amp; Spray: Pest" />
     <e k="sf_config_seeSprayDisease"       v="See &amp; Spray: Disease" />

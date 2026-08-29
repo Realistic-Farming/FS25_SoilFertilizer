@@ -137,6 +137,10 @@ function SoilVariableRatePanel:draw()
     end
 
     local sprayer = self:getActiveSprayer()
+    -- [PACK] No add-on, no panel. Showing a variable-rate readout for a machine
+    -- that cannot do variable rate invites the player to trust numbers the spray
+    -- path never uses. Edit mode still draws it so the HUD can be positioned.
+    if not inEditMode and not sfm:hasPrecisionPack(sprayer) then return end
 
     -- The suite editor always exposes a placement frame, even without a matching
     -- applicator. Moving it opts into the existing independent-panels setting.
