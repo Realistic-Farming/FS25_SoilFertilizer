@@ -567,6 +567,35 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
         self.hasExecuteAdd = false
         return 0
     end
+
+    -- [SF-30] Saturation band: clamp the pixels the add had to skip.
+    --
+    -- The filter above deliberately excludes any pixel that would overflow the
+    -- raw range. That protects the no-data sentinel, but it means a LARGE dose
+    -- silently does nothing to ground that is already moderately stocked, while
+    -- addPaintStrip still returns the full semantic delta as if it had landed.
+    -- A pixel that cannot take the whole delta should end up AT the ceiling, not
+    -- refuse the paint. Same at the floor for a negative delta.
+    if type(m.executeSet) == "function" then
+        local sok, serr = pcall(function()
+            if rawDelta > 0 then
+                -- Everything from the add's ceiling upward saturates to RAW_MAX.
+                filter:setValueCompareParams(DensityValueCompareType.BETWEEN,
+                    math.max(rawLow, RAW_MAX - rawDelta + 1), RAW_MAX)
+                m:executeSet(RAW_MAX, filter)
+            else
+                -- Mirror at the bottom, never below the layer's own floor.
+                filter:setValueCompareParams(DensityValueCompareType.BETWEEN,
+                    rawLow, math.min(RAW_MAX, rawLow - rawDelta - 1))
+                m:executeSet(rawLow, filter)
+            end
+        end)
+        if not sok then
+            -- Non-fatal: the add already happened, this only tops up the band.
+            SoilLogger.debug("SoilValueMaps: addPaintStrip saturation clamp failed (%s)", tostring(serr))
+        end
+    end
+
     return rawDelta * upr
 end
 
