@@ -53,6 +53,36 @@ function SpatialScouting.cellKey(worldX, worldZ)
     return tostring(cx * 10000 + cz)
 end
 
+-- =========================================================
+-- [SF-22] FARM-PRIVATE AUTHORISATION (pure, testable)
+-- =========================================================
+
+--- An ordinary farm is one of the eight playable farms. The base game pins the
+--- range at FarmManager: SPECTATOR 0, MAX_NUM_FARMS 8, GUIDED_TOUR 14, INVALID
+--- 15. Spectator, guided-tour, invalid, nil and any non-integer reject - only an
+--- ordinary farm may own walked knowledge.
+---@param farmId any
+---@return boolean
+function SpatialScouting.isOrdinaryFarmId(farmId)
+    return type(farmId) == "number"
+        and farmId == math.floor(farmId)
+        and farmId >= 1
+        and farmId <= 8
+end
+
+--- The reveal gate (LAW 2, farm-private). A walk or kneel may write a cell only
+--- when the walking farm owns the land, or is actively contracting the owner's
+--- land. Both ids must be ordinary; an unrelated neighbour reveals nothing.
+---@param playerFarmId any         the walking player's farm (server player record)
+---@param ownerFarmId any          g_farmlandManager:getFarmlandOwner(farmlandId)
+---@param contractingForOwner any  farm:getIsContractingFor(ownerFarmId)
+---@return boolean
+function SpatialScouting.isRevealAuthorized(playerFarmId, ownerFarmId, contractingForOwner)
+    if not SpatialScouting.isOrdinaryFarmId(playerFarmId) then return false end
+    if not SpatialScouting.isOrdinaryFarmId(ownerFarmId) then return false end
+    return playerFarmId == ownerFarmId or contractingForOwner == true
+end
+
 function SpatialScouting.new()
     return setmetatable({
         armed = false,
@@ -137,8 +167,18 @@ function SpatialScouting:noteWalk(farmId, fieldId, cellKey, day, truth, worldX, 
     local field = farm[fieldId]
     if field == nil then field = {}; farm[fieldId] = field end
     local gen = (self.generations[farmId] or {})[fieldId] or 0
-    field[cellKey] = { day = day or 0, truth = truth or 0, x = worldX, z = worldZ, gen = gen }
-    return true
+    -- [SF-22] Report transport-dirty ONLY on a material change: a new cell, or a
+    -- changed walk day, sampled truth or knowledge generation. A re-walk of the
+    -- same cell on the same day with the same truth and generation writes the
+    -- same bytes and must not put a DELTA on the wire.
+    local newDay, newTruth = day or 0, truth or 0
+    local prev = field[cellKey]
+    local changed = prev == nil
+        or prev.day ~= newDay
+        or prev.truth ~= newTruth
+        or (prev.gen or 0) ~= gen
+    field[cellKey] = { day = newDay, truth = newTruth, x = worldX, z = worldZ, gen = gen }
+    return changed
 end
 
 --- THE KNOWLEDGE-GENERATION BOOKKEEPING (acceptance criterion 4). The mask must
@@ -367,15 +407,79 @@ end
 -- The sampler (server-side, on foot only, LAW 1 + LAW 4)
 -- =========================================================
 
+--- Resolve the farmland id under a world position, server-side (LAW 4), from the
+--- authoritative world and never from a client-reported cell. The walked mask
+--- keys on the farmland id, so this is the field key a walk or kneel fills.
+---@param x number
+---@param z number
+---@return number|nil farmlandId
+function SpatialScouting:_resolveFarmlandAt(x, z)
+    local fieldId
+    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
+        local ok, f = pcall(function() return g_fieldManager:getFieldAtWorldPosition(x, z) end)
+        if ok and f and f.farmland and f.farmland.id then fieldId = f.farmland.id end
+    end
+    if not fieldId and g_farmlandManager and type(g_farmlandManager.getFarmlandAtWorldPosition) == "function" then
+        local ok, land = pcall(function() return g_farmlandManager:getFarmlandAtWorldPosition(x, z) end)
+        if ok and land and land.id and land.id > 0 then fieldId = land.id end
+    end
+    return fieldId
+end
+
+--- [SF-22] Is a farm allowed to reveal this land? Resolves the land owner and
+--- the walking farm's contract state server-side, then applies the reveal gate.
+--- Every id is the server's own truth; nothing is taken from the wire.
+---@param playerFarmId number  the walking farm (already known ordinary)
+---@param farmlandId number
+---@return boolean
+function SpatialScouting._isWalkAuthorized(playerFarmId, farmlandId)
+    local ownerFarmId = nil
+    if g_farmlandManager and type(g_farmlandManager.getFarmlandOwner) == "function" then
+        local ok, owner = pcall(function() return g_farmlandManager:getFarmlandOwner(farmlandId) end)
+        if ok then ownerFarmId = owner end
+    end
+    local contractingForOwner = false
+    if SpatialScouting.isOrdinaryFarmId(ownerFarmId)
+       and g_farmManager and type(g_farmManager.getFarmById) == "function" then
+        local ok, farm = pcall(function() return g_farmManager:getFarmById(playerFarmId) end)
+        if ok and farm and type(farm.getIsContractingFor) == "function" then
+            local ok2, res = pcall(function() return farm:getIsContractingFor(ownerFarmId) end)
+            if ok2 then contractingForOwner = res == true end
+        end
+    end
+    return SpatialScouting.isRevealAuthorized(playerFarmId, ownerFarmId, contractingForOwner)
+end
+
+--- Sample the disease truth at a spot. The value map answers first; the field
+--- average stands in when the map has no value there (a sampled truth is better
+--- than none and the cell is still walked).
+---@param x number
+---@param z number
+---@param farmlandId number
+---@return number truth
+function SpatialScouting:_sampleTruthAt(x, z, farmlandId)
+    local truth = 0
+    if self.valueMaps then
+        local v = self.valueMaps:readValueAtWorld("diseasePressure", x, z)
+        if v ~= nil then truth = v end
+    end
+    if truth <= 0 then
+        local field = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+            and g_SoilFertilityManager.soilSystem.fieldData
+            and g_SoilFertilityManager.soilSystem.fieldData[farmlandId]
+        if field and field.diseasePressure then truth = field.diseasePressure end
+    end
+    return truth
+end
+
 --- Sample one player's on-foot position into the walked mask.
 --- Server-authoritative: the farm comes from the server's player record
---- (player.farmId), never from a wire-supplied value. The truth is read from
---- the value maps at the player's position; when the map has no value there,
---- the field average stands in (a sampled truth is better than none and the
---- cell is still walked).
+--- (player.farmId), never from a wire-supplied value or a farm-1 fallback. The
+--- truth is read only AFTER the reveal gate passes, so an unrelated neighbour
+--- walk reads nothing and writes nothing.
 ---@param player table  a Player from g_currentMission.players
 ---@param currentDay number
----@return boolean walked
+---@return boolean changed, number|nil farmId, number|nil farmlandId, string|nil cellKey
 function SpatialScouting:_samplePlayer(player, currentDay)
     if player == nil then return false end
     -- LAW 1: on foot only.
@@ -395,48 +499,31 @@ function SpatialScouting:_samplePlayer(player, currentDay)
     end
     if px == nil then return false end
 
-    -- Resolve the field under the player (LAW 4: server-side, from the server's
-    -- authoritative world, not client-reported cells).
-    local fieldId
-    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-        local ok, f = pcall(function() return g_fieldManager:getFieldAtWorldPosition(px, pz) end)
-        if ok and f and f.farmland and f.farmland.id then fieldId = f.farmland.id end
-    end
-    if not fieldId and g_farmlandManager and type(g_farmlandManager.getFarmlandAtWorldPosition) == "function" then
-        local ok, land = pcall(function() return g_farmlandManager:getFarmlandAtWorldPosition(px, pz) end)
-        if ok and land and land.id and land.id > 0 then fieldId = land.id end
-    end
-    if not fieldId then return false end   -- not on a field: nothing to scout
+    local farmlandId = self:_resolveFarmlandAt(px, pz)
+    if not farmlandId then return false end   -- not on a field: nothing to scout
 
-    -- Farm from the server's player record.
-    local farmId = player.farmId
-    if farmId == nil or farmId <= 0 then
-        if g_currentMission and type(g_currentMission.getFarmId) == "function" then
-            farmId = g_currentMission:getFarmId()
-        end
-    end
-    if farmId == nil or farmId <= 0 then farmId = 1 end
+    -- [SF-22] The walking farm comes straight from the server's player record.
+    -- No getFarmId() and no farm-1 fallback: an unresolved or non-ordinary farm
+    -- is not a farm that may learn anything.
+    local playerFarmId = player.farmId
+    if not SpatialScouting.isOrdinaryFarmId(playerFarmId) then return false end
 
-    -- Sample the truth at walk time.
-    local truth = 0
-    if self.valueMaps then
-        local v = self.valueMaps:readValueAtWorld("diseasePressure", px, pz)
-        if v ~= nil then truth = v end
-    end
-    if truth <= 0 then
-        local field = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
-            and g_SoilFertilityManager.soilSystem.fieldData and g_SoilFertilityManager.soilSystem.fieldData[fieldId]
-        if field and field.diseasePressure then truth = field.diseasePressure end
+    -- [SF-22] Authorise BEFORE any truth read (LAW 2).
+    if not SpatialScouting._isWalkAuthorized(playerFarmId, farmlandId) then
+        return false
     end
 
+    local truth = self:_sampleTruthAt(px, pz, farmlandId)
     local key = SpatialScouting.cellKey(px, pz)
-    return self:noteWalk(farmId, fieldId, key, currentDay, truth, px, pz)
+    local changed = self:noteWalk(playerFarmId, farmlandId, key, currentDay, truth, px, pz)
+    return changed, playerFarmId, farmlandId, key
 end
 
 --- Per-frame server sampling. Iterates the server's authoritative player list;
---- each on-foot player who is inside a field fills their farm's mask. When a
---- walk lands, flags the NetworkSync module dirty so the next 1Hz batch carries
---- the fresh cells to that farm's clients (LAW 3).
+--- each on-foot player inside their own (or a contracted) field fills that
+--- farm's mask. Changed cells are grouped by farm and each farm's group is
+--- handed to the DELTA sender, so a farm's fresh cells reach only that farm's
+--- own remote teammates (LAW 3, farm-private). Another farm receives nothing.
 ---@param currentDay number
 ---@return number sampled
 function SpatialScouting:onUpdate(currentDay)
@@ -444,11 +531,21 @@ function SpatialScouting:onUpdate(currentDay)
     local players = g_currentMission and g_currentMission.players
     if players == nil then return 0 end
     local sampled = 0
+    local changedByFarm = nil
     for _, player in pairs(players) do
-        if self:_samplePlayer(player, currentDay) then sampled = sampled + 1 end
+        local changed, farmId, farmlandId, cellKey = self:_samplePlayer(player, currentDay)
+        if changed then
+            sampled = sampled + 1
+            changedByFarm = changedByFarm or {}
+            local list = changedByFarm[farmId]
+            if list == nil then list = {}; changedByFarm[farmId] = list end
+            list[#list + 1] = { fieldId = farmlandId, cellKey = cellKey }
+        end
     end
-    if sampled > 0 and SoilScoutingBridge and SoilScoutingBridge.markDirty then
-        SoilScoutingBridge.markDirty()
+    if changedByFarm and SoilScoutingBridge and SoilScoutingBridge.sendFarmDelta then
+        for farmId, list in pairs(changedByFarm) do
+            SoilScoutingBridge.sendFarmDelta(self, farmId, list)
+        end
     end
     return sampled
 end
@@ -485,43 +582,27 @@ function SpatialScouting:revealCellAt(connection, x, z, currentDay)
     if player == nil then player = g_localPlayer end
     if player == nil then return false end
 
-    -- The field is resolved SERVER-SIDE at the spot, never from the wire.
-    local fieldId
-    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-        local ok, f = pcall(function() return g_fieldManager:getFieldAtWorldPosition(x, z) end)
-        if ok and f and f.farmland and f.farmland.id then fieldId = f.farmland.id end
-    end
-    if not fieldId and g_farmlandManager and type(g_farmlandManager.getFarmlandAtWorldPosition) == "function" then
-        local ok, land = pcall(function() return g_farmlandManager:getFarmlandAtWorldPosition(x, z) end)
-        if ok and land and land.id and land.id > 0 then fieldId = land.id end
-    end
-    if not fieldId then return false end   -- not on a field: nothing to reveal
+    -- The farmland is resolved SERVER-SIDE at the spot, never from the wire.
+    local farmlandId = self:_resolveFarmlandAt(x, z)
+    if not farmlandId then return false end   -- not on a field: nothing to reveal
 
-    -- Farm from the player record, exactly as the walk sampler does.
-    local farmId = player.farmId
-    if farmId == nil or farmId <= 0 then
-        if g_currentMission and type(g_currentMission.getFarmId) == "function" then
-            farmId = g_currentMission:getFarmId()
-        end
+    -- [SF-22] Farm from the player record; no getFarmId() and no farm-1 fallback.
+    local playerFarmId = player.farmId
+    if not SpatialScouting.isOrdinaryFarmId(playerFarmId) then return false end
+
+    -- [SF-22] Authorise BEFORE the truth read, exactly as the walk sampler does:
+    -- the kneeling farm must own this land or be contracting its owner (LAW 2).
+    if not SpatialScouting._isWalkAuthorized(playerFarmId, farmlandId) then
+        return false
     end
-    if farmId == nil or farmId <= 0 then farmId = 1 end
 
     -- Sample the truth server-side at kneel time (LAW 3: sampled at reveal time).
-    local truth = 0
-    if self.valueMaps then
-        local v = self.valueMaps:readValueAtWorld("diseasePressure", x, z)
-        if v ~= nil then truth = v end
-    end
-    if truth <= 0 then
-        local field = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
-            and g_SoilFertilityManager.soilSystem.fieldData and g_SoilFertilityManager.soilSystem.fieldData[fieldId]
-        if field and field.diseasePressure then truth = field.diseasePressure end
-    end
+    local truth = self:_sampleTruthAt(x, z, farmlandId)
 
     local key = SpatialScouting.cellKey(x, z)
-    local ok = self:noteWalk(farmId, fieldId, key, currentDay, truth, x, z)
-    if ok and SoilScoutingBridge and SoilScoutingBridge.markDirty then
-        SoilScoutingBridge.markDirty()
+    local changed = self:noteWalk(playerFarmId, farmlandId, key, currentDay, truth, x, z)
+    if changed and SoilScoutingBridge and SoilScoutingBridge.sendFarmDelta then
+        SoilScoutingBridge.sendFarmDelta(self, playerFarmId, { { fieldId = farmlandId, cellKey = key } })
     end
-    return ok
+    return changed
 end

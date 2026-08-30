@@ -47,13 +47,16 @@ HandfulRead.CLAUSES = {
 -- =========================================================
 
 local function farmIdOf(ctx)
-    if ctx.farmId and ctx.farmId > 0 then return ctx.farmId end
-    if g_localPlayer and g_localPlayer.farmId and g_localPlayer.farmId > 0 then
+    -- [SF-22] Only an ordinary farm (1..8) may key knowledge. A spectator,
+    -- guided-tour, invalid or unresolved farm returns nil - never farm 1 - so a
+    -- non-farmer viewer composes nothing and the mask stays private.
+    if SpatialScouting.isOrdinaryFarmId(ctx.farmId) then return ctx.farmId end
+    if g_localPlayer and SpatialScouting.isOrdinaryFarmId(g_localPlayer.farmId) then
         return g_localPlayer.farmId
     end
     if g_currentMission and type(g_currentMission.getFarmId) == "function" then
         local ok, id = pcall(function() return g_currentMission:getFarmId() end)
-        if ok and id and id > 0 then return id end
+        if ok and SpatialScouting.isOrdinaryFarmId(id) then return id end
     end
     return nil
 end

@@ -161,6 +161,8 @@ function streamWriteBool(s, v)      _sfPush(s, "bool", v and true or false) end
 function streamReadBool(s)          return _sfPull(s, "bool") end
 function streamWriteUIntN(s, v, _n) _sfPush(s, "uN", v) end
 function streamReadUIntN(s, _n)     return _sfPull(s, "uN") end
+function streamWriteUInt16(s, v)    _sfPush(s, "u16", v) end
+function streamReadUInt16(s)         return _sfPull(s, "u16") end
 
 -- ── tiny test framework ────────────────────────────────────
 -- Results are emitted as ##TEST_ lines that run-tests.mjs parses out of stdout, so

@@ -188,19 +188,39 @@ do
          m:composeShown(1, 5, "1", 400, 33, true), 33)
 end
 
--- ── NetworkSync wire shape (LAW 3: payload carries its own truth) ────────────
+-- ── [SF-22] Farm-private wire shape: one farm's mask serialises ALONE ────────
 do
     local m = newMask()
     m:noteWalk(1, 5, "1", 100, 42, 5, 5)
     m:noteWalk(1, 6, "2", 101, 13, 15, 15)
-    m:noteWalk(2, 9, "7", 102, 55, 7, 7)
+    m:noteWalk(2, 9, "7", 102, 55, 7, 7)   -- a DIFFERENT farm's cell
 
-    local arr = SoilScoutingBridge.serializeMask(m)
-    local m2 = newMask()
-    SoilScoutingBridge.deserializeMask(arr, m2)
+    -- serializeFarmMask reads ONLY the named farm: farm 1 gets its own two cells
+    -- and never a byte of farm 2.
+    local entries1 = SoilScoutingBridge.serializeFarmMask(m, 1)
+    T.eq("farm 1 serialises exactly its own two cells", #entries1, 2)
+    for _, e in ipairs(entries1) do
+        T.ok("no farm-2 field id leaks into farm 1's payload", e.fieldId == 5 or e.fieldId == 6)
+    end
+    T.ok("payload entries are primitives (fieldId is a number)", type(entries1[1].fieldId) == "number")
 
-    T.eq("wire: farm 1 cell survives", m2:composeShown(1, 5, "1", 103, -1, false), 42)
-    T.eq("wire: farm 1 second cell survives", m2:composeShown(1, 6, "2", 103, -1, false), 13)
-    T.eq("wire: farm 2 cell survives", m2:composeShown(2, 9, "7", 105, -1, false), 55)
-    T.ok("wire: array is primitives only", type(arr[1]) == "number")
+    -- A client on farm 1 applies farm 1's FULL and reconstructs exactly those cells.
+    g_localPlayer = { farmId = 1 }
+    local c1 = newMask()
+    SoilScoutingBridge.applyMaskEvent(c1, 1, {
+        mode = SoilScoutingBridge.MASK_MODE_FULL, farmId = 1,
+        chunkIndex = 1, chunkCount = 1, entries = entries1,
+    })
+    T.eq("client farm 1: cell 5 survives", c1:composeShown(1, 5, "1", 103, -1, false), 42)
+    T.eq("client farm 1: cell 6 survives", c1:composeShown(1, 6, "2", 103, -1, false), 13)
+    T.eq("client farm 1: never receives farm 2's cell", c1:composeShown(2, 9, "7", 105, -1, false), -1)
+
+    -- A payload STAMPED for farm 2, handed to a farm-1 client, is rejected whole
+    -- (the wrong-farm guard fires before any mutation): nothing lands.
+    local c2 = newMask()
+    SoilScoutingBridge.applyMaskEvent(c2, 1, {
+        mode = SoilScoutingBridge.MASK_MODE_FULL, farmId = 2,
+        chunkIndex = 1, chunkCount = 1, entries = SoilScoutingBridge.serializeFarmMask(m, 2),
+    })
+    T.ok("a payload for the wrong farm is rejected wholesale", next(c2.masks) == nil)
 end
