@@ -69,6 +69,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilResetSettings", "Reset all settings to defaults", "consoleCommandResetSettings", self)
     addConsoleCommand("SoilSaveData", "Force save soil data", "consoleCommandSaveData", self)
     addConsoleCommand("SoilDebug", "Toggle debug mode", "consoleCommandDebug", self)
+    addConsoleCommand("rfAutoRateSet", "Playtest harness: force sprayer Auto rate ON (1) / OFF (0) / normal (clear) for ALL vehicles this session", "consoleCommandAutoRateSet", self)
     addConsoleCommand("SoilDrainVehicle", "Drain custom fertilizer from current vehicle/implements (50% refund)", "consoleCommandDrainVehicle", self)
     addConsoleCommand("soilSetState", "Set field state: soilSetState <fieldId> <N> <P> <K> <pH> <OM>", "consoleCommandSetState", self)
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
@@ -1285,6 +1286,30 @@ function SoilSettingsGUI:consoleCommandSetPlowingBonus(enabled)
         return string.format("Plowing bonus %s", newVal and "enabled" or "disabled")
     end
     return "Error: Soil Mod not initialized"
+end
+
+--- [SF-46] Playtest harness (BUILD 13:54): deterministic Auto lock that a
+--- console can set when the Shift-R+L chord cannot be delivered reliably.
+--- Sets SprayerRateManager.autoForce, which getAutoMode consults FIRST for
+--- every vehicle - so it survives vehicle changes and helper hand-off, and
+--- the HUD reads the forced state through the same getter it always used.
+--- `rfAutoRateSet 1` = force ON, `rfAutoRateSet 0` = force OFF,
+--- `rfAutoRateSet clear` = remove the override (per-vehicle toggles rule again).
+function SoilSettingsGUI:consoleCommandAutoRateSet(arg)
+    local sfm = g_SoilFertilityManager
+    local rm = sfm and sfm.sprayerRateManager
+    if not rm then return "rfAutoRateSet: sprayerRateManager not available" end
+    if arg == "1" then
+        rm.autoForce = true
+        return "Auto rate FORCED ON for all vehicles (session; 'rfAutoRateSet clear' to undo)"
+    elseif arg == "0" then
+        rm.autoForce = false
+        return "Auto rate FORCED OFF for all vehicles (session; 'rfAutoRateSet clear' to undo)"
+    elseif arg == "clear" or arg == nil or arg == "" then
+        rm.autoForce = nil
+        return "Auto rate override cleared - per-vehicle toggle (Shift-R+L) rules again"
+    end
+    return "Usage: rfAutoRateSet 1|0|clear"
 end
 
 function SoilSettingsGUI:consoleCommandDebug()

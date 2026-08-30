@@ -255,6 +255,47 @@ local function collectPlanRows(fieldId)
         return rows, nil
     end
 
+    -- [SF-33] Decide from the MAP, not the field average.
+    --
+    -- getFieldInfo(fieldId) with no x/z returns field scalars, while the map and
+    -- the tooltip read the ~2 m value maps. That is why the plan could say a field
+    -- was fine while SOIL LAYERS showed patches of bad ground, and why players
+    -- stopped trusting the plan. The rollup samples the same maps the picture is
+    -- drawn from, so both now answer from one source.
+    --
+    -- Rule (George CLOSED DESIGN 16:58): prescribe when at least
+    -- SPATIAL_PRESCRIBE_PCT of sampled cells are below the threshold, OR when the
+    -- worst single cell is below it. The percentage filters edge noise; the worst
+    -- cell catches a genuinely bad patch the average hides.
+    local SPATIAL_PRESCRIBE_PCT = 5
+    local spatial = nil
+    do
+        local okS, s = pcall(function() return sfm.soilSystem:getFieldSpatialSummary(fieldId) end)
+        if okS then spatial = s end
+    end
+    local spatialMismatch = false
+
+    --- Severity for one nutrient from the map, falling back to the scalar when
+    --- no rollup is available (no value maps, or polygon unresolved).
+    ---@return boolean poorHit
+    ---@return boolean fairHit
+    local function severity(key, scalarVal, poorTh, fairTh)
+        local s = spatial and spatial[key]
+        if not s then
+            return (scalarVal < poorTh), (scalarVal < fairTh)
+        end
+        local poorHit = (s.pctBelowPoor >= SPATIAL_PRESCRIBE_PCT)
+                        or (s.worst ~= nil and s.worst < poorTh)
+        local fairHit = (s.pctBelowFair >= SPATIAL_PRESCRIBE_PCT)
+                        or (s.worst ~= nil and s.worst < fairTh)
+        -- The average says fine, the map says otherwise: that disagreement is
+        -- worth telling the player about rather than silently overriding.
+        if scalarVal >= fairTh and (poorHit or fairHit) then
+            spatialMismatch = true
+        end
+        return poorHit, fairHit
+    end
+
     local thresh  = SoilConstants.STATUS_THRESHOLDS or {}
     local fieldArea = info.fieldArea or 1.0
     local rrIdx = (sfm.settings and sfm.settings.replenishmentRate) or 3
@@ -274,40 +315,58 @@ local function collectPlanRows(fieldId)
     local kFair = (thresh.potassium and thresh.potassium.fair) or 40
 
     local nVal = info.nitrogen and info.nitrogen.value or 0
-    if nVal < nPoor then
+    local nPoorHit, nFairHit = severity("nitrogen", nVal, nPoor, nFair)
+    if nPoorHit then
         appendNutrientRows(rows, "N", nVal, targetN, rrMult, fieldArea,
             { {"UREA","N"}, {"UAN32","N"} },
             tr("sf_treat_action_n_poor", "Apply UAN32, UREA, or ANHYDROUS."), "poor", 3, 0)
-    elseif nVal < nFair then
+    elseif nFairHit then
         appendNutrientRows(rows, "N", nVal, targetN, rrMult, fieldArea,
             { {"AMS","N"}, {"AN","N"} },
             tr("sf_treat_action_n_fair", "Apply AMS or STARTER fertilizer."), "fair", 3, 1)
     end
 
     local pVal = info.phosphorus and info.phosphorus.value or 0
-    if pVal < pPoor then
+    local pPoorHit, pFairHit = severity("phosphorus", pVal, pPoor, pFair)
+    if pPoorHit then
         appendNutrientRows(rows, "P", pVal, targetP, rrMult, fieldArea,
             { {"MAP","P"}, {"DAP","P"} },
             tr("sf_treat_action_p_poor", "Apply MAP or DAP (Phosphorus)."), "poor", 3, 0)
-    elseif pVal < pFair then
+    elseif pFairHit then
         appendNutrientRows(rows, "P", pVal, targetP, rrMult, fieldArea,
             { {"LIQUID_MAP","P"}, {"LIQUID_DAP","P"} },
             tr("sf_treat_action_p_fair", "Top-up with Liquid MAP, Liquid DAP, or DAP (P)."), "fair", 3, 1)
     end
 
     local kVal = info.potassium and info.potassium.value or 0
-    if kVal < kPoor then
+    local kPoorHit, kFairHit = severity("potassium", kVal, kPoor, kFair)
+    if kPoorHit then
         appendNutrientRows(rows, "K", kVal, targetK, rrMult, fieldArea,
             { {"POTASH","K"}, {"LIQUID_POTASH","K"} },
             tr("sf_treat_action_k_poor", "Apply POTASH (Potassium)."), "poor", 3, 0)
-    elseif kVal < kFair then
+    elseif kFairHit then
         appendNutrientRows(rows, "K", kVal, targetK, rrMult, fieldArea,
             { {"POTASH","K"}, {"LIQUID_POTASH","K"} },
             tr("sf_treat_action_k_fair", "Top-up with Liquid Potash or Potash (K)."), "fair", 3, 1)
     end
 
     local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-    if ph < 6.5 then
+    -- [SF-33] pH needs its own rule: unlike N/P/K, too much is as wrong as too
+    -- little, so acid share and over-limed share are asked separately. A field
+    -- averaging a healthy 6.8 can still be a third acid and a third over-limed,
+    -- and that field needs lime, not reassurance.
+    local phS = spatial and spatial.pH
+    local limeHit, gypsumHit
+    if phS then
+        limeHit   = (phS.pctBelowFair >= SPATIAL_PRESCRIBE_PCT) or ((phS.mean or ph) < 6.5)
+        gypsumHit = (phS.pctOverLimed >= SPATIAL_PRESCRIBE_PCT)
+        if ph >= 6.5 and limeHit   then spatialMismatch = true end
+        if ph <= 7.5 and gypsumHit then spatialMismatch = true end
+    else
+        limeHit   = ph < 6.5
+        gypsumHit = ph > 7.5
+    end
+    if limeHit then
         addStaticRow(rows, "pH",
             productWithHow("LIME", tr("rf_pda_treat_method_dry", "spreader")),
             "poor", 2, 0,
@@ -318,7 +377,7 @@ local function collectPlanRows(fieldId)
             "poor", 2, 0,
             tr("rf_pda_treat_next_how_liq_lime", "apply with a sprayer/tank"),
             "LIQUIDLIME", true)
-    elseif ph > 7.5 then
+    elseif gypsumHit then
         addStaticRow(rows, "pH",
             productWithHow("GYPSUM", tr("rf_pda_treat_method_dry", "spreader")),
             "fair", 2, 1,
@@ -368,7 +427,11 @@ local function collectPlanRows(fieldId)
             "FUNGICIDE", false)
     end
 
-    return rows, info
+    -- [SF-33] Third return is additive: existing callers take one or two values
+    -- and are unaffected. `mismatch` is true when the field average reads fine
+    -- but the map does not, which the PDA and the dialog surface as a line rather
+    -- than quietly overruling one number with the other.
+    return rows, info, { spatial = spatial, mismatch = spatialMismatch }
 end
 
 --- Build ordered treatment plan lines for a field (for PDA expand / tablet).
@@ -413,6 +476,22 @@ end
 --- Short "Do this next" tip for Selected-field line (preferred first product after sort).
 ---@param fieldId number
 ---@return string|nil
+--- [SF-33] A line for when the field average and the soil map disagree.
+---
+--- Returns nil when they agree, so a caller can append unconditionally. The
+--- wording lives here rather than in each screen so the PDA panel and the
+--- Treatment dialog cannot drift into saying different things about the same
+--- field. Honest copy is the point: it explains BOTH numbers instead of quietly
+--- overruling one, which is what left players unsure which to believe.
+---@param fieldId number
+---@return string|nil
+function SoilTreatmentRates.getSpatialMismatchLine(fieldId)
+    local _, _, sp = collectPlanRows(fieldId)
+    if not sp or not sp.mismatch then return nil end
+    return tr("rf_pda_treat_spatial_mismatch",
+        "Field average looks fine, but the soil map has patches below target. The plan follows the map.")
+end
+
 function SoilTreatmentRates.buildNextStepLine(fieldId)
     local rows, info = collectPlanRows(fieldId)
     if rows == nil or #rows == 0 then

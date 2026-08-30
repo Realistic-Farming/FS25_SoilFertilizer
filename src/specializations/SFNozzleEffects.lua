@@ -51,10 +51,61 @@ end
 
 -- Price of the combined See & Spray upgrade (single purchase enables weed+pest+disease).
 SFNozzleEffects.SEE_SPRAY_PRICE = 2500
+-- [PACK] Precision pack: variable rate + section control, one purchase.
+-- Without it a sprayer applies ONE rate across the whole boom, set by hand or by
+-- auto-rate, and over-application is possible -- which is what a machine with no
+-- rate control actually does.
+SFNozzleEffects.PRECISION_PRICE = 4500
 
 -- Make the combined See & Spray Yes/No configuration buyable on EVERY sprayer, not only
 -- vehicles whose XML declares it. Mirrors PF SprayerNodeData's getConfigurationsFromXML
 -- override exactly (synthesize a 2-item VehicleConfigurationItem set) - no PF dependency.
+--- [PACK] True when this machine was bought with the precision pack.
+function SFNozzleEffects:sfHasPrecisionPack()
+    local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
+    return spec ~= nil and spec.hasPrecision == true
+end
+
+
+--- [PACK] True for a sprayer that predates the pack and so lost variable rate on
+--- this load. Used once, to explain the change rather than let it read as a bug.
+function SFNozzleEffects:sfIsLegacyNoPack()
+    local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
+    return spec ~= nil and spec.legacyNoPack == true
+end
+
+
+--- [SPRAY-ONLY] Can this machine actually carry crop protection?
+---
+--- In FS25 a manure spreader, a slurry tanker and a bulk fertiliser spreader all
+--- declare a <sprayer> block, so testing for that alone offered See & Spray on
+--- muck spreaders. It could never fire there -- the spot-spray path returns early
+--- unless the tank holds herbicide, insecticide or fungicide -- but the player
+--- could still be sold the upgrade, which is its own bug.
+---
+--- fillTypeCategories is the real discriminator: crop sprayers carry "sprayer",
+--- while the others carry MANURESPREADER / slurryTank / BULK. Substring match is
+--- safe here: "spreader" does not contain "sprayer".
+local function sfCanCarryCropProtection(xmlFile, key)
+    local found = false
+    local function checkUnit(_, fuKey)
+        if found then return end
+        local cats = xmlFile:getString(fuKey .. "#fillTypeCategories")
+        if cats and string.find(string.lower(cats), "sprayer", 1, true) then
+            found = true
+        end
+    end
+    -- Configured form (most vehicles) and the plain form, in that order.
+    xmlFile:iterate(key .. ".fillUnit.fillUnitConfigurations.fillUnitConfiguration",
+        function(_, cfgKey)
+            xmlFile:iterate(cfgKey .. ".fillUnits.fillUnit", checkUnit)
+        end)
+    if not found then
+        xmlFile:iterate(key .. ".fillUnit.fillUnits.fillUnit", checkUnit)
+    end
+    return found
+end
+
 function SFNozzleEffects.installConfigInjector()
     if SFNozzleEffects._didInstallConfigInjector then return end
     if ConfigurationUtil == nil or type(ConfigurationUtil.getConfigurationsFromXML) ~= "function" then
@@ -80,7 +131,13 @@ function SFNozzleEffects.installConfigInjector()
             configurations         = configurations or {}
             defaultConfigurationIds = defaultConfigurationIds or {}
 
-            if configurations["sfSeeSpray"] == nil then
+            -- [SPRAY-ONLY] Crop-protection machines only -- and the precision pack
+            -- below takes the same gate. A muck spreader or slurry tanker has no
+            -- boom sections to shut off and no per-cell dosing to do; application
+            -- rate is the only control that means anything on one, and that ships
+            -- as standard on every machine.
+            if configurations["sfSeeSpray"] == nil
+                and sfCanCarryCropProtection(xmlFile, key) then
                 local items = {}
 
                 local no = VehicleConfigurationItem.new("sfSeeSpray")
@@ -102,6 +159,33 @@ function SFNozzleEffects.installConfigInjector()
 
                 defaultConfigurationIds["sfSeeSpray"] = ConfigurationUtil.getDefaultConfigIdFromItems(items)
                 configurations["sfSeeSpray"] = items
+            end
+
+            -- [PACK] Same treatment, and the same crop-sprayer gate.
+            if SFNozzleEffects._precisionConfigRegistered
+                and configurations["sfPrecision"] == nil
+                and sfCanCarryCropProtection(xmlFile, key) then
+                local pItems = {}
+
+                local pNo = VehicleConfigurationItem.new("sfPrecision")
+                pNo.isDefault     = true
+                pNo.name          = g_i18n:getText("configuration_valueNo")
+                pNo.index         = 1
+                pNo.saveId        = "1"
+                pNo.price         = 0
+                pNo.isYesNoOption = true
+                table.insert(pItems, pNo)
+
+                local pYes = VehicleConfigurationItem.new("sfPrecision")
+                pYes.name          = g_i18n:getText("configuration_valueYes")
+                pYes.index         = 2
+                pYes.saveId        = "2"
+                pYes.price         = SFNozzleEffects.PRECISION_PRICE
+                pYes.isYesNoOption = true
+                table.insert(pItems, pYes)
+
+                defaultConfigurationIds["sfPrecision"] = ConfigurationUtil.getDefaultConfigIdFromItems(pItems)
+                configurations["sfPrecision"] = pItems
             end
         end
 
@@ -218,6 +302,15 @@ function SFNozzleEffects.initSpecialization()
         )
         -- Gate the shop-config injector: only synthesize items for a registered type.
         SFNozzleEffects._seeSprayConfigRegistered = true
+
+        -- [PACK] Precision pack as a second Yes/No shop configuration.
+        g_vehicleConfigurationManager:addConfigurationType(
+            "sfPrecision",
+            g_i18n:getText("sf_config_precision"),
+            "sfPrecision",
+            VehicleConfigurationItem
+        )
+        SFNozzleEffects._precisionConfigRegistered = true
     end
 end
 
@@ -233,6 +326,8 @@ function SFNozzleEffects.registerFunctions(vehicleType)
     -- Sharing those names lets one spec overwrite the other, so the 5-arg caller would hit
     -- our 4-arg function and pass a boolean into lastSpeed (the SFNozzleEffects:419
     -- "compare boolean < number" crash, issue #636). Never reuse those names here.
+    SpecializationUtil.registerFunction(vehicleType, "sfHasPrecisionPack",           SFNozzleEffects.sfHasPrecisionPack)
+    SpecializationUtil.registerFunction(vehicleType, "sfIsLegacyNoPack",             SFNozzleEffects.sfIsLegacyNoPack)
     SpecializationUtil.registerFunction(vehicleType, "sfGetNumNozzleEffectsActive",  SFNozzleEffects.sfGetNumNozzleEffectsActive)
     SpecializationUtil.registerFunction(vehicleType, "sfUpdateNozzleEffectsState",   SFNozzleEffects.sfUpdateNozzleEffectsState)
     SpecializationUtil.registerFunction(vehicleType, "sfUpdateNozzleEffectState",    SFNozzleEffects.sfUpdateNozzleEffectState)
@@ -267,8 +362,18 @@ function SFNozzleEffects:onPreLoad(savegame)
     spec.seeSprayWeed    = combined or oldWeed
     spec.seeSprayPest    = combined or oldPest
     spec.seeSprayDisease = combined or oldDisease
-    SoilLogger.debug("[SFNozzleEffects] onPreLoad: seeSprayWeed=%s seeSprayPest=%s seeSprayDisease=%s",
-        tostring(spec.seeSprayWeed), tostring(spec.seeSprayPest), tostring(spec.seeSprayDisease))
+    -- [PACK] Variable rate + section control are one purchase.
+    spec.hasPrecision = (self.configurations["sfPrecision"] or 1) > 1
+    -- [PACK] A sprayer already in a save from before the pack existed has no
+    -- sfPrecision configuration at all -- distinct from a new purchase where the
+    -- player chose "No". Both end up without the pack, but only the first has had
+    -- a feature taken away, so only the first is owed an explanation.
+    spec.legacyNoPack = (savegame ~= nil)
+        and (self.configurations["sfPrecision"] == nil)
+        and not spec.hasPrecision
+    SoilLogger.debug("[SFNozzleEffects] onPreLoad: seeSprayWeed=%s seeSprayPest=%s seeSprayDisease=%s precision=%s",
+        tostring(spec.seeSprayWeed), tostring(spec.seeSprayPest), tostring(spec.seeSprayDisease),
+        tostring(spec.hasPrecision))
 end
 
 -- ── onLoad - read nozzle nodes from XML ──────────────────────────────────────

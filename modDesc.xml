@@ -101,20 +101,38 @@
     <l10n filenamePrefix="translations/translation" />
 
     <inputBinding>
-        <actionBinding action="SF_RATE_UP" />
-        <actionBinding action="SF_RATE_DOWN" />
-        <actionBinding action="SF_TOGGLE_AUTO" />
-        <actionBinding action="SF_CYCLE_MAP_LAYER" />
-        <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_VARIABLE_RATE" />
-        <actionBinding action="SF_MINIMAP_ZOOM" />
-        <actionBinding action="SF_SCOUT" />
-        <actionBinding action="SF_TREATMENT" />
-        <!-- API-6 (input convention): no ecosystem mod ships a default binding, so
-             the player assigns keys in the game's control settings and nothing
-             collides out of the box. All nine former defaults were removed; the
-             actions stay registered and rebindable. -->
-        <actionBinding action="SF_HANDFUL" />
+        <!-- In-cab sprayer/spreader (Right Shift + key, same family as HUD toggle/drag). -->
+        <actionBinding action="SF_RATE_UP">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_rightbracket" />
+        </actionBinding>
+        <actionBinding action="SF_RATE_DOWN">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_leftbracket" />
+        </actionBinding>
+        <actionBinding action="SF_TOGGLE_AUTO">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_l" />
+        </actionBinding>
+        <actionBinding action="SF_VARIABLE_RATE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_v" />
+        </actionBinding>
+        <!-- On-foot / global Soil shortcuts (Right Shift + key). -->
+        <actionBinding action="SF_CYCLE_MAP_LAYER">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_m" />
+        </actionBinding>
+        <actionBinding action="SF_OPEN_SETTINGS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_s" />
+        </actionBinding>
+        <actionBinding action="SF_SCOUT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_k" />
+        </actionBinding>
+        <actionBinding action="SF_TREATMENT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_t" />
+        </actionBinding>
+        <actionBinding action="SF_MINIMAP_ZOOM">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_period" />
+        </actionBinding>
+        <actionBinding action="SF_HANDFUL">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_comma" />
+        </actionBinding>
         <actionBinding action="SF_TOGGLE_HUD">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
         </actionBinding>

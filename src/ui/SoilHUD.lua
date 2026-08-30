@@ -2176,18 +2176,75 @@ function SoilHUD:getSprayerFillType(sprayer)
         end
     end
 
-    -- Priority 4: fall back to generic fill unit query (works when parked)
+    -- Priority 4: fall back to generic fill unit query (works when parked).
+    --
+    -- [FIX-4] Only consider fill types this mod can actually APPLY. The old loop
+    -- took the first non-empty unit, and on a tractor or a self-propelled machine
+    -- that is the fuel tank -- so auto-rate read DIESEL, found it absent from
+    -- FERTILIZER_PROFILES, and pinned the rate at 1.00x. Measured live: 1,226 LIME
+    -- applications went down at full rate while the log repeated
+    -- "Auto-rate calc: DIESEL NOT in FERTILIZER_PROFILES - holding 1.0x", which is
+    -- exactly the over-liming the player saw. Auto-rate cannot back off a product
+    -- it does not know it is spreading.
+    --
+    -- Two passes on purpose: prefer a unit holding something we have a profile for,
+    -- and only then accept any other non-fuel product, so an unrecognised custom
+    -- fertiliser still resolves rather than falling back to diesel.
     if not fillTypeIndex then
-        local ok, units = pcall(function() return sprayer:getFillUnits() end)
-        if ok and units then
-            for i = 1, #units do
-                local ft = sprayer:getFillUnitFillType(i)
-                if ft and ft > 0 and ft ~= FillType.UNKNOWN then
-                    fillTypeIndex = ft
-                    break
+        local profiles = SoilConstants.FERTILIZER_PROFILES or {}
+        local NON_PRODUCT = {
+            DIESEL = true, DEF = true, ADBLUE = true, AIR = true, ELECTRICCHARGE = true,
+            METHANE = true, LIQUIDMANURE = false,   -- liquid manure IS a product
+        }
+        -- Search the machine AND anything attached to it: on a tractor + spreader the
+        -- lime is in the implement's hopper, never in the tractor. Filtering fuel out
+        -- without also looking at implements just turned "reads DIESEL" into "reads
+        -- nothing", and auto-rate bailed instead of pinning -- worse, not better.
+        local candidates = { sprayer }
+        local function addImplements(v, depth)
+            if v == nil or depth > 3 then return end
+            local ok, impls = pcall(function()
+                return v.getAttachedImplements and v:getAttachedImplements() or nil
+            end)
+            if not ok or impls == nil then return end
+            for _, impl in ipairs(impls) do
+                local obj = impl and impl.object
+                if obj ~= nil then
+                    candidates[#candidates + 1] = obj
+                    addImplements(obj, depth + 1)
                 end
             end
         end
+        addImplements(sprayer, 1)
+        local root = sprayer.rootVehicle
+        if root and root ~= sprayer then
+            candidates[#candidates + 1] = root
+            addImplements(root, 1)
+        end
+
+        local firstOther
+        for _, v in ipairs(candidates) do
+            if fillTypeIndex then break end
+            local ok, units = pcall(function() return v:getFillUnits() end)
+            if ok and units then
+                for i = 1, #units do
+                    local ft = v:getFillUnitFillType(i)
+                    if ft and ft > 0 and ft ~= FillType.UNKNOWN then
+                        local desc = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ft)
+                        local name = desc and desc.name
+                        if name and NON_PRODUCT[name] ~= true then
+                            if profiles[name] ~= nil then
+                                fillTypeIndex = ft   -- known product: take it
+                                break
+                            elseif firstOther == nil then
+                                firstOther = ft      -- plausible product, keep as fallback
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if not fillTypeIndex then fillTypeIndex = firstOther end
     end
 
     if not fillTypeIndex then return nil end
@@ -2268,36 +2325,38 @@ function SoilHUD:_calcCropTargetRateIdx(fillType)
     local profile = SoilConstants.FERTILIZER_PROFILES and SoilConstants.FERTILIZER_PROFILES[fillType.name]
     if not profile then return nil end
 
-    local ct           = info.cropTargets
-    local totalWeight  = 0
-    local weightedDef  = 0
-    local anyDeficit   = false
+    local ct = info.cropTargets
 
-    if profile.N and profile.N > 0 and ct.N and ct.N.opt > 0 then
-        local deficit = math.max(0, ct.N.opt - info.nitrogen.value) / ct.N.opt
-        if deficit > 0 then anyDeficit = true end
-        weightedDef  = weightedDef  + deficit * profile.N
-        totalWeight  = totalWeight  + profile.N
+    -- [SF-34] Mirror of calculateAutoRateIndex's close-the-gap sizing, kept in
+    -- step with SoilFertilityManager (one formula, two sites, never drift):
+    -- required = gap / (coeff * BASE_RATE / 1000), sized by the biggest carried
+    -- need, clamped to the same [0.01, 1.20] dial range.
+    local baseRow = SoilConstants.SPRAYER_RATE.BASE_RATES
+                    and SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name]
+    local perThousand = (baseRow and baseRow.value and baseRow.value > 0)
+                        and (baseRow.value / 1000.0) or nil
+    if not perThousand then return nil end
+
+    local req = nil
+    -- [SF-42] Fraction-of-gap, mirroring calculateAutoRateIndex's retune: 0.50
+    -- of the remaining gap per pass (George CLOSED DESIGN 11:23), capped at the
+    -- per-pass physical maximum (60 nutrient units, matching AUTO_PASS_MAX
+    -- there). Keep the two in step.
+    local function consider(gap, coeff)
+        if coeff and coeff > 0 and gap and gap > 0 then
+            local boost = math.min(gap * 0.50, 60)
+            local m = boost / (coeff * perThousand)
+            if req == nil or m > req then req = m end
+        end
     end
-    if profile.P and profile.P > 0 and ct.P and ct.P.opt > 0 then
-        local deficit = math.max(0, ct.P.opt - info.phosphorus.value) / ct.P.opt
-        if deficit > 0 then anyDeficit = true end
-        weightedDef  = weightedDef  + deficit * profile.P
-        totalWeight  = totalWeight  + profile.P
-    end
-    if profile.K and profile.K > 0 and ct.K and ct.K.opt > 0 then
-        local deficit = math.max(0, ct.K.opt - info.potassium.value) / ct.K.opt
-        if deficit > 0 then anyDeficit = true end
-        weightedDef  = weightedDef  + deficit * profile.K
-        totalWeight  = totalWeight  + profile.K
-    end
+    if ct.N and ct.N.opt and ct.N.opt > 0 then consider(ct.N.opt - info.nitrogen.value,   profile.N) end
+    if ct.P and ct.P.opt and ct.P.opt > 0 then consider(ct.P.opt - info.phosphorus.value, profile.P) end
+    if ct.K and ct.K.opt and ct.K.opt > 0 then consider(ct.K.opt - info.potassium.value,  profile.K) end
 
     -- No relevant nutrients in this fertilizer, or field already at/above all targets
-    if totalWeight <= 0 or not anyDeficit then return nil end
+    if req == nil or req <= 0 then return nil end
 
-    local defFraction = weightedDef / totalWeight
-    local targetMult  = 0.20 + defFraction * (1.20 - 0.20)
-    targetMult = math.max(0.20, math.min(1.20, targetMult))
+    local targetMult = math.max(0.01, math.min(1.20, req))
 
     local steps   = SoilConstants.SPRAYER_RATE.STEPS
     local bestIdx = SoilConstants.SPRAYER_RATE.DEFAULT_INDEX
