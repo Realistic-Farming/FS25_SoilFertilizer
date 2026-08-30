@@ -5343,6 +5343,11 @@ function SoilFertilitySystem:isAmendmentBurnRisk(fruitTypeIndex, growthState)
     local cutStates = fruitDesc.cutStates
     if cutStates and cutStates[gs] then return false end
     if fruitDesc.witheredState and gs == fruitDesc.witheredState then return false end
+    -- Wheel-flattened foliage ("tire tracks") is not a canopy either, so a rut on a freshly-cut
+    -- field must not take the amendment burn (#905, follow-up to #842). The engine parses
+    -- isDestructedByWheel into a single wheelDestructionState (nil until set, one state per fruit),
+    -- so this can never exempt a standing crop; on grass/meadow it lands on the cut state (no-op).
+    if fruitDesc.wheelDestructionState and gs == fruitDesc.wheelDestructionState then return false end
     if fruitName and perennialSet and perennialSet[fruitName] then
         local minH = fruitDesc.minHarvestingGrowthState
         local maxH = fruitDesc.maxHarvestingGrowthState
