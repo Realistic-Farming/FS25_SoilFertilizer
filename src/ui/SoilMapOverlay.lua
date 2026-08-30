@@ -84,32 +84,6 @@ SoilMapOverlay.CB_UNKNOWN = {0.38, 0.40, 0.43}
 -- ── Gradient helpers ──────────────────────────────────────
 -- Shared red→amber→green gradient.  t=0 is worst (red), t=1 is best (green).
 -- These are the same three stop-colors used in drawHealthGradientBar.
--- [SF-50] pH-only 4-stop gradient (George CLOSED DESIGN 19:12; Wizard wants
--- deeper multi-stage colour on the pH layer specifically). Stops: deep red ->
--- amber -> bright green -> deep green, linearly interpolated. Every other
--- layer stays on healthGradient below. Over-limed (>7.0) reaches this with
--- t=0 from layerValueToT and lands on the deep-red stop, as before.
-local PH_STOPS = {
-    { 0.00, 0.88, 0.10, 0.10 },  -- deep red
-    { 0.33, 0.90, 0.70, 0.10 },  -- amber
-    { 0.66, 0.30, 0.90, 0.30 },  -- bright green
-    { 1.00, 0.10, 0.50, 0.10 },  -- deep green
-}
-local function pHGradient(t)
-    t = math.max(0, math.min(1, t))
-    for i = 1, #PH_STOPS - 1 do
-        local s0, s1 = PH_STOPS[i], PH_STOPS[i + 1]
-        if t <= s1[1] then
-            local a = (t - s0[1]) / (s1[1] - s0[1])
-            return s0[2] + (s1[2] - s0[2]) * a,
-                   s0[3] + (s1[3] - s0[3]) * a,
-                   s0[4] + (s1[4] - s0[4]) * a
-        end
-    end
-    local last = PH_STOPS[#PH_STOPS]
-    return last[2], last[3], last[4]
-end
-
 local function healthGradient(t)
     t = math.max(0, math.min(1, t))
     local r, g, b
@@ -134,19 +108,15 @@ local function layerValueToT(layerIdx, val)
     elseif layerIdx == 2 then return math.max(0, math.min(1, val / 100))        -- P   0-100
     elseif layerIdx == 3 then return math.max(0, math.min(1, val / 100))        -- K   0-100
     elseif layerIdx == 4 then
-        -- [SF-49] Continuous pH ramp (George CLOSED DESIGN 16:08). The old
-        -- discrete 0.5/1.0 bands rendered mid-pass 6.29 and overlap 6.60 as
-        -- similar tints even though the painted VALUES were right - TEST 15:54
-        -- failed on legend alone. Ramping 5.5->6.5 across fair (0..0.5) and
-        -- 6.5->7.0 across optimal (0.5..1.0) makes 6.29 read amber (~0.395)
-        -- and 6.60 read greener (~0.60). Over-limed >7.0 stays poor (0.0).
+        -- Match SoilHUD:pHColor bands (not a 6.75-centred bell):
+        -- 6.5-7.0 good, >7.0-7.5 poor (over-limed), >=5.5 fair, else poor.
         local pH = val or 7.0
         if pH >= 6.5 and pH <= 7.0 then
-            return 0.5 + (pH - 6.5) / (7.0 - 6.5) * 0.5
-        elseif pH > 7.0 then
+            return 1.0
+        elseif pH > 7.0 and pH <= 7.5 then
             return 0.0
         elseif pH >= 5.5 then
-            return (pH - 5.5) / (6.5 - 5.5) * 0.5
+            return 0.5
         else
             return 0.0
         end
@@ -559,24 +529,14 @@ function SoilMapOverlay:_pdaDrawDMV(ingameMap, mapX, mapY, mapWidth, mapHeight, 
 
     self:_pdaPollBuildFinished()
 
-    -- Kick a (re)build when the layer changed, the refresh timer elapsed, or the
-    -- value maps were mutated since the last build ([SF-23]).
+    -- Kick a (re)build when the layer changed or the refresh timer elapsed
     if layerIdx ~= self._pdaActiveLayer then
         self._pdaActiveLayer  = layerIdx
         self._pdaHasShownOnce = false     -- don't show the previous layer's pixels
         self._pdaBuildInFlight = false
-        self._pdaValueMapsDirty = false
         self:_pdaKickBuild(layerIdx)
         self._pdaNextBuildMs = now + 3000
-    elseif not self._pdaBuildInFlight
-           and (now >= self._pdaNextBuildMs
-                or (self._pdaValueMapsDirty and now >= (self._pdaDirtyFloorMs or 0))) then
-        -- [SF-23] A tillage/spray paint sets _pdaValueMapsDirty, which short
-        -- circuits the 3 s timer so a change is on screen on the next draw rather
-        -- than up to three seconds later. Floored at 250 ms so a burst of paints
-        -- can never thrash the DMV rebuild, which is the expensive call here.
-        self._pdaValueMapsDirty = false
-        self._pdaDirtyFloorMs   = now + 250
+    elseif not self._pdaBuildInFlight and now >= self._pdaNextBuildMs then
         self:_pdaKickBuild(layerIdx)
         self._pdaNextBuildMs = now + 3000
     end
@@ -2032,12 +1992,6 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end
-    -- [SF-50] pH takes the 4-stop gradient; every other layer keeps the
-    -- 3-stop health ramp. Same t from layerValueToT either way, so the
-    -- over-limed>7.0 -> t=0 rule is shared.
-    if layerIdx == 4 then
-        return pHGradient(layerValueToT(layerIdx, val))
-    end
     return healthGradient(layerValueToT(layerIdx, val))
 end
 
@@ -2148,12 +2102,6 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     -- Unscouted disease shows the neutral unknown tone, never the pressure ramp.
     if layerIdx == 9 and info.shownDiseasePressure == nil then
         return self:unknownColor()
-    end
-    -- [SF-50] pH takes the 4-stop gradient; every other layer keeps the
-    -- 3-stop health ramp. Same t from layerValueToT either way, so the
-    -- over-limed>7.0 -> t=0 rule is shared.
-    if layerIdx == 4 then
-        return pHGradient(layerValueToT(layerIdx, val))
     end
     return healthGradient(layerValueToT(layerIdx, val))
 end

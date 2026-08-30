@@ -30,23 +30,7 @@ function SoilSensorManager.new()
     self.variableRate = {}
     -- System 3: per-section rate cache - vehicleId → { [sectionRef] = multiplier }
     self.sectionRates = {}
-    -- [SF-28] System 3 TOTAL demand - vehicleId → mean of this pass's section rates.
-    -- sectionRates are redistribution weights and deliberately preserve the total
-    -- (see HookManager #555). This is the separate number that lets the total
-    -- itself fall on ground already at target, so the TANK draws less rather than
-    -- the same product being shuffled toward deficit sections.
-    self.vrDemand = {}
     return self
-end
-
---- [SF-28] Store the mean section rate for this pass (1.0 = no change to usage).
-function SoilSensorManager:setVrDemand(vehicleId, demand)
-    self.vrDemand[vehicleId] = demand
-end
-
---- [SF-28] Mean section rate, or 1.0 when variable rate is not driving this vehicle.
-function SoilSensorManager:getVrDemand(vehicleId)
-    return self.vrDemand[vehicleId] or 1.0
 end
 
 --- Returns (creating if needed) the sensor state table for a vehicle.
@@ -142,9 +126,6 @@ end
 --- Clears per-section rates for a vehicle (call at start of each tick).
 function SoilSensorManager:clearSectionRates(vehicleId)
     self.sectionRates[vehicleId] = nil
-    -- [SF-28] Drop the total demand too, so a vehicle that stops running variable
-    -- rate goes straight back to full tank usage instead of holding a stale cut.
-    self.vrDemand[vehicleId] = nil
 end
 
 -- ── Lifecycle ─────────────────────────────────────────────
@@ -154,5 +135,4 @@ function SoilSensorManager:delete()
     self.vehicleSensors = {}
     self.variableRate   = {}
     self.sectionRates   = {}
-    self.vrDemand       = {}   -- [SF-28] clear with the rest, not left behind
 end

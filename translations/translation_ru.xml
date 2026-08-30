@@ -734,9 +734,6 @@
     <e k="sf_variable_rate_long"           v="Enable or disable Variable Rate Application based on soil deficits" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Suppress boom sections over areas that do not need spraying" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
-    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
-    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
-    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
     <e k="sf_config_seeSprayWeed"          v="See &amp; Spray: Weed" />
     <e k="sf_config_seeSprayPest"          v="See &amp; Spray: Pest" />
     <e k="sf_config_seeSprayDisease"       v="See &amp; Spray: Disease" />    <e k="sf_desc_variableRateEnabled"     v="Adjust application rate per section based on soil nutrient deficits" />

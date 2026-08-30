@@ -1447,42 +1447,11 @@ local function showSensorMsg(name, on)
     end
 end
 
---- [PACK] Does this machine carry the precision pack (variable rate + section
---- control)? Checks the sprayer, then its root vehicle, so a trailed unit
---- answers for its own configuration. Fails CLOSED: no specialization, no pack.
-function SoilFertilityManager:hasPrecisionPack(vehicle)
-    if vehicle == nil then return false end
-    if type(vehicle.sfHasPrecisionPack) == "function" then
-        local ok, has = pcall(function() return vehicle:sfHasPrecisionPack() end)
-        if ok and has then return true end
-    end
-    local root = vehicle.rootVehicle
-    if root and root ~= vehicle and type(root.sfHasPrecisionPack) == "function" then
-        local ok, has = pcall(function() return root:sfHasPrecisionPack() end)
-        if ok and has then return true end
-    end
-    return false
-end
-
 -- ── System 3: Variable Rate input callback ─────────────────
 
 function SoilFertilityManager:onVariableRateInput()
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
-    -- [PACK] Hardware gate. Refuse the toggle and say why, rather than flipping a
-    -- flag that the spray path will ignore -- a switch that does nothing is worse
-    -- than one that explains itself.
-    if not self:hasPrecisionPack(vehicle) then
-        local msg = (g_i18n and g_i18n:getText("sf_pack_required"))
-            or "This sprayer does not have the add-on needed for that function. Visit the shop to upgrade your sprayer."
-        if g_currentMission and g_currentMission.hud
-            and g_currentMission.hud.showBlinkingWarning then
-            g_currentMission.hud:showBlinkingWarning(msg, 4000)
-        end
-        SoilLogger.debug("[VariableRate] refused for vehicle %s - no precision pack",
-            tostring(vehicle.id))
-        return
-    end
     local newState = self.sensorManager:toggleVariableRate(vehicle.id)
     showSensorMsg(g_i18n and g_i18n:getText("sf_var_rate_label") or "Variable Rate", newState)
     SoilLogger.debug("[VariableRate] %s for vehicle %d", newState and "ON" or "OFF", vehicle.id)
@@ -1758,35 +1727,6 @@ end
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
 function SoilFertilityManager:update(dt)
-    -- [PACK] Tell the player once, per sprayer, that a machine they already owned
-    -- now needs the add-on. Without this the feature simply vanishes on load and
-    -- reads as a broken mod. Throttled to a 2 s poll and remembered per vehicle,
-    -- so it cannot repeat while they sit in the seat.
-    self._packNoticeTimer = (self._packNoticeTimer or 0) + dt
-    if self._packNoticeTimer >= 2000 then
-        self._packNoticeTimer = 0
-        local v = g_localPlayer and type(g_localPlayer.getCurrentVehicle) == "function"
-            and g_localPlayer:getCurrentVehicle() or nil
-        if v ~= nil and type(v.sfIsLegacyNoPack) == "function" then
-            self._packNoticeShown = self._packNoticeShown or {}
-            local key = v.id or tostring(v)
-            if not self._packNoticeShown[key] then
-                local ok, legacy = pcall(function() return v:sfIsLegacyNoPack() end)
-                if ok and legacy then
-                    self._packNoticeShown[key] = true
-                    local msg = (g_i18n and g_i18n:getText("sf_pack_legacy_notice"))
-                        or "Variable rate and section control now need the Precision Pack. "
-                        .. "This sprayer does not have it - visit the shop to upgrade."
-                    if g_currentMission and g_currentMission.hud
-                        and g_currentMission.hud.showBlinkingWarning then
-                        g_currentMission.hud:showBlinkingWarning(msg, 5000)
-                    end
-                    SoilLogger.info("[PACK] legacy sprayer %s has no precision pack - player notified",
-                        tostring(key))
-                end
-            end
-        end
-    end
     -- REFINED: periodic value-map checksum broadcast (MP drift detection).
     -- Server-only, every 5 real minutes, only when clients are connected.
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo
@@ -2171,53 +2111,9 @@ function SoilFertilityManager:updateAutoRates(dt)
     -- Find the player's active applicator vehicle
     local vehicle = getApplicatorVehicle()
     if not vehicle then
-        -- [SF-39] AI helper run (George CLOSED DESIGN 09:48, the 0.01x holes).
-        -- getPlayerVehicle() is nil the moment the player steps out, so this
-        -- function bailed every tick for the WHOLE helper run and the dial froze
-        -- at whatever index it last held - including 0.01x from the player
-        -- standing on done ground when they pressed H. The min-boom sampling
-        -- below never even ran, which is why two rounds of sampling fixes could
-        -- not cure it. Find the AI-driven applicator with auto engaged instead;
-        -- getIsAIActive is already relied on in HookManager, SFNozzleEffects and
-        -- SoilFertilitySystem, so nothing invented.
-        if g_currentMission and g_currentMission.vehicles then
-            for _, v in pairs(g_currentMission.vehicles) do
-                local root = v.rootVehicle or v
-                if root == v and type(v.getIsAIActive) == "function" then
-                    local aOk, active = pcall(v.getIsAIActive, v)
-                    -- (self.sprayerRateManager directly: `rm` is declared below)
-                    if aOk and active and self.sprayerRateManager
-                       and self.sprayerRateManager:getAutoMode(v.id) then
-                        vehicle = v
-                        break
-                    end
-                end
-            end
-        end
-    end
-    if not vehicle then
-        SoilLogger.debug("Auto-rate trace: bail - no applicator vehicle (not in one, no AI applicator with auto ON)")
+        SoilLogger.debug("Auto-rate trace: bail - no applicator vehicle (not in one, or rootVehicle nil)")
         return
     end
-
-    self:recalcAutoRateFor(vehicle)
-end
-
---- [SF-41] Core auto-rate recalc for ONE vehicle (George CLOSED DESIGN 11:23,
---- fix 3). Split out of updateAutoRates so it has TWO drivers: the player
---- update path above, and the boom-strip work tick in HookManager - the tick
---- that demonstrably keeps running after H + walk away. The SF-39 scan found
---- the helper's machine but something in the seated update chain still starved
---- it; wiring the recalc to the same cycle that paints means the dial updates
---- exactly as long as product is going on the ground, seated or not. Own 5 s
---- throttle per vehicle so the per-tick call from the paint path stays cheap.
----@param vehicle table  root vehicle of the applicator
-function SoilFertilityManager:recalcAutoRateFor(vehicle)
-    if vehicle == nil or vehicle.id == nil then return end
-    local nowT = (g_currentMission and g_currentMission.time) or 0
-    self._sfAutoNext = self._sfAutoNext or {}
-    if (self._sfAutoNext[vehicle.id] or 0) > nowT then return end
-    self._sfAutoNext[vehicle.id] = nowT + 5000
 
     -- Only act when auto mode is engaged for this vehicle
     local rm = self.sprayerRateManager
@@ -2230,21 +2126,10 @@ function SoilFertilityManager:recalcAutoRateFor(vehicle)
         return
     end
 
-    -- Use the HUD's cached field id (updated every frame in SoilHUD:update).
-    -- [SF-41] nil-safe: the paint-path driver can call this before/without a HUD.
-    local fieldId = self.soilHUD and self.soilHUD.cachedFieldId
+    -- Use the HUD's cached field id (updated every frame in SoilHUD:update)
+    local fieldId = self.soilHUD.cachedFieldId
     if not fieldId or fieldId <= 0 then
-        -- [SF-39] The HUD caches the PLAYER's field. During a helper run the
-        -- player may be standing off-field, so resolve the field under the
-        -- MACHINE instead - same lookup the VR hook uses per section.
-        local pOk, vx, _, vz = pcall(getWorldTranslation, vehicle.rootNode)
-        if pOk and vx and HookManager and type(HookManager.getFieldIdAtWorldPosition) == "function" then
-            local fOk, fid = pcall(function() return HookManager:getFieldIdAtWorldPosition(vx, vz) end)
-            if fOk then fieldId = fid end
-        end
-    end
-    if not fieldId or fieldId <= 0 then
-        SoilLogger.debug("Auto-rate trace: bail - no field under player or machine")
+        SoilLogger.debug("Auto-rate trace: bail - cachedFieldId nil/0 (field detection not resolving)")
         return
     end
 
@@ -2260,7 +2145,7 @@ function SoilFertilityManager:recalcAutoRateFor(vehicle)
     end
 
     -- Get the fill type currently loaded in the vehicle
-    local fillType = self.soilHUD and self.soilHUD:getSprayerFillType(vehicle)
+    local fillType = self.soilHUD:getSprayerFillType(vehicle)
     if not fillType then
         SoilLogger.debug("Auto-rate trace: bail - getSprayerFillType nil for vehicle %d (field %s)",
             vehicle.id, tostring(fieldId))
@@ -2268,137 +2153,7 @@ function SoilFertilityManager:recalcAutoRateFor(vehicle)
     end
 
     -- Calculate the ideal index and send if it changed
-    -- [FIX-8] Sense the ground UNDER the machine, not the field average.
-    --
-    -- Auto-rate read fieldData.pH, which climbs as you lime -- so the rate fell
-    -- away through the pass and whatever was covered last got almost nothing.
-    -- Measured over one field: 0.94x at 21:45 decaying to 0.20x by 22:02, which
-    -- is exactly why the last-worked strips came out pale. The machine should
-    -- answer the question "what does THIS ground need", not "how is the field
-    -- doing on average".
-    local localVals
-    do
-        local soilSys = self.soilSystem
-        if soilSys and soilSys.vmAvailable and soilSys:vmAvailable() then
-            local vm = soilSys.valueMaps
-
-            -- [FIX-14] Sense the WHOLE boom, and ALL FIVE soil values.
-            --
-            -- One sample under the tractor starved the headland edge: the tractor
-            -- sits over ground already done, the rate fell for the whole boom, and
-            -- the untouched edge got nothing. Sampling every ~2 m along the boom
-            -- and sizing for the NEEDIEST ground fixes that -- and it must apply
-            -- to nitrogen, phosphorus, potassium and organic matter exactly as to
-            -- pH, or spreading fertiliser and manure keeps the bug lime had.
-            local positions = {}
-            local line = nil
-            if HookManager ~= nil and type(HookManager.getBoomLineEndpoints) == "function" then
-                local lok, l = pcall(function() return HookManager:getBoomLineEndpoints(vehicle) end)
-                if lok then line = l end
-            end
-            if line and line.ax and line.bx then
-                local dx, dz = line.bx - line.ax, line.bz - line.az
-                local boomLen = math.sqrt(dx * dx + dz * dz)
-                local steps = math.max(4, math.min(24, math.ceil(boomLen / 2)))
-                for i = 0, steps do
-                    local f = i / steps
-                    positions[#positions + 1] = { x = line.ax + dx * f, z = line.az + dz * f }
-                end
-            else
-                -- [SF-38] The old fallback was ONE sample under the vehicle root
-                -- (George CLOSED DESIGN 09:04). Whenever the boom-line hook came
-                -- back nil, the tractor was usually sitting on ground it had just
-                -- limed, the single reading said "at target", and the dial
-                -- collapsed to 0.01x while the boom tips hung over needy ground -
-                -- Brian's yellow boom holes. Reuse the last known boom line for
-                -- this vehicle first; failing that, sample a lateral line through
-                -- the vehicle (+-9 m, 7 points) via localToWorld, so the minimum
-                -- is always taken across the working width, never one wheel track.
-                self._sfLastBoomLine = self._sfLastBoomLine or {}
-                local cached = self._sfLastBoomLine[vehicle.id]
-                if cached then
-                    local dx, dz = cached.bx - cached.ax, cached.bz - cached.az
-                    local steps = math.max(4, math.min(24, math.ceil(math.sqrt(dx * dx + dz * dz) / 2)))
-                    for i = 0, steps do
-                        local f = i / steps
-                        positions[#positions + 1] = { x = cached.ax + dx * f, z = cached.az + dz * f }
-                    end
-                else
-                    for off = -9, 9, 3 do
-                        local lOk, lx, _, lz = pcall(localToWorld, vehicle.rootNode, off, 0, 0)
-                        if lOk and lx then positions[#positions + 1] = { x = lx, z = lz } end
-                    end
-                    if #positions == 0 then
-                        local vOk, vx, _, vz = pcall(getWorldTranslation, vehicle.rootNode)
-                        if vOk and vx then positions[#positions + 1] = { x = vx, z = vz } end
-                    end
-                end
-            end
-            if line and line.ax and line.bx then
-                -- Remember the good line so the nil-hook ticks between work areas
-                -- keep sampling the true width instead of degrading to the root.
-                self._sfLastBoomLine = self._sfLastBoomLine or {}
-                self._sfLastBoomLine[vehicle.id] = { ax = line.ax, az = line.az, bx = line.bx, bz = line.bz }
-            end
-            if #positions > 0 then
-                localVals = {}
-                for _, key in ipairs({ "pH", "nitrogen", "phosphorus", "potassium", "organicMatter" }) do
-                    local minV = nil
-                    for _, pt in ipairs(positions) do
-                        local sOk, v = pcall(function() return vm:readValueAtWorld(key, pt.x, pt.z) end)
-                        -- [SF-43] pH sentinel/edge clamp (George CLOSED DESIGN
-                        -- 12:32): reads AT the scale floor (5.0) or ceiling (7.5)
-                        -- on boom tips hanging over edges/sentinel pixels are map
-                        -- artefacts, not soil. Folding a 5.0 into the minimum
-                        -- inflated the dial, then a 7.5 overlap read collapsed it
-                        -- - the flicker behind the yellow holes. Open interval
-                        -- only; when no valid sample remains, minV stays nil and
-                        -- the field average wins, exactly as for unwritten cells.
-                        if key == "pH" and sOk and v ~= nil then
-                            local lim  = SoilConstants.NUTRIENT_LIMITS
-                            local pmin = (lim and lim.PH_MIN) or 5.0
-                            local pmax = (lim and lim.PH_MAX) or 7.5
-                            if v <= pmin or v >= pmax then v = nil end
-                        end
-                        if sOk and v ~= nil and (minV == nil or v < minV) then minV = v end
-                    end
-                    localVals[key] = minV   -- nil where unwritten: field average wins
-                end
-            end
-        end
-    end
-    -- [FIX-16] Hold the neediest reading seen in the last 15 s, per vehicle.
-    --
-    -- Single-tick sampling flickered: crossing a just-painted strip or the
-    -- boom clipping done ground for one tick collapsed the rate (measured
-    -- 1.00x -> 0.50x -> 1.00x -> 0.01x tick to tick), and every swing painted
-    -- a differently dosed band -- the striping across the worker's field. A
-    -- rolling minimum keeps the rate sized to the neediest ground seen
-    -- recently: transients cannot drop it, and it recovers within 15 s once
-    -- the ground really is done everywhere.
-    if localVals then
-        self._sfSenseWin = self._sfSenseWin or {}
-        local now = (g_currentMission and g_currentMission.time) or 0
-        local win = self._sfSenseWin[vehicle.id]
-        if not win then win = {} self._sfSenseWin[vehicle.id] = win end
-        win[#win + 1] = { t = now, v = localVals }
-        while #win > 0 and (now - win[1].t) > 15000 do table.remove(win, 1) end
-        local held = {}
-        for _, entry in ipairs(win) do
-            for k, v in pairs(entry.v) do
-                if held[k] == nil or v < held[k] then held[k] = v end
-            end
-        end
-        localVals = held
-    end
-    local newIdx = self:calculateAutoRateIndex(fieldData, fillType, localVals)
-    -- [SF-34] George constraint 3: with the Precision Pack, prescription paint
-    -- already varies the dose per 2 m cell, so the auto dial must not fight it.
-    -- Pin the dial at 1.0x and let the prescription do the per-cell work; the
-    -- close-the-gap dial is the tool for flat-broadcast machines only.
-    if self:hasPrecisionPack(vehicle) then
-        newIdx = SoilConstants.SPRAYER_RATE.DEFAULT_INDEX   -- 1.0x
-    end
+    local newIdx = self:calculateAutoRateIndex(fieldData, fillType)
     local currentIdx = rm:getIndex(vehicle.id)
     if newIdx ~= currentIdx then
         rm:setIndex(vehicle.id, newIdx)
@@ -2436,12 +2191,7 @@ end
 ---@param fieldData table  Return value of SoilFertilitySystem:getFieldInfo()
 ---@param fillType  table  FillType object (has .name string)
 ---@return number          1-based index into SoilConstants.SPRAYER_RATE.STEPS
-function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType, localVals)
-    -- [FIX-14] localVals: the neediest (minimum) soil values sampled along the
-    -- boom, keyed pH / nitrogen / phosphorus / potassium / organicMatter. Any
-    -- nil falls back to the field average. A bare number still means {pH = n}.
-    if type(localVals) == "number" then localVals = { pH = localVals } end
-    local lv = localVals or {}
+function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
     local steps    = SoilConstants.SPRAYER_RATE.STEPS
     local defaults = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
     local ct       = fieldData.cropTargets
@@ -2452,15 +2202,11 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType, localV
         pH = defaults.pH,
         OM = defaults.OM,
     } or defaults
-    -- [SF-34] limits/phMin gone with the proportional formula: close-the-gap
-    -- works in absolute gap units, so the PH_MIN normalisation range is unused.
+    local limits  = SoilConstants.NUTRIENT_LIMITS
+    local phMin   = limits and limits.PH_MIN or 5.0
 
     -- Safe multiplier bounds - never exceed BURN_RISK_THRESHOLD
-    -- Floor is 0.01, not 0.20: on ground already at target the old floor kept
-    -- applying a fifth of base rate, which for lime means driving pH past optimum
-    -- on a field that needed nothing. 0.01 keeps the machine visibly working
-    -- without meaningfully changing the soil.
-    local MULT_MIN = 0.01
+    local MULT_MIN = 0.20
     local MULT_MAX = 1.20
 
     local multiplier = 1.0  -- default fallback
@@ -2477,110 +2223,73 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType, localV
             multiplier = 1.0
 
         else
-            -- [SF-34] Close-the-gap sizing (George CLOSED DESIGN 00:13).
-            --
-            -- The old formula mapped deficit FRACTION linearly onto the dial:
-            -- proportional control whose gain was too low to ever close a real
-            -- gap. Measured live on field 82 at pH 5.9 it held ~0.50x (~+0.20
-            -- pH/pass) - the yellow zebra banding. Ask the real question
-            -- instead: what multiplier makes ONE pass close this gap?
-            --
-            --     required = gap / (coeff * BASE_RATE / 1000)
-            --
-            -- FERTILIZER_PROFILES are calibrated per 1,000 L (kg) applied and
-            -- BASE_RATES is the calibrated 1.0x rate, so coeff*base/1000 is the
-            -- per-pass effect at 1.0x. LIQUIDLIME: 1.07 * 374/1000 = +0.400 pH,
-            -- which at the 1.20x cap is George's ~+0.48, under SF_PASS_MAX.pH
-            -- 0.60. Nothing invented; both numbers come from Constants.lua.
-            -- A compound product is sized by its BIGGEST carried need, and the
-            -- clamp below keeps the result inside the STEPS table and under
-            -- BURN_RISK_THRESHOLD (1.25).
-            local baseRow = SoilConstants.SPRAYER_RATE.BASE_RATES
-                            and SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name]
-            local perThousand = (baseRow and baseRow.value and baseRow.value > 0)
-                                and (baseRow.value / 1000.0) or nil
+            -- Weighted nutrient deficit across the profile's N/P/K/pH (and optionally OM).
+            -- Each nutrient's deficit is weighted by its coefficient in the product profile,
+            -- so a product is sized by the nutrients it actually carries. Returns nil when the
+            -- profile contributes no weighted nutrients.
+            local function weightedNutrientDeficit(includeOM)
+                local totalWeight     = 0
+                local weightedDeficit = 0
 
-            -- [SF-35] Fraction-of-gap retune (George CLOSED DESIGN 00:46).
-            -- Closing the WHOLE gap in one pass slammed the dial to 1.20x and,
-            -- combined with pass overlap, over-limed (Wizard/Brian TEST 00:26
-            -- FAIL). One pass now attempts HALF the remaining gap, capped at the
-            -- per-pass physical maximum, so a typical 0.6 pH gap asks ~0.75x and
-            -- converges over passes instead of overshooting. Keep these caps in
-            -- step with SF_PASS_MAX in SoilFertilitySystem's paintBoomStrip.
-            local AUTO_PASS_MAX = {
-                -- [SF-48] pH synced 0.30 -> 0.40 with SF_PASS_MAX (paint side).
-                pH = 0.40, nitrogen = 60, phosphorus = 60, potassium = 60,
-                organicMatter = 2.0,
-            }
-
-            --- Multiplier that applies 0.50 of `gap` (capped at `passMax`) in
-            --- one pass via `coeff`. [SF-42] fraction 0.75 -> 0.50 (George
-            --- CLOSED DESIGN 11:23): with the ~6.6 soft ceiling, 0.75 pushed the
-            --- first pass straight to the ceiling and the whole field plateaued
-            --- uniformly. Half-gap leaves headroom (~5.9 -> ~6.2), so only
-            --- OVERLAP climbs to the ceiling and reads brighter. nil when the
-            --- product does not carry this nutrient or has no calibrated base
-            --- rate; 0 when no gap to close.
-            local function gapMult(gap, coeff, passMax)
-                if perThousand == nil or coeff == nil or coeff <= 0 then return nil end
-                if gap == nil or gap <= 0 then return 0 end
-                local boost = gap * 0.50
-                if passMax and boost > passMax then boost = passMax end
-                return boost / (coeff * perThousand)
-            end
-
-            --- [SF-44] Effective gap with a field-average FLOOR (George TRACE,
-            --- CLOSED DESIGN 13:13). The boom minimum is still the primary
-            --- signal ([FIX-8]), but a local-only read taken while the boom
-            --- crosses a limed overlap cell reported "at target" and zeroed the
-            --- dial - Brian's 0.01x windows with applied=0.0000 while needy
-            --- pixels under the same boom sat unchanged. The sizing gap is now
-            --- never less than HALF the field-average gap, so a transient
-            --- at-target sample cannot starve ground the field still needs:
-            --- effectiveGap = max(localGap, fieldGap * 0.5).
-            local function effGap(localV, fieldV, target)
-                local localGap = target - (localV or fieldV or target)
-                local fieldGap = target - (fieldV or target)
-                return math.max(localGap, fieldGap * 0.5)
-            end
-
-            --- Largest close-the-gap multiplier across the nutrients this
-            --- product carries. nil when the product carries nothing we can size.
-            local function requiredMultiplier(includeOM)
-                local req = nil
-                local function consider(m)
-                    if m ~= nil and (req == nil or m > req) then req = m end
+                if profile.N and profile.N > 0 then
+                    local deficit = math.max(0, targets.N - fieldData.nitrogen.value) / targets.N
+                    weightedDeficit = weightedDeficit + deficit * profile.N
+                    totalWeight     = totalWeight     + profile.N
                 end
-                consider(gapMult(effGap(lv.nitrogen,   fieldData.nitrogen.value,   targets.N),  profile.N,  AUTO_PASS_MAX.nitrogen))
-                consider(gapMult(effGap(lv.phosphorus, fieldData.phosphorus.value, targets.P),  profile.P,  AUTO_PASS_MAX.phosphorus))
-                consider(gapMult(effGap(lv.potassium,  fieldData.potassium.value,  targets.K),  profile.K,  AUTO_PASS_MAX.potassium))
-                consider(gapMult(effGap(lv.pH,         fieldData.pH,               targets.pH), profile.pH, AUTO_PASS_MAX.pH))
-                if includeOM then
-                    consider(gapMult(effGap(lv.organicMatter, fieldData.organicMatter, targets.OM), profile.OM, AUTO_PASS_MAX.organicMatter))
+                if profile.P and profile.P > 0 then
+                    local deficit = math.max(0, targets.P - fieldData.phosphorus.value) / targets.P
+                    weightedDeficit = weightedDeficit + deficit * profile.P
+                    totalWeight     = totalWeight     + profile.P
                 end
-                return req
+                if profile.K and profile.K > 0 then
+                    local deficit = math.max(0, targets.K - fieldData.potassium.value) / targets.K
+                    weightedDeficit = weightedDeficit + deficit * profile.K
+                    totalWeight     = totalWeight     + profile.K
+                end
+                if profile.pH and profile.pH > 0 then
+                    -- pH: how far below target normalised to the possible range [PH_MIN, target]
+                    local phRange = targets.pH - phMin
+                    if phRange > 0 then
+                        local deficit = math.max(0, targets.pH - fieldData.pH) / phRange
+                        weightedDeficit = weightedDeficit + deficit * profile.pH
+                        totalWeight     = totalWeight     + profile.pH
+                    end
+                end
+                if includeOM and profile.OM and profile.OM > 0 then
+                    local deficit = math.max(0, targets.OM - fieldData.organicMatter) / targets.OM
+                    weightedDeficit = weightedDeficit + deficit * profile.OM
+                    totalWeight     = totalWeight     + profile.OM
+                end
+
+                if totalWeight > 0 then
+                    return weightedDeficit / totalWeight
+                end
+                return nil
             end
 
             -- Check if this is an OM-primary product (manure, compost, digestate, etc.)
             local omPrimary = SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
             if omPrimary and omPrimary[fillType.name] and profile.OM and profile.OM > 0 then
-                -- Organic product. Size the pass by whichever need is bigger: organic
-                -- matter OR the N/P/K it carries (#668 - a nutrient-rich organic on an
-                -- OM-rich, N/P/K-poor field is the exact case a player reaches for it).
-                local omReq  = gapMult(effGap(lv.organicMatter, fieldData.organicMatter, targets.OM), profile.OM, AUTO_PASS_MAX.organicMatter) or 0
-                local npkReq = requiredMultiplier(false) or 0
-                multiplier = math.max(omReq, npkReq)
+                -- Organic product. Size the pass by whichever need is bigger: organic matter
+                -- OR the N/P/K it carries. Driving off OM deficit alone starved a nutrient-rich
+                -- organic (chicken / pelletized manure) on a field that was already high in OM
+                -- but low in N/P/K - the exact situation a player reaches for it (#668).
+                local omDeficit  = math.max(0, targets.OM - fieldData.organicMatter) / math.max(0.01, targets.OM)
+                local npkDeficit = weightedNutrientDeficit(false) or 0
+                local effective  = math.max(omDeficit, npkDeficit)
+                multiplier = MULT_MIN + effective * (MULT_MAX - MULT_MIN)
                 SoilLogger.debug(
-                    "Auto-rate calc (organic, close-the-gap): %s | omReq=%.3f | npkReq=%.3f | target multiplier=%.3f",
-                    fillType.name, omReq, npkReq, multiplier)
+                    "Auto-rate calc (organic): %s | omDeficit=%.3f | npkDeficit=%.3f | using=%.3f | target multiplier=%.3f",
+                    fillType.name, omDeficit, npkDeficit, effective, multiplier)
             else
-                -- Nutrient fertilizer: close the biggest gap this product can serve.
-                local req = requiredMultiplier(true)
-                if req then
-                    multiplier = req
+                -- Nutrient fertilizer: weighted deficit across all profile nutrients (incl. OM).
+                local deficitFraction = weightedNutrientDeficit(true)
+                if deficitFraction then
+                    -- Map [0, 1] deficit fraction → [0.20, 1.20] multiplier
+                    multiplier = MULT_MIN + deficitFraction * (MULT_MAX - MULT_MIN)
                     SoilLogger.debug(
-                        "Auto-rate calc (close-the-gap): %s | required=%.3f | target multiplier=%.3f",
-                        fillType.name, req, multiplier)
+                        "Auto-rate calc: %s | deficit=%.3f | target multiplier=%.3f",
+                        fillType.name, deficitFraction, multiplier)
                 end
             end
         end
@@ -2597,18 +2306,6 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType, localV
             -- is visible in a debug run (#809).
             SoilLogger.debug("Auto-rate calc: %s NOT in FERTILIZER_PROFILES - holding 1.0x (pinned rate)",
                 tostring(fillType.name))
-        end
-    end
-
-    -- [SF-45] Hard needy floor (George TRACE DESIGN 13:32): while the FIELD
-    -- AVERAGE pH is still below target, a lime product never dials under 0.60x,
-    -- whatever the local sample momentarily says. The effGap field-average
-    -- floor stays as the secondary, proportional defence; this is the blunt
-    -- one that makes 0.01x zero-apply windows on a needy field impossible.
-    if profile and profile.pH and profile.pH > 0 then
-        local fieldPH = fieldData and fieldData.pH
-        if fieldPH ~= nil and fieldPH < targets.pH and multiplier < 0.60 then
-            multiplier = 0.60
         end
     end
 

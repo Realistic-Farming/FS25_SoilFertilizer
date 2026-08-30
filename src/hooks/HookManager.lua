@@ -1337,72 +1337,6 @@ end
 -- (pest=0, disease=0, K≥target, or P≥target) the section is temporarily set
 -- to isActive=false. VWW resets it on the next tick - no persistent corruption.
 --
--- [FIX-13] The multiplier actually in force for this machine, for the litre
--- estimate. Resolved through rootVehicle the same way the rate HUD does.
--- (Restored: a comment-block rewrite deleted this function while its three call
--- sites remained, and every spray tick died with 'attempt to call a nil value'
--- inside the hook's pcall -- 13,816 silent failures in one session. Product and
--- money moved, nothing painted or counted.)
-function HookManager.currentRateMult(sprayerSelf)
-    local sfm = g_SoilFertilityManager
-    local rm = sfm and sfm.sprayerRateManager
-    if not rm or not sprayerSelf then return 1.0 end
-    local root = sprayerSelf.rootVehicle
-    local vid = (root and root ~= sprayerSelf) and (root.id or 0) or sprayerSelf.id
-    if not vid then return 1.0 end
-    local ok, mult = pcall(function() return rm:getMultiplier(vid) end)
-    return (ok and tonumber(mult)) or 1.0
-end
-
--- [GATE] Two paint modes, per the design ruling (Wizard, 2026-08-28):
---
---   Precision Pack fitted -> prescription mode: per-cell, capped at target.
---   The clean map. Section control also shuts nozzles over covered ground.
---
---   No pack -> flat mode: the dose goes down across the full width wherever
---   the machine drives, because a spreader cannot pick and choose. Headland
---   overlap DOUBLE-APPLIES and shows on the map -- that is the point, not a
---   bug. The only limit is SF_PASS_MAX in paintBoomStrip: one pass cannot
---   deliver more than one metered pass, which is what made this safe to
---   re-enable after the first attempt (uncapped banking spikes could slam a
---   pixel the full scale in one tick; measured offered=1.4021 -> 7.5).
----- [PACK] Was this machine bought with the precision pack (variable rate +
--- section control)? Resolved through the sprayer itself and its root vehicle, so
--- a trailed sprayer answers for its own configuration rather than the tractor's.
--- Fails CLOSED: if the specialization is missing the answer is no, which leaves
--- the machine on flat manual rate rather than silently granting the upgrade.
-function HookManager.hasPrecisionPack(sprayerSelf)
-    if sprayerSelf == nil then return false end
-    if type(sprayerSelf.sfHasPrecisionPack) == "function" then
-        local ok, has = pcall(function() return sprayerSelf:sfHasPrecisionPack() end)
-        if ok and has then return true end
-    end
-    local root = sprayerSelf.rootVehicle
-    if root and root ~= sprayerSelf and type(root.sfHasPrecisionPack) == "function" then
-        local ok, has = pcall(function() return root:sfHasPrecisionPack() end)
-        if ok and has then return true end
-    end
-    return false
-end
-
--- [GATE] Is prescription (variable-rate) mode active for this machine?
--- Flat mode is the default: without rate control the boom applies one rate
--- everywhere, the player sets it by hand, and over-application is possible.
--- Resolve through rootVehicle so a trailed sprayer answers as its tractor does.
-function HookManager:isPrescriptionMode(sprayerSelf)
-    local sfm = g_SoilFertilityManager
-    if not sfm or not sfm.sensorManager then return false end
-    if sfm.settings and sfm.settings.variableRateEnabled == false then return false end
-    -- [PACK] Hardware first: no precision pack on this machine, no per-cell dosing,
-    -- whatever the toggle says. Application rate (manual and auto) is unaffected --
-    -- that ships on every sprayer.
-    if not HookManager.hasPrecisionPack(sprayerSelf) then return false end
-    local root = sprayerSelf and sprayerSelf.rootVehicle
-    local vid = (root and root ~= sprayerSelf) and (root.id or 0) or (sprayerSelf and sprayerSelf.id)
-    if not vid then return false end
-    return sfm.sensorManager:isVariableRateEnabled(vid) == true
-end
-
 function HookManager:installSectionControlHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[SectionSensor] Sprayer.onStartWorkAreaProcessing not found - skipping")
@@ -1944,13 +1878,6 @@ function HookManager:installVariableRateHook()
 
             sensorMgr:clearSectionRates(vehicleId)
 
-            -- [SF-28] Mean of this pass's section rates. sectionRates are
-            -- redistribution weights that deliberately preserve the total (#555);
-            -- this is the separate figure that lets the TOTAL fall on ground
-            -- already at target, so the tank draws less instead of the same
-            -- product being shuffled toward the thin sections.
-            local vrRateSum, vrRateCount = 0, 0
-
             for i, section in ipairs(vww.sections) do
                 if section.isActive and not section.isCenter then
                     local tip = tips and tips[i]
@@ -2013,18 +1940,7 @@ function HookManager:installVariableRateHook()
                     -- The manual rate budget is already applied to wap.usage by
                     -- installSprayerStartHook. Capping here caused double-reduction (#555).
                     sensorMgr:setSectionRate(vehicleId, section, rate)
-                    vrRateSum   = vrRateSum + rate
-                    vrRateCount = vrRateCount + 1
                 end
-            end
-
-            -- [SF-28] Publish this pass's mean demand. installSprayerStartHook
-            -- multiplies wap.usage by it, so ground already at target draws
-            -- MIN_RATE (0.30) of the product and an exhausted cell draws MAX_RATE
-            -- (1.50). Nutrient credit and the map paint both derive from that same
-            -- usage, so tank, field scalar and Esc colour cannot drift apart.
-            if vrRateCount > 0 then
-                sensorMgr:setVrDemand(vehicleId, vrRateSum / vrRateCount)
             end
         end
     )
@@ -2108,10 +2024,6 @@ function HookManager:installOverlapPreventionHook()
             local sfm = g_SoilFertilityManager
             if not sfm then return end
             if sfm.settings and sfm.settings.overlapPrevention == false then return end
-            -- [PACK] Section control is upgrade hardware too. Without it every
-            -- nozzle stays on and overlapping the headland double-applies, which
-            -- is exactly what happens on a machine with no section valves.
-            if not HookManager.hasPrecisionPack(sprayerSelf) then return end
 
             local vww = sprayerSelf.spec_variableWorkWidth
             if not vww or not vww.sections or #vww.sections == 0 then return end
@@ -4080,25 +3992,11 @@ function HookManager:installSprayerAreaHook()
                     -- F61: for non-VWW implements using liter-based coverage, clear stale
                     -- _geometricCoverageOwner so a previous VWW session's guard does not
                     -- block the liter path (line 5123 in trackSprayerCoverage).
-                    --
-                    -- [FIX-6] ...but ONLY when this machine genuinely has no boom to
-                    -- measure. A dry spreader is non-VWW yet still reports a real boom,
-                    -- and paintBoomStrip is measuring its swept area every strip. Clearing
-                    -- the flag unconditionally wiped that claim once per tick and let the
-                    -- litre estimate back in on top: 350 strips totalling 1.45 ha of real
-                    -- quads were reported as 4.145 ha. Only stand aside when there is
-                    -- actually nothing geometric running.
-                    -- rootX/rootZ are not in scope until later in this function, so
-                    -- resolve the position here rather than reading two nils.
-                    local _bOk, _bx, _, _bz = pcall(getWorldTranslation, self.rootNode)
-                    local _boomEarly = _bOk and _bx
-                        and hookMgrRef:getBoomCellPositions(self, _bx, _bz) or nil
-                    if not _hasVWWEarly and not _boomEarly
-                       and g_SoilFertilityManager.soilSystem.fieldData
+                    if not _hasVWWEarly and g_SoilFertilityManager.soilSystem.fieldData
                        and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
                         g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
                     end
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov, hookMgrRef.currentRateMult(self))
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
@@ -4245,48 +4143,7 @@ function HookManager:installSprayerAreaHook()
                 -- mod does not hand out free fertilizer.
                 do
                     local multiTankEnabled = hookMgrRef and hookMgrRef._settings and hookMgrRef._settings.multiTankApplication
-                    -- [FIX-17] Classify the machine ONCE: is this actually a combi?
-                    --
-                    -- This block exists for machines with two bins of DIFFERENT
-                    -- products (seed + fert air drills), where the engine drains one
-                    -- bin and the other must be credited by hand. It was running on
-                    -- every machine with the sprayer spec -- which in FS25 includes
-                    -- every lime and manure spreader -- scanning tanks per tick for a
-                    -- situation a spreader can never be in. Harmless until auto-buy
-                    -- added a second same-type unit and gave it something to
-                    -- double-count. A machine that cannot hold two different soil
-                    -- products in two units is not a combi, decided once, said once.
-                    if multiTankEnabled ~= false and self._sfCombiClass == nil then
-                        local capable = 0
-                        local fuSpec0 = self.spec_fillUnit
-                        if fuSpec0 and fuSpec0.fillUnits then
-                            for _, fu0 in ipairs(fuSpec0.fillUnits) do
-                                local holdsProduct = false
-                                if fu0.supportedFillTypes then
-                                    for ftIdx0 in pairs(fu0.supportedFillTypes) do
-                                        local d0 = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ftIdx0)
-                                        local nm0 = d0 and d0.name
-                                        if nm0 and SoilConstants.FERTILIZER_PROFILES[nm0] ~= nil then
-                                            holdsProduct = true
-                                            break
-                                        end
-                                    end
-                                end
-                                if holdsProduct then capable = capable + 1 end
-                            end
-                        end
-                        -- Two units minimum, at least one holding a soil product. NOT
-                        -- "two product units": a seed+fert drill has exactly one --
-                        -- seeds are not a soil product -- and it is the machine this
-                        -- feature exists for. The same-type guard below still stops an
-                        -- auto-buy twin from double-crediting.
-                        local totalUnits = (fuSpec0 and fuSpec0.fillUnits and #fuSpec0.fillUnits) or 0
-                        self._sfCombiClass = (totalUnits >= 2 and capable >= 1)
-                        SoilLogger.info("[MultiTank] %s: combi=%s (%d product-capable unit(s))",
-                            tostring(self.getFullName and self:getFullName() or self.id),
-                            tostring(self._sfCombiClass), capable)
-                    end
-                    if multiTankEnabled ~= false and self._sfCombiClass == true then
+                    if multiTankEnabled ~= false then
                         local spraySpec = self.spec_sprayer
                         local fuSpec    = self.spec_fillUnit
                         if spraySpec and fuSpec and fuSpec.fillUnits then
@@ -4302,17 +4159,7 @@ function HookManager:installSprayerAreaHook()
                             end
 
                             for fuIdx, fu in ipairs(fuSpec.fillUnits) do
-                                -- [FIX-15] Skip secondaries holding the SAME product as the
-                                -- active tank. This feature exists for combi machines (seed +
-                                -- fert in separate bins) where the engine drains only one bin
-                                -- and the other must be credited by hand. When the secondary
-                                -- is the same fill type, the engine's litres already ARE the
-                                -- whole output -- crediting the twin again doubled every dose.
-                                -- Measured: 'Fertilizer: Field 82, LIME, 0.8753L' twice plus
-                                -- 'multi-tank ... 0.8753L' in the same millisecond, 9,199
-                                -- times in one worker session, on a machine with auto-buy.
-                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0
-                                    and fu.fillType ~= fillTypeIndex then
+                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0 then
                                     local ft = g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                                     local ftName = ft and ft.name or nil
                                     if ftName then
@@ -4398,28 +4245,18 @@ function HookManager:installSprayerAreaHook()
                                                     -- NOT the ends of the cell sweep array.
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
-                                                        -- [FIX-5] Second copy of the coverage bug, in the multi-tank
-                                                        -- drain path. A spreader has no VWW sections, so it marked
-                                                        -- cells overlay-only -- which never sets the geometric-owner
-                                                        -- flag -- and then the hardcoded `true` below made the litre
-                                                        -- estimate bypass BOTH guards in trackSprayerCoverage.
-                                                        -- Measured: 826 strip paints x 2 m x 23.95 m boom = 3.96 ha
-                                                        -- actually driven, reported as 7.54 ha. Count the ground.
-                                                        soilSys:markBoomCells(fieldId, boomPts)
+                                                        if vww and vww.sections and #vww.sections > 0 then
+                                                            soilSys:markBoomCells(fieldId, boomPts)
+                                                        else
+                                                            soilSys:markBoomCells(fieldId, boomPts, true)
+                                                        end
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
-                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine, hookMgrRef:isPrescriptionMode(self))
-                                                            -- [SF-41] Auto-rate rides the work cycle, seated or not
-                                                            -- (5 s throttle lives inside recalcAutoRateFor).
-                                                            local sfmAR = g_SoilFertilityManager
-                                                            if sfmAR and sfmAR.recalcAutoRateFor then
-                                                                sfmAR:recalcAutoRateFor(self.rootVehicle or self)
-                                                            end
+                                                            soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
                                                         end
                                                     end
-                                                    -- Litres only when there is no boom geometry to measure.
-                                                    if drainLiters > 0 and isFert2 and not boomPts then
-                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true, hookMgrRef.currentRateMult(self))
+                                                    if drainLiters > 0 and isFert2 then
+                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true)
                                                     end
                                                 end
 
@@ -4462,57 +4299,31 @@ function HookManager:installSprayerAreaHook()
                 if soilSys and fieldId and fieldId > 0 then
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
-                    local boomPts, boomMethod = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
-                    -- [FIX-13] Each machine announces its coverage technique ONCE, so the
-                    -- log names which measurement a given machine is on instead of three
-                    -- systems racing invisibly. "nodes" = real boom span, "width" = swept
-                    -- strip synthesized from the working width, "litres" = last resort.
-                    local covMethod = boomPts and (boomMethod or "nodes") or "litres"
-                    if self._sfCovMethod ~= covMethod then
-                        self._sfCovMethod = covMethod
-                        SoilLogger.info("[Coverage] %s uses method: %s (VWW sections: %s)",
-                            tostring(self.getFullName and self:getFullName() or self.id),
-                            covMethod, tostring(hasVWW))
-                    end
+                    local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
                     -- RSF-836: the true boom line, never the ends of the cell sweep.
                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                     -- REFINED: paint the real boom-width strip into the per-pixel
                     -- value maps (continuous PF-style work strips at ~2 m/px).
                     if boomPts and soilSys.paintBoomStrip then
-                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine, hookMgrRef:isPrescriptionMode(self))
-                        -- [SF-41] Auto-rate rides the work cycle, seated or not.
-                        local sfmAR = g_SoilFertilityManager
-                        if sfmAR and sfmAR.recalcAutoRateFor then
-                            sfmAR:recalcAutoRateFor(self.rootVehicle or self)
-                        end
+                        soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, boomPts)
-                    elseif boomPts then
-                        -- [FIX-5] Broadcast / dry spreader. These have no VWW sections, but
-                        -- getBoomCellPositions still returns a real spanning boom for them
-                        -- (it falls back to the workArea start/width/height nodes -- the same
-                        -- fix that stopped dry fertilizer painting a zero-width strip). So
-                        -- count coverage from the cells actually driven over, exactly as a
-                        -- VWW machine does.
-                        --
-                        -- It used to mark cells overlay-only and derive coverage from
-                        -- litres / rate-per-hectare instead. That number has nothing to do
-                        -- with where the machine went: spreading lime on a partial headland
-                        -- reported 8.29 of 8.3 ha covered -- "field complete" -- while most
-                        -- of the field had never been touched. Litres measure what left the
-                        -- hopper, not what the ground received.
-                        soilSys:markBoomCells(fieldId, boomPts)
                     else
-                        -- No boom geometry at all: the litre estimate is the only signal
-                        -- left, so it stays as the genuine last resort it was meant to be.
+                        -- Broadcast / dry spreader (or any vehicle with no spanning boom).
+                        if boomPts then
+                            soilSys:markBoomCells(fieldId, boomPts, true)  -- overlay only
+                        end
+                        -- Fertilizers advance the counter here via the liter estimate. Crop
+                        -- protection products already did so in the trackSprayerCoverage call
+                        -- above (updateFractions = not isFertilizer), so don't double-count.
                         if liters > 0 and isFertilizer then
                             -- F61: clear stale geometric owner flag so the liter-based fallback
                             -- is not blocked by a previous VWW session's guard (line 5123).
                             if soilSys.fieldData and soilSys.fieldData[fieldId] then
                                 soilSys.fieldData[fieldId]._geometricCoverageOwner = nil
                             end
-                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true, hookMgrRef.currentRateMult(self))
+                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true)
                         end
                     end
                 end
@@ -7073,34 +6884,14 @@ function HookManager:installSprayerStartHook()
             local root = self.rootVehicle
             local rateVehId = (root and root ~= self) and (root.id or 0) or (self.id or 0)
             local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(rateVehId)
-
-            -- [SF-28] Variable rate now cuts the TOTAL as well as redistributing it.
-            -- sectionRates preserve the total by design (#555); vrDemand is the mean
-            -- of those same rates, so a pass over ground already at NUTRIENT_TARGET
-            -- draws MIN_RATE (0.30) of the product rather than a full tank's worth,
-            -- and an exhausted field draws MAX_RATE (1.50). Nutrient credit and the
-            -- map paint both derive from this usage, so tank, field scalar and Esc
-            -- colour move together instead of drifting apart.
-            --
-            -- Ordering note: installVariableRateHook is appended AFTER this hook, so
-            -- it runs later in the same tick and the value read here is the PREVIOUS
-            -- tick's mean. That lag is immaterial beside the 0.6/0.4 smoothing each
-            -- section rate already carries (~0.5 s), and getVrDemand returns 1.0
-            -- whenever variable rate is not driving this vehicle.
-            local sensorMgrRT = g_SoilFertilityManager.sensorManager
-            local vrDemand = 1.0
-            if sensorMgrRT and sensorMgrRT.getVrDemand then
-                vrDemand = sensorMgrRT:getVrDemand(rateVehId) or 1.0
-            end
-            local total = mult * vrDemand
-            if total == 1.0 then return end
+            if mult == 1.0 then return end
 
             local wap = spec.workAreaParameters
             if wap.usage and wap.usage ~= 0 then
-                wap.usage = wap.usage * total
+                wap.usage = wap.usage * mult
             end
             if wap.usagePerMin and wap.usagePerMin ~= 0 then
-                wap.usagePerMin = wap.usagePerMin * total
+                wap.usagePerMin = wap.usagePerMin * mult
             end
         end
     )
@@ -8029,7 +7820,7 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
                 end
             end
             table.insert(pts, {x = rootX, z = rootZ})
-            return (#pts > 1) and pts or nil, "width"
+            return (#pts > 1) and pts or nil
         end
         return nil
     end
@@ -8067,7 +7858,7 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     -- The sweep may skip it depending on alignment with the 10 m grid.
     table.insert(pts, {x = rootX, z = rootZ})
 
-    return (#pts > 1) and pts or nil, "nodes"
+    return (#pts > 1) and pts or nil
 end
 
 -- =========================================================
