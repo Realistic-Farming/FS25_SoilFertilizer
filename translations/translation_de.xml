@@ -762,9 +762,6 @@
     <e k="sf_variable_rate_long"           v="Variable Ausbringmenge basierend auf Bodendefiziten aktivieren oder deaktivieren" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Gestängesektionen über Bereichen ohne Spritzbedarf unterdrücken" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
-    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
-    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
-    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
     <e k="sf_config_seeSprayWeed"          v="See &amp; Spray: Unkraut" />
     <e k="sf_config_seeSprayPest"          v="See &amp; Spray: Schädlinge" />
     <e k="sf_config_seeSprayDisease"       v="See &amp; Spray: Krankheit" />

@@ -1402,7 +1402,4 @@
     <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
     <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
     <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
-    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
-    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
-    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
 </l10n>

@@ -78,12 +78,12 @@ SoilGuideDialog.PAGE1 = {
     { t="B", k="sf_guide_p1_36", v="See & Spray   Live per-cell pressure in the vehicle." },
     { t="B", k="sf_guide_p1_37", v="  Any sprayer with the See & Spray shop config." },
     { t="B", k="sf_guide_p1_38", v="Variable Rate  Auto-adjusts boom rate from deficits." },
-    { t="B", k="sf_guide_p1_39", v="  Key: Right Shift+V toggles Variable Rate. Admin on." },
+    { t="B", k="sf_guide_p1_39", v="  Key: Toggle Variable Rate (Alt+7). Admin on." },
     { t="S", v=" " },
     { t="H", k="sf_guide_p1_40", v="KEYBINDINGS" },
-    { t="B", k="sf_guide_p1_41", v="Soil uses Right Shift + a letter (or [ ] for rate):" },
-    { t="B", k="sf_guide_p1_42", v="HUD O, Drag P, Variable Rate V, Auto Rate L," },
-    { t="B", k="sf_guide_p1_43", v="Rate [ / ], Scout K, Treatment T, Settings S, Map M." },
+    { t="B", k="sf_guide_p1_41", v="Most keys ship unbound. Four have defaults:" },
+    { t="B", k="sf_guide_p1_42", v="HUD Drag = Shift+H, Variable Rate = Alt+7," },
+    { t="B", k="sf_guide_p1_43", v="Scout = Shift+K, Treatment = Shift+T." },
     { t="B", k="sf_guide_p1_44", v="Rebind any of them in Options > Controls > Mods." },
 }
 
@@ -142,7 +142,7 @@ SoilGuideDialog.PAGE2 = {
     { t="B", k="sf_guide_p2_42", v="See & Spray: any sprayer with the S&S shop config." },
     { t="S", v=" " },
     { t="H", k="sf_guide_p2_43", v="FREE PANEL LAYOUT" },
-    { t="B", k="sf_guide_p2_44", v="Enable in Settings > Display. Use Right Shift+P to drag." },
+    { t="B", k="sf_guide_p2_44", v="Enable in Settings > Display. Use Shift+H to drag." },
     { t="B", k="sf_guide_p2_45", v="Press [-] in any title bar to collapse a panel." },
 }
 
@@ -228,9 +228,9 @@ SoilGuideDialog.PAGE4 = {
     { t="B", k="sf_guide_p4_41", v="Herbicide    Cuts weed pressure." },
     { t="B", k="sf_guide_p4_42", v="Insecticide  Cuts pest pressure." },
     { t="B", k="sf_guide_p4_43", v="Fungicide    Cuts disease pressure." },
-    { t="B", k="sf_guide_p4_44", v="Scout a field (Right Shift+K) to name its disease" },
+    { t="B", k="sf_guide_p4_44", v="Scout a field (Shift+K) to name its disease" },
     { t="B", k="sf_guide_p4_45", v="  and pick a targeted fungicide for it." },
-    { t="B", k="sf_guide_p4_46", v="Treatment (Right Shift+T) lists what each field" },
+    { t="B", k="sf_guide_p4_46", v="Treatment (Shift+T) lists what each field" },
     { t="B", k="sf_guide_p4_47", v="  needs right now, product by product." },
     -- COLUMN BREAK
     { t="COL", v="" },
@@ -273,8 +273,8 @@ SoilGuideDialog.PAGE5 = {
     { t="H", k="sf_guide_p5_06", v="WHERE DO I ASSIGN KEYBOARD SHORTCUTS?" },
     { t="B", k="sf_guide_p5_07", v="Options > Controls > Mods" },
     { t="B", k="sf_guide_p5_08", v="Most SF_ keys ship unbound. Four have defaults:" },
-    { t="B", k="sf_guide_p5_09", v="Right Shift: HUD O, Drag P, VRA V, Auto L, rate [ ]" },
-    { t="B", k="sf_guide_p5_10", v="Scout Right Shift+K, Treatment Right Shift+T. Rebind in Mods." },
+    { t="B", k="sf_guide_p5_09", v="HUD Drag Shift+H, Variable Rate Alt+7, Scout" },
+    { t="B", k="sf_guide_p5_10", v="Shift+K, Treatment Shift+T. Rebind them in Mods." },
     { t="S", v=" " },
     { t="H", k="sf_guide_p5_11", v="WHY DID MY NITROGEN DROP AFTER RAIN?" },
     { t="B", k="sf_guide_p5_12", v="Heavy rain leaches nitrogen from soil." },
@@ -339,77 +339,6 @@ local function tr(key, fallback)
         end
     end
     return fallback or key
-end
-
--- ── [SF-29] Live chord rewriting ──────────────────────────
--- The guide is authored with default chords spelled out, and 25 of the 26
--- locale files carry the same English sentences behind an [EN] marker. Some of
--- those literals are now WRONG rather than merely imprecise: Variable Rate left
--- Alt+7 and HUD drag left Shift+H when the suite moved to the Right Shift
--- family. Rewriting the RESOLVED text at display time means the player reads
--- the key they actually have bound. It costs no locale edits, and it does not
--- depend on 26 translators having kept a chord literal in step.
---
--- Longest literals first, and matching runs in two passes through a placeholder,
--- because a live chord is itself of the form "Right Shift+X" and a single-pass
--- replace would cheerfully rewrite its own output.
-local SF_CHORD_LITERALS = {
-    { lit = "Right Shift%+V", plain = "Right Shift+V", action = "SF_VARIABLE_RATE"   },
-    { lit = "Right Shift%+P", plain = "Right Shift+P", action = "SF_HUD_DRAG"        },
-    { lit = "Right Shift%+K", plain = "Right Shift+K", action = "SF_SCOUT"           },
-    { lit = "Right Shift%+T", plain = "Right Shift+T", action = "SF_TREATMENT"       },
-    { lit = "Right Shift%+O", plain = "Right Shift+O", action = "SF_TOGGLE_HUD"      },
-    { lit = "Right Shift%+M", plain = "Right Shift+M", action = "SF_CYCLE_MAP_LAYER" },
-    { lit = "Right Shift%+,", plain = "Right Shift+,", action = "SF_HANDFUL"         },
-    -- Stale pre-Right-Shift spellings still sitting in the locale files.
-    { lit = "Alt%+7",         plain = "Alt+7",         action = "SF_VARIABLE_RATE"   },
-    { lit = "Shift%+H",       plain = "Shift+H",       action = "SF_HUD_DRAG"        },
-    { lit = "Shift%+K",       plain = "Shift+K",       action = "SF_SCOUT"           },
-    { lit = "Shift%+T",       plain = "Shift+T",       action = "SF_TREATMENT"       },
-    { lit = "Shift%+O",       plain = "Shift+O",       action = "SF_TOGGLE_HUD"      },
-    { lit = "Shift%+M",       plain = "Shift+M",       action = "SF_CYCLE_MAP_LAYER" },
-}
-
---- Live chord for an action. Prefers SettingsHub's shared helper when the hub
---- is installed, and otherwise makes the same engine call the hub makes, so a
---- standalone Soil install behaves identically.
-local function sfLiveChord(actionName)
-    if RfLiveBinding ~= nil and RfLiveBinding.getChord ~= nil then
-        return RfLiveBinding.getChord(actionName)
-    end
-    if g_inputDisplayManager == nil or InputAction == nil then return nil end
-    local action = InputAction[actionName]
-    if action == nil then return nil end
-    local ok, help = pcall(function()
-        return g_inputDisplayManager:getControllerSymbolOverlays(action, "", "", false)
-    end)
-    if not ok or help == nil or help.keys == nil then return nil end
-    local parts = {}
-    for _, k in ipairs(help.keys) do parts[#parts + 1] = tostring(k) end
-    if #parts == 0 then return nil end
-    return table.concat(parts, "+")
-end
-
---- Replace default chord literals in `text` with whatever is bound right now.
---- An action with no binding keeps its authored literal rather than being
---- blanked, so a guide line never loses its meaning; the Controls page is where
---- "unassigned" is meant to be visible.
-local function sfApplyLiveChords(text)
-    if type(text) ~= "string" or text == "" then return text end
-    local used = {}
-    for i, entry in ipairs(SF_CHORD_LITERALS) do
-        local token = "\1" .. tostring(i) .. "\2"
-        local replaced
-        text, replaced = text:gsub(entry.lit, token)
-        if replaced > 0 then used[i] = token end
-    end
-    if next(used) == nil then return text end
-    for i, token in pairs(used) do
-        local entry = SF_CHORD_LITERALS[i]
-        local shown = sfLiveChord(entry.action) or entry.plain
-        text = text:gsub(token, (shown:gsub("%%", "%%%%")))
-    end
-    return text
 end
 
 -- ── Constructor ───────────────────────────────────────────
@@ -523,10 +452,7 @@ function SoilGuideDialog:_buildContent(pageNum)
             if profile then
                 local el = TextElement.new()
                 el:loadProfile(profile, true)
-                -- [SF-29] Resolve the string first, THEN rewrite chord literals,
-                -- so the live binding wins over both the l10n entry and the
-                -- authored fallback.
-                el:setText(sfApplyLiveChords(row.k and tr(row.k, row.v or "") or (row.v or "")))
+                el:setText(row.k and tr(row.k, row.v or "") or (row.v or ""))
                 currentBox:addElement(el)
                 el:onGuiSetupFinished()
                 table.insert(self._contentLineEls, { box = currentBox, el = el })

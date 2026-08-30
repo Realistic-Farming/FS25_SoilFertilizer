@@ -993,11 +993,7 @@ SoilConstants.ZONE = {
 -- physically covered before the "fully treated" notification fires.
 -- Coverage is tracked per-field daily via the cell grid shared with ZONE.
 SoilConstants.COVERAGE = {
-    -- 95%, not 70%: at 70% the game announced "field fully treated" with nearly a
-    -- third of it never driven over, which is what it looks like from the seat.
-    -- Drives the notification, the "Coverage: x% / y%" readout and the colour
-    -- that turns it green, so all three now agree on what finished means.
-    MIN_FULL_CREDIT = 0.95,  -- fraction of the field that must be covered before it counts as treated
+    MIN_FULL_CREDIT = 0.70,  -- 70% of field cells must be visited for full-treated notification
     PROTECTION_THRESHOLD = 0.80,  -- 80% session coverage required before crop-protection "active" status is granted (issue #441)
 }
 
@@ -1025,7 +1021,7 @@ SoilConstants.NETWORK = {
 -- SPRAYER APPLICATION RATE
 -- ========================================
 -- 20 stepped rate multipliers (0.10x – 2.00x in 0.10 increments).
--- DEFAULT_INDEX = 11 → 1.0x (no change from base behaviour).
+-- DEFAULT_INDEX = 10 → 1.0x (no change from base behaviour).
 -- The HUD displays real units (gal/ac or L/ha) by multiplying each step
 -- against the BASE_RATE for the currently loaded fertilizer fill type.
 -- Burn effects apply when nutrient-rich fertilizer is over-applied:
@@ -1033,19 +1029,12 @@ SoilConstants.NETWORK = {
 --   >= BURN_GUARANTEED_THRESHOLD: guaranteed burn every application
 SoilConstants.SPRAYER_RATE = {
     STEPS = {
-        -- 0.01 is the "barely spreading" floor auto-rate settles on when a field is
-        -- already at target: still applying, so the machine reads as working, but
-        -- ~1% of base rate rather than the old 0.20 floor that kept pushing pH past
-        -- optimum on ground that was already done. Prepending shifts every index by
-        -- one, hence DEFAULT_INDEX below moving 10 -> 11; rate indices are runtime
-        -- only and never written to a savegame, so nothing stored is invalidated.
-        0.01,
         0.10, 0.20, 0.30, 0.40, 0.50,
         0.60, 0.70, 0.80, 0.90, 1.00,
         1.10, 1.20, 1.30, 1.40, 1.50,
         1.60, 1.70, 1.80, 1.90, 2.00,
     },
-    DEFAULT_INDEX             = 11,    -- 1.0x (was 10; STEPS gained a 0.01 floor)
+    DEFAULT_INDEX             = 10,    -- 1.0x
     BURN_RISK_THRESHOLD       = 1.25,  -- above this: chance of burn
     BURN_GUARANTEED_THRESHOLD = 1.50,  -- at or above this: burn every time
     BURN_PH_DROP_RISK         = 0.15,  -- max pH lost over a full pass in the risk band (scaled by excess)

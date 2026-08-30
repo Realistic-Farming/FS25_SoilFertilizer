@@ -1153,20 +1153,12 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
         if tx and tz then
             local zone = SoilConstants.ZONE
             local cellFactor = areaHa / zone.CELL_AREA_HA
-            -- [SF-23] PF-shaped positional paint (Wizard ruling, supersedes the
-            -- [SF-22] whole-field shift). Colour the ground actually worked this
-            -- tick as a swept ~2 m strip: a partial pass must leave unworked
-            -- ground alone. FULL-PASS values are passed deliberately, see
-            -- paintTillageStrip - the strip carries the whole per-pass delta so a
-            -- completed pass lands exactly on the scalar's field average.
-            -- cellFactor stays live: the zoneData pressure writes below still run
-            -- on the coarse 10 m grid, which constraint 5 explicitly permits.
-            self:paintTillageStrip(fieldId, field, areaHa, {
-                nitrogen      = ri.N,
-                phosphorus    = ri.P,
-                potassium     = ri.K,
-                organicMatter = ri.OM,
-            })
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
 
             -- Weed reduction per zone cell (pressures stay on the coarse grid)
             if self.settings.weedPressure then
@@ -1219,7 +1211,6 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
-    field._covCells2m             = {}   -- [FIX-10] same lifetime
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
     field._geometricCoverageOwner = nil  -- #753: re-detect geometric path each session
@@ -1251,16 +1242,18 @@ function SoilFertilitySystem:_applyCropIncorporation(fieldId, field, profile, bi
     field.phosphorus = math.min(limits.MAX, (field.phosphorus or 0) + profile.P * scale)
     field.potassium  = math.min(limits.MAX, (field.potassium  or 0) + profile.K * scale)
 
-    -- [SF-23] Positional paint on the worked strip (supersedes [SF-22]). The
-    -- full-pass value here is `profile.X * biomass`: `scale` is that times the
-    -- field fraction, and the field fraction is what the STRIP GEOMETRY already
-    -- expresses, so multiplying by it again would apply the mass twice.
-    self:paintTillageStrip(fieldId, field, areaHa, {
-        organicMatter = profile.OM * biomass,
-        nitrogen      = profile.N  * biomass,
-        phosphorus    = profile.P  * biomass,
-        potassium     = profile.K  * biomass,
-    })
+    -- REFINED: local per-pixel bump at the tillage position on the value maps
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    if tx and tz then
+        local zone = SoilConstants.ZONE
+        local cellScale = ((areaHa or 0) / zone.CELL_AREA_HA) * biomass
+        self:vmLocalBump(tx, tz, {
+            organicMatter = profile.OM * cellScale,
+            nitrogen      = profile.N  * cellScale,
+            phosphorus    = profile.P  * cellScale,
+            potassium     = profile.K  * cellScale,
+        }, zone.CELL_SIZE * 0.5)
+    end
 
     SoilLogger.debug("Crop incorporation field %d: +OM%.3f +N%.3f (biomass=%.2f factor=%.4f)",
         fieldId or -1, profile.OM * scale, profile.N * scale, biomass, factor)
@@ -1270,30 +1263,32 @@ end
 --- #738 no-till OM: apply a tillage pass's organic-matter OXIDATION loss (deep
 --- disturbance aerating buried humus). Shared by the plough/cultivator/strip-till
 --- hooks with each type's own gradient value. Reduces the field-average OM (floored
---- at DECAY_FLOOR), and mirrors that same loss onto the OM value map as a UNIFORM
---- whole-field shift ([SF-22]). It used to write a positional blob at the tool,
---- which is what printed AB-line bands on the OM layer; the scalar and the map now
---- move by one identical number, degrading to scalar-only when no value map is
+--- at DECAY_FLOOR), and mirrors the loss positionally onto the OM value map at the
+--- pass location - the same scalar-uses-`factor`, VM-uses-`cellFactor` split the
+--- residue-incorporation writes use, degrading to scalar-only when no value map is
 --- present. Returns true if the field OM changed.
----@param fieldId number The field being tilled (resolves the field polygon)
 ---@param field table The field data table
 ---@param oxid number OM lost per full pass (OM_DYNAMICS.OXIDATION.*)
 ---@param factor number Field-fraction processed this tick (areaHa / fieldAreaHa)
----@param areaHa number Area processed this tick (kept for call-site symmetry)
+---@param areaHa number Area processed this tick, for the per-cell VM intensity
 ---@return boolean changed
-function SoilFertilitySystem:_applyTillageOxidation(fieldId, field, oxid, factor, areaHa)
+function SoilFertilitySystem:_applyTillageOxidation(field, oxid, factor, areaHa)
     if not oxid or oxid <= 0 or not field then return false end
     local omDyn  = SoilConstants.OM_DYNAMICS
     local floor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
+    -- SF-56: scale oxidation by the tillage class at the pass location
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    local tillMult = 1.0
+    if tx and tz then tillMult = self:_tillageDecompMult(tx, tz) end
     local before = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-    local after  = math.max(floor, before - oxid * factor)
+    local after  = math.max(floor, before - oxid * tillMult * factor)
     if after >= before then return false end
     field.organicMatter = after
-    -- [SF-23] Positional OM loss on the worked strip (supersedes the [SF-22]
-    -- whole-field shift). `-oxid` is the FULL-PASS loss, so a completed pass
-    -- takes every worked cell down by oxid and matches the scalar's floored
-    -- field average, while a partial pass burns only the ground driven over.
-    self:paintTillageStrip(fieldId, field, areaHa, { organicMatter = -oxid })
+    if tx and tz then
+        local zone = SoilConstants.ZONE
+        local cellFactor = areaHa / zone.CELL_AREA_HA
+        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * tillMult * cellFactor) }, zone.CELL_SIZE * 0.5)
+    end
     return true
 end
 
@@ -1355,7 +1350,7 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
         -- write + floored scalar). Steepest of the gradient - deep inversion burns the
         -- most buried humus, so a residue-poor plough nets slightly negative on OM.
         local omDyn = SoilConstants.OM_DYNAMICS
-        if self:_applyTillageOxidation(fieldId, field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.PLOW, factor, areaHa) then
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.PLOW, factor, areaHa) then
             changed = true
         end
 
@@ -1371,18 +1366,6 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
         if phAfter ~= phBefore then
             field.pH = phAfter
             changed = true
-            -- [SF-23] pH normalisation had NO value-map write at all before
-            -- [SF-22], so the pH layer disagreed with the PDA for the life of every
-            -- save. Now written positionally like the rest. Dividing the scalar's
-            -- clamped step by `factor` recovers the full-pass magnitude and keeps
-            -- the sign, so the strip carries the same mass the scalar took.
-            -- Approximation worth knowing: this is an ADDITIVE step toward 7.0, so
-            -- individual pixels converge on the target rather than clamping to it
-            -- exactly the way the field scalar does.
-            if factor and factor > 0 then
-                self:paintTillageStrip(fieldId, field, areaHa,
-                    { pH = (phAfter - phBefore) / factor })
-            end
         end
     end
 
@@ -1443,20 +1426,12 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
             local zone = SoilConstants.ZONE
             -- Cell-factor: area processed in THIS tick relative to one cell area (usually 0.01 ha)
             local cellFactor = areaHa / zone.CELL_AREA_HA
-            -- [SF-23] PF-shaped positional paint (Wizard ruling, supersedes the
-            -- [SF-22] whole-field shift). Colour the ground actually worked this
-            -- tick as a swept ~2 m strip: a partial pass must leave unworked
-            -- ground alone. FULL-PASS values are passed deliberately, see
-            -- paintTillageStrip - the strip carries the whole per-pass delta so a
-            -- completed pass lands exactly on the scalar's field average.
-            -- cellFactor stays live: the zoneData pressure writes below still run
-            -- on the coarse 10 m grid, which constraint 5 explicitly permits.
-            self:paintTillageStrip(fieldId, field, areaHa, {
-                nitrogen      = ri.N,
-                phosphorus    = ri.P,
-                potassium     = ri.K,
-                organicMatter = ri.OM,
-            })
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
 
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
@@ -1593,7 +1568,7 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
         -- #738: cultivator oxidation (topsoil mixing aerates humus). Netted against the
         -- residue gain above, cultivation still adds OM but less than strip-till/no-till.
         local omDyn = SoilConstants.OM_DYNAMICS
-        if self:_applyTillageOxidation(fieldId, field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.CULTIVATOR, factor, areaHa) then
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.CULTIVATOR, factor, areaHa) then
             changed = true
         end
 
@@ -1603,20 +1578,12 @@ function SoilFertilitySystem:onCultivation(fieldId, area, isAlsoSprayer, cropBio
         if tx and tz then
             local zone = SoilConstants.ZONE
             local cellFactor = areaHa / zone.CELL_AREA_HA
-            -- [SF-23] PF-shaped positional paint (Wizard ruling, supersedes the
-            -- [SF-22] whole-field shift). Colour the ground actually worked this
-            -- tick as a swept ~2 m strip: a partial pass must leave unworked
-            -- ground alone. FULL-PASS values are passed deliberately, see
-            -- paintTillageStrip - the strip carries the whole per-pass delta so a
-            -- completed pass lands exactly on the scalar's field average.
-            -- cellFactor stays live: the zoneData pressure writes below still run
-            -- on the coarse 10 m grid, which constraint 5 explicitly permits.
-            self:paintTillageStrip(fieldId, field, areaHa, {
-                nitrogen      = ri.N,
-                phosphorus    = ri.P,
-                potassium     = ri.K,
-                organicMatter = ri.OM,
-            })
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
 
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
@@ -1777,7 +1744,7 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
         -- bands are disturbed). Netted with the residue gain, strip-till nets clearly
         -- positive, second only to no-till on the season OM trajectory.
         local omDyn = SoilConstants.OM_DYNAMICS
-        if self:_applyTillageOxidation(fieldId, field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.STRIP_TILL, factor, areaHa) then
+        if self:_applyTillageOxidation(field, omDyn and omDyn.OXIDATION and omDyn.OXIDATION.STRIP_TILL, factor, areaHa) then
             changed = true
         end
 
@@ -1795,20 +1762,12 @@ function SoilFertilitySystem:onStripTill(fieldId, area)
             local zone = SoilConstants.ZONE
             local cellFactor = areaHa / zone.CELL_AREA_HA
             -- REFINED: local per-pixel bump at the strip-till position
-            -- [SF-23] PF-shaped positional paint (Wizard ruling, supersedes the
-            -- [SF-22] whole-field shift). Colour the ground actually worked this
-            -- tick as a swept ~2 m strip: a partial pass must leave unworked
-            -- ground alone. FULL-PASS values are passed deliberately, see
-            -- paintTillageStrip - the strip carries the whole per-pass delta so a
-            -- completed pass lands exactly on the scalar's field average.
-            -- cellFactor stays live: the zoneData pressure writes below still run
-            -- on the coarse 10 m grid, which constraint 5 explicitly permits.
-            self:paintTillageStrip(fieldId, field, areaHa, {
-                nitrogen      = ri.N,
-                phosphorus    = ri.P,
-                potassium     = ri.K,
-                organicMatter = ri.OM,
-            })
+            self:vmLocalBump(tx, tz, {
+                nitrogen      = ri.N  * cellFactor,
+                phosphorus    = ri.P  * cellFactor,
+                potassium     = ri.K  * cellFactor,
+                organicMatter = ri.OM * cellFactor,
+            }, zone.CELL_SIZE * 0.5)
 
             local cellKey = tostring(math.floor(tx / zone.CELL_SIZE) * 10000 + math.floor(tz / zone.CELL_SIZE))
             if not field.zoneData then field.zoneData = {} end
@@ -4176,219 +4135,6 @@ function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius)
     end
 end
 
--- [SF-23] Tillage footprint bounds. The worked width is DERIVED (area / travel)
--- because the tillage hooks report an area per tick, never a tool line the way
--- the sprayer reports a boom. The clamps only catch nonsense (a stalled area
--- counter, a one-frame area spike); mass is preserved across them by rescaling.
-local TILL_MIN_WIDTH_M  = 1.0
-local TILL_MAX_WIDTH_M  = 30.0
-local TILL_TELEPORT_M   = 40.0
-
---- [SF-23] Mark the nutrient value maps as visually stale.
---- Cheap and safe to call per work tick: the minimap layer already dirty-flags,
---- and the PDA gets a flag rather than a rebuild, so no DMV work happens here.
-function SoilFertilitySystem:_soilMapsMutated()
-    -- [SF-33] Bump the write generation so any cached spatial rollup is stale.
-    -- Cheap here (one integer) and it means getFieldSpatialSummary never has to
-    -- guess whether its samples still describe the map, which is what George
-    -- asked for when he approved the sampling pass.
-    self._vmWriteGen = (self._vmWriteGen or 0) + 1
-    local sfm = g_SoilFertilityManager
-    if not sfm then return end
-    if sfm.soilMinimapLayer then sfm.soilMinimapLayer:markDirty() end
-    local ov = sfm.soilMapOverlay
-    if ov then ov._pdaValueMapsDirty = true end
-end
-
---- [SF-23] Paint one tillage tick as a PF-shaped swept strip on the ~2 m value
---- maps. Wizard's ruling on BUILD 22:12: worked ground changes colour, unworked
---- ground does not, so a partial pass must NOT move the whole field.
----
---- Geometry mirrors paintBoomStrip: a parallelogram from the previous tillage
---- point to the current one. The sprayer knows its boom line; tillage does not,
---- so the footprint width is derived as areaM2 / travel, which is exact whenever
---- the area counter and the position agree.
----
---- `deltas` carry FULL-PASS values (`ri.N`, `-oxid`, ...), NOT the per-tick
---- `value * factor` the scalar uses. That is the whole trick: painting the
---- ground worked this tick with the full-pass value means a COMPLETE pass leaves
---- every cell +value, which is exactly the field average the scalar arrives at,
---- while half a pass colours half the field and leaves the rest untouched. It
---- also keeps each write far above the layer's raw quantisation step, which a
---- per-tick `value * factor` would round to zero and lose entirely.
----
---- Ticks that cannot paint (no anchor yet, stationary, teleport) bank their area
---- in `field._vmTillPendArea` so the next moving tick paints the full mass.
----@param fieldId number
----@param field table
----@param areaHa number Area worked this tick, hectares
----@param deltas table  { nitrogen = fullPassDelta, ... }
-function SoilFertilitySystem:paintTillageStrip(fieldId, field, areaHa, deltas)
-    if not field or not deltas or not self:vmAvailable() then return end
-    if not areaHa or areaHa <= 0 then return end
-
-    local cx, cz = self._lastTillageX, self._lastTillageZ
-    if not cx or not cz then return end
-
-    -- [SF-25] Several sim paths call this in the SAME work tick: oxidation, then
-    -- residue incorporation, then crop incorporation. The 23:55 build let whichever
-    -- call landed FIRST consume the travel and advance the anchor, so every later
-    -- call in that tick saw travel 0, banked its area and returned without
-    -- painting. Live proof from one plough on field 90: 162 SF-24 lines, every one
-    -- of them organicMatter (the oxidation call), and not a single nitrogen line.
-    -- N/P/K never painted at all. The same bug also double counted area, because
-    -- each starved call still banked its own areaHa, which is why the derived width
-    -- pinned to the 30 m clamp instead of the tool's real ~12 m.
-    --
-    -- So collect the whole tick and paint it once: deltas merge, area counts ONCE
-    -- per tick however many callers fire, and the paint runs when the NEXT tick
-    -- opens, by which point the previous tick's delta set is complete.
-    local nowMs = (g_currentMission and g_currentMission.time) or 0
-    local pend  = field._vmTillPend
-    if not pend then
-        pend = { keys = {}, tickKeys = {}, area = 0, tick = -1 }
-        field._vmTillPend = pend
-    end
-    pend.tickKeys = pend.tickKeys or {}
-
-    if pend.tick ~= nowMs then
-        -- [SF-26] The 00:05 build wiped pend.keys unconditionally after a flush
-        -- attempt, so whenever _flushTillageStrip returned early (travel < one
-        -- pixel) the whole completed delta set was DISCARDED. Ash caught this.
-        -- Two separate buckets fix it properly:
-        --   tickKeys - sums the contributions of every caller WITHIN one tick
-        --              (oxidation, residue, crop incorporation).
-        --   keys     - the last COMPLETE tick's set, waiting to be painted.
-        -- A completed tick REPLACES keys rather than adding to it, because every
-        -- tick reports the same full-pass rates; summing them across ticks would
-        -- multiply the dose by however many ticks the sweep took to reach a pixel.
-        -- keys is cleared only when the paint actually happened.
-        if next(pend.tickKeys) ~= nil then
-            pend.keys = pend.tickKeys
-            pend.tickKeys = {}
-        end
-        pend.tick = nowMs
-        pend.area = (pend.area or 0) + areaHa
-
-        if next(pend.keys) ~= nil then
-            if self:_flushTillageStrip(fieldId, field, pend, cx, cz) then
-                pend.keys = {}
-            end
-        end
-    end
-    for k, v in pairs(deltas) do
-        if v and v ~= 0 then pend.tickKeys[k] = (pend.tickKeys[k] or 0) + v end
-    end
-end
-
---- [SF-25] Paint one COMPLETE tick's accumulated tillage deltas as a swept strip.
---- Split out of paintTillageStrip so that every caller in a tick has contributed
---- before any pixel is touched.
-function SoilFertilitySystem:_flushTillageStrip(fieldId, field, pend, cx, cz)
-    local deltas = pend.keys
-    local areaHa = pend.area or 0
-    if areaHa <= 0 then return false end
-
-    local anchor = field._vmLastTillagePt
-    if not anchor then
-        -- First tick of a pass: nothing to sweep from yet, keep the banked area.
-        field._vmLastTillagePt = { x = cx, z = cz }
-        return false
-    end
-
-    local dx, dz  = cx - anchor.x, cz - anchor.z
-    local travel  = math.sqrt(dx * dx + dz * dz)
-
-    -- [SF-24] THE reason BUILD 23:20 painted nothing visible. The value maps are
-    -- ~2 m/px (resolution = terrainSize/2). A work tick advances the tool a few
-    -- centimetres, so the swept quad was a sliver far THINNER THAN ONE PIXEL and
-    -- covered no pixel centres: addPaintStrip still returned a nonzero semantic
-    -- delta, so it looked like it worked, while the map never changed. The old
-    -- 5 m-radius vmLocalBump always covered 5x5 px, which is exactly why the
-    -- original bug was visible stripes and this replacement was invisible.
-    --
-    -- So accumulate: hold the anchor and bank the area until the sweep is at
-    -- least one pixel long, then paint one quad that really covers pixels. Mass
-    -- is preserved because the banked area rides along with the geometry.
-    local mpp = 2.0
-    local vmaps = self.valueMaps
-    if vmaps and (vmaps.terrainSize or 0) > 0 and (vmaps.resolution or 0) > 0 then
-        mpp = vmaps.terrainSize / vmaps.resolution
-    end
-
-    if travel < mpp then
-        -- Not yet a pixel's worth of new ground. Keep the anchor, keep the banked
-        -- area AND keep pend.keys (returning false is what preserves them now).
-        return false
-    end
-    if travel > TILL_TELEPORT_M then
-        -- Teleport or field switch: never span the gap with a huge quad.
-        field._vmLastTillagePt = { x = cx, z = cz }
-        return false
-    end
-
-    local areaM2 = areaHa * 10000
-    -- Width must also clear a pixel, or a narrow tool paints a sub-pixel ribbon
-    -- and disappears the same way. Mass is held by the realArea/quadArea rescale.
-    local width  = math.max(TILL_MIN_WIDTH_M, mpp,
-                            math.min(TILL_MAX_WIDTH_M, areaM2 / travel))
-    local half   = width * 0.5
-    local ux, uz = -dz / travel, dx / travel   -- unit normal to travel
-
-    local sx, sz = anchor.x - ux * half, anchor.z - uz * half
-    local wx, wz = anchor.x + ux * half, anchor.z + uz * half
-    local hx, hz = cx - ux * half,       cz - uz * half
-
-    -- Parallelogram area = |(w-s) x (h-s)| (2D cross), same as paintBoomStrip.
-    local quadM2 = math.abs((wx - sx) * (hz - sz) - (wz - sz) * (hx - sx))
-    if quadM2 < 0.01 then
-        field._vmLastTillagePt = { x = cx, z = cz }
-        return false
-    end
-
-    -- Conserve mass when a clamp made the painted quad differ from the real area.
-    local scale = areaM2 / quadM2
-    local vm = self.valueMaps
-    -- [SF-24] Proof of write. addPaintStrip's return value is NOT evidence: it
-    -- reports the semantic delta it intended even when the region covered no
-    -- pixel centres, which is precisely how 23:20 looked healthy while painting
-    -- nothing. Read a real pixel at the sweep midpoint before and after instead.
-    -- Gate on debugMode itself, not on the function existing: SoilLogger.debug is
-    -- always defined, so testing it would run two pixel reads per key per paint
-    -- for everyone. These reads are diagnostics, not part of the write path.
-    local sfmDbg = g_SoilFertilityManager
-    local dbg = (sfmDbg and sfmDbg.settings and sfmDbg.settings.debugMode) and true or false
-    if dbg then
-        -- [SF-26] Name the WHOLE set being painted. Three rounds were lost to
-        -- reasoning about which keys were in the bucket; this prints it instead.
-        local names = {}
-        for k, v in pairs(deltas) do names[#names + 1] = string.format("%s=%.4f", k, v) end
-        table.sort(names)
-        SoilLogger.debug("[SF-26] flush f%s keys{%s} area=%.5fha travel=%.2fm",
-            tostring(fieldId), table.concat(names, " "), areaHa, travel)
-    end
-    local midX = (anchor.x + cx) * 0.5
-    local midZ = (anchor.z + cz) * 0.5
-    for key, v in pairs(deltas) do
-        if v and v ~= 0 then
-            local before = dbg and vm:readValueAtWorld(key, midX, midZ) or nil
-            local applied = vm:addPaintStrip(key, sx, sz, wx, wz, hx, hz, v * scale)
-            if dbg then
-                local after = vm:readValueAtWorld(key, midX, midZ)
-                SoilLogger.debug(
-                    "[SF-24] tillage strip f%s %s: applied=%.4f pixel %s -> %s (travel %.2fm width %.2fm mpp %.2f)",
-                    tostring(fieldId), tostring(key), applied or 0,
-                    tostring(before), tostring(after), travel, width, mpp)
-            end
-        end
-    end
-
-    field._vmLastTillagePt = { x = cx, z = cz }
-    pend.area = 0   -- consumed by this quad
-    self:_soilMapsMutated()
-    return true
-end
-
 --- Paint the sprayer's real boom strip into the value maps additively as a
 --- SWEPT QUAD (RSF-762). Each frame with a valid dose paints the parallelogram
 --- between the last PAINTED boom line and the current boom line, then advances
@@ -4412,105 +4158,7 @@ end
 ---   derived in the vehicle's own frame (see HookManager:getBoomLineEndpoints).
 ---   When present the painted line runs tip to tip at any heading. The array ends
 ---   are only a defensive fallback for a caller that supplies no line.
---- [FIX-3] World-coordinate vertices of a field's polygon, or nil.
-function SoilFertilitySystem:_fieldPolygonVerts(fieldId)
-    local fsField
-    if g_fieldManager and g_fieldManager.fields then
-        for _, f in ipairs(g_fieldManager.fields) do
-            if f and f.farmland and f.farmland.id == fieldId then fsField = f break end
-        end
-    end
-    if not fsField then return nil end
-    local polyNodes = fsField.polygonPoints
-    if type(fsField.getPolygonPoints) == "function" then
-        local ok, pts = pcall(function() return fsField:getPolygonPoints() end)
-        if ok and pts then polyNodes = pts end
-    end
-    if not polyNodes or #polyNodes == 0 then return nil end
-    local verts = {}
-    for i = 1, #polyNodes do
-        local nodeId = polyNodes[i]
-        if nodeId and nodeId ~= 0 then
-            local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
-            if ok and wx then verts[#verts + 1] = { x = wx, z = wz } end
-        end
-    end
-    return (#verts >= 3) and verts or nil
-end
-
-
---- [FIX-3] Make the per-pixel map the single source of truth for a field average.
----
---- The scalar used to be its own ledger: applyFertilizer credited it, then the
---- paint refunded whatever the ground refused. Each step is defensible and the
---- pair still drifts, because the ledger has no way back to reality. Measured on
---- field 82 with the map genuinely at 6.5 across 99% of its area, the scalar sat
---- at 5.606 and would not move -- "offered=1.4038 applied=0.0038" every tick, so
---- 99.7% of each credit was clawed straight back. The map said Optimal while the
---- PDA and Soil Monitor said FAIR / IN NEED, because they read different numbers.
----
---- Reading the average back off the map removes the second ledger entirely. It is
---- throttled because it is an engine-side polygon read over the whole field, not
---- something to do every tick.
-function SoilFertilitySystem:resyncFieldFromMap(fieldId, field, keys)
-    if not field or not self:vmAvailable() then return false end
-    local now = (g_currentMission and g_currentMission.time) or 0
-    if field._lastMapResync and (now - field._lastMapResync) < 3000 then return false end
-
-    local verts = self:_fieldPolygonVerts(fieldId)
-    if not verts then return false end
-    field._lastMapResync = now
-
-    local vm = self.valueMaps
-    local limits = SoilConstants.NUTRIENT_LIMITS
-    local changed = false
-    for _, key in ipairs(keys) do
-        local avg = vm:readAverageOfPolygon(key, verts)
-        -- nil means no written pixels yet: leave the loaded value alone rather
-        -- than stamping a field to zero because nothing has been sprayed on it.
-        if avg ~= nil and type(field[key]) == "number" then
-            if key == "pH" and limits then
-                avg = math.max(limits.PH_MIN or 5.0, math.min(limits.PH_MAX or 7.5, avg))
-            end
-            if math.abs(avg - field[key]) > 0.0005 then
-                field[key] = avg
-                changed = true
-            end
-        end
-    end
-    return changed
-end
-
-
---- @param capToTarget boolean|nil  true = prescription mode (per-cell, capped at
----        target); false = flat mode (uniform dose across the boom, over-application
----        possible). nil defaults to TRUE so existing callers are unchanged.
----
---- [GATE] Prescription capping is the variable-rate feature, and it was running
---- unconditionally -- every machine got per-cell rate control whether the player
---- had the equipment for it or not. That made the VR toggle do nothing visible and
---- removed the reason to own the kit. Flat mode is the honest default: one rate
---- across the whole boom, changed by hand, and yes you can over-lime with it.
---- [FIX-12] Does a geometric measurement currently own coverage for this field?
----
---- The claim used to be a sticky boolean: once a geometric path had measured
---- once, both fallbacks stood down for the rest of the session. If that path then
---- stopped running (value maps gone, implement swapped, an early return) coverage
---- froze silently and nothing took over. A claim that cannot expire is not a
---- handover, it is a single point of failure.
----
---- So it is a timestamp now. Geometry owns coverage only while it is actually
---- measuring; go quiet for a few seconds and the fallbacks resume on their own.
-function SoilFertilitySystem.geometryOwnsCoverage(field)
-    local stamp = field and field._geometricCoverageOwner
-    if not stamp then return false end
-    if stamp == true then return true end   -- legacy boolean, still honoured
-    local now = (g_currentMission and g_currentMission.time) or 0
-    return (now - stamp) < 5000
-end
-
-function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, boomLine, capToTarget)
-    if capToTarget == nil then capToTarget = true end
+function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, boomLine)
     if not fieldId or not boomPoints or #boomPoints < 2 then return end
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
@@ -4535,73 +4183,9 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
     local boomLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
     if boomLen < 0.01 then return end
 
-    -- [SF-27] Bank this tick's dose as MASS before any geometry decision, and
-    -- consume sd straight away so the second HookManager site in the same tick
-    -- cannot re-apply it. Whether we paint this frame is a geometry question;
-    -- dropping the dose because the boom has not yet crossed a pixel is the exact
-    -- bug tillage carried until BUILD 00:15, and the boom path had it too.
-    -- Mass (units) rather than concentration (units/ha) is banked, so the quad
-    -- that eventually paints divides by ITS own area and the total stays exact.
-    local pend = field._vmBoomPend
-    if not pend then
-        pend = { mass = {}, area = 0 }
-        field._vmBoomPend = pend
-    end
-    pend.mass = pend.mass or {}
-    pend.scalar = pend.scalar or {}
-    local function bankDose(key, perHa)
-        if perHa and perHa ~= 0 then
-            pend.mass[key] = (pend.mass[key] or 0) + perHa * sd.area
-            -- [SF-32] Bank the FIELD-SCALAR credit too. applyFertilizer added
-            -- exactly `perHa` to field[key] for this tick, so summing it here is
-            -- the only honest record of what the average was given while the
-            -- strip waited to paint. Deriving it later from mass and area gets
-            -- the units wrong by field-area over sprayed-area, which would claw
-            -- the average down enormously.
-            pend.scalar[key] = (pend.scalar[key] or 0) + perHa
-        end
-    end
-    bankDose("nitrogen",      sd.dN)
-    bankDose("phosphorus",    sd.dP)
-    bankDose("potassium",     sd.dK)
-    bankDose("pH",            sd.dPH)
-    bankDose("organicMatter", sd.dOM)
-    pend.area = (pend.area or 0) + sd.area
-    sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
-
-    -- Value-map pixel size: a sweep shorter than this covers no pixel centres.
-    local mpp = 2.0
-    local vmaps0 = self.valueMaps
-    if vmaps0 and (vmaps0.terrainSize or 0) > 0 and (vmaps0.resolution or 0) > 0 then
-        mpp = vmaps0.terrainSize / vmaps0.resolution
-    end
-
     local anchor = field._vmLastBoomLine
     local sx, sz, wx, wz, hx, hz
     local areaM2
-    local travel = 0
-
-    -- [SF-38] Resume anchor (George CLOSED DESIGN 09:04). When the helper stops
-    -- and resumes (refill, turn, player takeover), the stale anchor is tens of
-    -- metres behind the boom but still under the 3x-boom teleport guard, so the
-    -- first strip after resume swept a 24-44 m parallelogram and spread one
-    -- tick's dose over it - a near-invisible diluted band, Brian's zero-apply
-    -- gap. More than a second since the last paint means the sweep chain broke:
-    -- reseed the anchor at the current tips, keep the dose banked, and let the
-    -- next moving tick paint a strip of honest size.
-    if anchor and (nowMs - (field._vmLastBoomPaintMs or 0)) > 1000 then
-        field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
-        field._vmLastBoomPaintMs = nowMs
-        return
-    end
-
-    if not anchor then
-        -- First frame of a pass: nothing to sweep from. Seed the anchor and keep
-        -- the dose banked rather than painting a sub-pixel seed strip.
-        field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
-        field._vmLastBoomPaintMs = nowMs
-        return
-    end
 
     if anchor then
         -- Tip-swap guard (RSF-836): the endpoint derivation is unordered, so the
@@ -4614,47 +4198,19 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         local dzW = (az - anchor.bz) + (bz - anchor.az)
         local straightSq = dxS * dxS + dzS * dzS
         local swappedSq = dxW * dxW + dzW * dzW
-        -- [FIX-2] Travel is the FURTHEST either tip moved, not the mean of the two.
-        --
-        -- The mean cancels on a pivot: one tip advances while the other retreats,
-        -- so the lateral components sum to zero and only the centre's crawl
-        -- survives. Modelled on a 54 m boom with the centre advancing 0.30 m, the
-        -- mean reads a flat 0.30 m at 0deg, 5deg and 15deg of pivot -- while the
-        -- tips are actually travelling 0.30 m, 2.39 m and 7.09 m. So on a headland
-        -- turn the 2 m gate below never clears: dose banks tick after tick and then
-        -- lands in one quad, which is why measured per-tick doses ranged from 0.112
-        -- to 6.050 pH -- a 54x spread with no geometric pattern to it.
-        --
-        -- The swept-area formula itself is sound (parallelogram 377.4 m2 vs true
-        -- 379.5 m2 at 15deg, within 0.5%), so it is left alone. Only the gate was
-        -- blind to rotation.
-        -- Pairing is decided HERE rather than trusting straightSq/swappedSq above.
-        -- Those two sum the tip displacements before squaring, and for a pure
-        -- translation both pairings sum to 2x the translation -- identical, so the
-        -- comparison cannot discriminate. Taking whichever pairing yields the
-        -- SMALLER worst-case tip movement is self-correcting: the wrong pairing
-        -- always looks like both tips jumped the width of the boom.
-        local straightTrav = math.max(
-            math.sqrt((ax - anchor.ax) ^ 2 + (az - anchor.az) ^ 2),
-            math.sqrt((bx - anchor.bx) ^ 2 + (bz - anchor.bz) ^ 2))
-        local swappedTrav = math.max(
-            math.sqrt((ax - anchor.bx) ^ 2 + (az - anchor.bz) ^ 2),
-            math.sqrt((bx - anchor.ax) ^ 2 + (bz - anchor.az) ^ 2))
-        travel = math.min(straightTrav, swappedTrav)
-        -- [SF-50] Full-cell gate RESTORED (George CLOSED DESIGN 19:12,
-        -- reverting SF-47's half-step): firing quads every half pixel made
-        -- consecutive strips overlap themselves, double-painting MID-PASS
-        -- ground - the amber in-pass teeth. One quad per pixel of travel means
-        -- a single pass touches each cell once, and only genuine headland /
-        -- lap crossings dose twice.
-        if travel < mpp then
-            -- [SF-27] Not a pixel's worth of new ground yet. Hold the anchor AND
-            -- the banked dose; the first frame that clears the gate paints the lot.
-            return
+        local travX, travZ
+        if swappedSq < straightSq then
+            travX = dxW * 0.5
+            travZ = dzW * 0.5
+        else
+            travX = dxS * 0.5
+            travZ = dzS * 0.5
+        end
+        local travel = math.sqrt(travX * travX + travZ * travZ)
+        if travel < 0.05 then
+            anchor = nil   -- no forward progress this frame: seed instead
         elseif travel > boomLen * 3 then
-            -- Teleport or a fresh pass: reseed, keep the dose banked.
-            field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
-            return
+            anchor = nil   -- teleport: never span the gap, seed fresh
         else
             -- Quad between the previous boom line (base) and this one (travel edge).
             sx, sz = anchor.ax, anchor.az
@@ -4665,269 +4221,35 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         end
     end
 
-    if not areaM2 or areaM2 < 0.01 then
+    if anchor == nil then
+        -- Seed: a thin strip centred on the current boom line.
+        local ux, uz = -(bz - az) / boomLen, (bx - ax) / boomLen
+        local h = math.max(0.5, boomLen * 0.02)
+        sx, sz = ax - ux * h, az - uz * h
+        wx, wz = bx - ux * h, bz - uz * h
+        hx, hz = ax + ux * h, az + uz * h
+        areaM2 = boomLen * (h * 2)
+    end
+
+    local minArea = boomLen * 0.02
+    if areaM2 and areaM2 > minArea then
+        local areaHa = areaM2 / 10000
+        local scale = sd.area / areaHa
+        local vm = self.valueMaps
+        if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
+        if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
+        if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
+        if sd.dPH ~= 0 then vm:addPaintStrip("pH",            sx, sz, wx, wz, hx, hz, sd.dPH * scale) end
+        if sd.dOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, sd.dOM * scale) end
+
+        -- Advance the anchor to the line this quad actually painted.
         field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
-        return
-    end
-
-    local areaHa = areaM2 / 10000
-    local vm     = self.valueMaps
-    local sfmDbg = g_SoilFertilityManager
-    local dbg    = (sfmDbg and sfmDbg.settings and sfmDbg.settings.debugMode) and true or false
-    -- Centroid of the swept quad, for the before/after pixel probe.
-    local midX = (sx + wx + hx) / 3
-    local midZ = (sz + wz + hz) / 3
-
-    -- [SF-32] Prescription rule: sense the 2 m cell under the boom and apply
-    -- exactly what THAT cell is short of, nothing more, and nothing at all to a
-    -- cell already at or above target. Replaces the old behaviour of adding the
-    -- same amount everywhere, which could only shift a field's existing pattern
-    -- upward - over-liming the good ground while the poor ground stayed poor.
-    --
-    -- Only quantities with a meaningful ceiling are capped. Organic matter has no
-    -- "enough" in this model, so it stays additive.
-    local vrCfgT   = SoilConstants.VARIABLE_RATE
-    local limitsT  = SoilConstants.NUTRIENT_LIMITS
-    -- [FLAT] What ONE metered pass can physically deliver, per key. A machine
-    -- without rate-control hardware cannot prescribe, but it also cannot put
-    -- down more than flows through it in a single pass: the design figure for
-    -- lime is ~0.40 pH per pass at base rate, so 0.60 allows the 1.5x dial and
-    -- nothing more. This ceiling is what lets flat mode run UNCAPPED-to-target
-    -- safely: overlap accumulates one honest pass at a time (the headland
-    -- double-up a real spreader produces), while a banking hiccup can no
-    -- longer slam a pixel across the whole scale in one tick.
-    -- [SF-47] pH 0.60 -> 0.30 (George CLOSED DESIGN 14:08, confirming the
-    -- floor-vs-fraction fight): with the auto floor pinned at 0.60x, a 0.60
-    -- pass-max let one strip land +0.33 and mid-pass finished at ~6.5, half a
-    -- colour state from the 6.6 ceiling - the uniform plateau. At 0.30 the
-    -- first pass lands ~6.2 pale, overlap ~6.5 visibly brighter, and further
-    -- overlap clamps at ~6.6. Keep in step with AUTO_PASS_MAX in
-    -- SoilFertilityManager.
-    -- [SF-48] pH 0.30 -> 0.40 (George CLOSED DESIGN 15:50): 0.30 kept mid-pass
-    -- and overlap inside the SAME Esc legend band, so the contrast the plateau
-    -- fix bought never showed. At 0.40 a first pass lands ~6.29 (below the
-    -- ~6.5 band edge) and overlap clamps ~6.60 (across it) - the legend does
-    -- the work of showing double coverage.
-    local SF_PASS_MAX = {
-        pH = 0.40, nitrogen = 60, phosphorus = 60, potassium = 60,
-        organicMatter = 2.0,
-    }
-    local SF_TARGETS = {
-        nitrogen   = vrCfgT and vrCfgT.NUTRIENT_TARGET or 70,
-        phosphorus = vrCfgT and vrCfgT.NUTRIENT_TARGET or 70,
-        potassium  = vrCfgT and vrCfgT.NUTRIENT_TARGET or 70,
-        pH         = (limitsT and limitsT.PH_OPTIMAL) or (vrCfgT and vrCfgT.PH_OPTIMAL) or 6.5,
-    }
-    local painted = false
-    for key, mass in pairs(pend.mass) do
-        if mass ~= 0 then
-            -- [SF-27] Concentration for THIS quad = banked mass / this quad's
-            -- area. However many frames the dose waited, the total applied over
-            -- the pass is unchanged, which is the same conservation rule the old
-            -- `sd.dX * (sd.area / areaHa)` expressed for a single frame.
-            local delta   = mass / areaHa
-            local before  = dbg and vm:readValueAtWorld(key, midX, midZ) or nil
-            -- [GATE] No target in flat mode: the dose goes on uniformly and ground
-            -- already at target takes it anyway. That IS the behaviour of a machine
-            -- without rate control, and over-application is the honest consequence.
-            local target  = capToTarget and SF_TARGETS[key] or nil
-            local applied
-            local cappedRun = false
-            if target ~= nil and delta > 0 then
-                -- [SF-32] Per-cell and capped: short cells get what they lack,
-                -- cells at or over target get nothing at all.
-                -- [SF-43] Per-pass physical cap here too (George CLOSED DESIGN
-                -- 12:32): this was the ONLY ToTarget call without it, so a
-                -- banked-dose flush could exceed what one metered pass can put
-                -- down. Same cap, same reason as the flat path below.
-                local passMaxP = SF_PASS_MAX[key]
-                if passMaxP and delta > passMaxP then delta = passMaxP end
-                applied = vm:addPaintStripToTarget(key, sx, sz, wx, wz, hx, hz, delta, target)
-                cappedRun = true
-            else
-                -- [SF-36] Flat broadcast is ADDITIVE again (George CLOSED DESIGN
-                -- 07:03, reverting the SF-35 target ceiling). The moving ceiling
-                -- skipped cells already near target, which painted random yellow
-                -- rectangular HOLES into an otherwise limed field - and Wizard's
-                -- lock is that overlap must double-lime like a real spreader:
-                -- headlands and lap joints running hotter is a PASS, not a bug.
-                -- So the dose lands uniformly and accumulates. The one thing that
-                -- must never survive is the [SF-30] saturation band parking pH
-                -- pixels at RAW_MAX (decodes 7.5, sticks forever): the sentinel
-                -- repair below pulls exactly those pixels back to the agronomic
-                -- target and touches nothing else, so it cannot re-create the
-                -- skip-holes.
-                local passMax = SF_PASS_MAX[key]
-                if passMax and delta > passMax then delta = passMax end
-                if key == "pH" and SF_TARGETS.pH then
-                    -- [SF-40] Flat pH paints ToTarget at PH_TARGET + 0.3 (~6.8)
-                    -- (George CLOSED DESIGN 10:41, superseding 09:48's bare
-                    -- addPaintStrip). The bare add let the [SF-30] saturation
-                    -- band slam a mid-pass 6.44 cell straight to 7.5 Over-limed
-                    -- in one tick (TEST 10:03). With the 6.8 ceiling: needy 5.9
-                    -- ground takes the full delta, cells at target still absorb
-                    -- overlap up to 6.8 (visibly brighter than ~6.5 mid-pass,
-                    -- and NOT the yellow holes - those came from ceiling AT
-                    -- target, where at-target cells took nothing), and nothing
-                    -- can reach RAW_MAX, so no sentinel is needed.
-                    -- [SF-42] soft ceiling lowered +0.3 -> +0.1 (~6.6, George
-                    -- CLOSED DESIGN 11:23): at 6.8 the whole field plateaued
-                    -- uniformly bright. With ~6.6 and the 0.50 fraction, a first
-                    -- pass lands ~6.2-6.3 pale and only overlap climbs to the
-                    -- ceiling, so heat marks actual double-coverage.
-                    -- [SF-45] ToTarget DROPPED from the flat path (George TRACE
-                    -- DESIGN 13:32; smoking gun offered=0.60 applied=0.71).
-                    -- ToTarget's Pass 2 re-processes the very pixels Pass 1 just
-                    -- moved: a 5.90 cell took +0.60, landed inside the fill
-                    -- band, and was SET to 6.60 - +0.70 total, past the
-                    -- physical cap. My BUILD 13:17 boundedness argument treated
-                    -- the two passes as disjoint; the log proved otherwise.
-                    -- A capped add followed by a ceiling CLAMP cannot compound:
-                    -- applied equals offered, and the clamp only pulls DOWN.
-                    applied = vm:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
-                    -- [SF-50] Headroom +0.1 -> +0.5 (~7.0; George CLOSED DESIGN
-                    -- 19:12): with the 6.6 lid, a genuine headland double
-                    -- (6.29 + 0.40 = 6.69) clamped down to the same tint as a
-                    -- near-target single. At ~7.0 the true double keeps its
-                    -- 6.69 and reads distinctly hotter, while the ceiling still
-                    -- sits under the 7.5 Over-limed line.
-                    vm:clampCeilingInStrip(key, sx, sz, wx, wz, hx, hz, SF_TARGETS.pH + 0.5)
-                else
-                    -- Other keys: additive. Nutrient RAW_MAX decodes to 100,
-                    -- which is genuinely "full" and legitimate to hold.
-                    applied = vm:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
-                end
-            end
-            if cappedRun then
-                -- Hand back whatever the ground refused. applyFertilizer already
-                -- credited the field scalar with the FULL offered dose; without
-                -- this the average climbs while the map stays put -- the exact
-                -- scalar-versus-map split SF-32 exists to close. Refund the same
-                -- FRACTION the ground refused against the credit the scalar
-                -- actually received: ratio, not derived mass, so units cannot
-                -- drift apart.
-                local credited = pend.scalar and pend.scalar[key]
-                if credited and credited > 0 and type(field[key]) == "number" and delta > 0 then
-                    local takenFrac = math.max(0, math.min(1, (applied or 0) / delta))
-                    local refund    = credited * (1 - takenFrac)
-                    if refund > 0 then
-                        field[key] = math.max(0, field[key] - refund)
-                    end
-                end
-            end
-            painted = true
-            if dbg then
-                local after = vm:readValueAtWorld(key, midX, midZ)
-                -- [SF-47] raw-step comparison (George item B): offered vs applied
-                -- differing by under one unitsPerRaw is quantisation, not a bug.
-                -- Equal raw integers = clean strip; the ±1-UPR judgement is now
-                -- readable straight off the line.
-                local dbgEntry  = vm.getLayerEntry and vm:getLayerEntry(key)
-                local dbgSpan   = (SoilValueMaps and SoilValueMaps.RAW_SPAN) or 254
-                local dbgUpr    = (dbgEntry and dbgEntry.def)
-                                  and ((dbgEntry.def.maxVal - dbgEntry.def.minVal) / dbgSpan) or 1
-                local dbgOffRaw = math.floor(delta / dbgUpr)
-                local dbgAppRaw = math.floor((applied or 0) / dbgUpr + 0.5)
-                SoilLogger.debug(
-                    "[SF-32] boom strip f%s %s: offered=%.4f applied=%.4f offeredRaw=%d appliedRaw=%d target=%s pixel %s -> %s (travel %.2fm boom %.2fm quad %.1fm2)",
-                    tostring(fieldId), tostring(key), delta, applied or 0,
-                    dbgOffRaw, dbgAppRaw, tostring(target),
-                    tostring(before), tostring(after), travel, boomLen, areaM2)
-            end
-        end
-    end
-
-    -- Advance the anchor to the line this quad actually painted.
-    field._vmLastBoomLine = { ax = ax, az = az, bx = bx, bz = bz }
-    field._vmLastBoomPaintMs = nowMs   -- [SF-38] the resume gate measures from here
-    -- (the narrow-tool dot fallback now defers via geometryOwnsCoverage; the old
-    -- _vmBoomPaintTime timestamp had no remaining readers and was removed)
-    -- [FIX-6] Coverage from the TRUE swept area, measured here.
-    --
-    -- markBoomCells credits whole 10 m cells, and a 24 m boom always touches three
-    -- of them -- 30 m of credit for 24 m of machine -- with the same rounding again
-    -- longitudinally every time 2 m of travel tips into a new row. Measured on
-    -- field 82: 820 strips x 2 m x 23.99 m boom = 3.93 ha actually driven, reported
-    -- as 7.60 ha. Whole-cell counting cannot measure a boom that is not a multiple
-    -- of the cell size; it is fine for dedup, wrong for area.
-    --
-    -- areaM2 above is the real swept quad for this strip, so accumulate that. Cells
-    -- keep doing what they are good at: remembering where we have already been.
-    if painted and areaM2 and areaM2 > 0 then
-        local fieldHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or nil
-        if fieldHa then
-            field._geometricCoverageOwner = (g_currentMission and g_currentMission.time) or true
-
-            -- [FIX-10] Dedup at the SAME resolution as the strip.
-            --
-            -- FIX-7 deduped against the 10 m zone cells while crediting 2 m strips,
-            -- and the units did not match: advancing 2 m usually enters no new 10 m
-            -- cell, so four strips in five earned nothing. Measured: 322 strips of
-            -- ~49 m2, 1.58 ha genuinely swept, credited as 0.03 ha. An 80% loss,
-            -- exactly (10 - 2) / 10.
-            --
-            -- The map is 2 m/px and the strip advances 2 m, so dedup on a 2 m grid.
-            -- Each cell is then 4 m2 and a 24 m boom advancing 2 m is 12 cells = 48 m2,
-            -- which is the real swept area with no rounding either way. One field
-            -- being worked is about 21k entries, cleared with the session.
-            local CELL = 2.0
-            local CELL_M2 = CELL * CELL
-            field._covCells2m = field._covCells2m or {}
-            local seen = field._covCells2m
-            local freshCells = 0
-
-            -- Walk the swept quad's leading edge at 2 m: the boom line this tick.
-            local ex, ez = hx - sx, hz - sz          -- travel edge
-            local bxv, bzv = wx - sx, wz - sz        -- boom edge
-            local boomLen2 = math.sqrt(bxv * bxv + bzv * bzv)
-            local steps = math.max(1, math.ceil(boomLen2 / CELL))
-            for i = 0, steps do
-                local f = (steps > 0) and (i / steps) or 0
-                -- midpoint between the previous and current boom line, so a fast
-                -- tick still stamps the ground it actually crossed.
-                local px = sx + bxv * f + ex * 0.5
-                local pz = sz + bzv * f + ez * 0.5
-                local key = math.floor(px / CELL) * 100000 + math.floor(pz / CELL)
-                if not seen[key] then
-                    seen[key] = true
-                    freshCells = freshCells + 1
-                end
-            end
-
-            local addM2 = freshCells * CELL_M2
-            -- Never claim more than the quad actually swept.
-            if addM2 > areaM2 then addM2 = areaM2 end
-            local newFrac = (areaM2 > 0) and (addM2 / areaM2) or 0
-            if newFrac > 0 then
-                local addHa = (areaM2 / 10000) * newFrac
-                field.sessionCoverageHa = math.min(fieldHa,
-                    (field.sessionCoverageHa or 0) + addHa)
-                field.sessionCoverageFraction = math.min(1.0, field.sessionCoverageHa / fieldHa)
-                field.coveredAreaHa = math.min(fieldHa,
-                    (field.coveredAreaHa or 0) + addHa)
-                field.coverageFraction = math.min(1.0, field.coveredAreaHa / fieldHa)
-            end
-        end
-    end
-
-    -- [FIX-3] Pull the field average back off the map now that this strip has
-    -- landed, so the scalar the PDA and Soil Monitor read cannot drift away from
-    -- the pixels the player is looking at. Throttled inside; keys are the ones
-    -- this pass actually touched.
-    if painted then
-        local resyncKeys = {}
-        for key in pairs(pend.mass) do resyncKeys[#resyncKeys + 1] = key end
-        if #resyncKeys > 0 then
-            self:resyncFieldFromMap(fieldId, field, resyncKeys)
-        end
-    end
-    pend.mass   = {}
-    pend.scalar = {}
-    pend.area   = 0
-    if painted then
-        -- [SF-23] Same staleness signal as tillage: minimap dirty AND the PDA
-        -- flagged, so a spray pass shows on Esc without waiting out the 3 s timer.
-        self:_soilMapsMutated()
+        -- Mark a recent boom paint so the narrow-tool dot fallback defers (see applyFertilizer).
+        field._vmBoomPaintTime = nowMs
+        -- Consume so the second HookManager site in the same tick can't re-apply.
+        sd.dN, sd.dP, sd.dK, sd.dPH, sd.dOM = 0, 0, 0, 0, 0
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
     end
 end
 
@@ -5042,6 +4364,27 @@ end
 --- converted field settles. Opt-in per field, so normal crops are never touched. The
 --- shared daily housekeeping (buffer/coverage/freeze reset, compaction decay) runs in
 --- _processOneDailyField before this is called. Coefficients live in SoilConstants.MEADOW.
+--- SF-56: read the engine's PLOW_LEVEL / STUBBLE_SHRED_LEVEL at (x,z) and
+--- return the decomposition multiplier for that cell's tillage class.
+--- plowed > 0: 1.0, stubble > 0 (plow not fresher): 0.8, neither: 0.6.
+--- Returns 1.0 (the baseline identity) when the read fails or is unavailable.
+---@param x number
+---@param z number
+---@return number multiplier
+function SoilFertilitySystem:_tillageDecompMult(x, z)
+    local fgs = g_currentMission and g_currentMission.fieldGroundSystem
+    if not fgs or not FieldDensityMap then return 1.0 end
+    local td = SoilConstants.OM_DYNAMICS and SoilConstants.OM_DYNAMICS.TILLAGE_DECOMPOSITION
+    if not td then return 1.0 end
+    local ok1, plow = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.PLOW_LEVEL, x, 0, z)
+    local ok2, stub = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.STUBBLE_SHRED_LEVEL, x, 0, z)
+    if not ok1 then plow = 0 end
+    if not ok2 then stub = 0 end
+    if (plow or 0) > 0 then return td.PLOWED or 1.0 end
+    if (stub or 0) > 0 then return td.STUBBLE or 0.8 end
+    return td.UNTILLED or 0.6
+end
+
 ---@param field table
 ---@param timeFactor number  1 / daysPerMonth (Issue #349 month normalization)
 ---@param limits table       SoilConstants.NUTRIENT_LIMITS
@@ -5194,7 +4537,6 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
-    field._covCells2m             = {}   -- [FIX-10] same lifetime
     field.sessionLastProduct      = nil
     field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
@@ -5235,6 +4577,13 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
         return
     end
 
+    -- ── SF-56: tillage-class decomposition multiplier ──────────────────────
+    local fsField = self:_findFieldObject(fieldId)
+    local tillMult = 1.0
+    if fsField and fsField.posX and fsField.posZ then
+        tillMult = self:_tillageDecompMult(fsField.posX, fsField.posZ)
+    end
+
     -- ── Passive organic-matter oxidation (#695) ──────────────────────────────
     -- Humus oxidizes continuously; without organic returns OM slowly declines. Fallow
     -- recovery (below) adds it back so an idle field still nets positive (+0.005/day),
@@ -5244,7 +4593,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     local omDyn = SoilConstants.OM_DYNAMICS
     if omDyn and (omDyn.DAILY_DECAY or 0) > 0 then
         local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * timeFactor)
+        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * tillMult * timeFactor)
     end
 
     -- ── Fallow recovery ──────────────────────────────────────────────────────
@@ -5372,7 +4721,6 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     field.sessionCoverageHa       = 0
                     field.sessionCoverageFraction = 0
                     field.sessionCoverageCells    = {}
-                    field._covCells2m             = {}   -- [FIX-10] same lifetime
                     field.sessionLastProduct      = nil
                     field._geometricCoverageOwner = nil  -- #753
                     field.sprayTrailPts           = nil
@@ -6314,19 +5662,9 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         -- sprayer), so it can't restamp the field average over the correct strip.
         local sprayX = self._lastSprayX
         local sprayZ = self._lastSprayZ
-        -- [FIX-18] Defer to boom geometry over a 5 s window, not 500 ms.
-        --
-        -- Boom paints land every ~2 m of travel, which at spreading speed is every
-        -- ~500 ms -- exactly this window. So the dot fired in the gaps BETWEEN
-        -- paints and stamped the FIELD AVERAGE in a 2.5 m blob at the tractor's
-        -- own position: a speckled band of wrong values down the centre of every
-        -- pass, worse in turns where banking widens the gaps. The question this
-        -- gate should ask is "does a boom measure this field at all", and that is
-        -- what the geometry-ownership window already answers. A genuinely narrow
-        -- tool never boom-paints, so the dot still runs for the machines it was
-        -- written for.
-        local boomOwns = SoilFertilitySystem.geometryOwnsCoverage(field)
-        if sprayX and sprayZ and self:vmAvailable() and not boomOwns then
+        local boomRecent = field._vmBoomPaintTime ~= nil
+            and (now - field._vmBoomPaintTime) >= 0 and (now - field._vmBoomPaintTime) < 500
+        if sprayX and sprayZ and self:vmAvailable() and not boomRecent then
             local vm = self.valueMaps
             if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
             if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
@@ -6547,38 +5885,16 @@ end
 ---@param liters         number   Raw liters consumed this tick (pre-rateMultiplier)
 ---@param fillTypeName   string|nil
 ---@param updateFractions boolean|nil  false = skip area update, only record product name
-function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions, rateMult)
+function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions)
     if not liters or liters <= 0 then return end
     local field = self.fieldData[fieldId]
     if not field then return end
 
     -- Reset session coverage when the product changes (issue #442)
-    --
-    -- [FIX-9] ...but only on a change that STICKS. The fill-type read is not
-    -- perfectly stable: over one measured run it returned LIME 38,981 times and
-    -- something else 3 times, and a single stray reading was enough to wipe the
-    -- counter and its cell memory mid-field. The player saw 5% on a field they had
-    -- just finished, because everything before the blip had been thrown away.
-    --
-    -- Requiring the new product twice in a row costs one tick of latency on a
-    -- genuine change and makes a one-frame misread harmless.
-    local productChanged = false
     if fillTypeName and field.sessionLastProduct and fillTypeName ~= field.sessionLastProduct then
-        if field._pendingProduct == fillTypeName then
-            productChanged = true          -- seen twice: believe it
-            field._pendingProduct = nil
-        else
-            field._pendingProduct = fillTypeName   -- first sighting: wait and see
-        end
-    elseif fillTypeName == field.sessionLastProduct then
-        field._pendingProduct = nil        -- back to normal, forget the blip
-    end
-
-    if productChanged then
         field.sessionCoverageHa       = 0
         field.sessionCoverageFraction = 0
         field.sessionCoverageCells    = {}
-        field._covCells2m             = {}   -- [FIX-10] same lifetime
         field._geometricCoverageOwner = nil  -- #753: re-detect geometric path for new product
         field.sprayTrailPts           = nil
     end
@@ -6594,7 +5910,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     -- double-counts and pins Pass% at 100% (#726). Use _geometricCoverageOwner
     -- instead of sessionCoverageCells, because overlayOnly mode populates cells for
     -- spray trail dedup but does NOT update coverage fractions (#753).
-    if SoilFertilitySystem.geometryOwnsCoverage(field) then return end
+    if field._geometricCoverageOwner then return end
 
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
@@ -6603,13 +5919,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     local rateEntry = fillTypeName and baseRates and (baseRates[fillTypeName] or baseRates.DEFAULT)
     local ratePerHa = (rateEntry and rateEntry.value and rateEntry.value > 0) and rateEntry.value or 93.5
 
-    -- [FIX-13] Divide by the rate actually set on the dial, not the base rate.
-    -- The estimate assumed 374 L/ha regardless of the multiplier, so at 0.5x
-    -- (half the lime per hectare) it reported half the true area, and at 2.0x
-    -- double. Wrong whenever the dial is off 1.0x, which with auto-rate is
-    -- nearly always.
-    local effRate = ratePerHa * math.max(0.05, tonumber(rateMult) or 1.0)
-    local areaThisTick = liters / effRate
+    local areaThisTick = liters / ratePerHa
     field.coveredAreaHa = (field.coveredAreaHa or 0) + areaThisTick
 
     local prevCoverage = field.coverageFraction or 0
@@ -6631,123 +5941,6 @@ end
 --- Used to bound coverage + overlay stamping to the actual field polygon so that
 --- wide-boom overhang past the headland and turn-row sweeps can't credit off-field
 --- cells (which previously pushed pass% to 100% before the field was done).
--- [SF-33] Spatial rollup for the Treatment Plan.
---
--- The plan used to read field SCALAR averages while the map and tooltip read the
--- ~2 m value maps, so the two disagreed and players learned to ignore the plan.
--- This samples the same maps the picture is drawn from, so one truth feeds both.
---
--- SAMPLE CAP is George's constraint on DESIGN 16:58: a 2 m grid over a very large
--- field is hundreds of thousands of reads and would hitch the Esc PDA on open.
--- The step scales up adaptively to hold the count near the cap, so a big field
--- loses resolution rather than costing the player a freeze.
-local SPATIAL_MAX_SAMPLES = 50000
-local SPATIAL_BASE_STEP   = 2.0     -- one value-map pixel
-
--- pH is not a "more is better" quantity, so it needs its own bands rather than
--- STATUS_THRESHOLDS: too acid is a problem AND too alkaline is a problem.
-local SPATIAL_PH_POOR       = 6.0
-local SPATIAL_PH_FAIR       = 6.5   -- PH_OPTIMAL
-local SPATIAL_PH_OVER_LIMED = 7.2
-
---- Sample a field's value maps on a grid and roll the cells up per nutrient.
---- Cells with no data (raw 0) are skipped and do NOT count toward the
---- denominator, so a partly-seeded field reports on what it actually knows.
----@param fieldId number
----@return table|nil  { [key] = { mean, worst, pctBelowPoor, pctBelowFair,
----                               pctOverLimed, sampleCount }, _step, _samples }
-function SoilFertilitySystem:getFieldSpatialSummary(fieldId)
-    if not fieldId or fieldId <= 0 then return nil end
-    if not self.vmAvailable or not self:vmAvailable() then return nil end
-    local field = self.fieldData and self.fieldData[fieldId]
-    if not field then return nil end
-
-    -- Cache until the maps are written again. _soilMapsMutated bumps the
-    -- generation, so a spray or a tillage pass invalidates this for free.
-    local gen = self._vmWriteGen or 0
-    local cached = field._spatialSummary
-    if cached and cached.gen == gen then return cached.data end
-
-    local verts = self:_getFieldPolyVerts(fieldId, field)
-    if not verts or #verts < 3 then return nil end
-
-    local minX, maxX = math.huge, -math.huge
-    local minZ, maxZ = math.huge, -math.huge
-    for _, v in ipairs(verts) do
-        if v.x < minX then minX = v.x end
-        if v.x > maxX then maxX = v.x end
-        if v.z < minZ then minZ = v.z end
-        if v.z > maxZ then maxZ = v.z end
-    end
-    local wid, hgt = maxX - minX, maxZ - minZ
-    if wid <= 0 or hgt <= 0 then return nil end
-
-    local step = SPATIAL_BASE_STEP
-    local estimate = (wid / step) * (hgt / step)
-    if estimate > SPATIAL_MAX_SAMPLES then
-        step = step * math.sqrt(estimate / SPATIAL_MAX_SAMPLES)
-    end
-
-    local KEYS = { "nitrogen", "phosphorus", "potassium", "pH", "organicMatter" }
-    local acc = {}
-    for _, k in ipairs(KEYS) do
-        acc[k] = { sum = 0, n = 0, worst = nil, poor = 0, fair = 0, over = 0 }
-    end
-
-    local vm = self.valueMaps
-    local inField = 0
-    local z = minZ
-    while z <= maxZ do
-        local x = minX
-        while x <= maxX do
-            if _isPointInPoly(x, z, verts) then
-                inField = inField + 1
-                for _, k in ipairs(KEYS) do
-                    local v = vm:readValueAtWorld(k, x, z)
-                    if v ~= nil then
-                        local a = acc[k]
-                        a.sum = a.sum + v
-                        a.n   = a.n + 1
-                        if a.worst == nil or v < a.worst then a.worst = v end
-                        if k == "pH" then
-                            if v < SPATIAL_PH_POOR then a.poor = a.poor + 1 end
-                            if v < SPATIAL_PH_FAIR then a.fair = a.fair + 1 end
-                            if v > SPATIAL_PH_OVER_LIMED then a.over = a.over + 1 end
-                        else
-                            local th = SoilConstants.STATUS_THRESHOLDS
-                                       and SoilConstants.STATUS_THRESHOLDS[k]
-                            if th then
-                                if v < th.poor then a.poor = a.poor + 1 end
-                                if v < th.fair then a.fair = a.fair + 1 end
-                            end
-                        end
-                    end
-                end
-            end
-            x = x + step
-        end
-        z = z + step
-    end
-
-    local out = { _step = step, _samples = inField }
-    for _, k in ipairs(KEYS) do
-        local a = acc[k]
-        if a.n > 0 then
-            out[k] = {
-                mean         = a.sum / a.n,
-                worst        = a.worst,
-                pctBelowPoor = (a.poor / a.n) * 100,
-                pctBelowFair = (a.fair / a.n) * 100,
-                pctOverLimed = (a.over / a.n) * 100,
-                sampleCount  = a.n,
-            }
-        end
-    end
-
-    field._spatialSummary = { gen = gen, data = out }
-    return out
-end
-
 --- Resolved once per field and cached on field._polyVerts:
 ---   • a verts array (>=3 points) when the polygon is available
 ---   • false when it is not (caller falls back to counting every cell)
@@ -6823,7 +6016,6 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     local polyVerts = self:_getFieldPolyVerts(fieldId, field)
 
     if not field.sessionCoverageCells then field.sessionCoverageCells = {} end
-    if not field._covCells2m          then field._covCells2m          = {} end
     if not field.dailyCoverageCells   then field.dailyCoverageCells   = {} end
     if not field.zoneData             then field.zoneData             = {} end
 
@@ -6854,13 +6046,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 if not field.sessionCoverageCells[cellKey] then
                     field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
                     if not overlayOnly then
-                        -- [FIX-6] Only when nothing better is measuring. paintBoomStrip
-                        -- runs first and accumulates the true swept area; adding whole
-                        -- cells on top of that would double-count. Cells still do the
-                        -- dedup and the spray-trail overlay either way.
-                        if not SoilFertilitySystem.geometryOwnsCoverage(field) then
-                            field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
-                        end
+                        field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
                     -- ── Spray trail (in-view overlay) ──────────────────────────────
                     -- Cache world-center + terrain height for SoilHUD:drawSprayTrail().
@@ -6874,15 +6060,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
                 end
                 if not overlayOnly and not field.dailyCoverageCells[cellKey] then
                     field.dailyCoverageCells[cellKey] = true
-                    -- [FIX-11] Same guard as its sessionCoverageHa twin above, which
-                    -- FIX-6 fixed while missing this line right beside it. Left
-                    -- unguarded, whole 10 m cells were added ON TOP of the geometric
-                    -- measurement, so Coverage read 96% while Pass read 46% for the
-                    -- same driving. The completion notice reads Coverage, which is why
-                    -- it fired on a field that was under half done.
-                    if not SoilFertilitySystem.geometryOwnsCoverage(field) then
-                        field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellArea)
-                    end
+                    field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellArea)
                 end
 
                 -- ── Pressure zone stamp (zoneData) ─────────────────────────────────
@@ -6959,7 +6137,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
         -- next() is O(1) and sessionCoverageCells is already cleared at every site that
         -- clears _geometricCoverageOwner, so this needs no new state to keep in sync.
         if next(field.sessionCoverageCells) ~= nil then
-            field._geometricCoverageOwner = (g_currentMission and g_currentMission.time) or true
+            field._geometricCoverageOwner = true
         end
         field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
         field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)

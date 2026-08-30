@@ -774,9 +774,6 @@
     <e k="sf_variable_rate_long"           v="Variabele dosering op basis van bodemtekorten in- of uitschakelen" />
     <e k="sf_desc_seeAndSprayEnabled"      v="Boomsecties onderdrukken boven gebieden die geen bespuiting nodig hebben" />
     <e k="sf_config_seeSpray"              v="See &amp; Spray" />
-    <e k="sf_config_precision"             v="Precision Pack (Variable Rate + Section Control)" />
-    <e k="sf_pack_required"                v="This sprayer does not have the add-on needed for that function. Please visit the shop to upgrade your sprayer." />
-    <e k="sf_pack_legacy_notice"           v="Variable rate and section control now need the Precision Pack. This sprayer does not have it - visit the shop to upgrade." />
     <e k="sf_config_seeSprayWeed"          v="Zie &amp; Sproei: Onkruid" />
     <e k="sf_config_seeSprayPest"          v="Zie &amp; Sproei: Plaag" />
     <e k="sf_config_seeSprayDisease"       v="Zie &amp; Sproei: Ziekte" />
