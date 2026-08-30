@@ -1256,7 +1256,18 @@ end
 
 --- Average semantic value over a field polygon via engine-side executeGet.
 ---@return number|nil avg, number pixelCount
-function SoilValueMaps:readAverageOfPolygon(key, verts)
+--- Area-weighted mean of a layer over a polygon, counting only written pixels.
+--- An optional external `DensityMapFilter` (e.g. a fruit-harvest-state filter built
+--- by SF-14) is ANDed with the written-pixel filter on both the native polygon and
+--- block-fallback branches, so the mean covers only pixels that are both written
+--- and match the external mask. When the external filter is nil the call is
+--- unchanged (one-filter executeGet). No new map, persistence file or allocator.
+---@param key string
+---@param verts table list of {x=, z=}
+---@param externalFilter table|nil optional DensityMapFilter to AND with written pixels
+---@return number|nil mean decoded value
+---@return number pixels counted
+function SoilValueMaps:readAverageOfPolygon(key, verts, externalFilter)
     if not self.available or not verts or #verts < 3 then return nil, 0 end
     local entry = self.layers[key]
     if not entry then return nil, 0 end
@@ -1268,7 +1279,7 @@ function SoilValueMaps:readAverageOfPolygon(key, verts)
     local sum, pixels = 0, 0
     if setPolygonRegion(self, m, verts) then
         local ok, acc, n = pcall(function()
-            local a, cnt, _ = m:executeGet(filter)
+            local a, cnt, _ = m:executeGet(filter, externalFilter)
             return a, cnt
         end)
         if ok and n and n > 0 then sum, pixels = acc, n end
@@ -1278,7 +1289,7 @@ function SoilValueMaps:readAverageOfPolygon(key, verts)
                 cx - half, cz - half, cx + half, cz - half, cx - half, cz + half,
                 DensityCoordType.POINT_POINT_POINT)
             local ok, acc, n = pcall(function()
-                local a, cnt, _ = m:executeGet(filter)
+                local a, cnt, _ = m:executeGet(filter, externalFilter)
                 return a, cnt
             end)
             if ok and n and n > 0 then
