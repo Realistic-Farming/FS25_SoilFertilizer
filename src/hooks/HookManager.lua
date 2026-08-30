@@ -260,16 +260,18 @@ function HookManager:installAll(soilSystem)
     local harvestOk = self:installHarvestHook()
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- Yield modifier hook: applies soil-fertility yield reduction via the combine hopper
-    -- (separate from addCutterArea for RealisticHarvesting compatibility - see issue #284)
-    local yieldModOk = self:installYieldModifierHook()
-    if yieldModOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    -- Zone yield cutter hook (SF-14): scales the newly-added Cutter
+    -- multiplier-area delta by the pre-cut spatial scalar (or the frozen
+    -- field-average scalar) on the live cutter work-area pointer. Replaces
+    -- the old FillUnit hopper yield-modifier wrapper.
+    local zoneYieldOk = self:installZoneYieldCutterHook()
+    if zoneYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Harvest contract underwrite (#741 / SF-29): wraps HarvestMission.getCompletion so a
     -- base-game harvest contract on a degraded neighbour field tops up to the vanilla-
-    -- expected completion at delivery (divides out the same yield modifier the hopper hook
+    -- expected completion at delivery (divides out the same yield modifier the cutter hook
     -- above applied). Server-side, fail-safe, no soil write, no farm-money move. Must run
-    -- after installYieldModifierHook so the modifier it inverts is the one in force.
+    -- after installZoneYieldCutterHook so the modifier it inverts is the one in force.
     if HarvestContractUnderwrite and HarvestContractUnderwrite.install then
         local underwriteOk = HarvestContractUnderwrite.install(self)
         if underwriteOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -2526,9 +2528,9 @@ end
 -- crop loss, and engine load.
 --
 -- Fix: addCutterArea is now used ONLY for soil nutrient tracking (field detection
--- + onHarvest).  The yield modifier is applied in a separate per-combine
--- addFillUnitFillLevel wrapper (see installYieldModifierHook below) which always
--- receives actual liters regardless of who sits above it in the call chain.
+-- + onHarvest).  The yield modifier is applied in a separate per-cutter
+-- processCutterArea delta wrapper (see installZoneYieldCutterHook below) which
+-- scales the newly-added multiplier-area delta on the live work-area pointer.
 ---@return boolean success True if hook installed successfully
 function HookManager:installHarvestHook()
     if not Cutter or type(Cutter.onEndWorkAreaProcessing) ~= "function" then
@@ -2548,7 +2550,7 @@ function HookManager:installHarvestHook()
     -- that captures and forwards the original's return value instead.
     --
     -- The wrapper no longer modifies the liters argument - yield reduction is
-    -- handled by installYieldModifierHook (addFillUnitFillLevel on the hopper).
+    -- handled by installZoneYieldCutterHook (the processCutterArea delta wrapper).
     -- This makes the hook argument-order-agnostic and safe regardless of what
     -- other mods pass as the 3rd positional argument.
     --
@@ -2561,7 +2563,7 @@ function HookManager:installHarvestHook()
                 tostring(combineSelf.isServer), area or 0, liters or 0, tostring(inputFruitType))
 
             -- Detect field for nutrient depletion tracking (onHarvest).
-            -- Yield modifier is NO LONGER applied here - see installYieldModifierHook.
+            -- Yield modifier is NO LONGER applied here - see installZoneYieldCutterHook.
             local detectedFieldId = nil
             local detectedX, detectedZ = nil, nil
 
@@ -2807,167 +2809,166 @@ function HookManager:installHarvestHook()
 end
 
 -- =========================================================
--- HOOK 1b: Yield modifier applied via combine hopper
+-- HOOK 1b: Zone yield applied via the live Cutter pointer
 -- =========================================================
--- Applies the SF yield modifier by wrapping Combine.addFillUnitFillLevel.
--- This is the companion to installHarvestHook.  Separating the modifier
--- application from addCutterArea fixes the RealisticHarvesting conflict:
--- RHM uses registerOverwrittenFunction for addCutterArea and calls
---   superFunc(self, area, realArea, inputFruitType, ...)
--- where the 3rd argument is realArea (pixel count), NOT liters.  The old
--- code read arg 3 as "liters" and returned liters*yieldModifier - RHM got
--- a garbage retLiters and its HUD went blank (issue #284).
+-- Applies the SF-14 zone-yield scalar by wrapping Cutter.processCutterArea on
+-- the surfaces the engine actually calls. The engine invokes
+-- `workArea.processingFunction(self, workArea, dt)` (WorkArea.lua:178-183),
+-- and that pointer is COPIED from `self[functionName]` at vehicle load
+-- (WorkArea.lua:257-266), so a class-only hook is a failed install. We wrap
+-- all four surfaces (class, registered type, live instance, live work-area
+-- stored pointer) with one factory, prevent duplicate wrapping, retain every
+-- exact original, and register cleanup for all four layers.
 --
--- By moving modifier logic here (where the value is always actual hopper
--- liters), we are argument-order-agnostic and the conflict disappears.
--- Instance patching uses makeYieldWrapper(vehicle.addFillUnitFillLevel) to
--- preserve any other mod's chain rather than replacing it outright.
+-- The wrapper scales ONLY the newly-added multiplier-area delta
+-- (`lastMultiplierArea` after minus before) by the pre-cut spatial scalar (or
+-- the frozen field-average scalar), leaving the base Cutter chain to run
+-- exactly once with unchanged arguments. An SCS multiplier already in the
+-- stored chain stays inside the call and composes.
 ---@return boolean success True if hook installed successfully
-function HookManager:installYieldModifierHook()
-    -- FillUnit.addFillUnitFillLevel is the correct FS25 hook target.
-    -- Combine does NOT register addFillUnitFillLevel as its own class method --
-    -- it inherits it from FillUnit via the vehicle specialization system.
-    -- Hooking Combine.addFillUnitFillLevel therefore always fails (nil check).
-    -- Real FS25 signature: addFillUnitFillLevel(self, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-    if not FillUnit or type(FillUnit.addFillUnitFillLevel) ~= "function" then
-        SoilLogger.warning("Yield modifier hook: FillUnit.addFillUnitFillLevel not available -- yield reduction skipped")
+function HookManager:installZoneYieldCutterHook()
+    -- SF-14 ZONE YIELD CUTTER HOOK. Moves the yield quantity to the LIVE CUTTER
+    -- pointer: the engine calls `workArea.processingFunction(self, workArea, dt)`
+    -- (WorkArea.lua:178-183), and that pointer is COPIED from `self[functionName]`
+    -- at vehicle load (WorkArea.lua:257-266). A class-only hook is therefore a
+    -- FAILED install. We wrap all four surfaces the engine actually uses:
+    --   1. Cutter.processCutterArea class (future registration);
+    --   2. every registered cutter type's functions.processCutterArea;
+    --   3. every live cutter instance's processCutterArea;
+    --   4. every live CUTTER work area's stored processingFunction where
+    --      functionName == "processCutterArea".
+    -- The wrapper scales ONLY the newly-added multiplier-area delta by the
+    -- pre-cut spatial scalar (or the frozen field-average scalar), leaving the
+    -- base Cutter chain to run exactly once with unchanged arguments. An SCS
+    -- multiplier already in the stored chain stays inside the call.
+    if not Cutter or type(Cutter.processCutterArea) ~= "function" then
+        SoilLogger.warning("Zone yield cutter hook: Cutter.processCutterArea not available -- skipped")
         return false
     end
 
-    local original = FillUnit.addFillUnitFillLevel
+    local hookMgrRef = self
 
-    -- Factory so the same modifier logic wraps any chainFn
-    local function makeYieldWrapper(chainFn)
-        -- Correct FS25 signature includes farmId as first arg after self
-        return function(combineSelf, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-            -- Only apply modifier on the server when filling the hopper (delta > 0),
-            -- only for combine spec vehicles, and only when SF systems are ready.
-            local modifiedDelta = fillLevelDelta
-            if combineSelf.isServer
-                and combineSelf.spec_combine ~= nil
-                and fillLevelDelta and fillLevelDelta > 0
-                and fillTypeIndex
-                and g_SoilFertilityManager
-                and g_SoilFertilityManager.soilSystem
-                and g_SoilFertilityManager.settings.enabled
-                and g_SoilFertilityManager.settings.nutrientCycles
+    -- One factory so the same delta-scaling logic wraps any chainFn.
+    local function makeCutterWrapper(chainFn)
+        return function(cutterSelf, workArea, dt)
+            -- Prepare the pre-cut context BEFORE the destructive base call so we
+            -- snapshot lastMultiplierArea and resolve the scalar first.
+            local context = nil
+            local zoneYield = g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
+            if zoneYield ~= nil and type(zoneYield.preparePreCutContext) == "function"
+               and cutterSelf.isServer
+               and g_SoilFertilityManager
+               and g_SoilFertilityManager.soilSystem
+               and g_SoilFertilityManager.settings.enabled
             then
-                local ok, errMsg = pcall(function()
-                    local fruitType = nil
-                    if g_fruitTypeManager then
-                        local ft = g_fruitTypeManager:getFruitTypeByFillTypeIndex(fillTypeIndex)
-                        if ft then fruitType = ft.index end
-                    end
-                    if not fruitType or fruitType <= 0 then return end
-
-                    local x, _, z = getWorldTranslation(combineSelf.rootNode)
-                    if not x then return end
-
-                    local fieldId = nil
-                    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                        local field = g_fieldManager:getFieldAtWorldPosition(x, z)
-                        if field and field.farmland then fieldId = field.farmland.id end
-                    end
-                    if not fieldId and g_farmlandManager then
-                        local farmland = g_farmlandManager:getFarmlandAtWorldPosition(x, z)
-                        if farmland then fieldId = farmland.id end
-                    end
-                    -- Fallback: rootNode may sit outside field polygon on large combines
-                    if not fieldId or fieldId <= 0 then
-                        local attachedImpls = combineSelf.spec_attacherJoints and combineSelf.spec_attacherJoints.attachedImplements
-                        if attachedImpls then
-                            for _, impl in ipairs(attachedImpls) do
-                                local obj = impl and impl.object
-                                if obj then
-                                    local ix, _, iz = getWorldTranslation(obj.rootNode)
-                                    if ix then
-                                        if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                                            local f = g_fieldManager:getFieldAtWorldPosition(ix, iz)
-                                            if f and f.farmland then fieldId = f.farmland.id end
-                                        end
-                                        if not fieldId and g_farmlandManager then
-                                            local fl = g_farmlandManager:getFarmlandAtWorldPosition(ix, iz)
-                                            if fl then fieldId = fl.id end
-                                        end
-                                    end
-                                    if (not fieldId or fieldId <= 0) and obj.spec_workArea and obj.spec_workArea.workAreas then
-                                        for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                                            if wa.start then
-                                                local sx, _, sz = getWorldTranslation(wa.start)
-                                                if sx then
-                                                    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                                                        local f = g_fieldManager:getFieldAtWorldPosition(sx, sz)
-                                                        if f and f.farmland then fieldId = f.farmland.id end
-                                                    end
-                                                    if not fieldId and g_farmlandManager then
-                                                        local fl = g_farmlandManager:getFarmlandAtWorldPosition(sx, sz)
-                                                        if fl then fieldId = fl.id end
-                                                    end
-                                                end
-                                            end
-                                            if fieldId and fieldId > 0 then break end
-                                        end
-                                    end
-                                end
-                                if fieldId and fieldId > 0 then break end
-                            end
-                        end
-                    end
-                    if not fieldId or fieldId <= 0 then return end
-
-                    -- SF-14 FREEZE SUPERSESSION (spatial path). On the spatial path
-                    -- (value maps present and the captured yieldEfficiency layer is
-                    -- live), the per-pass modifier is the AREA-WEIGHTED READ of the
-                    -- captured, growth-time-static layer under the header, computed
-                    -- fresh each pass. The SF-16 scalar freeze is BYPASSED, not
-                    -- reused; when the spatial read cannot answer (nil), the call
-                    -- falls through to the untouched field-average computeYieldModifier
-                    -- with its scalar freeze (maps absent / no captured data).
-                    local yieldModifier = nil
-                    local zoneYield = g_SoilFertilityManager.zoneYield
-                    if zoneYield ~= nil and type(zoneYield.readHeaderAreaWeighted) == "function"
-                       and zoneYield:isLive() then
-                        local okRead, spatial = pcall(function()
-                            return zoneYield:readHeaderAreaWeighted(combineSelf, fieldId)
-                        end)
-                        if okRead and type(spatial) == "number" then
-                            yieldModifier = spatial
-                        end
-                    end
-                    if yieldModifier == nil then
-                        yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
-                    end
-                    if yieldModifier ~= 1.0 then
-                        modifiedDelta = fillLevelDelta * yieldModifier
-                        SoilLogger.debug("Yield modifier hook: Field %d Fruit %d modifier=%.3f (%.1fL -- %.1fL)",
-                            fieldId, fruitType, yieldModifier, fillLevelDelta, modifiedDelta)
-                    end
+                local ok, ctx = pcall(function()
+                    return zoneYield:preparePreCutContext(cutterSelf, workArea)
                 end)
-                if not ok then
-                    SoilLogger.error("Yield modifier hook failed: %s", tostring(errMsg))
-                    modifiedDelta = fillLevelDelta
+                if ok then context = ctx end
+            end
+
+            local spec = cutterSelf.spec_cutter
+            local before = spec and spec.workAreaParameters and spec.workAreaParameters.lastMultiplierArea or 0
+
+            -- Call the chain once; capture its return values unchanged.
+            local r1, r2, r3, r4, r5 = chainFn(cutterSelf, workArea, dt)
+
+            -- Scale only when we have a valid context (fruit + field resolved).
+            if context ~= nil and spec ~= nil and spec.workAreaParameters ~= nil then
+                local added = spec.workAreaParameters.lastMultiplierArea - before
+                if added > 0
+                   and spec.workAreaParameters.lastFruitType == context.fruitTypeIndex
+                   and context.fieldId and context.fieldId > 0
+                then
+                    local ok, errMsg = pcall(function()
+                        -- Establish the existing persisted crop freeze once.
+                        local frozen = g_SoilFertilityManager.soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
+                        -- Use the spatial scalar when valid, otherwise the frozen scalar.
+                        local scalar = frozen
+                        if context.path == "spatial" and type(context.scalar) == "number" then
+                            scalar = context.scalar
+                        end
+                        if scalar ~= 1.0 then
+                            spec.workAreaParameters.lastMultiplierArea = before + added * scalar
+                        end
+                        SoilLogger.debug("SF14_CUT field=%d fruit=%d path=%s base=%.3f sf=%.3f added=%.3f final=%.3f drag=%s",
+                            context.fieldId, context.fruitTypeIndex, context.path or "none",
+                            before, scalar, added, spec.workAreaParameters.lastMultiplierArea,
+                            tostring(context.drag))
+                    end)
+                    if not ok then
+                        SoilLogger.error("Zone yield cutter hook failed: %s", tostring(errMsg))
+                    end
                 end
             end
-            return chainFn(combineSelf, farmId, fillUnitIndex, modifiedDelta, fillTypeIndex, toolType, fillPositionData)
+
+            return r1, r2, r3, r4, r5
         end
     end
 
-    FillUnit.addFillUnitFillLevel = makeYieldWrapper(original)
-    self:register(FillUnit, "addFillUnitFillLevel", original, "FillUnit.addFillUnitFillLevel (yield modifier)")
+    -- Layer 1: Cutter class (future registration).
+    local classOriginal = Cutter.processCutterArea
+    Cutter.processCutterArea = makeCutterWrapper(classOriginal)
+    hookMgrRef:register(Cutter, "processCutterArea", classOriginal, "Cutter.processCutterArea (zone yield)")
 
-    -- Wrap existing combine instances to preserve other mods specialization chains.
-    local patched = 0
-    local vehicleSystem = g_currentMission and g_currentMission.vehicleSystem
-    if vehicleSystem and vehicleSystem.vehicles then
-        for _, vehicle in pairs(vehicleSystem.vehicles) do
-            if vehicle.spec_combine and type(vehicle.addFillUnitFillLevel) == "function" then
-                vehicle.addFillUnitFillLevel = makeYieldWrapper(vehicle.addFillUnitFillLevel)
-                patched = patched + 1
+    -- Layer 2: every registered cutter type's functions.processCutterArea.
+    local typesPatched = 0
+    local typeManager = g_vehicleTypeManager
+    if typeManager and typeManager.types then
+        for _, typeDef in pairs(typeManager.types) do
+            local hasCutter = false
+            if typeDef.specializationsByName and typeDef.specializationsByName.cutter then
+                hasCutter = true
+            elseif typeDef.specializations then
+                for _, spec in ipairs(typeDef.specializations) do
+                    if spec == Cutter or (spec and spec.specName == "cutter") then
+                        hasCutter = true
+                        break
+                    end
+                end
+            end
+            if hasCutter and typeDef.functions and typeDef.functions.processCutterArea then
+                local origTypeFn = typeDef.functions.processCutterArea
+                typeDef.functions.processCutterArea = makeCutterWrapper(origTypeFn)
+                hookMgrRef:register(typeDef.functions, "processCutterArea", origTypeFn, "type.processCutterArea (zone yield)")
+                typesPatched = typesPatched + 1
             end
         end
     end
 
-    SoilLogger.info("[OK] Yield modifier hook installed (FillUnit.addFillUnitFillLevel) -- %d existing combines patched", patched)
+    -- Layer 3: every live cutter instance's processCutterArea.
+    local instancesPatched = 0
+    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
+        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+            if vehicle.spec_cutter and type(vehicle.processCutterArea) == "function" then
+                local origInst = vehicle.processCutterArea
+                vehicle.processCutterArea = makeCutterWrapper(origInst)
+                hookMgrRef:register(vehicle, "processCutterArea", origInst, "instance.processCutterArea (zone yield)")
+                instancesPatched = instancesPatched + 1
+            end
+        end
+    end
+
+    -- Layer 4: every live CUTTER work area's stored processingFunction where
+    -- functionName == "processCutterArea". This is the surface the engine calls.
+    local workAreasPatched = 0
+    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
+        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+            if vehicle.spec_cutter and vehicle.spec_workArea and vehicle.spec_workArea.workAreas then
+                for _, wa in ipairs(vehicle.spec_workArea.workAreas) do
+                    if wa.functionName == "processCutterArea" and type(wa.processingFunction) == "function" then
+                        local origWa = wa.processingFunction
+                        wa.processingFunction = makeCutterWrapper(origWa)
+                        hookMgrRef:register(wa, "processingFunction", origWa, "workArea.processingFunction (zone yield)")
+                        workAreasPatched = workAreasPatched + 1
+                    end
+                end
+            end
+        end
+    end
+
+    SoilLogger.info("SF14_HOOK_INSTALL class=1 types=%d instances=%d workAreas=%d",
+        typesPatched, instancesPatched, workAreasPatched)
     return true
 end
 

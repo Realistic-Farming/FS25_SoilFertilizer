@@ -818,15 +818,15 @@ function SoilFertilityManager:activateSoilSystem()
             end
         end
 
-        -- SF-14 ZONE YIELD: initialize + register the daily capture accrual.
+        -- SF-14 ZONE YIELD: initialize + register the growth-message capture.
         -- Server-only by the value-map write's nature; the module's own live
         -- gate keeps it inert until the growth_modulation release gate opens.
-        -- Time Guard absent: the capture runs on SF's own day tracking via
-        -- checkDayFallback, pumped from the soil system's daily pump.
+        -- The capture runs once per drained FINISHED_GROWTH_PERIOD delivery;
+        -- Time Guard creates no second ordinary capture.
         if self.zoneYield then
             self.zoneYield:initialize()
             if g_server ~= nil then
-                self.zoneYield:registerDailyAccrual()
+                self.zoneYield:registerGrowthMessage()
             end
         end
 

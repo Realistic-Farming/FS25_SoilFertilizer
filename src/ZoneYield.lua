@@ -7,37 +7,45 @@
 -- never recomputed live at harvest.
 --
 -- THE TWO HALVES.
---   The capture (per growth period): rides the family's shared
---   read (ViabilityMask:getCellGrowthInfo, extended to carry the
---   full input set), scores each cell's N/P/K against the
---   efficiency band, clamps at write time, and writes to the
---   `yieldEfficiency` value-map layer.
---   The read (per harvest work-area pass): reads the captured,
---   growth-time-static `yieldEfficiency` layer across the header,
---   area-weighted per SF-25's ratified rule, producing one scalar.
+--   The capture (per drained growth period): rides the engine's
+--   FINISHED_GROWTH_PERIOD message (GrowthSystem publishes
+--   finishedPeriod, hasPendingGrowth), scores each cell's N/P/K
+--   against the efficiency band, clamps at write time, and writes
+--   to the `yieldEfficiency` value-map layer. One drained delivery
+--   produces one capture pass. Time Guard creates no second
+--   ordinary capture.
+--   The read (per harvest work-area pass): a pre-cut spatial
+--   context method prepares the scalar BEFORE the destructive base
+--   Cutter call, reading the captured, growth-time-static
+--   `yieldEfficiency` layer across the true work-area polygon,
+--   fruit-masked, area-weighted per SF-25's ratified rule.
 --
 -- THE FREEZE SUPERSESSION. On the spatial path (value maps
--- present), the SF-16 scalar `frozenYieldModifier` freeze is
--- BYPASSED, not reused: the per-pass modifier is the area-weighted
--- read of the captured layer, computed fresh each pass. The scalar
--- freeze stays exactly as built for the non-spatial fallback (maps
--- absent, field-average path), one branch, untouched.
+--   present and a fresh capture exists), the per-pass modifier is
+--   the fruit-filtered polygon read of the captured layer. The
+--   scalar `frozenYieldModifier` freeze stays exactly as built for
+--   the non-spatial fallback (maps absent, field-average path) and
+--   for contract fields, one branch, untouched. The same crop does
+--   not change its yield result halfway through harvest because
+--   earlier passes depleted nutrients: the capture is frozen at
+--   growth time and the scalar freeze holds the field-average
+--   fallback for the harvest run.
 --
 -- THE CALIBRATION BAR (reconciliation invariant). A uniform field,
--- where every cell shares the same growth-time conditions, must
--- yield exactly what it yields today. The capture formula IS
--- `_yieldModifierFromNutrients` (the same single source of truth
--- computeYieldModifier uses) evaluated with the CELL's own N/P/K,
--- clamped to the band. On a uniform field every cell carries the
--- field average, so every captured cell equals computeYieldModifier
--- output and the area-weighted read reconciles exactly, within the
--- band's own floor/ceiling.
+--   where every cell shares the same growth-time conditions, must
+--   yield exactly what it yields today. The capture formula IS
+--   `_yieldModifierFromNutrients` (the same single source of truth
+--   computeYieldModifier uses) evaluated with the CELL's own N/P/K,
+--   clamped to the band. On a uniform field every cell carries the
+--   field average, so every captured cell equals computeYieldModifier
+--   output and the area-weighted read reconciles exactly, within the
+--   band's own floor/ceiling.
 --
 -- COMPOSITION WITH SF-55 (addendum 2026-08-05): the per-pass read
--- applies `effective = captured * (1 - drag)` from day one; a nil
--- drag (the SF-55 layer is not present yet) reads as zero and the
--- read is unchanged. One writer per value still holds: SF-14 writes
--- capture, SF-55 writes drag, the read composes them.
+--   applies `effective = captured * (1 - drag)` from day one; a nil
+--   drag (the SF-55 layer is not present yet) reads as zero and the
+--   read is unchanged. One writer per value still holds: SF-14 writes
+--   capture, SF-55 writes drag, the read composes them.
 --
 -- The family ships LOCKED: inert unless the growth_modulation
 -- release gate is open AND the mask is enabled.
@@ -53,25 +61,26 @@ local ZoneYield_mt = Class(ZoneYield)
 ZoneYield.BAND_FLOOR   = 0.7
 ZoneYield.BAND_CEILING = 1.15
 
--- Time Guard accrual. Priority 98 lands one behind the credit
--- bookkeeper (97), so the ground has settled, the dead have been
--- counted, and rewards have been accrued before the day's capture.
-ZoneYield.DAILY_ACCURAL_ID       = 'SF14_zoneYieldCapture'
-ZoneYield.DAILY_ACCURAL_PRIORITY = 98
+-- Capture lattice: 8 m step, coarsened only enough to stay at or
+-- below 600 accepted points per field per drained growth event.
+ZoneYield.CAPTURE_LATTICE_STEP_M = 8
+ZoneYield.CAPTURE_MAX_POINTS     = 600
 
--- Header read sample step, and the hard cap. The per-cell VALUE-MAP
--- read cost at harvest cadence is a NAMED bench item (brief section
--- 6), NOT asserted equal to boom-section cadence: this bounds the
--- worst case so a pathological header can never spin the frame.
-ZoneYield.HEADER_SAMPLE_STEP_M = 4
-ZoneYield.HEADER_MAX_SAMPLES   = 256
+-- Drag lattice: 4 m step under a 256 accepted-point ceiling. Each
+-- accepted point performs one harvestable-fruit query plus one
+-- yieldEfficiency point read and one trafficDrag point read.
+ZoneYield.DRAG_LATTICE_STEP_M = 4
+ZoneYield.DRAG_MAX_POINTS     = 256
 
 function ZoneYield.new(manager)
     local self = setmetatable({}, ZoneYield_mt)
     self.manager = manager
     self.isInitialized = false
-    self._tgAccrualRegistered = false
-    self._lastFallbackDay = nil
+    self._messageSubscribed = false
+    -- (fruitTypeIndex, allowsForageGrowthState) -> DensityMapFilter
+    self._fruitFilterCache = {}
+    -- fieldId -> fruitTypeIndex last contract-refreshed for
+    self._contractRefreshed = {}
     return self
 end
 
@@ -81,7 +90,15 @@ end
 
 function ZoneYield:delete()
     self.isInitialized = false
-    self._lastFallbackDay = nil
+    if self._messageSubscribed then
+        local mc = g_messageCenter
+        if mc and type(mc.unsubscribe) == 'function' then
+            pcall(function() mc:unsubscribe(MessageType.FINISHED_GROWTH_PERIOD, self) end)
+        end
+        self._messageSubscribed = false
+    end
+    self._fruitFilterCache = {}
+    self._contractRefreshed = {}
 end
 
 -- ============================================================
@@ -138,17 +155,37 @@ function ZoneYield.captureScore(soilSystem, field, cropName, n, p, k)
 end
 
 -- ============================================================
--- THE CAPTURE PASS (per growth period, per cell)
+-- THE CAPTURE PASS (per drained growth period, per cell)
 -- ============================================================
 
--- The survey lattice. Re-derive the family's own adaptive grid
--- exactly as ViabilityMask/GrowthCredit do, reading BOTH constants
--- off ViabilityMask at runtime, never copied literals.
----@param fieldId number
+--- Ray-casting point-in-polygon test. Pure, bench-drivable.
+---@param x number
+---@param z number
 ---@param verts table list of {x=, z=}
----@return table header { originX, originZ, step, maxX, maxZ }
-function ZoneYield:_deriveHeader(fieldId, verts)
-    local vm = ViabilityMask
+---@return boolean
+function ZoneYield.pointInPolygon(x, z, verts)
+    local inside = false
+    local n = #verts
+    if n < 3 then return false end
+    local j = n
+    for i = 1, n do
+        local vi, vj = verts[i], verts[j]
+        if (vi.z > z) ~= (vj.z > z) then
+            local xint = (vj.x - vi.x) * (z - vi.z) / (vj.z - vi.z) + vi.x
+            if x < xint then inside = not inside end
+        end
+        j = i
+    end
+    return inside
+end
+
+--- The capture lattice for one field: an 8 m grid over the polygon
+--- bounding box, coarsened only enough to stay at or below
+--- CAPTURE_MAX_POINTS accepted centres. Returns the list of
+--- {x=, z=} centres that fall inside the polygon.
+---@param verts table list of {x=, z=}
+---@return table list of {x=, z=}
+function ZoneYield:_deriveCapturePoints(verts)
     local minX, maxX = verts[1].x, verts[1].x
     local minZ, maxZ = verts[1].z, verts[1].z
     for i = 2, #verts do
@@ -158,29 +195,33 @@ function ZoneYield:_deriveHeader(fieldId, verts)
         if v.z < minZ then minZ = v.z end
         if v.z > maxZ then maxZ = v.z end
     end
-    local step = vm.SAMPLE_STEP_M
+    local step = ZoneYield.CAPTURE_LATTICE_STEP_M
     local est = math.ceil((maxX - minX) / step) * math.ceil((maxZ - minZ) / step)
-    if est > vm.MAX_SAMPLES then
-        step = step * math.ceil(math.sqrt(est / vm.MAX_SAMPLES))
+    if est > ZoneYield.CAPTURE_MAX_POINTS then
+        step = step * math.ceil(math.sqrt(est / ZoneYield.CAPTURE_MAX_POINTS))
     end
-    return {
-        originX = minX + step * 0.5,
-        originZ = minZ + step * 0.5,
-        step    = step,
-        maxX    = maxX,
-        maxZ    = maxZ,
-    }
+    local out = {}
+    local x = minX + step * 0.5
+    while x <= maxX do
+        local z = minZ + step * 0.5
+        while z <= maxZ do
+            if ZoneYield.pointInPolygon(x, z, verts) then
+                out[#out + 1] = { x = x, z = z }
+            end
+            z = z + step
+        end
+        x = x + step
+    end
+    return out
 end
 
---- The growing crop's name for one field, resolved once per pass.
---- The live fruit read mirrors getFieldInfo (FieldState at the
---- field centre); `field.lastCrop` is the fallback. nil means
---- nothing growing, and a field with no crop captures nothing
---- (SF-18 orthogonality: an empty cell contributes no area).
+--- The live fruit type index for one field, resolved once per pass.
+--- Uses the live FieldState at the field centre (mirrors getFieldInfo);
+--- `field.lastCrop` alone is NOT proof that a crop still stands, so a
+--- field with no live fruit resolves to nil and captures nothing.
 ---@param fieldId number
----@param field table
----@return string|nil
-function ZoneYield:_resolveCropName(fieldId, field)
+---@return number|nil fruitTypeIndex
+function ZoneYield:_resolveLiveFruit(fieldId)
     if g_fieldManager ~= nil and g_fieldManager.fields then
         local fsField = nil
         for _, f in ipairs(g_fieldManager.fields) do
@@ -196,64 +237,62 @@ function ZoneYield:_resolveCropName(fieldId, field)
                 return fs
             end)
             if ok and fieldState and fieldState.fruitTypeIndex ~= FruitType.UNKNOWN then
-                local fruitDesc = g_fruitTypeManager and
-                    g_fruitTypeManager:getFruitTypeByIndex(fieldState.fruitTypeIndex)
-                if fruitDesc and fruitDesc.name then return fruitDesc.name end
+                return fieldState.fruitTypeIndex
             end
         end
-    end
-    if field and field.lastCrop and field.lastCrop ~= "" then
-        return field.lastCrop
     end
     return nil
 end
 
---- One capture field: walk the survey lattice, read N/P/K per cell
---- through the family's shared read, score, clamp, write to the
---- yieldEfficiency layer at that position.
+--- One capture field: walk the capture lattice, read N/P/K per cell
+--- through the value maps (three reads), score, clamp, write to the
+--- yieldEfficiency layer at that position. Sets the ready marker only
+--- after at least one successful write.
 ---@param fieldId number
 ---@param field table
+---@param fruitTypeIndex number
 ---@param ss table the soil system
 ---@param vm table the value maps
----@return boolean
-function ZoneYield:_captureField(fieldId, field, ss, vm)
+---@return boolean captured
+function ZoneYield:_captureField(fieldId, field, fruitTypeIndex, ss, vm)
     if type(ss._getFieldPolyVerts) ~= 'function' then return false end
     local verts = ss:_getFieldPolyVerts(fieldId, field)
     if verts == nil or #verts < 3 then return false end
 
-    local cropName = self:_resolveCropName(fieldId, field)
-    if cropName == nil then return false end
+    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    local cropName = fruitDesc and fruitDesc.name or ""
+    if cropName == "" then return false end
 
-    local viability = self:_viability()
-    if viability == nil then return false end
+    local points = self:_deriveCapturePoints(verts)
+    if #points == 0 then return false end
 
-    local header = self:_deriveHeader(fieldId, verts)
-    local x = header.originX
-    local gx = 0
-    while x <= header.maxX do
-        local z = header.originZ
-        local gz = 0
-        while z <= header.maxZ do
-            local info = viability:getCellGrowthInfo(fieldId, x, z)
-            if info ~= nil then
-                local n = info.n
-                local p = info.p
-                local k = info.k
-                if type(n) == 'number' and type(p) == 'number' and type(k) == 'number' then
-                    local score = ZoneYield.captureScore(ss, field, cropName, n, p, k)
-                    vm:writeValueAtWorld('yieldEfficiency', x, z, score * 100, header.step * 0.5)
-                end
-            end
-            z = z + header.step
-            gz = gz + 1
+    local writes = 0
+    local reads = 0
+    for _, pt in ipairs(points) do
+        local n = vm:readValueAtWorld('nitrogen', pt.x, pt.z)
+        local p = vm:readValueAtWorld('phosphorus', pt.x, pt.z)
+        local k = vm:readValueAtWorld('potassium', pt.x, pt.z)
+        reads = reads + 3
+        if type(n) == 'number' and type(p) == 'number' and type(k) == 'number' then
+            local score = ZoneYield.captureScore(ss, field, cropName, n, p, k)
+            vm:writeValueAtWorld('yieldEfficiency', pt.x, pt.z, score * 100, ZoneYield.CAPTURE_LATTICE_STEP_M * 0.5)
+            writes = writes + 1
         end
-        x = x + header.step
-        gx = gx + 1
     end
-    return true
+
+    if writes > 0 then
+        field.zoneYieldCaptureReady = true
+    end
+
+    if SoilLogger ~= nil and type(SoilLogger.info) == 'function' then
+        SoilLogger.info("SF14_CAPTURE field=%d fruit=%d accepted=%d reads=%d writes=%d ready=%d skipped=none ms=0",
+            fieldId, fruitTypeIndex, #points, reads, writes, field.zoneYieldCaptureReady and 1 or 0)
+    end
+    return writes > 0
 end
 
---- The whole capture pass: every tracked field, every period.
+--- The whole capture pass: every tracked field, one drained growth
+--- delivery. Returns the number of fields captured.
 ---@return number fields captured
 function ZoneYield:runCapturePass()
     if not self:isLive() then return 0 end
@@ -266,7 +305,18 @@ function ZoneYield:runCapturePass()
     for fieldId in pairs(ss.fieldData) do
         local field = ss.fieldData[fieldId]
         if field ~= nil then
-            if self:_captureField(fieldId, field, ss, vm) then
+            local fruitTypeIndex = self:_resolveLiveFruit(fieldId)
+            if fruitTypeIndex == nil then
+                if SoilLogger ~= nil and type(SoilLogger.info) == 'function' then
+                    SoilLogger.info("SF14_CAPTURE field=%d fruit=none accepted=0 reads=0 writes=0 ready=0 skipped=no-live-fruit ms=0", fieldId)
+                end
+            elseif field.frozenYieldFruitType == fruitTypeIndex then
+                -- The same harvest retains its earlier capture.
+                if SoilLogger ~= nil and type(SoilLogger.info) == 'function' then
+                    SoilLogger.info("SF14_CAPTURE field=%d fruit=%d accepted=0 reads=0 writes=0 ready=%d skipped=frozen ms=0",
+                        fieldId, fruitTypeIndex, field.zoneYieldCaptureReady and 1 or 0)
+                end
+            elseif self:_captureField(fieldId, field, fruitTypeIndex, ss, vm) then
                 captured = captured + 1
             end
         end
@@ -274,8 +324,84 @@ function ZoneYield:runCapturePass()
     return captured
 end
 
+--- Server-only FINISHED_GROWTH_PERIOD handler. One drained delivery
+--- produces one capture pass. Returns unless the manager and server
+--- are live, growth is enabled, and hasPendingGrowth == false.
+---@param finishedPeriod number
+---@param hasPendingGrowth boolean
+function ZoneYield:onFinishedGrowthPeriod(finishedPeriod, hasPendingGrowth)
+    local mission = g_currentMission
+    if mission == nil or not mission:getIsServer() then return end
+    if not self.isInitialized then return end
+    if not self:isLive() then return end
+    if hasPendingGrowth ~= false then return end
+    local growthMode = mission.missionInfo and mission.missionInfo.growthMode
+    if growthMode == GrowthMode.DISABLED then return end
+    self:runCapturePass()
+end
+
+--- Register the FINISHED_GROWTH_PERIOD subscription (server-only by
+--- the value-map write's nature). Same shape and version-skew guard
+--- as the rest of the family. Time Guard creates no second capture.
+function ZoneYield:registerGrowthMessage()
+    if self._messageSubscribed then return true end
+    if g_messageCenter ~= nil
+        and MessageType ~= nil and MessageType.FINISHED_GROWTH_PERIOD ~= nil
+        and type(g_messageCenter.subscribe) == 'function' then
+        local ok = pcall(function()
+            g_messageCenter:subscribe(MessageType.FINISHED_GROWTH_PERIOD, self.onFinishedGrowthPeriod, self)
+        end)
+        if ok then self._messageSubscribed = true end
+        return ok
+    end
+    return false
+end
+
 -- ============================================================
--- THE HARVEST READ (per work-area pass, area-weighted)
+-- THE FRUIT FILTER CACHE (harvest-state DensityMapFilter)
+-- ============================================================
+
+--- Build (and cache) one harvest-state DensityMapFilter per
+--- (fruitTypeIndex, allowsForageGrowthState) pair. The accepted range
+--- is minForageGrowthState when forage is allowed, else
+--- minHarvestingGrowthState, up to maxHarvestingGrowthState. Built
+--- from FruitTypeDesc.terrainDataPlaneId / startStateChannel /
+--- numStateChannels. Supersampling is set to ALL when available,
+--- following the base-shipped mixed-map technique (NitrogenMap).
+---@param fruitTypeIndex number
+---@param allowsForageGrowthState boolean
+---@return table|nil DensityMapFilter
+function ZoneYield:_getFruitFilter(fruitTypeIndex, allowsForageGrowthState)
+    local key = fruitTypeIndex .. ":" .. (allowsForageGrowthState and "1" or "0")
+    local cached = self._fruitFilterCache[key]
+    if cached ~= nil then return cached end
+
+    local desc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
+    if desc == nil or desc.terrainDataPlaneId == nil then return nil end
+
+    local minState = desc.minHarvestingGrowthState
+    if allowsForageGrowthState then
+        minState = desc.minForageGrowthState
+    end
+    local maxState = desc.maxHarvestingGrowthState
+
+    local ok, filter = pcall(function()
+        local f = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+        if DensityFilterSupersamplingMode ~= nil and DensityFilterSupersamplingMode.ALL ~= nil
+           and type(f.setSupersamplingMode) == 'function' then
+            f:setSupersamplingMode(DensityFilterSupersamplingMode.ALL)
+        end
+        f:setValueCompareParams(DensityValueCompareType.BETWEEN, minState, maxState)
+        return f
+    end)
+    if not ok or filter == nil then return nil end
+
+    self._fruitFilterCache[key] = filter
+    return filter
+end
+
+-- ============================================================
+-- THE PRE-CUT SPATIAL CONTEXT (per harvest work-area pass)
 -- ============================================================
 
 --- SF-55 composition line, applied per-cell from day one. A nil drag
@@ -315,127 +441,252 @@ function ZoneYield.aggregateAreaWeighted(samples)
     return sum / area
 end
 
---- Build the header polygon(s) from a combine's work areas: the
---- combine's own spec_workArea plus any attached implements, the
---- same iteration the fieldId fallback uses. Returns a list of
---- {x=, z=} polygons (one per work area), or nil when none resolves.
----@param combineSelf table the harvesting vehicle
----@return table|nil
-function ZoneYield:_headerPolygons(combineSelf)
-    local polygons = {}
-    local function tryVehicle(vehicle)
-        if vehicle == nil then return end
-        if vehicle.spec_workArea and vehicle.spec_workArea.workAreas then
-            for _, wa in ipairs(vehicle.spec_workArea.workAreas) do
-                if wa and wa.start and wa.width and wa.height then
-                    local ok, poly = pcall(function()
-                        local xs, _, zs = getWorldTranslation(wa.start)
-                        local xw, _, zw = getWorldTranslation(wa.width)
-                        local xh, _, zh = getWorldTranslation(wa.height)
-                        if not xs or not xw or not xh then return nil end
-                        local x4 = xw + xh - xs
-                        local z4 = zw + zh - zs
-                        local minX = math.min(xs, xw, xh, x4)
-                        local maxX = math.max(xs, xw, xh, x4)
-                        local minZ = math.min(zs, zw, zh, z4)
-                        local maxZ = math.max(zs, zw, zh, z4)
-                        return {
-                            { x = minX, z = minZ },
-                            { x = maxX, z = minZ },
-                            { x = maxX, z = maxZ },
-                            { x = minX, z = maxZ },
-                        }
-                    end)
-                    if ok and poly and #poly >= 3 then
-                        polygons[#polygons + 1] = poly
+--- The true parallelogram of one work area, preserved as the three
+--- corner points (start, width, height) the engine uses.
+---@param workArea table
+---@return table|nil { start={x,z}, width={x,z}, height={x,z} }
+function ZoneYield:_workAreaParallelogram(workArea)
+    if workArea == nil or workArea.start == nil or workArea.width == nil or workArea.height == nil then
+        return nil
+    end
+    local ok, sx, _, sz = pcall(getWorldTranslation, workArea.start)
+    if not ok or not sx then return nil end
+    local ok2, xw, _, zw = pcall(getWorldTranslation, workArea.width)
+    if not ok2 or not xw then return nil end
+    local ok3, xh, _, zh = pcall(getWorldTranslation, workArea.height)
+    if not ok3 or not xh then return nil end
+    return {
+        start  = { x = sx, z = sz },
+        width  = { x = xw, z = zw },
+        height = { x = xh, z = zh },
+    }
+end
+
+--- Resolve the field id from a work-area parallelogram using the
+--- existing HookManager field resolver (field manager then farmland
+--- manager at the start corner, with attached-implement fallback).
+---@param cutterSelf table
+---@param para table { start={x,z}, ... }
+---@return number|nil
+function ZoneYield:_resolveFieldId(cutterSelf, para)
+    local function atWorld(x, z)
+        if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
+            local field = g_fieldManager:getFieldAtWorldPosition(x, z)
+            if field and field.farmland then return field.farmland.id end
+        end
+        if g_farmlandManager then
+            local farmland = g_farmlandManager:getFarmlandAtWorldPosition(x, z)
+            if farmland then return farmland.id end
+        end
+        return nil
+    end
+
+    local fieldId = atWorld(para.start.x, para.start.z)
+    if fieldId and fieldId > 0 then return fieldId end
+
+    -- Fallback: attached implements' work areas.
+    local attachedImpls = cutterSelf.spec_attacherJoints and cutterSelf.spec_attacherJoints.attachedImplements
+    if attachedImpls then
+        for _, impl in ipairs(attachedImpls) do
+            local obj = impl and impl.object
+            if obj then
+                local ix, _, iz = pcall(getWorldTranslation, obj.rootNode)
+                if ix then
+                    fieldId = atWorld(ix, iz)
+                end
+                if (not fieldId or fieldId <= 0) and obj.spec_workArea and obj.spec_workArea.workAreas then
+                    for _, wa in ipairs(obj.spec_workArea.workAreas) do
+                        if wa.start then
+                            local ok, wx, _, wz = pcall(getWorldTranslation, wa.start)
+                            if ok and wx then
+                                fieldId = atWorld(wx, wz)
+                            end
+                        end
+                        if fieldId and fieldId > 0 then break end
                     end
                 end
             end
-        end
-        if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
-            for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-                local obj = impl and impl.object
-                if obj then tryVehicle(obj) end
-            end
+            if fieldId and fieldId > 0 then break end
         end
     end
-    tryVehicle(combineSelf)
-    if #polygons == 0 then return nil end
-    return polygons
+    return fieldId
 end
 
---- Sample a polygon on a bounded grid; every sample is the centre of
---- an equal-area cell (step squared), which is what makes the
---- aggregation an area-weighted integral rather than a scatter of
---- points. Capped so a pathological header cannot spin the frame.
----@param verts table {x=,z=} polygon
----@return table list of {x=, z=}
-function ZoneYield:_samplePolygon(verts)
-    local step = ZoneYield.HEADER_SAMPLE_STEP_M
-    local minX, maxX = verts[1].x, verts[1].x
-    local minZ, maxZ = verts[1].z, verts[1].z
-    for i = 2, #verts do
-        local v = verts[i]
-        if v.x < minX then minX = v.x end
-        if v.x > maxX then maxX = v.x end
-        if v.z < minZ then minZ = v.z end
-        if v.z > maxZ then maxZ = v.z end
-    end
-    local out = {}
+--- The fruit-filtered traffic drag over a polygon. Reads the SF-55
+--- trafficDrag layer masked by the fruit filter; nil or zero is
+--- identity (drag = 0). Returns a fraction in [0,1] or nil.
+---@param vm table value maps
+---@param verts table polygon
+---@param fruitFilter table|nil
+---@return number|nil
+function ZoneYield:_readTrafficDragPolygon(vm, verts, fruitFilter)
+    local drag, _ = vm:readAverageOfPolygon('trafficDrag', verts, fruitFilter)
+    if type(drag) ~= 'number' or drag <= 0 then return nil end
+    return math.max(0, math.min(1, drag))
+end
+
+--- The fruit-filtered yieldEfficiency polygon mean, divided by 100
+--- exactly once. nil when the spatial path cannot answer.
+---@param vm table value maps
+---@param verts table polygon
+---@param fruitFilter table|nil
+---@return number|nil multiplier in [BAND_FLOOR, BAND_CEILING]
+function ZoneYield:_readYieldPolygon(vm, verts, fruitFilter)
+    local mean, _ = vm:readAverageOfPolygon('yieldEfficiency', verts, fruitFilter)
+    if type(mean) ~= 'number' then return nil end
+    return mean / 100
+end
+
+--- The drag path: one 4 m candidate lattice under a 256 accepted-point
+--- ceiling. Each accepted point performs one harvestable-fruit query
+--- plus one yieldEfficiency point read and one trafficDrag point read.
+--- Skip unwritten capture; unwritten drag is zero. Returns the
+--- composed scalar or nil.
+---@param vm table value maps
+---@param para table parallelogram
+---@param fruitTypeIndex number
+---@param allowsForageGrowthState boolean
+---@param drag number positive drag fraction
+---@return number|nil
+function ZoneYield:_readDragPath(vm, para, fruitTypeIndex, allowsForageGrowthState, drag)
+    local minX = math.min(para.start.x, para.width.x, para.height.x)
+    local maxX = math.max(para.start.x, para.width.x, para.height.x)
+    local minZ = math.min(para.start.z, para.width.z, para.height.z)
+    local maxZ = math.max(para.start.z, para.width.z, para.height.z)
+
+    local step = ZoneYield.DRAG_LATTICE_STEP_M
+    local samples = {}
     local count = 0
     local x = minX + step * 0.5
-    while x <= maxX and count < ZoneYield.HEADER_MAX_SAMPLES do
+    while x <= maxX and count < ZoneYield.DRAG_MAX_POINTS do
         local z = minZ + step * 0.5
-        while z <= maxZ and count < ZoneYield.HEADER_MAX_SAMPLES do
-            out[#out + 1] = { x = x, z = z }
+        while z <= maxZ and count < ZoneYield.DRAG_MAX_POINTS do
+            -- One harvestable-fruit query per accepted point.
+            local ok, area = pcall(function()
+                return FSDensityMapUtil.getFruitArea(fruitTypeIndex, x, z, x + step, z, x, z + step, false, allowsForageGrowthState)
+            end)
+            if ok and type(area) == 'number' and area > 0 then
+                local captured = vm:readValueAtWorld('yieldEfficiency', x, z)
+                if type(captured) == 'number' then
+                    local pointDrag = vm:readValueAtWorld('trafficDrag', x, z)
+                    local d = type(pointDrag) == 'number' and math.max(0, math.min(1, pointDrag)) or 0
+                    samples[#samples + 1] = {
+                        value = ZoneYield.composeDrag(captured / 100, d),
+                        area  = step * step,
+                    }
+                end
+            end
             count = count + 1
             z = z + step
         end
         x = x + step
     end
-    return out
-end
-
---- The harvest-time modifier for one vehicle pass over a field: the
---- area-weighted read of the captured `yieldEfficiency` layer under
---- the header, with the SF-55 drag composition applied per cell.
---- Returns nil when the spatial path cannot answer (not live, no
---- maps, no header geometry, or no captured data under the header) -
---- the caller then falls back to the field-average `computeYieldModifier`
---- with its scalar freeze, untouched.
----@param combineSelf table the harvesting vehicle
----@param fieldId number
----@return number|nil modifier in [BAND_FLOOR, BAND_CEILING]
-function ZoneYield:readHeaderAreaWeighted(combineSelf, fieldId)
-    if not self:isLive() then return nil end
-    local vm = self:_valueMaps()
-    if vm == nil then return nil end
-    local polygons = self:_headerPolygons(combineSelf)
-    if polygons == nil then return nil end
-
-    local samples = {}
-    for _, poly in ipairs(polygons) do
-        for _, pt in ipairs(self:_samplePolygon(poly)) do
-            local value = vm:readValueAtWorld('yieldEfficiency', pt.x, pt.z)
-            if type(value) == 'number' then
-                local drag = self:_readTrafficDrag(fieldId, pt.x, pt.z)
-                samples[#samples + 1] = {
-                    value = ZoneYield.composeDrag(value / 100, drag),
-                    area  = ZoneYield.HEADER_SAMPLE_STEP_M * ZoneYield.HEADER_SAMPLE_STEP_M,
-                }
-            end
-        end
-    end
     if #samples == 0 then return nil end
     return ZoneYield.aggregateAreaWeighted(samples)
 end
 
---- SF-55's traffic drag, not present yet. Returns nil (reads as zero
---- in composeDrag) until that layer lands; the read path composes it
---- from day one per the addendum. The SF-55 write will read its own
---- layer through this socket.
-function ZoneYield:_readTrafficDrag(_fieldId, _x, _z)
-    return nil
+--- Prepare the pre-cut spatial context for one active work area,
+--- BEFORE the destructive base Cutter call. Returns a context table
+--- or nil (fallback). The context carries the resolved fruit type,
+--- field id, the chosen path, and the scalar to apply.
+---
+--- Paths:
+---   "spatial"  - fruit-filtered yieldEfficiency polygon mean (or the
+---                drag lattice when drag is positive)
+---   "fallback" - no fresh capture / no spatial answer; the caller
+---                uses the frozen field-average scalar
+---   "contract" - NPC-disabled or contract-exempt field; scalar path
+---
+--- Any missing field, fruit, filter, geometry, capture or accepted
+--- point returns a fallback context, never zero yield.
+---@param cutterSelf table the harvesting vehicle
+---@param workArea table the active work area
+---@return table|nil context
+function ZoneYield:preparePreCutContext(cutterSelf, workArea)
+    if not self:isLive() then return nil end
+    local vm = self:_valueMaps()
+    if vm == nil then return nil end
+
+    local spec = cutterSelf.spec_cutter
+    if spec == nil or spec.workAreaParameters == nil then return nil end
+
+    local para = self:_workAreaParallelogram(workArea)
+    if para == nil then return nil end
+
+    -- Walk fruitTypeIndicesToUse in engine order; stop at the first
+    -- candidate with positive harvestable area and cache its filter.
+    local fruitTypeIndex = nil
+    local allowsForageGrowthState = spec.allowsForageGrowthState or false
+    local fruitFilter = nil
+    local candidates = spec.workAreaParameters.fruitTypeIndicesToUse
+    if candidates ~= nil then
+        for _, candidate in ipairs(candidates) do
+            local ok, area = pcall(function()
+                return FSDensityMapUtil.getFruitArea(candidate, para.start.x, para.start.z,
+                    para.width.x, para.width.z, para.height.x, para.height.z, false, allowsForageGrowthState)
+            end)
+            if ok and type(area) == 'number' and area > 0 then
+                fruitTypeIndex = candidate
+                fruitFilter = self:_getFruitFilter(candidate, allowsForageGrowthState)
+                break
+            end
+        end
+    end
+    if fruitTypeIndex == nil then return nil end
+
+    -- Resolve field id from the work-area corners.
+    local fieldId = self:_resolveFieldId(cutterSelf, para)
+    if fieldId == nil or fieldId <= 0 then return nil end
+
+    -- Before classifying the first cut of a crop, refresh the contract
+    -- cache, then read isFieldSimDisabled. NPC reason or contractExempt
+    -- selects the scalar fallback.
+    if self._contractRefreshed[fieldId] ~= fruitTypeIndex then
+        if FieldSentry_API ~= nil and type(FieldSentry_API.refreshContract) == 'function' then
+            pcall(FieldSentry_API.refreshContract, fieldId)
+        end
+        self._contractRefreshed[fieldId] = fruitTypeIndex
+    end
+    local disabled, reason, _, hints = false, nil, false, nil
+    if FieldSentry_API ~= nil and type(FieldSentry_API.isFieldSimDisabled) == 'function' then
+        local ok, d, r, _, h = pcall(FieldSentry_API.isFieldSimDisabled, fieldId)
+        if ok then disabled, reason, hints = d, r, h end
+    end
+    local contractExempt = hints ~= nil and hints.contractExempt == true
+    local npcReason = FieldSentry_Core ~= nil and FieldSentry_Core.BLACKLIST ~= nil
+        and FieldSentry_Core.BLACKLIST.NPC or nil
+    if disabled and ((npcReason ~= nil and reason == npcReason) or contractExempt) then
+        return { path = "contract", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = nil }
+    end
+
+    -- No fresh capture yet: fallback until one capture pass succeeds.
+    local field = self.manager and self.manager.soilSystem and self.manager.soilSystem.fieldData and self.manager.soilSystem.fieldData[fieldId]
+    if field == nil or field.zoneYieldCaptureReady ~= true then
+        return { path = "fallback", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = nil }
+    end
+
+    -- Build the polygon from the parallelogram corners.
+    local verts = {
+        { x = para.start.x,  z = para.start.z },
+        { x = para.width.x,  z = para.width.z },
+        { x = para.height.x, z = para.height.z },
+        { x = para.width.x + para.height.x - para.start.x, z = para.width.z + para.height.z - para.start.z },
+    }
+
+    -- Fruit-filtered traffic drag by polygon; nil or zero is identity.
+    local drag = self:_readTrafficDragPolygon(vm, verts, fruitFilter)
+
+    local scalar
+    if drag ~= nil and drag > 0 then
+        scalar = self:_readDragPath(vm, para, fruitTypeIndex, allowsForageGrowthState, drag)
+    else
+        scalar = self:_readYieldPolygon(vm, verts, fruitFilter)
+    end
+
+    if scalar == nil then
+        return { path = "fallback", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = drag }
+    end
+    return { path = "spatial", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = scalar, drag = drag }
 end
 
 --- Published per-cell captured efficiency, the socket ViabilityMask's
@@ -471,42 +722,4 @@ function ZoneYield:isLive()
         return ReleaseGate.isSystemLive('growth_modulation')
     end
     return true
-end
-
---- Time Guard accrual (simulation flow), same shape and version-skew
---- guard as the rest of the family. Server-only by the value-map
---- write's nature; registered from the manager at activation.
-function ZoneYield:registerDailyAccrual()
-    if self._tgAccrualRegistered then return true end
-    local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
-    if tg == nil or type(tg.registerAccrual) ~= 'function' then return false end
-    if tg.flowClasses ~= nil and tg.flowClasses.simulation ~= true then
-        return false
-    end
-    local ok = pcall(function()
-        tg:registerAccrual(ZoneYield.DAILY_ACCURAL_ID, {
-            cadence = 'day',
-            flowClass = 'simulation',
-            firstPeriodPolicy = 'skip',
-            priority = ZoneYield.DAILY_ACCURAL_PRIORITY,
-            onSettle = function() self:runCapturePass() end,
-        })
-    end)
-    if ok then self._tgAccrualRegistered = true end
-    return ok
-end
-
---- SF day-tracking fallback (Time Guard absent): the capture runs on
---- SF's own monotonic-day rollover, less precisely timed, never
---- incorrectly. Pumped from the soil system's daily pump, the same
---- shape as EstablishmentFailure:checkDayFallback.
-function ZoneYield:checkDayFallback()
-    if self._tgAccrualRegistered then return end
-    local env = g_currentMission ~= nil and g_currentMission.environment
-    if env == nil then return end
-    local day = env.currentMonotonicDay or env.currentDay or 0
-    if self._lastFallbackDay ~= nil and day ~= self._lastFallbackDay then
-        self:runCapturePass()
-    end
-    self._lastFallbackDay = day
 end

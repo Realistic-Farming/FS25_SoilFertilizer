@@ -779,7 +779,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sownCrop                = nil  -- crop harvested; lastCrop now carries it (#661)
         -- frozenYieldModifier is NOT cleared here (#598): onHarvest fires per-cut, so
         -- clearing here defeats the freeze and causes yield to drop with each combine pass.
-        -- The freeze is cleared once per game day in _processOneDailyField instead.
+        -- The freeze is cleared once per crop cycle in onSowing (SF-14 owns the cycle).
     end
 
     SoilLogger.debug("Harvest: Field %d, Crop %d, %.0fL (biological), area=%.1f", fieldId, fruitTypeIndex, liters, area or 0)
@@ -1057,6 +1057,15 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
     if not fieldId or fieldId <= 0 then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- SF-14: sowing opens a NEW crop cycle, so the previous crop's yield
+    -- capture and freeze are cleared here (not on the next game day). The
+    -- same crop does not change its yield result halfway through harvest, but
+    -- a fresh sowing must start clean: the old capture no longer describes
+    -- the standing crop and the old freeze no longer applies.
+    field.frozenYieldModifier  = nil
+    field.frozenYieldFruitType = nil
+    field.zoneYieldCaptureReady = nil
 
     -- SF-18: opening (or extending) the establishment window. Every sowing pass
     -- extends, making re-drilling and multi-day drilling the same case.
@@ -2754,15 +2763,9 @@ function SoilFertilitySystem:update(dt)
         g_SoilFertilityManager.establishment:checkDayFallback()
     end
 
-    -- [SF-14] ZONE YIELD: daily cadence pump. When Time Guard is present its
-    -- accrual drives the capture; this call runs the capture on SF's own day
-    -- tracking when Time Guard is absent, the brief's named neutral flow.
-    -- Server only: the capture write is server-authoritative.
-    if g_server ~= nil and g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
-        and g_SoilFertilityManager.zoneYield.isInitialized
-        and g_SoilFertilityManager.zoneYield.checkDayFallback then
-        g_SoilFertilityManager.zoneYield:checkDayFallback()
-    end
+    -- [SF-14] ZONE YIELD: no daily pump. The capture runs once per drained
+    -- FINISHED_GROWTH_PERIOD delivery (server-only by the value-map write's
+    -- nature); Time Guard creates no second ordinary capture.
 
     -- REFINED: round-robin display-layer mirror. Keeps the per-pixel
     -- weed/pest/disease/urgency/yield maps in step with the field-level
@@ -5195,12 +5198,6 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionLastProduct      = nil
     field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
-
-    -- Clear the yield-modifier freeze from the previous harvest session (#598).
-    -- Frozen on the first cut of a harvest pass and held until the next game day so
-    -- that per-cut nutrient depletion does not cause yield to drop mid-harvest (#556).
-    field.frozenYieldModifier  = nil
-    field.frozenYieldFruitType = nil
 
     -- ── Compaction natural decay ─────────────────────────────────────────────
     if self.settings.compactionEnabled and SoilConstants.COMPACTION then
@@ -8067,10 +8064,16 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             -- now-depleted field-average nutrients with the one-shot burn already consumed,
             -- so the yield figure silently changed after every reload and a save/reload
             -- erased an active burn penalty entirely (#656). Only written while a freeze is
-            -- live; cleared on the next game-day change by _processOneDailyField as before.
+            -- live; cleared on the next SOWING by onSowing (SF-14 owns the crop cycle).
             if field.frozenYieldModifier and field.frozenYieldFruitType then
                 setXMLFloat(xmlFile, fieldKey .. "#frozenYieldModifier", field.frozenYieldModifier)
                 setXMLInt(xmlFile, fieldKey .. "#frozenYieldFruitType", field.frozenYieldFruitType)
+            end
+            -- SF-14: persist the capture-ready marker so a fresh capture survives
+            -- save/reload and an upgraded save (no marker) keeps using fallback until
+            -- one fresh capture pass succeeds.
+            if field.zoneYieldCaptureReady == true then
+                setXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady", true)
             end
 
             -- Save daily application throttles
@@ -8188,6 +8191,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             amendBurnPenalty = getXMLFloat(xmlFile, fieldKey .. "#amendBurnPenalty") or nil,
             frozenYieldModifier  = getXMLFloat(xmlFile, fieldKey .. "#frozenYieldModifier") or nil,
             frozenYieldFruitType = getXMLInt(xmlFile, fieldKey .. "#frozenYieldFruitType") or nil,
+            zoneYieldCaptureReady = (getXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady") == true) or nil,
             coverageFraction = getXMLFloat(xmlFile, fieldKey .. "#coverageFraction") or 0,
             lastAlertSeason = getXMLInt(xmlFile, fieldKey .. "#lastAlertSeason") or nil,
             compaction = 0,
@@ -8436,6 +8440,10 @@ function SoilFertilitySystem:getSoilStateTable()
                 e.frozenYieldModifier  = field.frozenYieldModifier
                 e.frozenYieldFruitType = field.frozenYieldFruitType
             end
+            -- SF-14 capture-ready marker (matches XML save).
+            if field.zoneYieldCaptureReady == true then
+                e.zoneYieldCaptureReady = true
+            end
             -- Organic certification sub-table (only when present).
             if field.organic then
                 e.organic = {
@@ -8523,6 +8531,7 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 amendBurnPenalty      = e.amendBurnPenalty,
                 frozenYieldModifier   = e.frozenYieldModifier,
                 frozenYieldFruitType  = e.frozenYieldFruitType,
+                zoneYieldCaptureReady = e.zoneYieldCaptureReady == true and true or nil,
                 coverageFraction      = e.coverageFraction or 0,
                 lastAlertSeason       = e.lastAlertSeason,
                 compaction            = 0,
