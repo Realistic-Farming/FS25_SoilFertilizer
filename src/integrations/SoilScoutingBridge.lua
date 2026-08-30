@@ -195,19 +195,26 @@ function SoilScoutingBridge.loadFallback(spatialScouting)
         local maskXML = xmlFile:getChild("spatialScouting", "masks")
         if maskXML ~= nil then
             for cell in maskXML:getChildren("masks", "cell") do
-                local farmId   = cell:getInt("cell#farmId") or 1
-                local fieldId  = cell:getInt("cell#fieldId") or 0
-                local cellKey  = cell:getString("cell#key") or ""
-                local farm     = masks[farmId] or {}
-                local field    = farm[fieldId] or {}
-                field[cellKey] = {
-                    day   = cell:getInt("cell#day") or 0,
-                    truth = cell:getFloat("cell#truth") or 0,
-                    x     = cell:getFloat("cell#x") or 0,
-                    z     = cell:getFloat("cell#z") or 0,
-                }
-                farm[fieldId] = field
-                masks[farmId] = farm
+                -- [SF-22] A missing/non-ordinary farm id, missing field id or empty
+                -- cell key skips that cell. NEVER `farmId or 1`: a malformed row
+                -- must not deposit stray knowledge under farm 1.
+                local farmId  = cell:getInt("cell#farmId")
+                local fieldId = cell:getInt("cell#fieldId")
+                local cellKey = cell:getString("cell#key")
+                if SpatialScouting.isOrdinaryFarmId(farmId)
+                   and type(fieldId) == "number"
+                   and type(cellKey) == "string" and cellKey ~= "" then
+                    local farm     = masks[farmId] or {}
+                    local field    = farm[fieldId] or {}
+                    field[cellKey] = {
+                        day   = cell:getInt("cell#day") or 0,
+                        truth = cell:getFloat("cell#truth") or 0,
+                        x     = cell:getFloat("cell#x") or 0,
+                        z     = cell:getFloat("cell#z") or 0,
+                    }
+                    farm[fieldId] = field
+                    masks[farmId] = farm
+                end
             end
         end
         delete(xmlFile)
@@ -220,132 +227,339 @@ function SoilScoutingBridge.loadFallback(spatialScouting)
 end
 
 -- =========================================================
--- Network Sync (LAW 3 delivery)
+-- [SF-22] Farm-private mask transport (host-owned event route)
 -- =========================================================
+-- NetworkSync cannot express "send farm X's bytes only to farm X", so the
+-- walked mask rides SoilFertilizer's own server-authoritative event route
+-- (SoilScoutingMaskSyncEvent / SoilScoutingMaskRequestEvent, in
+-- NetworkEvents.lua). This module owns the pure serialisation, the remote-
+-- teammate selector, the client-side apply/buffer, and the pure-client
+-- farm-switch subscriber. Another farm never receives a byte of this mask.
 
-SoilScoutingBridge.SYNC_MODULE_ID = "SoilFertilizer_SpatialScouting_Sync"
-SoilScoutingBridge.CHANNEL        = "SoilFertilizer_SpatialScouting_Sync"
-SoilScoutingBridge.syncActive     = false
+SoilScoutingBridge.MASK_CELLS_PER_EVENT = 32
+SoilScoutingBridge.MASK_MODE_FULL  = 0
+SoilScoutingBridge.MASK_MODE_DELTA = 1
 
-local function getNetworkSync()
-    return (g_currentMission and g_currentMission.networkSync) or g_networkSync
-end
+-- ── Serialisation (pure) ──────────────────────────────────
 
---- The client-side local farm id, used to scope which synced entries this
---- client may compose. On a client the player record is authoritative for the
---- local farm; a different farm's entries are ignored ("a different farm's
---- client sees nothing").
----@return number farmId
-function SoilScoutingBridge.localFarmId()
-    if g_localPlayer and g_localPlayer.farmId and g_localPlayer.farmId > 0 then
-        return g_localPlayer.farmId
-    end
-    if g_currentMission and type(g_currentMission.getFarmId) == "function" then
-        local ok, id = pcall(function() return g_currentMission:getFarmId() end)
-        if ok and id and id > 0 then return id end
-    end
-    return 1
-end
-
---- Flatten the mask into one primitive array. Shape:
----   arr[1] = farm count; then per farm: farmId, cell count, then per cell:
----   fieldId, cellKey, walkDay, sampledTruth, x, z, gen
+--- Flatten ONE farm's mask into an ordered entry list (numeric fieldId, then
+--- string cellKey) so a chunked FULL is deterministic. Only masks[farmId] is
+--- ever read; no other farm's bytes are touched.
 ---@param spatialScouting SpatialScouting|nil
----@return table
-function SoilScoutingBridge.serializeMask(spatialScouting)
-    local arr = { 0 }
-    local farmCount = 0
-    for farmId, farm in pairs(spatialScouting and spatialScouting.masks or {}) do
-        local cells = {}
-        for fieldId, field in pairs(farm) do
-            for cellKey, e in pairs(field) do
-                cells[#cells + 1] = { fieldId, cellKey, e.day, e.truth, e.x, e.z, e.gen or 0 }
-            end
-        end
-        if #cells > 0 then
-            farmCount = farmCount + 1
-            arr[#arr + 1] = farmId
-            arr[#arr + 1] = #cells
-            for _, c in ipairs(cells) do
-                for i = 1, 7 do arr[#arr + 1] = c[i] end
-            end
+---@param farmId number
+---@return table entries  array of { fieldId, cellKey, day, truth, x, z, gen }
+function SoilScoutingBridge.serializeFarmMask(spatialScouting, farmId)
+    local entries = {}
+    if spatialScouting == nil or spatialScouting.masks == nil then return entries end
+    local farm = spatialScouting.masks[farmId]
+    if farm == nil then return entries end
+    local fieldIds = {}
+    for fieldId in pairs(farm) do fieldIds[#fieldIds + 1] = fieldId end
+    table.sort(fieldIds)
+    for _, fieldId in ipairs(fieldIds) do
+        local field = farm[fieldId]
+        local keys = {}
+        for cellKey in pairs(field) do keys[#keys + 1] = cellKey end
+        table.sort(keys)
+        for _, cellKey in ipairs(keys) do
+            local e = field[cellKey]
+            entries[#entries + 1] = {
+                fieldId = fieldId, cellKey = cellKey,
+                day = e.day or 0, truth = e.truth or 0,
+                x = e.x or 0, z = e.z or 0, gen = e.gen or 0,
+            }
         end
     end
-    arr[1] = farmCount
-    return arr
+    return entries
 end
 
---- Rebuild the mask from the flat array. Pure: no painting, no side effects.
----@param arr table
+--- Serialise a specific changed-cell list (for a DELTA) by reading the live
+--- mask. A reference whose cell no longer exists is skipped.
 ---@param spatialScouting SpatialScouting|nil
-function SoilScoutingBridge.deserializeMask(arr, spatialScouting)
-    if spatialScouting == nil or type(arr) ~= "table" then return end
+---@param farmId number
+---@param changedList table  array of { fieldId, cellKey }
+---@return table entries
+function SoilScoutingBridge.serializeEntries(spatialScouting, farmId, changedList)
+    local entries = {}
+    if spatialScouting == nil or spatialScouting.masks == nil or type(changedList) ~= "table" then
+        return entries
+    end
+    local farm = spatialScouting.masks[farmId]
+    if farm == nil then return entries end
+    for _, ref in ipairs(changedList) do
+        local field = ref.fieldId ~= nil and farm[ref.fieldId] or nil
+        local e = field and ref.cellKey ~= nil and field[ref.cellKey] or nil
+        if e ~= nil then
+            entries[#entries + 1] = {
+                fieldId = ref.fieldId, cellKey = ref.cellKey,
+                day = e.day or 0, truth = e.truth or 0,
+                x = e.x or 0, z = e.z or 0, gen = e.gen or 0,
+            }
+        end
+    end
+    return entries
+end
+
+-- ── Remote teammate selection ─────────────────────────────
+
+--- Every remote user connection whose farm equals farmId. Rejects non-ordinary
+--- target farms, and per user: nil / disconnected / not-ready connections, the
+--- LOCAL (listen-host loopback) connection, and any user on a different farm.
+--- The loopback is rejected because a local-stream sendEvent runs the event
+--- in-process on the host, and the host's authoritative state must never be
+--- overwritten by a display payload.
+---@param users table|nil          g_currentMission.userManager:getUsers()
+---@param farmManager table|nil     g_farmManager
+---@param farmId number
+---@return table connections
+function SoilScoutingBridge.selectRemoteConnections(users, farmManager, farmId)
+    local conns = {}
+    if type(users) ~= "table" or farmManager == nil then return conns end
+    if not SpatialScouting.isOrdinaryFarmId(farmId) then return conns end
+    for _, user in ipairs(users) do
+        local conn = (type(user.getConnection) == "function" and user:getConnection()) or user.connection
+        local isLocal = conn ~= nil and type(conn.getIsLocal) == "function" and conn:getIsLocal()
+        if conn ~= nil
+           and conn.isConnected ~= false
+           and conn.isReadyForEvents ~= false
+           and not isLocal then
+            local uid = (type(user.getId) == "function" and user:getId()) or user.id
+            local farm = type(farmManager.getFarmByUserId) == "function"
+                and farmManager:getFarmByUserId(uid) or nil
+            if farm ~= nil and farm.farmId == farmId then
+                conns[#conns + 1] = conn
+            end
+        end
+    end
+    return conns
+end
+
+-- ── Server-side send (server only) ────────────────────────
+
+local function sfNowMs()
+    if type(getTimeSec) == "function" then return getTimeSec() * 1000 end
+    return 0
+end
+
+--- Send one farm's whole mask to one connection as a contiguous chunk sequence.
+--- An empty farm sends exactly one empty chunk. Server only.
+---@param spatialScouting SpatialScouting|nil
+---@param connection table|nil
+---@param farmId number
+function SoilScoutingBridge.sendFarmFull(spatialScouting, connection, farmId)
+    if g_server == nil or connection == nil then return end
+    if not SpatialScouting.isOrdinaryFarmId(farmId) then return end
+    if SoilScoutingMaskSyncEvent == nil then return end
+    local t0 = sfNowMs()
+    local entries    = SoilScoutingBridge.serializeFarmMask(spatialScouting, farmId)
+    local per        = SoilScoutingBridge.MASK_CELLS_PER_EVENT
+    local chunkCount = math.max(1, math.ceil(#entries / per))
+    for chunkIndex = 1, chunkCount do
+        local startI = (chunkIndex - 1) * per + 1
+        local endI   = math.min(chunkIndex * per, #entries)
+        local slice  = {}
+        for i = startI, endI do slice[#slice + 1] = entries[i] end
+        connection:sendEvent(SoilScoutingMaskSyncEvent.newFull(farmId, chunkIndex, chunkCount, slice))
+    end
+    SoilLogger.info("SF22_MASK_FULL_SENT farm=%d entries=%d chunks=%d remotes=1 ms=%d",
+        farmId, #entries, chunkCount, math.floor(sfNowMs() - t0 + 0.5))
+end
+
+--- Send a farm's changed cells as DELTA events to that farm's remote teammates.
+--- Each DELTA event is independently applicable (chunk 1 of 1) and carries at
+--- most MASK_CELLS_PER_EVENT cells. Server only.
+---@param spatialScouting SpatialScouting|nil
+---@param farmId number
+---@param changedList table  array of { fieldId, cellKey }
+function SoilScoutingBridge.sendFarmDelta(spatialScouting, farmId, changedList)
+    if g_server == nil then return end
+    if not SpatialScouting.isOrdinaryFarmId(farmId) then return end
+    if SoilScoutingMaskSyncEvent == nil then return end
+    local entries = SoilScoutingBridge.serializeEntries(spatialScouting, farmId, changedList)
+    if #entries == 0 then return end
+    local users = g_currentMission and g_currentMission.userManager
+        and g_currentMission.userManager:getUsers()
+    local conns = SoilScoutingBridge.selectRemoteConnections(users, g_farmManager, farmId)
+    if #conns == 0 then return end
+    local per   = SoilScoutingBridge.MASK_CELLS_PER_EVENT
+    local total = 0
     local i = 1
-    local farmCount = tonumber(arr[i]) or 0
-    i = i + 1
-    for _ = 1, farmCount do
-        local farmId = arr[i]; i = i + 1
-        local cellCount = tonumber(arr[i]) or 0; i = i + 1
-        if farmId == nil then break end
-        local farm = spatialScouting.masks[farmId] or {}
-        for _ = 1, cellCount do
-            local fieldId = arr[i]; i = i + 1
-            local cellKey = arr[i]; i = i + 1
-            local day     = tonumber(arr[i]) or 0; i = i + 1
-            local truth   = tonumber(arr[i]) or 0; i = i + 1
-            local x       = tonumber(arr[i]) or 0; i = i + 1
-            local z       = tonumber(arr[i]) or 0; i = i + 1
-            local gen     = tonumber(arr[i]) or 0; i = i + 1
-            local field = farm[fieldId] or {}
-            -- The freshest sample wins; a re-walk in the running session beats
-            -- the synced payload for a cell this client also walked.
-            local cur = field[cellKey]
-            if cur == nil or day >= cur.day then
-                field[cellKey] = { day = day, truth = truth, x = x, z = z, gen = gen }
-            end
-            farm[fieldId] = field
+    while i <= #entries do
+        local slice = {}
+        for j = i, math.min(i + per - 1, #entries) do slice[#slice + 1] = entries[j] end
+        for _, conn in ipairs(conns) do
+            conn:sendEvent(SoilScoutingMaskSyncEvent.newDelta(farmId, slice))
         end
-        spatialScouting.masks[farmId] = farm
+        total = total + #slice
+        i = i + per
+    end
+    SoilLogger.info("SF22_MASK_DELTA_SENT farm=%d entries=%d remotes=%d", farmId, total, #conns)
+end
+
+-- ── Client-side apply (client only) ───────────────────────
+
+SoilScoutingBridge._maskBuffer = nil   -- in-flight FULL: { farmId, chunkCount, chunks, received }
+
+local function sfRejectMask(reason)
+    SoilLogger.warning("SF22_MASK_REJECT reason=%s", tostring(reason))
+end
+
+--- Merge entries into one farm's live tables. isFull replaces that farm's slice
+--- atomically (only ever called with a complete, validated chunk set); a DELTA
+--- never clears. Every entry raises the field generation before freshness and
+--- keeps the freshest walk day per cell.
+local function sfApplyEntries(spatialScouting, farmId, entries, isFull)
+    if type(entries) ~= "table" then return end
+    spatialScouting.masks = spatialScouting.masks or {}
+    spatialScouting.generations = spatialScouting.generations or {}
+    if isFull then
+        spatialScouting.masks[farmId] = {}
+        spatialScouting.generations[farmId] = {}
+        if spatialScouting.seenDiscovered then spatialScouting.seenDiscovered[farmId] = {} end
+    end
+    local farm = spatialScouting.masks[farmId]
+    if farm == nil then farm = {}; spatialScouting.masks[farmId] = farm end
+    local gens = spatialScouting.generations[farmId]
+    if gens == nil then gens = {}; spatialScouting.generations[farmId] = gens end
+    for _, e in ipairs(entries) do
+        if e.fieldId ~= nil and e.cellKey ~= nil then
+            local eGen = e.gen or 0
+            if (gens[e.fieldId] or 0) < eGen then gens[e.fieldId] = eGen end
+            local field = farm[e.fieldId]
+            if field == nil then field = {}; farm[e.fieldId] = field end
+            local cur = field[e.cellKey]
+            if cur == nil or (e.day or 0) >= (cur.day or 0) then
+                field[e.cellKey] = { day = e.day or 0, truth = e.truth or 0, x = e.x or 0, z = e.z or 0, gen = eGen }
+            end
+        end
     end
 end
 
---- Register with NetworkSync when present.
+--- Buffer a FULL chunk; apply the whole farm atomically once every index has
+--- arrived exactly once. Chunk 1 (re)starts the buffer; duplicates, gaps,
+--- out-of-range indices and a farm/chunkCount mismatch are rejected without
+--- touching live tables.
+local function sfBufferFullChunk(spatialScouting, localFarmId, payload)
+    local ci, cc = payload.chunkIndex, payload.chunkCount
+    if type(ci) ~= "number" or type(cc) ~= "number" or cc < 1 or ci < 1 or ci > cc then
+        SoilScoutingBridge._maskBuffer = nil; sfRejectMask("chunkrange"); return
+    end
+    if ci == 1 then
+        SoilScoutingBridge._maskBuffer = { farmId = localFarmId, chunkCount = cc, chunks = {}, received = 0 }
+    end
+    local buf = SoilScoutingBridge._maskBuffer
+    if buf == nil or buf.farmId ~= localFarmId or buf.chunkCount ~= cc then
+        SoilScoutingBridge._maskBuffer = nil; sfRejectMask("nostart"); return
+    end
+    if buf.chunks[ci] ~= nil then sfRejectMask("dup"); return end
+    buf.chunks[ci] = payload.entries or {}
+    buf.received = buf.received + 1
+    if buf.received >= buf.chunkCount then
+        local all = {}
+        for idx = 1, buf.chunkCount do
+            local part = buf.chunks[idx]
+            if part == nil then SoilScoutingBridge._maskBuffer = nil; sfRejectMask("incomplete"); return end
+            for _, e in ipairs(part) do all[#all + 1] = e end
+        end
+        SoilScoutingBridge._maskBuffer = nil
+        sfApplyEntries(spatialScouting, localFarmId, all, true)   -- FULL: atomic replace
+    end
+end
+
+--- Apply one received mask event (client side). Rejects a non-ordinary local
+--- farm, a non-table payload, an unknown mode, or a payload for a different
+--- farm, all BEFORE any mutation.
+---@param spatialScouting SpatialScouting|nil
+---@param localFarmId any
+---@param payload table  { mode, farmId, chunkIndex, chunkCount, entries }
+function SoilScoutingBridge.applyMaskEvent(spatialScouting, localFarmId, payload)
+    if spatialScouting == nil then return end
+    if type(payload) ~= "table" then sfRejectMask("payload"); return end
+    if not SpatialScouting.isOrdinaryFarmId(localFarmId) then sfRejectMask("localfarm"); return end
+    if payload.farmId ~= localFarmId then sfRejectMask("wrongfarm"); return end
+    if payload.mode == SoilScoutingBridge.MASK_MODE_DELTA then
+        sfApplyEntries(spatialScouting, localFarmId, payload.entries, false)
+    elseif payload.mode == SoilScoutingBridge.MASK_MODE_FULL then
+        sfBufferFullChunk(spatialScouting, localFarmId, payload)
+    else
+        sfRejectMask("mode")
+    end
+end
+
+-- ── Pure-client farm-switch route ─────────────────────────
+
+--- Classify a local farm-id observation. The first observation and an unchanged
+--- id are no-ops. A later change clears (the old farm's knowledge must not
+--- linger) and requests a fresh FULL only when the new farm is ordinary.
+---@param initialized boolean
+---@param previousFarmId any
+---@param currentFarmId any
+---@return table|nil  nil for no-op, else { clear=true, request=boolean }
+function SoilScoutingBridge.classifyLocalFarmTransition(initialized, previousFarmId, currentFarmId)
+    if not initialized then return nil end
+    if previousFarmId == currentFarmId then return nil end
+    return { clear = true, request = SpatialScouting.isOrdinaryFarmId(currentFarmId) }
+end
+
+SoilScoutingBridge._transition = nil   -- { scouting, lastFarmId, initialized }
+
+--- Pure-client only. Subscribe to PLAYER_FARM_CHANGED so a farm switch drops the
+--- old farm's mask and pulls a fresh FULL for the new one.
 ---@param spatialScouting SpatialScouting|nil
 ---@return boolean registered
-function SoilScoutingBridge.registerSync(spatialScouting)
-    SoilScoutingBridge.syncActive = false
+function SoilScoutingBridge.registerFarmTransitionSubscriber(spatialScouting)
     if spatialScouting == nil then return false end
-
-    local ns = getNetworkSync()
-    if ns == nil or ns.registerModule == nil then
-        SoilLogger.info("[SpatialScouting] NetworkSync not detected - mask is not shared (standalone fallback)")
-        return false
-    end
-
-    local ok, err = pcall(function()
-        ns:registerModule(SoilScoutingBridge.SYNC_MODULE_ID, {
-            channel      = SoilScoutingBridge.CHANNEL,
-            onWriteState = function() return SoilScoutingBridge.serializeMask(spatialScouting) end,
-            onReadState  = function(arr) SoilScoutingBridge.deserializeMask(arr, spatialScouting) end,
-        })
-    end)
-
-    if not ok then
-        SoilLogger.warning("[SpatialScouting] NetworkSync registration failed: %s (mask not shared)", tostring(err))
-        return false
-    end
-
-    SoilScoutingBridge.syncActive = true
-    SoilLogger.info("[OK] SpatialScouting registered with NetworkSync as '%s'",
-        SoilScoutingBridge.SYNC_MODULE_ID)
+    if g_server ~= nil then return false end            -- pure client only
+    if g_messageCenter == nil then return false end
+    if SoilScoutingBridge._transition ~= nil then return false end
+    SoilScoutingBridge._transition = {
+        scouting    = spatialScouting,
+        lastFarmId  = g_localPlayer and g_localPlayer.farmId or nil,
+        initialized = g_localPlayer ~= nil and g_localPlayer.farmId ~= nil,
+    }
+    g_messageCenter:subscribe(MessageType.PLAYER_FARM_CHANGED,
+        SoilScoutingBridge.onPlayerFarmChanged, SoilScoutingBridge)
     return true
 end
 
---- Flag the mask dirty for the next 1Hz NetworkSync batch.
-function SoilScoutingBridge.markDirty()
-    if not SoilScoutingBridge.syncActive then return end
-    local ns = getNetworkSync()
-    if ns ~= nil and ns.markDirty then
-        ns:markDirty(SoilScoutingBridge.SYNC_MODULE_ID)
+--- PLAYER_FARM_CHANGED handler. MessageCenter invokes this as (target, player),
+--- so `self` is SoilScoutingBridge and `player` is the switched player. Only the
+--- LOCAL player's own switch matters; another player's switch does nothing.
+---@param self any
+---@param player any
+function SoilScoutingBridge.onPlayerFarmChanged(self, player)
+    local st = SoilScoutingBridge._transition
+    if st == nil then return end
+    if player == nil or player ~= g_localPlayer then return end
+    local oldFarmId = st.lastFarmId
+    local newFarmId = g_localPlayer and g_localPlayer.farmId
+    local decision  = SoilScoutingBridge.classifyLocalFarmTransition(st.initialized, oldFarmId, newFarmId)
+    st.initialized = true
+    st.lastFarmId  = newFarmId
+    if decision == nil then return end
+    if decision.clear then
+        SoilScoutingBridge._maskBuffer = nil              -- abandon any in-flight FULL
+        local sc = st.scouting
+        if sc ~= nil then
+            sc.masks = {}
+            sc.generations = {}
+            if sc.seenDiscovered then sc.seenDiscovered = {} end
+        end
     end
+    SoilLogger.info("SF22_MASK_TRANSITION old=%s new=%s clear=%s request=%s",
+        tostring(oldFarmId), tostring(newFarmId),
+        decision.clear and "1" or "0", decision.request and "1" or "0")
+    if decision.request and SoilScoutingMaskRequestEvent ~= nil
+       and g_client ~= nil and type(g_client.getServerConnection) == "function" then
+        g_client:getServerConnection():sendEvent(SoilScoutingMaskRequestEvent.new())
+    end
+end
+
+--- Drop the farm-switch subscriber and any in-flight FULL buffer (on unload).
+function SoilScoutingBridge.unregisterFarmTransitionSubscriber()
+    if g_messageCenter ~= nil and type(g_messageCenter.unsubscribeAll) == "function" then
+        g_messageCenter:unsubscribeAll(SoilScoutingBridge)
+    end
+    SoilScoutingBridge._transition = nil
+    SoilScoutingBridge._maskBuffer = nil
 end

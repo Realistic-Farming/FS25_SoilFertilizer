@@ -966,14 +966,20 @@ function SoilMapOverlay:updateSamplePoints(force)
                         local scouting = self.soilSystem and self.soilSystem.spatialScouting
                         local compose = nil
                         if scouting and scouting:isArmed() then
-                            local owner = g_farmlandManager and g_farmlandManager.getFarmlandOwner
-                                and g_farmlandManager:getFarmlandOwner(farmlandId)
+                            -- [SF-22] Compose ONLY from the local VIEWING farm's own
+                            -- walked mask, never the land owner. A client holds only
+                            -- its own farm's mask bytes (another farm receives zero),
+                            -- so keying by owner would paint nothing for a contractor
+                            -- and risk leaking across farms on a listen host. A
+                            -- non-ordinary or unresolved viewer yields no compose
+                            -- object, so the cell stays UNKNOWN.
+                            local viewingFarm = g_localPlayer and g_localPlayer.farmId
                             local day = g_currentMission and g_currentMission.environment
                                 and g_currentMission.environment.currentDay
-                            if owner and owner > 0 and day then
+                            if SpatialScouting.isOrdinaryFarmId(viewingFarm) and day then
                                 compose = {
                                     scouting = scouting,
-                                    farmId   = owner,
+                                    farmId   = viewingFarm,
                                     fieldId  = farmlandId,
                                     day      = day,
                                 }

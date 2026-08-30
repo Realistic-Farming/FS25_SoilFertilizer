@@ -353,7 +353,9 @@ local function loadedMission(mission, node)
             SoilScoutingBridge.registerLedger(scouting)
             SoilScoutingBridge.loadFallback(scouting)
             SoilScoutingBridge.registerAccruals(scouting)
-            SoilScoutingBridge.registerSync(scouting)
+            -- [SF-22] The walked mask no longer rides NetworkSync (it cannot scope
+            -- delivery to one farm). Its own host-owned event route handles sharing:
+            -- the pure-client subscriber is registered in the client full-sync block.
         end
     end
 
@@ -595,8 +597,17 @@ local function loadedMission(mission, node)
     -- SoilRequestFullSyncEvent asks the server for all settings + field data.
     -- The retry handler (AsyncRetryHandler) makes up to 3 attempts with delay
     -- in case the server-side soil system hasn't finished initializing yet.
-    if g_client ~= nil and g_server == nil and SoilNetworkEvents_RequestFullSync then
-        SoilNetworkEvents_RequestFullSync()
+    if g_client ~= nil and g_server == nil then
+        -- [SF-22] Pure client: arm the farm-switch subscriber BEFORE the first
+        -- full-sync request, so a switch that lands during the join handshake is
+        -- still classified (drop old farm, pull the new farm's private mask).
+        local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
+        if scouting and SoilScoutingBridge and SoilScoutingBridge.registerFarmTransitionSubscriber then
+            SoilScoutingBridge.registerFarmTransitionSubscriber(scouting)
+        end
+        if SoilNetworkEvents_RequestFullSync then
+            SoilNetworkEvents_RequestFullSync()
+        end
     end
 end
 
@@ -676,6 +687,12 @@ end
 
 -- Unload handler
 local function unload()
+    -- [SF-22] Drop the pure-client farm-switch subscriber and any in-flight FULL
+    -- buffer so a session reload never accumulates a stale subscription. Safe to
+    -- call unconditionally: it no-ops when nothing was registered.
+    if SoilScoutingBridge and SoilScoutingBridge.unregisterFarmTransitionSubscriber then
+        SoilScoutingBridge.unregisterFarmTransitionSubscriber()
+    end
     if sfm ~= nil then
         sfm:delete()
         sfm = nil

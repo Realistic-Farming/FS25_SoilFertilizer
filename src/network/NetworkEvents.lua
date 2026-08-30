@@ -244,6 +244,12 @@ function SoilRequestFullSyncEvent:run(connection)
     -- unblocks and stops the retry timer right away.
     connection:sendEvent(SoilFullSyncEvent.new(g_SoilFertilityManager.settings, {}))
 
+    -- [SF-22] Piggyback the requesting farm's PRIVATE walked-mask FULL onto the
+    -- join handshake, so a joining client gets its own farm's mask right away and
+    -- never another farm's bytes. Sits before the field-count early return so an
+    -- empty-map join still delivers the mask. No-op for a non-ordinary farm.
+    SoilNetworkEvents_SendScoutingMaskFull(connection)
+
     -- Step 2: nothing to batch - we're done.
     if fieldCount == 0 then return end
 
@@ -2287,6 +2293,174 @@ function SoilNetworkEvents_BroadcastValueMapChecksums()
         end
     end
     g_server:broadcastEvent(SoilValueMapChecksumEvent.new(checksums))
+end
+
+-- ==========================================================================
+-- [SF-22] SoilScoutingMaskSyncEvent (server -> client): farm-private delivery of
+-- the walked mask. Mode FULL (0) replaces one farm's slice atomically across a
+-- contiguous chunk sequence; mode DELTA (1) adds a handful of freshly walked
+-- cells (always chunk 1 of 1). The server sends a farm's bytes ONLY to that
+-- farm's own clients, so another farm never receives an entry.
+--
+-- CLIENT-APPLY ONLY: the run() guard is `g_server ~= nil` (NOT the weaker
+-- `not g_client` used by SoilFullSyncEvent). A listen host has g_client, and
+-- Connection:sendEvent runs a local-stream event in-process; applying a display
+-- payload on the host would clobber its own authoritative mask.
+-- ==========================================================================
+SoilScoutingMaskSyncEvent = SoilScoutingMaskSyncEvent or {}
+SoilScoutingMaskSyncEvent_mt = Class(SoilScoutingMaskSyncEvent, Event)
+
+InitEventClass(SoilScoutingMaskSyncEvent, "SoilScoutingMaskSyncEvent")
+
+SoilScoutingMaskSyncEvent.SCHEMA      = 1
+SoilScoutingMaskSyncEvent.MODE_FULL   = 0
+SoilScoutingMaskSyncEvent.MODE_DELTA  = 1
+SoilScoutingMaskSyncEvent.MAX_ENTRIES = 32
+
+function SoilScoutingMaskSyncEvent.emptyNew()
+    return Event.new(SoilScoutingMaskSyncEvent_mt)
+end
+
+local function sfNewMaskSync(mode, farmId, chunkIndex, chunkCount, entries)
+    local self = SoilScoutingMaskSyncEvent.emptyNew()
+    self.mode       = mode
+    self.farmId     = farmId
+    self.chunkIndex = chunkIndex or 1
+    self.chunkCount = chunkCount or 1
+    self.entries    = entries or {}
+    return self
+end
+
+--- One FULL chunk (chunkIndex of chunkCount) of farmId's mask.
+function SoilScoutingMaskSyncEvent.newFull(farmId, chunkIndex, chunkCount, entries)
+    return sfNewMaskSync(SoilScoutingMaskSyncEvent.MODE_FULL, farmId, chunkIndex, chunkCount, entries)
+end
+
+--- One independently applicable DELTA (always chunk 1 of 1) of farmId's mask.
+function SoilScoutingMaskSyncEvent.newDelta(farmId, entries)
+    return sfNewMaskSync(SoilScoutingMaskSyncEvent.MODE_DELTA, farmId, 1, 1, entries)
+end
+
+function SoilScoutingMaskSyncEvent:writeStream(streamId, connection)
+    streamWriteUInt8(streamId, SoilScoutingMaskSyncEvent.SCHEMA)
+    streamWriteUInt8(streamId, self.mode or 0)
+    streamWriteUIntN(streamId, self.farmId or 0, FarmManager.FARM_ID_SEND_NUM_BITS)
+    streamWriteUInt16(streamId, self.chunkIndex or 1)
+    streamWriteUInt16(streamId, self.chunkCount or 1)
+    local n = math.min(#self.entries, SoilScoutingMaskSyncEvent.MAX_ENTRIES)
+    streamWriteUInt16(streamId, n)
+    for i = 1, n do
+        local e = self.entries[i]
+        streamWriteInt32(streamId, e.fieldId or 0)
+        streamWriteString(streamId, e.cellKey or "")
+        streamWriteInt32(streamId, e.day or 0)
+        streamWriteFloat32(streamId, e.truth or 0)
+        streamWriteFloat32(streamId, e.x or 0)
+        streamWriteFloat32(streamId, e.z or 0)
+        streamWriteInt32(streamId, e.gen or 0)
+    end
+end
+
+function SoilScoutingMaskSyncEvent:readStream(streamId, connection)
+    self.schema     = streamReadUInt8(streamId)
+    self.mode       = streamReadUInt8(streamId)
+    self.farmId     = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
+    self.chunkIndex = streamReadUInt16(streamId)
+    self.chunkCount = streamReadUInt16(streamId)
+    local n = streamReadUInt16(streamId)
+    self.entries = {}
+    for i = 1, n do
+        local e = {}
+        e.fieldId = streamReadInt32(streamId)
+        e.cellKey = streamReadString(streamId)
+        e.day     = streamReadInt32(streamId)
+        e.truth   = streamReadFloat32(streamId)
+        e.x       = streamReadFloat32(streamId)
+        e.z       = streamReadFloat32(streamId)
+        e.gen     = streamReadInt32(streamId)
+        self.entries[i] = e
+    end
+    self:run(connection)
+end
+
+function SoilScoutingMaskSyncEvent:run(connection)
+    -- CLIENT-APPLY ONLY. The listen host is g_server ~= nil and must never
+    -- overwrite its own authoritative mask with a display payload.
+    if g_server ~= nil then return end
+    local scouting = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.spatialScouting
+    if scouting == nil or SoilScoutingBridge == nil or SoilScoutingBridge.applyMaskEvent == nil then return end
+    local localFarmId = g_localPlayer and g_localPlayer.farmId
+    SoilScoutingBridge.applyMaskEvent(scouting, localFarmId, {
+        schema     = self.schema,
+        mode       = self.mode,
+        farmId     = self.farmId,
+        chunkIndex = self.chunkIndex,
+        chunkCount = self.chunkCount,
+        entries    = self.entries,
+    })
+end
+
+-- ==========================================================================
+-- [SF-22] SoilScoutingMaskRequestEvent (client -> server): "send me a fresh FULL
+-- of my current farm's mask". No payload, no selector: the server resolves the
+-- requesting connection's user and ordinary farm and replies with one contiguous
+-- FULL. Spectator / guided-tour / invalid / unresolved receives no mask. Sent on
+-- a farm switch; the join case piggybacks on SoilRequestFullSyncEvent:run.
+-- ==========================================================================
+SoilScoutingMaskRequestEvent = SoilScoutingMaskRequestEvent or {}
+SoilScoutingMaskRequestEvent_mt = Class(SoilScoutingMaskRequestEvent, Event)
+
+InitEventClass(SoilScoutingMaskRequestEvent, "SoilScoutingMaskRequestEvent")
+
+function SoilScoutingMaskRequestEvent.emptyNew()
+    return Event.new(SoilScoutingMaskRequestEvent_mt)
+end
+
+function SoilScoutingMaskRequestEvent.new()
+    return SoilScoutingMaskRequestEvent.emptyNew()
+end
+
+function SoilScoutingMaskRequestEvent:readStream(streamId, connection)
+    self:run(connection)
+end
+
+function SoilScoutingMaskRequestEvent:writeStream(streamId, connection)
+    -- no payload: the server resolves the farm from the connection, never the wire
+end
+
+function SoilScoutingMaskRequestEvent:run(connection)
+    -- SERVER ONLY: resolve the requester's ordinary farm and reply with a FULL.
+    if g_server == nil or connection == nil then return end
+    SoilNetworkEvents_SendScoutingMaskFull(connection)
+end
+
+--- Server helper: resolve a connection's ordinary farm and send its walked-mask
+--- FULL. No-op for a non-ordinary or unresolved farm. Shared by the join
+--- piggyback (SoilRequestFullSyncEvent:run) and the farm-switch request event.
+---@param connection table
+function SoilNetworkEvents_SendScoutingMaskFull(connection)
+    if g_server == nil or connection == nil then return end
+    local scouting = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.spatialScouting
+    if scouting == nil or SoilScoutingBridge == nil or SoilScoutingBridge.sendFarmFull == nil then return end
+
+    local userManager = g_currentMission and g_currentMission.userManager
+    local user = userManager and userManager:getUserByConnection(connection)
+    if user == nil then return end
+
+    local farmId = nil
+    if g_farmManager and type(g_farmManager.getFarmByUserId) == "function" then
+        local farm = g_farmManager:getFarmByUserId(user:getId())
+        farmId = farm and farm.farmId
+    end
+    if farmId == nil then farmId = user.farmId end
+
+    if not (SpatialScouting and SpatialScouting.isOrdinaryFarmId
+            and SpatialScouting.isOrdinaryFarmId(farmId)) then
+        return
+    end
+    SoilScoutingBridge.sendFarmFull(scouting, connection, farmId)
 end
 
 SoilLogger.info("Network events system loaded")
