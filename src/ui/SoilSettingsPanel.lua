@@ -1735,6 +1735,11 @@ function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
     -- Description
     local descKey = SETTING_DESCS[settingId]
     local desc = (descKey and tr(descKey)) or ""
+    -- [SF-66] sf_desc_independentPanels quotes "Shift+H edit mode"; any other
+    -- description that grows a chord is covered by the same pass.
+    if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+        desc = SoilLiveHint.rewrite(desc)
+    end
     self:drawText(labelX, y + rh * 0.15, TS_TINY, desc, descColor, RenderText.ALIGN_LEFT, false)
 
     -- Control (toggle or multi-select) on the right

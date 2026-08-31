@@ -452,7 +452,15 @@ function SoilGuideDialog:_buildContent(pageNum)
             if profile then
                 local el = TextElement.new()
                 el:loadProfile(profile, true)
-                el:setText(row.k and tr(row.k, row.v or "") or (row.v or ""))
+                -- [SF-66] Guide rows quote seven different default chords
+                -- (HUD drag, variable rate, scout, treatment, auto rate, map
+                -- layer, settings). Rewrite the resolved text, so a rebound
+                -- player reads their own keys on every page and locale.
+                local rowText = row.k and tr(row.k, row.v or "") or (row.v or "")
+                if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+                    rowText = SoilLiveHint.rewrite(rowText)
+                end
+                el:setText(rowText)
                 currentBox:addElement(el)
                 el:onGuiSetupFinished()
                 table.insert(self._contentLineEls, { box = currentBox, el = el })

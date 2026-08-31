@@ -1834,11 +1834,14 @@ function SoilHUD:drawPanel()
     -- Hint row
     setTextAlignment(RenderText.ALIGN_CENTER)
     setTextColor(SoilHUD.C_HINT[1], SoilHUD.C_HINT[2], SoilHUD.C_HINT[3], SoilHUD.C_HINT[4])
-    if self.editMode then
-        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_edit"))
-    else
-        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_normal"))
+    -- [SF-66] Both hint strings ship "Shift+H" while the modDesc default for
+    -- SF_HUD_DRAG is Right Shift+P, so this row has been telling every player
+    -- the wrong key in every language. Rewrite to the live binding at draw.
+    local hintText = g_i18n:getText(self.editMode and "sf_hud_hint_edit" or "sf_hud_hint_normal")
+    if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+        hintText = SoilLiveHint.rewrite(hintText, { "SF_HUD_DRAG" })
     end
+    renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, hintText)
 
     -- Reset text state
     setTextBold(false)

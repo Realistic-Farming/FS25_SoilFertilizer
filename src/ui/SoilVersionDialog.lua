@@ -227,6 +227,12 @@ function SoilVersionDialog:_buildChangelogLines()
             profile = profileLine
         end
 
+        -- [SF-66] Restores the BUILD 22:36 rewrite the tree overwrite dropped:
+        -- the READ THE DIRT entry quotes "Shift+G by default" for SF_HANDFUL.
+        if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+            displayText = SoilLiveHint.rewrite(displayText, { "SF_HANDFUL" })
+        end
+
         local el = TextElement.new()
         el:loadProfile(profile, true)
         el:setText(displayText)
