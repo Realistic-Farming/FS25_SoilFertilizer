@@ -126,6 +126,33 @@ function SoilMasterHUDBridge.drawStack()
     end
 end
 
+SoilMasterHUDBridge.CAB_ID = "SoilFertilizer_CabTools"
+
+--- [SF-51] In-cab TOOL readouts, kept alive through suite hide-all
+--- (BUILD 22:36; shape banked on BUILD 22:20). Hiding "HUDs" means the
+--- monitor, trails and minimap chrome - not flying blind mid-spray. This
+--- second subscription carries visibleWhenHudsHidden = true and draws ONLY
+--- while huds are hidden: when they are visible, drawStack already draws the
+--- same panels, and drawing twice would double the alpha and fight the drag
+--- handles.
+function SoilMasterHUDBridge.drawCabTools()
+    local hud = SoilMasterHUDBridge._hud
+    if hud == nil or hud.hudsHidden ~= true then return end
+    local sfm = g_SoilFertilityManager
+    if sfm == nil then return end
+    if SoilMasterHUDBridge.isFullscreen() then return end
+
+    -- The application-rate strip alone, not the whole Soil Monitor: SoilHUD:draw
+    -- would bring the monitor back, which is exactly what hide-all removes.
+    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then
+        sfm.soilHUD:drawSprayerRatePanel()
+    end
+    if sfm.variableRatePanel then sfm.variableRatePanel:draw() end
+    if sfm.smartSensorPanel then sfm.smartSensorPanel:draw() end
+    if sfm.sprayerInfoPanel then sfm.sprayerInfoPanel:draw() end
+    if sfm.harvesterPanel then sfm.harvesterPanel:draw() end
+end
+
 -- Register with MasterHUD if present. Called at loadMission00Finished, after the
 -- HUD has published its g_currentMission handle (Mission00.load).
 function SoilMasterHUDBridge.register(mgr)
@@ -152,7 +179,19 @@ function SoilMasterHUDBridge.register(mgr)
 
     if ok then
         SoilMasterHUDBridge.active = true
-        SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend)")
+        -- [SF-51] Keep the hud handle for drawCabTools' hudsHidden check, and
+        -- register the keep-alive cab-tools subscription. pcall'd separately:
+        -- an older MasterHUD without the flag simply draws it as a normal
+        -- self-draw, and the function's own hudsHidden guard then makes it a
+        -- no-op - graceful on every version pairing.
+        SoilMasterHUDBridge._hud = hud
+        pcall(function()
+            hud:subscribe(SoilMasterHUDBridge.CAB_ID, {
+                draw = SoilMasterHUDBridge.drawCabTools,
+                visibleWhenHudsHidden = true,
+            })
+        end)
+        SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend + cab-tools keep-alive)")
         -- Suite layout edit reaches the Soil Monitor and every independent
         -- in-vehicle panel, including placeholders when no matching implement is
         -- currently controlled.

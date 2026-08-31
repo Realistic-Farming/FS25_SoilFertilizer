@@ -1167,3 +1167,154 @@ print("  Realistic soil management system      ")
 print("  Type 'soilfertility' for commands     ")
 
 print("========================================")
+
+
+
+-- =========================================================
+-- [SF-66] LIVE KEYBIND HINTS (BUILD 19:58)
+-- =========================================================
+-- Every on-screen surface that used to print a hard-coded default chord now
+-- runs its resolved text through here, so a player who rebound (or never
+-- bound) an action reads their OWN key instead of the shipped default.
+--
+-- Why a walker and not a gsub of known chords: the modifier is LOCALISED
+-- (Shift / Umschalt / Maj / Maiusc / Skift / Vaihto ...) across 26 files, and
+-- any enumerated vocabulary goes stale the first time a translator picks a
+-- different word. Instead we anchor on the invariant part - "+<KEY>" - and walk
+-- LEFT over letters to capture whatever this language calls the modifier.
+--
+-- Two guards keep that from eating real text, and both matter in a soil mod:
+--   * the captured word must be at least 3 letters, so the "N+K" and "P+K" that
+--     appear in nutrient copy are never touched (every real modifier name -
+--     Alt, Maj, Shift, Skift, Umschalt - clears 3);
+--   * it must start with a capital, which is true of every modifier name the
+--     game prints and false of ordinary prose.
+-- The trade is deliberate: a missed rewrite leaves today's stale hint, while a
+-- wrong rewrite corrupts a sentence, so the guards fail toward doing nothing.
+SoilLiveHint = SoilLiveHint or {}
+
+-- Stale default KEY per action, as actually printed by the shipped strings.
+SoilLiveHint.ACTION_KEYS = {
+    SF_HUD_DRAG        = "H",
+    SF_VARIABLE_RATE   = "7",
+    SF_SCOUT           = "K",
+    SF_TREATMENT       = "T",
+    SF_TOGGLE_AUTO     = "L",
+    SF_CYCLE_MAP_LAYER = "M",
+    SF_OPEN_SETTINGS   = "O",
+    SF_HANDFUL         = "G",
+}
+
+--- Live chord for an action. Order per the packet: the suite's live binding,
+--- then the proven engine overlay call, then an honest "unassigned" - never a
+--- fabricated default, which is what put a confident wrong key on screen.
+---@param actionName string
+---@return string|nil chord, nil when the action is not loaded at all
+function SoilLiveHint.chord(actionName)
+    if actionName == nil then return nil end
+    if RfLiveBinding ~= nil and RfLiveBinding.getChord ~= nil then
+        local c = RfLiveBinding.getChord(actionName)
+        if c then return c end
+    end
+    if g_inputDisplayManager ~= nil and InputAction ~= nil and InputAction[actionName] ~= nil then
+        local ok, help = pcall(function()
+            return g_inputDisplayManager:getControllerSymbolOverlays(InputAction[actionName], "", "", false)
+        end)
+        if ok and help and help.keys and #help.keys > 0 then
+            local parts = {}
+            for _, k in ipairs(help.keys) do parts[#parts + 1] = tostring(k) end
+            return table.concat(parts, "+")
+        end
+    end
+    if InputAction ~= nil and InputAction[actionName] == nil then
+        -- Action not in this session at all: leave the text alone rather than
+        -- claim it is unassigned.
+        return nil
+    end
+    if RfLiveBinding ~= nil and RfLiveBinding.UNASSIGNED ~= nil then
+        return RfLiveBinding.UNASSIGNED
+    end
+    return "unassigned"
+end
+
+--- Replace "<localised modifier>+<KEY>" with `chord`, wherever it appears.
+---@param text string
+---@param keyLetter string  the single stale key character, e.g. "H"
+---@param chord string
+---@return string
+function SoilLiveHint.swapChord(text, keyLetter, chord)
+    if type(text) ~= "string" or type(keyLetter) ~= "string" or keyLetter == "" then return text end
+    if type(chord) ~= "string" or chord == "" then return text end
+    local needle = "+" .. keyLetter
+    local out, i = {}, 1
+    while true do
+        local sPos, ePos = string.find(text, needle, i, true)
+        if sPos == nil then break end
+        -- Right edge: the key must end the token, not run into another word.
+        local after = (ePos < #text) and string.sub(text, ePos + 1, ePos + 1) or ""
+        local rightOk = (after == "") or (string.match(after, "%w") == nil)
+        -- Walk left over the localised modifier word.
+        local wStart = sPos
+        while wStart > 1 and string.match(string.sub(text, wStart - 1, wStart - 1), "%a") ~= nil do
+            wStart = wStart - 1
+        end
+        if wStart < i then wStart = i end
+        local word = string.sub(text, wStart, sPos - 1)
+        local wordOk = (#word >= 3) and (string.match(string.sub(word, 1, 1), "%u") ~= nil)
+        -- Left edge: nothing lettered may butt against the modifier word.
+        local before = (wStart > 1) and string.sub(text, wStart - 1, wStart - 1) or ""
+        local leftOk = (before == "") or (string.match(before, "%a") == nil)
+        if rightOk and wordOk and leftOk then
+            out[#out + 1] = string.sub(text, i, wStart - 1)
+            out[#out + 1] = chord
+        else
+            out[#out + 1] = string.sub(text, i, ePos)
+        end
+        i = ePos + 1
+    end
+    out[#out + 1] = string.sub(text, i)
+    return table.concat(out)
+end
+
+--- Rewrite every stale Soil chord in one string to its live binding.
+--- Cheap enough for a draw call: eight plain finds, each a no-op unless that
+--- exact token is present.
+---@param text string
+---@param actions table|nil  optional list of action names; defaults to all
+---@return string
+function SoilLiveHint.rewrite(text, actions)
+    if type(text) ~= "string" or text == "" then return text end
+    if string.find(text, "+", 1, true) == nil then return text end
+
+    -- A live chord is itself of the form "<modifier>+<KEY>", so writing one
+    -- straight into the text puts a fresh target in front of the passes that
+    -- have not run yet: bind HUD drag to Right Shift+K and the scout pass would
+    -- find the "+K" this pass just inserted and overwrite it with scout's key.
+    -- So each pass writes a sentinel containing no "+", and the real chords go
+    -- in once at the end, after all scanning is finished.
+    local marks = {}
+    local function place(name)
+        local key = SoilLiveHint.ACTION_KEYS[name]
+        if key == nil then return end
+        local c = SoilLiveHint.chord(name)
+        if c == nil then return end
+        marks[#marks + 1] = c
+        text = SoilLiveHint.swapChord(text, key, string.char(1) .. tostring(#marks) .. string.char(1))
+    end
+
+    if actions ~= nil then
+        for _, name in ipairs(actions) do place(name) end
+    else
+        for name in pairs(SoilLiveHint.ACTION_KEYS) do place(name) end
+    end
+
+    for idx = 1, #marks do
+        local token = string.char(1) .. tostring(idx) .. string.char(1)
+        local at = string.find(text, token, 1, true)
+        while at ~= nil do
+            text = string.sub(text, 1, at - 1) .. marks[idx] .. string.sub(text, at + #token)
+            at = string.find(text, token, 1, true)
+        end
+    end
+    return text
+end

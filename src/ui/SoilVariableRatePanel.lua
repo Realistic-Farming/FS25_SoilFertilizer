@@ -127,7 +127,11 @@ function SoilVariableRatePanel:draw()
     -- SF custom settings panel open → hide system panels
     if sfm.settingsPanel and sfm.settingsPanel.isVisible then return end
 
-    if hud and not hud.visible and not inEditMode then return end
+    -- Cab tool readouts follow the base-game HUD only. Suite hide-all and the
+    -- Soil monitor toggle must not hide a working tool panel. Vanilla HUD-hide does.
+    if not inEditMode and g_currentMission.hud
+        and type(g_currentMission.hud.getIsVisible) == "function"
+        and not g_currentMission.hud:getIsVisible() then return end
 
     if not inEditMode then
         if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then return end
