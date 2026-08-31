@@ -493,7 +493,11 @@ function SoilSprayerInfoPanel:draw()
     if not self.settings or not self.settings.enabled then return end
     if not g_currentMission or not g_currentMission.isRunning then return end
     local sfm = g_SoilFertilityManager
-    if not self.editMode and sfm and sfm.soilHUD and not sfm.soilHUD.visible then return end
+    -- Cab tool readouts follow the base-game HUD only. Suite hide-all and the
+    -- Soil monitor toggle must not hide a working tool panel. Vanilla HUD-hide does.
+    if not self.editMode and g_currentMission.hud
+        and type(g_currentMission.hud.getIsVisible) == "function"
+        and not g_currentMission.hud:getIsVisible() then return end
     -- Edit mode always exposes a placement placeholder, even when the runtime
     -- display preference is off or no sprayer/spreader/slurry tool is active.
     if not self.editMode and sfm and sfm.settings
