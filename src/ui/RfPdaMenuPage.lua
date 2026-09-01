@@ -2764,6 +2764,44 @@ local function _csPivotRemote(self, action)
     end
 end
 
+-- [SCS-046] Rain-key clicks. Same host-then-resolved-guest route as the pivot
+-- remotes below, but a DIFFERENT handler: these become
+-- CropStressRainKeyCommandEvent, never a pivot remote action. Vendored into
+-- every host copy of this page, because the Esc page that actually loads is the
+-- HOST mod's copy and a button whose onClick name is missing there never paints.
+local function _csRainKey(self, token)
+    -- [BUILD 15:58] The pcall stays, because a UI click must never take the
+    -- menu down, but the error is PRINTED now. A bare pcall here is what made
+    -- Fit look like a dead chip: the send threw, the throw was swallowed, and
+    -- nothing reached the log, so there was no difference between "the button
+    -- is not wired" and "the button threw on every press".
+    local function call(fn)
+        local ok, err = pcall(fn, self.rfHostPlaceholder, token)
+        if not ok then
+            print(string.format("[CropStress] Esc rain key %s FAILED: %s",
+                tostring(token), tostring(err)))
+        end
+        return ok
+    end
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active ~= nil and type(active.onRainKeyCommand) == "function" then
+        call(active.onRainKeyCommand)
+    else
+        local csGuest = (type(mdResolve) == "function")
+                and mdResolve(CsRfPdaGuest, "CsRfPdaGuest") or CsRfPdaGuest
+        if csGuest ~= nil and type(csGuest.onRainKeyCommand) == "function" then
+            call(csGuest.onRainKeyCommand)
+        else
+            print("[CropStress] Esc rain key IGNORED: no onRainKeyCommand handler resolved")
+        end
+    end
+end
+
+function RfPdaMenuPage:onClickCsPivotFit()       _csRainKey(self, "FIT_TOGGLE") end
+function RfPdaMenuPage:onClickCsPivotTripMinus() _csRainKey(self, "TRIP_MINUS") end
+function RfPdaMenuPage:onClickCsPivotTripPlus()  _csRainKey(self, "TRIP_PLUS") end
+
 function RfPdaMenuPage:onClickCsPivotDoor()    _csPivotRemote(self, "DOOR_TOGGLE") end
 function RfPdaMenuPage:onClickCsPivotPower()   _csPivotRemote(self, "POWER_TOGGLE") end
 function RfPdaMenuPage:onClickCsPivotSpray()   _csPivotRemote(self, "SPRAY_TOGGLE") end
