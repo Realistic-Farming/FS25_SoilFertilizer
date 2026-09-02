@@ -59,7 +59,7 @@ local function resolveFarmId()
     return farmId
 end
 
-local function appendFieldEntry(page, sfm, fieldId)
+local function appendFieldEntry(page, sfm, fieldId, eligible)
     local ok, info = pcall(function()
         return sfm.soilSystem:getFieldInfo(fieldId)
     end)
@@ -77,6 +77,10 @@ local function appendFieldEntry(page, sfm, fieldId)
         fieldId = fieldId,
         info = info,
         urgency = urgency or 0,
+        -- CD-11 3.5: only rows from the owned roster may carry the resistance section.
+        -- The all-fields fallback below is a diagnostic view of foreign ground and is
+        -- appended with eligible = false, so the card stays down for it.
+        resistanceEligible = eligible == true,
     })
 end
 
@@ -96,6 +100,9 @@ end
 ---@param page table RfPdaMenuPage instance
 function RfPdaSoilPanel.rebuildFieldData(page)
     page.fieldData = {}
+    -- Panel show / roster rebuild: the resistance card re-reads on its next paint even
+    -- when the selected field id has not moved (the bands may have, e.g. after a scout).
+    page._resistanceDirty = true
     local sfm = g_SoilFertilityManager
     if sfm == nil and type(getfenv) == "function" then
         local env0 = getfenv(0)
@@ -119,14 +126,14 @@ function RfPdaSoilPanel.rebuildFieldData(page)
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
             local owner = g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == farmId then
-                appendFieldEntry(page, sfm, fieldId)
+                appendFieldEntry(page, sfm, fieldId, true)
             end
         end
     end
 
     if #page.fieldData == 0 then
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
-            appendFieldEntry(page, sfm, fieldId)
+            appendFieldEntry(page, sfm, fieldId, false)
         end
         if usedOwnedFilter and #page.fieldData > 0 then
             local msg = string.format(
@@ -548,6 +555,272 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
     set(tipEl, tip)
 end
 
+-- ── CD-11 resistance readout (BUILD 10:52, George DESIGN 10:40) ──────────────
+--
+-- Read-only band card in the TREATMENT strip, under the three existing cards. It paints
+-- on panel show and on owned-field select only: the host re-runs refreshTreatmentPlan on
+-- its 2 s tick, so the painter remembers what it last painted and returns before any band
+-- work unless the selection moved or rebuildFieldData flagged it dirty.
+--
+-- Bands come from the public getters only (SoilFertilitySystem:getResistanceBand /
+-- getResistanceBandForChemical, modes via getModeForFillType). Raw scores, ratios and
+-- next-spray multipliers never enter this file. Meanings are fixed: UNKNOWN = not yet
+-- known, WORKING = good control, SLIPPING = reduced control, FINISHED = no control, and
+-- UNKNOWN never borrows the good-control colour. Nothing here ranks, buys, mixes, applies
+-- or writes; the only durable write in CD-11 is the server's scout bit in scoutField.
+
+local COLOR_HINT = {0.659, 0.678, 0.702, 1.0}   -- RF_HintText's own grey, for resets
+local RES_MAX_CHIPS = 7                          -- seven FRAC groups across eight jugs
+
+local function resistanceBandIds()
+    local B = SoilConstants and SoilConstants.RESISTANCE and SoilConstants.RESISTANCE.BANDS
+    if B ~= nil then return B end
+    return { UNKNOWN = -1, WORKING = 0, SLIPPING = 1, FINISHED = 2 }
+end
+
+--- The Soil manager and system, or nil when the section must stand down: manager absent,
+--- getter missing (an older Soil), Soil switched off, or Soil disabled by Precision Farming.
+--- No PF hook: the stand-down rides Soil's own flags.
+local function resistanceSource()
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    local sys = sfm and sfm.soilSystem
+    if sys == nil or type(sys.getResistanceBand) ~= "function" then return nil end
+    if sfm.settings ~= nil and sfm.settings.enabled == false then return nil end
+    if sfm._disabledByPF then return nil end
+    return sfm, sys
+end
+
+--- Player-facing chemical name via the existing sf_chem_<ID> keys (same as SoilScoutDialog).
+local function chemDisplayName(id)
+    if g_i18n ~= nil and g_i18n.hasText and g_i18n:hasText("sf_chem_" .. id) then
+        return g_i18n:getText("sf_chem_" .. id)
+    end
+    local s = string.lower(tostring(id)):gsub("_", " ")
+    return (s:gsub("(%a)([%w]*)", function(a, b) return string.upper(a) .. b end))
+end
+
+--- The modes the mod knows, in PHYSICAL_FUNGICIDE_ORDER first-seen order, each with the
+--- physical products that use it. Product vocabulary stays primary; the mode is its label.
+local function resistanceModeRows()
+    local rows, byMode = {}, {}
+    local order = SoilConstants and SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}
+    local getMode = SoilFertilitySystem and SoilFertilitySystem.getModeForFillType
+    if type(getMode) ~= "function" then return rows end
+    for _, id in ipairs(order) do
+        local mode = getMode(id)
+        if mode ~= nil then
+            local row = byMode[mode]
+            if row == nil then
+                row = { mode = mode, products = {} }
+                byMode[mode] = row
+                rows[#rows + 1] = row
+            end
+            row.products[#row.products + 1] = id
+        end
+    end
+    return rows
+end
+
+local function bandWord(tr, band)
+    local B = resistanceBandIds()
+    if band == B.WORKING then
+        return tr("sf_res_band_working", "Good control"), COLOR_GOOD
+    elseif band == B.SLIPPING then
+        return tr("sf_res_band_slipping", "Reduced control"), COLOR_FAIR
+    elseif band == B.FINISHED then
+        return tr("sf_res_band_finished", "No control"), COLOR_POOR
+    end
+    return tr("sf_res_band_unknown", "Not yet known"), COLOR_DIM
+end
+
+local function resEl(page, id)
+    local el = page[id]
+    if el == nil and page.getDescendantById then
+        el = page:getDescendantById(id)
+    end
+    return el
+end
+
+local function setTextColored(el, text, color)
+    if el == nil then return end
+    if el.setText then el:setText(text or "") end
+    if color ~= nil and el.setTextColor then el:setTextColor(unpack(color)) end
+end
+
+--- Paint the resistance card for the selected entry. Never throws past its caller: the
+--- host wraps it in pcall the same way it wraps the rotation card, and PRODUCTS paints on.
+---@param page table RfPdaMenuPage instance (may be a thin door without the card ids)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshResistanceCard(page, entry)
+    if page == nil then return end
+    local cardEl = resEl(page, "soilResistanceCard")
+    if cardEl == nil then
+        -- Thin doors, or a door built from another mod's copy of RfPdaMenuPage.xml.
+        if not page._resistanceCardWarned then
+            page._resistanceCardWarned = true
+            print("[SoilFertilizer] resistance card ids absent on this door - skipping card (PRODUCTS unaffected)")
+        end
+        return
+    end
+
+    local fieldId  = entry and entry.fieldId or nil
+    local eligible = entry ~= nil and entry.resistanceEligible == true and fieldId ~= nil
+    local key      = eligible and fieldId or false
+
+    -- Timer fence: same field, nothing flagged dirty -> no band work at all.
+    if page._resistancePaintedKey == key and not page._resistanceDirty then return end
+    page._resistancePaintedKey = key
+    page._resistanceDirty = false
+
+    local sfm, sys = resistanceSource()
+    if not eligible or sys == nil then
+        if cardEl.setVisible then cardEl:setVisible(false) end
+        return
+    end
+    if cardEl.setVisible then cardEl:setVisible(true) end
+
+    local tr = page._rfTr or function(k, fb) return fb or k end
+    setTextColored(resEl(page, "soilResistanceTitle"), tr("sf_res_title", "Resistance"))
+    setTextColored(resEl(page, "soilResistanceNote"),
+        tr("sf_res_note", "Tank-applied fungicides build resistance on this field. Menu treatments do not use this resistance model and charge by field area."))
+    local btn = resEl(page, "soilResistancePairsBtn")
+    if btn ~= nil and btn.setText then btn:setText(tr("sf_res_pairs_btn", "Tank pairs")) end
+
+    -- Knowledge state. Revealed is the durable server bit only (ResistanceBands.isFieldRevealed);
+    -- a pure client that has not had its first field delivery yet is told it is waiting rather
+    -- than being shown "not yet known" as if nobody had ever scouted.
+    local field    = sys.fieldData and sys.fieldData[fieldId]
+    local revealed = ResistanceBands ~= nil and type(ResistanceBands.isFieldRevealed) == "function"
+        and ResistanceBands.isFieldRevealed(field) == true
+    local pureClient = not (ResistanceBands ~= nil and type(ResistanceBands.hasServerPicture) == "function"
+        and ResistanceBands.hasServerPicture())
+    local stateText, stateColor
+    if pureClient and (field == nil or field.resistanceBandsReceived ~= true) then
+        stateText  = string.format(tr("sf_res_state_waiting", "Field %d: waiting for the server's resistance picture."), fieldId)
+        stateColor = COLOR_FAIR
+    elseif revealed then
+        stateText  = string.format(tr("sf_res_state_known", "Field %d: resistance history known."), fieldId)
+        stateColor = COLOR_HINT
+    else
+        stateText  = string.format(tr("sf_res_state_unknown", "Field %d: resistance not yet known. Scout this field to learn its history."), fieldId)
+        stateColor = COLOR_DIM
+    end
+    setTextColored(resEl(page, "soilResistanceState"), stateText, stateColor)
+
+    -- One chip per mode: header "Mode 3", the products that use it, and the band word.
+    local rows = resistanceModeRows()
+    for i = 1, RES_MAX_CHIPS do
+        local head = resEl(page, "soilResMode" .. i .. "Head")
+        local prod = resEl(page, "soilResMode" .. i .. "Prod")
+        local band = resEl(page, "soilResMode" .. i .. "Band")
+        local row  = rows[i]
+        if row == nil then
+            setTextColored(head, "")
+            setTextColored(prod, "")
+            setTextColored(band, "")
+        else
+            local names = {}
+            for _, id in ipairs(row.products) do names[#names + 1] = chemDisplayName(id) end
+            local value = sys:getResistanceBand(fieldId, row.mode)
+            local word, color = bandWord(tr, value)
+            setTextColored(head, string.format(tr("sf_res_mode", "Mode %s"), tostring(row.mode)))
+            setTextColored(prod, table.concat(names, ", "))
+            setTextColored(band, word, color)
+        end
+    end
+end
+
+--- Inspectable pair context (George: disclosure, not a second list of all 28 blends).
+--- One line per physical product: its mode, this field's band for it, and the partners the
+--- blend table allows, with the organic-approved pairs marked by APPROVED_INPUTS membership
+--- only. Reads getters and the tables; ranks, buys, mixes and applies nothing.
+---@param page table RfPdaMenuPage instance
+function RfPdaSoilPanel.showResistancePairs(page)
+    if page == nil then return end
+    local tr = page._rfTr or function(k, fb) return fb or k end
+    local entry = nil
+    for _, e in ipairs(page.fieldData or {}) do
+        if e.fieldId == page.selectedFieldId then entry = e; break end
+    end
+    local text
+    local _, sys = resistanceSource()
+    if entry == nil or entry.resistanceEligible ~= true or sys == nil then
+        text = tr("sf_res_pairs_no_field", "Select one of your fields first.")
+    else
+        local fieldId = entry.fieldId
+        local lines = {
+            string.format(tr("sf_res_pairs_title", "Tank pairs for field %d"), fieldId),
+            tr("sf_res_pairs_intro", "Control words are this field's current bands. A pair marked organic is on the organic approved list. Nothing here ranks, buys or mixes."),
+            "",
+        }
+        local products = SoilConstants and SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}
+        local approved = SoilConstants and SoilConstants.ORGANIC and SoilConstants.ORGANIC.APPROVED_INPUTS or {}
+        local partners = {}
+        local blendsOk = SoilBlends ~= nil and type(SoilBlends.ORDER) == "table" and type(SoilBlends.getPartners) == "function"
+        if blendsOk then
+            for _, key in ipairs(SoilBlends.ORDER) do
+                local pair = SoilBlends.getPartners(key)
+                if type(pair) == "table" and pair[1] ~= nil and pair[2] ~= nil then
+                    local organic = approved[key] == true
+                    partners[pair[1]] = partners[pair[1]] or {}
+                    partners[pair[2]] = partners[pair[2]] or {}
+                    table.insert(partners[pair[1]], { id = pair[2], organic = organic })
+                    table.insert(partners[pair[2]], { id = pair[1], organic = organic })
+                end
+            end
+        end
+        local getMode = SoilFertilitySystem and SoilFertilitySystem.getModeForFillType
+        for _, id in ipairs(products) do
+            local mode = type(getMode) == "function" and getMode(id) or nil
+            local word = bandWord(tr, sys:getResistanceBandForChemical(fieldId, id))
+            local list = partners[id] or {}
+            local withText
+            if not blendsOk then
+                withText = tr("sf_res_pairs_none", "pair table not loaded")
+            elseif #list == 0 then
+                withText = tr("sf_res_pairs_nothing", "no listed partner")
+            elseif #list >= #products - 1 then
+                local organicNames = {}
+                for _, p in ipairs(list) do
+                    if p.organic then organicNames[#organicNames + 1] = chemDisplayName(p.id) end
+                end
+                withText = tr("sf_res_pairs_all", "every other fungicide")
+                if #organicNames > 0 then
+                    withText = withText .. " (" .. tr("sf_res_pairs_organic", "organic pair") .. ": "
+                        .. table.concat(organicNames, ", ") .. ")"
+                end
+            else
+                local names = {}
+                for _, p in ipairs(list) do
+                    local n = chemDisplayName(p.id)
+                    if p.organic then n = n .. " (" .. tr("sf_res_pairs_organic", "organic pair") .. ")" end
+                    names[#names + 1] = n
+                end
+                withText = table.concat(names, ", ")
+            end
+            lines[#lines + 1] = string.format(tr("sf_res_pairs_line", "%s (mode %s): %s. Pairs with %s."),
+                chemDisplayName(id), tostring(mode or "?"), word, withText)
+        end
+        text = table.concat(lines, "\n")
+    end
+    if InfoDialog ~= nil and type(InfoDialog.show) == "function" then
+        InfoDialog.show(text)
+    elseif g_gui ~= nil and g_gui.showInfoDialog then
+        g_gui:showInfoDialog({ text = text })
+    end
+end
+
+-- The page class is sourced after this file (src/main.lua order) and opens with
+-- `RfPdaMenuPage = RfPdaMenuPage or {}`, so a method placed on the table here survives.
+-- The XML resolves onClick names against the page target when the door is built
+-- (GuiElement:addCallback), long after every sourceFile has run, so the button finds it.
+RfPdaMenuPage = RfPdaMenuPage or {}
+function RfPdaMenuPage:onClickSoilResistancePairs()
+    if RfPdaSoilPanel ~= nil and type(RfPdaSoilPanel.showResistancePairs) == "function" then
+        RfPdaSoilPanel.showResistancePairs(self)
+    end
+end
+
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
     local tr = page._rfTr or function(k, fb) return fb or k end
     local fieldId = page.selectedFieldId
@@ -571,6 +844,16 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         if not okCard and not page._rotationCardErrLogged then
             page._rotationCardErrLogged = true
             print("[SoilFertilizer] rotation card paint failed (PRODUCTS continues): " .. tostring(errCard))
+        end
+    end
+
+    -- CD-11 resistance card (BUILD 10:52). Same guard shape: a painter fault must never
+    -- take PRODUCTS down. Runs on nil entries too so the card hides when nothing is selected.
+    if type(RfPdaSoilPanel.refreshResistanceCard) == "function" then
+        local okRes, errRes = pcall(RfPdaSoilPanel.refreshResistanceCard, page, entry)
+        if not okRes and not page._resistanceCardErrLogged then
+            page._resistanceCardErrLogged = true
+            print("[SoilFertilizer] resistance card paint failed (PRODUCTS continues): " .. tostring(errRes))
         end
     end
 

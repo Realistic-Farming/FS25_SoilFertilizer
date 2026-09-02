@@ -24,6 +24,7 @@ do
       -- CD-11: the discovery flag (previously dropped by this bridge) and the bands whose
       -- gate reads it. M2 is natural, so 3.5 of ITS ceiling (5) is SLIPPING, not WORKING.
       diseaseDiscovered = true,
+      fieldEverScouted = true,   -- CD-11: the durable scout bit gates the bands and rides last
       resistance = { ["3"] = 10, ["M2"] = 3.5 },
       -- zoneData present on the server but deliberately not serialized:
       zoneData = { ["3_4"] = { N = 50 } },
@@ -63,6 +64,8 @@ do
   T.eq("roundtrip: CD-11 natural band survives on its OWN ceiling",
        b.resistanceBands and b.resistanceBands["M2"], SoilConstants.RESISTANCE.BANDS.SLIPPING)
   T.ok("roundtrip: no raw resistance score crossed the bridge", b.resistance == nil)
+  T.eq("roundtrip: CD-11 fieldEverScouted survives the bridge after the bands", b.fieldEverScouted, true)
+  T.ok("roundtrip: CD-11 receipt is stamped on the delivered table", b.resistanceBandsReceived == true)
   T.eq("roundtrip: dryDayCount", b.dryDayCount, 6)
   T.eq("roundtrip: burnDaysLeft", b.burnDaysLeft, 2)
   T.near("roundtrip: coverageFraction", b.coverageFraction, 0.5)

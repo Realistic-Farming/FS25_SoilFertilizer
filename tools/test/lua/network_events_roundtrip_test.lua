@@ -38,6 +38,9 @@ local function sampleField()
     coverageFraction = 0.5, compaction = 11,
     nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
     activeDisease = "septoria", diseaseDiscovered = true,
+    -- CD-11: the durable scout bit is the band gate now (diseaseDiscovered alone no longer
+    -- reveals), and it must ride every field delivery after the bands.
+    fieldEverScouted = true,
     organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
     -- CD-11: a saturated synthetic (10/10 -> FINISHED) and a natural at 70% of its own
     -- lower ceiling (3.5/5 -> SLIPPING). The natural is here on purpose: banded against
@@ -72,6 +75,8 @@ local function assertSampleField(name, b)
   T.eq(name .. ": fungicideDaysLeft", b.fungicideDaysLeft, 4)
   T.eq(name .. ": activeDisease", b.activeDisease, "septoria")
   T.ok(name .. ": diseaseDiscovered", b.diseaseDiscovered == true)
+  T.ok(name .. ": CD-11 fieldEverScouted survives after the bands", b.fieldEverScouted == true)
+  T.ok(name .. ": CD-11 receipt is stamped on the delivered table", b.resistanceBandsReceived == true)
   T.ok(name .. ": buffer present", b.nutrientBuffer ~= nil)
   T.near(name .. ": buffer[12]", b.nutrientBuffer[12], 4.5)
   T.near(name .. ": buffer[3]", b.nutrientBuffer[3], 1.25)

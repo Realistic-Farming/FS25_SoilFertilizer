@@ -58,28 +58,27 @@ end
 ---
 -- THE GATE, and its one known limitation, stated rather than hidden.
 --
--- The brief asks this gate to key on a FIELD-LEVEL "has this field ever been scouted"
--- signal, independent of the per-outbreak diseaseDiscovered flag. NO SUCH SIGNAL EXISTS in
--- the shipped source -- diseaseDiscovered is the only scout state a field carries, and it
--- resets on every fresh infection (SoilFertilitySystem.lua:2126, :2364). That is the
--- confirm the brief owed back to Engineering, and the answer is "there is none".
+-- The gate keys on the FIELD-LEVEL "has this field ever been scouted" signal,
+-- `fieldEverScouted`, which CD-11 adds beside the per-outbreak `diseaseDiscovered` flag.
+-- The two are different questions. diseaseDiscovered asks "is the CURRENT infection
+-- identified?" and resets on every fresh onset (SoilFertilitySystem outbreak paths), which
+-- is right for disease identity. Resistance history follows the ground and does not change
+-- when a new outbreak starts, so it must not go dark with it: fieldEverScouted is set once,
+-- by the server only, on the first successful scout of a known field, and no outbreak,
+-- debug-disease, crop-cycle, sale or reset path ever clears it.
 --
--- So this gate uses diseaseDiscovered ALONE. It deliberately does NOT copy getScoutReport's
--- published expression (`field.activeDisease and not field.diseaseDiscovered`), which the
--- brief names as inverted: a field with no active disease falls straight through that and
--- reads as fully scouted. Keying on diseaseDiscovered alone FAILS CLOSED instead -- an
--- unscouted field reads UNKNOWN whether or not it currently has a disease, which is the
--- hard obligation (the server must never send a clean-looking band for unscouted ground).
---
--- THE INHERITED DEFECT, flagged so it is not mistaken for correct: because
--- diseaseDiscovered resets on every fresh infection, a farmer's resistance history goes
--- DARK exactly when a new outbreak starts, even though resistance itself persists across
--- infections and has not changed. Over-hiding, never under-hiding. Fixing it means adding a
--- field-level scouted signal to CD-9's data model, which is not this brief's to extend.
+-- It deliberately does NOT read getScoutReport's published expression
+-- (`field.activeDisease and not field.diseaseDiscovered`), which is inverted: a field with
+-- no active disease falls straight through that and reads as scouted. Reading ONLY
+-- `fieldEverScouted == true` FAILS CLOSED instead -- a never-scouted field reads UNKNOWN
+-- whether or not it currently carries a disease, which is the hard obligation (the server
+-- must never publish a clean-looking band for ground nobody has looked at). A field that
+-- carries diseaseDiscovered without the durable bit (an optimistic client mark, or a save
+-- that pre-dates the key before migration seeds it) stays UNKNOWN until the server writes.
 ---@param field table
 ---@return boolean
 function ResistanceBands.isFieldRevealed(field)
-    return (field ~= nil) and (field.diseaseDiscovered == true)
+    return (field ~= nil) and (field.fieldEverScouted == true)
 end
 
 --- True when this machine owns the raw scores: the server, a listen-server host, or single
@@ -127,10 +126,18 @@ end
 --- Client-side: attach a decoded band list onto a field table so run()'s wholesale replace
 --- carries it. Mirrors OrganicCertification.applyFieldOrganic: a field with nothing to say
 --- keeps no sub-table, so the wire never resurrects one where the model would not.
+---
+--- Also stamps `resistanceBandsReceived = true` on the field BEFORE the empty test, so an
+--- empty payload still counts as a receipt: "the server told me there is nothing on this
+--- field" is a real answer and differs from "the server has not spoken yet". The bit is
+--- client-side ephemeral: never saved, never sent, never authored by the server. It lives
+--- only on the field table a decoder just built, so a wholesale replace resets it exactly
+--- when the picture it certifies is replaced.
 ---@param field table
 ---@param flat table|nil   flat { mode, band, ... } array as produced by encodeFieldBands
 function ResistanceBands.applyFieldBands(field, flat)
     if not field then return end
+    field.resistanceBandsReceived = true
     if type(flat) ~= "table" or #flat < 2 then
         field.resistanceBands = nil
         return
@@ -187,8 +194,9 @@ end
 ---   * server or single player -- computes from the raw score it owns;
 ---   * client -- reads the band the server sent, and NEVER computes one from a raw value.
 ---
---- Returns UNKNOWN, never nil, for unscouted ground, an unsynced field, or a mode with no
---- resistance yet. Callers must treat UNKNOWN as distinct from every real band.
+--- Returns UNKNOWN, never nil, for never-scouted ground, a pure-client field the server
+--- has not yet delivered, or an unknown field. A scouted field's mode with no resistance
+--- yet reads WORKING. Callers must treat UNKNOWN as distinct from every real band.
 ---@param field table|nil
 ---@param mode string
 ---@return number   a RESISTANCE.BANDS value
@@ -205,11 +213,15 @@ function ResistanceBands.getBand(field, mode)
         return ResistanceBands.computeBand(field, mode)
     end
 
-    -- Pure client, field revealed, no band sent for this mode. LOAD-BEARING COUPLING:
-    -- encodeFieldBands publishes every mode carrying resistance on a revealed field and is
-    -- bounded by the FRAC-group count, so it has no truncation path -- silence therefore
-    -- means "zero on that mode", not "not sent". Anything that ever makes the encoder drop
-    -- a non-zero mode (a payload budget, a partial update) MUST revisit this line, or a
-    -- burned-out mode would render as WORKING on every client.
+    -- Pure client, field revealed, no band sent for this mode. Two different silences:
+    --   * the server has not delivered this field yet (no receipt): the client knows
+    --     nothing and must say so. UNKNOWN, never a guessed WORKING.
+    --   * the server delivered and had no band for this mode: LOAD-BEARING COUPLING --
+    --     encodeFieldBands publishes every mode carrying resistance on a revealed field and
+    --     is bounded by the FRAC-group count, so it has no truncation path. Silence after a
+    --     receipt therefore means "zero on that mode", which bands WORKING. Anything that
+    --     ever makes the encoder drop a non-zero mode (a payload budget, a partial update)
+    --     MUST revisit this line, or a burned-out mode would render as WORKING on clients.
+    if field.resistanceBandsReceived ~= true then return BANDS.UNKNOWN end
     return BANDS.WORKING
 end

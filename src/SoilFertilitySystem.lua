@@ -2418,23 +2418,39 @@ end
 --- outbreak must be re-scouted. Server-authoritative in MP: a client marks it locally
 --- (optimistic - discovery is monotonic) and asks the server to make it authoritative and
 --- sync it farm-wide via the field-update broadcast.
+---
+--- CD-11 also records the durable `fieldEverScouted` bit here, and ONLY here. It is the
+--- gate the resistance readout reads (ResistanceBands.isFieldRevealed) and it outlives the
+--- per-outbreak diseaseDiscovered reset, so a farmer's resistance history stays visible
+--- through a new infection. It is written by the server alone: a client may reveal the
+--- disease optimistically but never sets the durable bit, which reaches it on the next
+--- field delivery. A client whose field is already revealed but still lacks the bit (an
+--- optimistic mark that never round-tripped) re-asks the server, which performs the
+--- durable write and one field update.
 ---@param fieldId number
 ---@return table|nil report  the now-revealed scout report
 function SoilFertilitySystem:scoutField(fieldId)
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return self:getScoutReport(fieldId) end
 
+    local changed = false
     if not field.diseaseDiscovered then
         field.diseaseDiscovered = true
-        if g_currentMission and g_currentMission.missionDynamicInfo
-           and g_currentMission.missionDynamicInfo.isMultiplayer then
-            if not g_server then
-                if SoilScoutFieldEvent then
-                    g_client:getServerConnection():sendEvent(SoilScoutFieldEvent.new(fieldId))
-                end
-            elseif SoilFieldUpdateEvent then
-                SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
+        changed = true
+    end
+    if g_server ~= nil and field.fieldEverScouted ~= true then
+        field.fieldEverScouted = true
+        changed = true
+    end
+
+    if g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer then
+        if not g_server then
+            if SoilScoutFieldEvent and (changed or field.fieldEverScouted ~= true) then
+                g_client:getServerConnection():sendEvent(SoilScoutFieldEvent.new(fieldId))
             end
+        elseif changed and SoilFieldUpdateEvent then
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
         end
     end
     return self:getScoutReport(fieldId)
@@ -3378,6 +3394,7 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         activeDisease = nil,        -- DISEASE_DEFS id of the current named infection (nil = none)
         activeDiseaseSeverity = 1.0,-- cached yield-severity multiplier for activeDisease
         diseaseDiscovered = false,  -- discovery gate: an active infection stays UNKNOWN in every scout report until deliberately scouted (or revealed by a future dog / ProStaff report)
+        fieldEverScouted = false,   -- CD-11: durable "this field has been scouted at least once". Server-written on the first successful scout; survives every outbreak reset (resistance history follows the ground, disease identity does not)
         lastFungicide = nil,        -- last chemical applied (for resistance / UI flavor)
         resistance = {},            -- CD-9: { [mode] = score 0..max } per-MOA resistance scores
         dryDayCount = 0,
@@ -7212,6 +7229,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLInt(xmlFile, fieldKey .. "#fungicideDaysLeft", field.fungicideDaysLeft or 0)
             setXMLString(xmlFile, fieldKey .. "#activeDisease", field.activeDisease or "")
             setXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered", field.diseaseDiscovered and 1 or 0)
+            setXMLInt(xmlFile, fieldKey .. "#fieldEverScouted", field.fieldEverScouted and 1 or 0)  -- CD-11 durable scout bit
             setXMLString(xmlFile, fieldKey .. "#lastFungicide", field.lastFungicide or "")
             -- CD-10 re-onset cooldown. Persisted because a cooldown a save-and-reload
             -- defeats is not a cooldown -- it would silently do nothing. Server-side only;
@@ -7355,6 +7373,17 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             activeDisease = getXMLString(xmlFile, fieldKey .. "#activeDisease"),
             activeDiseaseSeverity = 1.0,
             diseaseDiscovered = (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1,
+            -- CD-11 durable scout bit, three states on load. Present 1/0 is the truth as
+            -- saved. ABSENT is a save from before the key existed: a field that was already
+            -- scouted then (diseaseDiscovered saved as 1) seeds true so its resistance
+            -- history does not go dark on upgrade; every other absence is false. This is
+            -- deliberately NOT `or false`, which would collapse absent and false together
+            -- and lose the seed.
+            fieldEverScouted = (function()
+                local v = getXMLInt(xmlFile, fieldKey .. "#fieldEverScouted")
+                if v ~= nil then return v == 1 end
+                return (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1
+            end)(),
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
             hybridBlockedUntilDay = getXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay"),
             -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
@@ -7598,6 +7627,7 @@ function SoilFertilitySystem:getSoilStateTable()
                 fungicideDaysLeft     = field.fungicideDaysLeft or 0,
                 activeDisease         = field.activeDisease or "",
                 diseaseDiscovered     = field.diseaseDiscovered or false,
+                fieldEverScouted      = field.fieldEverScouted == true,   -- CD-11 durable scout bit
                 lastFungicide         = field.lastFungicide or "",
                 hybridBlockedUntilDay = field.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 dryDayCount           = field.dryDayCount or 0,
@@ -7706,6 +7736,12 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 activeDisease         = e.activeDisease,
                 activeDiseaseSeverity = 1.0,
                 diseaseDiscovered     = e.diseaseDiscovered or false,
+                -- CD-11 durable scout bit, three states (same rule as the XML route):
+                -- present true/false is the truth; absent seeds from diseaseDiscovered.
+                fieldEverScouted      = (function()
+                    if e.fieldEverScouted ~= nil then return e.fieldEverScouted == true end
+                    return e.diseaseDiscovered == true
+                end)(),
                 lastFungicide         = e.lastFungicide,
                 hybridBlockedUntilDay = e.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 resistance = (function() local rt = {}; if e.resistance and type(e.resistance) == "table" then for k, v in pairs(e.resistance) do rt[k] = v end end; return rt end)(),

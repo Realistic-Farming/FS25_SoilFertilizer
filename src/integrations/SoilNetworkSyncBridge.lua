@@ -97,7 +97,7 @@ end
 --   fieldId, <each SCALARS value>, lastCrop, lastCrop2, lastCrop3, activeDisease,
 --   bufferCount, bufferCount x (fillTypeIndex, amount),
 --   organicState, organicStartDay, organicCertifiedDay, organicBreaches,
---   diseaseDiscovered, bandCount, bandCount x (fracMode, band)
+--   diseaseDiscovered, bandCount, bandCount x (fracMode, band), fieldEverScouted
 function SoilNetworkSyncBridge.serializeFields(fieldData)
     local arr = { 0 }   -- slot 1 reserved for the count
     local n = 0
@@ -148,6 +148,8 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
         local bandFlat = ResistanceBands.encodeFieldBands(field)
         arr[#arr + 1] = math.floor(#bandFlat / 2)
         for _, v in ipairs(bandFlat) do arr[#arr + 1] = v end
+        -- CD-11: the durable scout bit rides after the bands, same order as NetworkEvents.
+        arr[#arr + 1] = field.fieldEverScouted and 1 or 0
     end
     arr[1] = n
     return arr
@@ -213,6 +215,8 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
             bandFlat[#bandFlat + 1] = arr[i]; i = i + 1
         end
         ResistanceBands.applyFieldBands(field, bandFlat)
+        -- CD-11 durable scout bit, read right after the bands and put on the new table.
+        field.fieldEverScouted = (tonumber(arr[i]) or 0) == 1; i = i + 1
 
         out[fieldId] = field
     end
