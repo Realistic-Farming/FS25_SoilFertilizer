@@ -103,23 +103,26 @@
     <inputBinding>
         <actionBinding action="SF_RATE_UP" />
         <actionBinding action="SF_RATE_DOWN" />
-        <actionBinding action="SF_TOGGLE_AUTO" />
+        <actionBinding action="SF_TOGGLE_AUTO">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_insert" />
+        </actionBinding>
         <actionBinding action="SF_CYCLE_MAP_LAYER" />
         <actionBinding action="SF_OPEN_SETTINGS" />
         <actionBinding action="SF_VARIABLE_RATE" />
         <actionBinding action="SF_MINIMAP_ZOOM" />
         <actionBinding action="SF_SCOUT" />
         <actionBinding action="SF_TREATMENT" />
-        <!-- API-6 (input convention): no ecosystem mod ships a default binding, so
-             the player assigns keys in the game's control settings and nothing
-             collides out of the box. All nine former defaults were removed; the
-             actions stay registered and rebindable. -->
+        <!-- API-6 still holds for the unbound actions above: the player assigns
+             those in Controls. The three shipped Right Shift defaults stay on
+             purpose. HUD drag moved off P because that chord is the production
+             dialog in widely used production overlay mods. Auto rate uses Insert
+             instead of L because Right Shift+L is Real GPS setup. -->
         <actionBinding action="SF_HANDFUL" />
         <actionBinding action="SF_TOGGLE_HUD">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
         </actionBinding>
         <actionBinding action="SF_HUD_DRAG">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_p" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_up" />
         </actionBinding>
     </inputBinding>
 
