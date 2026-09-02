@@ -199,7 +199,7 @@ function RfEscBootstrap.ensureDoor(modDir, opts)
         PAGE_NAME,
         iconPath,
         uvs,
-        "pageSettings",
+        "pageMapOverview",
         function() return true end,
         modDir
     )
