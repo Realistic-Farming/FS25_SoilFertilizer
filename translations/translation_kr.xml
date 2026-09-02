@@ -1429,7 +1429,24 @@
     <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
     <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
     <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
-    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" />
+    <e k="sf_growth_label" v="[EN] Growth" eh="699aed86" />
+    <e k="sf_growth_blocked" v="[EN] Blocked" eh="4ecc0d90" />
+    <e k="sf_growth_excellent" v="[EN] Excellent" eh="fcc2d28a" />
+    <e k="sf_growth_normal" v="[EN] Normal" eh="960b44c5" />
+    <e k="sf_growth_unknown" v="[EN] Unknown, unscouted" eh="25f30088" />
+    <e k="sf_growth_cause" v="[EN] Cause" eh="50fc9b91" />
+    <e k="sf_growth_cause_unreported" v="[EN] Not yet reported" eh="84fb9c37" />
+    <e k="sf_growth_credit" v="[EN] Growth credit" eh="30ce7482" />
+    <e k="sf_growth_credit_days" v="[EN] %d days" eh="cdca48ec" />
+    <e k="sf_growth_credit_none" v="[EN] None" eh="6adf97f8" />
+    <e k="sf_growth_settled" v="[EN] Settled" eh="30533c6b" />
+    <e k="sf_growth_settled_today" v="[EN] Today" eh="1dd1c5fb" />
+    <e k="sf_growth_settled_day_ago" v="[EN] 1 day ago" eh="44ba1391" />
+    <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
+    <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
+    <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
+</elements>
 
 
 </l10n>

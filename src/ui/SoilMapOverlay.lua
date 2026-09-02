@@ -360,6 +360,9 @@ function SoilMapOverlay:requestRefresh()
     self.fieldPolyCache        = {}
     self._pdaNextBuildMs       = 0
     self._pdaActiveLayer       = -1   -- force DMV rebuild on next draw
+    -- Growth inspect re-reads on the next tooltip draw (page OPEN / REFRESH),
+    -- one frame later than whatever asked, never inside a boundary message.
+    self._growthReread         = true
 end
 
 -- ── Layer selection ───────────────────────────────────────
@@ -1154,6 +1157,92 @@ function SoilMapOverlay:screenToWorldPosition(ingameMap, screenX, screenY)
     return worldX, worldZ
 end
 
+-- ── Growth inspect (BUILD 09:40, Stage 7 v1) ─────────────
+-- The cell tooltip answers why a patch is behind or ahead. It reads the
+-- growth family's published getter LIVE at the click (and once more after a
+-- requestRefresh, deferred to the next tooltip draw), never from a stored
+-- mirror and never from a day-boundary subscriber.
+--
+-- Gates, in order, and what each one yields:
+--   family not live (Soil disabled or stood down by Precision Farming,
+--   growth_modulation not opted in, viability absent)  -> no section at all
+--   cell unscouted (field undiscovered AND not a fresh walked cell of the
+--   VIEWING farm's own mask)                             -> UNKNOWN, getter
+--                                                          never called
+--   getter nil (off-field, layer unreadable)             -> no section
+--   otherwise                                            -> the reading
+--
+-- What v1 shows: blocked or not, nitrogen and compaction as NAMED causes, the
+-- growth credit in days as of the field's last settle day, EXCELLENT / NORMAL
+-- for ground that is not blocked. A block with no named cause is reported as
+-- real with the cause not yet reported: the family may grow causes later and
+-- this surface must not pretend to a closed list. Moisture, water and the
+-- captured harvest score are never rendered here.
+
+--- The mod's own discovery gate, the same one the disease layer paints by.
+--- The field's discovered flag reveals the whole field; otherwise only a
+--- fresh walked cell of the local viewing farm's mask counts as scouted.
+---@return boolean
+function SoilMapOverlay:_isCellScouted(farmlandId, worldX, worldZ)
+    local soilSystem = self.soilSystem
+    local fieldEntry = soilSystem and soilSystem.fieldData and soilSystem.fieldData[farmlandId]
+    if fieldEntry ~= nil and fieldEntry.diseaseDiscovered then return true end
+    local scouting = soilSystem and soilSystem.spatialScouting
+    if scouting == nil or type(scouting.isArmed) ~= "function" or not scouting:isArmed() then
+        return false
+    end
+    if SpatialScouting == nil or type(SpatialScouting.cellKey) ~= "function"
+       or type(SpatialScouting.isOrdinaryFarmId) ~= "function"
+       or type(scouting.isFresh) ~= "function" then
+        return false
+    end
+    local viewingFarm = g_localPlayer and g_localPlayer.farmId
+    local day = g_currentMission and g_currentMission.environment
+        and g_currentMission.environment.currentDay
+    if not SpatialScouting.isOrdinaryFarmId(viewingFarm) or day == nil then return false end
+    local ok, fresh = pcall(function()
+        return scouting:isFresh(viewingFarm, farmlandId, SpatialScouting.cellKey(worldX, worldZ), day)
+    end)
+    return ok and fresh == true
+end
+
+--- Read the growth judgement for a selected cell. Returns a small record the
+--- tooltip renders from; never nil, so "unread" (nil on the cell) stays
+--- distinct from "read and nothing to show".
+---   { state = "off" }                       family not live, or getter nil
+---   { state = "unknown" }                   unscouted
+---   { state = "read", info = <getter>, settledDay = <day|nil> }
+---@param sel table the selectedCell record
+---@return table
+function SoilMapOverlay:_readCellGrowth(sel)
+    local OFF = { state = "off" }
+    if sel == nil or sel.farmlandId == nil then return OFF end
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    if sfm == nil or type(sfm.getCellGrowthInfo) ~= "function" then return OFF end
+    -- Ride Soil's own stand-down: settings off, or Precision Farming present.
+    if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return OFF end
+    -- growth_modulation is experimental; when the gate is closed the family
+    -- is not running and this surface has nothing honest to say.
+    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
+       and not ReleaseGate.isSystemLive("growth_modulation") then
+        return OFF
+    end
+    if not self:_isCellScouted(sel.farmlandId, sel.worldX, sel.worldZ) then
+        return { state = "unknown" }
+    end
+    local info = sfm:getCellGrowthInfo(sel.farmlandId, sel.worldX, sel.worldZ)
+    if type(info) ~= "table" then return OFF end
+    -- As-of day: the field summary's settle day. The published summary getter
+    -- does not carry it, so this same-mod read looks at the mask's own record
+    -- and treats absence as "not settled yet".
+    local settledDay = nil
+    local v = sfm.viability
+    local summaries = v and v._summaries
+    local s = summaries and summaries[sel.farmlandId]
+    if type(s) == "table" and type(s.day) == "number" then settledDay = s.day end
+    return { state = "read", info = info, settledDay = settledDay }
+end
+
 --- Called from SoilMapHooks.onMouseEvent when the soil page is active and the
 --- user clicks the map area. Finds which soil cell was clicked and stores it
 --- as self.selectedCell for drawing the tooltip in onDraw.
@@ -1207,6 +1296,8 @@ function SoilMapOverlay:onMapClick(ingameMap, screenX, screenY)
         info         = info,
         fromZoneCell = info.fromZoneCell or false,
     }
+    -- Growth read at the click: the explicit read the window allows.
+    self.selectedCell.growth = self:_readCellGrowth(self.selectedCell)
     -- Force overlay refresh so tile colors match the freshly-read tooltip data
     self.nextSampleUpdateTime = 0
     SoilLogger.debug("SoilMapOverlay: cell selected field=%s cell=[%d,%d]",
@@ -1459,6 +1550,79 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         end
     else
         return
+    end
+
+    -- ── Growth inspect rows (every layer) ─────────────────────
+    if sel.growth == nil or self._growthReread then
+        self._growthReread = false
+        sel.growth = self:_readCellGrowth(sel)
+    end
+    local growth = sel.growth
+    local growthLabel = tr("sf_growth_label", "Growth")
+    if growth.state == "unknown" then
+        addRow(growthLabel, tr("sf_growth_unknown", "Unknown, unscouted"), DIM[1], DIM[2], DIM[3])
+    elseif growth.state == "read" and type(growth.info) == "table" then
+        local gi = growth.info
+        local by = (type(gi.blockedBy) == "table") and gi.blockedBy or {}
+        local bands = (type(gi.bands) == "table") and gi.bands or {}
+        local EXC = (ViabilityMask and ViabilityMask.BAND_EXCELLENT) or "excellent"
+        local NRM = (ViabilityMask and ViabilityMask.BAND_NORMAL) or "normal"
+        local function bandText(b)
+            if b == EXC then return tr("sf_growth_excellent", "Excellent"), ttGOOD[1], ttGOOD[2], ttGOOD[3] end
+            return tr("sf_growth_normal", "Normal"), NEU[1], NEU[2], NEU[3]
+        end
+        if gi.blocked then
+            addRow(growthLabel, tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+            local named = false
+            if by.n then
+                addRow(tr("sf_map_layer_n", "Nitrogen (N)"), tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                named = true
+            end
+            if by.compaction then
+                addRow(tr("sf_map_layer_compaction", "Compaction"), tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                named = true
+            end
+            if not named then
+                -- The block is real; the family has not named a cause this
+                -- surface knows how to show. Say so rather than guess.
+                addRow(tr("sf_growth_cause", "Cause"), tr("sf_growth_cause_unreported", "Not yet reported"), ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            end
+        else
+            -- Ahead or level: only nitrogen and compaction vote here.
+            local overall = NRM
+            if bands.n == EXC or bands.compaction == EXC then overall = EXC end
+            local oTxt, oR, oG, oB = bandText(overall)
+            addRow(growthLabel, oTxt, oR, oG, oB)
+            if bands.n ~= nil then
+                local t, r, g, b = bandText(bands.n)
+                addRow(tr("sf_map_layer_n", "Nitrogen (N)"), t, r, g, b)
+            end
+            if bands.compaction ~= nil then
+                local t, r, g, b = bandText(bands.compaction)
+                addRow(tr("sf_map_layer_compaction", "Compaction"), t, r, g, b)
+            end
+        end
+        -- Growth credit in days. nil is the family's neutral reading and is
+        -- shown as none, never as zero.
+        if type(gi.credit) == "number" then
+            local days = math.floor(gi.credit + 0.5)
+            local cR, cG, cB = NEU[1], NEU[2], NEU[3]
+            if days > 0 then cR, cG, cB = ttGOOD[1], ttGOOD[2], ttGOOD[3] end
+            addRow(tr("sf_growth_credit", "Growth credit"), string.format(tr("sf_growth_credit_days", "%d days"), days), cR, cG, cB)
+        else
+            addRow(tr("sf_growth_credit", "Growth credit"), tr("sf_growth_credit_none", "None"), DIM[1], DIM[2], DIM[3])
+        end
+        -- As of the field's last settle day, when the summary carries one.
+        local today = g_currentMission and g_currentMission.environment
+            and g_currentMission.environment.currentMonotonicDay
+        if type(growth.settledDay) == "number" and type(today) == "number" then
+            local ago = math.max(0, math.floor(today - growth.settledDay + 0.5))
+            local agoTxt
+            if ago == 0 then agoTxt = tr("sf_growth_settled_today", "Today")
+            elseif ago == 1 then agoTxt = tr("sf_growth_settled_day_ago", "1 day ago")
+            else agoTxt = string.format(tr("sf_growth_settled_days_ago", "%d days ago"), ago) end
+            addRow(tr("sf_growth_settled", "Settled"), agoTxt, DIM[1], DIM[2], DIM[3])
+        end
     end
 
     if #rows == 0 then return end
