@@ -399,41 +399,44 @@
                              the map, blank.png hairline only. Existing RF_* profiles throughout.
                              If another mod's copy of this file builds the door these ids are
                              absent and the painter skips the card (PRODUCTS unaffected). -->
-                        <GuiElement profile="RF_EscCardFrame" id="soilResistanceCard" position="10px -274px" size="1130px 108px" visible="false">
-                            <Text profile="RF_ProductsTitle" id="soilResistanceTitle" position="10px -6px" size="150px 18px"/>
-                            <Text profile="RF_HintText" id="soilResistanceState" position="170px -7px" size="820px 20px"/>
-                            <Button profile="RF_FwPagerBtn" id="soilResistancePairsBtn" position="1000px -6px" size="120px 24px"
+                        <!-- BUILD 17:52: card breathes. Top -280 (10px under the three cards), 126 tall so the bottom stroke
+                             stays 10px above the HELP/BACK band (the strip already reaches under that band; nothing to grow
+                             into). 10px stroke clearance on every child, seven columns 150 wide on 10px gaps. -->
+                        <GuiElement profile="RF_EscCardFrame" id="soilResistanceCard" position="10px -280px" size="1130px 126px" visible="false">
+                            <Text profile="RF_ProductsTitle" id="soilResistanceTitle" position="10px -10px" size="150px 18px"/>
+                            <Text profile="RF_HintText" id="soilResistanceState" position="170px -11px" size="820px 20px"/>
+                            <Button profile="RF_FwPagerBtn" id="soilResistancePairsBtn" position="1000px -10px" size="120px 20px"
                                     text="" onClick="onClickSoilResistancePairs"/>
-                            <Bitmap profile="RF_EscCardRule" id="soilResistanceRule" position="10px -32px" size="1110px 1px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode1Head" position="10px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode1Prod" position="10px -50px" size="154px 28px"
+                            <Bitmap profile="RF_EscCardRule" id="soilResistanceRule" position="10px -33px" size="1110px 1px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode1Head" position="10px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode1Prod" position="10px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode1Band" position="10px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode2Head" position="168px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode2Prod" position="168px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode1Band" position="10px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode2Head" position="170px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode2Prod" position="170px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode2Band" position="168px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode3Head" position="326px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode3Prod" position="326px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode2Band" position="170px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode3Head" position="330px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode3Prod" position="330px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode3Band" position="326px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode4Head" position="484px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode4Prod" position="484px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode3Band" position="330px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode4Head" position="490px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode4Prod" position="490px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode4Band" position="484px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode5Head" position="642px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode5Prod" position="642px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode4Band" position="490px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode5Head" position="650px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode5Prod" position="650px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode5Band" position="642px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode6Head" position="800px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode6Prod" position="800px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode5Band" position="650px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode6Head" position="810px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode6Prod" position="810px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode6Band" position="800px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductColHeaderDense" id="soilResMode7Head" position="958px -36px" size="154px 14px"/>
-                            <Text profile="RF_ProductCellEffect" id="soilResMode7Prod" position="958px -50px" size="154px 28px"
+                            <Text profile="RF_ProductCellDense" id="soilResMode6Band" position="810px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode7Head" position="970px -40px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode7Prod" position="970px -54px" size="150px 28px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <Text profile="RF_ProductCellDense" id="soilResMode7Band" position="958px -78px" size="154px 16px"/>
-                            <Text profile="RF_ProductCellDense" id="soilResistanceNote" position="10px -94px" size="1110px 14px"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode7Band" position="970px -82px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellDense" id="soilResistanceNote" position="10px -102px" size="1110px 14px"/>
                         </GuiElement>
                     </GuiElement>
 
