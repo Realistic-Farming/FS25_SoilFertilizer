@@ -213,6 +213,7 @@ local function mdResolve(bare, name)
             MDMPriceFormat = "FS25_MarketDynamics",
             CsRfPdaGuest = "FS25_SeasonalCropStress",
             NpcRfPdaGuest = "FS25_NPCFavor",
+            ProStaffRfPdaGuest = "FS25_ProStaffCoOp",
         }
         local env = g_modEnvironments[OWNER[name] or "FS25_MarketDynamics"]
         if env ~= nil and env[name] ~= nil then
@@ -1630,7 +1631,11 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     -- onShow, which runs after this. That ordering is what stops the pager following the
     -- player from NPC Favor onto Income or Dairy - those guests do not know the buttons
     -- exist and would never have hidden them.
-    for _, id in ipairs({ "rfFwPagePrev", "rfFwPageNext" }) do
+    -- BUILD 14:35 (Pro Staff Buy / Run on any Esc host): the two Pro Staff action Buttons
+    -- sit in every door copy now and ride the same every-refresh hide; ProStaffRfPdaGuest.onShow
+    -- is the only thing that turns them back on, so they never follow the player onto
+    -- another module (the rule the Pro Staff host copy has had since BUILD 00:46).
+    for _, id in ipairs({ "rfFwPagePrev", "rfFwPageNext", "rfPsBuyBtn", "rfPsFlushBtn" }) do
         local btn = self:getDescendantById(id)
         if btn ~= nil then
             btn.inputActionName = nil
@@ -2507,6 +2512,52 @@ end
 
 function RfPdaMenuPage:onClickRfFwPageNext()
     self:_rfFwPageStep(1)
+end
+
+-- ---------------------------------------------------------------------------
+-- BUILD 14:35 (Pro Staff Buy / Run on any Esc host): the two Pro Staff action Buttons
+-- (rfPsBuyBtn / rfPsFlushBtn) sit in every door copy, and the Esc page that loads is
+-- always the HOST mod's copy, so the click names must exist here too or the buttons
+-- never fire (rain-key lesson). Vendored from the Pro Staff host copy (BUILD 00:46);
+-- the guest is reached through the mission handle first, then resolved across mod
+-- environments, because bare ProStaffRfPdaGuest is nil in every env but Pro Staff's.
+-- The host owns nothing but the click: the guest decides farm, membership and count,
+-- and it calls ProStaffManager:buyLevel or ProStaffManager:requestFarmFlush and
+-- nothing else. No money is moved here.
+-- ---------------------------------------------------------------------------
+
+--- The Pro Staff guest: mission handle first (a registry built by another mod's older
+--- RfEscModules copy cannot strand the click), then the cross-env resolver.
+local function _psGuest()
+    if g_currentMission ~= nil and g_currentMission.proStaffRfPdaGuest ~= nil then
+        return g_currentMission.proStaffRfPdaGuest
+    end
+    return (type(mdResolve) == "function")
+            and mdResolve(ProStaffRfPdaGuest, "ProStaffRfPdaGuest") or ProStaffRfPdaGuest
+end
+
+function RfPdaMenuPage:onClickPsBuy()
+    local guest = _psGuest()
+    if guest == nil or type(guest.onBuy) ~= "function" then
+        return
+    end
+    local ok, err = pcall(guest.onBuy)
+    if not ok then
+        SoilLogger.warning("RfPdaMenuPage: Pro Staff buy failed: %s", tostring(err))
+    end
+    self:refreshContent(false)
+end
+
+function RfPdaMenuPage:onClickPsFlush()
+    local guest = _psGuest()
+    if guest == nil or type(guest.onFlush) ~= "function" then
+        return
+    end
+    local ok, err = pcall(guest.onFlush)
+    if not ok then
+        SoilLogger.warning("RfPdaMenuPage: Pro Staff flush failed: %s", tostring(err))
+    end
+    self:refreshContent(false)
 end
 
 --- 2026-08-22 (Wizard): pager keys are now . / > for next and , / < for back
