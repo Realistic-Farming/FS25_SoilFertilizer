@@ -88,6 +88,34 @@ local function tr(key, fallback)
     return fallback or key
 end
 
+-- ── Growth summary per field row (BUILD 09:40, Stage 7 v1) ──
+-- Field-level fractions from the growth family's published summary getter:
+-- how much of the field's area is blocked, how much is excellent. Read when
+-- the screen rebuilds its rows (open, filter toggle, its own refresh tick),
+-- never from a day-boundary subscriber. The summary is the mask's settled
+-- record, so this is a cheap table read, not a field walk.
+--
+-- Gates: Soil disabled or stood down by Precision Farming, growth_modulation
+-- not opted in, or the field not yet discovered (the same discovery flag the
+-- soil map paints by; a whole-field fraction has no per-cell compose) all
+-- yield nil, and the row keeps its nutrient status word as before.
+---@param fieldId number farmland id
+---@param fieldEntry table|nil the soil system's own field record
+---@return table|nil { blockedFrac, excellentFrac }
+local function readGrowthSummary(fieldId, fieldEntry)
+    if fieldEntry == nil or not fieldEntry.diseaseDiscovered then return nil end
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    if sfm == nil or type(sfm.getFieldGrowthSummary) ~= "function" then return nil end
+    if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return nil end
+    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
+       and not ReleaseGate.isSystemLive("growth_modulation") then
+        return nil
+    end
+    local summary = sfm:getFieldGrowthSummary(fieldId)
+    if type(summary) ~= "table" then return nil end
+    return summary
+end
+
 -- ── Constructor ───────────────────────────────────────────
 
 function SoilPDAScreen.new()
@@ -764,10 +792,17 @@ function SoilPDAScreen:_buildFieldData()
                 end)
                 if urgOk then urgency = urgVal end
 
+                local growth = nil
+                local gOk, gVal = pcall(function()
+                    return readGrowthSummary(fieldId, sfm.soilSystem.fieldData[fieldId])
+                end)
+                if gOk then growth = gVal end
+
                 table.insert(self.fieldData, {
                     fieldId = fieldId,
                     info    = info,
                     urgency = urgency,
+                    growth  = growth,
                 })
             end
         end
@@ -1038,14 +1073,32 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
         end
     end
 
-    -- Overall status
+    -- Overall status. The growth summary shares this cell (no new column in
+    -- v1): a blocked share outranks the nutrient word, an excellent share
+    -- shows only when nothing else is wrong, so the worst news always wins.
     if statusEl then
-        if entry.urgency >= 60 then
+        local growth = entry.growth
+        local blockedPct, excellentPct = nil, nil
+        if type(growth) == "table" then
+            if type(growth.blockedFrac) == "number" then
+                blockedPct = math.floor(growth.blockedFrac * 100 + 0.5)
+            end
+            if type(growth.excellentFrac) == "number" then
+                excellentPct = math.floor(growth.excellentFrac * 100 + 0.5)
+            end
+        end
+        if blockedPct ~= nil and blockedPct >= 1 then
+            statusEl:setText(string.format(tr("sf_pda_growth_blocked", "Blocked %d%%"), blockedPct))
+            statusEl:setTextColor(unpack(COLOR_POOR))
+        elseif entry.urgency >= 60 then
             statusEl:setText(tr("sf_pda_status_poor", "Poor"))
             statusEl:setTextColor(unpack(COLOR_POOR))
         elseif entry.urgency >= 25 then
             statusEl:setText(tr("sf_pda_status_fair", "Fair"))
             statusEl:setTextColor(unpack(COLOR_FAIR))
+        elseif excellentPct ~= nil and excellentPct >= 1 then
+            statusEl:setText(string.format(tr("sf_pda_growth_ahead", "Ahead %d%%"), excellentPct))
+            statusEl:setTextColor(unpack(COLOR_GOOD))
         else
             statusEl:setText(tr("sf_pda_status_good", "Good"))
             statusEl:setTextColor(unpack(COLOR_GOOD))
