@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Opsi HUD Per Pemain" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Setiap pemain mengontrol HUD mereka sendiri - tidak disinkronkan ke server. Opsi: Tampilkan HUD (aktif/mati), Posisi (5 preset + seret), Tema Warna (Hijau / Biru / Amber / Mono), Ukuran Font (Kecil / Sedang / Besar), Transparansi (25% hingga 100%), Unit Imperial (aktif/mati)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Kontrol Laju Sprayer" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Saat berada di sprayer atau spreader, gunakan SF Rate Up (]) dan SF Rate Down ([) untuk menyesuaikan laju aplikasi dari 0.10x hingga 2.00x. Aktifkan Kontrol Laju Otomatis (Shift+L) agar mod secara otomatis menargetkan level nutrisi optimal dan menghindari risiko terbakar." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Saat berada di sprayer atau spreader, gunakan SF Rate Up dan SF Rate Down untuk menyesuaikan laju aplikasi dari 0.10x hingga 2.00x. Aktifkan Kontrol Laju Otomatis agar mod secara otomatis menargetkan level nutrisi optimal dan menghindari risiko terbakar." eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="Cara Kerja Multiplayer" eh="8a4ce30e" />

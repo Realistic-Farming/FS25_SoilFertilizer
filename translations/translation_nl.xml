@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="HUD-opties per speler" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Elke speler beheert zijn eigen HUD - niet gesynchroniseerd met de server. Opties: HUD tonen (aan/uit), positie (5 voorinstellingen + slepen), kleurthema (Groen / Blauw / Amber / Mono), lettergrootte (Klein / Middel / Groot), transparantie (25% tot 100%), imperiale eenheden (aan/uit)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Sproeiersnelheidsregeling" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Gebruik terwijl je in een sproeier of strooier zit SF Dosering Omhoog (]) en SF Dosering Omlaag ([) om de toedieningssnelheid aan te passen van 0,10x tot 2,00x. Schakel automatische snelheidscontrole in (Shift+L) om de mod automatisch optimale voedingsstofniveaus te laten bereiken en verbrandingsrisico te vermijden." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Gebruik terwijl je in een sproeier of strooier zit SF Dosering Omhoog en SF Dosering Omlaag om de toedieningssnelheid aan te passen van 0,10x tot 2,00x. Schakel automatische snelheidscontrole in om de mod automatisch optimale voedingsstofniveaus te laten bereiken en verbrandingsrisico te vermijden." eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="Hoe multiplayer werkt" eh="8a4ce30e" />

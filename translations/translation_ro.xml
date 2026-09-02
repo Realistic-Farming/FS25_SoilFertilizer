@@ -331,7 +331,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Opțiuni HUD per Jucător" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Fiecare jucător își controlează propriul HUD - nesincronizat cu serverul. Opțiuni: Afișare HUD (pornit/oprit), Poziție (5 presetări + tragere), Temă Culori (Verde / Albastru / Chihlimbar / Mono), Dimensiune Font (Mic / Mediu / Mare), Transparență (25% la 100%), Unități Imperiale (pornit/oprit)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Control Rată Pulverizator" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="În timp ce ești într-un pulverizator sau distribuitor, folosește SF Rate Up (]) și SF Rate Down ([) pentru a ajusta rata de aplicare de la 0.10x la 2.00x. Comută Controlul Automat al Ratei (Shift+L) pentru a lăsa mod-ul să vizeze automat nivelurile optime de nutrienți și să evite riscul de arsură." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="În timp ce ești într-un pulverizator sau distribuitor, folosește SF Rate Up și SF Rate Down pentru a ajusta rata de aplicare de la 0.10x la 2.00x. Comută Controlul Automat al Ratei pentru a lăsa mod-ul să vizeze automat nivelurile optime de nutrienți și să evite riscul de arsură." eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="Cum Funcționează Multiplayer-ul" eh="8a4ce30e" />

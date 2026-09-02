@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="每位玩家 HUD 選項" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="每位玩家控制自己的 HUD--不與服務器同步。選項：顯示 HUD（開/關）、位置（5 個預設 + 拖動）、顏色主題（綠 / 藍 / 琥珀 / 單色）、字體大小（小 / 中 / 大）、透明度（25%% 到 100%%）、英制單位（開/關）。" eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="噴霧機施用量控制" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="在噴霧器或撒布機中，使用 SF 施用量增加 (]) 和 SF 施用量減少 ([) 來將施用量從 0.10x 調整到 2.00x。切換自動施用量控制 (Shift+L) 以讓模組自動瞄準最佳養分水平並避免燒傷風險。" eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="在噴霧器或撒布機中，使用 SF 施用量增加 和 SF 施用量減少 來將施用量從 0.10x 調整到 2.00x。切換自動施用量控制 以讓模組自動瞄準最佳養分水平並避免燒傷風險。" eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="多人遊戲工作機制" eh="8a4ce30e" />

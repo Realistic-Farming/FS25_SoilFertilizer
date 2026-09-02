@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK</author>
-    <version>2.5.0.96</version>
+    <version>2.5.0.97</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -101,23 +101,41 @@
     <l10n filenamePrefix="translations/translation" />
 
     <inputBinding>
-        <actionBinding action="SF_RATE_UP" />
-        <actionBinding action="SF_RATE_DOWN" />
+        <actionBinding action="SF_RATE_UP">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_rightbracket" />
+        </actionBinding>
+        <actionBinding action="SF_RATE_DOWN">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_leftbracket" />
+        </actionBinding>
         <actionBinding action="SF_TOGGLE_AUTO">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_insert" />
         </actionBinding>
-        <actionBinding action="SF_CYCLE_MAP_LAYER" />
-        <actionBinding action="SF_OPEN_SETTINGS" />
-        <actionBinding action="SF_VARIABLE_RATE" />
-        <actionBinding action="SF_MINIMAP_ZOOM" />
-        <actionBinding action="SF_SCOUT" />
-        <actionBinding action="SF_TREATMENT" />
-        <!-- API-6 still holds for the unbound actions above: the player assigns
-             those in Controls. The three shipped Right Shift defaults stay on
-             purpose. HUD drag moved off P because that chord is the production
-             dialog in widely used production overlay mods. Auto rate uses Insert
-             instead of L because Right Shift+L is Real GPS setup. -->
-        <actionBinding action="SF_HANDFUL" />
+        <actionBinding action="SF_CYCLE_MAP_LAYER">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_m" />
+        </actionBinding>
+        <actionBinding action="SF_OPEN_SETTINGS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_s" />
+        </actionBinding>
+        <actionBinding action="SF_VARIABLE_RATE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_v" />
+        </actionBinding>
+        <actionBinding action="SF_MINIMAP_ZOOM">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_period" />
+        </actionBinding>
+        <actionBinding action="SF_SCOUT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_k" />
+        </actionBinding>
+        <actionBinding action="SF_TREATMENT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_t" />
+        </actionBinding>
+        <!-- Right Shift is the suite modifier. Auto-rate stays on Insert so it
+             does not steal Right Shift+L from Real GPS. HUD drag stays on Up so
+             it does not steal Right Shift+P from production-dialog mods. The
+             other chords are the playtested defaults; they stay rebindable in
+             Controls. Help names the action rather than baking a chord. -->
+        <actionBinding action="SF_HANDFUL">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_comma" />
+        </actionBinding>
         <actionBinding action="SF_TOGGLE_HUD">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
         </actionBinding>
