@@ -443,6 +443,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local orgBreach = streamReadInt32(streamId)
         -- CD-11 bands (consume unconditionally to keep the stream aligned)
         local resBands  = ResistanceBands.readStream(streamId)
+        local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
         -- Validate and sanitize field data
         local function validateNumber(value, min, max, default, name)
@@ -495,6 +496,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 activeDisease = activeDisease,
                 activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
                 diseaseDiscovered = diseaseDiscovered or false,
+                fieldEverScouted = everScouted == true,
                 dryDayCount = dryDays,
                 burnDaysLeft = burnDays,
                 coverageFraction = math.max(0, math.min(1, coverageFrac or 0)),
@@ -592,6 +594,8 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
 
         -- CD-11: per-mode resistance bands (server-computed; never a raw score).
         ResistanceBands.writeStream(streamId, field)
+        -- CD-11: the durable scout bit rides after the bands on every field delivery.
+        streamWriteBool(streamId, field.fieldEverScouted == true)
     end
 end
 
@@ -751,6 +755,8 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
 
         -- CD-11: per-mode resistance bands (server-computed; never a raw score).
         ResistanceBands.writeStream(streamId, field)
+        -- CD-11: the durable scout bit rides after the bands on every field delivery.
+        streamWriteBool(streamId, field.fieldEverScouted == true)
     end
 end
 
@@ -827,6 +833,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local orgBreach = streamReadInt32(streamId)
         -- CD-11 bands (consume unconditionally to keep the stream aligned)
         local resBands  = ResistanceBands.readStream(streamId)
+        local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
         if type(fieldId) == "number" and fieldId >= 0 then
             self.batchFields[fieldId] = {
@@ -851,6 +858,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 activeDisease         = activeDisease,
                 activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
                 diseaseDiscovered     = diseaseDiscovered or false,
+                fieldEverScouted      = everScouted == true,
                 dryDayCount           = math.max(0, dryDays),
                 burnDaysLeft          = math.max(0, burnDays),
                 nutrientBuffer        = buffer,
@@ -1050,6 +1058,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local orgCert   = streamReadInt32(streamId)
     local orgBreach = streamReadInt32(streamId)
     local resBands  = ResistanceBands.readStream(streamId)
+    local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
     -- Clamp all values to valid ranges
     self.field = {
@@ -1079,6 +1088,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
         activeDisease = activeDisease,
         activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
         diseaseDiscovered = diseaseDiscovered or false,
+        fieldEverScouted = everScouted == true,
         dryDayCount = math.max(0, dryDays),
         burnDaysLeft = math.max(0, burnDays),
         nutrientBuffer   = buffer,
@@ -1168,6 +1178,8 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     -- run() replaces the client's field table wholesale, so a value that does not travel
     -- is a value that gets wiped. Server-computed; a raw score never goes on the wire.
     ResistanceBands.writeStream(streamId, self.field)
+    -- CD-11: the durable scout bit rides after the bands (same order as the full/batch sync).
+    streamWriteBool(streamId, self.field.fieldEverScouted == true)
 end
 
 function SoilFieldUpdateEvent:run(connection)

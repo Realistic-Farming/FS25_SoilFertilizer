@@ -159,19 +159,20 @@
                     <GuiElement profile="RF_TableRegionShell">
                         <Bitmap profile="RF_TableWrapBg"/>
 
+                        <!-- BUILD 16:56: RF_Soil* carve-outs (text -2) are Soil-table only; CS/MDM keep the shared profiles. -->
                         <!-- F12: all headers centered; AREA/STATUS/Fertilizer body centered.
                              IDs: Lua _applyChromeL10n rebinds when CS/WC created the Esc door. -->
-                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
-                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
 
                         <GuiElement profile="fs25_subCategoryListContainer" position="0px -32px"
                                     absoluteSizeOffset="0px 40px">
@@ -180,17 +181,17 @@
                                         endClipperElementName="rfListEnd">
                                 <ListItem profile="RF_ListRowTall" onClick="onClickFieldRow">
                                     <Bitmap profile="RF_RowBg" name="alternating"/>
-                                    <Text profile="RF_CellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
-                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
-                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
+                                    <Text profile="RF_SoilCellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
+                                    <Text profile="RF_SoilCellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
+                                    <Text profile="RF_SoilStatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
                                     <Text profile="RF_FertChip"   name="fieldRowFert"   position="702px 0px" size="106px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
                                 </ListItem>
                             </SmoothList>
                             <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfListStart"/>
@@ -208,8 +209,8 @@
                     <GuiElement profile="RF_TreatmentStrip" id="rfTreatmentStrip">
                         <Bitmap profile="RF_TreatmentBoxBg"/>
                         <!-- Card 1 of 3 (BUILD 12:59): TREATMENT + target levels share the
-                             -22 top line with PRODUCTS and ROTATION. Children re-based inside. -->
-                        <GuiElement profile="RF_EscCardFrame" id="soilTreatmentCard" position="10px -22px" size="200px 248px">
+                             -12 top line (BUILD 17:52 AMEND, was -22) with PRODUCTS and ROTATION. Children re-based inside. -->
+                        <GuiElement profile="RF_EscCardFrame" id="soilTreatmentCard" position="10px -12px" size="200px 248px">
                             <Text profile="RF_SectionTitle" id="soilSectionTreatment" position="10px -6px" size="180px 24px" text="$l10n_rf_pda_section_treatment"/>
                             <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -40px" size="180px 20px"/>
                             <Text profile="RF_TreatTargetLine" id="treatTargetN" position="10px -62px" size="180px 20px"/>
@@ -235,7 +236,7 @@
                              This edit is in ALL NINE door copies on purpose. The Esc page is
                              built by whichever mod loads first, from its own copy, so a change
                              in Soil alone would be overwritten by whoever won the race. -->
-                        <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -22px" size="620px 248px">
+                        <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -12px" size="620px 248px">
                             <!-- BUILD 09:19 (PB-05). Brian read "Wait: amending now can burn t..." on
                                  this strip: the sentence that says an apply will scorch the crop was
                                  cut before its own verb.
@@ -329,7 +330,7 @@
                              850px -88px / 290px 248px - never grows left into PRODUCTS.
                              Soil grey via RF_TreatmentBoxBg (mock blue vetoed). Fixed Text only,
                              no SmoothList. Read-only: no apply-rotation controls. -->
-                        <GuiElement profile="RF_EscCardFrame" id="soilRotationCard" position="850px -22px" size="290px 248px">
+                        <GuiElement profile="RF_EscCardFrame" id="soilRotationCard" position="850px -12px" size="290px 248px">
                             <!-- Zone split (BUILD 16:19): ROTATION glance on top, then 14px of air
                                  with one 1px hairline, then WHAT IF. Same recipe as the middle card
                                  so the two read as one family. All bodies inset X 0 -> 10, widths
@@ -387,6 +388,56 @@
                         </GuiElement>
                         <Text profile="RF_HintText" id="samplingInfoFallback" position="850px -24px" size="180px 160px"
                               textMaxNumLines="7" text="$l10n_rf_pda_sample_hint" visible="false"/>
+
+                        <!-- Card 4 (BUILD 10:52, CD-11): RESISTANCE. Full-width strip under the three
+                             cards, in the 114px the strip already had free below y -270. Read-only
+                             band readout painted by RfPdaSoilPanel.refreshResistanceCard on panel
+                             show and owned-field select only; hidden until a field is selected.
+                             Seven chips, one per FRAC mode: header, the products that use it, and
+                             the band word. Fixed Text plus one fs25_wideButton (no key chip) that
+                             opens the pair disclosure in InfoDialog. No SmoothList, no Bitmap over
+                             the map, blank.png hairline only. Existing RF_* profiles throughout.
+                             If another mod's copy of this file builds the door these ids are
+                             absent and the painter skips the card (PRODUCTS unaffected). -->
+                        <!-- BUILD 17:52 AMEND (Y): card breathes. Top -270 (10px under the three cards, now at -12), 136 tall so the
+                             bottom stroke stays 10px above the HELP/BACK band (the strip already reaches under that band; nothing to
+                             grow into). 10px stroke clearance, 10px rule to heads, 10px bands to note, seven columns 150 wide on 10px gaps. -->
+                        <GuiElement profile="RF_EscCardFrame" id="soilResistanceCard" position="10px -270px" size="1130px 136px" visible="false">
+                            <Text profile="RF_ProductsTitle" id="soilResistanceTitle" position="10px -10px" size="150px 18px"/>
+                            <Text profile="RF_HintText" id="soilResistanceState" position="170px -11px" size="820px 20px"/>
+                            <Button profile="RF_FwPagerBtn" id="soilResistancePairsBtn" position="1000px -10px" size="120px 20px"
+                                    text="" onClick="onClickSoilResistancePairs"/>
+                            <Bitmap profile="RF_EscCardRule" id="soilResistanceRule" position="10px -35px" size="1110px 1px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode1Head" position="10px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode1Prod" position="10px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode1Band" position="10px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode2Head" position="170px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode2Prod" position="170px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode2Band" position="170px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode3Head" position="330px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode3Prod" position="330px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode3Band" position="330px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode4Head" position="490px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode4Prod" position="490px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode4Band" position="490px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode5Head" position="650px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode5Prod" position="650px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode5Band" position="650px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode6Head" position="810px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode6Prod" position="810px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode6Band" position="810px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductColHeaderDense" id="soilResMode7Head" position="970px -46px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellEffect" id="soilResMode7Prod" position="970px -60px" size="150px 28px"
+                                  textMaxNumLines="2" textVerticalAlignment="top"/>
+                            <Text profile="RF_ProductCellDense" id="soilResMode7Band" position="970px -88px" size="150px 14px"/>
+                            <Text profile="RF_ProductCellDense" id="soilResistanceNote" position="10px -112px" size="1110px 14px"/>
+                        </GuiElement>
                     </GuiElement>
 
                 </GuiElement>

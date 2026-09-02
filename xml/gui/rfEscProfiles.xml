@@ -532,7 +532,7 @@
 
     <!-- Table viewport reserve. -->
     <Profile name="RF_TableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
-        <absoluteSizeOffset value="0px 372px"/>
+        <absoluteSizeOffset value="0px 420px"/>
         <position value="0px 0px"/>
     </Profile>
 
@@ -560,7 +560,7 @@
 
     <!-- Treatment / CS detail: clipChildren keeps PRODUCTS inside strip. -->
     <Profile name="RF_TreatmentStrip" extends="emptyPanel" with="anchorBottomStretchingX pivotBottomLeft">
-        <height value="384px"/>
+        <height value="432px"/>
         <position value="0px 0px"/>
         <clipChildren value="true"/>
     </Profile>
@@ -694,8 +694,25 @@
         <textSelectedColor value="0.95 0.95 0.95 1"/>
     </Profile>
 
-    <Profile name="RF_FertChip" extends="fs25_textDefault" with="anchorTopLeft">
+    <!-- BUILD 16:56: Soil fields table only (text -2 so RESISTANCE has room). CS/MDM tables keep the shared profiles above. -->
+    <Profile name="RF_SoilColHeader" extends="RF_ColHeader">
         <textSize value="17px"/>
+    </Profile>
+    <Profile name="RF_SoilCellLeft" extends="RF_CellLeft">
+        <textSize value="18px"/>
+    </Profile>
+    <Profile name="RF_SoilCellCenter" extends="RF_CellCenter">
+        <textSize value="18px"/>
+    </Profile>
+    <Profile name="RF_SoilCellRight" extends="RF_CellRight">
+        <textSize value="18px"/>
+    </Profile>
+    <Profile name="RF_SoilStatusCell" extends="RF_StatusCell">
+        <textSize value="15px"/>
+    </Profile>
+
+    <Profile name="RF_FertChip" extends="fs25_textDefault" with="anchorTopLeft">
+        <textSize value="15px"/>
         <textBold value="true"/>
         <textUpperCase value="true"/>
         <textAlignment value="center"/>

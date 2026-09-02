@@ -937,15 +937,25 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
 
     local R = SoilConstants.RESISTANCE
     local lines = {}
-    lines[#lines+1] = string.format("=== Resistance (CD-9) -- Field %d ===", fid)
-    lines[#lines+1] = string.format("Scouted: %s%s",
-        field.diseaseDiscovered and "YES" or "NO",
-        field.diseaseDiscovered and "" or "  <- bands are gated; everything reads UNKNOWN until you SoilScout")
+    lines[#lines+1] = string.format("=== Resistance (CD-9 / CD-11) -- Field %d ===", fid)
+    -- CD-11: the reveal gate is the durable server bit, not the per-outbreak flag.
+    local everScouted = field.fieldEverScouted == true
+    lines[#lines+1] = string.format("Scouted: %s  (fieldEverScouted = %s, the durable bit the bands gate on)%s",
+        everScouted and "YES" or "NO", tostring(everScouted),
+        everScouted and "" or "  <- bands are gated; everything reads UNKNOWN until the server records a SoilScout")
+    lines[#lines+1] = string.format("Disease discovered: %s  (diseaseDiscovered, resets per outbreak; does not gate bands)",
+        field.diseaseDiscovered and "YES" or "NO")
     lines[#lines+1] = string.format("Field area: %.2f ha", field.fieldArea or 0)
-    lines[#lines+1] = string.format("Picture: %s",
-        ResistanceBands.hasServerPicture() and "server/SP (raw scores local)" or "client (bands synced from server)")
+    local serverPicture = ResistanceBands.hasServerPicture()
+    if serverPicture then
+        lines[#lines+1] = "Picture: server/SP (raw scores local)"
+    else
+        lines[#lines+1] = string.format("Picture: client (bands synced from server) -- bands %s",
+            field.resistanceBandsReceived == true
+                and "RECEIVED (a silent mode reads WORKING)"
+                or "WAITING (no field delivery yet; every mode reads UNKNOWN)")
+    end
     lines[#lines+1] = ""
-    lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
 
     -- Walk the FRAC modes the mod actually knows about, so a clean mode still shows.
     local seen, modes = {}, {}
@@ -955,16 +965,29 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
     end
     table.sort(modes)
 
-    for _, mode in ipairs(modes) do
-        local ceiling = ResistanceBands.ceilingForMode(mode)
-        local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
-        local ratio   = score / ceiling
-        local band    = soilSys:getResistanceBand(fid, mode)
-        -- The CD-9 penalty a spray of this mode would take right now.
-        local mult    = 1 - (score / ceiling)
-        lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
-            mode, score, ceiling, ratio * 100,
-            RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+    if serverPicture then
+        lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
+        for _, mode in ipairs(modes) do
+            local ceiling = ResistanceBands.ceilingForMode(mode)
+            local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+            local ratio   = score / ceiling
+            local band    = soilSys:getResistanceBand(fid, mode)
+            -- The CD-9 penalty a spray of this mode would take right now.
+            local mult    = 1 - (score / ceiling)
+            lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
+                mode, score, ceiling, ratio * 100,
+                RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+        end
+    else
+        -- A pure client holds bands only. No score, ratio or next-spray column is invented
+        -- from a zero the server never sent; the public getter is the whole picture here.
+        lines[#lines+1] = "MODE  BAND       CHEMICALS"
+        for _, mode in ipairs(modes) do
+            local band = soilSys:getResistanceBand(fid, mode)
+            lines[#lines+1] = string.format("%-5s %-9s  %s",
+                mode, RESISTANCE_BAND_NAMES[band] or "?", chemicalsForMode(mode))
+        end
+        lines[#lines+1] = "(raw scores, ratios and next-spray multipliers stay on the server)"
     end
 
     lines[#lines+1] = ""
