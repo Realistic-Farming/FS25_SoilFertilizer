@@ -159,19 +159,20 @@
                     <GuiElement profile="RF_TableRegionShell">
                         <Bitmap profile="RF_TableWrapBg"/>
 
+                        <!-- BUILD 16:56: RF_Soil* carve-outs (text -2) are Soil-table only; CS/MDM keep the shared profiles. -->
                         <!-- F12: all headers centered; AREA/STATUS/Fertilizer body centered.
                              IDs: Lua _applyChromeL10n rebinds when CS/WC created the Esc door. -->
-                        <Text profile="RF_ColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
-                        <Text profile="RF_ColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
-                        <Text profile="RF_ColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColArea"   text="$l10n_rf_pda_col_area"   position="120px -8px"   size="102px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="N"                       position="230px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="P"                       position="322px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" text="K"                       position="414px -8px"   size="84px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColPH" text="pH"       position="506px -8px"   size="72px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColStatus" text="$l10n_sf_pda_col_status" position="586px -8px"   size="108px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColFert"   text="$l10n_rf_pda_col_fert"   position="702px -8px"  size="106px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColWeed"    text="$l10n_sf_pda_col_weeds"   position="816px -8px"  size="94px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColPest"    text="$l10n_sf_pda_col_pests"   position="918px -8px"  size="94px 24px"/>
+                        <Text profile="RF_SoilColHeader" id="soilColDisease" text="$l10n_sf_pda_col_disease" position="1020px -8px"  size="120px 24px"/>
 
                         <GuiElement profile="fs25_subCategoryListContainer" position="0px -32px"
                                     absoluteSizeOffset="0px 40px">
@@ -180,17 +181,17 @@
                                         endClipperElementName="rfListEnd">
                                 <ListItem profile="RF_ListRowTall" onClick="onClickFieldRow">
                                     <Bitmap profile="RF_RowBg" name="alternating"/>
-                                    <Text profile="RF_CellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
-                                    <Text profile="RF_CellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
-                                    <Text profile="RF_StatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
+                                    <Text profile="RF_SoilCellLeft"   name="fieldRowId"     position="12px 0px"   size="102px 48px"/>
+                                    <Text profile="RF_SoilCellCenter" name="fieldRowArea"   position="120px 0px"  size="102px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowN"      position="230px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowP"      position="322px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowK"      position="414px 0px"  size="84px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowPH"     position="506px 0px"  size="72px 48px"/>
+                                    <Text profile="RF_SoilStatusCell" name="fieldRowStatus" position="586px 0px" size="108px 48px"/>
                                     <Text profile="RF_FertChip"   name="fieldRowFert"   position="702px 0px" size="106px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
-                                    <Text profile="RF_CellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowWeed"    position="816px 0px" size="94px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowPest"    position="918px 0px" size="94px 48px"/>
+                                    <Text profile="RF_SoilCellRight"  name="fieldRowDisease" position="1020px 0px" size="120px 48px"/>
                                 </ListItem>
                             </SmoothList>
                             <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfListStart"/>
