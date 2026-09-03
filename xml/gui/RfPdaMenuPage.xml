@@ -652,6 +652,92 @@
                                   textMaxNumLines="2" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"
                                   textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                            <!-- BUILD 07:47 (Ash 07:47, George CLOSED DESIGN 07:36): Dairy barn cards, breed tables.
+                                 Two 555x380 RF_EscCardFrame cards side by side in the 1140x428 bay (2 per page; the
+                                 rfDairyCard3 / rfDairyCard4 frames stay as dark spares so no id disappears from the
+                                 nine doors, DairyRfPdaGuest never shows them). Inside a card: Name, State, then the
+                                 herd table (header plus up to four breed rows, names left / numbers right, both
+                                 columns one multi-line Text at the same pitch), the milk table the same way, the
+                                 farm's stored-feed readout, and two Buttons for the in-card breed pager that only
+                                 show when a barn carries more breeds than four rows hold. The Buttons carry NO
+                                 onClick on purpose: the Dairy guest binds onClickCallback at runtime and an unbound
+                                 Button is inert (ButtonElement:getIsActive needs a callback), so no other door can
+                                 fire them. Hidden by default. Byte-same in all nine door files. rfDairyCardsHint is
+                                 the page hint for this layout (rfFwHintTable sits at -336, under the cards). -->
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard1" position="10px -8px" size="555px 380px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfDairyCard1Name" position="10px -6px" size="535px 24px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1State" position="10px -32px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1HerdHead" position="10px -52px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1HerdNames" position="10px -72px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1HerdVals" position="340px -72px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1MilkHead" position="10px -152px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1MilkNames" position="10px -172px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1MilkVals" position="340px -172px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard1Stored" position="10px -252px" size="535px 60px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard1BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard1BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard2" position="575px -8px" size="555px 380px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfDairyCard2Name" position="10px -6px" size="535px 24px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2State" position="10px -32px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2HerdHead" position="10px -52px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2HerdNames" position="10px -72px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2HerdVals" position="340px -72px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2MilkHead" position="10px -152px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2MilkNames" position="10px -172px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2MilkVals" position="340px -172px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard2Stored" position="10px -252px" size="535px 60px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard2BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard2BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard3" position="10px -8px" size="555px 380px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfDairyCard3Name" position="10px -6px" size="535px 24px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3State" position="10px -32px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3HerdHead" position="10px -52px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3HerdNames" position="10px -72px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3HerdVals" position="340px -72px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3MilkHead" position="10px -152px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3MilkNames" position="10px -172px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3MilkVals" position="340px -172px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard3Stored" position="10px -252px" size="535px 60px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard3BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard3BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard4" position="575px -8px" size="555px 380px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfDairyCard4Name" position="10px -6px" size="535px 24px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4State" position="10px -32px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4HerdHead" position="10px -52px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4HerdNames" position="10px -72px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4HerdVals" position="340px -72px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4MilkHead" position="10px -152px" size="535px 20px" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4MilkNames" position="10px -172px" size="330px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4MilkVals" position="340px -172px" size="205px 80px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <Text profile="RF_HintText" id="rfDairyCard4Stored" position="10px -252px" size="535px 60px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard4BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
+                                <Button profile="RF_FwPagerBtn" id="rfDairyCard4BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                            </GuiElement>
+                            <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 36px"
+                                  textMaxNumLines="2" textVerticalAlignment="top" visible="false" text=""/>
                         </GuiElement>
                     </GuiElement>
 
