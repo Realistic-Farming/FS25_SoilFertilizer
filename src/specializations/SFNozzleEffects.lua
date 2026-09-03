@@ -327,6 +327,15 @@ function SFNozzleEffects:onPostLoad(savegame)
         return
     end
 
+    -- Real index of the centre VWW section. Nozzles remap the centre to sentinel
+    -- sectionIndex 0 (so it skips the section.isActive gate), but deposition gating needs
+    -- the centre's TRUE section index so getIsWorkAreaActive can suppress it too when See &
+    -- Spray finds no target - otherwise the centre leaks product while the boom holds.
+    spec.centerSectionIndex = nil
+    for _, section in ipairs(spec_vww.sections) do
+        if section.isCenter then spec.centerSectionIndex = section.index; break end
+    end
+
     local minWidth = 1
     if spec_vww.sectionNodes and #spec_vww.sectionNodes > 0 then
         local sn     = spec_vww.sectionNodes[1]
@@ -545,17 +554,23 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     -- Aggregate the per-nozzle See & Spray decision into a per-section flag so
     -- getIsWorkAreaActive can gate the ACTUAL ground deposition per section (not just the
     -- fluid usage). A section is suppressed when it has nozzles and none are active (no
-    -- target confirmed / crossed the field boundary). Sections with no nozzle - e.g. the
-    -- centre always-on zone (sectionIndex 0) - get no entry and keep spraying.
+    -- target confirmed / crossed the field boundary). The centre nozzle (sentinel
+    -- sectionIndex 0) is tracked separately as centerActive so its See & Spray decision
+    -- gates the centre work area too, instead of the centre always leaking product.
     local sectionActive = {}
+    local centerActive  = nil
     for _, ed in ipairs(spec.sprayerEffects) do
         local idx = ed.sectionIndex
         if idx ~= nil and idx ~= 0 then
             if sectionActive[idx] == nil then sectionActive[idx] = false end
             if ed.isActive then sectionActive[idx] = true end
+        elseif idx == 0 then
+            if centerActive == nil then centerActive = false end
+            if ed.isActive then centerActive = true end
         end
     end
     spec.sectionActive = sectionActive
+    spec.centerActive  = centerActive
 
     -- Animate shader fade transitions for any nozzle with an effect node.
     for _, effectData in ipairs(spec.sprayerEffects) do
@@ -830,7 +845,16 @@ function SFNozzleEffects:getIsWorkAreaActive(superFunc, workArea)
     if not hasAny then return true end
 
     local idx = workArea.sectionIndex
-    if idx ~= nil and spec.sectionActive ~= nil and spec.sectionActive[idx] == false then
+    if idx ~= nil and spec.sectionActive ~= nil and spec.sectionActive[idx] ~= nil then
+        -- A tracked outer boom section: honour its aggregated See & Spray decision.
+        if spec.sectionActive[idx] == false then return false end
+        return true
+    end
+    -- The centre spray area (its real section index, or an undivided / no-section work
+    -- area): honour the centre nozzle's See & Spray decision so the centre stops depositing
+    -- on a no-target cell instead of leaking product while the outer boom holds. Safe
+    -- default (spray) when there is no centre nozzle to consult (centerActive == nil).
+    if spec.centerActive == false and (idx == nil or idx == spec.centerSectionIndex) then
         return false
     end
     return true
