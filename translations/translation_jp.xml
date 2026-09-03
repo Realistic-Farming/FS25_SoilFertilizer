@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="プレイヤーごとの HUD オプション" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="HUD 設定は各プレイヤーで管理され、サーバーには同期されません。表示の有無、位置、配色（グリーン/ブルー/アンバー/モノ）、フォントサイズ、透明度、単位系が設定可能です。" eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="スプレイヤー散布量制御" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="スプレイヤー等に乗車中、SFレート上げ（]）と下げ（[）で散布量を 0.10x 〜 2.00x の範囲で調整できます。自動レート制御（Shift+L）を有効にすると、Mod が最適な量を自動で狙います。" eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="スプレイヤー等に乗車中、SFレート上げと下げで散布量を 0.10x 〜 2.00x の範囲で調整できます。自動レート制御を有効にすると、Mod が最適な量を自動で狙います。" eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="マルチプレイヤーの仕組み" eh="8a4ce30e" />

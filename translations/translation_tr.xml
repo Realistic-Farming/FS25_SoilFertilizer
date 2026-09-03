@@ -320,7 +320,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Oyuncu Başına HUD Seçenekleri" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Her oyuncu kendi HUD'ını kontrol eder - sunucuyla senkronize edilmez. Seçenekler: HUD'ı Göster (açık/kapalı), Konum (5 ön ayar + sürükleme), Renk Teması (Yeşil / Mavi / Kehribar / Mono), Yazı Tipi Boyutu (Küçük / Orta / Büyük), Şeffaflık (%25 ile %100 arası), İngiliz Birimleri (açık/kapalı)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Püskürtücü Oran Kontrolü" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Bir püskürtücü veya dağıtıcıdayken, uygulama oranını 0.10x ile 2.00x arasında ayarlamak için SF Rate Up (]) ve SF Rate Down ([) tuşlarını kullanın. Modun otomatik olarak optimal besin seviyelerini hedeflemesini sağlamak ve yanma riskini önlemek için Otomatik Oran Kontrolünü (Shift+L) açın." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Bir püskürtücü veya dağıtıcıdayken, uygulama oranını 0.10x ile 2.00x arasında ayarlamak için SF Rate Up ve SF Rate Down tuşlarını kullanın. Modun otomatik olarak optimal besin seviyelerini hedeflemesini sağlamak ve yanma riskini önlemek için Otomatik Oran Kontrolünü açın." eh="62c35b45" />
 
     <e k="helpLine_sf_mp_p1_title" v="Çok Oyunculu Nasıl Çalışır" eh="8a4ce30e" />
     <e k="helpLine_sf_mp_p1_auth_title" v="Sunucu Yetkili Simülasyonu" eh="8d324792" />

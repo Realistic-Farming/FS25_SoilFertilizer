@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="玩家个人悬浮窗设置" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="悬浮窗为玩家独立设置，不同步服务器。可开关显示、选择位置（5个预设+自定义拖动）、配色（绿/蓝/琥珀/单色）、字体大小（小/中/大）、透明度（25%~100%）、英制单位开关。" eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="喷洒机施肥比例" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="乘坐喷洒/撒肥机具时，可用自定义快捷键增减施肥比例0.10~2.00倍；按Shift+L开启自动比例，模组会自动匹配最佳养分标准，避免肥害。" eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="乘坐喷洒/撒肥机具时，可用自定义快捷键增减施肥比例0.10~2.00倍；开启自动比例，模组会自动匹配最佳养分标准，避免肥害。" eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="多人模式运行机制" eh="8a4ce30e" />
