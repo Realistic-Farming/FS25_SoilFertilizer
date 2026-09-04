@@ -1125,7 +1125,8 @@
                                     text="" onClick="onClickCsPivotArmPlus"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnArmMinus" position="490px -132px" size="80px 32px"
                                     text="" onClick="onClickCsPivotArmMinus"/>
-                            <!-- [SCS-046] Rain key Fit / Remove, one chip, label follows state. -->
+                            <!-- [SCS-046] Fit / Remove sits with the other pivot remotes on the top
+                                 remote row, one chip whose label follows the fitted state. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnFit" position="890px -28px" size="80px 32px"
                                     text="" onClick="onClickCsPivotFit"/>
                             <!-- [BUILD 18:42] Captions for the angle pairs and the rain key. -->
@@ -1134,7 +1135,8 @@
                             <Text profile="RF_ProductCell" id="csPivotCapFit" position="890px -12px" size="80px 16px" text=""/>
                             <Button profile="RF_CsPivotBtn" id="csBtnSchedule" position="590px -132px" size="250px 32px"
                                     text="" onClick="onClickCsSchedule"/>
-                            <!-- [SCS-046] Trip stepper. Angle Min/Max on this row are untouched. -->
+                            <!-- [SCS-046] Rain-key trip stepper, in the gap Schedule gave up (George
+                                 CLOSED DESIGN 00:05). Angle Min/Max on this row are untouched. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnTripMinus" position="850px -132px" size="80px 32px"
                                     text="" onClick="onClickCsPivotTripMinus"/>
                             <Text profile="RF_ProductCell" id="csPivotTripLabel" position="950px -132px" size="80px 32px" text=""/>
