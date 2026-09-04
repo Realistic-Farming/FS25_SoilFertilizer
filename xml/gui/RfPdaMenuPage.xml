@@ -648,6 +648,20 @@
                                     visible="false" text="" onClick="onClickRfFwPagePrev"/>
                             <Button profile="RF_FwPagerBtn" id="rfFwPageNext" position="1010px -396px" size="120px 24px"
                                     visible="false" text="" onClick="onClickRfFwPageNext"/>
+                            <!-- BUILD 14:35 (Ash 14:35, Wizard: build Buy / Run like the other modules): the
+                                 Pro Staff action strip, bottom-left of the same band the pager parks on (the
+                                 pager is bottom-right). In EVERY suite door copy from this build on, so the
+                                 buttons paint and click whichever mod built menuRealisticFarming. Hidden
+                                 by default and hidden again on every refresh by _syncHostGuestChrome;
+                                 ProStaffRfPdaGuest.onShow alone shows them, for the member farm only. The
+                                 host copy owns nothing but the click (onClickPsBuy / onClickPsFlush, vendored
+                                 into every host RfPdaMenuPage.lua); Buy routes to ProStaffManager:buyLevel
+                                 and Run to ProStaffManager:requestFarmFlush, no other money path exists here.
+                                 RF_FwPagerBtn: fs25_wideButton chrome, no inputAction, so no key chip. -->
+                            <Button profile="RF_FwPagerBtn" id="rfPsBuyBtn" position="10px -396px" size="240px 24px"
+                                    visible="false" text="" onClick="onClickPsBuy"/>
+                            <Button profile="RF_FwPagerBtn" id="rfPsFlushBtn" position="260px -396px" size="240px 24px"
+                                    visible="false" text="" onClick="onClickPsFlush"/>
                             <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"
