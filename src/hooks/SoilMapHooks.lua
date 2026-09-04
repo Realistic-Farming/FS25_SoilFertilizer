@@ -285,6 +285,13 @@ function SoilMapHooks.onDrawIngameMapElement(elementSelf, ...)
     if soilOverlay == nil then return end
 
     soilOverlay:onDraw(frame, elementSelf, elementSelf.ingameMap, frame.soilMapPageIndex)
+
+    -- Second hotspot pass so the vanilla field numbers sit on top of the Soil wash.
+    -- Soil map page only (gated above); IngameMap:drawHotspotsOnly is pure render
+    -- (drawPointsOfInterest + drawPersistentPointsOfInterest), same call vanilla makes.
+    if elementSelf.ingameMap and type(elementSelf.ingameMap.drawHotspotsOnly) == "function" then
+        elementSelf.ingameMap:drawHotspotsOnly()
+    end
 end
 
 function SoilMapHooks:onDrawOverlayHud()
