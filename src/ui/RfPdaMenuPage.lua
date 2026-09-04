@@ -2815,6 +2815,7 @@ function RfPdaMenuPage:onClickCsPivotMaxUp()   _csPivotRemote(self, "SWEEP_MAX_U
 function RfPdaMenuPage:onClickCsPivotMaxDn()   _csPivotRemote(self, "SWEEP_MAX_DN") end
 function RfPdaMenuPage:onClickCsPivotArmPlus() _csPivotRemote(self, "ARM_STEP_PLUS") end
 function RfPdaMenuPage:onClickCsPivotArmMinus() _csPivotRemote(self, "ARM_STEP_MINUS") end
+function RfPdaMenuPage:onClickCsPivotAutoManual() _csPivotRemote(self, "AUTO_MANUAL_TOGGLE") end
 
 --- @param rebuildLists boolean|nil when true (default), rebuild field SmoothList data
 function RfPdaMenuPage:refreshContent(rebuildLists)

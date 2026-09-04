@@ -738,6 +738,203 @@
                             </GuiElement>
                             <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 36px"
                                   textMaxNumLines="2" textVerticalAlignment="top" visible="false" text=""/>
+                            <!-- BUILD 09:37 (Ash 09:37, George CLOSED DESIGN 09:08): Pro Staff one-page level ladder.
+                                 Header (two lines, y 0 to -44), a 4x5 grid of 270x52 cards (y -48 to -340, 8px gaps)
+                                 and a footer strip (y -344 to -428) above the rfPsBuyBtn / rfPsFlushBtn row at -396.
+                                 Each card is a GuiElement frame with a blank-slice Bitmap background (imageColor), a
+                                 left marker bar shown only on the rung the farm is at, the rung number, the level
+                                 name and a two-line benefit. Every element is hidden by default and only
+                                 ProStaffRfPdaGuest shows them while module prostaff is selected; the Dairy cards,
+                                 the Crop Stress Auto/Manual button and the shared sheet chrome are untouched.
+                                 Byte-same in all ten door files. -->
+                            <Text profile="RF_HintText" id="rfPsHeaderLine1" position="10px -2px" size="1120px 20px"
+                                  textSize="17px" textBold="true" textColor="1 1 1 0.95" textMaxNumLines="1" visible="false" text=""/>
+                            <Text profile="RF_HintText" id="rfPsHeaderLine2" position="10px -24px" size="1120px 20px"
+                                  textSize="15px" textMaxNumLines="1" visible="false" text=""/>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard1" position="10px -48px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard1Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard1Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard1Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard2" position="288px -48px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard2Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard2Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard2Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard3" position="566px -48px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard3Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard3Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard3Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard4" position="844px -48px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard4Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard4Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard4Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard5" position="10px -108px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard5Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard5Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard5Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard6" position="288px -108px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard6Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard6Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard6Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard7" position="566px -108px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard7Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard7Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard7Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard8" position="844px -108px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard8Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard8Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard8Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard9" position="10px -168px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard9Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard9Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard9Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard10" position="288px -168px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard10Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard10Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard10Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard11" position="566px -168px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard11Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard11Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard11Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard12" position="844px -168px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard12Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard12Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard12Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard13" position="10px -228px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard13Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard13Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard13Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard14" position="288px -228px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard14Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard14Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard14Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard15" position="566px -228px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard15Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard15Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard15Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard16" position="844px -228px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard16Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard16Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard16Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard17" position="10px -288px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard17Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard17Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard17Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard18" position="288px -288px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard18Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard18Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard18Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard19" position="566px -288px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard19Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard19Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard19Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard20" position="844px -288px" size="270px 52px"
+                                        frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard20Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard20Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard20Benefit" position="12px -20px" size="252px 32px" textSize="13px"
+                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <Text profile="RF_HintText" id="rfPsRecurring" position="10px -344px" size="1120px 22px"
+                                  textSize="15px" textMaxNumLines="1" visible="false" text=""/>
+                            <Text profile="RF_HintText" id="rfPsNote" position="10px -368px" size="1120px 24px"
+                                  textSize="13px" textMaxNumLines="1" visible="false" text=""/>
                         </GuiElement>
                     </GuiElement>
 
@@ -921,6 +1118,9 @@
                                     text="" onClick="onClickCsPivotMaxUp"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnMaxDn" position="890px -80px" size="80px 32px"
                                     text="" onClick="onClickCsPivotMaxDn"/>
+                            <!-- [BUILD 00:33] Auto/Manual chip: Manual hands Start/Stop to the player. -->
+                            <Button profile="RF_CsPivotBtn" id="csPivotBtnAutoManual" position="990px -80px" size="80px 32px"
+                                    text="" onClick="onClickCsPivotAutoManual"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnArmPlus" position="390px -132px" size="80px 32px"
                                     text="" onClick="onClickCsPivotArmPlus"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnArmMinus" position="490px -132px" size="80px 32px"
