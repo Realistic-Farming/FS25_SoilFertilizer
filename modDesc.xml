@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="108">
     <author>TisonK</author>
-    <version>2.5.0.103</version>
+    <version>2.5.0.104</version>
     <modName>FS25_SoilFertilizer</modName>
     <title>
         <en>Realistic Soil &amp; Fertilizer</en>
@@ -129,10 +129,12 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_t" />
         </actionBinding>
         <!-- Right Shift is the suite modifier. Auto-rate stays on Insert so it
-             does not steal Right Shift+L from Real GPS. HUD drag stays on Up so
-             it does not steal Right Shift+P from production-dialog mods. The
-             other chords are the playtested defaults; they stay rebindable in
-             Controls. Help names the action rather than baking a chord. -->
+             does not steal Right Shift+L from Real GPS. HUD drag sits on End:
+             the arrow keys are the look keys (moving the view must keep them),
+             Right Shift+P is the production-dialog chord in overlay mods, and
+             the F-keys are off limits. The other chords are the playtested
+             defaults; they stay rebindable in Controls. Help names the action
+             rather than baking a chord. -->
         <actionBinding action="SF_HANDFUL">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_comma" />
         </actionBinding>
@@ -140,7 +142,7 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
         </actionBinding>
         <actionBinding action="SF_HUD_DRAG">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_up" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_end" />
         </actionBinding>
     </inputBinding>
 
