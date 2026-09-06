@@ -386,10 +386,15 @@
          inputAction MENU_ACTIVATE (base game guiProfiles.xml:2084-2087). The engine paints
          that action's SPACE key chip on every button carrying it, which is what shoved each
          label out of its own 120px box and into the next button ("< BACK" + the neighbouring
-         chip is what read as "BACKSPACE" on screen). hideKeyboardGlyph did NOT suppress it
-         here - it appears exactly once in the whole base-game profile set, on a disabled
-         gamepad-only selector - and isTriggerableByGlobalAction is not an engine property at
-         all (zero occurrences base game), so both were inert.
+         chip is what read as "BACKSPACE" on screen).
+         BUILD 00:06 correction (George CLOSED DESIGN 23:12, decompiled ButtonElement.lua /
+         ScreenElement.lua): the sentence that used to sit here calling hideKeyboardGlyph and
+         isTriggerableByGlobalAction inert was wrong. Both are real ButtonElement fields:
+         hideKeyboardGlyph (ButtonElement.lua default :22, profile :131) skips the SPACE chip at
+         draw :461-463, and isTriggerableByGlobalAction (default :27, profile :137) gates the
+         global-action trigger at ScreenElement.lua:76 (vanilla: CareerScreen.lua:58). That is
+         exactly what RF_CsPivotBtn relies on for every overlay chip, and the 2026-08-22 pager
+         failure came from a door whose profile copy predated those two values.
          fs25_wideButton (guiProfiles.xml:2671) is buttonActivate's OWN base minus the
          inputAction, so this profile is the same chrome with no key chip to draw. The mouse
          click still works: it runs through onClick, which never needed the input action.
@@ -536,9 +541,10 @@
         <position value="0px 0px"/>
     </Profile>
 
-    <!-- MDM TOP commodities vs BOTTOM band (368)+L(~20): MDM-only; do not change shared Soil table shell. -->
+    <!-- MDM TOP commodities vs BOTTOM band: reserve = RF_TreatmentStrip 432 + 24 air, so the last crop row
+         clears the PRICE TREND card title (BUILD 09:32). MDM-only; do not change shared Soil table shell. -->
     <Profile name="RF_MdTableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
-        <absoluteSizeOffset value="0px 388px"/>
+        <absoluteSizeOffset value="0px 456px"/>
         <position value="0px 0px"/>
     </Profile>
 
@@ -681,6 +687,44 @@
     <!-- F8: taller rows for +2 textSize -->
     <Profile name="RF_ListRowTall" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
         <height value="48px"/>
+    </Profile>
+
+    <!-- BUILD 00:06 (George CLOSED DESIGN 23:12): NPC Favor scrollable tables inside rfFwTableBlock.
+         Box = fixed top-left panel the SmoothList stretches into (mdCommodityList uses the engine
+         fs25_subCategoryListContainer; these boxes are placed by px inside the 1140x780 bay instead).
+         Roster rows 60px (two text lines), favor rows 32px (one line). Cells are RF_CellLeft at the
+         framework 16px, not bold, vertically centred. -->
+    <Profile name="RF_FwListBox" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
+        <size value="1120px 420px"/>
+        <position value="0px 0px"/>
+        <clipChildren value="false"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_FwRosterList" extends="RF_SmoothList">
+        <size value="1100px 420px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_FwFavorList" extends="RF_SmoothList">
+        <size value="1100px 224px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_FwRosterItem" extends="RF_ListRow">
+        <height value="60px"/>
+    </Profile>
+    <Profile name="RF_FwFavorItem" extends="RF_ListRow">
+        <height value="32px"/>
+    </Profile>
+    <Profile name="RF_FwListCell" extends="RF_CellLeft">
+        <textSize value="16px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="2"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_FwFavCell" extends="RF_CellLeft">
+        <textSize value="15px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
     </Profile>
 
     <!-- F12: STATUS body cells centered. -->
