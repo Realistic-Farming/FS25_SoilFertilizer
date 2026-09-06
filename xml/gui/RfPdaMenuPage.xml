@@ -80,7 +80,7 @@
                  Must use RF_WcSubnavShell (top-left); profile-less GuiElement defaults bottom-left and falls off-screen. -->
             <GuiElement profile="RF_WcSubnavShell" id="wcSubnavShell" visible="false">
                 <MultiTextOption profile="RF_WcSubnavSelector" id="wcSubnavSelector"
-                                 disableButtonsOnSingleText="false"
+                                 disableButtonsOnSingleText="false" visible="false"
                                  onClick="onClickWcSubnavSelector"/>
                 <BoxLayout profile="RF_WcSubnavDotBox" id="wcSubnavDotBox" visible="false">
                     <RoundCorner profile="fs25_subCategorySelectorDot"/>
@@ -405,7 +405,7 @@
                         <GuiElement profile="RF_EscCardFrame" id="soilResistanceCard" position="10px -270px" size="1130px 136px" visible="false">
                             <Text profile="RF_ProductsTitle" id="soilResistanceTitle" position="10px -10px" size="150px 18px"/>
                             <Text profile="RF_HintText" id="soilResistanceState" position="170px -11px" size="820px 20px"/>
-                            <Button profile="RF_FwPagerBtn" id="soilResistancePairsBtn" position="1000px -10px" size="120px 20px"
+                            <Button profile="RF_CsPivotBtn" id="soilResistancePairsBtn" position="1000px -10px" size="120px 20px" handleFocus="false"
                                     text="" onClick="onClickSoilResistancePairs"/>
                             <Bitmap profile="RF_EscCardRule" id="soilResistanceRule" position="10px -35px" size="1110px 1px"/>
                             <Text profile="RF_ProductColHeaderDense" id="soilResMode1Head" position="10px -46px" size="150px 14px"/>
@@ -454,82 +454,122 @@
 
                     <!-- Worker Costs page bodies only (page chrome = left sibling band). -->
                     <GuiElement profile="RF_WcPageShell" id="wcPageShell" visible="false">
-                        <!-- Dashboard -->
-                        <!-- Dashboard is the only WC page that gets the white card (Ash 15:35 #2):
-                             Wages/Workers/About carry MTOs and their own chrome. Framed on
-                             wcPageDashboard itself, not a new inner shell, so nothing double-frames.
-                             Body cells inset 10px L/R and 8px down; worker names still 280 tall and
-                             end at -488 of 500, so 12px of bottom air and no clip. -->
-                        <GuiElement profile="RF_EscCardFrameWide" id="wcPageDashboard" visible="true">
-                            <Text profile="RF_TreatTargetLine" id="wcDashStatus" position="10px -8px" size="1120px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashMode" position="10px -56px" size="550px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashWage" position="580px -56px" size="550px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashRate" position="10px -104px" size="550px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashWorkers" position="580px -104px" size="550px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashEstimate" position="10px -152px" size="550px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="wcDashCountdown" position="580px -152px" size="550px 22px" text=""/>
-                            <Text profile="RF_HintText" id="wcDashWorkerNames" position="10px -208px" size="1120px 280px"
-                                  textMaxNumLines="12" textVerticalAlignment="top" text=""/>
-                        </GuiElement>
-
-                        <!-- Wages: tight label+option rows; summary/help/Reset UNDER stack (no 760 side column). -->
-                        <!-- Two cards, not one: settings stack up, summary/help/Reset below, 16px of
-                             clear air between the strokes. The page itself stays unframed - a frame on
-                             RF_WcPage would be the mega-shell over the MTOs George vetoed. Wrappers carry
-                             handleFocus=false so nothing between the player and an option can take a click,
-                             and the MTOs are still found by getDescendantById, which does not care how deep
-                             they sit. Card B trims one internal gap by 8px, which is exactly what the two
-                             strokes plus their air cost, so wcBtnWageReset lands back on -536 and the page
-                             stays 580 tall. Nothing grew to make room. -->
-                        <GuiElement profile="RF_WcPage" id="wcPageWages" size="1140px 580px" visible="false">
-                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardA" position="0px 0px" size="1140px 326px" handleFocus="false">
+                        <!-- Dashboard / Wages / Workers on ONE page (BUILD 18:26, George CLOSED DESIGN 17:59): two
+                             columns, four inner cards, the page itself unframed (a frame on RF_WcPage would be the
+                             mega-shell over the MTOs George vetoed). Left: Card A = the six wage MTO rows, positions
+                             unchanged, onClickWcWageOption, disableButtonsOnSingleText=false; Card B = rate, help, Reset.
+                             Right: Card C = eight live stats; Card D = the roster (fixed Text rows, no SmoothList).
+                             wcPageWages / wcPageWorkers stay declared as empty hidden shells for nil-safe ids; the page
+                             picker wcSubnavSelector is hidden. Cards carry handleFocus=false so nothing between the
+                             player and an option can take a click. -->
+                        <GuiElement profile="RF_WcPage" id="wcPageDashboard" size="1140px 580px" visible="true">
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardA" position="0px 0px" size="650px 326px" handleFocus="false">
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblEnabled" position="10px -10px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptEnabled" position="230px -18px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptEnabled" position="230px -18px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblMode" position="10px -62px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptCostMode" position="230px -70px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptCostMode" position="230px -70px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblLevel" position="10px -114px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptWageLevel" position="230px -122px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptWageLevel" position="230px -122px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblNotify" position="10px -166px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptNotifications" position="230px -174px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptNotifications" position="230px -174px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblDebug" position="10px -218px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptDebugMode" position="230px -226px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptDebugMode" position="230px -226px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                                 <Text profile="RF_TreatTargetLine" id="wcWageLblSalary" position="10px -270px" size="200px 22px" text=""/>
-                                <MultiTextOption profile="RF_WcWageOption" id="wcOptMonthlySalary" position="230px -278px"
-                                                 disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
+                                <MultiTextOption profile="RF_WcWageOption" id="wcOptMonthlySalary" position="230px -278px" size="360px 40px"
+                                                 anchors="0 0 1 1" pivot="0 1" disableButtonsOnSingleText="false" onClick="onClickWcWageOption"/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardB" position="0px -342px" size="1140px 238px" handleFocus="false">
-                                <Text profile="RF_SectionTitle" id="wcWageBigRate" position="10px -6px" size="1120px 36px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcWageRateLabel" position="10px -50px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcWagePayInterval" position="580px -50px" size="550px 22px" text=""/>
-                                <Text profile="RF_HintText" id="wcWageHelpBody" position="10px -86px" size="1120px 100px"
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWagesCardB" position="0px -342px" size="650px 238px" handleFocus="false">
+                                <Text profile="RF_SectionTitle" id="wcWageBigRate" position="10px -6px" size="630px 36px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcWageRateLabel" position="10px -50px" size="300px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcWagePayInterval" position="320px -50px" size="320px 22px" text=""/>
+                                <Text profile="RF_HintText" id="wcWageHelpBody" position="10px -86px" size="630px 100px"
                                       textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Button profile="buttonActivate" id="wcBtnWageReset" position="10px -194px" size="200px 36px"
-                                        text="Reset" onClick="onClickWcWageReset"/>
+                                <Button profile="RF_CsPivotBtn" id="wcBtnWageReset" position="10px -194px" size="200px 36px" handleFocus="false"
+                                        text="" onClick="onClickWcWageReset"/>
                             </GuiElement>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardA" position="660px 0px" size="480px 240px" handleFocus="false">
+                                <Text profile="RF_TreatTargetLine" id="wcDashStatus" position="10px -10px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcDashWorkers" position="250px -10px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcDashCountdown" position="10px -58px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsInterval" position="250px -58px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsCostPer" position="10px -106px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsTotal" position="250px -106px" size="220px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcDashEstimate" position="10px -154px" size="460px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="wcStatsCount" position="10px -202px" size="460px 22px" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardB" position="660px -256px" size="480px 324px" handleFocus="false">
+                                <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): fourteen declared row Texts on the chip Ys (page-rel
+                                     -266 .. -549; this card sits at -256), 460x22, 17px, one line each (clip, no wrap), so Hire /
+                                     Fire sit on the same rows as the names. Rows 1-8 crew, 9 blank, 10 title, 11-14 recruits. -->
+                                <Text profile="RF_HintText" id="wcRosterRow1" position="10px -10px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow2" position="10px -32px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow3" position="10px -53px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow4" position="10px -75px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow5" position="10px -97px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow6" position="10px -118px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow7" position="10px -140px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow8" position="10px -162px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow9" position="10px -184px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow10" position="10px -206px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow11" position="10px -227px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow12" position="10px -249px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow13" position="10px -271px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                                <Text profile="RF_HintText" id="wcRosterRow14" position="10px -293px" size="460px 22px" textSize="17px"
+                                      textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
+                            </GuiElement>
+                            <!-- BUILD 22:42 (George CLOSED DESIGN 21:26, Ash 22:42): Hire / Fire on this page. Twelve declared
+                                 RF_FwPagerBtn buttons (no inputAction, mouse only, handleFocus=false), page-relative, right of the
+                                 roster text column (x 1060-1130): wcBtnFire1..8 on crew rows 1-8, wcBtnHire1..4 on recruit rows
+                                 11-14 (WcRfPdaGuest pins the recruit block there). Hidden by default; the guest shows one only
+                                 when that row carries a worker / recruit and hides all of them when the roster is not
+                                 authoritative. Clicks go to the host forwarders onClickWcFireN / onClickWcHireN, which reach
+                                 the guest through the registry (onFire / onHire). Assign / unassign stay on Farm Tablet. -->
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire1" position="1060px -266px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire1"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire2" position="1060px -288px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire2"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire3" position="1060px -309px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire3"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire4" position="1060px -331px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire4"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire5" position="1060px -353px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire5"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire6" position="1060px -374px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire6"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire7" position="1060px -396px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire7"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnFire8" position="1060px -418px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcFire8"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnHire1" position="1060px -483px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcHire1"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnHire2" position="1060px -505px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcHire2"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnHire3" position="1060px -527px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcHire3"/>
+                            <Button profile="RF_CsPivotBtn" id="wcBtnHire4" position="1060px -549px" size="70px 20px" visible="false"
+                                    handleFocus="false" text="" onClick="onClickWcHire4"/>
                         </GuiElement>
-
-                        <!-- Workers -->
-                        <!-- Same family as Wages: stats card, 16px of air, then the worker list card.
-                             wcStatsWorkerList stays fixed Text rows, no SmoothList. -->
-                        <GuiElement profile="RF_WcPage" id="wcPageWorkers" visible="false">
-                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardA" position="0px 0px" size="1140px 136px" handleFocus="false">
-                                <Text profile="RF_TreatTargetLine" id="wcStatsMode" position="10px -10px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcStatsWage" position="580px -10px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcStatsInterval" position="10px -58px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcStatsCount" position="580px -58px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcStatsCostPer" position="10px -106px" size="550px 22px" text=""/>
-                                <Text profile="RF_TreatTargetLine" id="wcStatsTotal" position="580px -106px" size="550px 22px" text=""/>
-                            </GuiElement>
-                            <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardB" position="0px -152px" size="1140px 338px" handleFocus="false">
-                                <Text profile="RF_HintText" id="wcStatsWorkerList" position="10px -10px" size="1120px 320px"
-                                      textMaxNumLines="14" textVerticalAlignment="top" text=""/>
-                            </GuiElement>
-                        </GuiElement>
+                        <!-- Empty hidden shells: the ids stay declared for nil-safe lookups (host page sync). -->
+                        <GuiElement profile="RF_WcPage" id="wcPageWages" size="1140px 580px" visible="false"/>
+                        <GuiElement profile="RF_WcPage" id="wcPageWorkers" visible="false"/>
 
                         <!-- About page retired 2026-08-02: copy lives in wcSideInfoShell. Keep shell for nil-safe ids. -->
                         <GuiElement profile="RF_WcPage" id="wcPageAbout" visible="false">
@@ -569,11 +609,13 @@
                             <Text profile="RF_HintText" id="rfFwHint" position="10px -208px" size="1120px 120px"
                                   textMaxNumLines="4" textVerticalAlignment="top" text=""/>
                         </GuiElement>
-                        <!-- Dairy / NPC Favor table glance. Content runs to -416 (hint under the rows),
-                             so 428 gives the same 12px of bottom air. Only one of the two blocks is
-                             ever visible (setVis is an either/or), so no card is ever naked beside
-                             another - Ash 15:35 #1 sibling framing has nothing to bite on here. -->
-                        <GuiElement profile="RF_EscCardFrameWide" id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 428px">
+                        <!-- Dairy / NPC Favor / Pro Staff glance bay. BUILD 20:36 (George CLOSED DESIGN 19:03,
+                             Wizard eyes-on): 1140x780 so two 380-tall Dairy cards, a taller NPC row pitch and the
+                             276x124 Pro Staff cards fit. Income / Depot keep their XML rows and hint positions
+                             (grey air below is benign); NPC re-places the shared rows at show time and hands
+                             the XML positions back on the registry change listener. Only one block is ever
+                             visible (setVis is an either/or). -->
+                        <GuiElement profile="RF_EscCardFrameWide" id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 780px">
                             <Text profile="RF_SectionTitle" id="rfFwTableTitle" position="10px -8px" size="1120px 24px" text="" visible="false"/>
                             <!-- Excel sheet: the outer border is rfFwTableBlock's own hasFrame; these 11 hairlines
                                  are the inner grid. RF_EscCardRule is already blank.png + soft grey 0.55, so they
@@ -628,26 +670,9 @@
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text=""/>
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text=""/>
                             <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -300px" size="1120px 20px" text=""/>
-                            <!-- BUILD 09:19 (PB-07): row pager for this static eight-row table.
-                                 Hidden by default and shown ONLY by a guest that implements
-                                 onPageStep, so Income / Dairy / Depot keep exactly the page they
-                                 have today. Two Buttons, not a SmoothList: George's standing NO-GO
-                                 on nesting a SmoothList in this page (see csConsultPanel below)
-                                 applies here too, and a window offset held by the guest cannot
-                                 re-enter the layout the way a list rebuild can.
-                                 Parked on the rfFwTableTitle band, which every Table-mode guest
-                                 already hides, so the pager collides with nothing that paints. -->
-                            <!-- 2026-08-22 FAIL-FIX (live screenshot 17:11): bottom-right placement inside
-                                 the 1140x428 table frame was correct and is kept; the profile was not.
-                                 RF_CsPivotBtn inherits inputAction MENU_ACTIVATE from buttonActivate, so the
-                                 engine painted a SPACE key chip on BOTH buttons and each chip pushed its own
-                                 label out of its 120px box into the neighbour. RF_FwPagerBtn extends
-                                 fs25_wideButton instead - identical chrome, no inputAction, so no chip.
-                                 See rfEscProfiles.xml. Page keys: . / > next, , / < back. -->
-                            <Button profile="RF_FwPagerBtn" id="rfFwPagePrev" position="880px -396px" size="120px 24px"
-                                    visible="false" text="" onClick="onClickRfFwPagePrev"/>
-                            <Button profile="RF_FwPagerBtn" id="rfFwPageNext" position="1010px -396px" size="120px 24px"
-                                    visible="false" text="" onClick="onClickRfFwPageNext"/>
+                            <!-- BUILD 00:06 (George CLOSED DESIGN 23:12): the rfFwPagePrev / rfFwPageNext row pager is gone;
+                                 the NPC Favor tables scroll (rfFwRosterList / rfFwFavorList below). The host keyEvent page
+                                 belt (. / , keys) still serves a guest that registers onPageStep (Dairy cards). -->
                             <!-- BUILD 14:35 (Ash 14:35, Wizard: build Buy / Run like the other modules): the
                                  Pro Staff action strip, bottom-left of the same band the pager parks on (the
                                  pager is bottom-right). In EVERY suite door copy from this build on, so the
@@ -658,14 +683,81 @@
                                  into every host RfPdaMenuPage.lua); Buy routes to ProStaffManager:buyLevel
                                  and Run to ProStaffManager:requestFarmFlush, no other money path exists here.
                                  RF_FwPagerBtn: fs25_wideButton chrome, no inputAction, so no key chip. -->
-                            <Button profile="RF_FwPagerBtn" id="rfPsBuyBtn" position="10px -396px" size="240px 24px"
+                            <Button profile="RF_CsPivotBtn" id="rfPsBuyBtn" position="10px -748px" size="240px 24px" handleFocus="false"
                                     visible="false" text="" onClick="onClickPsBuy"/>
-                            <Button profile="RF_FwPagerBtn" id="rfPsFlushBtn" position="260px -396px" size="240px 24px"
+                            <Button profile="RF_CsPivotBtn" id="rfPsFlushBtn" position="260px -748px" size="240px 24px" handleFocus="false"
                                     visible="false" text="" onClick="onClickPsFlush"/>
                             <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"
                                   textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                            <!-- BUILD 00:06 (George CLOSED DESIGN 23:12, Ash 00:06): NPC Favor scrollable tables. Two SmoothLists
+                                 under this GuiElement host (rfFwTableBlock is a GuiElement, never a Map Bitmap: the hang fence),
+                                 the same nest as mdCommodityList (ListItem template cloned by the engine, clipper Bitmaps, slider
+                                 box). No runtime element create; reloadData on show only. Hidden by default so Income / Dairy /
+                                 Depot keep the static sheet; NpcRfPdaGuest shows them and hands the sheet back on leave. The ten
+                                 door copies carry them so whichever mod builds the door has the ids. -->
+                            <GuiElement profile="RF_FwListBox" id="rfFwRosterBox" position="10px -68px" size="800px 420px" visible="false">
+                                <SmoothList id="rfFwRosterList" profile="RF_FwRosterList" size="780px 420px" handleFocus="false"
+                                            startClipperElementName="rfFwRosterStart" endClipperElementName="rfFwRosterEnd">
+                                    <ListItem profile="RF_FwRosterItem" height="60px">
+                                        <Bitmap profile="RF_RowBg" name="alternating"/>
+                                        <Text profile="RF_FwListCell" name="rfFwRosterWho" position="0px 0px" size="200px 60px"/>
+                                        <Text profile="RF_FwListCell" name="rfFwRosterStanding" position="210px 0px" size="180px 60px"/>
+                                        <Text profile="RF_FwListCell" name="rfFwRosterBenefits" position="400px 0px" size="180px 60px"/>
+                                        <Text profile="RF_FwListCell" name="rfFwRosterHistory" position="590px 0px" size="210px 60px"/>
+                                    </ListItem>
+                                </SmoothList>
+                                <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfFwRosterStart"/>
+                                <Bitmap profile="fs25_secondaryMenuStopClipper" name="rfFwRosterEnd"/>
+                                <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                    <Slider profile="fs25_listSlider" dataElementId="rfFwRosterList" hideParentWhenEmpty="true"/>
+                                </ThreePartBitmap>
+                            </GuiElement>
+                            <Text profile="RF_FwColHeader" id="rfFwFavColWho" position="10px -500px" size="90px 24px" visible="false" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwFavColGroup" position="110px -500px" size="160px 24px" visible="false" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwFavColWhat" position="280px -500px" size="400px 24px" visible="false" text=""/>
+                            <Text profile="RF_FwColHeader" id="rfFwFavColUrgency" position="690px -500px" size="120px 24px" visible="false" text=""/>
+                            <GuiElement profile="RF_FwListBox" id="rfFwFavorBox" position="10px -528px" size="800px 224px" visible="false">
+                                <SmoothList id="rfFwFavorList" profile="RF_FwFavorList" size="780px 224px" handleFocus="false"
+                                            startClipperElementName="rfFwFavorStart" endClipperElementName="rfFwFavorEnd">
+                                    <ListItem profile="RF_FwFavorItem" height="32px">
+                                        <Bitmap profile="RF_RowBg" name="alternating"/>
+                                        <Text profile="RF_FwFavCell" name="rfFwFavorWho" position="0px 0px" size="90px 32px"/>
+                                        <Text profile="RF_FwFavCell" name="rfFwFavorGroup" position="100px 0px" size="160px 32px"/>
+                                        <Text profile="RF_FwFavCell" name="rfFwFavorWhat" position="270px 0px" size="400px 32px"/>
+                                        <Text profile="RF_FwFavCell" name="rfFwFavorUrgency" position="680px 0px" size="120px 32px"/>
+                                    </ListItem>
+                                </SmoothList>
+                                <Bitmap profile="fs25_secondaryMenuStartClipper" name="rfFwFavorStart"/>
+                                <Bitmap profile="fs25_secondaryMenuStopClipper" name="rfFwFavorEnd"/>
+                                <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                    <Slider profile="fs25_listSlider" dataElementId="rfFwFavorList" hideParentWhenEmpty="true"/>
+                                </ThreePartBitmap>
+                            </GuiElement>
+                            <Text profile="RF_HintText" id="rfFwFavEmpty" position="10px -528px" size="800px 40px" visible="false" text=""/>
+                            <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): the two detail cards on the right of the 800 lists. A
+                                 SmoothList click selects a row (engine setSelectedItem -> delegate onListSelectionChanged); the
+                                 guest paints the row unclipped here and hides the card on a full show until a row is picked.
+                                 George named rfFwCardWho on both cards; one id per page, so the favor card carries the
+                                 rfFwFavCard* ids. Hidden by default, host-hidden on every refresh, NPC show alone paints. -->
+                            <GuiElement profile="RF_EscCardFrame" id="rfFwRosterDetailCard" position="820px -68px" size="300px 420px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfFwCardWho" position="10px -10px" size="280px 24px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="rfFwCardStanding" position="10px -42px" size="280px 22px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_FwColHeader" id="rfFwCardBenefitsHead" position="10px -76px" size="280px 22px" text=""/>
+                                <Text profile="RF_HintText" id="rfFwCardBenefits" position="10px -100px" size="280px 176px"
+                                      textMaxNumLines="8" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_FwColHeader" id="rfFwCardHistoryHead" position="10px -286px" size="280px 22px" text=""/>
+                                <Text profile="RF_HintText" id="rfFwCardHistory" position="10px -310px" size="280px 88px"
+                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="rfFwFavorDetailCard" position="820px -528px" size="300px 224px" visible="false">
+                                <Text profile="RF_SectionTitle" id="rfFwFavCardGroup" position="10px -10px" size="280px 24px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="rfFwFavCardWho" position="10px -42px" size="280px 22px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfFwFavCardWhat" position="10px -72px" size="280px 110px"
+                                      textMaxNumLines="5" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="rfFwFavCardUrgency" position="10px -190px" size="280px 22px" textMaxNumLines="1" text=""/>
+                            </GuiElement>
                             <!-- BUILD 07:47 (Ash 07:47, George CLOSED DESIGN 07:36): Dairy barn cards, breed tables.
                                  Two 555x380 RF_EscCardFrame cards side by side in the 1140x428 bay (2 per page; the
                                  rfDairyCard3 / rfDairyCard4 frames stay as dark spares so no id disappears from the
@@ -693,8 +785,8 @@
                                       textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard1Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard1BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard1BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard1BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard1BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrame" id="rfDairyCard2" position="575px -8px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard2Name" position="10px -6px" size="535px 24px" text=""/>
@@ -711,10 +803,10 @@
                                       textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard2Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard2BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard2BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard2BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard2BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard3" position="10px -8px" size="555px 380px" visible="false">
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard3" position="10px -396px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard3Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard3State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard3HerdHead" position="10px -52px" size="535px 20px" text=""/>
@@ -729,10 +821,10 @@
                                       textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard3Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard3BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard3BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard3BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard3BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard4" position="575px -8px" size="555px 380px" visible="false">
+                            <GuiElement profile="RF_EscCardFrame" id="rfDairyCard4" position="575px -396px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard4Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard4State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard4HerdHead" position="10px -52px" size="535px 20px" text=""/>
@@ -747,14 +839,16 @@
                                       textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard4Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard4BreedPrev" position="10px -346px" size="120px 24px" visible="false" text=""/>
-                                <Button profile="RF_FwPagerBtn" id="rfDairyCard4BreedNext" position="140px -346px" size="160px 24px" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard4BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="rfDairyCard4BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
-                            <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 36px"
-                                  textMaxNumLines="2" textVerticalAlignment="top" visible="false" text=""/>
+                            <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 80px"
+                                  textMaxNumLines="4" textVerticalAlignment="top" visible="false" text=""/>
                             <!-- BUILD 09:37 (Ash 09:37, George CLOSED DESIGN 09:08): Pro Staff one-page level ladder.
-                                 Header (two lines, y 0 to -44), a 4x5 grid of 270x52 cards (y -48 to -340, 8px gaps)
-                                 and a footer strip (y -344 to -428) above the rfPsBuyBtn / rfPsFlushBtn row at -396.
+                                 Header line 1 at -2 (line 2 declared, hidden since BUILD 17:58: honesty lives in the side
+                                 info), a 4x5 grid of 276x124 cards (y -26 to -726, 20px gaps; BUILD 20:36, Wizard UX,
+                                 type 18 / 16 / 14px) each with a Cost line (rfPsCardNExtra), the recurring line at -726 (the
+                                 Buy / Run result rides it; rfPsNote is gone) above the rfPsBuyBtn / rfPsFlushBtn row at -748.
                                  Each card is a GuiElement frame with a blank-slice Bitmap background (imageColor), a
                                  left marker bar shown only on the rung the farm is at, the rung number, the level
                                  name and a two-line benefit. Every element is hidden by default and only
@@ -765,190 +859,208 @@
                                   textSize="17px" textBold="true" textColor="1 1 1 0.95" textMaxNumLines="1" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfPsHeaderLine2" position="10px -24px" size="1120px 20px"
                                   textSize="15px" textMaxNumLines="1" visible="false" text=""/>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard1" position="10px -48px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard1" position="10px -26px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard1Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard1Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard1Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard1Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard1Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard1Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard1Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard1Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard2" position="288px -48px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard2" position="288px -26px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard2Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard2Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard2Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard2Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard2Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard2Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard2Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard2Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard3" position="566px -48px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard3" position="566px -26px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard3Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard3Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard3Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard3Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard3Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard3Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard3Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard3Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard4" position="844px -48px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard4" position="844px -26px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard4Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard4Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard4Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard4Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard4Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard4Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard4Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard4Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard5" position="10px -108px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard5" position="10px -170px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard5Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard5Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard5Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard5Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard5Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard5Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard5Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard5Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard6" position="288px -108px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard6" position="288px -170px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard6Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard6Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard6Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard6Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard6Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard6Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard6Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard6Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard7" position="566px -108px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard7" position="566px -170px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard7Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard7Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard7Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard7Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard7Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard7Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard7Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard7Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard8" position="844px -108px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard8" position="844px -170px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard8Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard8Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard8Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard8Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard8Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard8Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard8Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard8Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard9" position="10px -168px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard9" position="10px -314px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard9Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard9Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard9Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard9Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard9Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard9Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard9Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard9Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard10" position="288px -168px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard10" position="288px -314px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard10Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard10Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard10Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard10Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard10Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard10Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard10Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard10Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard11" position="566px -168px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard11" position="566px -314px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard11Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard11Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard11Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard11Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard11Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard11Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard11Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard11Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard12" position="844px -168px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard12" position="844px -314px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard12Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard12Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard12Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard12Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard12Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard12Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard12Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard12Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard13" position="10px -228px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard13" position="10px -458px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard13Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard13Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard13Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard13Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard13Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard13Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard13Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard13Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard14" position="288px -228px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard14" position="288px -458px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard14Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard14Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard14Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard14Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard14Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard14Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard14Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard14Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard15" position="566px -228px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard15" position="566px -458px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard15Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard15Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard15Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard15Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard15Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard15Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard15Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard15Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard16" position="844px -228px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard16" position="844px -458px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard16Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard16Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard16Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard16Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard16Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard16Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard16Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard16Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard17" position="10px -288px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard17" position="10px -602px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard17Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard17Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard17Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard17Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard17Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard17Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard17Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard17Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard18" position="288px -288px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard18" position="288px -602px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard18Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard18Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard18Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard18Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard18Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard18Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard18Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard18Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard19" position="566px -288px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard19" position="566px -602px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard19Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard19Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard19Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard19Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard19Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard19Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard19Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard19Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard20" position="844px -288px" size="270px 52px"
+                            <GuiElement profile="RF_EscCardFrame" id="rfPsCard20" position="844px -602px" size="276px 124px"
                                         frameLeftColor="0.478 0.502 0.533 0.55" frameTopColor="0.478 0.502 0.533 0.55" frameRightColor="0.478 0.502 0.533 0.55" frameBottomColor="0.478 0.502 0.533 0.55" visible="false">
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Bg" position="0px 0px" size="270px 52px" imageColor="0.118 0.129 0.141 0.85"/>
-                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Mark" position="0px 0px" size="6px 52px" imageColor="0.549 0.776 0.247 1" visible="false"/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard20Num" position="12px -3px" size="40px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_SectionTitle" id="rfPsCard20Name" position="50px -3px" size="212px 16px" textSize="14px" textMaxNumLines="1" text=""/>
-                                <Text profile="RF_HintText" id="rfPsCard20Benefit" position="12px -20px" size="252px 32px" textSize="13px"
-                                      textMaxNumLines="2" textVerticalAlignment="top" text=""/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Bg" position="0px 0px" size="276px 124px" imageColor="0.118 0.129 0.141 0.85"/>
+                                <Bitmap profile="RF_EscCardRule" id="rfPsCard20Mark" position="0px 0px" size="6px 124px" imageColor="0.549 0.776 0.247 1" visible="false"/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard20Num" position="12px -4px" size="44px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_SectionTitle" id="rfPsCard20Name" position="56px -4px" size="208px 22px" textSize="18px" textMaxNumLines="1" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard20Benefit" position="12px -30px" size="252px 58px" textSize="16px"
+                                      textMaxNumLines="3" textVerticalAlignment="top" text=""/>
+                                <Text profile="RF_HintText" id="rfPsCard20Extra" position="12px -96px" size="252px 20px" textSize="14px" textMaxNumLines="1" textVerticalAlignment="top" text=""/>
                             </GuiElement>
-                            <Text profile="RF_HintText" id="rfPsRecurring" position="10px -344px" size="1120px 22px"
+                            <Text profile="RF_HintText" id="rfPsRecurring" position="10px -726px" size="1120px 20px"
                                   textSize="15px" textMaxNumLines="1" visible="false" text=""/>
-                            <Text profile="RF_HintText" id="rfPsNote" position="10px -368px" size="1120px 24px"
-                                  textSize="13px" textMaxNumLines="1" visible="false" text=""/>
                         </GuiElement>
                     </GuiElement>
 
@@ -1161,23 +1273,23 @@
 
                     <!-- MDM TOP: commodities CROP / PRICE / CHANGE (GuiElement SmoothList parent; quiet reload). -->
                     <GuiElement profile="RF_MdTableRegionShell" id="mdTableRegion" position="0px 0px"
-                                absoluteSizeOffset="0px 388px" visible="false">
-                        <Text profile="RF_ColHeader" id="mdColCrop" text="" position="54px -8px" size="380px 24px"/>
-                        <Text profile="RF_ColHeader" id="mdColPrice" text="" position="460px -8px" size="280px 24px"/>
-                        <Text profile="RF_ColHeader" id="mdColChange" text="" position="760px -8px" size="280px 24px"/>
+                                absoluteSizeOffset="0px 456px" visible="false">
+                        <Text profile="RF_ColHeader" id="mdColCrop" textSize="15px" text="" position="54px -8px" size="380px 24px"/>
+                        <Text profile="RF_ColHeader" id="mdColPrice" textSize="15px" text="" position="460px -8px" size="280px 24px"/>
+                        <Text profile="RF_ColHeader" id="mdColChange" textSize="15px" text="" position="760px -8px" size="280px 24px"/>
 
                         <GuiElement profile="fs25_subCategoryListContainer" position="0px -32px"
                                     absoluteSizeOffset="0px 40px">
                             <SmoothList id="mdCommodityList" profile="RF_SmoothList"
                                         startClipperElementName="mdListStart"
                                         endClipperElementName="mdListEnd">
-                                <ListItem profile="RF_ListRowTall" onClick="onClickMdCommodityRow">
+                                <ListItem profile="RF_ListRowTall" height="40px" onClick="onClickMdCommodityRow">
                                     <Bitmap profile="RF_RowBg" name="alternating"/>
                                     <!-- Crop icon: Lua populate sets filename + visible per row (hide if no overlay; no purple). -->
                                     <Bitmap profile="RF_MdCropIcon" name="cropIcon" visible="false"/>
-                                    <Text profile="RF_CellLeft"   name="mdCropRowName"   position="38px 0px" size="400px 44px"/>
-                                    <Text profile="RF_CellLeft"   name="mdCropRowPrice"  position="460px 0px" size="280px 44px"/>
-                                    <Text profile="RF_CellLeft"   name="mdCropRowChange" position="760px 0px" size="280px 44px"/>
+                                    <Text profile="RF_CellLeft"   name="mdCropRowName" textSize="16px"   position="38px 0px" size="400px 44px"/>
+                                    <Text profile="RF_CellLeft"   name="mdCropRowPrice" textSize="16px"  position="460px 0px" size="280px 44px"/>
+                                    <Text profile="RF_CellLeft"   name="mdCropRowChange" textSize="16px" position="760px 0px" size="280px 44px"/>
                                 </ListItem>
                             </SmoothList>
                             <Bitmap profile="fs25_secondaryMenuStartClipper" name="mdListStart"/>
@@ -1199,14 +1311,14 @@
                                      onClick="onClickMdMoverSelector"/>
                     <GuiElement id="mdDetailStrip" position="0px 0px" size="1px 1px" visible="false"/>
 
-                    <!-- MDM BOTTOM: page-swapped band (Prices graph+detail | Events | Contracts). -->
+                    <!-- MDM BOTTOM: page-swapped band (Prices graph+detail | Events + Event Settings cards | Contracts). -->
                     <GuiElement profile="RF_TreatmentStrip" id="mdPageBand" visible="false">
                         <Bitmap profile="RF_TreatmentBoxBg"/>
 
                         <!-- Page A — Prices -->
                         <GuiElement profile="RF_EscCardFrameWide" id="mdPricesBand" visible="true" position="10px -10px" size="1130px 344px">
                             <Text profile="RF_SectionTitle" id="mdGraphTitle" position="10px -6px" size="700px 22px" text=""/>
-                            <GuiElement profile="RF_MdGraphArea" id="mdGraphArea" position="30px -28px"/>
+                            <GuiElement profile="RF_MdGraphArea" id="mdGraphArea" position="30px -56px" size="720px 248px"/>
             <Text profile="RF_EmptyHint" id="mdGraphEmptyHint" position="30px -86px" size="720px 40px"
                   visible="false" text=""/>
             <Text profile="RF_TreatSelected" id="mdDetailCommodity" position="770px -32px" size="350px 22px"
@@ -1215,73 +1327,127 @@
             <Text profile="RF_TreatTargetLine" id="mdDetailPressure" position="770px -92px" size="350px 20px" text=""/>
             <Text profile="RF_HintText" id="mdDetailEmpty" position="770px -64px" size="350px 44px"
                   textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtn" position="770px -280px" size="350px 36px"
-                    onClick="onClickMdOpenMarket"/>
+            <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): the Open full Market plate is gone; this page is the Market. -->
                         </GuiElement>
 
                         <!-- Page B — Events (fixed Text rows; no SmoothList thrash). -->
-                        <GuiElement profile="RF_EscCardFrameWide" id="mdEventsBand" visible="false" position="10px -10px" size="1130px 344px">
-                            <Text profile="RF_SectionTitle" id="mdEventsTitle" position="10px -6px" size="700px 22px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdEvColName" position="10px -36px" size="420px 20px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdEvColIntensity" position="450px -36px" size="220px 20px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdEvColTime" position="690px -36px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow1Name" position="10px -64px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow1Intensity" position="450px -64px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow1Time" position="690px -64px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow2Name" position="10px -92px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow2Intensity" position="450px -92px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow2Time" position="690px -92px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow3Name" position="10px -120px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow3Intensity" position="450px -120px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow3Time" position="690px -120px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow4Name" position="10px -148px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow4Intensity" position="450px -148px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow4Time" position="690px -148px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow5Name" position="10px -176px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow5Intensity" position="450px -176px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow5Time" position="690px -176px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow6Name" position="10px -204px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow6Intensity" position="450px -204px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvRow6Time" position="690px -204px" size="420px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdEvMore" position="10px -240px" size="1100px 20px" text=""/>
-                            <Text profile="RF_HintText" id="mdEventsEmpty" position="10px -64px" size="1100px 44px"
-                                  textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtnEvents" position="770px -280px" size="350px 36px"
-                    onClick="onClickMdOpenMarket"/>
+                        <!-- BUILD 16:42 (George CLOSED DESIGN 16:25): Events is two cards like Contracts. Left = live
+                             events, eight fixed Text rows; right = the Event Settings summary and the plate that opens the
+                             existing 800x800 MDMEventSettingsDialog (host/admin/master gate, never inlined). The EVENT /
+                             STATE list stays in the dialog. No SmoothList in this band. -->
+                        <GuiElement profile="RF_WcPage" id="mdEventsBand" visible="false" position="10px -10px" size="1130px 344px">
+                            <GuiElement profile="RF_EscCardFrame" id="mdEventsOpenCard" position="0px 0px" size="550px 344px">
+                                <Text profile="RF_SectionTitle" id="mdEventsTitle" position="10px -6px" size="530px 22px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdEvColName" position="10px -36px" size="210px 20px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdEvColIntensity" position="230px -36px" size="110px 20px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdEvColTime" position="350px -36px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow1Name" position="10px -62px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow1Intensity" position="230px -62px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow1Time" position="350px -62px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow2Name" position="10px -86px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow2Intensity" position="230px -86px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow2Time" position="350px -86px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow3Name" position="10px -110px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow3Intensity" position="230px -110px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow3Time" position="350px -110px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow4Name" position="10px -134px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow4Intensity" position="230px -134px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow4Time" position="350px -134px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow5Name" position="10px -158px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow5Intensity" position="230px -158px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow5Time" position="350px -158px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow6Name" position="10px -182px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow6Intensity" position="230px -182px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow6Time" position="350px -182px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow7Name" position="10px -206px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow7Intensity" position="230px -206px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow7Time" position="350px -206px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow8Name" position="10px -230px" size="210px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow8Intensity" position="230px -230px" size="110px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvRow8Time" position="350px -230px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEvMore" position="10px -276px" size="530px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdEventsEmpty" position="10px -62px" size="530px 44px"
+                                      textMaxNumLines="2" visible="false" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="mdEsSummaryCard" position="580px 0px" size="550px 344px">
+                                <Text profile="RF_SectionTitle" id="mdEventSettingsTitle" position="10px -6px" size="530px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="mdEsGlobal" position="10px -34px" size="530px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="mdEsFreq" position="10px -58px" size="530px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="mdEsEnabled" position="10px -82px" size="530px 22px" text=""/>
+                                <Text profile="RF_TreatTargetLine" id="mdEsActive" position="10px -106px" size="530px 22px" text=""/>
+                                <Text profile="RF_HintText" id="mdEsHint" position="10px -130px" size="530px 66px" textMaxNumLines="3" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="mdEventSettingsBtn" position="10px -296px" size="250px 32px" handleFocus="false" text="" onClick="onClickMdEventSettings"/>
+                            </GuiElement>
                         </GuiElement>
 
                         <!-- Page C — Contracts (read-only fixed rows). -->
-                        <GuiElement profile="RF_EscCardFrameWide" id="mdContractsBand" visible="false" position="10px -10px" size="1130px 344px">
-                            <Text profile="RF_SectionTitle" id="mdContractsTitle" position="10px -6px" size="900px 22px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdCtColCrop" position="10px -36px" size="280px 20px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdCtColQty" position="300px -36px" size="220px 20px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdCtColPrice" position="540px -36px" size="280px 20px" text=""/>
-                            <Text profile="RF_ColHeader" id="mdCtColStatus" position="840px -36px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow1Crop" position="10px -64px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow1Qty" position="300px -64px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow1Price" position="540px -64px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow1Status" position="840px -64px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow2Crop" position="10px -92px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow2Qty" position="300px -92px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow2Price" position="540px -92px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow2Status" position="840px -92px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow3Crop" position="10px -120px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow3Qty" position="300px -120px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow3Price" position="540px -120px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow3Status" position="840px -120px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow4Crop" position="10px -148px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow4Qty" position="300px -148px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow4Price" position="540px -148px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow4Status" position="840px -148px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow5Crop" position="10px -176px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow5Qty" position="300px -176px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow5Price" position="540px -176px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtRow5Status" position="840px -176px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="mdCtMore" position="10px -212px" size="1100px 20px" text=""/>
-                            <Text profile="RF_HintText" id="mdContractsEmpty" position="10px -64px" size="1100px 44px"
-                                  textMaxNumLines="2" visible="false" text=""/>
-            <Button profile="buttonActivate" id="mdOpenMarketBtnContracts" position="770px -280px" size="350px 36px"
-                    onClick="onClickMdOpenMarket"/>
+                        <!-- BUILD 10:47 (George CLOSED DESIGN 10:37): the Contracts band is two cards in the same
+                             1130x344 slot. Left = open deals (fixed Text rows, read-only). Right = compact New Contract
+                             (quantity + window + confirm) for the crop picked in mdCommodityList above. BUILD 11:42:
+                             the compact card is the only create path (Full form dropped). No SmoothList in this band.
+                             Chips, Confirm and Event settings are RF_CsPivotBtn pivot plates with handleFocus=false:
+                             mouse click only. Space (MENU_ACTIVATE) only paints a glyph on a Button, and Return
+                             (MENU_ACCEPT) fires the FOCUSED element through FocusManager, so an unfocusable plate can
+                             never confirm a contract from the keyboard. Open full Market keeps buttonActivate. -->
+                        <GuiElement profile="RF_WcPage" id="mdContractsBand" visible="false" position="10px -10px" size="1130px 344px">
+                            <GuiElement profile="RF_EscCardFrame" id="mdContractsOpenCard" position="0px 0px" size="550px 344px">
+                                <Text profile="RF_SectionTitle" id="mdContractsTitle" textSize="17px" position="10px -6px" size="530px 22px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdCtColCrop" textSize="15px" position="10px -36px" size="150px 20px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdCtColQty" textSize="15px" position="165px -36px" size="100px 20px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdCtColPrice" textSize="15px" position="270px -36px" size="150px 20px" text=""/>
+                                <Text profile="RF_ColHeader" id="mdCtColStatus" textSize="15px" position="425px -36px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow1Crop" textSize="13px" position="10px -62px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow1Qty" textSize="13px" position="165px -62px" size="100px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow1Price" textSize="13px" position="270px -62px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow1Status" textSize="13px" position="425px -62px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow2Crop" textSize="13px" position="10px -86px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow2Qty" textSize="13px" position="165px -86px" size="100px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow2Price" textSize="13px" position="270px -86px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow2Status" textSize="13px" position="425px -86px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow3Crop" textSize="13px" position="10px -110px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow3Qty" textSize="13px" position="165px -110px" size="100px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow3Price" textSize="13px" position="270px -110px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow3Status" textSize="13px" position="425px -110px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow4Crop" textSize="13px" position="10px -134px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow4Qty" textSize="13px" position="165px -134px" size="100px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow4Price" textSize="13px" position="270px -134px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow4Status" textSize="13px" position="425px -134px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow5Crop" textSize="13px" position="10px -158px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow5Qty" textSize="13px" position="165px -158px" size="100px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow5Price" textSize="13px" position="270px -158px" size="150px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtRow5Status" textSize="13px" position="425px -158px" size="115px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdCtMore" textSize="13px" position="10px -186px" size="530px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdContractsEmpty" textSize="13px" position="10px -62px" size="530px 44px"
+                                      textMaxNumLines="2" visible="false" text=""/>
+                            </GuiElement>
+                            <GuiElement profile="RF_EscCardFrame" id="mdNewContractCard" position="580px 0px" size="550px 344px">
+                                <Text profile="RF_SectionTitle" id="mdNewContractTitle" position="10px -6px" size="530px 22px" text=""/>
+                                <Text profile="RF_TreatSelected" id="mdNcCrop" position="10px -34px" size="530px 22px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcPrice" position="10px -58px" size="530px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcQtyLabel" position="10px -82px" size="200px 20px" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty500" position="10px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty1000" position="96px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty5000" position="182px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty10000" position="268px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty25000" position="354px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcQty50000" position="440px -104px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcQty"/>
+                                <Text profile="RF_HintText" id="mdNcDaysLabel" position="10px -142px" size="530px 20px" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcDays30" position="10px -164px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcDays"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcDays60" position="96px -164px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcDays"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcDays90" position="182px -164px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcDays"/>
+                                <Button profile="RF_CsPivotBtn" id="mdNcDays120" position="268px -164px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcDays"/>
+                                <Text profile="RF_HintText" id="mdNcDaysUnit" position="360px -170px" size="180px 20px" text=""/>
+                                <!-- Total in six adjacent Text nodes: only the money and the days number are yellow
+                                     (RF_ProductCell), a Giants TextElement is one colour (BUILD 11:42). -->
+                                <Text profile="RF_HintText" id="mdNcSumLabel" position="10px -206px" size="60px 20px" text=""/>
+                                <Text profile="RF_ProductCell" id="mdNcSumMoney" position="72px -206px" size="200px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcSumFor" position="280px -206px" size="250px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcSumWinLabel" position="10px -228px" size="110px 20px" text=""/>
+                                <Text profile="RF_ProductCell" id="mdNcSumDays" position="124px -228px" size="50px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcSumUnit" position="180px -228px" size="350px 20px" text=""/>
+                                <Text profile="RF_HintText" id="mdNcHint" position="10px -252px" size="530px 40px" textMaxNumLines="2" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="mdNewContractBtn" position="10px -296px" size="250px 32px" handleFocus="false" text="" onClick="onClickMdNewContract"/>
+                            </GuiElement>
                         </GuiElement>
                     </GuiElement>
 

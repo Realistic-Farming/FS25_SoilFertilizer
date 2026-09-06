@@ -261,6 +261,11 @@ function RfEscModules:registerModule(def)
         -- MORE (1/2) button forwarded a step to nil and the roster never turned the page.
         -- The register-time warning below did name it, in a log nobody read back.
         onPageStep = def.onPageStep,
+        -- BUILD 22:42 (George CLOSED DESIGN 21:26): the Worker Costs guest registers onHire /
+        -- onFire for the Esc page Hire / Fire buttons; carried so the host forwarders reach them
+        -- through the registry (the warning below would otherwise name them as dropped).
+        onHire = def.onHire,
+        onFire = def.onFire,
     }
     -- BUILD 23:51: this whitelist has now silently eaten a handler four times, so stop
     -- letting it do that quietly. Anything a caller passed that is not carried above gets
