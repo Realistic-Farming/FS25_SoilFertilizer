@@ -126,14 +126,41 @@ function RotationPlannerDialog:_step(delta)
     self:_refresh()
 end
 
+--- BUILD 19:23 (George CLOSED DESIGN 19:12): the stepper walks block LEADS (RfPdaSoilMerge
+--- .buildGroups, Soil's own module, direct call); _members[lead] holds every farmland id of the
+--- block and _allIds every real farmland id, so the rotation cache and the farm summary stay
+--- per farmland id (RotationPlannerData.cacheForFields is never fed a merged id).
 function RotationPlannerDialog:_rebuildFieldList()
     self._fieldIds = {}
+    self._allIds = {}
+    self._members = {}
     local sfm = g_SoilFertilityManager or (g_currentMission and g_currentMission.soilFertilityManager)
     local soil = sfm and sfm.soilSystem
     if soil == nil or soil.fieldData == nil then return end
     for fieldId, _ in pairs(soil.fieldData) do
         if type(fieldId) == "number" and fieldId > 0 then
+            self._allIds[#self._allIds + 1] = fieldId
+        end
+    end
+    table.sort(self._allIds)
+    local groups = nil
+    if RfPdaSoilMerge ~= nil and type(RfPdaSoilMerge.buildGroups) == "function" then
+        local ok, built = pcall(RfPdaSoilMerge.buildGroups, self._allIds)
+        if ok and type(built) == "table" then
+            groups = built
+        end
+    end
+    if groups ~= nil then
+        for _, g in ipairs(groups) do
+            if g.fieldId ~= nil then
+                self._fieldIds[#self._fieldIds + 1] = g.fieldId
+                self._members[g.fieldId] = g.memberIds or { g.fieldId }
+            end
+        end
+    else
+        for _, fieldId in ipairs(self._allIds) do
             self._fieldIds[#self._fieldIds + 1] = fieldId
+            self._members[fieldId] = { fieldId }
         end
     end
     table.sort(self._fieldIds)
@@ -143,10 +170,13 @@ end
 function RotationPlannerDialog:_refresh()
     if RotationPlannerData == nil then return end
     local ids = self._fieldIds
-    local cache = RotationPlannerData.cacheForFields(ids)
+    -- BUILD 19:23: the rotation cache and the farm summary run over every real farmland id;
+    -- only the stepper (ids) walks block leads.
+    local allIds = self._allIds or ids
+    local cache = RotationPlannerData.cacheForFields(allIds)
 
     local bonusN, fatigueN, okN, unknownN = 0, 0, 0, 0
-    for _, id in ipairs(ids) do
+    for _, id in ipairs(allIds) do
         local info = cache.byId[id]
         local _, kind = RotationPlannerData.standingLine(info)
         if kind == "bonus" then bonusN = bonusN + 1
@@ -157,7 +187,7 @@ function RotationPlannerDialog:_refresh()
     if self.rpFarmSummary then
         self.rpFarmSummary:setText(string.format(
             tr("sf_rp_farm_summary", "%d fields · Bonus %d · OK %d · Fatigue %d · Unknown %d"),
-            #ids, bonusN, okN, fatigueN, unknownN
+            #allIds, bonusN, okN, fatigueN, unknownN
         ))
     end
 
@@ -174,10 +204,19 @@ function RotationPlannerDialog:_refresh()
     end
 
     if self.rpFieldHeader then
-        self.rpFieldHeader:setText(string.format(
-            tr("sf_rp_field_header", "Field #%d  (%d / %d)"),
-            fieldId, self._index, #ids
-        ))
+        local members = self._members and self._members[fieldId] or nil
+        if members ~= nil and #members > 1 and RfPdaSoilMerge ~= nil and type(RfPdaSoilMerge.shortLabel) == "function" then
+            -- A block: "Field 86-87  (3 / 9)" via the merge label (fallback-only key).
+            self.rpFieldHeader:setText(string.format(
+                tr("sf_rp_field_header_block", "Field %s  (%d / %d)"),
+                RfPdaSoilMerge.shortLabel(members), self._index, #ids
+            ))
+        else
+            self.rpFieldHeader:setText(string.format(
+                tr("sf_rp_field_header", "Field #%d  (%d / %d)"),
+                fieldId, self._index, #ids
+            ))
+        end
     end
 
     local info = cache.byId[fieldId]
