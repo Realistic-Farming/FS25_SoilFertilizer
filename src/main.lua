@@ -175,6 +175,7 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
 source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
+source(modDirectory .. "src/ui/RfPdaSoilMerge.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
@@ -643,6 +644,12 @@ local function load(mission)
         -- Cross-mod bridge: g_currentMission is a shared C++ object visible to all mods.
         -- getfenv(0) is per-mod scoped in FS25. Use mission property for reliable cross-mod detection.
         mission.soilFertilityManager = sfm
+        -- BUILD 19:23 (George CLOSED DESIGN 19:12): the Soil list-row merge module rides the same
+        -- mission bridge for Crop Stress and Farm Tablet (getfenv(0) does not cross mods); they
+        -- call buildGroups / readGroups on it and Soil alone drives the outline walks.
+        if RfPdaSoilMerge ~= nil then
+            mission.RfPdaSoilMerge = RfPdaSoilMerge
+        end
         -- [SF organic-compost] The managed compost process. Standalone manager,
         -- server-authoritative; owns production only (SF owns the OM effect).
         if CompostManager ~= nil then
@@ -700,6 +707,7 @@ local function unload()
         getfenv(0)["g_SoilFertilityManager"] = nil
         if g_currentMission then
             g_currentMission.soilFertilityManager = nil
+            g_currentMission.RfPdaSoilMerge = nil     -- BUILD 19:23: drop the merge bridge with it
             g_currentMission.fieldSentry = nil   -- #83 drop the cross-mod bridge
             g_currentMission.soilHarvestBus = nil -- drop the harvest-event bridge
             g_currentMission.dogEarlyWarning = nil
@@ -863,6 +871,11 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
         if sfm then
             sfm:update(dt)
+            -- BUILD 18:37 (George CLOSED DESIGN 18:25): the Soil list-row outline walks, one field
+            -- per frame, only while a list build has queued something (RfPdaSoilMerge.update).
+            if RfPdaSoilMerge ~= nil and type(RfPdaSoilMerge.update) == "function" then
+                pcall(RfPdaSoilMerge.update, dt, sfm.soilSystem)
+            end
             if dogWarning ~= nil then dogWarning:update(dt) end
             -- [SF organic-compost] Day-tracking fallback when Time Guard is absent.
             if g_CompostManager ~= nil then
