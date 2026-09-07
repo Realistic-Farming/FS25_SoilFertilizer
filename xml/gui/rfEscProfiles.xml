@@ -727,6 +727,30 @@
         <textVerticalAlignment value="middle"/>
     </Profile>
 
+    <!-- BUILD 11:40 (George CLOSED DESIGN 11:25): the in-card herd / milk breed lists on the Dairy cards.
+         20px rows = four visible in the 80px box (today's density); the slider shows only when rows overflow. -->
+    <Profile name="RF_DairyBreedList" extends="RF_SmoothList">
+        <size value="520px 80px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_DairyBreedItem" extends="RF_ListRow">
+        <height value="20px"/>
+    </Profile>
+    <Profile name="RF_DairyBreedCell" extends="RF_FwListCell">
+        <textSize value="16px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <!-- The engine clippers are 39px tall (sized for the 420px roster box); in an 80px list they would
+         fade two of the four rows. Same gradient, anchors and offset, 12px tall. -->
+    <Profile name="RF_DairyBreedStartClipper" extends="fs25_secondaryMenuStartClipper">
+        <height value="12px"/>
+    </Profile>
+    <Profile name="RF_DairyBreedStopClipper" extends="fs25_secondaryMenuStopClipper">
+        <height value="12px"/>
+    </Profile>
+
     <!-- F12: STATUS body cells centered. -->
     <Profile name="RF_StatusCell" extends="fs25_textDefault" with="anchorTopLeft">
         <textSize value="17px"/>

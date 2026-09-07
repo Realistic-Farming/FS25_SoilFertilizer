@@ -770,77 +770,162 @@
                                  Button is inert (ButtonElement:getIsActive needs a callback), so no other door can
                                  fire them. Hidden by default. Byte-same in all nine door files. rfDairyCardsHint is
                                  the page hint for this layout (rfFwHintTable sits at -336, under the cards). -->
+                            <!-- BUILD 11:40 (George CLOSED DESIGN 11:25): herd / milk breed rows are in-card SmoothLists
+                                 (NPC Favor nest: GuiElement box, clippers, slider box that shows only on overflow), 20px rows,
+                                 four visible in the 80px box, the rest scroll. No breed chips. The box is 520 wide: the
+                                 engine slider box sits 8px past its parent's right edge and the card frame line is at 555.
+                                 The clippers carry their own 12px profiles (the engine's are 39px, half of an 80px list). -->
                             <GuiElement profile="RF_EscCardFrame" id="rfDairyCard1" position="10px -8px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard1Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard1State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard1HerdHead" position="10px -52px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard1HerdNames" position="10px -72px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard1HerdVals" position="340px -72px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard1HerdBox" position="10px -72px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard1HerdList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard1HerdStart" endClipperElementName="rfDairyCard1HerdEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard1HerdStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard1HerdEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard1HerdList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard1MilkHead" position="10px -152px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard1MilkNames" position="10px -172px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard1MilkVals" position="340px -172px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard1MilkBox" position="10px -172px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard1MilkList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard1MilkStart" endClipperElementName="rfDairyCard1MilkEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard1MilkStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard1MilkEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard1MilkList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard1Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard1BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard1BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrame" id="rfDairyCard2" position="575px -8px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard2Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard2State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard2HerdHead" position="10px -52px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard2HerdNames" position="10px -72px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard2HerdVals" position="340px -72px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard2HerdBox" position="10px -72px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard2HerdList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard2HerdStart" endClipperElementName="rfDairyCard2HerdEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard2HerdStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard2HerdEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard2HerdList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard2MilkHead" position="10px -152px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard2MilkNames" position="10px -172px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard2MilkVals" position="340px -172px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard2MilkBox" position="10px -172px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard2MilkList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard2MilkStart" endClipperElementName="rfDairyCard2MilkEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard2MilkStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard2MilkEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard2MilkList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard2Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard2BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard2BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrame" id="rfDairyCard3" position="10px -396px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard3Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard3State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard3HerdHead" position="10px -52px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard3HerdNames" position="10px -72px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard3HerdVals" position="340px -72px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard3HerdBox" position="10px -72px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard3HerdList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard3HerdStart" endClipperElementName="rfDairyCard3HerdEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard3HerdStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard3HerdEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard3HerdList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard3MilkHead" position="10px -152px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard3MilkNames" position="10px -172px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard3MilkVals" position="340px -172px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard3MilkBox" position="10px -172px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard3MilkList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard3MilkStart" endClipperElementName="rfDairyCard3MilkEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard3MilkStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard3MilkEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard3MilkList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard3Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard3BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard3BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrame" id="rfDairyCard4" position="575px -396px" size="555px 380px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfDairyCard4Name" position="10px -6px" size="535px 24px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard4State" position="10px -32px" size="535px 20px" text=""/>
                                 <Text profile="RF_HintText" id="rfDairyCard4HerdHead" position="10px -52px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard4HerdNames" position="10px -72px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard4HerdVals" position="340px -72px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard4HerdBox" position="10px -72px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard4HerdList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard4HerdStart" endClipperElementName="rfDairyCard4HerdEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard4HerdStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard4HerdEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard4HerdList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard4MilkHead" position="10px -152px" size="535px 20px" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard4MilkNames" position="10px -172px" size="330px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" text=""/>
-                                <Text profile="RF_HintText" id="rfDairyCard4MilkVals" position="340px -172px" size="205px 80px"
-                                      textMaxNumLines="4" textVerticalAlignment="top" textAlignment="right" text=""/>
+                                <GuiElement profile="RF_FwListBox" id="rfDairyCard4MilkBox" position="10px -172px" size="520px 80px">
+                                    <SmoothList id="rfDairyCard4MilkList" profile="RF_DairyBreedList" size="520px 80px" handleFocus="false"
+                                                startClipperElementName="rfDairyCard4MilkStart" endClipperElementName="rfDairyCard4MilkEnd">
+                                        <ListItem profile="RF_DairyBreedItem" height="20px">
+                                            <Bitmap profile="RF_RowBg" name="alternating"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedName" position="0px 0px" size="330px 20px"/>
+                                            <Text profile="RF_DairyBreedCell" name="rfDairyBreedVal" position="330px 0px" size="190px 20px" textAlignment="right"/>
+                                        </ListItem>
+                                    </SmoothList>
+                                    <Bitmap profile="RF_DairyBreedStartClipper" name="rfDairyCard4MilkStart"/>
+                                    <Bitmap profile="RF_DairyBreedStopClipper" name="rfDairyCard4MilkEnd"/>
+                                    <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                        <Slider profile="fs25_listSlider" dataElementId="rfDairyCard4MilkList" hideParentWhenEmpty="true"/>
+                                    </ThreePartBitmap>
+                                </GuiElement>
                                 <Text profile="RF_HintText" id="rfDairyCard4Stored" position="10px -252px" size="535px 60px"
                                       textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard4BreedPrev" position="10px -346px" size="120px 24px" handleFocus="false" visible="false" text=""/>
-                                <Button profile="RF_CsPivotBtn" id="rfDairyCard4BreedNext" position="140px -346px" size="160px 24px" handleFocus="false" visible="false" text=""/>
                             </GuiElement>
                             <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 80px"
                                   textMaxNumLines="4" textVerticalAlignment="top" visible="false" text=""/>
