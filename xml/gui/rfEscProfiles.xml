@@ -727,6 +727,49 @@
         <textVerticalAlignment value="middle"/>
     </Profile>
 
+    <!-- BUILD 17:21: the shared Esc table list. 28px rows are the sheet's own pitch, so the four
+         column headers above the box still line up; the clippers are 12px because the engine's own
+         are 39px, sized for the 420px roster box. -->
+    <Profile name="RF_FwSheetList" extends="RF_SmoothList">
+        <size value="1112px 480px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <!-- BUILD 19:15: the Soil field-list family - 48px rows and 18px cells - so the shared table reads
+         at the same weight as the Soil list instead of a denser one. -->
+    <Profile name="RF_FwSheetItem" extends="RF_ListRow">
+        <height value="48px"/>
+    </Profile>
+    <Profile name="RF_FwSheetCell" extends="RF_FwListCell">
+        <textSize value="18px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <!-- 24px is proportional for a 480px box the way the engine's own 39px is for the 420px roster. -->
+    <Profile name="RF_SheetStartClipper" extends="fs25_secondaryMenuStartClipper">
+        <height value="24px"/>
+    </Profile>
+    <Profile name="RF_SheetStopClipper" extends="fs25_secondaryMenuStopClipper">
+        <height value="24px"/>
+    </Profile>
+    <!-- BUILD 19:15: the selected-row readout under the sheet. Three lines of hint text, top aligned. -->
+    <Profile name="RF_SheetBand" extends="RF_HintText">
+        <textSize value="18px"/>
+        <textMaxNumLines value="3"/>
+        <textVerticalAlignment value="top"/>
+    </Profile>
+
+    <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): an invisible per-row hit target for the Esc Market
+         contracts rows. It extends the pivot chip so the overlay-chip law's guards come with it
+         (hideKeyboardGlyph, isTriggerableByGlobalAction false, so SPACE can never activate a row);
+         nothing paints because fs25_wideButton's own background is emptyPanel-transparent, the icon
+         is sized away and the label is empty. -->
+    <Profile name="RF_CtRowHit" extends="RF_CsPivotBtn">
+        <size value="530px 24px"/>
+        <iconSize value="0px 0px"/>
+        <textSize value="1px"/>
+    </Profile>
+
     <!-- BUILD 11:40 (George CLOSED DESIGN 11:25): the in-card herd / milk breed lists on the Dairy cards.
          20px rows = four visible in the 80px box (today's density); the slider shows only when rows overflow. -->
     <Profile name="RF_DairyBreedList" extends="RF_SmoothList">

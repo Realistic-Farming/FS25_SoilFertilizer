@@ -622,54 +622,92 @@
                                  take it with an inline size rather than one profile per orientation. Declared
                                  before the cells so text paints over them. Per-cell hasFrame would have been 144
                                  frame rects for the same picture. -->
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleHead" position="10px -64px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow1" position="10px -92px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow2" position="10px -120px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow3" position="10px -148px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow4" position="10px -176px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow5" position="10px -204px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow6" position="10px -232px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow7" position="10px -260px" size="1120px 1px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol1" position="300px -36px" size="1px 250px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol2" position="600px -36px" size="1px 250px"/>
-                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol3" position="840px -36px" size="1px 250px"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleHead" position="10px -64px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow1" position="10px -92px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow2" position="10px -120px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow3" position="10px -148px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow4" position="10px -176px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow5" position="10px -204px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow6" position="10px -232px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleRow7" position="10px -260px" size="1120px 1px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol1" position="300px -36px" size="1px 250px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol2" position="600px -36px" size="1px 250px" visible="false"/>
+                            <Bitmap profile="RF_EscCardRule" id="rfFwRuleCol3" position="840px -36px" size="1px 250px" visible="false"/>
                             <Text profile="RF_FwColHeader" id="rfFwColA" position="10px -40px" size="280px 22px" text=""/>
                             <Text profile="RF_FwColHeader" id="rfFwColB" position="310px -40px" size="280px 22px" text=""/>
                             <Text profile="RF_FwColHeader" id="rfFwColC" position="610px -40px" size="220px 22px" text=""/>
                             <Text profile="RF_FwColHeader" id="rfFwColD" position="850px -40px" size="280px 22px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1A" position="10px -68px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1B" position="310px -68px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1C" position="610px -68px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow1D" position="850px -68px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2A" position="10px -96px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2B" position="310px -96px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2C" position="610px -96px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow2D" position="850px -96px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3A" position="10px -124px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3B" position="310px -124px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3C" position="610px -124px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow3D" position="850px -124px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4A" position="10px -152px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4B" position="310px -152px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4C" position="610px -152px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow4D" position="850px -152px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5A" position="10px -180px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5B" position="310px -180px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5C" position="610px -180px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow5D" position="850px -180px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6A" position="10px -208px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6B" position="310px -208px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6C" position="610px -208px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow6D" position="850px -208px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7A" position="10px -236px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7B" position="310px -236px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7C" position="610px -236px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow7D" position="850px -236px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8A" position="10px -264px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8B" position="310px -264px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text=""/>
-                            <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -300px" size="1120px 20px" text=""/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1A" position="10px -68px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1B" position="310px -68px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1C" position="610px -68px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow1D" position="850px -68px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2A" position="10px -96px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2B" position="310px -96px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2C" position="610px -96px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow2D" position="850px -96px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3A" position="10px -124px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3B" position="310px -124px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3C" position="610px -124px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow3D" position="850px -124px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4A" position="10px -152px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4B" position="310px -152px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4C" position="610px -152px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow4D" position="850px -152px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5A" position="10px -180px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5B" position="310px -180px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5C" position="610px -180px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow5D" position="850px -180px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6A" position="10px -208px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6B" position="310px -208px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6C" position="610px -208px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow6D" position="850px -208px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7A" position="10px -236px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7B" position="310px -236px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7C" position="610px -236px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow7D" position="850px -236px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8A" position="10px -264px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8B" position="310px -264px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text="" visible="false"/>
+                            <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -548px" size="1120px 20px" text=""/>
+                            <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): the shared table scrolls. ONE SmoothList
+                                 under this GuiElement host (rfFwTableBlock is a GuiElement, never a Map Bitmap: the
+                                 hang fence), the NPC Favor nest, the sheet's own 28px pitch and the same four column
+                                 X as rfFwColA..D, so the headers above it still line up. Painted by whichever Table
+                                 guest is showing (Income, Depot); hidden by default and hidden again on every host
+                                 refresh, so no module inherits another's rows. The 32 rfFwRow* cells above stay
+                                 declared and unused: Dairy, NPC Favor and Pro Staff each hide them by id, and a door
+                                 must never lose an id a shipped guest still names. -->
+                            <!-- BUILD 19:15 (George CLOSED DESIGN 18:55): the sheet fills the bay like the Soil field
+                                 list - 480 tall, 48px rows, 18px cells - so ten full rows read at a glance instead of
+                                 eight cramped ones. Bottom sits at -540; rfFwMore follows at -548 and rfFwHintTable at
+                                 -576, and nothing in this block goes below -740, which is what keeps the Pro Staff
+                                 Buy / Run strip at -748 clear. Cell X and widths are untouched so rfFwColA..D still
+                                 head their own columns. The ListItem carries the row click; the host resolves the row
+                                 index and hands it to whichever guest is showing. -->
+                            <GuiElement profile="RF_FwListBox" id="rfFwSheetBox" position="10px -60px" size="1120px 480px" visible="false">
+                                <SmoothList id="rfFwSheetList" profile="RF_FwSheetList" size="1112px 480px" handleFocus="false"
+                                            startClipperElementName="rfFwSheetStart" endClipperElementName="rfFwSheetEnd">
+                                    <ListItem profile="RF_FwSheetItem" height="48px" onClick="onClickFwSheetRow">
+                                        <Bitmap profile="RF_RowBg" name="alternating"/>
+                                        <Text profile="RF_FwSheetCell" name="rfFwSheetA" position="0px 0px" size="280px 48px"/>
+                                        <Text profile="RF_FwSheetCell" name="rfFwSheetB" position="300px 0px" size="280px 48px"/>
+                                        <Text profile="RF_FwSheetCell" name="rfFwSheetC" position="600px 0px" size="220px 48px"/>
+                                        <Text profile="RF_FwSheetCell" name="rfFwSheetD" position="840px 0px" size="272px 48px"/>
+                                    </ListItem>
+                                </SmoothList>
+                                <Bitmap profile="RF_SheetStartClipper" name="rfFwSheetStart"/>
+                                <Bitmap profile="RF_SheetStopClipper" name="rfFwSheetEnd"/>
+                                <ThreePartBitmap profile="fs25_subCategoryListSliderBox">
+                                    <Slider profile="fs25_listSlider" dataElementId="rfFwSheetList" hideParentWhenEmpty="true"/>
+                                </ThreePartBitmap>
+                            </GuiElement>
+                            <!-- BUILD 19:15: the readout for the row the player clicked. Text only, no chip. Hidden by
+                                 default and hidden again on every host refresh beside rfFwSheetBox, so it can never
+                                 carry one module's row onto another module's page. The Depot guest fills it; Income
+                                 has no band and its onSheetRow is a no-op. -->
+                            <Text profile="RF_SheetBand" id="rfFwSheetBand" position="10px -664px" size="1120px 72px"
+                                  textMaxNumLines="3" textVerticalAlignment="top" visible="false" text=""/>
                             <!-- BUILD 00:06 (George CLOSED DESIGN 23:12): the rfFwPagePrev / rfFwPageNext row pager is gone;
                                  the NPC Favor tables scroll (rfFwRosterList / rfFwFavorList below). The host keyEvent page
                                  belt (. / , keys) still serves a guest that registers onPageStep (Dairy cards). -->
@@ -689,7 +727,7 @@
                                     visible="false" text="" onClick="onClickPsFlush"/>
                             <Text profile="RF_HintText" id="rfFwEmptyHint" position="10px -68px" size="1120px 44px"
                                   textMaxNumLines="2" visible="false" text=""/>
-                            <Text profile="RF_HintText" id="rfFwHintTable" position="10px -336px" size="1120px 80px"
+                            <Text profile="RF_HintText" id="rfFwHintTable" position="10px -576px" size="1120px 80px"
                                   textMaxNumLines="3" textVerticalAlignment="top" text=""/>
                             <!-- BUILD 00:06 (George CLOSED DESIGN 23:12, Ash 00:06): NPC Favor scrollable tables. Two SmoothLists
                                  under this GuiElement host (rfFwTableBlock is a GuiElement, never a Map Bitmap: the hang fence),
@@ -1504,6 +1542,20 @@
                                 <Text profile="RF_HintText" id="mdCtMore" textSize="13px" position="10px -186px" size="530px 20px" text=""/>
                                 <Text profile="RF_HintText" id="mdContractsEmpty" textSize="13px" position="10px -62px" size="530px 44px"
                                       textMaxNumLines="2" visible="false" text=""/>
+                                <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): pick an open deal, then Cancel it. The five
+                                     hit targets sit ON the row bands and paint nothing (RF_CtRowHit); they are declared
+                                     after the row Texts so the transparent button draws over the text without hiding it.
+                                     ONE Cancel chip, never one per row. handleFocus="false" and the profile's
+                                     isTriggerableByGlobalAction="false" are the overlay-chip law: SPACE never confirms it. -->
+                                <Button profile="RF_CtRowHit" id="mdCtRow1" position="10px -62px" size="530px 24px" handleFocus="false" text="" onClick="onClickMdCtRow"/>
+                                <Button profile="RF_CtRowHit" id="mdCtRow2" position="10px -86px" size="530px 24px" handleFocus="false" text="" onClick="onClickMdCtRow"/>
+                                <Button profile="RF_CtRowHit" id="mdCtRow3" position="10px -110px" size="530px 24px" handleFocus="false" text="" onClick="onClickMdCtRow"/>
+                                <Button profile="RF_CtRowHit" id="mdCtRow4" position="10px -134px" size="530px 24px" handleFocus="false" text="" onClick="onClickMdCtRow"/>
+                                <Button profile="RF_CtRowHit" id="mdCtRow5" position="10px -158px" size="530px 24px" handleFocus="false" text="" onClick="onClickMdCtRow"/>
+                                <Text profile="RF_HintText" id="mdCtSelected" textSize="13px" position="10px -212px" size="530px 20px" text=""/>
+                                <Button profile="RF_CsPivotBtn" id="mdCancelBtn" position="10px -238px" size="170px 32px" handleFocus="false" visible="false" text="" onClick="onClickMdCancel"/>
+                                <Text profile="RF_HintText" id="mdCancelHint" textSize="13px" position="190px -234px" size="350px 40px"
+                                      textMaxNumLines="2" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrame" id="mdNewContractCard" position="580px 0px" size="550px 344px">
                                 <Text profile="RF_SectionTitle" id="mdNewContractTitle" position="10px -6px" size="530px 22px" text=""/>

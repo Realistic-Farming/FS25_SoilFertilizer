@@ -233,6 +233,11 @@ function RfEscModules:registerModule(def)
         onOpenConsultant = def.onOpenConsultant,
         onOpenSchedule = def.onOpenSchedule,
         onOpenHelp = def.onOpenHelp,
+        -- BUILD 19:15: the shared Esc sheet's row click. registerModule rebuilds the descriptor field
+        -- by field, so a handler that is not named here is silently dropped and the control is dead.
+        -- That is what happened to onOpenFullMarket, onOpenConsultant, onPivotRemote, onLightTick,
+        -- onMoverChanged and onPageStep before it.
+        onSheetRow = def.onSheetRow,
         onPaintConsultant = def.onPaintConsultant,
         -- Same trap again, BUILD 15:46: the CS guest registers onPivotRemote on
         -- its module def (CsRfPdaGuest.lua) but it was missing here, so it was

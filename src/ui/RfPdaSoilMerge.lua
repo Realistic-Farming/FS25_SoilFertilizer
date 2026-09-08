@@ -24,17 +24,27 @@
 -- record per farmland id; the walks run one field per frame from the main.lua
 -- update hook (RfPdaSoilMerge.update), a few ms each, only for farmlands a list
 -- build has asked for. Later opens read the cache. A farmland goes dirty on the
--- FieldManager field updates (plow / cultivate / harvest / sow / fertilize /
--- lime / weed / herbicide, appended read-only) and the whole cache drops on a
--- save load (SoilFertilitySystem:loadFromXMLFile, appended). Never a
--- FieldManager, farmland, density-map or FieldUpdateTask write.
+-- FieldManager plow / cultivate updates (appended read-only; the only updates
+-- that change the field-ground extent) and the whole cache drops on a save load
+-- (SoilFertilitySystem:loadFromXMLFile, appended). Never a FieldManager,
+-- farmland, density-map or FieldUpdateTask write.
 --
--- Member rule (George Q4): outline signature = bounding box of the rounded
--- boundaryPositions (g_fieldCourseManager:roundToTerrainDetailPixel) plus the
--- point count. Two centres in one connected field-ground region trace the same
--- loop, so matching signatures = one block = one row; the lowest member id
--- leads. No point-in-polygon, no crop gate (the 15:06 8 m gap + same-crop join
--- is gone).
+-- Member rule (BUILD 22:21, George CLOSED DESIGN 22:12): the field numbers whose
+-- own CENTRE sits inside the walked outline. After a finished walk, every farmland
+-- the local farm owns except the walked one is tested exactly once: its centre from
+-- Field:getCenterOfFieldWorldPosition, rejected on the outline bounding box, and
+-- otherwise ray cast with FieldCourseUtil.getIsPointInsideBoundary. Inside joins the
+-- row; outside is decided, not retried. That is what keeps two neighbouring wheat
+-- fields with two GPS outlines as two rows: their shared edge falls inside the other
+-- one's box, but neither centre falls inside the other one's outline. Until BUILD
+-- 22:21 this gridded the bounding box and admitted a parcel on its first field-ground
+-- pixel inside the polygon, so one fence sliver glued two fields together.
+-- The member set is written onto every member's record and those members leave
+-- the walk queue; rows group by member-set equality, the lowest id leads.
+-- Nearby-but-not-joined parcels stay separate. No crop gate. A finished loop
+-- that does not enclose the field centre is an interior hole (tree, pole, pond)
+-- that sat above the centre: the walk restarts just past it, the same rule
+-- FieldCourseField applies to this task (FieldCourseField.lua 211-213).
 -- =========================================================
 
 RfPdaSoilMerge = RfPdaSoilMerge or {}
@@ -100,9 +110,9 @@ end
 
 -- ---------------------------------------------------------
 -- Outline cache: soilSystem.fieldBlocks[farmlandId] = record
---   { sig, minX, maxX, minZ, maxZ, count, dirty }  a finished walk
---   { none = true, dirty }                        centre not on field ground
--- The open walk lives in soilSystem._rfBlockWalk = { queue, queued, task, taskId }.
+--   { members = {sorted owned farmland ids}, dirty }  a finished walk + sample
+--   { none = true, dirty }                           centre not on field ground
+-- The open walk lives in soilSystem._rfBlockWalk = { queue, queued, task, taskId, sample }.
 -- ---------------------------------------------------------
 local function fieldCenter(fieldId)
     local f = fieldObject(fieldId)
@@ -121,48 +131,239 @@ local function fieldCenter(fieldId)
     return nil
 end
 
-local function roundPixel(x, z)
-    local fcm = g_fieldCourseManager
-    if fcm ~= nil and type(fcm.roundToTerrainDetailPixel) == "function" then
-        local ok, rx, rz = pcall(fcm.roundToTerrainDetailPixel, fcm, x, z)
-        if ok and rx ~= nil and rz ~= nil then
-            return rx, rz
-        end
-    end
-    return x, z
-end
-
--- Signature of a finished walk: bounding box of the pixel-rounded positions plus
--- the point count. Start-invariant: any centre in the same region gives the same loop.
-local function outlineRecord(positions)
-    local n = #positions
-    if n == 0 then
+-- Still here for the hole restart, which measures its step off the terrain detail grid. The
+-- membership sample no longer touches it: BUILD 22:21 replaced the grid with a centre test.
+local function terrainDetailResolution()
+    local m = g_currentMission
+    if m == nil or type(m.terrainSize) ~= "number" or type(m.terrainDetailMapSize) ~= "number"
+        or m.terrainDetailMapSize <= 0 then
         return nil
     end
+    return m.terrainSize / m.terrainDetailMapSize
+end
+
+--- Bounding box of a finished walk plus a closed copy of its positions for the
+--- ray-cast point-in-polygon test (the walk stops within one pixel of its start;
+--- the closing segment is added here, the task's own table is left alone).
+local function outlineBounds(positions)
     local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
-    for i = 1, n do
+    local closed = {}
+    for i = 1, #positions do
         local p = positions[i]
-        if type(p) == "table" and p[1] ~= nil and p[2] ~= nil then
-            local x, z = roundPixel(p[1], p[2])
+        if type(p) == "table" and type(p[1]) == "number" and type(p[2]) == "number" then
+            local x, z = p[1], p[2]
             if x < minX then minX = x end
             if x > maxX then maxX = x end
             if z < minZ then minZ = z end
             if z > maxZ then maxZ = z end
+            closed[#closed + 1] = p
         end
     end
-    if minX == math.huge then
+    if #closed < 3 then
         return nil
     end
-    return {
-        sig = string.format("%.2f|%.2f|%.2f|%.2f|%d", minX, maxX, minZ, maxZ, n),
-        minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ, count = n,
-        dirty = false,
+    local first, last = closed[1], closed[#closed]
+    if first[1] ~= last[1] or first[2] ~= last[2] then
+        closed[#closed + 1] = { first[1], first[2] }
+    end
+    return { minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ, boundary = closed }
+end
+
+--- Every farmland the local farm owns (the candidate set a sample can join) and its count.
+local function ownedFarmlands()
+    local owned, count = {}, 0
+    local farmId = resolveFarmId()
+    if farmId == nil or farmId == 0 or g_farmlandManager == nil then
+        return owned, count
+    end
+    local lands = nil
+    if type(g_farmlandManager.getFarmlands) == "function" then
+        local ok, t = pcall(g_farmlandManager.getFarmlands, g_farmlandManager)
+        if ok and type(t) == "table" then
+            lands = t
+        end
+    end
+    if lands == nil then
+        lands = g_farmlandManager.farmlands
+    end
+    if type(lands) ~= "table" then
+        return owned, count
+    end
+    for key, land in pairs(lands) do
+        local id = tonumber(key)
+        if id == nil and type(land) == "table" then
+            id = tonumber(land.id)
+        end
+        if id ~= nil and owned[id] == nil and isOwned(id, farmId) then
+            owned[id] = true
+            count = count + 1
+        end
+    end
+    return owned, count
+end
+
+--- Open the membership pass for a finished walk (BUILD 22:21, George CLOSED DESIGN 22:12).
+--- The candidate set is every farmland this farm owns except the walked one, and each candidate
+--- is tested exactly once at its own field centre. No grid, so no per-pixel density or farmland
+--- read, and no throttle to tune: the pass is bounded by the number of parcels the farm owns.
+--- The walked farmland is a member by construction and is never self-tested. Returns false only
+--- when there is no outline to test against, which is the caller's "none" case.
+local function startSample(w, fieldId, b)
+    if b == nil then
+        return false
+    end
+    local owned = ownedFarmlands()
+    local cands = {}
+    for id in pairs(owned) do
+        if id ~= fieldId then
+            cands[#cands + 1] = id
+        end
+    end
+    -- Sorted so a pass over the same farm is the same pass twice, which matters when two walks
+    -- are compared against each other during a rebuild.
+    table.sort(cands)
+    local s = {
+        fieldId = fieldId,
+        boundary = b.boundary,
+        minX = b.minX,
+        maxX = b.maxX,
+        minZ = b.minZ,
+        maxZ = b.maxZ,
+        cands = cands,
+        i = 0,
+        members = {},
     }
+    -- By construction, not by test: this outline was walked from this field's own centre.
+    s.members[fieldId] = true
+    w.sample = s
+    return true
+end
+
+--- One candidate. Returns true when the pass is complete, which is when the candidate list is
+--- exhausted. Each owned parcel is tested exactly once, at its own field centre: the bounding box
+--- rejects most of them for the price of four comparisons, and only a centre inside the box pays
+--- for the ray cast, which is O(boundary). Inside means this parcel is part of the same GPS
+--- outline and joins the row. Outside is a decision, not a retry: two wheat fields side by side
+--- that GPS still draws as two outlines stay two rows, however much shared fence line falls inside
+--- the other one's bounding box. That is the whole point of the change.
+local function sampleStep(s)
+    if s.i >= #s.cands then
+        return true
+    end
+    s.i = s.i + 1
+    local fid = s.cands[s.i]
+    if fid == nil or s.members[fid] then
+        return false
+    end
+    local cx, cz = fieldCenter(fid)
+    if cx == nil or cz == nil then
+        -- No centre to test is not a member; it gets its own row through its own walk.
+        return false
+    end
+    if cx < s.minX or cx > s.maxX or cz < s.minZ or cz > s.maxZ then
+        return false
+    end
+    if FieldCourseUtil == nil or type(FieldCourseUtil.getIsPointInsideBoundary) ~= "function" then
+        return true
+    end
+    if FieldCourseUtil.getIsPointInsideBoundary(cx, cz, s.boundary) == true then
+        s.members[fid] = true
+    end
+    return false
+end
+
+--- Write the finished member set onto every member's record and drop those members
+--- from the walk queue (a walk that found {19, 20} never walks 20 on its own).
+local function finishSample(sys, w)
+    local s = w.sample
+    w.sample = nil
+    local members = {}
+    for id in pairs(s.members) do
+        members[#members + 1] = id
+    end
+    table.sort(members)
+    for _, id in ipairs(members) do
+        local copy = {}
+        for i = 1, #members do
+            copy[i] = members[i]
+        end
+        sys.fieldBlocks[id] = { members = copy, dirty = false }
+        if w.queued[id] then
+            w.queued[id] = nil
+            for i = #w.queue, 1, -1 do
+                if w.queue[i] == id then
+                    table.remove(w.queue, i)
+                end
+            end
+        end
+    end
+    sys._rfMergeCache = nil
+    sys._rfReadGroupsCache = nil
+end
+
+-- Hole restarts per field. FieldCourseField restarts without a cap; a small cap keeps
+-- a pathological field from walking forever.
+RfPdaSoilMerge.MAX_HOLE_RESTARTS = 8
+
+--- True when the closed loop encloses (x, z): it is the outer boundary. False means the
+--- walk looped an interior hole that sat above the centre. Unknown counts as enclosed.
+local function loopEncloses(boundary, x, z)
+    if FieldCourseUtil == nil or type(FieldCourseUtil.getIsPointInsideBoundary) ~= "function" then
+        return true
+    end
+    local ok, inside = pcall(FieldCourseUtil.getIsPointInsideBoundary, x, z, boundary)
+    if not ok then
+        return true
+    end
+    return inside == true
+end
+
+--- A fresh walk just past the hole, the way FieldCourseField.lua 211-213 drives the
+--- same task: start at (centre x, hole max z + one detail pixel). nil when that point is
+--- not field ground or the task cannot say where the hole ends.
+local function nextWalkPastHole(task, cx)
+    local res = terrainDetailResolution()
+    if res == nil or task == nil or type(task.getMaxZ) ~= "function"
+        or BoundaryDetectionTask == nil or type(BoundaryDetectionTask.new) ~= "function" then
+        return nil
+    end
+    local okZ, maxZ = pcall(task.getMaxZ, task)
+    if not okZ or type(maxZ) ~= "number" or maxZ == -math.huge then
+        return nil
+    end
+    local ok, t = pcall(BoundaryDetectionTask.new, cx, maxZ + res)
+    if ok then
+        return t
+    end
+    return nil
+end
+
+-- Record shape stamp. A hot reload keeps soilSystem.fieldBlocks, so records written by
+-- an older build (bbox + count signatures, no members) would read as clean forever;
+-- the first use after a shape change drops the whole cache instead.
+-- 3 (BUILD 22:21): the member sets themselves changed meaning. Records written by the grid sample
+-- can hold a neighbour admitted on one fence pixel, and they are structurally identical to a
+-- centre-test record, so nothing else could tell them apart. The stamp is the only thing that can.
+RfPdaSoilMerge.CACHE_SHAPE = 3
+
+local function ensureShape(sys)
+    if sys ~= nil and sys._rfBlockShape ~= RfPdaSoilMerge.CACHE_SHAPE then
+        sys.fieldBlocks = nil
+        sys._rfBlockWalk = nil
+        sys._rfMergeCache = nil
+        sys._rfReadGroupsCache = nil
+        sys._rfBlockShape = RfPdaSoilMerge.CACHE_SHAPE
+    end
+end
+
+--- A record that answers: a finished sample (members) or a centre off field ground (none).
+local function isClean(rec)
+    return rec ~= nil and not rec.dirty and (rec.none == true or type(rec.members) == "table")
 end
 
 local function walkState(sys)
     if sys._rfBlockWalk == nil then
-        sys._rfBlockWalk = { queue = {}, queued = {}, task = nil, taskId = nil }
+        sys._rfBlockWalk = { queue = {}, queued = {}, task = nil, taskId = nil, sample = nil }
     end
     return sys._rfBlockWalk
 end
@@ -173,11 +374,12 @@ local function requestOutline(sys, fieldId)
     if sys == nil or fieldId == nil then
         return nil
     end
+    ensureShape(sys)
     if sys.fieldBlocks == nil then
         sys.fieldBlocks = {}
     end
     local rec = sys.fieldBlocks[fieldId]
-    if rec ~= nil and not rec.dirty then
+    if isClean(rec) then
         return rec
     end
     local w = walkState(sys)
@@ -188,70 +390,127 @@ local function requestOutline(sys, fieldId)
     return nil
 end
 
+--- Walk batch finished (George CLOSED DESIGN 22:55 item 7): when the Esc Realistic
+--- Farming page is open on Soil, rebuild the Soil roster once so the merged rows show
+--- without a re-open. No timer, no reloadData thrash; nothing when the page is closed
+--- or another module is up.
+function RfPdaSoilMerge.onWalksFinished()
+    local menu = g_inGameMenu
+    local page = menu ~= nil and menu.menuRealisticFarming or nil
+    if page == nil or page.isOpen ~= true then
+        return
+    end
+    local reg = g_currentMission ~= nil and g_currentMission.rfEscModules or nil
+    local activeId = reg ~= nil and reg.activeModuleId or nil
+    if activeId ~= nil and activeId ~= "soilFertilizer" then
+        return
+    end
+    local panel = RfPdaSoilPanel
+    if panel == nil or type(panel.rebuildFieldData) ~= "function" or type(panel.reloadFieldList) ~= "function" then
+        return
+    end
+    pcall(panel.rebuildFieldData, page)
+    pcall(panel.reloadFieldList, page)
+end
+
 --- Per-frame driver, called from the main.lua FSBaseMission.update hook. At most one
 --- BoundaryDetectionTask is alive; a new one starts on the frame after the last one
 --- finished (one field per frame), and each frame hands the open walk FRAME_BUDGET_S.
 --- update(dt, frameBudget) returns true while still walking, false when finished; the
---- positions are read only then. A nil task (centre off field ground) records "none".
+--- positions are read only then and the membership sample opens, which runs under the
+--- same budget on the following frames. A nil task (centre off field ground) records
+--- "none". When the queue drains (walking true -> false) the Soil roster rebuilds once.
 ---@param dt number
 ---@param sys table|nil SoilFertilitySystem (default: the live one)
 function RfPdaSoilMerge.update(dt, sys)
     sys = sys or soilSystem()
-    if sys == nil or sys._rfBlockWalk == nil then
+    if sys == nil then
+        return
+    end
+    ensureShape(sys)
+    if sys._rfBlockWalk == nil then
         return
     end
     local w = sys._rfBlockWalk
     if sys.fieldBlocks == nil then
         sys.fieldBlocks = {}
     end
-    if w.task == nil then
-        local fieldId = table.remove(w.queue, 1)
-        if fieldId == nil then
-            return
+    local wasWalking = w.task ~= nil or w.sample ~= nil or #w.queue > 0
+    local budget = tonumber(RfPdaSoilMerge.FRAME_BUDGET_S) or 0.003
+    if w.sample ~= nil then
+        local t0 = getTimeSec()
+        local done = false
+        repeat
+            local ok, fin = pcall(sampleStep, w.sample)
+            done = (not ok) or fin == true
+        until done or (getTimeSec() - t0) >= budget
+        if done then
+            finishSample(sys, w)
         end
-        w.queued[fieldId] = nil
-        local task = nil
-        local cx, cz = fieldCenter(fieldId)
-        if cx ~= nil and BoundaryDetectionTask ~= nil and type(BoundaryDetectionTask.new) == "function"
-            and g_currentMission ~= nil and g_currentMission.terrainDetailId ~= nil then
-            local ok, t = pcall(BoundaryDetectionTask.new, cx, cz)
-            if ok then
-                task = t
+    elseif w.task == nil then
+        local fieldId = table.remove(w.queue, 1)
+        if fieldId ~= nil then
+            w.queued[fieldId] = nil
+            local task = nil
+            local cx, cz = fieldCenter(fieldId)
+            if cx ~= nil and BoundaryDetectionTask ~= nil and type(BoundaryDetectionTask.new) == "function"
+                and g_currentMission ~= nil and g_currentMission.terrainDetailId ~= nil then
+                local ok, t = pcall(BoundaryDetectionTask.new, cx, cz)
+                if ok then
+                    task = t
+                end
+            end
+            if task == nil then
+                sys.fieldBlocks[fieldId] = { none = true, dirty = false }
+                sys._rfMergeCache = nil
+                sys._rfReadGroupsCache = nil
+            else
+                w.task, w.taskId, w.taskX, w.taskZ, w.taskRestarts = task, fieldId, cx, cz, 0
             end
         end
-        if task == nil then
-            sys.fieldBlocks[fieldId] = { none = true, dirty = false }
-            sys._rfMergeCache = nil
-            sys._rfReadGroupsCache = nil
-            return
+    else
+        local ok, stillWalking = pcall(w.task.update, w.task, dt, budget)
+        if not (ok and stillWalking == true) then
+            local b = nil
+            if ok and type(w.task.boundaryPositions) == "table" then
+                b = outlineBounds(w.task.boundaryPositions)
+            end
+            if b ~= nil and w.taskX ~= nil and not loopEncloses(b.boundary, w.taskX, w.taskZ) then
+                -- The loop is an interior hole: walk again from just past it (capped).
+                b = nil
+                if (w.taskRestarts or 0) < (tonumber(RfPdaSoilMerge.MAX_HOLE_RESTARTS) or 8) then
+                    local again = nextWalkPastHole(w.task, w.taskX)
+                    if again ~= nil then
+                        w.task = again
+                        w.taskRestarts = (w.taskRestarts or 0) + 1
+                        return
+                    end
+                end
+            end
+            local started = false
+            if b ~= nil then
+                started = startSample(w, w.taskId, b)
+            end
+            if not started then
+                sys.fieldBlocks[w.taskId] = { none = true, dirty = false }
+                sys._rfMergeCache = nil
+                sys._rfReadGroupsCache = nil
+            end
+            w.task, w.taskId, w.taskX, w.taskZ, w.taskRestarts = nil, nil, nil, nil, nil
         end
-        w.task, w.taskId = task, fieldId
-        return
     end
-    local budget = tonumber(RfPdaSoilMerge.FRAME_BUDGET_S) or 0.003
-    local ok, stillWalking = pcall(w.task.update, w.task, dt, budget)
-    if ok and stillWalking == true then
-        return
+    local walking = w.task ~= nil or w.sample ~= nil or #w.queue > 0
+    if wasWalking and not walking then
+        pcall(RfPdaSoilMerge.onWalksFinished)
     end
-    local rec = nil
-    if ok and type(w.task.boundaryPositions) == "table" then
-        rec = outlineRecord(w.task.boundaryPositions)
-    end
-    if rec == nil then
-        rec = { none = true, dirty = false }
-    end
-    sys.fieldBlocks[w.taskId] = rec
-    sys._rfMergeCache = nil
-    sys._rfReadGroupsCache = nil
-    w.task, w.taskId = nil, nil
 end
 
---- True while any requested outline is still queued or walking (a list built now
---- may still show single rows that will merge on the next open).
+--- True while any requested outline is still queued, walking or sampling (a list built
+--- now may still show single rows that will merge when the walks finish).
 function RfPdaSoilMerge.isWalking(sys)
     sys = sys or soilSystem()
     local w = sys ~= nil and sys._rfBlockWalk or nil
-    return w ~= nil and (w.task ~= nil or #w.queue > 0)
+    return w ~= nil and (w.task ~= nil or w.sample ~= nil or #w.queue > 0)
 end
 
 -- ---------------------------------------------------------
@@ -263,8 +522,21 @@ function RfPdaSoilMerge.markDirty(fieldId, sys)
     if sys == nil or fieldId == nil then
         return
     end
-    if sys.fieldBlocks ~= nil and sys.fieldBlocks[fieldId] ~= nil then
-        sys.fieldBlocks[fieldId].dirty = true
+    ensureShape(sys)
+    if sys.fieldBlocks ~= nil then
+        local rec = sys.fieldBlocks[fieldId]
+        if rec ~= nil then
+            rec.dirty = true
+            -- Every member carried the same set: the whole block re-walks.
+            if type(rec.members) == "table" then
+                for _, id in ipairs(rec.members) do
+                    local other = sys.fieldBlocks[id]
+                    if other ~= nil then
+                        other.dirty = true
+                    end
+                end
+            end
+        end
     end
     sys._rfMergeCache = nil
     sys._rfReadGroupsCache = nil
@@ -291,14 +563,15 @@ function RfPdaSoilMerge.reset(sys)
     sys._rfReadGroupsCache = nil
 end
 
-local FIELD_UPDATE_METHODS = {
-    "plowField", "cultivateField", "harvestField", "sowField",
-    "fertilizeField", "limeField", "weedField", "herbicideField",
-}
+-- Plow and cultivate are the only field updates that can change the field-ground
+-- extent the walk follows (George CLOSED DESIGN 22:55 item 8): sow repaints the ground
+-- type on the same pixels, and harvest / fertilize / lime / weed / herbicide never
+-- touch the extent.
+local FIELD_UPDATE_METHODS = { "plowField", "cultivateField" }
 
 --- Read-only subscriptions, once per session (the flag lives on the module table, which
---- a hot reload keeps): the FieldManager field updates (the FIELDEVENT_* family) mark the
---- worked farmland dirty; FARMLAND_OWNER_CHANGED drops the grouping; a save load drops
+--- a hot reload keeps): the FieldManager plow / cultivate updates mark the worked
+--- farmland's block dirty; FARMLAND_OWNER_CHANGED drops the grouping; a save load drops
 --- the whole cache. Appended functions only: nothing here writes the engine.
 local function ensureSubscribed()
     if RfPdaSoilMerge._subscribed then
@@ -351,16 +624,20 @@ end
 -- Groups
 -- ---------------------------------------------------------
 -- Owned roster -> { key, lead = {id -> lead id}, members = {lead -> {ids}} }.
--- Farmlands with the same outline signature share a lead (the lowest id, ownedIds
+-- Farmlands with the same member set share a lead (the lowest candidate id, ownedIds
 -- arrive sorted). A farmland whose walk is still pending or came back "none" is its
 -- own row; the key names every state so a finished walk rebuilds the grouping.
 --- The cached record for a farmland or nil, WITHOUT queueing a walk (the HUD path).
 local function peekOutline(sys, fieldId)
-    if sys == nil or fieldId == nil or sys.fieldBlocks == nil then
+    if sys == nil or fieldId == nil then
+        return nil
+    end
+    ensureShape(sys)
+    if sys.fieldBlocks == nil then
         return nil
     end
     local rec = sys.fieldBlocks[fieldId]
-    if rec ~= nil and not rec.dirty then
+    if isClean(rec) then
         return rec
     end
     return nil
@@ -369,17 +646,21 @@ end
 ---@param lookup function requestOutline (queues walks) or peekOutline (cached only)
 ---@param cacheField string the field on sys that memoises this grouping
 local function computeOwnedGroups(sys, ownedIds, lookup, cacheField)
-    local sigs, parts = {}, {}
+    local sets, parts = {}, {}
     for _, id in ipairs(ownedIds) do
         local rec = lookup(sys, id)
         local state
         if rec == nil then
             state = "?"
-        elseif rec.none then
+        elseif rec.none or type(rec.members) ~= "table" or #rec.members == 0 then
             state = "-"
         else
-            sigs[id] = rec.sig
-            state = rec.sig
+            local bits = {}
+            for i = 1, #rec.members do
+                bits[i] = tostring(rec.members[i])
+            end
+            state = table.concat(bits, "+")
+            sets[id] = state
         end
         parts[#parts + 1] = tostring(id) .. "=" .. state
     end
@@ -389,15 +670,15 @@ local function computeOwnedGroups(sys, ownedIds, lookup, cacheField)
         return cache
     end
 
-    local bySig, lead, members = {}, {}, {}
+    local bySet, lead, members = {}, {}, {}
     for _, id in ipairs(ownedIds) do
         local root = id
-        local sig = sigs[id]
-        if sig ~= nil then
-            if bySig[sig] == nil then
-                bySig[sig] = id
+        local set = sets[id]
+        if set ~= nil then
+            if bySet[set] == nil then
+                bySet[set] = id
             end
-            root = bySig[sig]
+            root = bySet[set]
         end
         lead[id] = root
         local list = members[root]
