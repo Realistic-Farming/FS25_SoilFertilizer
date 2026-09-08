@@ -701,6 +701,18 @@ function RfPdaMenuPage:initialize()
             self:onClickHelpCs()
         end
     }
+    -- BUILD 19:15 (George CLOSED DESIGN 18:55 item 5): ONE generic Help footer for the eight wave-2
+    -- modules. It never names a dialog: it asks the active guest to open its own Field Guide, so each
+    -- companion ships and owns its own help and a door hosted by any mod routes to the right one.
+    -- Soil keeps btnHelp and Crop Stress keeps btnHelpCs, which point at their own guides.
+    self.btnHelpFw = {
+        inputAction = InputAction.MENU_EXTRA_1,
+        showWhenPaused = true,
+        text = tr("rf_pda_btn_help", "Help"),
+        callback = function()
+            self:onClickHelpFw()
+        end
+    }
 
     -- Back only. Help is Soil-only and _syncHostGuestChrome adds it when the Soil
     -- module is the active one; seeding it here leaked Help onto every module's
@@ -1678,9 +1690,15 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     -- header and empty hint go dark on every refresh; NpcRfPdaGuest.onShow alone shows them, so
     -- Income / Dairy / Depot never inherit a live list. Nil-safe: thin doors have no such ids.
     -- BUILD 12:05: plus the two NPC detail cards (rfFwRosterDetailCard / rfFwFavorDetailCard).
+    -- BUILD 17:21: rfFwSheetBox joins the list. No host ever calls a guest onHide, so the shared
+    -- scrolling table has to go dark here or the module that showed it last keeps its rows on
+    -- screen under the next module's headers.
     for _, id in ipairs({ "rfFwRosterBox", "rfFwFavorBox", "rfFwFavEmpty",
                           "rfFwFavColGroup", "rfFwFavColWho", "rfFwFavColWhat", "rfFwFavColUrgency",
-                          "rfFwRosterDetailCard", "rfFwFavorDetailCard" }) do
+                          "rfFwRosterDetailCard", "rfFwFavorDetailCard", "rfFwSheetBox",
+                          -- BUILD 19:15: the selected-row band goes dark with its sheet, so a row
+                          -- read on Depot can never sit under another module's headers.
+                          "rfFwSheetBand" }) do
         local el = self:getDescendantById(id)
         if el ~= nil and type(el.setVisible) == "function" then
             el:setVisible(false)
@@ -1931,12 +1949,14 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     end
     -- BUILD 12:05 (George CLOSED DESIGN 09:45): Market footer is Back only; the Esc full-Market
     -- door is gone (Prices / Events / Contracts are the whole Market on this page).
+    -- BUILD 19:15: Back + Help for the eight wave-2 modules (Market, Worker Costs, Pro Staff and the
+    -- five framework pages). The Help entry is the generic one; the guest decides which guide opens.
     if isMd then
-        self.menuButtonInfo = { self.btnBack }
+        self.menuButtonInfo = { self.btnBack, self.btnHelpFw }
     elseif isWc then
-        -- BUILD 22:42 (George CLOSED DESIGN 21:26): Back only. Hire / Fire live on the page
+        -- BUILD 22:42 (George CLOSED DESIGN 21:26): Hire / Fire live on the page
         -- (wcBtnHireN / wcBtnFireN); Open Worker Manager is off the Esc footer.
-        self.menuButtonInfo = { self.btnBack }
+        self.menuButtonInfo = { self.btnBack, self.btnHelpFw }
     elseif isCs then
         -- BUILD Help restore 2026-08-12: Back + Help. Consultant chip stays off footer.
         self.menuButtonInfo = { self.btnBack, self.btnHelpCs }
@@ -1949,6 +1969,8 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
         -- Both dialogs stay registered and still open from the PDA/joiner; only the
         -- duplicate bottom-bar buttons go, since the cards now carry that content.
         self.menuButtonInfo = { self.btnBack, self.btnHelp }
+    elseif isFw or activeId == "prostaff" then
+        self.menuButtonInfo = { self.btnBack, self.btnHelpFw }
     else
         self.menuButtonInfo = { self.btnBack }
     end
@@ -3382,10 +3404,42 @@ local function resolveListRowIndex(element)
         if el.rowDataIndex ~= nil then
             return el.rowDataIndex
         end
+        -- BUILD 19:15: rowDataIndex is stamped by THIS page's own populate, so it exists only while
+        -- the host is still the list's data source. A list a guest has taken over - the shared Esc
+        -- sheet - never carries it, and the click resolved to nil. The engine stamps
+        -- element.indexInSection on every populated cell and reads that same field back as the
+        -- clicked row, so it is the row number either way. Index 0 is a section header, never a row.
+        if type(el.indexInSection) == "number" and el.indexInSection > 0 and el.isEmptyCell ~= true then
+            return el.indexInSection
+        end
         el = el.parent
         guard = guard + 1
     end
     return nil
+end
+
+--- BUILD 19:15 (George CLOSED DESIGN 18:55 item 2): a click on the shared Esc table. The engine hands
+--- the clicked cell to the callback; resolveListRowIndex walks up to the row's own rowDataIndex, and
+--- the index goes to whichever guest is showing. A guest without onSheetRow is a quiet no-op, which is
+--- what Income wants: it has no band.
+function RfPdaMenuPage:onClickFwSheetRow(element)
+    local index = resolveListRowIndex(element)
+    if index == nil or index < 1 then return end
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onSheetRow) == "function" then
+        pcall(active.onSheetRow, index)
+    end
+end
+
+--- BUILD 19:15 (item 5): the generic Help footer. Every wave-2 guest publishes onOpenHelp and owns its
+--- own Field Guide dialog inside its own mod, so this never names one.
+function RfPdaMenuPage:onClickHelpFw()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onOpenHelp) == "function" then
+        pcall(active.onOpenHelp, self.rfHostPlaceholder or self)
+    end
 end
 
 function RfPdaMenuPage:onClickFieldRow(element)
@@ -3569,5 +3623,18 @@ end
 
 function RfPdaMenuPage:onClickMdNcDays(element)
     _mdGuestCall(self, "onNcDays", self.rfHostPlaceholder or self, element)
+end
+
+--- BUILD 17:21 (George CLOSED DESIGN 14:00): pick an open deal on the Contracts page, then cancel
+--- it. mdCtRow1..5 are invisible hit targets laid over the five contract rows, so the engine hands
+--- the clicked Button to the callback and the guest reads the row number off its id; the pick is
+--- stored as a contract id, never a row index. Cancel is ONE chip (mdCancelBtn), and the guest owns
+--- every gate: BetterContracts stand-down, "is the pick still an open deal", and the request itself.
+function RfPdaMenuPage:onClickMdCtRow(element)
+    _mdGuestCall(self, "onContractRow", self.rfHostPlaceholder or self, element)
+end
+
+function RfPdaMenuPage:onClickMdCancel()
+    _mdGuestCall(self, "onCancelContract", self.rfHostPlaceholder or self)
 end
 
