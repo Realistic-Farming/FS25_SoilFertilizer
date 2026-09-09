@@ -84,14 +84,8 @@ function ViabilityMask:_valueMaps()
     return nil
 end
 
---- The SeasonalCropStress moisture facade, neutral when absent. Same discovery
---- shape SF-18 uses: the mission bridge first, the level-0 global as fallback.
-function ViabilityMask:_cropStress()
-    local cs = (g_currentMission and g_currentMission.cropStressManager)
-        or (getfenv and getfenv(0) and getfenv(0).g_cropStressManager)
-    if cs ~= nil and type(cs.getMoisture) == 'function' then return cs end
-    return nil
-end
+-- [SF-52] The SCS moisture facade discovery is gone: moisture is no longer read
+-- into the active point path (bandMoisture stays a deliberate nil; see its note).
 
 -- ============================================================
 -- THE THREE BANDS
@@ -232,42 +226,69 @@ end
 -- throw across the mod boundary.
 -- ============================================================
 
---- Per-cell growth judgement at a world position.
---- @return table|nil { blocked, blockedBy = {n, moisture, compaction},
----                     bands = {n, moisture, compaction},
----                     credit, capturedEfficiency }
---- Computed live from the value maps rather than served from a stored grid:
---- `readValueAtWorld` is a real per-point read, so a stored per-cell mirror of
---- the whole map would be a second copy of data we already hold, and one that
---- could go stale between passes.
+--- Per-cell growth judgement at a world position. The public `fieldId` argument
+--- means FARMLAND id (kept for compatibility). Returns the stable original
+--- fields plus additive provenance, or nil unless the point is proved
+--- (brief 3.3). A returned table always describes proven TRUTH at one place.
+--- @return table|nil { blocked, blockedBy, bands, n, p, k, credit=nil,
+---                     capturedEfficiency=nil, fieldId, role="TRUTH",
+---                     grainMetres, growthInputRevision, farmlandInputRevision,
+---                     unscopedInputRevision }
 function ViabilityMask:getCellGrowthInfo(fieldId, x, z)
     if not self.enabled then return nil end
-    local vm = self:_valueMaps()
-    if vm == nil or x == nil or z == nil then return nil end
+    if fieldId == nil or type(x) ~= 'number' or type(z) ~= 'number' then return nil end
 
-    -- THE FAMILY'S FULL INPUT SET, read once per cell per period (the shared
-    -- read SF-14's capture rides): N/P/K + compaction from the value maps,
-    -- moisture from SCS. SF-52's mask consumes three of the five (n, moisture,
-    -- compaction); SF-14's capture consumes all five. The raw values ride on
-    -- the returned table so a member never re-reads the same ground.
+    local vm = self:_valueMaps()
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return nil end
+
+    -- (1) Server truth must be coherent: without established growth-input
+    -- coordinates there is no proof the ground under this point is not mid-write.
+    local before = vm:getGrowthInputToken(fieldId)
+    if before == nil then return nil end
+
+    -- (2) Strict terrain domain [-half, half), BEFORE any value-map read: the
+    -- point transform clamps an outside coordinate to the nearest edge pixel, so
+    -- an off-map point would otherwise read a false in-field value.
+    local half = (vm.terrainSize or 0) * 0.5
+    if half <= 0 or not ViabilityMask.inTerrainDomain(x, z, half) then return nil end
+
+    -- (3) The named farmland must exist.
+    local fm = g_farmlandManager
+    if fm == nil or type(fm.getFarmlandById) ~= 'function' then return nil end
+    local okFarm, farmland = pcall(function() return fm:getFarmlandById(fieldId) end)
+    if not okFarm or farmland == nil then return nil end
+
+    -- (4) The point must lie inside or on the boundary of ANY field polygon in
+    -- this farmland's deterministic union. Gaps between the parcel's fields are
+    -- never filled.
+    local soilSystem = self.manager and self.manager.soilSystem
+    local polygons = soilSystem and type(soilSystem._getFarmlandPolygons) == 'function'
+        and soilSystem:_getFarmlandPolygons(fieldId) or nil
+    if polygons == nil or not ViabilityMask.pointInFarmlandUnion(x, z, polygons) then return nil end
+
+    -- Read the four growth inputs once. N/compaction keep their classifiers; P/K
+    -- ride raw for the family. The SCS moisture read is gone from the active
+    -- path (it was a units category error, see bandMoisture); moisture stays nil.
     local nitrogen   = vm:readValueAtWorld('nitrogen', x, z)
     local phosphorus = vm:readValueAtWorld('phosphorus', x, z)
     local potassium  = vm:readValueAtWorld('potassium', x, z)
     local compaction = vm:readValueAtWorld('compaction', x, z)
-    if nitrogen == nil and compaction == nil
-       and phosphorus == nil and potassium == nil then return nil end   -- off-field
 
-    local cs = self:_cropStress()
-    local moisture = nil
-    if cs ~= nil and fieldId ~= nil then
-        local ok, value = pcall(function() return cs:getMoisture(fieldId, x, z) end)
-        if ok then moisture = value end
-    end
+    -- (5) At least one SF voting input must be known.
+    if nitrogen == nil and compaction == nil then return nil end
+
+    -- (6) Farmland and unscoped revisions must match before and after the read:
+    -- a same-farmland or unscoped write during the read cancels it; a write
+    -- proven to ANOTHER farmland does not.
+    local after = vm:getGrowthInputToken(fieldId)
+    if after == nil
+       or before.farmlandRevision ~= after.farmlandRevision
+       or before.unscopedRevision ~= after.unscopedRevision then return nil end
 
     local bands = {
         n          = ViabilityMask.bandNitrogen(nitrogen),
         compaction = ViabilityMask.bandCompaction(compaction),
-        moisture   = ViabilityMask.bandMoisture(moisture),
+        moisture   = nil,
     }
     local overall = ViabilityMask.combine(bands)
 
@@ -276,19 +297,28 @@ function ViabilityMask:getCellGrowthInfo(fieldId, x, z)
         blockedBy = {
             n          = bands.n          == ViabilityMask.BAND_BLOCKED,
             compaction = bands.compaction == ViabilityMask.BAND_BLOCKED,
-            moisture   = bands.moisture   == ViabilityMask.BAND_BLOCKED,
+            moisture   = false,
         },
         bands = bands,
-        -- The family's full input set, raw, for members that consume more than
-        -- the mask's three. SF-14's capture reads these; nil means the layer is
-        -- unreadable here, and "we do not know" must never capture as "dead".
+        -- The family's raw input set for members that consume more than the
+        -- mask's two. SF-14's capture reads these; nil means unreadable here, and
+        -- "we do not know" must never capture as "dead".
         n = nitrogen,
         p = phosphorus,
         k = potassium,
-        -- SF-53's layer. nil until it lands, and nil is the neutral reading.
-        credit = self:_readCredit(fieldId, x, z),
-        -- SF-14's layer. Same contract.
-        capturedEfficiency = self:_readCapturedEfficiency(fieldId, x, z),
+        -- Sibling provenance stays nil until its owner supplies a current
+        -- matching witness (brief 3.3; invariant 9). No sibling reader is called
+        -- here: GrowthCredit is stored against first-polygon geometry and
+        -- ZoneYield's captured read has no matching farmland-union witness.
+        credit = nil,
+        capturedEfficiency = nil,
+        -- Additive provenance.
+        fieldId               = fieldId,
+        role                  = 'TRUTH',
+        grainMetres           = vm:getGrainMetres(),
+        growthInputRevision   = after.globalRevision,
+        farmlandInputRevision = after.farmlandRevision,
+        unscopedInputRevision = after.unscopedRevision,
     }
 end
 

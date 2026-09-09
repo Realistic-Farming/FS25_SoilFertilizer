@@ -44,12 +44,18 @@ do
         return nil
     end
     local current = ViabilityMask.new({ soilSystem = { valueMaps = stubMaps } })
-    local wrongField = current:getCellGrowthInfo(999, 999999, 999999)
-    T.ok("A3 current point getter accepts an unproved field and out-of-domain point",
-        wrongField ~= nil)
-    T.eq("A4 current point getter carries no role", wrongField.role, nil)
-    T.eq("A5 current point getter carries no carrier grain", wrongField.grainMetres, nil)
-    T.eq("A6 current point getter carries no input revision", wrongField.growthInputRevision, nil)
+    -- [SF-52 Stage 6A re-point] The point getter now proves its inputs before it
+    -- answers, so the old first-match, unproved-point table is gone. This pure bar
+    -- has no engine farmland manager or map, so a live read correctly resolves to
+    -- nil; the positive provenance (role, grainMetres, the three revisions) is
+    -- proven by the Group C model and the in-game SF52_RUNTIME_ACCEPTANCE harness.
+    T.eq("A3 SHIPPED point getter is a function", type(current.getCellGrowthInfo), "function")
+    T.eq("A4 SHIPPED point getter rejects an unproved / out-of-domain point",
+        current:getCellGrowthInfo(999, 999999, 999999), nil)
+    T.eq("A5 SHIPPED point getter rejects a nil farmland id",
+        current:getCellGrowthInfo(nil, 0, 0), nil)
+    T.eq("A6 SHIPPED point getter rejects a non-numeric coordinate",
+        current:getCellGrowthInfo(7, "x", 0), nil)
 
     current._summaries[7] = {
         blockedFrac = 0.25,
@@ -75,10 +81,12 @@ do
         growthCredit = { readCreditAt = function() return 3 end },
         zoneYield = { readCapturedEfficiency = function() return 0.9 end },
     })
-    local leaked = witnessless:getCellGrowthInfo(999, 50, 0)
-    T.eq("A15 current point table attaches witnessless sibling credit", leaked.credit, 3)
-    T.near("A16 current point table attaches witnessless captured efficiency",
-        leaked.capturedEfficiency, 0.9, 1e-12)
+    -- [SF-52 re-point] The point getter no longer calls the sibling readers, so a
+    -- witnessless growthCredit/zoneYield can no longer leak an unproven credit or
+    -- captured efficiency onto the point table (invariant 9). With no proven point
+    -- the getter returns nil rather than a leaked table.
+    T.eq("A15 SHIPPED getter does not leak witnessless sibling credit/efficiency",
+        witnessless:getCellGrowthInfo(999, 50, 0), nil)
 end
 
 local READ_KEYS = {
