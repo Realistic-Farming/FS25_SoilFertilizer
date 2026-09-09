@@ -192,6 +192,14 @@ function SoilValueMaps.new()
     self.hasExecuteAdd  = false
     self.hasPolygonOps  = false
     self._polygonProbed = false
+    -- [SF-52] Growth-input revision family (server-owned, session-local,
+    -- unpersisted). Coordinates are unavailable until establishGrowthInputRevisions
+    -- runs after a coherent map load; a fresh instance carries none.
+    self.growthInputInitialized      = false
+    self.growthInputRevision         = nil
+    self.growthInputUnscopedRevision = nil
+    self.growthInputFarmlandRevision = {}
+    self._suppressGrowthObserve      = false
     return self
 end
 
@@ -384,6 +392,9 @@ function SoilValueMaps:delete()
     self.noiseFilterB = nil
     self.available   = false
     self.initialized = false
+    -- [SF-52] discard the growth-input coordinates so no prior-session coordinate
+    -- survives a same-process reload (brief 3.7; invariant 11).
+    self:resetGrowthInputRevisions()
 end
 
 -- ─────────────────────────────────────────────────────────
@@ -460,6 +471,136 @@ function SoilValueMaps:getGrainMetres()
     return self.terrainSize / self.resolution
 end
 
+-- ─────────────────────────────────────────────────────────
+-- [SF-52] Growth-input revision family
+-- ─────────────────────────────────────────────────────────
+-- One server-owned set of observation coordinates over the four growth
+-- read-set layers (nitrogen, phosphorus, potassium, compaction). A growth
+-- consumer reads these coordinates before and after it samples the ground;
+-- equal coordinates prove the ground under its point or plan did not move
+-- mid-read. Coordinates are session-local monotonic integers compared for
+-- EQUALITY only - never for an exact +1 increment - and are never persisted
+-- (SF-52 brief 3.1; invariants 7 and 11).
+--
+-- Three coordinates:
+--   growthInputRevision          one global observation sequence
+--   growthInputFarmlandRevision  one sequence per public farmland id
+--   growthInputUnscopedRevision  one conservative invalidation sequence
+--
+-- A write whose domain names its farmlands advances the global sequence and
+-- each named farmland. A write with no proven domain advances the global and
+-- the unscoped sequence, so an unproven write conservatively invalidates every
+-- field rather than falsely claiming currentness (invariant 7: harmless false
+-- invalidation, never false currentness).
+
+-- Only these four layers carry growth truth. A write to any OTHER layer (pH,
+-- organicMatter, the pressure display layers, the material/traffic layers)
+-- never advances the growth read-set.
+local GROWTH_READ_KEYS = {
+    nitrogen   = true,
+    phosphorus = true,
+    potassium  = true,
+    compaction = true,
+}
+
+-- Private write-observation outcomes (SF-52 brief 3.1).
+SoilValueMaps.GROWTH_WRITE_REFUSED  = "REFUSED"   -- invalid/unavailable/no-op: no advance
+SoilValueMaps.GROWTH_WRITE_EXECUTED = "EXECUTED"  -- the engine write ran for a valid nonzero intent
+
+--- Establish the first usable growth-input coordinates. Called ONCE, only after
+--- map load, creation, migration and any seed work has produced coherent server
+--- truth, so a bootstrap write can never expose a partial generation
+--- (brief 3.1). Idempotent: a second call is ignored. Seeds a revision of 1 for
+--- every currently known public farmland id so an owned farmland has a token
+--- immediately; a farmland first seen later is minted on its first observed
+--- write. Server-only; a client never establishes or mints these coordinates
+--- (invariant 13).
+---@param farmlandIds number[]|nil currently known public farmland ids
+function SoilValueMaps:establishGrowthInputRevisions(farmlandIds)
+    if g_server == nil then return end
+    if not self.growthInputInitialized then
+        self.growthInputInitialized      = true
+        self.growthInputRevision         = 1
+        self.growthInputUnscopedRevision = 1
+        self.growthInputFarmlandRevision = {}
+    end
+    -- Seed a revision of 1 for every farmland not yet known (idempotent per id),
+    -- so a farmland bought after the first generation gains a token here rather
+    -- than only on its first observed write.
+    if type(farmlandIds) == "table" then
+        for _, id in ipairs(farmlandIds) do
+            if self.growthInputFarmlandRevision[id] == nil then
+                self.growthInputFarmlandRevision[id] = 1
+            end
+        end
+    end
+end
+
+--- Discard every growth-input coordinate. Called on mission reload and teardown
+--- so no prior-session coordinate survives (brief 3.7; invariant 11).
+function SoilValueMaps:resetGrowthInputRevisions()
+    self.growthInputInitialized      = false
+    self.growthInputRevision         = nil
+    self.growthInputUnscopedRevision = nil
+    self.growthInputFarmlandRevision = {}
+    self._suppressGrowthObserve      = false
+end
+
+--- Observe one public read-set write at the mutator boundary and advance the
+--- coordinates it proves. The private heart of the family (brief 3.1).
+---
+--- No advance happens when: a nested public write already reported this outer
+--- write (one requested public write = one outcome); the caller is not the
+--- server; the coordinates are not yet established (bootstrap); the layer is
+--- outside the growth read-set; or the outcome is REFUSED. An EXECUTED read-set
+--- write advances the global sequence, then advances each proven farmland when a
+--- domain is given, or the unscoped sequence when it is not.
+---@param key string the layer written
+---@param outcome string GROWTH_WRITE_EXECUTED | GROWTH_WRITE_REFUSED
+---@param growthDomain table|nil { farmlandIds = { id, ... } }
+function SoilValueMaps:_observeGrowthWrite(key, outcome, growthDomain)
+    if self._suppressGrowthObserve then return end
+    if g_server == nil then return end
+    if not self.growthInputInitialized then return end
+    if not GROWTH_READ_KEYS[key] then return end
+    if outcome ~= SoilValueMaps.GROWTH_WRITE_EXECUTED then return end
+
+    self.growthInputRevision = self.growthInputRevision + 1
+
+    local farmlandIds = growthDomain and growthDomain.farmlandIds
+    if type(farmlandIds) == "table" and #farmlandIds > 0 then
+        for _, id in ipairs(farmlandIds) do
+            self.growthInputFarmlandRevision[id] =
+                (self.growthInputFarmlandRevision[id] or 1) + 1
+        end
+    else
+        self.growthInputUnscopedRevision = self.growthInputUnscopedRevision + 1
+    end
+end
+
+--- Global growth-input revision, or nil before coherent initialization or on a
+--- non-authoritative client. Consumers compare equality (brief 3.2).
+---@return number|nil
+function SoilValueMaps:getGrowthInputRevision()
+    if not self.growthInputInitialized then return nil end
+    return self.growthInputRevision
+end
+
+--- The three-part observation token for a farmland, or nil before initialization
+--- or for a farmland with no established coordinate (brief 3.2). Equality only.
+---@param farmlandId number
+---@return table|nil token { globalRevision, farmlandRevision, unscopedRevision }
+function SoilValueMaps:getGrowthInputToken(farmlandId)
+    if not self.growthInputInitialized then return nil end
+    local farmlandRevision = self.growthInputFarmlandRevision[farmlandId]
+    if farmlandRevision == nil then return nil end
+    return {
+        globalRevision   = self.growthInputRevision,
+        farmlandRevision = farmlandRevision,
+        unscopedRevision = self.growthInputUnscopedRevision,
+    }
+end
+
 --- [SF-43] RAW (unencoded) value at a world position; nil when unavailable.
 --- The age layer must not round-trip through decode(): raw 0 and raw 255 are
 --- SENTINELS ("no record" and "the ceiling refusal"), not points on a semantic
@@ -474,7 +615,10 @@ function SoilValueMaps:readRawAtWorld(key, worldX, worldZ)
 end
 
 --- Write a semantic value into a square of half-size `radius` (meters).
-function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius)
+--- [SF-52] Optional trailing `growthDomain` = { farmlandIds = {...} } lets a
+--- caller that owns the touched farmland(s) prove them; without it the write
+--- advances the conservative unscoped coordinate.
+function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -486,18 +630,27 @@ function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius)
         worldX - r, worldZ + r,   -- height point
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- Read-modify-write delta at a position: reads the pixel under (x,z),
 --- adds `delta`, writes the result back over the radius square. Used by
 --- residue/amendment incorporation which applies local bumps.
-function SoilValueMaps:addValueAtWorld(key, worldX, worldZ, delta, radius)
+function SoilValueMaps:addValueAtWorld(key, worldX, worldZ, delta, radius, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
     local current = self:readValueAtWorld(key, worldX, worldZ)
     if current == nil then return end   -- unseeded ground: nothing to modify
-    self:writeValueAtWorld(key, worldX, worldZ, current + delta, radius)
+    -- [SF-52] One requested public write reports one outer outcome: suppress the
+    -- nested writeValueAtWorld observation and report this add's own outcome. The
+    -- pcall guarantees the suppress flag is cleared even if the engine write errors.
+    self._suppressGrowthObserve = true
+    local ok = pcall(self.writeValueAtWorld, self, key, worldX, worldZ, current + delta, radius)
+    self._suppressGrowthObserve = false
+    if ok then
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
+    end
 end
 
 -- ─────────────────────────────────────────────────────────
@@ -508,7 +661,7 @@ end
 --- ax/az..bx/bz span the boom laterally; halfThickness (meters) extends the
 --- strip along the travel direction so consecutive frames form a continuous
 --- painted band (PF-style strips instead of stamped cells).
-function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
+function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -516,7 +669,13 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
     local dx, dz = bx - ax, bz - az
     local len = math.sqrt(dx * dx + dz * dz)
     if len < 0.01 then
-        self:writeValueAtWorld(key, ax, az, value, halfThickness)
+        -- [SF-52] degenerate strip falls back to the point writer; report once.
+        self._suppressGrowthObserve = true
+        local ok = pcall(self.writeValueAtWorld, self, key, ax, az, value, halfThickness)
+        self._suppressGrowthObserve = false
+        if ok then
+            self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
+        end
         return
     end
     -- Unit perpendicular (travel direction) of the boom line
@@ -530,6 +689,7 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
         ax + ux * h, az + uz * h,   -- height point (along travel)
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- [RSF-762] Add a semantic delta to a parallelogram strip additively.
@@ -549,7 +709,7 @@ end
 ---@param hx,hz  height corner (meters)
 ---@param delta  semantic delta to add
 ---@return number semantic amount applied (0 when sub-step or the additive path is unavailable)
-function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
+function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta, growthDomain)
     if not self.available then return 0 end
     local entry = self.layers[key]
     if not entry then return 0 end
@@ -606,6 +766,7 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
         end
     end
 
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta * upr
 end
 
@@ -720,7 +881,7 @@ local function forEachPolyBlock(verts, step, fn)
 end
 
 --- Paint an entire field polygon with a uniform semantic value.
-function SoilValueMaps:paintPolygon(key, verts, value)
+function SoilValueMaps:paintPolygon(key, verts, value, growthDomain)
     if not self.available or not verts or #verts < 3 then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -736,6 +897,7 @@ function SoilValueMaps:paintPolygon(key, verts, value)
             m:executeSet(raw)
         end)
     end
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- Seed a field polygon: paint the base value, then add +/- `spread`
@@ -743,7 +905,7 @@ end
 --- real PF soil map instead of a flat colour block.
 --- With engine polygon ops + Perlin masks this is 3 modifier calls; the
 --- fallback uses per-block deterministic hash noise.
-function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
+function SoilValueMaps:seedPolygon(key, verts, baseValue, spread, growthDomain)
     if not self.available or not verts or #verts < 3 then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -756,6 +918,7 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
         m:executeSet(encode(baseValue, def))
         m:executeSet(encode(baseValue + spread, def), self.noiseFilterA)
         m:executeSet(encode(baseValue - spread, def), self.noiseFilterB)
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return
     end
 
@@ -772,6 +935,7 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(v, def))
     end)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- SF-20 RELIEF WEIGHT: the pure maths, engine-free so the bench can prove it.
@@ -830,7 +994,7 @@ end
 --- Returns false when relief cannot or should not drive this field (no terrain
 --- node, no samples, a failed sample, or a field flatter than the guard). The
 --- caller then seeds exactly as it does today - a flat field is unchanged.
-function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
+function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude, growthDomain)
     if not self.available or not verts or #verts < 3 then return false end
     local entry = self.layers[key]
     if not entry then return false end
@@ -867,7 +1031,11 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
     -- organicMatter layer would lose its field edges on every machine where
     -- engine polygon ops work. paintPolygon takes the precise path when it can
     -- and the same block fallback when it cannot.
-    self:paintPolygon(key, verts, baseValue)
+    -- [SF-52] the whole reseed reports one outcome: suppress the base-coat
+    -- observation and report once at the end. pcall keeps the flag balanced.
+    self._suppressGrowthObserve = true
+    pcall(self.paintPolygon, self, key, verts, baseValue)
+    self._suppressGrowthObserve = false
 
     -- Pass 2: overlay base + deviation over the same blocks. encode() clamps to
     -- the layer's range; on a decayed field sitting near its floor the clamp can
@@ -881,6 +1049,7 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(baseValue + dev[i], def))
     end
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
 
@@ -889,7 +1058,7 @@ end
 --- extraction). Deltas smaller than one raw step must be accumulated by the
 --- caller (see SoilFertilitySystem field._mapPendingDelta) before calling.
 --- Returns the semantic amount actually applied (0 when below one raw step).
-function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
+function SoilValueMaps:applyDeltaToPolygon(key, verts, delta, growthDomain)
     if not self.available or not verts or #verts < 3 then return 0 end
     local entry = self.layers[key]
     if not entry then return 0 end
@@ -937,6 +1106,7 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
                 return 0
             end
         end
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return applied
     end
 
@@ -951,6 +1121,7 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
             m:executeSet(encode(current + applied, def))
         end
     end)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return applied
 end
 
@@ -1010,7 +1181,7 @@ end
 --- beats quietly inventing.
 ---
 ---@return number|nil rawApplied  raw steps added; nil = REFUSED, stand the layer down
-function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
+function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh, growthDomain)
     if not self.available then return nil end
     local entry = self.layers[key]
     if not entry then return nil end
@@ -1074,6 +1245,7 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
         end
     end
 
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
 
@@ -1090,7 +1262,7 @@ end
 ---
 --- Same fabrication fence as its sibling: never falls back to the block-walk.
 ---@return number|nil rawApplied  nil = REFUSED, stand the layer down
-function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, rawHigh, opts)
+function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, rawHigh, opts, growthDomain)
     if not self.available or not verts or #verts < 3 then return nil end
     local entry = self.layers[key]
     if not entry then return nil end
@@ -1149,6 +1321,7 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
         end
     end
 
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
 
@@ -1163,11 +1336,13 @@ end
 --- launders age in the one direction the design forbids.
 ---
 ---@return boolean cleared  false = REFUSED (nothing was written)
-function SoilValueMaps:clearPolygonWhere(key, verts, rawLow, rawHigh)
+function SoilValueMaps:clearPolygonWhere(key, verts, rawLow, rawHigh, growthDomain)
     -- Clearing targets WRITTEN records, so the band floor is RAW_MIN here: raw 0 is
     -- already "no record" and there is nothing to clear.
+    -- [SF-52] one write, one observation: setPolygonWhere reports the outcome; the
+    -- domain rides through so this clear is attributed like a direct aimed write.
     rawLow = math.max(RAW_MIN, math.floor(tonumber(rawLow) or RAW_MIN))
-    return self:setPolygonWhere(key, verts, 0, rawLow, rawHigh)
+    return self:setPolygonWhere(key, verts, 0, rawLow, rawHigh, growthDomain)
 end
 
 --- [SF-43] Set every pixel inside `verts` whose CURRENT raw lies in
@@ -1183,7 +1358,7 @@ end
 --- reason ask 1 refuses: the block-walk would paint whole 16 m blocks unfiltered,
 --- inventing records on ground no machine touched.
 ---@return boolean written  false = REFUSED (nothing was written)
-function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh)
+function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh, growthDomain)
     if not self.available or not verts or #verts < 3 then return false end
     local entry = self.layers[key]
     if not entry then return false end
@@ -1208,6 +1383,7 @@ function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh)
         SoilLogger.warning("SoilValueMaps: aimed write failed on '%s' (%s)", key, tostring(err))
         return false
     end
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
 

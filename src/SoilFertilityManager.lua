@@ -2578,6 +2578,70 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
     return summary
 end
 
+--- Current-aware status of a farmland's growth summary.
+--- @return string UNAVAILABLE|PENDING|CURRENT|STALE
+function SoilFertilityManager:getFieldGrowthSummaryStatus(fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummaryStatus) ~= 'function' then return 'UNAVAILABLE' end
+    local ok, status = pcall(function() return v:getFieldGrowthSummaryStatus(fieldId) end)
+    if not ok then return 'UNAVAILABLE' end
+    return status
+end
+
+--- One immutable complete ground-only region plan for a farmland (the SF-54
+--- condition source). Ground-only: no fruit identity, state or growth period.
+--- @return table|nil
+function SoilFertilityManager:getGrowthEligibleRegionPlan(farmlandId)
+    local v = self.viability
+    if v == nil or type(v.getGrowthEligibleRegionPlan) ~= 'function' then return nil end
+    local ok, plan = pcall(function() return v:getGrowthEligibleRegionPlan(farmlandId) end)
+    if not ok then return nil end
+    return plan
+end
+
+-- ============================================================
+-- SF-52 ONE GROUND: growth-input observation coordinates (cross-mod surface)
+--
+-- Additive manager delegates over SoilValueMaps' server-owned growth-input
+-- revision family (brief 3.2). A growth consumer reads getGrowthInputToken
+-- before and after it samples a farmland; equal coordinates prove the ground
+-- did not move mid-read. All three are nil-safe and pcall-safe, returning nil
+-- before coherent server initialization, for an unknown farmland, or on a
+-- non-authoritative client. Consumers compare equality, never an exact +1.
+-- ============================================================
+
+--- Global growth-input revision, or nil when unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthInputRevision()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputRevision) ~= 'function' then return nil end
+    local ok, rev = pcall(function() return vm:getGrowthInputRevision() end)
+    if not ok then return nil end
+    return rev
+end
+
+--- The three-part observation token for a farmland (the public `fieldId`
+--- argument means farmland id), or nil when unavailable.
+--- @return table|nil { globalRevision, farmlandRevision, unscopedRevision }
+function SoilFertilityManager:getGrowthInputToken(fieldId)
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return nil end
+    local ok, token = pcall(function() return vm:getGrowthInputToken(fieldId) end)
+    if not ok then return nil end
+    return token
+end
+
+--- Metres per pixel of the loaded value-map carrier - the honest truth grain,
+--- never the friendly family name - or nil when the maps are unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthTruthGrainMetres()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrainMetres) ~= 'function' then return nil end
+    local ok, grain = pcall(function() return vm:getGrainMetres() end)
+    if not ok then return nil end
+    return grain
+end
+
 -- ============================================================
 -- SF-49 THE WATER RECORD READ (cross-mod surface)
 --

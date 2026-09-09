@@ -354,8 +354,10 @@ do
   zy.manager.soilSystem = nil
   T.eq('socket.noMapsIsNil', zy:readCapturedEfficiency(1, 0, 0), nil)
 
-  -- The socket resolves through ViabilityMask:getCellGrowthInfo, so a family
-  -- consumer sees capturedEfficiency where the old contract promised nil.
+  -- [SF-52 invariant 9] The socket is CLOSED: getCellGrowthInfo no longer
+  -- launders SF-14's capturedEfficiency. A family consumer reads captured yield
+  -- through SF-14's own reader (socket.readsLayer above), not through the point
+  -- getter, and the proved-point getter never attaches an unproven witness.
   local vm = { available = true,
     readValueAtWorld = function(_self, key, _x, _z)
       if key == 'yieldEfficiency' then return 92 end
@@ -366,7 +368,7 @@ do
     getCellGrowthInfo = function() return nil end } }
   local mask = ViabilityMask.new({ zoneYield = zy, soilSystem = { valueMaps = vm } })
   local info = mask:getCellGrowthInfo(1, 0, 0)
-  T.near('socket.viaGetCellGrowthInfo', info and info.capturedEfficiency, 0.92, 1e-6)
+  T.eq('socket.viaGetCellGrowthInfoNoLaunder', info and info.capturedEfficiency or nil, nil)
 end
 
 T.summary()

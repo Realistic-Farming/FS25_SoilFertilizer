@@ -133,19 +133,22 @@ do
 end
 
 -- 8. THE MASK ENABLE is default-on (Tyson's ruling) and gates the getters.
+--    [SF-52] The public setEnabled surface is removed; `enabled` remains only as
+--    a private internal circuit-breaker, toggled directly here.
 do
   local mask = V.new({ soilSystem = nil })
   T.eq('enable.defaultOn', mask.enabled, true)
+  T.eq('enable.noPublicSetter', mask.setEnabled, nil)
 
-  mask._summaries[3] = { blockedFrac = 0.5, excellentFrac = 0.0, samples = 10 }
+  mask._summaries[3] = { blockedFrac = 0.5, excellentFrac = 0.0 }
   T.ok('enable.servesWhenOn', mask:getFieldGrowthSummary(3) ~= nil)
 
-  mask:setEnabled(false)
+  mask.enabled = false
   T.eq('enable.offRefusesSummary', mask:getFieldGrowthSummary(3), nil)
   T.eq('enable.offRefusesCell', mask:getCellGrowthInfo(3, 0, 0), nil)
   T.eq('enable.offRunsNoPass', mask:runPass(), 0)
 
-  mask:setEnabled(true)
+  mask.enabled = true
   T.ok('enable.backOn', mask:getFieldGrowthSummary(3) ~= nil)
 end
 
