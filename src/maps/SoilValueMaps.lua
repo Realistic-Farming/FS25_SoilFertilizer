@@ -450,6 +450,16 @@ function SoilValueMaps:readValueAtWorld(key, worldX, worldZ)
     return decode(raw, entry.def)
 end
 
+--- [SCS-041] Metres-per-pixel grain of the value maps. Every layer shares one
+--- resolution, so this is the honest cell size a positional consumer needs to
+--- size a per-cell budget (SeasonalCropStress irrigation absorption). Returns
+--- nil when the maps are unavailable rather than a fabricated grain.
+---@return number|nil grainMetres  terrainSize / resolution, or nil
+function SoilValueMaps:getGrainMetres()
+    if not self.available or self.resolution == nil or self.resolution <= 0 then return nil end
+    return self.terrainSize / self.resolution
+end
+
 --- [SF-43] RAW (unencoded) value at a world position; nil when unavailable.
 --- The age layer must not round-trip through decode(): raw 0 and raw 255 are
 --- SENTINELS ("no record" and "the ceiling refusal"), not points on a semantic

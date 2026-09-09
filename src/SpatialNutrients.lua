@@ -375,7 +375,12 @@ end
 ---@return number|nil
 function SpatialNutrients:getSoilValueAtWorld(selfSoilSystem, key, x, z)
     if not selfSoilSystem or not selfSoilSystem:vmAvailable() then return nil end
-    return selfSoilSystem.valueMaps:readValueAtWorld(key, x, z)
+    local value = selfSoilSystem.valueMaps:readValueAtWorld(key, x, z)
+    if value == nil then return nil end
+    -- [SCS-041] Second return: the value map's metres-per-pixel grain, so a
+    -- positional reader can size its per-cell budget honestly. One-value
+    -- callers ignore the extra return, so this stays backward compatible.
+    return value, selfSoilSystem.valueMaps:getGrainMetres()
 end
 
 -- =========================================================
