@@ -965,6 +965,9 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     local field = self:getOrCreateField(fieldId, true)
     if field then
         invalidatePolyVerts(field)
+        -- [SF-52] a field can join or leave this farmland on transfer, changing
+        -- the parcel union, so drop the union cache alongside the per-field one.
+        self:_invalidateFarmlandPolygons()
         self:_addToActiveSet(fieldId)
         SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d - added to active set", fieldId, farmId)
     end
@@ -6005,6 +6008,70 @@ function SoilFertilitySystem:_getFieldPolyVerts(fieldId, field)
 
     field._polyVerts = false  -- mark unavailable so we don't retry every spray tick
     return nil
+end
+
+--- [SF-52] The COMPLETE parcel-union polygon collection for a public farmland
+--- id: EVERY current engine field polygon whose farmland.id matches, never the
+--- first match. SF-52's point membership, region plan and area-weighted summary
+--- use this so a second field on the same farmland no longer borrows the first
+--- field's geometry (brief section 2; invariant 2). The single-polygon
+--- _getFieldPolyVerts above keeps its first-match contract for its many other
+--- consumers, which this does not touch.
+---
+--- Returns an array of vertex arrays ({ {x=, z=}, ... }), each with >= 3 points,
+--- in field-manager order (the union fingerprint sorts, so order does not affect
+--- identity); nil when the farmland has no resolvable polygon yet. Cached per
+--- farmland id on self._farmlandPolygons and dropped on the same
+--- ownership/geometry invalidation as the single-polygon cache and at the start
+--- of each viability pass.
+---@param farmlandId number
+---@return table|nil polygons  { verts, verts, ... }
+function SoilFertilitySystem:_getFarmlandPolygons(farmlandId)
+    if farmlandId == nil then return nil end
+    self._farmlandPolygons = self._farmlandPolygons or {}
+    local cached = self._farmlandPolygons[farmlandId]
+    if cached ~= nil then
+        return cached or nil   -- false = resolved-but-unavailable
+    end
+
+    local polygons = {}
+    if g_fieldManager and g_fieldManager.fields then
+        for _, f in ipairs(g_fieldManager.fields) do
+            if f and f.farmland and f.farmland.id == farmlandId then
+                local polyNodes = f.polygonPoints
+                if polyNodes and #polyNodes > 0 then
+                    local verts = {}
+                    for i = 1, #polyNodes do
+                        local nodeId = polyNodes[i]
+                        if nodeId and nodeId ~= 0 then
+                            local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
+                            if ok and wx then
+                                verts[#verts + 1] = { x = wx, z = wz }
+                            end
+                        end
+                    end
+                    if #verts >= 3 then
+                        polygons[#polygons + 1] = verts
+                    end
+                end
+                -- NO break: collect every field polygon on this farmland.
+            end
+        end
+    end
+
+    if #polygons > 0 then
+        self._farmlandPolygons[farmlandId] = polygons
+        return polygons
+    end
+    self._farmlandPolygons[farmlandId] = false
+    return nil
+end
+
+--- [SF-52] Drop the parcel-union cache. Called on ownership/geometry change and
+--- at the start of each viability pass so the union re-resolves from the live
+--- g_fieldManager rather than a stale collection.
+function SoilFertilitySystem:_invalidateFarmlandPolygons()
+    self._farmlandPolygons = nil
 end
 
 --- Stamp zone cells at every position in boomPoints and update cell-deduped coverage.

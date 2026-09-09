@@ -157,6 +157,74 @@ function ViabilityMask.combine(bands)
 end
 
 -- ============================================================
+-- [SF-52] PARCEL-UNION GEOMETRY (brief section 2; invariant 2)
+--
+-- Farmland id is NOT one engine field polygon. Point membership, the region
+-- plan and the area-weighted summary all span the COMPLETE polygon collection
+-- for the farmland. The gaps between a parcel's separate fields are never
+-- filled: a point must land inside an actual field polygon, not merely inside
+-- the parcel's bounding hull. Pure helpers, so the bench drives them directly.
+-- ============================================================
+
+--- Strict terrain domain [-half, half) on both axes. Runs BEFORE any value-map
+--- read because the point transform clamps an outside coordinate to the nearest
+--- edge pixel (brief 3.3), which would otherwise read a false in-field value for
+--- an off-map point.
+function ViabilityMask.inTerrainDomain(x, z, half)
+    if type(x) ~= 'number' or type(z) ~= 'number' or type(half) ~= 'number' then return false end
+    return x >= -half and x < half and z >= -half and z < half
+end
+
+--- Point in ONE polygon, boundary INCLUSIVE (a point on an edge is inside). Ray
+--- cast with an on-segment pre-test so a boundary sample is never dropped.
+function ViabilityMask._pointInPolygon(x, z, verts)
+    if type(verts) ~= 'table' or #verts < 3 then return false end
+    local n = #verts
+    local inside = false
+    local j = n
+    for i = 1, n do
+        local a, b = verts[j], verts[i]
+        local cross = (x - a.x) * (b.z - a.z) - (z - a.z) * (b.x - a.x)
+        if math.abs(cross) <= 1e-9 then
+            local dot  = (x - a.x) * (b.x - a.x) + (z - a.z) * (b.z - a.z)
+            local len2 = (b.x - a.x) ^ 2 + (b.z - a.z) ^ 2
+            if dot >= 0 and dot <= len2 then return true end
+        end
+        if (a.z > z) ~= (b.z > z) then
+            local xAtZ = (b.x - a.x) * (z - a.z) / (b.z - a.z) + a.x
+            if x < xAtZ then inside = not inside end
+        end
+        j = i
+    end
+    return inside
+end
+
+--- Point in ANY polygon of the parcel's union collection.
+function ViabilityMask.pointInFarmlandUnion(x, z, polygons)
+    for _, verts in ipairs(polygons or {}) do
+        if ViabilityMask._pointInPolygon(x, z, verts) then return true end
+    end
+    return false
+end
+
+--- Deterministic fingerprint of the parcel's polygon union. Each polygon's
+--- vertices render to fixed-precision text and the polygon rows are sorted, so
+--- field-manager iteration order cannot change the fingerprint. Identical
+--- geometry shares a fingerprint; any vertex change alters it (brief 3.4).
+function ViabilityMask.polygonUnionFingerprint(polygons)
+    local rows = {}
+    for _, verts in ipairs(polygons or {}) do
+        local pts = {}
+        for _, v in ipairs(verts) do
+            pts[#pts + 1] = string.format('%.3f,%.3f', v.x, v.z)
+        end
+        rows[#rows + 1] = table.concat(pts, ';')
+    end
+    table.sort(rows)
+    return table.concat(rows, '|')
+end
+
+-- ============================================================
 -- THE PUBLISHED CONTRACT (brief section 4, Provides)
 --
 -- These two getters ARE this build's reason to exist. SF-53, SF-54 and SCS-020
