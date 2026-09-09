@@ -158,3 +158,15 @@
 - [x] The field-average display mirror/seed stand down from `yieldEfficiency` while the capture is live (the display-only stamp is retired).
 - [x] 37 assertions in zone_yield_sf14_test.lua, including the calibration invariant: a uniform field's area-weighted read reconciles against computeYieldModifier output for the same inputs. Suite 2956/0 across 73 files; syntax + lint clean. Deployed 2.5.0.77.
 - [~] In-game (owed): per-patch payout across a non-uniform header, uniform-field reconciliation vs the pre-family harvest, save/reload mid-harvest, harvest-read cost at full header width (named bench item, not asserted).
+
+## SF-52 One Ground conformance provider (2026-09-09, draft PR into development)
+- [x] Growth-input revision family at the SoilValueMaps mutator boundary (global / per-farmland / unscoped, session-local, never persisted); `_observeGrowthWrite` with EXECUTED/REFUSED outcomes at every public read-set mutator.
+- [x] Manager delegates `getGrowthInputRevision()`, `getGrowthInputToken(fieldId)`, `getGrowthTruthGrainMetres()`; grain reports the loaded carrier's real metres per pixel.
+- [x] Parcel-union geometry: `_getFarmlandPolygons` complete collection + pure helpers `pointInFarmlandUnion`, `polygonUnionFingerprint` (gaps never filled).
+- [x] Repaired `getCellGrowthInfo` point contract: terrain domain, farmland existence, point-in-union, revision stability; SF-14 laundering socket closed (credit/capturedEfficiency held nil, sibling readers uncalled).
+- [x] Ground-only plan + area-weighted summary + status getters: `getFieldGrowthSummary` additive shape, `getFieldGrowthSummaryStatus`, `getGrowthEligibleRegionPlan`.
+- [x] Parcel-union enumeration, global ownership partition, atomic commit with pinned revisions and polygon-union fingerprint.
+- [x] Establish/reload/teardown cadence; public `setEnabled` removed; Time Guard daily simulation accrual with host fallback (never `environment.currentDay`).
+- [x] SF-52 bar 137/0; SF-53 61/0, SF-78 24/0, viability_mask 70/0, zone_yield 53/0. Only the pre-existing om_213 pair is red.
+- [~] In-game (owed): SF52_RUNTIME_ACCEPTANCE harness (cannot run offline); per-frame cursor/time budget and execution-grain coarsening (3.5) and initial-generation timing (3.7) are runtime tuning deferred to the acceptance measurements.
+- [~] SAMPLE_STEP_M / MAX_SAMPLES retained while SF-53 and SF-78 still snap to them; they leave when those siblings conform.
