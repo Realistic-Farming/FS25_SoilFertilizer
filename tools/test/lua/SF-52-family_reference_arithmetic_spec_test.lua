@@ -57,19 +57,25 @@ do
     T.eq("A6 SHIPPED point getter rejects a non-numeric coordinate",
         current:getCellGrowthInfo(7, "x", 0), nil)
 
+    -- [SF-52 Stage 6A re-point] The summary is now the area-weighted One Ground
+    -- shape: no sample count, no source `day`, carrying the additive revisions
+    -- plus a boolean currentness, and a status getter now exists.
     current._summaries[7] = {
-        blockedFrac = 0.25,
-        excellentFrac = 0.50,
-        samples = 600,
-        day = 18,
+        blockedFrac = 0.25, excellentFrac = 0.50, normalFrac = 0.25, unknownFrac = 0,
+        globalInputRevision = 5, farmlandInputRevision = 3, unscopedInputRevision = 2,
+        summaryGeneration = 1, polygonUnionFingerprint = "g1",
+        truthGrainMetres = 2, executionGrainMetres = 2,
+        eligibleArea = 100, visitedArea = 100, coverage = 1,
+        asOfMonotonicDay = 18, resultHash = "h",
     }
     local summary = current:getFieldGrowthSummary(7)
-    T.eq("A7 current summary drops sample count", summary.samples, nil)
-    T.eq("A8 current summary drops source day", summary.day, nil)
-    T.eq("A9 current summary carries no input revision", summary.inputRevision, nil)
-    T.eq("A10 current summary carries no currentness", summary.current, nil)
-    T.eq("A11 current provider has no summary-status getter",
-        current.getFieldGrowthSummaryStatus, nil)
+    T.eq("A7 SHIPPED summary carries no sample count", summary.samples, nil)
+    T.eq("A8 SHIPPED summary carries no source day", summary.day, nil)
+    T.eq("A9 SHIPPED summary carries the additive global input revision",
+        summary.globalInputRevision, 5)
+    T.eq("A10 SHIPPED summary carries a boolean currentness", type(summary.current), "boolean")
+    T.eq("A11 SHIPPED provider exposes the summary-status getter",
+        type(current.getFieldGrowthSummaryStatus), "function")
     T.eq("A12 current summary starts at the implementation 8 m lattice",
         ViabilityMask.SAMPLE_STEP_M, 8)
     T.eq("A13 current summary carries the 600 accepted-point stop",

@@ -2578,6 +2578,27 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
     return summary
 end
 
+--- Current-aware status of a farmland's growth summary.
+--- @return string UNAVAILABLE|PENDING|CURRENT|STALE
+function SoilFertilityManager:getFieldGrowthSummaryStatus(fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummaryStatus) ~= 'function' then return 'UNAVAILABLE' end
+    local ok, status = pcall(function() return v:getFieldGrowthSummaryStatus(fieldId) end)
+    if not ok then return 'UNAVAILABLE' end
+    return status
+end
+
+--- One immutable complete ground-only region plan for a farmland (the SF-54
+--- condition source). Ground-only: no fruit identity, state or growth period.
+--- @return table|nil
+function SoilFertilityManager:getGrowthEligibleRegionPlan(farmlandId)
+    local v = self.viability
+    if v == nil or type(v.getGrowthEligibleRegionPlan) ~= 'function' then return nil end
+    local ok, plan = pcall(function() return v:getGrowthEligibleRegionPlan(farmlandId) end)
+    if not ok then return nil end
+    return plan
+end
+
 -- ============================================================
 -- SF-52 ONE GROUND: growth-input observation coordinates (cross-mod surface)
 --

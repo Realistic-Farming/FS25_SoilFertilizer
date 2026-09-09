@@ -59,8 +59,15 @@ function ViabilityMask.new(manager)
     self.manager = manager
     self.isInitialized = false
     self._tgAccrualRegistered = false
-    -- fieldId -> { blockedFrac, excellentFrac, samples, day }
+    -- [SF-52] farmlandId -> last-complete area-weighted summary (new shape:
+    -- fractions + revisions + geometry + grains + areas + generation + hash).
+    -- Derived and restartable; never persisted.
     self._summaries = {}
+    -- [SF-52] farmlandId -> last-complete immutable ground-only region plan,
+    -- and the fair recompute queue of farmlands with pending replacement work.
+    self._plans = {}
+    self._planGeneration = 0
+    self._pendingFarmlands = {}
     -- The mask enable. RULED DEFAULT-ON by Tyson (2026-08-05): soil condition is
     -- a difficulty-neutral fact, not a difficulty setting. Kept as an
     -- Administrative control rather than a player dial.
@@ -219,6 +226,150 @@ function ViabilityMask.polygonUnionFingerprint(polygons)
 end
 
 -- ============================================================
+-- [SF-52] GROUND-ONLY PLAN ASSEMBLY (brief section 3.4; bar Group H)
+--
+-- Pure assembly over an enumerated region set. The engine raster enumeration
+-- that produces the candidate regions is the in-game portion; given the
+-- candidates, ownership, hashing and ordering are decidable and mirror the
+-- reference contract exactly.
+-- ============================================================
+
+--- Carrier-ownership partition. For each physical carrier square, the farmland
+--- with the greatest positive intersection area owns consequence writes; an
+--- exact area tie selects the lowest numeric farmland id.
+---@param candidates table[]  { {key, farmlandId, area}, ... }
+---@return table owners  key -> winning candidate
+function ViabilityMask.assignCarrierOwners(candidates)
+    local owners = {}
+    for _, c in ipairs(candidates or {}) do
+        local prior = owners[c.key]
+        if prior == nil or c.area > prior.area
+            or (c.area == prior.area and c.farmlandId < prior.farmlandId) then
+            owners[c.key] = c
+        end
+    end
+    return owners
+end
+
+--- Deterministic ownership digest: sorted "key:farmlandId" pairs. Every farmland
+--- plan in one generation carries the same digest.
+function ViabilityMask.carrierOwnershipHash(owners)
+    local keys, parts = {}, {}
+    for key in pairs(owners or {}) do keys[#keys + 1] = key end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        parts[#parts + 1] = key .. ':' .. tostring(owners[key].farmlandId)
+    end
+    return table.concat(parts, '|')
+end
+
+--- Area-weighted band fractions over the visited region set (brief 3.6). Unknown
+--- area stays unknown and is NEVER counted as normal; the four fractions sum to
+--- one within quantization. nil when nothing was visited.
+function ViabilityMask.areaWeightedSummary(regions)
+    local total, blocked, excellent, normal, unknown = 0, 0, 0, 0, 0
+    for _, r in ipairs(regions or {}) do
+        local a = r.area or 0
+        total = total + a
+        local band = r.band
+        if     band == ViabilityMask.BAND_BLOCKED   then blocked   = blocked   + a
+        elseif band == ViabilityMask.BAND_EXCELLENT then excellent = excellent + a
+        elseif band == ViabilityMask.BAND_NORMAL    then normal    = normal    + a
+        else                                             unknown   = unknown   + a end
+    end
+    if total <= 0 then return nil end
+    return {
+        blockedFrac   = blocked   / total,
+        excellentFrac = excellent / total,
+        normalFrac    = normal    / total,
+        unknownFrac   = unknown   / total,
+        eligibleArea  = total,
+    }
+end
+
+--- Assemble the immutable ground-only plan from the enumerated regions. Within
+--- one farmland, overlapping source polygons resolve to the lowest lexicographic
+--- source-polygon fingerprint. planContentHash proves deterministic membership
+--- and blocked content; resultHash describes the committed summary output; the
+--- two are distinct. The plan is ground-only: no fruit identity, state or period
+--- (brief 3.4; bar Group H).
+---@param regions table[]  { {key, sourcePolygonFingerprint, blocked, area}, ... }
+---@param resultHash string
+---@param farmlandId number
+---@param carrierOwners table  key -> owning candidate (from assignCarrierOwners)
+function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carrierOwners)
+    local owned = {}
+    for _, region in ipairs(regions or {}) do
+        local prior = owned[region.key]
+        if prior == nil or region.sourcePolygonFingerprint < prior.sourcePolygonFingerprint then
+            owned[region.key] = region
+        end
+    end
+    local ordered = {}
+    for key, region in pairs(owned) do
+        local ownerFarmlandId = (carrierOwners and carrierOwners[key]
+            and carrierOwners[key].farmlandId) or farmlandId
+        ordered[#ordered + 1] = {
+            key = key,
+            sourcePolygonFingerprint = region.sourcePolygonFingerprint,
+            blocked = region.blocked,
+            area = region.area,
+            carrierOwnerFarmlandId = ownerFarmlandId,
+            writableForFarmland = (ownerFarmlandId == farmlandId),
+        }
+    end
+    table.sort(ordered, function(a, b) return a.key < b.key end)
+    local ownershipDigest = ViabilityMask.carrierOwnershipHash(carrierOwners)
+    local parts = { 'OWNERS=' .. ownershipDigest }
+    for _, region in ipairs(ordered) do
+        parts[#parts + 1] = table.concat({
+            region.key, region.sourcePolygonFingerprint,
+            region.blocked and 'B' or 'N', tostring(region.area),
+            tostring(region.carrierOwnerFarmlandId), region.writableForFarmland and 'W' or 'R',
+        }, ':')
+    end
+    return {
+        regions = ordered,
+        resultHash = resultHash,
+        planContentHash = table.concat(parts, '|'),
+        carrierOwnershipHash = ownershipDigest,
+        fruitIdentity = nil, fruitState = nil, periodKey = nil,
+    }
+end
+
+--- The live polygon-union fingerprint for a farmland, or nil when its geometry
+--- is unresolvable. Used to detect a geometry change against a stored summary.
+function ViabilityMask:_farmlandFingerprint(farmlandId)
+    local soilSystem = self.manager and self.manager.soilSystem
+    local polygons = soilSystem and type(soilSystem._getFarmlandPolygons) == 'function'
+        and soilSystem:_getFarmlandPolygons(farmlandId) or nil
+    if polygons == nil then return nil end
+    return ViabilityMask.polygonUnionFingerprint(polygons)
+end
+
+--- Currentness of a farmland's last-complete summary (brief 3.6; bar Group E):
+--- UNAVAILABLE (no summary and no work), PENDING (replacement/first work queued),
+--- STALE (farmland or unscoped revision, or the polygon union, moved), or
+--- CURRENT. An unrelated farmland's global advance does NOT stale this one.
+---@return string status
+function ViabilityMask:_summaryStatus(farmlandId)
+    if self._pendingFarmlands[farmlandId] then return 'PENDING' end
+    local s = self._summaries[farmlandId]
+    if s == nil then return 'UNAVAILABLE' end
+
+    local vm = self:_valueMaps()
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return 'STALE' end
+    local token = vm:getGrowthInputToken(farmlandId)
+    if token == nil then return 'STALE' end
+    if s.farmlandInputRevision ~= token.farmlandRevision
+        or s.unscopedInputRevision ~= token.unscopedRevision
+        or s.polygonUnionFingerprint ~= self:_farmlandFingerprint(farmlandId) then
+        return 'STALE'
+    end
+    return 'CURRENT'
+end
+
+-- ============================================================
 -- THE PUBLISHED CONTRACT (brief section 4, Provides)
 --
 -- These two getters ARE this build's reason to exist. SF-53, SF-54 and SCS-020
@@ -322,15 +473,40 @@ function ViabilityMask:getCellGrowthInfo(fieldId, x, z)
     }
 end
 
---- Field-level area fractions, for consumers that work per field rather than
---- per cell. SCS-020 (transpiration feedback) is the first, scaling a field's
---- moisture draw by how much of it is struggling.
---- @return table|nil { blockedFrac, excellentFrac }
+--- Field-level area fractions plus the additive One Ground currentness metadata,
+--- for consumers that work per farmland rather than per cell. SCS-020 may keep
+--- reading the two original fractions; a current-aware consumer reads `current`
+--- and getFieldGrowthSummaryStatus (brief 3.6). Returns a copy of the
+--- last-complete summary; a stale last-complete summary stays readable, marked
+--- current=false and pending=true while replacement work exists.
+--- @return table|nil
 function ViabilityMask:getFieldGrowthSummary(fieldId)
     if not self.enabled or fieldId == nil then return nil end
     local s = self._summaries[fieldId]
     if s == nil then return nil end
-    return { blockedFrac = s.blockedFrac, excellentFrac = s.excellentFrac }
+    local out = {}
+    for k, v in pairs(s) do out[k] = v end
+    local status = self:_summaryStatus(fieldId)
+    out.current = (status == 'CURRENT')
+    out.pending = (status == 'PENDING')
+    return out
+end
+
+--- Current-aware status of the farmland's summary: UNAVAILABLE, PENDING, CURRENT
+--- or STALE (brief 3.6). Never invents fractions.
+--- @return string
+function ViabilityMask:getFieldGrowthSummaryStatus(fieldId)
+    if not self.enabled or fieldId == nil then return 'UNAVAILABLE' end
+    return self:_summaryStatus(fieldId)
+end
+
+--- One immutable complete ground-only plan for a farmland, or nil (brief 3.4).
+--- SF-52 owns its enumeration, identity and hashes; consequence modules never
+--- build a second enumerator or digest.
+--- @return table|nil
+function ViabilityMask:getGrowthEligibleRegionPlan(farmlandId)
+    if not self.enabled or farmlandId == nil then return nil end
+    return self._plans[farmlandId]
 end
 
 --- SF-53's growth credit, resolved through the same header snap SF-53 itself
