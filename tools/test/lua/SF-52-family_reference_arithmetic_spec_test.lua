@@ -76,12 +76,15 @@ do
     T.eq("A10 SHIPPED summary carries a boolean currentness", type(summary.current), "boolean")
     T.eq("A11 SHIPPED provider exposes the summary-status getter",
         type(current.getFieldGrowthSummaryStatus), "function")
-    T.eq("A12 current summary starts at the implementation 8 m lattice",
+    -- [SF-52 Stage 6A re-point] SF-52's summary no longer uses the 8 m / 600
+    -- lattice (it enumerates the complete parcel union), but the two constants
+    -- are RETAINED for the SF-53/SF-78 header snap until those siblings conform.
+    T.eq("A12 lattice constant retained for SF-53/SF-78 header snap",
         ViabilityMask.SAMPLE_STEP_M, 8)
-    T.eq("A13 current summary carries the 600 accepted-point stop",
+    T.eq("A13 sample-ceiling constant retained for SF-53/SF-78 header snap",
         ViabilityMask.MAX_SAMPLES, 600)
-    T.ok("A14 current provider still exposes the unregistered public enable method",
-        type(current.setEnabled) == "function")
+    T.eq("A14 SHIPPED provider removed the unregistered public enable method",
+        current.setEnabled, nil)
     local witnessless = ViabilityMask.new({
         soilSystem = { valueMaps = stubMaps },
         growthCredit = { readCreditAt = function() return 3 end },

@@ -392,6 +392,9 @@ function SoilValueMaps:delete()
     self.noiseFilterB = nil
     self.available   = false
     self.initialized = false
+    -- [SF-52] discard the growth-input coordinates so no prior-session coordinate
+    -- survives a same-process reload (brief 3.7; invariant 11).
+    self:resetGrowthInputRevisions()
 end
 
 -- ─────────────────────────────────────────────────────────
@@ -514,15 +517,21 @@ SoilValueMaps.GROWTH_WRITE_EXECUTED = "EXECUTED"  -- the engine write ran for a 
 --- (invariant 13).
 ---@param farmlandIds number[]|nil currently known public farmland ids
 function SoilValueMaps:establishGrowthInputRevisions(farmlandIds)
-    if self.growthInputInitialized then return end
     if g_server == nil then return end
-    self.growthInputInitialized      = true
-    self.growthInputRevision         = 1
-    self.growthInputUnscopedRevision = 1
-    self.growthInputFarmlandRevision = {}
+    if not self.growthInputInitialized then
+        self.growthInputInitialized      = true
+        self.growthInputRevision         = 1
+        self.growthInputUnscopedRevision = 1
+        self.growthInputFarmlandRevision = {}
+    end
+    -- Seed a revision of 1 for every farmland not yet known (idempotent per id),
+    -- so a farmland bought after the first generation gains a token here rather
+    -- than only on its first observed write.
     if type(farmlandIds) == "table" then
         for _, id in ipairs(farmlandIds) do
-            self.growthInputFarmlandRevision[id] = 1
+            if self.growthInputFarmlandRevision[id] == nil then
+                self.growthInputFarmlandRevision[id] = 1
+            end
         end
     end
 end

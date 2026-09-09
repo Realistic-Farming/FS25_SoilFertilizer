@@ -42,9 +42,11 @@ ViabilityMask.BAND_BLOCKED   = 'blocked'
 ViabilityMask.BAND_NORMAL    = 'normal'
 ViabilityMask.BAND_EXCELLENT = 'excellent'
 
--- The per-period pass samples on a bounded grid rather than every pixel: the
--- summary is an area fraction and does not get more honest from more samples
--- than the field has variation.
+-- [SF-52] SF-52's own summary no longer uses this lattice: its pass enumerates
+-- the complete parcel union at the execution grain with no omission ceiling
+-- (invariant 4). These two constants are RETAINED because SF-53 (GrowthCredit)
+-- and SF-78 (GrowthBlock) still snap their header geometry to them; they are
+-- removed only when those siblings conform later in the coordinated set.
 ViabilityMask.SAMPLE_STEP_M  = 8
 ViabilityMask.MAX_SAMPLES    = 600
 
@@ -558,6 +560,12 @@ function ViabilityMask:runPass()
     if not self.enabled then return 0 end
     local vm = self:_valueMaps()
     if vm == nil then return 0 end
+    -- Establish the growth-input coordinates on first use, after seeding has
+    -- produced coherent server truth (brief 3.1); idempotent + server-only, and
+    -- it seeds any farmland bought since the last generation.
+    if type(vm.establishGrowthInputRevisions) == 'function' then
+        vm:establishGrowthInputRevisions(self:_currentFarmlandIds())
+    end
     local grain = self:_executionGrain(vm)
     if grain == nil then return 0 end
     local soilSystem = self.manager and self.manager.soilSystem
@@ -741,6 +749,27 @@ function ViabilityMask:setCurrentMonotonicDay(day)
     if type(day) == 'number' then self._currentMonotonicDay = day end
 end
 
+--- Every current public farmland id, so each owned farmland has a growth-input
+--- token from the first generation (brief 3.2). A farmland bought later is
+--- seeded on the next pass; one never seen is minted on its first observed write.
+function ViabilityMask:_currentFarmlandIds()
+    local ids = {}
+    local fm = g_farmlandManager
+    if fm == nil then return ids end
+    local farmlands
+    if type(fm.getFarmlands) == 'function' then
+        local ok, result = pcall(function() return fm:getFarmlands() end)
+        if ok then farmlands = result end
+    end
+    farmlands = farmlands or fm.farmlands
+    if type(farmlands) == 'table' then
+        for id in pairs(farmlands) do
+            if type(id) == 'number' then ids[#ids + 1] = id end
+        end
+    end
+    return ids
+end
+
 --- Turn a list of bands into the published area fractions. Pure, so the bench
 --- can prove the fractions without a map under it.
 function ViabilityMask.summariseSamples(bands)
@@ -789,14 +818,26 @@ function ViabilityMask:registerDailyAccrual()
     return ok
 end
 
---- The mask enable (Administrative, server-authoritative, shared-world).
---- The one control this feature adds. Default-on by ruling.
-function ViabilityMask:setEnabled(enabled)
-    self.enabled = enabled ~= false
-    return self.enabled
-end
+-- [SF-52] The public setEnabled surface is removed (brief section 4, Core
+-- services): it was an unregistered Administrative control. self.enabled remains
+-- only as a private internal circuit-breaker.
 
 function ViabilityMask:delete()
-    self.isInitialized = false
-    self._summaries = {}
+    -- Unregister the Time Guard accrual when supported (brief 3.7).
+    if self._tgAccrualRegistered then
+        local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+        if tg ~= nil and type(tg.unregisterAccrual) == 'function' then
+            pcall(function() tg:unregisterAccrual(ViabilityMask.DAILY_ACCURAL_ID) end)
+        end
+        self._tgAccrualRegistered = false
+    end
+    -- Clear plans, summaries, status and the fallback cursor; every getter
+    -- becomes unavailable. SoilValueMaps and sibling state belong to their owners
+    -- (SoilValueMaps discards its own growth-input coordinates on its delete).
+    self.isInitialized        = false
+    self._summaries           = {}
+    self._plans               = {}
+    self._pendingFarmlands    = {}
+    self._planGeneration      = 0
+    self._currentMonotonicDay = nil
 end
