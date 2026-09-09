@@ -44,9 +44,10 @@ ViabilityMask.BAND_EXCELLENT = 'excellent'
 
 -- [SF-52] SF-52's own summary no longer uses this lattice: its pass enumerates
 -- the complete parcel union at the execution grain with no omission ceiling
--- (invariant 4). These two constants are RETAINED because SF-53 (GrowthCredit)
--- and SF-78 (GrowthBlock) still snap their header geometry to them; they are
--- removed only when those siblings conform later in the coordinated set.
+-- (invariant 4). SF-53 (GrowthCredit) conformed on 2026-09-09 and no longer
+-- snaps to them. These two constants are RETAINED because SF-78 (GrowthBlock)
+-- still snaps its header geometry to them; they are removed only when that
+-- sibling conforms later in the coordinated set.
 ViabilityMask.SAMPLE_STEP_M  = 8
 ViabilityMask.MAX_SAMPLES    = 600
 
