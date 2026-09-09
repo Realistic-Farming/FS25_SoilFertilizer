@@ -1045,7 +1045,9 @@ function GrowthCredit:readCreditAt(fieldId, x, z)
     local token = self:_token(fieldId)
     if token == nil then return nil end
 
-    -- Point must be covered by this farmland's current plan region.
+    -- Point must be covered by this farmland's current plan region and owned by
+    -- it (the carrier-ownership boundary: a square another farmland owns is not
+    -- this farmland's receipt, even when the plan lists it).
     local covered = false
     local carrierOwner = nil
     local grain = plan.executionGrainMetres or plan.truthGrainMetres
@@ -1055,6 +1057,7 @@ function GrowthCredit:readCreditAt(fieldId, x, z)
         if region.key == key then covered = true; carrierOwner = region.carrierOwnerFarmlandId; break end
     end
     if not covered then return nil end
+    if carrierOwner ~= nil and carrierOwner ~= fieldId then return nil end
 
     local credit, storedFruit, storedDays, storedApplied = self:_readPair(vm, x, z)
     if credit == nil then return nil end

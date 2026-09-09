@@ -2531,13 +2531,11 @@ function SoilFertilityManager:delete()
         self.settingsPanel = nil
     end
 
-    if self.soilSystem then
-        self.soilSystem:delete()
-    end
-
-    -- [SF-53 One Ground] The manager owns the single family growth dispatch;
-    -- remove its message pair before the members drop, so a session reload never
-    -- routes a growth bell onto a torn-down provider.
+    -- [SF-53 One Ground] The growth family drops BEFORE SoilFertilitySystem
+    -- releases the shared value maps (brief 3.8: "Delete GrowthCredit before
+    -- SoilFertilitySystem releases value maps"). The manager owns the single
+    -- family growth dispatch; remove its message pair first so a session reload
+    -- never routes a growth bell onto a torn-down provider.
     self:unregisterGrowthFamilyDispatch()
 
     -- SF-53 growth credit: unregister the daily accrual and drop the store.
@@ -2556,6 +2554,10 @@ function SoilFertilityManager:delete()
     if self.zoneYield then
         self.zoneYield:delete()
         self.zoneYield = nil
+    end
+
+    if self.soilSystem then
+        self.soilSystem:delete()
     end
 
     -- SF-77 topography cache: drop the terrain listener and the grids.
