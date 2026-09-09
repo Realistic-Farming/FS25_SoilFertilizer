@@ -44,11 +44,15 @@ TopographyCache.SLOPE_STEEP     = "steep"      -- >12%
 -- branch on "is the answer ready". A stale cell reads as if the ground is
 -- flat, not a sink, and its water distance is unknown (nil is honest here:
 -- the water plane moved and we have not re-measured it).
+-- [SCS-042] stale = true is the explicit currentness flag: a consumer that
+-- routes water downhill must not treat this height-zero default as a real low
+-- spot. A measured answer carries stale = false.
 TopographyCache.STALE_DEFAULT = {
     height       = 0,
     slope        = TopographyCache.SLOPE_FLAT,
     sink         = false,
     waterDist    = nil,
+    stale        = true,
 }
 
 -- ============================================================
@@ -372,6 +376,7 @@ function TopographyCache:getCellInfo(x, z)
         slope     = cell.slope,
         sink      = cell.sink,
         waterDist = self._waterDist[idx],
+        stale     = false,   -- [SCS-042] measured answer: safe to route on
     }
 end
 
