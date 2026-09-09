@@ -2579,6 +2579,49 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
 end
 
 -- ============================================================
+-- SF-52 ONE GROUND: growth-input observation coordinates (cross-mod surface)
+--
+-- Additive manager delegates over SoilValueMaps' server-owned growth-input
+-- revision family (brief 3.2). A growth consumer reads getGrowthInputToken
+-- before and after it samples a farmland; equal coordinates prove the ground
+-- did not move mid-read. All three are nil-safe and pcall-safe, returning nil
+-- before coherent server initialization, for an unknown farmland, or on a
+-- non-authoritative client. Consumers compare equality, never an exact +1.
+-- ============================================================
+
+--- Global growth-input revision, or nil when unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthInputRevision()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputRevision) ~= 'function' then return nil end
+    local ok, rev = pcall(function() return vm:getGrowthInputRevision() end)
+    if not ok then return nil end
+    return rev
+end
+
+--- The three-part observation token for a farmland (the public `fieldId`
+--- argument means farmland id), or nil when unavailable.
+--- @return table|nil { globalRevision, farmlandRevision, unscopedRevision }
+function SoilFertilityManager:getGrowthInputToken(fieldId)
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return nil end
+    local ok, token = pcall(function() return vm:getGrowthInputToken(fieldId) end)
+    if not ok then return nil end
+    return token
+end
+
+--- Metres per pixel of the loaded value-map carrier - the honest truth grain,
+--- never the friendly family name - or nil when the maps are unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthTruthGrainMetres()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrainMetres) ~= 'function' then return nil end
+    local ok, grain = pcall(function() return vm:getGrainMetres() end)
+    if not ok then return nil end
+    return grain
+end
+
+-- ============================================================
 -- SF-49 THE WATER RECORD READ (cross-mod surface)
 --
 -- SeasonalCropStress's caught-up-hour (SCS-037 round 2) reconstructs the rain
