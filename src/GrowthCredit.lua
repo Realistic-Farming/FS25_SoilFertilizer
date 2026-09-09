@@ -1,27 +1,26 @@
 -- ============================================================
--- GrowthCredit.lua  (SF-53)
+-- GrowthCredit.lua  (SF-53, One Ground conformance)
 --
--- THE REWARD HALF OF THE SF-2M MODULATION FAMILY. A patch of
--- ground held in excellent condition long enough ripens one growth
--- step ahead of the field's own clock, on the real crop, in patches
--- at the survey's grain.
+-- THE REWARD HALF OF THE SF-2M MODULATION FAMILY. Ground held in
+-- excellent condition long enough ripens one growth step ahead of
+-- the field's own clock, on the real crop, in patches at the SF-52
+-- provider's execution grain.
 --
--- TWO CLOCKS, ONE STORE.
---   The bookkeeper (daily): a Time Guard accrual that counts, per
---   surveyed cell, days of excellence. It never touches the fruit
---   plane.
---   The hand (per growth period): inside the FINISHED_GROWTH_PERIOD
---   handler, on the drained delivery only, it advances every cell
---   whose credit crossed the threshold, by buckets, one filtered
---   executeSet per bucket.
---   The store: per-field, server-only, ephemeral (never saved),
---   keyed by the survey's own adaptive lattice.
---
--- ENGINE-TRUE WRITE, PER THE RATIFIED FAMILY RULING (2026-08-12):
--- bucket-and-set on the engine's own fruit plane at the drained
--- FINISHED_GROWTH_PERIOD bracket with hasPendingGrowth false, 8 m
--- grain, skip-at-own-cutState, never into cut/withered/max, advance
--- by one. DensityMapMultiModifier batching is sanctioned.
+-- WHAT CHANGED IN THE ONE GROUND CONFORMANCE (SF-53-FIX amendment):
+--   The retired first-polygon 8 m / 600-point adaptive lattice and the
+--   ephemeral per-field Lua bank are gone. The bank now lives in two
+--   server-only file-backed layers inside the current SoilValueMaps
+--   carrier (growthCreditDays + growthCreditFruit), keyed by the same
+--   world-origin-aligned carrier grid the SF-52 plan enumerates, and the
+--   daily walk iterates the SF-52 eligible-region plan per farmland.
+--   A manager-owned START/FINISHED growth dispatch feeds ordered
+--   brackets with an immutable target period; a drained stable bracket
+--   re-enumerates provider-owned regions and spends only verified
+--   post-state cells. Small metadata rides the existing soilData XML
+--   and the optional StateLedger mirror; the dense cell truth is the
+--   two GRLE files. No fifth growth map, no network bank, no client
+--   authority. Native fruit-plane writes, polygon clipping, engine sync,
+--   real save bytes and frame time remain in-game proof (release LOCKED).
 -- ============================================================
 
 GrowthCredit = GrowthCredit or {}
@@ -33,22 +32,61 @@ local GrowthCredit_mt = Class(GrowthCredit)
 GrowthCredit.DAILY_ACCURAL_ID       = 'SF53_growthCredit'
 GrowthCredit.DAILY_ACCURAL_PRIORITY = 97
 
--- The credit threshold in growth periods. Neutral until the Option-Scaling
--- Spine resolves the Agronomy dial (the SpatialNutrients vendored-read
--- pattern; neutral 1.0 when the resolver handle is absent).
-GrowthCredit.THRESHOLD_PERIODS_DEFAULT = 2
-GrowthCredit.SPINE_DIAL = "agronomy"
+-- The credit threshold declaration (dial = agronomy, base 2 growth periods,
+-- neutral 2, clamped 1..3). Resolved through the vendored
+-- OptionScalingResolver.readProfile / resolve contract (SDS v2.6).
+GrowthCredit.THRESHOLD_DECLARATION = {
+    dial      = "agronomy",
+    base      = 2,
+    neutral   = 2,
+    clampMin  = 1,
+    clampMax  = 3,
+}
+
+-- Bank contract limits (SDS units table; invariant of the 8-bit pack).
+GrowthCredit.CREDIT_DAYS_MAX = 84     -- three periods at 28 days
+GrowthCredit.APPLIED_BIT     = 128    -- high bit of the credit byte
+GrowthCredit.FRUIT_MAX       = 63     -- engine fruit index limit (six bits)
+
+-- Pair-classification outcomes (brief 3.1).
+GrowthCredit.PAIR_FRESH        = 'FRESH'
+GrowthCredit.PAIR_COMPLETE     = 'COMPLETE'
+GrowthCredit.PAIR_INVALID      = 'PAIR_INVALID'
+
+-- Bracket close outcomes (brief 3.6 / Group E model).
+GrowthCredit.CLOSE_MISSING        = 'MISSING'
+GrowthCredit.CLOSE_PENDING        = 'CLOSED_PENDING'
+GrowthCredit.CLOSE_DISABLED       = 'CLOSED_DISABLED'
+GrowthCredit.CLOSE_LOCKED         = 'CLOSED_LOCKED'
+GrowthCredit.CLOSE_STALE          = 'CLOSED_STALE'
+GrowthCredit.CLOSE_SPEND          = 'SPEND'
 
 function GrowthCredit.new(manager)
     local self = setmetatable({}, GrowthCredit_mt)
     self.manager = manager
     self.isInitialized = false
     self._tgAccrualRegistered = false
-    self._messageSubscribed = false
+    self._fallbackCursorDay   = nil
+    self._bankPairState       = GrowthCredit.PAIR_FRESH
+    self._bankGeneration      = 0
+    self._bankAvailable       = false
+    -- farmlandId -> per-farmland metadata (see loadMetadata / _refreshMetadata).
+    self._metadata = {}
+    -- Ordered open growth brackets (never saved; derived on reload).
+    self._brackets = { nextSequence = 1, open = {} }
+    -- Tracked farmland set (the keys of soilSystem.fieldData are authoritative;
+    -- a receipt farmland is the SF-52 plan's own farmland id).
+    self._farmlands = {}
+    -- Settings fingerprint (SF-53 adds no setting; empty string is the SF-52
+    -- neutral, kept so the witness contract has a real key).
+    self._settingsFingerprint = ''
     self._daysPerPeriod = 1
-    -- fieldId -> { originX, originZ, step, maxX, maxZ,
-    --              cells = { [gx] = { [gz] = { credit, fruitIndex } } } }
-    self._store = {}
+    -- farmlandId -> true while a restored bank cell still awaits current-session
+    -- validation (fruit roster + membership). Set on load, cleared by the first
+    -- accrual pass that validates. While set, a farmland may earn at most the one
+    -- observed excellent day, never a retroactive multi-day award across reload
+    -- (brief 3.2/3.4: "no retroactive multi-day witness crosses reload").
+    self._pendingValidation = {}
     return self
 end
 
@@ -56,152 +94,37 @@ function GrowthCredit:initialize()
     self.isInitialized = true
 end
 
-function GrowthCredit:delete()
-    self.isInitialized = false
-    if self._messageSubscribed then
-        local mc = g_messageCenter
-        if mc and type(mc.unsubscribe) == 'function' then
-            pcall(function() mc:unsubscribe(MessageType.FINISHED_GROWTH_PERIOD, self) end)
-        end
-        self._messageSubscribed = false
+-- ============================================================
+-- PURE BANK KERNEL (the fixed contract; driven directly by the bar).
+--
+-- These statics mirror the SDS v2.6 reference models exactly so the offline
+-- bar guards the shipped arithmetic, not a private copy of it.
+-- ============================================================
+
+--- Pack a credit byte: low seven bits hold bank days 0..84, the high bit holds
+--- the appliedThisCrop witness. Returns nil for an out-of-contract day count.
+--- @return number|nil packed 0..212 (days + applied*128)
+function GrowthCredit.packCredit(days, applied)
+    days = type(days) == 'number' and days or 0
+    if days < 0 or days > GrowthCredit.CREDIT_DAYS_MAX then return nil end
+    return days + (applied and GrowthCredit.APPLIED_BIT or 0)
+end
+
+--- Unpack a credit byte into (days 0..84, applied). Refuses a value outside the
+--- stored range (0..212: 84 days plus the high bit).
+--- @return number|nil days
+--- @return boolean|nil applied
+function GrowthCredit.unpackCredit(value)
+    if type(value) ~= 'number' or value < 0 or value > GrowthCredit.CREDIT_DAYS_MAX + GrowthCredit.APPLIED_BIT then
+        return nil, nil
     end
-    self._store = {}
+    local applied = value >= GrowthCredit.APPLIED_BIT
+    return value % GrowthCredit.APPLIED_BIT, applied
 end
 
--- ============================================================
--- THE INPUTS (read-only access to the family's own data)
--- ============================================================
-
-function GrowthCredit:_viability()
-    local v = self.manager and self.manager.viability
-    if v ~= nil and type(v.getCellGrowthInfo) == 'function' then return v end
-    return nil
-end
-
-function GrowthCredit:_soilSystem()
-    local ss = self.manager and self.manager.soilSystem
-    if ss ~= nil and type(ss._getFieldPolyVerts) == 'function' then return ss end
-    return nil
-end
-
-function GrowthCredit:_valueMaps()
-    local soilSystem = self.manager and self.manager.soilSystem
-    local vm = soilSystem and soilSystem.valueMaps
-    if vm ~= nil and vm.available then return vm end
-    return nil
-end
-
--- ============================================================
--- THE LATTICE
--- Re-derive the survey's own adaptive grid exactly as ViabilityMask
--- does, reading BOTH constants off ViabilityMask at runtime, never
--- copied literals. originX/originZ are the walk's FIRST SAMPLE
--- CENTRES (min + step * 0.5), so a sample always lands at its own
--- cell's centre. gx = floor((x - originX) / step), likewise gz.
--- If a field's re-derived (origin, step) differs from the stored
--- header, reset that field's store (ephemeral trade: a delayed
--- reward).
--- ============================================================
-
----@param fieldId number
----@param verts table list of {x=, z=}
----@return table header { originX, originZ, step, maxX, maxZ }
-function GrowthCredit:_deriveHeader(fieldId, verts)
-    local vm = ViabilityMask
-    local minX, maxX = verts[1].x, verts[1].x
-    local minZ, maxZ = verts[1].z, verts[1].z
-    for i = 2, #verts do
-        local v = verts[i]
-        if v.x < minX then minX = v.x end
-        if v.x > maxX then maxX = v.x end
-        if v.z < minZ then minZ = v.z end
-        if v.z > maxZ then maxZ = v.z end
-    end
-
-    local step = vm.SAMPLE_STEP_M
-    local est = math.ceil((maxX - minX) / step) * math.ceil((maxZ - minZ) / step)
-    if est > vm.MAX_SAMPLES then
-        step = step * math.ceil(math.sqrt(est / vm.MAX_SAMPLES))
-    end
-
-    return {
-        originX = minX + step * 0.5,
-        originZ = minZ + step * 0.5,
-        step    = step,
-        maxX    = maxX,
-        maxZ    = maxZ,
-    }
-end
-
---- Ensure a field has a store entry matching the current lattice header.
----@param fieldId number
----@param header table
-function GrowthCredit:_ensureStore(fieldId, header)
-    local entry = self._store[fieldId]
-    if entry == nil
-        or entry.originX ~= header.originX
-        or entry.originZ ~= header.originZ
-        or entry.step    ~= header.step then
-        self._store[fieldId] = {
-            originX = header.originX,
-            originZ = header.originZ,
-            step    = header.step,
-            maxX    = header.maxX,
-            maxZ    = header.maxZ,
-            cells   = {},
-        }
-    end
-    return self._store[fieldId]
-end
-
---- World x/z of a lattice cell's centre.
-function GrowthCredit:_cellCentre(entry, gx, gz)
-    return entry.originX + gx * entry.step, entry.originZ + gz * entry.step
-end
-
---- Cell index at a world position, or nil when outside the stored header's box.
-function GrowthCredit:_cellIndex(entry, x, z)
-    if x < entry.originX - entry.step * 0.5 or x > entry.maxX + entry.step * 0.5 then return nil end
-    if z < entry.originZ - entry.step * 0.5 or z > entry.maxZ + entry.step * 0.5 then return nil end
-    return math.floor((x - entry.originX) / entry.step), math.floor((z - entry.originZ) / entry.step)
-end
-
--- ============================================================
--- THE PUBLISHED READ (ViabilityMask._readCredit's socket)
--- ============================================================
-
---- Days of credit at a world position, via the stored header's own lattice.
---- nil when the field is not tracked, the store was reset (a lattice re-derive
---- that does not match), or the cell has never accrued. This is the neutral
---- reading every consumer expects: nil, never zero.
-function GrowthCredit:readCreditAt(fieldId, x, z)
-    if not self.isInitialized then return nil end
-    local entry = self._store[fieldId]
-    if entry == nil then return nil end
-    local gx, gz = self:_cellIndex(entry, x, z)
-    if gx == nil then return nil end
-    local row = entry.cells[gx]
-    local cell = row and row[gz]
-    if cell == nil then return nil end
-    return cell.credit
-end
-
--- ============================================================
--- THE DAILY PASS (the bookkeeper)
--- ============================================================
-
--- The excellence test per the brief's two presets. The preset accessor's
--- mapping (which index is easiest) is verified at build, not assumed:
--- SoilConstants.DIFFICULTY.EASY = 1 is the easiest on SF's own scale, so
--- Casual = EASY. Everything else uses the realistic quorum.
---   casual:   the shipped composer's own rule (at least one band excellent,
---             none blocked; combine's semantics).
---   realistic: at least TWO bands must vote (non-nil) and EVERY voter must
---             be excellent. A nil band does not vote; a partially unreadable
---             cell earns nothing that day.
----@param bands table { n = band, compaction = band, moisture = band }
----@param casual boolean
----@return boolean
+--- The excellence test per the brief's two presets (unchanged semantics; casual
+--- = at least one excellent band and none blocked, everything else = at least
+--- two known voters and every voter excellent).
 function GrowthCredit.isExcellent(bands, casual)
     if bands == nil then return false end
     if casual then
@@ -217,6 +140,481 @@ function GrowthCredit.isExcellent(bands, casual)
     return voters >= 2 and allExcellent
 end
 
+--- The resolved threshold in days: OptionScaling periods rounded, then scaled by
+--- days per period. Absent or switched-off profile is neutral (brief 3.5).
+--- @return number periods
+--- @return number days
+function GrowthCredit.effectiveThresholdDays(profile, daysPerPeriod)
+    local declaration = GrowthCredit.THRESHOLD_DECLARATION
+    local periods = 2
+    if OptionScalingResolver ~= nil and type(OptionScalingResolver.resolve) == 'function' then
+        local ok, resolved = pcall(OptionScalingResolver.resolve, declaration, profile)
+        if ok and type(resolved) == 'number' then periods = resolved end
+    end
+    periods = math.max(1, math.floor(periods + 0.5))
+    local dpp = (type(daysPerPeriod) == 'number' and daysPerPeriod >= 1) and daysPerPeriod or 1
+    return periods, periods * dpp
+end
+
+--- Evidence-bounded skipped-day award: only a fully unchanged witness may earn
+--- every crossed day; any changed or missing witness awards at most the one
+--- observed excellent day; a non-excellent current cell earns none (brief 3.4).
+--- @return number daysToAward
+function GrowthCredit.witnessDays(crossed, sameFruit, sameInput, sameGeometry,
+    sameSettings, excellent)
+    if not excellent then return 0 end
+    if sameFruit and sameInput and sameGeometry and sameSettings then
+        return math.max(0, crossed or 0)
+    end
+    return 1
+end
+
+--- Classify the two-layer bank after layer + metadata load (brief 3.1).
+--- @param days  { exists = bool, loaded = bool, resolution = number }
+--- @param fruit { exists = bool, loaded = bool, resolution = number }
+--- @param metadataClaimsBank boolean
+--- @param expectedResolution number
+--- @return string FRESH|COMPLETE|PAIR_INVALID
+function GrowthCredit.classifyPair(days, fruit, metadataClaimsBank, expectedResolution)
+    local neitherExists = not days.exists and not fruit.exists
+    if neitherExists and not metadataClaimsBank then return GrowthCredit.PAIR_FRESH end
+    local complete = days.exists and fruit.exists
+        and days.loaded and fruit.loaded
+        and days.resolution == expectedResolution
+        and fruit.resolution == expectedResolution
+    if complete then return GrowthCredit.PAIR_COMPLETE end
+    return GrowthCredit.PAIR_INVALID
+end
+
+--- Run-length encode a row of sparse cells (Group C model: the worst-case bound
+--- for a dense 4096-square carrier serialized as runs is one run per coherent
+--- row). GrowthCredit does not store per-cell runs in XML (brief 3.2); this is
+--- the reference bound used by the bar and the save-design's reasoning.
+function GrowthCredit.encodeRuns(cells)
+    local ordered = {}
+    for _, c in ipairs(cells or {}) do
+        ordered[#ordered + 1] = {
+            px = c.px, pz = c.pz, creditDays = c.creditDays, fruitIndex = c.fruitIndex,
+        }
+    end
+    table.sort(ordered, function(a, b)
+        if a.pz ~= b.pz then return a.pz < b.pz end
+        return a.px < b.px
+    end)
+    local runs = {}
+    for _, c in ipairs(ordered) do
+        local last = runs[#runs]
+        if last ~= nil and last.pz == c.pz
+            and last.pxStart + last.length == c.px
+            and last.creditDays == c.creditDays
+            and last.fruitIndex == c.fruitIndex then
+            last.length = last.length + 1
+        else
+            runs[#runs + 1] = {
+                pz = c.pz, pxStart = c.px, length = 1,
+                creditDays = c.creditDays, fruitIndex = c.fruitIndex,
+            }
+        end
+    end
+    return runs
+end
+
+--- Open one ordered bracket for a transition (brief 3.6). Seasonal derives the
+--- immutable next period with a fixed 12-wrap; the returned bracket never reads
+--- live environment.currentPeriod after START.
+--- @return table bracket
+function GrowthCredit.openBracket(queue, transitionPeriod, gateLive, growthMode, bankGeneration, receipts)
+    local b = {
+        sequence       = queue.nextSequence,
+        transitionPeriod = transitionPeriod,
+        targetPeriod   = (growthMode == 'DAILY') and (transitionPeriod % 12 + 1) or (transitionPeriod % 12 + 1),
+        gateLiveAtStart = gateLive,
+        growthMode     = growthMode,
+        bankGeneration = bankGeneration,
+        receipts       = receipts or {},
+    }
+    queue.nextSequence = queue.nextSequence + 1
+    queue.open[#queue.open + 1] = b
+    return b
+end
+
+--- Close the oldest bracket matching a finished transition period. Returns the
+--- bracket and one of CLOSE_*: MISSING / CLOSED_PENDING / CLOSED_DISABLED /
+--- CLOSED_LOCKED / CLOSED_STALE / SPEND (drained, gate live at START and now,
+--- unchanged bank generation).
+function GrowthCredit.closeBracket(queue, period, hasPendingGrowth, gateLiveNow, currentBankGeneration)
+    local index = nil
+    for i, b in ipairs(queue.open) do
+        if b.transitionPeriod == period then index = i; break end
+    end
+    if index == nil then return nil, GrowthCredit.CLOSE_MISSING end
+    local b = table.remove(queue.open, index)
+    if hasPendingGrowth then return b, GrowthCredit.CLOSE_PENDING end
+    if b.growthMode == 'DISABLED' then return b, GrowthCredit.CLOSE_DISABLED end
+    if not b.gateLiveAtStart or not gateLiveNow then return b, GrowthCredit.CLOSE_LOCKED end
+    if b.bankGeneration ~= currentBankGeneration then return b, GrowthCredit.CLOSE_STALE end
+    return b, GrowthCredit.CLOSE_SPEND
+end
+
+--- Post-write result owns the credit reset (brief 3.7 / Group G): only a cell the
+--- engine reports at exactly the target state under the SAME fruit resets its
+--- bank-day bits (appliedThisCrop is set, fruit retained). Returns
+--- reset, retained over the caller's cell list, mutating each cell.creditDays.
+function GrowthCredit.verifyPostWrite(cells, actual)
+    local reset, retained = 0, 0
+    for _, cell in ipairs(cells or {}) do
+        local observed = actual and actual[cell.key]
+        if observed ~= nil and observed.fruitIndex == cell.fruitIndex
+            and observed.state == cell.targetState then
+            cell.creditDays = 0
+            reset = reset + 1
+        else
+            retained = retained + 1
+        end
+    end
+    return reset, retained
+end
+
+--- A ready cell outside an active first-START hold may spend; a captured-blocked
+--- cell (SF-78 active) cannot spend in this queued batch (brief 3.6 step 7).
+function GrowthCredit.maySpendCredit(capturedAtFirstStart, ready)
+    return ready == true and capturedAtFirstStart ~= true
+end
+
+-- ============================================================
+-- INPUTS (read-only access to the family's own data)
+-- ============================================================
+
+function GrowthCredit:_viability()
+    local v = self.manager and self.manager.viability
+    if v ~= nil and type(v.getCellGrowthInfo) == 'function' then return v end
+    return nil
+end
+
+function GrowthCredit:_valueMaps()
+    local soilSystem = self.manager and self.manager.soilSystem
+    local vm = soilSystem and soilSystem.valueMaps
+    if vm ~= nil and vm.available then return vm end
+    return nil
+end
+
+function GrowthCredit:_soilSystem()
+    local ss = self.manager and self.manager.soilSystem
+    if ss ~= nil and type(ss._getFarmlandPolygons) == 'function' then return ss end
+    return nil
+end
+
+--- The SF-52 provider's immutable complete plan for a farmland, or nil.
+function GrowthCredit:_plan(farmlandId)
+    local m = self.manager
+    if m == nil or type(m.getGrowthEligibleRegionPlan) ~= 'function' then return nil end
+    local ok, plan = pcall(function() return m:getGrowthEligibleRegionPlan(farmlandId) end)
+    if not ok then return nil end
+    return plan
+end
+
+--- The current farmland+unscoped observation token, or nil.
+function GrowthCredit:_token(farmlandId)
+    local vm = self:_valueMaps()
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return nil end
+    local ok, token = pcall(function() return vm:getGrowthInputToken(farmlandId) end)
+    if not ok then return nil end
+    return token
+end
+
+--- In-game day coordinate from Time Guard context, else the host fallback.
+--- Never environment.currentDay (brief 3.7).
+function GrowthCredit:_monotonicDay()
+    local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+    if tg ~= nil and type(tg.getContext) == 'function' then
+        local ok, ctx = pcall(function() return tg:getContext() end)
+        if ok and type(ctx) == 'table' and type(ctx.monotonicDay) == 'number' then
+            return ctx.monotonicDay
+        end
+    end
+    if type(self._fallbackCursorDay) == 'number' then return self._fallbackCursorDay end
+    return nil
+end
+
+--- The farmlands currently tracked by the soil system (keys of fieldData are the
+--- authoritative SF-52 pass set).
+function GrowthCredit:_currentFarmlandIds()
+    local ss = self:_soilSystem()
+    local ids = {}
+    if ss ~= nil and ss.fieldData ~= nil then
+        for farmlandId in pairs(ss.fieldData) do ids[#ids + 1] = farmlandId end
+    end
+    return ids
+end
+
+-- ============================================================
+-- THE PAIRED BANK LAYERS (brief 3.1)
+-- ============================================================
+
+--- Read one logical bank cell at a world point. Returns the packed credit byte
+--- and the fruit index, or nil when either half is absent/invalid.
+function GrowthCredit:_readPair(vm, x, z)
+    local credit = vm:readValueAtWorld('growthCreditDays', x, z)
+    local fruit  = vm:readValueAtWorld('growthCreditFruit', x, z)
+    if credit == nil or credit <= 0 or fruit == nil or fruit <= 0 then return nil end
+    local days, applied = GrowthCredit.unpackCredit(credit)
+    if days == nil then return nil end
+    return credit, fruit, days, applied
+end
+
+--- Write one logical bank cell. Days 0..84 (packed with the applied bit), fruit
+--- 1..63. Any invalid or zero-intent write clears BOTH halves.
+function GrowthCredit:_writePair(vm, x, z, days, applied, fruit, radius)
+    if fruit == nil or fruit <= 0 or fruit > GrowthCredit.FRUIT_MAX
+        or days == nil or days < 0 or days > GrowthCredit.CREDIT_DAYS_MAX then
+        self:_clearPair(vm, x, z, radius)
+        return false
+    end
+    local packed = GrowthCredit.packCredit(days, applied)
+    if packed == nil then
+        self:_clearPair(vm, x, z, radius)
+        return false
+    end
+    local ok1, ok2 = pcall(function() vm:writeValueAtWorld('growthCreditDays', x, z, packed, radius) end)
+    local okf = pcall(function() vm:writeValueAtWorld('growthCreditFruit', x, z, fruit, radius) end)
+    -- Post-read both halves; a one-sided or invalid result clears both.
+    if not ok1 or not okf or self:_readPair(vm, x, z) == nil then
+        self:_clearPair(vm, x, z, radius)
+        return false
+    end
+    return true
+end
+
+--- Clear both halves of one logical bank cell (raw-zero absent; the carrier's
+--- linear 0..254 encode maps semantic 0 to raw 1, which reads back 0 and is
+--- treated as absent by _readPair, so a write of 0 to both is the clear).
+function GrowthCredit:_clearPair(vm, x, z, radius)
+    local r = radius or 1.5
+    pcall(function() vm:writeValueAtWorld('growthCreditDays', x, z, 0, r) end)
+    pcall(function() vm:writeValueAtWorld('growthCreditFruit', x, z, 0, r) end)
+end
+
+--- The bank's availability gate (brief 3.2/3.8): a PAIR_INVALID state clears both
+--- layers and all metadata before any validation, accrual or save. Called after
+--- load and after a metadata/geometry mismatch is detected.
+function GrowthCredit:_classifyBank()
+    local vm = self:_valueMaps()
+    if vm == nil then
+        self._bankPairState = GrowthCredit.PAIR_INVALID
+        self._bankAvailable = false
+        return self._bankPairState
+    end
+    local daysEntry  = vm.getLayerEntry and vm:getLayerEntry('growthCreditDays') or nil
+    local fruitEntry = vm.getLayerEntry and vm:getLayerEntry('growthCreditFruit') or nil
+    local expected = vm.resolution or 0
+    local function probe(entry)
+        if entry == nil then return { exists = false, loaded = false, resolution = 0 } end
+        return {
+            exists   = entry.loaded == true,
+            loaded   = entry.loaded == true,
+            resolution = (vm.resolution or 0),
+        }
+    end
+    -- File existence is read from disk at load; the layer entry's `loaded` flag is
+    -- the honest signal of restore. On a fresh save neither file existed and the
+    -- maps were created blank, so loaded == false; a metadata claim then decides.
+    local days = { exists = false, loaded = false, resolution = 0 }
+    local fruit = { exists = false, loaded = false, resolution = 0 }
+    if daysEntry and daysEntry.loaded then days = { exists = true, loaded = true, resolution = expected } end
+    if fruitEntry and fruitEntry.loaded then fruit = { exists = true, loaded = true, resolution = expected } end
+
+    local claimsBank = false
+    for _, meta in pairs(self._metadata) do
+        if meta ~= nil and (meta.migrationMarker ~= nil or meta.fruitRosterFingerprint ~= nil) then
+            claimsBank = true
+        end
+    end
+
+    local state = GrowthCredit.classifyPair(days, fruit, claimsBank, expected)
+    self._bankPairState = state
+    if state == GrowthCredit.PAIR_INVALID then
+        -- PAIR_INVALID clears both layers and all metadata before availability.
+        pcall(function() vm:clearLayer('growthCreditDays') end)
+        pcall(function() vm:clearLayer('growthCreditFruit') end)
+        self._metadata = {}
+        self._bankAvailable = false
+    elseif state == GrowthCredit.PAIR_COMPLETE or state == GrowthCredit.PAIR_FRESH then
+        self._bankAvailable = true
+    end
+    return state
+end
+
+-- ============================================================
+-- THE DAILY ACCRUAL (the bookkeeper, brief 3.3/3.4)
+-- ============================================================
+
+--- Register with Time Guard first (true-return semantics); the daily pass runs on
+--- the simulation settle. runDailyPass is also the fallback cadence entry.
+function GrowthCredit:runDailyPass(ctx)
+    if not self.isInitialized then return 0 end
+    if not self:isLive() then return 0 end
+    local daysPerPeriod = (ctx ~= nil and type(ctx.daysPerPeriod) == 'number' and ctx.daysPerPeriod >= 1)
+        and ctx.daysPerPeriod or nil
+    if daysPerPeriod ~= nil then self._daysPerPeriod = daysPerPeriod end
+    local day = self:_monotonicDay()
+    if day == nil then return 0 end
+    local vm = self:_valueMaps()
+    if vm == nil then return 0 end
+
+    self:_classifyBank()
+    if not self._bankAvailable then return 0 end
+
+    local passed = 0
+    for _, farmlandId in ipairs(self:_currentFarmlandIds()) do
+        if self:_accrueFarmland(farmlandId, vm, day) then passed = passed + 1 end
+    end
+    return passed
+end
+
+--- Accrue one farmland: validate the complete current SF-52 plan and tokens,
+--- then walk every stable plan region owned by this receipt farmland. Each
+--- eligible excellent cell accrues one day, capped at the resolved threshold;
+--- fruit identity binds before the first positive increment and a crop change
+--- clears the old pair. One complete farmland pass publishes one bank
+--- generation.
+function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
+    local plan = self:_plan(farmlandId)
+    if plan == nil or type(plan.regions) ~= 'table' or #plan.regions == 0 then return false end
+    local token = self:_token(farmlandId)
+    if token == nil then return false end
+    if plan.farmlandInputRevision ~= token.farmlandRevision
+        or plan.unscopedInputRevision ~= token.unscopedRevision then return false end
+
+    -- Farmland geometry must still match the plan that generated these regions.
+    local ss = self:_soilSystem()
+    local polygons = ss and type(ss._getFarmlandPolygons) == 'function'
+        and ss:_getFarmlandPolygons(farmlandId) or nil
+    if polygons == nil then return false end
+    local fingerprint = ViabilityMask.polygonUnionFingerprint(polygons)
+    if fingerprint ~= plan.polygonUnionFingerprint then return false end
+
+    -- Settings fingerprint unchanged (SF-53 adds no setting; neutral empty).
+    local meta = self._metadata[farmlandId] or {}
+    local lastDay = meta.lastAccruedMonotonicDay
+    local crossed = 1
+    if type(lastDay) == 'number' and lastDay >= 0 and day > lastDay then crossed = day - lastDay end
+
+    -- Restored-bank validation on the first in-session pass. A fruit-roster or
+    -- carrier mismatch clears BOTH layers and this farmland's metadata (numeric
+    -- identity may have moved); geometry is checked below per region. Until this
+    -- validation completes, no retroactive multi-day award crosses the reload:
+    -- the pass earns at most the one observed excellent day (brief 3.2/3.4).
+    if self._pendingValidation[farmlandId] then
+        local currentRoster = self:_fruitRosterFingerprint()
+        if currentRoster ~= '' and meta.fruitRosterFingerprint ~= nil
+            and currentRoster ~= meta.fruitRosterFingerprint then
+            pcall(function() vm:clearLayer('growthCreditDays') end)
+            pcall(function() vm:clearLayer('growthCreditFruit') end)
+            self._metadata[farmlandId] = nil
+            self._pendingValidation[farmlandId] = nil
+            return false
+        end
+        crossed = math.min(crossed, 1)
+    end
+    local casual = self:_isCasualPreset()
+    local _, threshold = GrowthCredit.effectiveThresholdDays(self:_readProfile(), self._daysPerPeriod)
+
+    local grain = plan.executionGrainMetres or plan.truthGrainMetres
+    if type(grain) ~= 'number' or grain <= 0 then return false end
+    local radius = grain * 0.5
+
+    local committedAny = false
+    for _, region in ipairs(plan.regions) do
+        -- Only squares this farmland may write (carrier ownership partition).
+        if region.writableForFarmland == true and region.blocked ~= true then
+            local gx, gz = self:_decodeKey(region.key)
+            if gx ~= nil then
+                local cx = gx * grain + grain * 0.5
+                local cz = gz * grain + grain * 0.5
+                if self:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius,
+                    plan, token, fingerprint) then
+                    committedAny = true
+                end
+            end
+        end
+    end
+
+    if committedAny then
+        self._bankGeneration = self._bankGeneration + 1
+    end
+    -- A complete farmland pass (whether or not any cell happened to be excellent
+    -- this day) resolves the restored-bank pending validation: membership and
+    -- fruit identity have now been checked against current truth.
+    self._pendingValidation[farmlandId] = nil
+    -- Track the last accrued day regardless of cell outcomes (a normal day still
+    -- advances the cursor; a changed-witness day is awarded at most one, above).
+    self._metadata[farmlandId] = {
+        schema = 1,
+        fruitRosterFingerprint = self:_fruitRosterFingerprint(),
+        terrainResolution = vm.resolution or 0,
+        truthGrainMetres = (type(vm.getGrainMetres) == 'function') and vm:getGrainMetres() or nil,
+        migrationMarker = meta.migrationMarker,
+        polygonUnionFingerprint = fingerprint,
+        lastAccruedMonotonicDay = day,
+        settingsFingerprint = self._settingsFingerprint,
+    }
+    return committedAny
+end
+
+--- Accrue one carrier square. Reads current fruit identity + state and the SF-52
+--- point condition fresh; rejects unknown, bare, cut, withered, blocked or
+--- non-excellent cells. Identity binds before the first increment; a changed crop
+--- clears the old pair before the new one earns. Catch-up is evidence bounded.
+function GrowthCredit:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius,
+    plan, token, fingerprint)
+    -- Fruit identity + state, fresh.
+    local state, fruitIndex = self:_readCellState(cx, cz)
+    if state == nil or fruitIndex == nil then return false end
+    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
+    if fruitDesc == nil then return false end
+    if fruitDesc:getIsCut(state) or fruitDesc:getIsWithered(state) then return false end
+    if state == fruitDesc.cutState or state >= fruitDesc.maxHarvestingGrowthState then return false end
+
+    -- SF-52 point condition, fresh.
+    local info = self:_viability() and self:_viability():getCellGrowthInfo(farmlandId, cx, cz)
+    if info == nil or info.blocked then return false end
+    if not GrowthCredit.isExcellent(info.bands, casual) then return false end
+    -- A non-excellent current cell earns none; evidence bounding happens below.
+
+    -- Bank read. A stored fruit that differs clears the old pair (crop change).
+    local credit, storedFruit, storedDays, storedApplied = self:_readPair(vm, cx, cz)
+    if storedFruit ~= nil and storedFruit ~= fruitIndex then
+        self:_clearPair(vm, cx, cz, radius)
+        credit, storedFruit, storedDays, storedApplied = nil, nil, 0, false
+    end
+
+    -- Evidence-bounded award: unchanged witness earns every crossed day; any
+    -- changed witness earns at most the one observed excellent day.
+    local sameFruit = (storedFruit == nil) or (storedFruit == fruitIndex)
+    local sameInput = (storedFruit == nil)
+        or (plan ~= nil and token ~= nil
+            and plan.farmlandInputRevision == token.farmlandRevision
+            and plan.unscopedInputRevision == token.unscopedRevision)
+    local sameGeometry = (storedFruit == nil)
+        or (fingerprint ~= nil and plan ~= nil and fingerprint == plan.polygonUnionFingerprint)
+    local sameSettings = (storedFruit == nil) or true
+    local award = GrowthCredit.witnessDays(crossed, sameFruit, sameInput, sameGeometry,
+        sameSettings, true)
+    if award <= 0 then return false end
+
+    local nextDays = (storedDays or 0) + award
+    if nextDays > threshold then nextDays = threshold end
+    if nextDays > GrowthCredit.CREDIT_DAYS_MAX then nextDays = GrowthCredit.CREDIT_DAYS_MAX end
+    return self:_writePair(vm, cx, cz, nextDays, storedApplied == true, fruitIndex, radius)
+end
+
+function GrowthCredit:_decodeKey(key)
+    if type(key) ~= 'string' then return nil end
+    local gx, gz = key:match("^(-?%d+):(-?%d+)$")
+    if not gx then return nil end
+    return tonumber(gx), tonumber(gz)
+end
+
 function GrowthCredit:_isCasualPreset()
     local s = self.manager and self.manager.settings
     if s == nil or s.difficulty == nil then return false end
@@ -224,191 +622,252 @@ function GrowthCredit:_isCasualPreset()
     return easy ~= nil and s.difficulty == easy
 end
 
---- The credit threshold in days: thresholdPeriods * daysPerPeriod. The
---- Agronomy dial scales the period count (base * curve, neutral 1.0).
-function GrowthCredit:_thresholdDays()
-    local periods = GrowthCredit.THRESHOLD_PERIODS_DEFAULT * self:_agronomyMult()
-    periods = math.max(1, math.floor(periods + 0.5))
-    return periods * self._daysPerPeriod
+--- The current Option-Scaling profile through the vendored readProfile contract.
+function GrowthCredit:_readProfile()
+    if OptionScalingResolver == nil or type(OptionScalingResolver.readProfile) ~= 'function' then
+        return nil
+    end
+    local sh = (g_currentMission ~= nil and g_currentMission.settingsHub) or nil
+    if sh == nil then return nil end
+    local ok, profile = pcall(OptionScalingResolver.readProfile, OptionScalingResolver, sh)
+    if not ok then return nil end
+    return profile
 end
 
---- The spine Agronomy multiplier, neutral 1.0 when the resolver handle is
---- absent. The vendored-read pattern SpatialNutrients ships (SpatialNutrients.lua
---- severityMult); a nil or non-number value degrades to neutral.
-function GrowthCredit:_agronomyMult()
-    if self._agronomyMultCached ~= nil then return self._agronomyMultCached end
-    local mult = 1.0
-    local ok, resolver = pcall(function()
-        return (g_currentMission and g_currentMission.optionScalingResolver)
-            or getfenv(0)["g_OptionScalingResolver"]
+--- Server test that tolerates a bench mission without getIsServer (nil-safe; a
+--- mission that cannot answer is treated as not-server, matching the siblings).
+function GrowthCredit:_isServer()
+    local mission = g_currentMission
+    if mission ~= nil and type(mission.getIsServer) == 'function' then
+        local ok, isServer = pcall(function() return mission:getIsServer() end)
+        if ok then return isServer == true end
+        return false
+    end
+    return false
+end
+
+--- A deterministic roster fingerprint for the current fruit-type set, so a loaded
+--- bank whose numeric fruit identity may have moved is cleared (brief 3.2).
+function GrowthCredit:_fruitRosterFingerprint()
+    local ftm = g_fruitTypeManager
+    if ftm == nil or type(ftm.getFruitTypes) ~= 'function' then
+        -- No roster API on the bench: fall back to a stable empty fingerprint so a
+        -- save/load round trip does not clear the bank purely because the roster
+        -- could not be read at that moment.
+        return ''
+    end
+    local ok, names = pcall(function()
+        local out = {}
+        local fruits = ftm:getFruitTypes()
+        for _, ft in ipairs(fruits or {}) do
+            if type(ft) == 'table' and ft.name then out[#out + 1] = ft.name end
+        end
+        table.sort(out)
+        return out
     end)
-    if ok and resolver and type(resolver.value) == "function" then
-        local ok2, v = pcall(resolver.value, resolver, GrowthCredit.SPINE_DIAL)
-        if ok2 and type(v) == "number" and v >= 0 then mult = v end
-    end
-    self._agronomyMultCached = mult
-    return mult
+    if not ok then return '' end
+    return table.concat(names or {}, '|')
 end
 
---- One daily settle. Walks each field's survey lattice; every cell whose
---- bands pass the excellence test accrues one day of TOTAL credit. Never
---- touches the fruit plane.
-function GrowthCredit:runDailyPass(_ctx)
-    if self._tgAccrualRegistered and _ctx ~= nil and type(_ctx) == "table" then
-        self._daysPerPeriod = (type(_ctx.daysPerPeriod) == "number" and _ctx.daysPerPeriod >= 1)
-            and _ctx.daysPerPeriod or 1
-    end
-    if not self.isInitialized then return 0 end
-    local vm = self:_viability()
-    local ss = self:_soilSystem()
-    if vm == nil or ss == nil then return 0 end
-    if not self:isLive() then return 0 end
+-- ============================================================
+-- THE PERIOD HAND (the bell, brief 3.6/3.7)
+-- ============================================================
 
-    local passed = 0
-    for fieldId in pairs(ss.fieldData) do
-        local field = ss.fieldData and ss.fieldData[fieldId]
-        if field ~= nil then
-            local verts = ss:_getFieldPolyVerts(fieldId, field)
-            if verts ~= nil and #verts >= 3 then
-                if self:_accrueField(fieldId, verts, vm) then passed = passed + 1 end
-            end
+--- START delivery from the manager's single growth dispatch. Opens one ordered
+--- bracket carrying each current complete farmland receipt; never copies the
+--- eligible-key population.
+function GrowthCredit:onStartGrowthPeriod(transitionPeriod)
+    if not self:_isServer() then return end
+    if not self.isInitialized then return end
+    if not self:isLive() then return end
+    local growthMode = mission.missionInfo and mission.missionInfo.growthMode
+    local modeName = (growthMode == GrowthMode.SEASONAL) and 'SEASONAL'
+        or (growthMode == GrowthMode.DAILY) and 'DAILY' or 'DISABLED'
+
+    local receipts = {}
+    for _, farmlandId in ipairs(self:_currentFarmlandIds()) do
+        local plan = self:_plan(farmlandId)
+        local token = self:_token(farmlandId)
+        if plan ~= nil and token ~= nil then
+            receipts[#receipts + 1] = {
+                farmlandId = farmlandId,
+                planId = plan.planId,
+                planContentHash = plan.planContentHash,
+                polygonUnionFingerprint = plan.polygonUnionFingerprint,
+                farmlandInputRevision = plan.farmlandInputRevision or token.farmlandRevision,
+                unscopedInputRevision = plan.unscopedInputRevision or token.unscopedRevision,
+                settingsFingerprint = plan.settingsFingerprint or '',
+                bankGeneration = self._bankGeneration,
+                carrierOwnershipHash = plan.carrierOwnershipHash,
+            }
         end
     end
-    return passed
-end
-
-function GrowthCredit:_accrueField(fieldId, verts, vm)
-    local header = self:_deriveHeader(fieldId, verts)
-    local entry  = self:_ensureStore(fieldId, header)
-    local casual = self:_isCasualPreset()
-    local threshold = self:_thresholdDays()
-
-    local x = header.originX
-    local gx = 0
-    while x <= header.maxX do
-        local z = header.originZ
-        local gz = 0
-        while z <= header.maxZ do
-            local info = vm:getCellGrowthInfo(fieldId, x, z)
-            if info ~= nil and GrowthCredit.isExcellent(info.bands, casual) then
-                local row = entry.cells[gx]
-                if row == nil then row = {}; entry.cells[gx] = row end
-                local cell = row[gz]
-                if cell == nil then cell = { credit = 0, fruitIndex = nil }; row[gz] = cell end
-                cell.credit = cell.credit + 1
-            end
-            z = z + header.step
-            gz = gz + 1
-        end
-        x = x + header.step
-        gx = gx + 1
-    end
+    GrowthCredit.openBracket(self._brackets, transitionPeriod or 1, true, modeName,
+        self._bankGeneration, receipts)
     return true
 end
 
--- ============================================================
--- THE PERIOD HAND (the bell)
--- ============================================================
-
---- The drained FINISHED_GROWTH_PERIOD delivery. Reads each eligible cell's
---- current state FRESH (no daily state caching), runs the guard chain, buckets
---- survivors by (fruitIndex, currentState, targetState), and strokes one
---- filtered executeSet per bucket on the fruit's own plane. On failure a cell
---- keeps its credit and retries at the next bell. On success the written credit
---- resets and the fruit index is stored for the orphan guard.
----@param finishedPeriod number
----@param hasPendingGrowth boolean
+--- FINISHED delivery from the manager's single growth dispatch. Matches the
+--- oldest open bracket for the finished period and closes it on EVERY path
+--- (brief 3.6: "close the matched bracket on every path"): pending growth closes
+--- without spend, disabled growth rings but never rewards, a mid-bracket gate
+--- change or a changed bank generation suppresses spend, and only a drained,
+--- stable bracket re-enumerates provider-owned regions and spends
+--- threshold-banked cells outside SF-78's active first-START capture.
 function GrowthCredit:onFinishedGrowthPeriod(finishedPeriod, hasPendingGrowth)
-    local mission = g_currentMission
-    if mission == nil or not mission:getIsServer() then return end
+    if not self:_isServer() then return end
     if not self.isInitialized then return end
     if not self:isLive() then return end
-    if hasPendingGrowth ~= false then return end
-    local growthMode = mission.missionInfo and mission.missionInfo.growthMode
-    if growthMode == GrowthMode.DISABLED then return end
+    local pending = (hasPendingGrowth == true)
 
-    local ss = self:_soilSystem()
-    local vm = self:_viability()
-    if ss == nil or vm == nil then return end
-
-    for fieldId, entry in pairs(self._store) do
-        self:_strokeField(fieldId, entry, vm, finishedPeriod)
-    end
+    local bracket, outcome = GrowthCredit.closeBracket(self._brackets,
+        finishedPeriod or 1, pending, true, self._bankGeneration)
+    if bracket == nil or outcome ~= GrowthCredit.CLOSE_SPEND then return outcome end
+    local wroteAny = self:_spendBracket(bracket)
+    return wroteAny
 end
 
-function GrowthCredit:_strokeField(fieldId, entry, vm, _finishedPeriod)
-    local threshold = self:_thresholdDays()
-    local eligible = {}
-    for gx, row in pairs(entry.cells) do
-        for gz, cell in pairs(row) do
-            if cell.credit >= threshold then
-                eligible[#eligible + 1] = { gx = gx, gz = gz, cell = cell }
-            end
-        end
+--- Spend one drained stable bracket: for each farmland receipt, re-enumerate the
+--- provider-owned regions, select threshold-banked cells outside the hold
+--- capture, read current state fresh, derive the immutable target, bucket by
+--- (fruitIndex, sourceState, targetState), stroke one filtered executeSet per
+--- bucket, then re-read every submitted cell and reset only the verified ones.
+function GrowthCredit:_spendBracket(bracket)
+    local vm = self:_valueMaps()
+    if vm == nil then return false end
+    local wroteAny = false
+    for _, receipt in ipairs(bracket.receipts or {}) do
+        if self:_spendFarmland(receipt, vm, bracket) then wroteAny = true end
     end
-    if #eligible == 0 then return end
+    return wroteAny
+end
 
-    -- Read current state fresh per cell, then run the guard chain.
+function GrowthCredit:_spendFarmland(receipt, vm, bracket)
+    local farmlandId = receipt.farmlandId
+    local plan = self:_plan(farmlandId)
+    if plan == nil or plan.planId ~= receipt.planId then return false end
+    local token = self:_token(farmlandId)
+    if token == nil then return false end
+    if plan.farmlandInputRevision ~= receipt.farmlandInputRevision
+        or plan.unscopedInputRevision ~= receipt.unscopedInputRevision
+        or plan.polygonUnionFingerprint ~= receipt.polygonUnionFingerprint
+        or plan.settingsFingerprint ~= receipt.settingsFingerprint
+        or self._bankGeneration ~= receipt.bankGeneration then
+        return false
+    end
+
+    local grain = plan.executionGrainMetres or plan.truthGrainMetres
+    if type(grain) ~= 'number' or grain <= 0 then return false end
+    local radius = grain * 0.5
+
+    -- Re-enumerate provider-owned regions and select threshold-banked cells.
+    local _, threshold = GrowthCredit.effectiveThresholdDays(self:_readProfile(), self._daysPerPeriod)
     local candidates = {}
-    for _, e in ipairs(eligible) do
-        local x, z = self:_cellCentre(entry, e.gx, e.gz)
-        local state, fruitIndex = self:_readCellState(x, z)
-        if state ~= nil and fruitIndex ~= nil then
-            if self:_guardCell(fieldId, fruitIndex, state, e.cell, entry, e.gx, e.gz, vm) then
-                local target = self:_engineTarget(fruitIndex, state)
-                if target ~= nil and target > state then
-                    candidates[#candidates + 1] = {
-                        gx = e.gx, gz = e.gz, cell = e.cell,
-                        fruitIndex = fruitIndex, current = state, target = target,
-                    }
-                end
+    for _, region in ipairs(plan.regions) do
+        if region.writableForFarmland == true and region.blocked ~= true then
+            local gx, gz = self:_decodeKey(region.key)
+            if gx ~= nil then
+                local cx = gx * grain + grain * 0.5
+                local cz = gz * grain + grain * 0.5
+                local cell = self:_spendCandidate(farmlandId, vm, cx, cz, threshold, radius,
+                    receipt, plan, token, bracket)
+                if cell ~= nil then candidates[#candidates + 1] = cell end
             end
-        else
-            -- F165: the cell reads fruit UNKNOWN at the bell (no fruit, or the
-            -- read fails). Its bank was accrued against a crop that is no longer
-            -- there, so invalidate it: a gsFieldSetState or a cultivated-to-UNKNOWN
-            -- field must never carry credit into the next sowing.
-            e.cell.credit = 0
         end
     end
-    if #candidates == 0 then return end
+    if #candidates == 0 then return false end
 
-    -- Bucket survivors by (fruitIndex, currentState, targetState).
+    -- Bucket survivors by (fruitIndex, sourceState, targetState).
     local buckets = {}
     for _, c in ipairs(candidates) do
         local key = c.fruitIndex .. "|" .. c.current .. "|" .. c.target
         local b = buckets[key]
         if b == nil then
-            b = { fruitIndex = c.fruitIndex, current = c.current, target = c.target, cells = {} }
+            b = { fruitIndex = c.fruitIndex, current = c.current, target = c.target,
+                  cells = {}, plan = plan }
             buckets[key] = b
         end
-        b.cells[#b.cells + 1] = { gx = c.gx, gz = c.gz }
+        b.cells[#b.cells + 1] = { gx = c.gx, gz = c.gz, key = c.key, creditDays = c.creditDays }
     end
 
-    local fruitDesc = nil
+    local anyWritten = false
     for _, b in pairs(buckets) do
-        fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(b.fruitIndex)
+        local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(b.fruitIndex)
         if fruitDesc ~= nil and fruitDesc.terrainDataPlaneId ~= nil then
-            if self:_strokeBucket(b, fruitDesc, entry) then
-                -- Written: reset credit, store the fruit index.
-                for _, c in ipairs(b.cells) do
-                    local row = entry.cells[c.gx]
-                    local cell = row and row[c.gz]
-                    if cell then
-                        cell.credit = 0
-                        cell.fruitIndex = b.fruitIndex
+            local written = self:_strokeBucket(b, fruitDesc, grain)
+            if written then
+                -- Post-write: re-read every submitted cell; reset only verified ones.
+                local actual = {}
+                for _, cc in ipairs(b.cells) do
+                    local cx = cc.gx * grain + grain * 0.5
+                    local cz = cc.gz * grain + grain * 0.5
+                    local st, fi = self:_readCellState(cx, cz)
+                    actual[cc.key] = { fruitIndex = fi, state = st }
+                end
+                local reset, _ = GrowthCredit.verifyPostWrite(b.cells, actual)
+                for _, cc in ipairs(b.cells) do
+                    if cc.creditDays == 0 then
+                        -- Clear the bank-day bits, set appliedThisCrop, retain fruit.
+                        self:_writePair(vm, cc.gx * grain + grain * 0.5, cc.gz * grain + grain * 0.5,
+                            0, true, b.fruitIndex, radius)
                     end
                 end
+                if reset > 0 then anyWritten = true end
             end
-            -- On failure the cells keep their credit and retry at the next bell.
         end
     end
+    if anyWritten then self._bankGeneration = self._bankGeneration + 1 end
+    return anyWritten
 end
 
--- The engine's per-cell get: FSDensityMapUtil.getFruitTypeIndexAtWorldPos
--- (FSDensityMapUtil.lua:2849) returns (fruitTypeIndex, growthState) in one
--- call - the point read that supplies both the orphan guard and the current
--- state. Confirmed at the decompile (E4).
+--- One spend candidate: a threshold-banked, current, provider-owned, hold-eligible
+--- cell whose current fruit/state/SF-52 condition pass the guards. Holds carry a
+--- capturedAtFirstStart marker so SF-78's active capture cannot spend here.
+function GrowthCredit:_spendCandidate(farmlandId, vm, cx, cz, threshold, radius,
+    receipt, plan, token, bracket)
+    local credit, storedFruit, storedDays, storedApplied = self:_readPair(vm, cx, cz)
+    if credit == nil then return nil end
+    if storedDays == nil or storedDays < threshold then return nil end
+    if storedApplied == true then return nil end   -- already spent this crop
+
+    -- Re-read current fruit identity and source state.
+    local state, fruitIndex = self:_readCellState(cx, cz)
+    if state == nil or fruitIndex == nil then return nil end
+    if fruitIndex ~= storedFruit then return nil end
+    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
+    if fruitDesc == nil then return nil end
+    if fruitDesc:getIsCut(state) or fruitDesc:getIsWithered(state) then return nil end
+    if state == fruitDesc.cutState or state >= fruitDesc.maxHarvestingGrowthState then return nil end
+
+    -- Re-read SF-52 condition: blocked or unavailable ground cannot spend.
+    local info = self:_viability() and self:_viability():getCellGrowthInfo(farmlandId, cx, cz)
+    if info == nil or info.blocked then return nil end
+
+    -- Immutable target from the bracket's mapping; no mapping falls back to +1.
+    local target = self:_engineTarget(fruitIndex, state, fruitDesc, bracket)
+    if target == nil or target <= state then return nil end
+
+    -- Hold exclusion: a receipt captured at SF-78's first START cannot spend now.
+    if GrowthCredit.maySpendCredit(receipt.capturedAtFirstStart == true, true) == false then
+        return nil
+    end
+    return {
+        key = self:_regionKeyAt(cx, cz, plan), gx = self:_gx(cx, plan), gz = self:_gz(cz, plan),
+        fruitIndex = fruitIndex, current = state, target = target, creditDays = storedDays,
+    }
+end
+
+-- World -> carrier grid helpers at a plan's execution grain.
+function GrowthCredit:_gx(x, plan) local g = plan.executionGrainMetres or plan.truthGrainMetres; if not g or g <= 0 then return nil end; return math.floor(x / g) end
+function GrowthCredit:_gz(z, plan) local g = plan.executionGrainMetres or plan.truthGrainMetres; if not g or g <= 0 then return nil end; return math.floor(z / g) end
+function GrowthCredit:_regionKeyAt(x, z, plan)
+    local gx, gz = self:_gx(x, plan), self:_gz(z, plan)
+    if gx == nil or gz == nil then return nil end
+    return gx .. ':' .. gz
+end
+
+-- The engine's per-cell get: FSDensityMapUtil.getFruitTypeIndexAtWorldPos returns
+-- (fruitTypeIndex, growthState) in one call.
 function GrowthCredit:_readCellState(x, z)
     if FSDensityMapUtil == nil or type(FSDensityMapUtil.getFruitTypeIndexAtWorldPos) ~= 'function' then
         return nil, nil
@@ -418,81 +877,36 @@ function GrowthCredit:_readCellState(x, z)
     return state, fruitIndex
 end
 
--- The guard chain, in order:
---   orphan: stored fruitIndex exists AND unchanged, AND not cut AND not
---           withered (the SET-based cut test is the load-bearing one; the
---           scalar cutState compare sits beside it as defense in depth),
---   never at or past maxHarvestingGrowthState,
---   never a blocked cell (one getCellGrowthInfo at the bell, on the real field).
---
--- F165: a nil stored fruitIndex is a RESET, not a pass. Credit is only ever
--- banked against a known crop; a cell that accrued while bare (or whose crop
--- left since) must never spend that bank on whatever is sown later.
-function GrowthCredit:_guardCell(fieldId, fruitIndex, state, cell, entry, gx, gz, vm)
-    if cell.fruitIndex == nil then
-        -- The bank was accrued with no fruit on the cell. Invalidate it: the
-        -- credit was never attached to a crop, so it cannot be spent on one now.
-        cell.credit = 0
-        return false
-    end
-    if cell.fruitIndex ~= fruitIndex then return false end
-    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
-    if fruitDesc == nil then return false end
-    if fruitDesc:getIsCut(state) then return false end
-    if fruitDesc:getIsWithered(state) then return false end
-    if state == fruitDesc.cutState then return false end
-    if state >= fruitDesc.maxHarvestingGrowthState then return false end
-
-    local x, z = self:_cellCentre(entry, gx, gz)
-    local info = vm:getCellGrowthInfo(fieldId, x, z)
-    if info ~= nil and info.blocked then return false end
-    return true
-end
-
--- The ENGINE-TRUE next state. Upcoming period index = environment.currentPeriod
--- (the engine derives the FINISHING period as currentPeriod - 1 with a 0-to-12
--- wrap; the upcoming one is currentPeriod itself). Seasonal: periods[idx]
--- growthMapping[state]; daily: nonSeasonal growthMapping[state]. No data:
--- state + 1. A mapping that does not advance the state (identity, or target not
--- greater than current) returns nil so the cell keeps its credit and waits.
-function GrowthCredit:_engineTarget(fruitIndex, state)
-    local fruitDesc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitIndex)
+--- The engine-true next state. Seasonal uses the bracket's immutable target
+--- period growthMapping; daily uses the non-seasonal mapping; no data steps by
+--- one; a mapping that does not advance returns nil (a hold, never a step back).
+function GrowthCredit:_engineTarget(fruitIndex, state, fruitDesc, bracket)
     if fruitDesc == nil then return nil end
     local mission = g_currentMission
     local growthMode = mission and mission.missionInfo and mission.missionInfo.growthMode
-    local idx = mission and mission.environment and mission.environment.currentPeriod
-    if idx == nil then return nil end
-
     local target = nil
     if growthMode == GrowthMode.SEASONAL then
         local gd = fruitDesc:getSeasonalGrowthData()
-        local p = gd and gd.periods and gd.periods[idx]
+        local p = gd and gd.periods and gd.periods[bracket and bracket.targetPeriod]
         if p ~= nil and p.growthMapping ~= nil then target = p.growthMapping[state] end
     elseif growthMode == GrowthMode.DAILY then
         local gd = fruitDesc:getNonSeasonalGrowthData()
         if gd ~= nil and gd.growthMapping ~= nil then target = gd.growthMapping[state] end
     end
-
     if target == nil then target = state + 1 end
     if type(target) ~= "number" or target <= state then return nil end
     return target
 end
 
 -- ============================================================
--- THE WRITE HAND
--- One polygon over the bucket's cells, filtered BETWEEN(current,
--- current) on the fruit's own channel pair, one executeSet(target,
--- filter). The grouping and ring machinery mirrors the shipped
--- substrate (EstablishmentFailure.lua:333-416), with cellSize and
--- origin fed from the STORED HEADER. DensityMapMultiModifier
--- batching is sanctioned; a plain per-bucket modifier loop is the
--- fallback. pcall per stroke; do NOT wrap in setIgnoreDensityChanges
--- (empty stub at GrowthSystem.lua:303).
+-- THE WRITE HAND (the family machine; fruit-plane executeSet)
 -- ============================================================
 
-function GrowthCredit:_strokeBucket(bucket, fruitDesc, entry)
+--- Group 4-connected stable carrier cells into exact rings (world-aligned grid
+--- at the plan grain) and stroke one filtered executeSet per bucket.
+function GrowthCredit:_strokeBucket(bucket, fruitDesc, grain)
     local ok, err = pcall(function()
-        local rings = self:_bucketRings(bucket.cells, entry)
+        local rings = self:_bucketRings(bucket.cells, grain)
         if rings == nil or #rings == 0 then return end
 
         local modifier = DensityMapModifier.new(
@@ -518,11 +932,10 @@ function GrowthCredit:_strokeBucket(bucket, fruitDesc, entry)
     return ok
 end
 
--- Group a list of {gx=, gz=} cells into contiguous 4-connected regions, then
--- build each region's outline ring(s) in world space. Mirrors
--- EstablishmentFailure._groupRegions / _regionPolygon; ring points carry the
--- stored header's origin so the write lands on the survey's own cells.
-function GrowthCredit:_bucketRings(cells, entry)
+--- Group a list of {gx=, gz=} cells into contiguous 4-connected regions and build
+--- each region's outline ring(s) on the world-origin carrier grid. Ring corner i
+--- of a region cell sits at (gx*grain, gz*grain).
+function GrowthCredit:_bucketRings(cells, grain)
     local set = {}
     for _, c in ipairs(cells) do set[c.gx .. "," .. c.gz] = c end
     local regions = {}
@@ -551,8 +964,6 @@ function GrowthCredit:_bucketRings(cells, entry)
     end
 
     local rings = {}
-    local step = entry.step
-    local originX, originZ = entry.originX, entry.originZ
     for _, region in ipairs(regions) do
         local rset = {}
         for _, c in ipairs(region) do rset[c.gx .. "," .. c.gz] = true end
@@ -582,8 +993,8 @@ function GrowthCredit:_bucketRings(cells, entry)
                     local x, z = k:match("^(-?%d+),(-?%d+)$")
                     if x then
                         ring[#ring + 1] = {
-                            x = originX + (tonumber(x) - 0.5) * step,
-                            z = originZ + (tonumber(z) - 0.5) * step,
+                            x = tonumber(x) * grain,
+                            z = tonumber(z) * grain,
                         }
                     end
                     k = nextEdge[k]
@@ -598,52 +1009,203 @@ function GrowthCredit:_bucketRings(cells, entry)
 end
 
 -- ============================================================
--- CADENCE + LIFECYCLE
+-- THE PUBLISHED WITNESS (brief 3.9 / the SF-54 surface)
 -- ============================================================
 
---- Register the daily bookkeeper with Time Guard (simulation flow) and the
---- period bell with the message center. Server-only, by the write's nature.
---- Version-skew guard: an older Time Guard silently coerces an unknown
---- flowClass to calendar, so refuse rather than run on a clock the design
---- never meant. pcall both registrations; failures leave the module inert.
-function GrowthCredit:register()
-    if self._tgAccrualRegistered and self._messageSubscribed then return true end
+--- Server credit plus witness at a world position. Returns (creditDays, witness)
+--- or nil. Client, stale, partial or mismatched reads return nil. The witness is
+--- the matching record for SF-54's in-mod assembler and for any sibling read.
+function GrowthCredit:readCreditAt(fieldId, x, z)
+    if not self.isInitialized then return nil end
+    if not self:_isServer() then return nil end
+    if not self:isLive() then return nil end
+    local vm = self:_valueMaps()
+    if vm == nil then return nil end
+    local plan = self:_plan(fieldId)
+    if plan == nil then return nil end
+    local token = self:_token(fieldId)
+    if token == nil then return nil end
 
-    local ok = true
-    if not self._tgAccrualRegistered then
-        local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
-        if tg ~= nil and type(tg.registerAccrual) == 'function' then
-            if tg.flowClasses == nil or tg.flowClasses.simulation == true then
-                local ok2 = pcall(function()
-                    tg:registerAccrual(GrowthCredit.DAILY_ACCURAL_ID, {
-                        cadence = 'day',
-                        flowClass = 'simulation',
-                        firstPeriodPolicy = 'skip',
-                        priority = GrowthCredit.DAILY_ACCURAL_PRIORITY,
-                        onSettle = function(ctx) self:runDailyPass(ctx) end,
-                    })
-                end)
-                if ok2 then self._tgAccrualRegistered = true else ok = false end
-            else
-                ok = false
+    -- Point must be covered by this farmland's current plan region.
+    local covered = false
+    local carrierOwner = nil
+    local grain = plan.executionGrainMetres or plan.truthGrainMetres
+    if type(grain) ~= 'number' or grain <= 0 then return nil end
+    local key = math.floor(x / grain) .. ':' .. math.floor(z / grain)
+    for _, region in ipairs(plan.regions) do
+        if region.key == key then covered = true; carrierOwner = region.carrierOwnerFarmlandId; break end
+    end
+    if not covered then return nil end
+
+    local credit, storedFruit, storedDays, storedApplied = self:_readPair(vm, x, z)
+    if credit == nil then return nil end
+
+    -- Current fruit identity must match the banked identity.
+    local state, fruitIndex = self:_readCellState(x, z)
+    if state == nil or fruitIndex == nil or fruitIndex ~= storedFruit then return nil end
+
+    -- Currentness: farmland and unscoped revisions must match the plan.
+    local current = (plan.farmlandInputRevision == token.farmlandRevision
+        and plan.unscopedInputRevision == token.unscopedRevision)
+    if not current then return nil end
+
+    local _, threshold = GrowthCredit.effectiveThresholdDays(self:_readProfile(), self._daysPerPeriod)
+    local banked = storedDays >= threshold
+    local capturedAtFirstStart = false
+    local deferredByHold = banked and capturedAtFirstStart == true
+
+    local witness = {
+        farmlandId = fieldId,
+        polygonUnionFingerprint = plan.polygonUnionFingerprint,
+        coversPoint = true,
+        siblingGeneration = self._bankGeneration,
+        current = true,
+        fruitIndex = storedFruit,
+        creditDays = storedDays,
+        appliedThisCrop = storedApplied == true,
+        thresholdDays = threshold,
+        banked = banked,
+        ready = banked and not deferredByHold,
+        deferredByHold = deferredByHold,
+    }
+    return storedDays, witness
+end
+
+--- SF-54's growth-surface witness assembler: the matching record for the in-mod
+--- assembler, or nil. Computed (deferredByHold) never stored.
+function GrowthCredit:getGrowthSurfaceWitness(fieldId, x, z)
+    local credit, witness = self:readCreditAt(fieldId, x, z)
+    if witness == nil then return nil end
+    return witness
+end
+
+-- ============================================================
+-- SAVE / RELOAD / TEARDOWN (brief 3.8)
+-- ============================================================
+
+--- Persist the small metadata under soilData.growthCredit. The dense cell truth
+--- is the two GRLE files written by SoilValueMaps; no per-cell list enters XML.
+function GrowthCredit:saveToXMLFile(xmlFile, key)
+    if xmlFile == nil or key == nil then return end
+    setXMLInt(xmlFile, key .. "#schema", 1)
+    local idx = 0
+    for farmlandId, meta in pairs(self._metadata or {}) do
+        if meta ~= nil then
+            local entryKey = string.format("%s.farmland(%d)", key, idx)
+            setXMLInt(xmlFile, entryKey .. "#id", farmlandId)
+            setXMLString(xmlFile, entryKey .. "#fruitRoster", meta.fruitRosterFingerprint or '')
+            setXMLInt(xmlFile, entryKey .. "#resolution", meta.terrainResolution or 0)
+            setXMLFloat(xmlFile, entryKey .. "#grain", meta.truthGrainMetres or 0)
+            setXMLString(xmlFile, entryKey .. "#geometry", meta.polygonUnionFingerprint or '')
+            setXMLInt(xmlFile, entryKey .. "#lastDay", meta.lastAccruedMonotonicDay or 0)
+            setXMLString(xmlFile, entryKey .. "#settings", meta.settingsFingerprint or '')
+            setXMLString(xmlFile, entryKey .. "#migration", meta.migrationMarker or '')
+            idx = idx + 1
+        end
+    end
+    setXMLInt(xmlFile, key .. "#count", idx)
+end
+
+--- Restore the small metadata (called after the GRLE pair restored; the bank stays
+--- PENDING_VALIDATION until current-session membership/fruit validation).
+function GrowthCredit:loadFromXMLFile(xmlFile, key)
+    self._metadata = {}
+    self._pendingValidation = {}
+    if xmlFile == nil or key == nil then return end
+    local count = getXMLInt(xmlFile, key .. "#count") or 0
+    for i = 0, count - 1 do
+        local entryKey = string.format("%s.farmland(%d)", key, i)
+        local id = getXMLInt(xmlFile, entryKey .. "#id")
+        if id ~= nil then
+            self._metadata[id] = {
+                schema = 1,
+                fruitRosterFingerprint = getXMLString(xmlFile, entryKey .. "#fruitRoster") or '',
+                terrainResolution = getXMLInt(xmlFile, entryKey .. "#resolution") or 0,
+                truthGrainMetres = getXMLFloat(xmlFile, entryKey .. "#grain") or 0,
+                polygonUnionFingerprint = getXMLString(xmlFile, entryKey .. "#geometry") or '',
+                lastAccruedMonotonicDay = getXMLInt(xmlFile, entryKey .. "#lastDay") or 0,
+                settingsFingerprint = getXMLString(xmlFile, entryKey .. "#settings") or '',
+                migrationMarker = getXMLString(xmlFile, entryKey .. "#migration") or '',
+            }
+            -- Restored cells stay PENDING_VALIDATION until current-session
+            -- membership and fruit identity match (brief 3.2).
+            self._pendingValidation[id] = true
+        end
+    end
+    self:_classifyBank()
+end
+
+--- StateLedger mirror table (the same normalized metadata).
+function GrowthCredit:getStateTable()
+    return {
+        schema = 1,
+        bankGeneration = self._bankGeneration,
+        farmlands = self._metadata,
+    }
+end
+
+--- Apply a StateLedger metadata block.
+function GrowthCredit:applyStateTable(data)
+    self._metadata = {}
+    self._pendingValidation = {}
+    if type(data) ~= 'table' then self:_classifyBank(); return end
+    if type(data.farmlands) == 'table' then
+        for id, meta in pairs(data.farmlands) do
+            if type(meta) == 'table' then
+                self._metadata[id] = meta
+                -- Restored cells stay PENDING_VALIDATION until current-session
+                -- membership and fruit identity match (brief 3.2).
+                self._pendingValidation[id] = true
             end
         end
     end
+    self._bankGeneration = (type(data.bankGeneration) == 'number' and data.bankGeneration) or 0
+    self:_classifyBank()
+end
 
-    if ok and not self._messageSubscribed and g_messageCenter ~= nil
-        and MessageType ~= nil and MessageType.FINISHED_GROWTH_PERIOD ~= nil
-        and type(g_messageCenter.subscribe) == 'function' then
-        local ok2 = pcall(function()
-            g_messageCenter:subscribe(MessageType.FINISHED_GROWTH_PERIOD, self.onFinishedGrowthPeriod, self)
-        end)
-        if ok2 then self._messageSubscribed = true else ok = false end
+--- Host monotonic-day fallback feed, used when Time Guard is absent (brief 3.7).
+function GrowthCredit:setCurrentMonotonicDay(day)
+    if type(day) == 'number' then self._fallbackCursorDay = day end
+end
+
+function GrowthCredit:register()
+    return self:registerDailyAccrual()
+end
+
+--- Register the daily bookkeeper with Time Guard (simulation flow). Registration
+--- succeeds only on a LITERAL true return (brief 3.4). Absent, incompatible or
+--- refusing Time Guard activates the host currentMonotonicDay fallback instead.
+function GrowthCredit:registerDailyAccrual()
+    if self._tgAccrualRegistered then return true end
+    local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+    if tg == nil or type(tg.registerAccrual) ~= 'function' then return false end
+
+    -- Version-skew guard: an older Time Guard silently coerces an unknown
+    -- flowClass to calendar, which would run this on a clock it never meant.
+    if tg.flowClasses ~= nil and tg.flowClasses.simulation ~= true then
+        return false
     end
-    return ok
+
+    local registered = false
+    local ok = pcall(function()
+        registered = tg:registerAccrual(GrowthCredit.DAILY_ACCURAL_ID, {
+            cadence = 'day',
+            flowClass = 'simulation',
+            firstPeriodPolicy = 'skip',
+            priority = GrowthCredit.DAILY_ACCURAL_PRIORITY,
+            onSettle = function(ctx) self:runDailyPass(ctx) end,
+        })
+    end)
+    if ok and registered == true then
+        self._tgAccrualRegistered = true
+        return true
+    end
+    return false
 end
 
 --- The family's live gate: the release gate must be open AND the mask enabled.
---- FAIL-OPEN on the release gate (nil settings on the bench means live), but
---- the mask switch is a real toggle and gates hard.
+--- FAIL-OPEN on the release gate (nil settings on the bench means live); the
+--- mask switch is a real toggle and gates hard.
 function GrowthCredit:isLive()
     local vm = self:_viability()
     if vm ~= nil and vm.enabled == false then return false end
@@ -651,4 +1213,23 @@ function GrowthCredit:isLive()
         return ReleaseGate.isSystemLive("growth_modulation")
     end
     return true
+end
+
+function GrowthCredit:delete()
+    self.isInitialized = false
+    -- Unregister the Time Guard accrual when supported (brief 3.8).
+    if self._tgAccrualRegistered then
+        local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+        if tg ~= nil and type(tg.unregisterAccrual) == 'function' then
+            pcall(function() tg:unregisterAccrual(GrowthCredit.DAILY_ACCURAL_ID) end)
+        end
+        self._tgAccrualRegistered = false
+    end
+    -- Invalidate the fallback cursor, clear plans/brackets/witness/accessors.
+    self._fallbackCursorDay = nil
+    self._brackets = { nextSequence = 1, open = {} }
+    self._metadata = {}
+    self._pendingValidation = {}
+    self._bankAvailable = false
+    -- No bank-clearing density write on delete.
 end
