@@ -23,8 +23,17 @@
 -- ============================================================
 do
     local maps = SoilValueMaps.new()
-    T.eq("A1 current SoilValueMaps has no growth-input revision", maps.growthInputRevision, nil)
-    T.eq("A2 current SoilValueMaps has no revision getter", maps.getGrowthInputRevision, nil)
+    -- [SF-52 Stage 6A re-point] The growth-input revision family now ships. A fresh
+    -- instance still exposes no revision (bootstrap: unavailable until
+    -- establishGrowthInputRevisions runs after a coherent map load), and the getter
+    -- now exists and honestly returns nil until then.
+    T.eq("A1 SHIPPED growth-input revision is nil before coherent init", maps.growthInputRevision, nil)
+    T.eq("A2 SHIPPED SoilValueMaps exposes the growth-input revision getter",
+        type(maps.getGrowthInputRevision), "function")
+    T.eq("A2b SHIPPED revision getter returns nil before coherent init",
+        maps:getGrowthInputRevision(), nil)
+    T.eq("A2c SHIPPED token getter returns nil for a farmland before init",
+        maps:getGrowthInputToken(7), nil)
 
     local stubMaps = { available = true }
     function stubMaps:readValueAtWorld(key, _x, _z)
