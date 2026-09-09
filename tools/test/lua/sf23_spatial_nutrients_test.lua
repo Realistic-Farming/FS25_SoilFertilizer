@@ -154,8 +154,12 @@ do
       if key == "nitrogen" then return 42 end
       return nil
     end,
+    -- [SCS-041] mirror the real SoilValueMaps grain accessor (~2 m/px).
+    getGrainMetres = function() return 2 end,
   }
   local soilSys = { valueMaps = vm, vmAvailable = function() return true end }
-  T.eq("positional N read", SN:getSoilValueAtWorld(soilSys, "nitrogen", 1, 1), 42)
+  local n, grain = SN:getSoilValueAtWorld(soilSys, "nitrogen", 1, 1)
+  T.eq("positional N read", n, 42)
+  T.eq("positional N read returns the value-map grain", grain, 2)
   T.eq("absent key -> nil", SN:getSoilValueAtWorld(soilSys, "phosphorus", 1, 1), nil)
 end

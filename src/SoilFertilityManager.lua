@@ -2620,7 +2620,9 @@ end
 ---@return number|nil
 function SoilFertilityManager:getSoilValueAtWorld(key, x, z)
     if SpatialNutrients == nil or SpatialNutrients.getSoilValueAtWorld == nil then return nil end
-    local ok, v = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
+    -- [SCS-041] Pass through the optional second return (metres-per-pixel grain)
+    -- without breaking one-value callers, which ignore it.
+    local ok, v, grain = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
     if not ok then return nil end
-    return v
+    return v, grain
 end
