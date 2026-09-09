@@ -499,11 +499,24 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
     local crossed = 1
     if type(lastDay) == 'number' and lastDay >= 0 and day > lastDay then crossed = day - lastDay end
 
+    -- EVIDENCE-BOUNDED CATCH-UP (brief 3.4). Every crossed day may be awarded
+    -- only when the farmland-level witness is UNCHANGED since the last accrual:
+    -- stored farmland input revision, unscoped revision, polygon-union
+    -- fingerprint and settings fingerprint must all equal today's. Any change or
+    -- missing stored witness caps the whole pass at the one observed excellent
+    -- day. (The per-cell fruit identity is checked again below.) A reloaded bank
+    -- carries no session revisions, so it is inherently capped here as well.
+    local witnessSame = (type(meta.farmlandInputRevision) == 'number')
+        and meta.farmlandInputRevision == token.farmlandRevision
+        and meta.unscopedInputRevision == token.unscopedRevision
+        and meta.polygonUnionFingerprint == fingerprint
+        and meta.settingsFingerprint == self._settingsFingerprint
+    if not witnessSame then crossed = math.min(crossed, 1) end
+
     -- Restored-bank validation on the first in-session pass. A fruit-roster or
     -- carrier mismatch clears BOTH layers and this farmland's metadata (numeric
-    -- identity may have moved); geometry is checked below per region. Until this
-    -- validation completes, no retroactive multi-day award crosses the reload:
-    -- the pass earns at most the one observed excellent day (brief 3.2/3.4).
+    -- identity may have moved). The cap above already bounds a reload to the one
+    -- observed day; this pass then resolves pending validation.
     if self._pendingValidation[farmlandId] then
         local currentRoster = self:_fruitRosterFingerprint()
         if currentRoster ~= '' and meta.fruitRosterFingerprint ~= nil
@@ -531,8 +544,7 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
-                if self:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius,
-                    plan, token, fingerprint) then
+                if self:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius) then
                     committedAny = true
                 end
             end
@@ -548,6 +560,9 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
     self._pendingValidation[farmlandId] = nil
     -- Track the last accrued day regardless of cell outcomes (a normal day still
     -- advances the cursor; a changed-witness day is awarded at most one, above).
+    -- The witnessed revisions/fingerprint/settings are stored so the NEXT accrual
+    -- can prove whether the soil, geometry and settings were unchanged across the
+    -- gap (the evidence-bounded catch-up contract, brief 3.4).
     self._metadata[farmlandId] = {
         schema = 1,
         fruitRosterFingerprint = self:_fruitRosterFingerprint(),
@@ -555,8 +570,10 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
         truthGrainMetres = (type(vm.getGrainMetres) == 'function') and vm:getGrainMetres() or nil,
         migrationMarker = meta.migrationMarker,
         polygonUnionFingerprint = fingerprint,
-        lastAccruedMonotonicDay = day,
+        farmlandInputRevision = token.farmlandRevision,
+        unscopedInputRevision = token.unscopedRevision,
         settingsFingerprint = self._settingsFingerprint,
+        lastAccruedMonotonicDay = day,
     }
     return committedAny
 end
@@ -565,8 +582,7 @@ end
 --- point condition fresh; rejects unknown, bare, cut, withered, blocked or
 --- non-excellent cells. Identity binds before the first increment; a changed crop
 --- clears the old pair before the new one earns. Catch-up is evidence bounded.
-function GrowthCredit:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius,
-    plan, token, fingerprint)
+function GrowthCredit:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, threshold, day, radius)
     -- Fruit identity + state, fresh.
     local state, fruitIndex = self:_readCellState(cx, cz)
     if state == nil or fruitIndex == nil then return false end
@@ -588,18 +604,18 @@ function GrowthCredit:_accrueCell(farmlandId, vm, cx, cz, crossed, casual, thres
         credit, storedFruit, storedDays, storedApplied = nil, nil, 0, false
     end
 
-    -- Evidence-bounded award: unchanged witness earns every crossed day; any
-    -- changed witness earns at most the one observed excellent day.
-    local sameFruit = (storedFruit == nil) or (storedFruit == fruitIndex)
-    local sameInput = (storedFruit == nil)
-        or (plan ~= nil and token ~= nil
-            and plan.farmlandInputRevision == token.farmlandRevision
-            and plan.unscopedInputRevision == token.unscopedRevision)
-    local sameGeometry = (storedFruit == nil)
-        or (fingerprint ~= nil and plan ~= nil and fingerprint == plan.polygonUnionFingerprint)
-    local sameSettings = (storedFruit == nil) or true
-    local award = GrowthCredit.witnessDays(crossed, sameFruit, sameInput, sameGeometry,
-        sameSettings, true)
+    -- Evidence-bounded award: the farmland-level witness was folded into
+    -- `crossed` above (capped to 1 when any soil/geometry/settings coordinate
+    -- moved). At the cell, only the FRUIT identity witness remains: an unchanged
+    -- fruit may earn every crossed day; a fruit change clears the pair first and
+    -- the new crop earns only the one observed day; a fresh (never-banked) cell
+    -- earns only the observed day, never a retroactive gap (brief 3.3/3.4).
+    local award
+    if storedFruit == nil or storedFruit ~= fruitIndex then
+        award = 1
+    else
+        award = GrowthCredit.witnessDays(crossed, true, true, true, true, true)
+    end
     if award <= 0 then return false end
 
     local nextDays = (storedDays or 0) + award
@@ -787,7 +803,11 @@ function GrowthCredit:_spendFarmland(receipt, vm, bracket)
                   cells = {}, plan = plan }
             buckets[key] = b
         end
-        b.cells[#b.cells + 1] = { gx = c.gx, gz = c.gz, key = c.key, creditDays = c.creditDays }
+        b.cells[#b.cells + 1] = {
+            gx = c.gx, gz = c.gz, key = c.key,
+            fruitIndex = c.fruitIndex, targetState = c.target,
+            creditDays = c.creditDays,
+        }
     end
 
     local anyWritten = false
@@ -828,7 +848,6 @@ function GrowthCredit:_spendCandidate(farmlandId, vm, cx, cz, threshold, radius,
     local credit, storedFruit, storedDays, storedApplied = self:_readPair(vm, cx, cz)
     if credit == nil then return nil end
     if storedDays == nil or storedDays < threshold then return nil end
-    if storedApplied == true then return nil end   -- already spent this crop
 
     -- Re-read current fruit identity and source state.
     local state, fruitIndex = self:_readCellState(cx, cz)
