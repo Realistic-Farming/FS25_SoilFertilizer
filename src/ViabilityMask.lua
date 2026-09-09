@@ -225,6 +225,17 @@ function ViabilityMask.polygonUnionFingerprint(polygons)
     return table.concat(rows, '|')
 end
 
+--- Fixed-precision fingerprint of ONE polygon (the union fingerprint's per-row
+--- form), so an enumerated carrier square can name the specific source polygon it
+--- sits in and overlaps resolve to the lowest lexicographic fingerprint.
+function ViabilityMask.polygonFingerprint(verts)
+    local pts = {}
+    for _, v in ipairs(verts or {}) do
+        pts[#pts + 1] = string.format('%.3f,%.3f', v.x, v.z)
+    end
+    return table.concat(pts, ';')
+end
+
 -- ============================================================
 -- [SF-52] GROUND-ONLY PLAN ASSEMBLY (brief section 3.4; bar Group H)
 --
@@ -547,67 +558,187 @@ function ViabilityMask:runPass()
     if not self.enabled then return 0 end
     local vm = self:_valueMaps()
     if vm == nil then return 0 end
+    local grain = self:_executionGrain(vm)
+    if grain == nil then return 0 end
     local soilSystem = self.manager and self.manager.soilSystem
     if soilSystem == nil or soilSystem.fieldData == nil then return 0 end
 
-    local passed = 0
-    for fieldId in pairs(soilSystem.fieldData) do
-        if self:_passField(fieldId, soilSystem) then passed = passed + 1 end
+    -- Resolve one coherent generation of live geometry.
+    if type(soilSystem._invalidateFarmlandPolygons) == 'function' then
+        soilSystem:_invalidateFarmlandPolygons()
     end
-    return passed
+    self._planGeneration = self._planGeneration + 1
+    local generation = self._planGeneration
+    local monotonicDay = self:_monotonicDay()
+
+    -- Enumerate every tracked farmland's parcel union into this generation, then
+    -- derive ONE global carrier-ownership partition before committing, so a
+    -- carrier square shared by touching parcels resolves to a single owner
+    -- (brief 3.4). Complete work with no omission ceiling.
+    --
+    -- NOTE (perf gate #6, in-game measured): this v1 enumerates every farmland
+    -- fully per daily pass. The per-frame cursor/time budget and any measured
+    -- execution-grain coarsening (brief 3.5) are runtime tuning deferred to the
+    -- in-game acceptance measurements; the contract here is complete, atomic and
+    -- deterministic regardless of how the work is later spread across frames.
+    local perFarmland, allCandidates = {}, {}
+    for farmlandId in pairs(soilSystem.fieldData) do
+        local polygons = (type(soilSystem._getFarmlandPolygons) == 'function')
+            and soilSystem:_getFarmlandPolygons(farmlandId) or nil
+        if polygons ~= nil then
+            local regions, candidates = self:_enumerateFarmland(farmlandId, polygons, grain, vm)
+            if #regions > 0 then
+                perFarmland[farmlandId] = { regions = regions, polygons = polygons }
+                for _, c in ipairs(candidates) do allCandidates[#allCandidates + 1] = c end
+            end
+        end
+    end
+
+    local carrierOwners = ViabilityMask.assignCarrierOwners(allCandidates)
+    local committed = 0
+    for farmlandId, data in pairs(perFarmland) do
+        if self:_commitFarmland(farmlandId, data, carrierOwners, generation, monotonicDay, grain, vm) then
+            committed = committed + 1
+        end
+        self._pendingFarmlands[farmlandId] = nil
+    end
+    return committed
 end
 
-function ViabilityMask:_passField(fieldId, soilSystem)
-    local field = soilSystem.fieldData and soilSystem.fieldData[fieldId]
-    if field == nil then return false end
-    if type(soilSystem._getFieldPolyVerts) ~= 'function' then return false end
-    local verts = soilSystem:_getFieldPolyVerts(fieldId, field)
-    if verts == nil or #verts < 3 then return false end
+--- Execution grain: the loaded truth grain by default. No fixed lattice or
+--- omission ceiling (brief 3.4; invariant 4).
+function ViabilityMask:_executionGrain(vm)
+    local grain = (type(vm.getGrainMetres) == 'function') and vm:getGrainMetres() or nil
+    if type(grain) ~= 'number' or grain <= 0 then return nil end
+    return grain
+end
 
-    local counts = ViabilityMask.summariseSamples(
-        self:_sampleField(fieldId, verts))
-    if counts == nil then return false end
+--- In-game day coordinate from Time Guard context, else the host fallback. Never
+--- environment.currentDay (brief 3.7).
+function ViabilityMask:_monotonicDay()
+    local tg = (g_currentMission ~= nil and g_currentMission.timeGuard) or g_timeGuard
+    if tg ~= nil and type(tg.getContext) == 'function' then
+        local ok, ctx = pcall(function() return tg:getContext() end)
+        if ok and type(ctx) == 'table' and type(ctx.monotonicDay) == 'number' then
+            return ctx.monotonicDay
+        end
+    end
+    if type(self._currentMonotonicDay) == 'number' then return self._currentMonotonicDay end
+    return nil
+end
 
-    counts.day = (g_currentMission and g_currentMission.environment
-                  and g_currentMission.environment.currentMonotonicDay) or nil
-    self._summaries[fieldId] = counts
+--- The source polygon for a carrier-square centre: the lowest-fingerprint field
+--- polygon on the farmland that contains the point, or nil when the centre is in
+--- a gap between the parcel's fields (gaps are never filled).
+function ViabilityMask:_squareSource(x, z, polygons)
+    local best
+    for _, verts in ipairs(polygons) do
+        if ViabilityMask._pointInPolygon(x, z, verts) then
+            local fp = ViabilityMask.polygonFingerprint(verts)
+            if best == nil or fp < best then best = fp end
+        end
+    end
+    return best
+end
+
+--- Enumerate a farmland's parcel union at the execution grain into carrier-square
+--- region candidates. Reads the value maps inline (getCellGrowthInfo is the
+--- single-point public API; the bulk pass must not re-resolve farmland geometry
+--- per square). Each square is sampled once at its centre on a world-origin
+--- aligned grid, so a square shared by touching parcels carries ONE global key.
+function ViabilityMask:_enumerateFarmland(farmlandId, polygons, grain, vm)
+    local regions, candidates = {}, {}
+    local area = grain * grain
+    local minX, maxX, minZ, maxZ
+    for _, verts in ipairs(polygons) do
+        for _, v in ipairs(verts) do
+            if minX == nil or v.x < minX then minX = v.x end
+            if maxX == nil or v.x > maxX then maxX = v.x end
+            if minZ == nil or v.z < minZ then minZ = v.z end
+            if maxZ == nil or v.z > maxZ then maxZ = v.z end
+        end
+    end
+    if minX == nil then return regions, candidates end
+
+    local half = grain * 0.5
+    for gx = math.floor(minX / grain), math.floor(maxX / grain) do
+        local cx = gx * grain + half
+        for gz = math.floor(minZ / grain), math.floor(maxZ / grain) do
+            local cz = gz * grain + half
+            local srcFp = self:_squareSource(cx, cz, polygons)
+            if srcFp ~= nil then
+                local n = vm:readValueAtWorld('nitrogen', cx, cz)
+                local compaction = vm:readValueAtWorld('compaction', cx, cz)
+                local band = ViabilityMask.combine({
+                    n = ViabilityMask.bandNitrogen(n),
+                    compaction = ViabilityMask.bandCompaction(compaction),
+                    moisture = nil,
+                })
+                local key = gx .. ':' .. gz
+                regions[#regions + 1] = {
+                    key = key, sourcePolygonFingerprint = srcFp,
+                    blocked = (band == ViabilityMask.BAND_BLOCKED),
+                    band = band, area = area,
+                }
+                candidates[#candidates + 1] = { key = key, farmlandId = farmlandId, area = area }
+            end
+        end
+    end
+    return regions, candidates
+end
+
+--- Commit one farmland's complete plan and area-weighted summary atomically,
+--- pinning the farmland+unscoped revisions and polygon-union fingerprint at
+--- enumeration. A same-farmland or unscoped write, or a geometry change, that
+--- lands before this commit cancels it (getGrowthInputToken re-read); an
+--- unrelated farmland's global advance does not. No partial fraction is exposed.
+function ViabilityMask:_commitFarmland(farmlandId, data, carrierOwners, generation, monotonicDay, grain, vm)
+    local weighted = ViabilityMask.areaWeightedSummary(data.regions)
+    if weighted == nil then return false end
+    local token = vm:getGrowthInputToken(farmlandId)
+    if token == nil then return false end
+    local fingerprint = ViabilityMask.polygonUnionFingerprint(data.polygons)
+
+    local resultHash = string.format('%d|%.6f|%.6f|%.6f|%.6f', generation,
+        weighted.blockedFrac, weighted.excellentFrac, weighted.normalFrac, weighted.unknownFrac)
+    local plan = ViabilityMask.assembleGroundPlan(data.regions, resultHash, farmlandId, carrierOwners)
+    plan.planId                = string.format('%d:%d', farmlandId, generation)
+    plan.fieldId               = farmlandId
+    plan.globalInputRevision   = token.globalRevision
+    plan.farmlandInputRevision = token.farmlandRevision
+    plan.unscopedInputRevision = token.unscopedRevision
+    plan.polygonUnionFingerprint = fingerprint
+    plan.truthGrainMetres      = vm:getGrainMetres()
+    plan.executionGrainMetres  = grain
+    plan.settingsFingerprint   = ''       -- SF-52 adds no setting
+    plan.releaseGateState      = 'LOCKED'
+
+    self._plans[farmlandId] = plan
+    self._summaries[farmlandId] = {
+        blockedFrac = weighted.blockedFrac, excellentFrac = weighted.excellentFrac,
+        normalFrac  = weighted.normalFrac,  unknownFrac   = weighted.unknownFrac,
+        globalInputRevision   = token.globalRevision,
+        farmlandInputRevision = token.farmlandRevision,
+        unscopedInputRevision = token.unscopedRevision,
+        summaryGeneration     = generation,
+        polygonUnionFingerprint = fingerprint,
+        truthGrainMetres = vm:getGrainMetres(), executionGrainMetres = grain,
+        eligibleArea = weighted.eligibleArea, visitedArea = weighted.eligibleArea,
+        coverage = 1, asOfMonotonicDay = monotonicDay, resultHash = resultHash,
+    }
     return true
 end
 
---- Walk the field on a bounded grid, classifying each sample.
---- Returns a list of overall bands (strings), skipping off-field points.
-function ViabilityMask:_sampleField(fieldId, verts)
-    local minX, maxX = verts[1].x, verts[1].x
-    local minZ, maxZ = verts[1].z, verts[1].z
-    for i = 2, #verts do
-        local v = verts[i]
-        if v.x < minX then minX = v.x end
-        if v.x > maxX then maxX = v.x end
-        if v.z < minZ then minZ = v.z end
-        if v.z > maxZ then maxZ = v.z end
-    end
+--- Queue one farmland for a recompute; repeated dirties coalesce (brief 3.5).
+--- Marks its summary PENDING until the next pass commits a replacement.
+function ViabilityMask:requestRecompute(farmlandId)
+    if farmlandId ~= nil then self._pendingFarmlands[farmlandId] = true end
+    return true
+end
 
-    local step = ViabilityMask.SAMPLE_STEP_M
-    local est = math.ceil((maxX - minX) / step) * math.ceil((maxZ - minZ) / step)
-    if est > ViabilityMask.MAX_SAMPLES then
-        step = step * math.ceil(math.sqrt(est / ViabilityMask.MAX_SAMPLES))
-    end
-
-    local out, n = {}, 0
-    local x = minX + step * 0.5
-    while x <= maxX and n < ViabilityMask.MAX_SAMPLES do
-        local z = minZ + step * 0.5
-        while z <= maxZ and n < ViabilityMask.MAX_SAMPLES do
-            local info = self:getCellGrowthInfo(fieldId, x, z)
-            if info ~= nil then
-                n = n + 1
-                out[n] = ViabilityMask.combine(info.bands)
-            end
-            z = z + step
-        end
-        x = x + step
-    end
-    return out
+--- Host monotonic-day fallback, used when Time Guard is absent (brief 3.7).
+function ViabilityMask:setCurrentMonotonicDay(day)
+    if type(day) == 'number' then self._currentMonotonicDay = day end
 end
 
 --- Turn a list of bands into the published area fractions. Pure, so the bench
