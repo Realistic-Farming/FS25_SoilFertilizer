@@ -121,6 +121,19 @@ SoilValueMaps.LAYER_DEFS = {
       maxVal = (SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
                 and SoilConstants.COMPACTION.TRAFFIC_DRAG.CAP) or 0.3,
       serverOnly = true },
+    -- [SF-53] GROWTH CREDIT bank. The two layers are one logical persistence unit
+    -- (brief 3.1): a cell is only ever read/written as a pair. growthCreditDays
+    -- holds the packed credit byte: low seven bits = bank days 0..84, high bit =
+    -- appliedThisCrop witness. growthCreditFruit holds the fruit identity 1..63.
+    -- minVal 0 / maxVal 254 makes unitsPerRaw exactly 1, so the semantic packed
+    -- value round-trips raw without quantisation (the materialAge shape). The
+    -- exact 0..254 linear encode maps semantic zero to raw one; "absent" is a
+    -- never-written cell (raw zero), which decodes to nil on read, while a
+    -- semantic zero-bank + applied bit (128) stays a valid crop record.
+    { key = "growthCreditDays",  file = "sfSoilMap_GrowthCreditDays.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    { key = "growthCreditFruit", file = "sfSoilMap_GrowthCreditFruit.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel

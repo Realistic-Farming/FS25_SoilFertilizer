@@ -77,6 +77,12 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- on the engine's own fruit plane. Inert unless the growth_modulation
     -- release gate is open and the mask is enabled.
     self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
+    -- [SF-53 One Ground] The single family growth dispatch. The manager owns the
+    -- one START/FINISHED message pair and routes to each conformed member, so a
+    -- member never subscribes independently (brief 3.6 / 9). GrowthCredit is the
+    -- first member routed here; GrowthBlock and ZoneYield keep their own
+    -- subscriptions until SF-78 and SF-14 conform and migrate onto this pair.
+    self._growthDispatchSubscribed = false
 
     -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
     -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
@@ -804,8 +810,18 @@ function SoilFertilityManager:activateSoilSystem()
         if self.growthCredit then
             self.growthCredit:initialize()
             if g_server ~= nil then
-                self.growthCredit:register()
+                self.growthCredit:registerDailyAccrual()
             end
+        end
+
+        -- [SF-53 One Ground] The single family growth dispatch: the manager owns
+        -- the one START/FINISHED message pair and routes to its conformed
+        -- members. GrowthCredit is the first member to receive through it (its
+        -- own independent FINISHED subscription is gone). GrowthBlock and
+        -- ZoneYield still subscribe themselves until SF-78/SF-14 conform and
+        -- migrate onto this same pair, so no member is double-delivered.
+        if g_server ~= nil then
+            self:registerGrowthFamilyDispatch()
         end
 
         -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
@@ -1573,6 +1589,11 @@ function SoilFertilityManager:saveSoilData()
         self.soilSystem:saveToXMLFile(xmlFile, "soilData")
         -- FieldSentry (#651): persist the player's manual blacklist alongside soil data.
         if FieldSentry_API then FieldSentry_API.saveToXMLFile(xmlFile, "soilData.fieldSentry") end
+        -- [SF-53 One Ground] Growth-credit small metadata rides the same soilData
+        -- block; the dense cell truth is the two GRLE files SoilValueMaps writes.
+        if self.growthCredit and type(self.growthCredit.saveToXMLFile) == 'function' then
+            self.growthCredit:saveToXMLFile(xmlFile, "soilData.growthCredit")
+        end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
         saveXMLFile(xmlFile)
         delete(xmlFile)
@@ -1663,6 +1684,12 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             self.soilSystem:loadFromXMLFile(xmlFile, "soilData")
             -- FieldSentry (#651): restore the manual blacklist (no-op if none saved).
             if FieldSentry_API then FieldSentry_API.loadFromXMLFile(xmlFile, "soilData.fieldSentry") end
+            -- [SF-53 One Ground] Restore the growth-credit small metadata (the GRLE
+            -- pair already restored inside valueMaps:initialize). The bank stays
+            -- PENDING_VALIDATION until current-session membership/fruit validation.
+            if self.growthCredit and type(self.growthCredit.loadFromXMLFile) == 'function' then
+                self.growthCredit:loadFromXMLFile(xmlFile, "soilData.growthCredit")
+            end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
             delete(xmlFile)
             local fieldCount = 0
@@ -2504,11 +2531,14 @@ function SoilFertilityManager:delete()
         self.settingsPanel = nil
     end
 
-    if self.soilSystem then
-        self.soilSystem:delete()
-    end
+    -- [SF-53 One Ground] The growth family drops BEFORE SoilFertilitySystem
+    -- releases the shared value maps (brief 3.8: "Delete GrowthCredit before
+    -- SoilFertilitySystem releases value maps"). The manager owns the single
+    -- family growth dispatch; remove its message pair first so a session reload
+    -- never routes a growth bell onto a torn-down provider.
+    self:unregisterGrowthFamilyDispatch()
 
-    -- SF-53 growth credit: drop the message-center subscription and the store.
+    -- SF-53 growth credit: unregister the daily accrual and drop the store.
     if self.growthCredit then
         self.growthCredit:delete()
         self.growthCredit = nil
@@ -2526,6 +2556,10 @@ function SoilFertilityManager:delete()
         self.zoneYield = nil
     end
 
+    if self.soilSystem then
+        self.soilSystem:delete()
+    end
+
     -- SF-77 topography cache: drop the terrain listener and the grids.
     if self.topography then
         self.topography:delete()
@@ -2538,6 +2572,58 @@ function SoilFertilityManager:delete()
     -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
 end
+-- ============================================================
+-- [SF-53 One Ground] THE SINGLE FAMILY GROWTH DISPATCH
+--
+-- The manager owns the one START_GROWTH_PERIOD / FINISHED_GROWTH_PERIOD message
+-- pair for the SF-2M family and routes each delivery to its conformed members
+-- (brief 3.6, 9: "Receive START and FINISHED only from SoilFertilityManager's
+-- one server family dispatch. Do not subscribe independently."). GrowthCredit is
+-- the first member routed here. GrowthBlock and ZoneYield retain their own
+-- subscriptions until SF-78 and SF-14 conform; they migrate onto this pair in
+-- their own builds. The dispatch is server-only (fruit-plane writes are server
+-- consequence). Each member call is pcall-guarded so one member can never take
+-- the others down with it.
+-- ============================================================
+
+function SoilFertilityManager:registerGrowthFamilyDispatch()
+    if self._growthDispatchSubscribed then return true end
+    if g_messageCenter == nil or MessageType == nil then return false end
+    local ok = pcall(function()
+        g_messageCenter:subscribe(MessageType.START_GROWTH_PERIOD, self.onGrowthStart, self)
+        g_messageCenter:subscribe(MessageType.FINISHED_GROWTH_PERIOD, self.onGrowthFinished, self)
+    end)
+    if ok then self._growthDispatchSubscribed = true end
+    return ok
+end
+
+function SoilFertilityManager:unregisterGrowthFamilyDispatch()
+    if not self._growthDispatchSubscribed then return end
+    local mc = g_messageCenter
+    if mc and MessageType and type(mc.unsubscribe) == 'function' then
+        pcall(function() mc:unsubscribe(MessageType.START_GROWTH_PERIOD, self) end)
+        pcall(function() mc:unsubscribe(MessageType.FINISHED_GROWTH_PERIOD, self) end)
+    end
+    self._growthDispatchSubscribed = false
+end
+
+--- START_GROWTH_PERIOD delivery. GrowthSystem publishes START before it installs
+--- the current period; route the transition period to every conformed member.
+function SoilFertilityManager:onGrowthStart(transitionPeriod)
+    if self.growthCredit and type(self.growthCredit.onStartGrowthPeriod) == 'function' then
+        pcall(self.growthCredit.onStartGrowthPeriod, self.growthCredit, transitionPeriod)
+    end
+end
+
+--- FINISHED_GROWTH_PERIOD delivery, payload (finishedPeriod, hasPendingGrowth).
+--- Routed to conformed members in the family's consequence order: credit first,
+--- then hold restore/active cleanup (SF-78, when it conforms), then SF-14 capture.
+function SoilFertilityManager:onGrowthFinished(finishedPeriod, hasPendingGrowth)
+    if self.growthCredit and type(self.growthCredit.onFinishedGrowthPeriod) == 'function' then
+        pcall(self.growthCredit.onFinishedGrowthPeriod, self.growthCredit, finishedPeriod, hasPendingGrowth)
+    end
+end
+
 -- ============================================================
 -- SF-52 THE PUBLISHED GROWTH CONTRACT (cross-mod surface)
 --

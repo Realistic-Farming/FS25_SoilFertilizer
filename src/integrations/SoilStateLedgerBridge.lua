@@ -42,6 +42,13 @@ function SoilStateLedgerBridge.buildState(mgr)
     if FieldSentry_API ~= nil and FieldSentry_API.getStateTable ~= nil then
         out.fieldSentry = FieldSentry_API.getStateTable()
     end
+    -- [SF-53 One Ground] Growth-credit small metadata mirrors through the ledger
+    -- like the rest of the soil block (brief 3.8: "the same normalized table
+    -- nested in SoilStateLedgerBridge.buildState when the optional ledger
+    -- exists"). No per-cell list; the dense truth is the two GRLE files.
+    if mgr ~= nil and mgr.growthCredit ~= nil and type(mgr.growthCredit.getStateTable) == 'function' then
+        out.growthCredit = mgr.growthCredit:getStateTable()
+    end
     out.lastSeenVersion = (mgr ~= nil and mgr.lastSeenVersion) or ""
     return out
 end
@@ -57,6 +64,10 @@ function SoilStateLedgerBridge.applyState(mgr)
     end
     if FieldSentry_API ~= nil and FieldSentry_API.applyStateTable ~= nil then
         FieldSentry_API.applyStateTable(data.fieldSentry)
+    end
+    -- [SF-53 One Ground] Restore the growth-credit metadata block (nil-safe).
+    if mgr.growthCredit ~= nil and type(mgr.growthCredit.applyStateTable) == 'function' then
+        mgr.growthCredit:applyStateTable(data.growthCredit)
     end
     mgr.lastSeenVersion = data.lastSeenVersion or ""
     return true
