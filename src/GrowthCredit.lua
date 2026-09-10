@@ -551,9 +551,12 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
         end
     end
 
-    if committedAny then
-        self._bankGeneration = self._bankGeneration + 1
-    end
+    -- Ordinary day accrual does NOT advance the bank generation: a drained
+    -- FINISHED bracket must see the same generation it captured at START (model
+    -- E9), and daily day-capping accrual is not a material bank change. Only a
+    -- spend that writes or a full clear advances it (see _spendFarmland and
+    -- _classifyBank). The bracket's CLOSED_STALE guard therefore means "the bank
+    -- was reset or already spent while the bracket was open", never "days passed".
     -- A complete farmland pass (whether or not any cell happened to be excellent
     -- this day) resolves the restored-bank pending validation: membership and
     -- fruit identity have now been checked against current truth.
@@ -696,7 +699,8 @@ function GrowthCredit:onStartGrowthPeriod(transitionPeriod)
     if not self:_isServer() then return end
     if not self.isInitialized then return end
     if not self:isLive() then return end
-    local growthMode = mission.missionInfo and mission.missionInfo.growthMode
+    local mission = g_currentMission
+    local growthMode = mission and mission.missionInfo and mission.missionInfo.growthMode
     local modeName = (growthMode == GrowthMode.SEASONAL) and 'SEASONAL'
         or (growthMode == GrowthMode.DAILY) and 'DAILY' or 'DISABLED'
 
