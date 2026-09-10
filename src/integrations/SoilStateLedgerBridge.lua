@@ -54,6 +54,11 @@ function SoilStateLedgerBridge.buildState(mgr)
     if mgr ~= nil and mgr.growthBlock ~= nil and type(mgr.growthBlock.getStateTable) == 'function' then
         out.growthBlock = mgr.growthBlock:getStateTable()
     end
+    -- [SF-14 One Ground] Zone-yield receipt/fallback metadata mirrors the same
+    -- way; no per-cell list, the dense capture truth is the yieldEfficiency GRLE.
+    if mgr ~= nil and mgr.zoneYield ~= nil and type(mgr.zoneYield.getStateTable) == 'function' then
+        out.zoneYield = mgr.zoneYield:getStateTable()
+    end
     out.lastSeenVersion = (mgr ~= nil and mgr.lastSeenVersion) or ""
     return out
 end
@@ -77,6 +82,10 @@ function SoilStateLedgerBridge.applyState(mgr)
     -- [SF-78 One Ground] Restore the growth-block hold metadata block (nil-safe).
     if mgr.growthBlock ~= nil and type(mgr.growthBlock.applyStateTable) == 'function' then
         mgr.growthBlock:applyStateTable(data.growthBlock)
+    end
+    -- [SF-14 One Ground] Restore the zone-yield receipt/fallback block (nil-safe).
+    if mgr.zoneYield ~= nil and type(mgr.zoneYield.applyStateTable) == 'function' then
+        mgr.zoneYield:applyStateTable(data.zoneYield)
     end
     mgr.lastSeenVersion = data.lastSeenVersion or ""
     return true
