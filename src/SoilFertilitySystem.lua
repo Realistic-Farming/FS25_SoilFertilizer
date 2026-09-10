@@ -153,6 +153,10 @@ function SoilFertilitySystem.new(settings)
     -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
     -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
     self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
+    -- [SF-79] Positional pH: the map revision advances on every applied pH
+    -- footprint write; a derived field report is CURRENT only at the revision it
+    -- was computed from. Session-local; the map's own GRLE file is the truth.
+    self._phMapRevision = 0
     -- [SF-43] MATERIAL DOWN. Created here beside the store it rides on; armed only
     -- after the store initializes, because arming asserts its layer keys resolved.
     self.materialDown = MaterialDown     and MaterialDown.new()     or nil
@@ -3679,7 +3683,16 @@ function SoilFertilitySystem:refreshFieldOverlay(fieldId)
             self.valueMaps:paintPolygon("nitrogen",      verts, field.nitrogen)
             self.valueMaps:paintPolygon("phosphorus",    verts, field.phosphorus)
             self.valueMaps:paintPolygon("potassium",     verts, field.potassium)
-            self.valueMaps:paintPolygon("pH",            verts, field.pH)
+            -- [SF-79] The admin override sets a pH value through the writer (SET),
+            -- not a direct display repaint; a report never paints chemical pH.
+            if type(self._applyPHFootprint) == "function" then
+                self:_applyPHFootprint(fieldId, {
+                    operation = PositionalPH.OP_SET, scope = PositionalPH.SCOPE_FIELD,
+                    value = field.pH, source = 'admin',
+                })
+            else
+                self.valueMaps:paintPolygon("pH", verts, field.pH)
+            end
             self.valueMaps:paintPolygon("organicMatter", verts, field.organicMatter)
             -- Display layers repaint to the new field state too
             local disp = self:_vmDisplayValues(field)
@@ -3724,7 +3737,10 @@ end
 -- =========================================================
 
 -- fieldData keys mirrored into value maps (compaction has its own write path)
-local VM_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "pH", "organicMatter" }
+-- [SF-79] pH is deliberately NOT here: the pH value map is written positionally
+-- through PositionalPH's writer, and the scalar replay below would repaint the
+-- whole field from a field average (the shortcut SF-79 retires).
+local VM_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "organicMatter" }
 
 -- REFINED: field-level display layers rendered per-pixel. Values come from
 -- fieldData scalars / computed values; kept current by _vmMirrorDisplayTick.
@@ -4259,7 +4275,19 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
         if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
         if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
-        if sd.dPH ~= 0 then vm:addPaintStrip("pH",            sx, sz, wx, wz, hx, hz, sd.dPH * scale) end
+        -- [SF-79] pH is written through the positional writer (cohort-correct:
+        -- the saturation cohort is established before the interior add), not the
+        -- add-then-saturate strip primitive.
+        if sd.dPH ~= 0 and type(self._applyPHFootprint) == "function" then
+            self:_applyPHFootprint(fieldId, {
+                operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_STRIP,
+                sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz,
+                value = sd.dPH * scale, source = 'application',
+            })
+            self:_phRefreshScalar(fieldId)
+        elseif sd.dPH ~= 0 then
+            vm:addPaintStrip("pH", sx, sz, wx, wz, hx, hz, sd.dPH * scale)
+        end
         if sd.dOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, sd.dOM * scale) end
 
         -- Advance the anchor to the line this quad actually painted.
@@ -4405,10 +4433,11 @@ function SoilFertilitySystem:_tillageDecompMult(x, z)
     return td.UNTILLED or 0.6
 end
 
+---@param fieldId number
 ---@param field table
 ---@param timeFactor number  1 / daysPerMonth (Issue #349 month normalization)
 ---@param limits table       SoilConstants.NUTRIENT_LIMITS
-function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
+function SoilFertilitySystem:_applyMeadowProfile(fieldId, field, timeFactor, limits)
     local m = SoilConstants.MEADOW
     if not m then return end
 
@@ -4421,12 +4450,18 @@ function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
     field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
         (field.organicMatter or 0) + m.OM_GAIN * timeFactor)
 
-    -- Slow pH drift toward neutral, at a reduced rate vs cropland.
+    -- Slow pH drift toward neutral, at a reduced rate vs cropland. [SF-79] routed
+    -- through the positional writer; the scalar is republished from the report.
     local phRate = (SoilConstants.PH_NORMALIZATION.RATE or 0) * m.PH_DRIFT_FACTOR * timeFactor
-    if field.pH < limits.PH_NEUTRAL_LOW then
-        field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phRate)
-    elseif field.pH > limits.PH_NEUTRAL_HIGH then
-        field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phRate)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phRate,
+            limits.PH_NEUTRAL_LOW, limits.PH_NEUTRAL_HIGH, 'meadow')
+    else
+        if field.pH < limits.PH_NEUTRAL_LOW then
+            field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phRate)
+        elseif field.pH > limits.PH_NEUTRAL_HIGH then
+            field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phRate)
+        end
     end
 
     -- Grassland sheds accumulated weed/pest/disease pressure instead of building it.
@@ -4593,7 +4628,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- toggle; the profile itself lives here in S&F (locked decision, #651). The shared
     -- housekeeping above (buffer/coverage/freeze reset, compaction decay) already ran.
     if isMeadow then
-        self:_applyMeadowProfile(field, timeFactor, limits)
+        self:_applyMeadowProfile(fieldId, field, timeFactor, limits)
         return
     end
 
@@ -4708,10 +4743,17 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     end
 
     -- ── pH slow drift toward neutral ─────────────────────────────────────────
-    if field.pH < limits.PH_NEUTRAL_LOW then
-        field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
-    elseif field.pH > limits.PH_NEUTRAL_HIGH then
-        field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phNorm.RATE * timeFactor)
+    -- [SF-79] routed through the positional writer; the scalar is republished
+    -- from the derived report.
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phNorm.RATE * timeFactor,
+            limits.PH_NEUTRAL_LOW, limits.PH_NEUTRAL_HIGH, 'daily')
+    else
+        if field.pH < limits.PH_NEUTRAL_LOW then
+            field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
+        elseif field.pH > limits.PH_NEUTRAL_HIGH then
+            field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phNorm.RATE * timeFactor)
+        end
     end
 
     -- ── Weed pressure - sourced from game's native weed density map ─────────
@@ -5142,7 +5184,13 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                     field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
                     field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
                     field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-                    field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
+                    -- [SF-79] pH acidification goes through the positional writer.
+                    if type(self._phApplyField) == "function" then
+                        self:_phApplyField(fieldId, PositionalPH.OP_DELTA,
+                            -(leachFactor * rain.PH_ACIDIFICATION), nil, nil, 'rain')
+                    else
+                        field.pH = math.max(limits.PH_MIN, field.pH - (leachFactor * rain.PH_ACIDIFICATION))
+                    end
                     -- REFINED: mirror leaching onto the value maps. Per-tick amounts are
                     -- far below one raw map step, so they accumulate in field._vmPend and
                     -- flush as a uniform polygon shift once large enough.
@@ -5617,7 +5665,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.N then field.nitrogen   = math.min(limits.MAX, field.nitrogen   + entry.N * factor * tunFert) end
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor * tunFert) end
         if entry.K then field.potassium  = math.min(limits.MAX, field.potassium  + entry.K * factor * tunFert) end
-        if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
+        -- [SF-79] pH is NOT mutated as a field scalar here. The positional writer
+        -- owns the map and the scalar is republished from the derived report after
+        -- the boom strip / narrow-tool write below. A field-average repaint is the
+        -- exact shortcut SF-79 retires.
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
         -- #735: stash THIS tick's field-average nutrient delta so markBoomCells can paint
@@ -5694,7 +5745,17 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
             if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
             if entry.K  then vm:writeValueAtWorld("potassium",     sprayX, sprayZ, field.potassium,     2.5) end
-            if entry.pH then vm:writeValueAtWorld("pH",            sprayX, sprayZ, field.pH,            2.5) end
+            -- [SF-79] The narrow-tool pH dot goes through the positional writer, then
+            -- republishes the field scalar from the derived report.
+            if entry.pH and type(self._applyPHFootprint) == "function" then
+                self:_applyPHFootprint(fieldId, {
+                    operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_POINT,
+                    x = sprayX, z = sprayZ, value = entry.pH * factor * tunFert, source = 'application',
+                })
+                self:_phRefreshScalar(fieldId)
+            elseif entry.pH then
+                vm:writeValueAtWorld("pH", sprayX, sprayZ, field.pH, 2.5)
+            end
             if entry.OM then vm:writeValueAtWorld("organicMatter", sprayX, sprayZ, field.organicMatter, 2.5) end
             local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
             if minimapLayer then minimapLayer:markDirty() end
@@ -6661,7 +6722,11 @@ function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier)
     local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._burnPassN  or 0)))
     if phDrop <= 0 and nDrain <= 0 then return end
 
-    field.pH          = math.max(limits.PH_MIN, field.pH - phDrop)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_DELTA, -phDrop, nil, nil, 'burn')
+    else
+        field.pH = math.max(limits.PH_MIN, field.pH - phDrop)
+    end
     field.nitrogen    = math.max(limits.MIN, field.nitrogen - nDrain)
     field._burnPassPh = (field._burnPassPh or 0) + phDrop
     field._burnPassN  = (field._burnPassN  or 0) + nDrain
@@ -6799,7 +6864,11 @@ function SoilFertilitySystem:applyScorchEffect(fieldId, fillTypeName)
     local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._scorchPassN  or 0)))
     if phDrop <= 0 and nDrain <= 0 then return end
 
-    field.pH          = math.max(limits.PH_MIN, field.pH - phDrop)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_DELTA, -phDrop, nil, nil, 'scorch')
+    else
+        field.pH = math.max(limits.PH_MIN, field.pH - phDrop)
+    end
     field.nitrogen    = math.max(limits.MIN, field.nitrogen - nDrain)
     field._scorchPassPh = (field._scorchPassPh or 0) + phDrop
     field._scorchPassN  = (field._scorchPassN  or 0) + nDrain
@@ -6949,6 +7018,15 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local ph = field.pH         or SoilConstants.FIELD_DEFAULTS.pH
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
+    -- [SF-79] pH read contract. The map/report is the authority; pH is numeric only
+    -- for LOCAL / FIELD_REPORT / APPROXIMATE. Stale or unavailable returns nil, with
+    -- pHLastKnown carrying the frozen scalar separately. No unknown-to-7.0.
+    local phStatus      = PositionalPH and PositionalPH.READ_FIELD or 'FIELD_REPORT'
+    local phGrain       = nil
+    local phRevision    = self._phMapRevision or 0
+    local phLastKnown   = field.pH
+    local phResolved    = false
+
     local fromZoneCell = false
     local posPest = nil
     local posDisease = nil
@@ -6972,7 +7050,14 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = vn  or n
             p  = vp  or p
             k  = vk  or k
-            ph = vph or ph
+            -- [SF-79] a positional pH read is LOCAL; a missing pixel leaves the
+            -- request to the field report (never a fabricated default).
+            if type(vph) == 'number' then
+                ph = vph
+                phStatus = PositionalPH and PositionalPH.READ_LOCAL or 'LOCAL'
+                if type(self._phGrainMetres) == 'function' then phGrain = self:_phGrainMetres() end
+                phResolved = true
+            end
             om = vom or om
             posPest = vpest
             posDisease = vdis
@@ -6987,7 +7072,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = cell.N  or n
             p  = cell.P  or p
             k  = cell.K  or k
-            ph = cell.pH or ph
+            if type(cell.pH) == 'number' then
+                ph = cell.pH
+                phStatus = PositionalPH and PositionalPH.READ_APPROXIMATE or 'APPROXIMATE'
+                phResolved = true
+            end
             om = cell.OM or om
             fromZoneCell = true
         end
@@ -7137,6 +7226,35 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         if FieldSentry_Core.reasonL10nKey then fsReasonKey = FieldSentry_Core.reasonL10nKey(r) end
     end
 
+    -- [SF-79] Resolve the field-level pH from the derived report when the request
+    -- was not a positional sample. A field with no current report is UNAVAILABLE:
+    -- pH is nil, pHLastKnown carries the scalar, and no default is substituted.
+    if not phResolved and type(self._ensurePHReport) == "function" then
+        local rep = self:_ensurePHReport(fieldId)
+        if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+            ph = rep.value
+            phStatus = PositionalPH.READ_FIELD
+            phResolved = true
+        else
+            ph = nil
+            phStatus = PositionalPH.READ_UNAVAILABLE
+        end
+    end
+
+    -- [SF-79] needsFertilization uses the same pH sample as its request. A known
+    -- other deficiency stays true; otherwise unknown pH yields an unknown result.
+    local knownOtherNeed = field.nitrogen < fertThresholds.nitrogen
+        or field.phosphorus < fertThresholds.phosphorus
+        or field.potassium < fertThresholds.potassium
+    local needsFert, needsFertKnown
+    if ph ~= nil then
+        needsFert = knownOtherNeed or (ph < fertThresholds.pH)
+        needsFertKnown = true
+    else
+        needsFert = knownOtherNeed
+        needsFertKnown = knownOtherNeed
+    end
+
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
@@ -7150,6 +7268,10 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         cropTargets = cropTargets,
         organicMatter = om,
         pH = ph,
+        pHStatus = phStatus,
+        pHGrainMetres = phGrain,
+        pHRevision = phRevision,
+        pHLastKnown = phLastKnown,
         lastCrop = cropName,
         lastCrop2 = field.lastCrop2,
         lastCrop3 = field.lastCrop3,  -- #739: third-back crop, already stored+synced, now published for the rotation planner
@@ -7188,12 +7310,8 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         sessionLastProduct      = field.sessionLastProduct,
         compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
-        needsFertilization = (
-            field.nitrogen < fertThresholds.nitrogen or
-            field.phosphorus < fertThresholds.phosphorus or
-            field.potassium < fertThresholds.potassium or
-            field.pH < fertThresholds.pH
-        )
+        needsFertilization = needsFert,
+        needsFertilizationKnown = needsFertKnown
     }
 end
 
@@ -7213,7 +7331,9 @@ function SoilFertilitySystem:getFieldUrgency(fieldId)
 
     local phOpt = 6.5  -- optimal pH target (mid-point of neutral band 6.5-7.0)
     local phMin = SoilConstants.NUTRIENT_LIMITS and SoilConstants.NUTRIENT_LIMITS.PH_MIN or 5.0
-    local phDef = math.max(0, phOpt - info.pH) / (phOpt - phMin)
+    -- [SF-79] unknown pH contributes no urgency (never a fabricated deficit).
+    local phDef = (type(info.pH) == 'number')
+        and math.max(0, phOpt - info.pH) / (phOpt - phMin) or 0
 
     local weedDef = (info.weedPressure or 0) / 100
     local pestDef = (info.pestPressure or 0) / 100
@@ -7261,6 +7381,10 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- F66 relief marker. Its presence means this save has already had the one-time
     -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
     setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
+    -- [SF-79] Positional pH schema marker. Its presence records that this save has
+    -- the positional pH contract; it never proves the pH carrier exists (a missing
+    -- map is an explicit recovery at load).
+    setXMLInt(xmlFile, key .. "#sf79PHSchema", 1)
 
     -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
     -- safety copy, the same one StateLedger's block mirrors).
@@ -7342,6 +7466,11 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             -- one fresh capture pass succeeds.
             if field.zoneYieldCaptureReady == true then
                 setXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady", true)
+            end
+
+            -- [SF-79] Positional pH metadata: frozen seed + sub-step remainders.
+            if type(self._phSaveFieldXML) == "function" then
+                self:_phSaveFieldXML(xmlFile, fieldKey, field)
             end
 
             -- Save daily application throttles
@@ -7492,6 +7621,13 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- Organic certification state (leaves the field conventional if absent)
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:loadFieldState(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+
+        -- [SF-79] Restore the positional pH metadata (seed + remainders). The report
+        -- stays absent until re-derived from the pH map, so a persisted placeholder
+        -- can never present as current local soil.
+        if type(self._phLoadFieldXML) == "function" then
+            self:_phLoadFieldXML(xmlFile, fieldKey, self.fieldData[fieldId])
         end
 
         -- Load daily application throttles
@@ -7724,6 +7860,17 @@ function SoilFertilitySystem:getSoilStateTable()
             if field.zoneYieldCaptureReady == true then
                 e.zoneYieldCaptureReady = true
             end
+            -- [SF-79] Positional pH metadata (matches XML save).
+            if type(field._phSeedScalar) == "number" then
+                e.sf79PHSeed = field._phSeedScalar
+            end
+            if field._phPending and #field._phPending > 0 then
+                local pt = {}
+                for i, p in ipairs(field._phPending) do
+                    pt[i] = { cause = p.cause, kind = p.kind, amount = p.amount, domainKey = p.domainKey }
+                end
+                e.sf79PHPending = pt
+            end
             -- Organic certification sub-table (only when present).
             if field.organic then
                 e.organic = {
@@ -7818,6 +7965,8 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 frozenYieldModifier   = e.frozenYieldModifier,
                 frozenYieldFruitType  = e.frozenYieldFruitType,
                 zoneYieldCaptureReady = e.zoneYieldCaptureReady == true and true or nil,
+                -- [SF-79] Positional pH metadata (matches the XML save).
+                _phSeedScalar         = e.sf79PHSeed,
                 coverageFraction      = e.coverageFraction or 0,
                 lastAlertSeason       = e.lastAlertSeason,
                 compaction            = 0,
@@ -7848,6 +7997,18 @@ function SoilFertilitySystem:applySoilStateTable(data)
             self.herbicideAppliedDay[fieldId]   = e.herbicideAppliedDay or 0
             self.insecticideAppliedDay[fieldId] = e.insecticideAppliedDay or 0
             self.fungicideAppliedDay[fieldId]   = e.fungicideAppliedDay or 0
+            -- [SF-79] Positional pH pending remainders (report re-derives on demand).
+            f._phPending = {}
+            if type(e.sf79PHPending) == "table" then
+                for _, p in ipairs(e.sf79PHPending) do
+                    if type(p) == "table" and p.domainKey ~= nil then
+                        f._phPending[#f._phPending + 1] = {
+                            cause = p.cause or "", kind = p.kind or "",
+                            amount = p.amount or 0, domainKey = p.domainKey,
+                        }
+                    end
+                end
+            end
             -- Per-area zone cells.
             if e.zoneData then
                 for cellKey, cell in pairs(e.zoneData) do

@@ -2199,7 +2199,7 @@ function SoilSettingsPanel:handleClick(id, data)
                                 N = info.nitrogen or 50,
                                 P = info.phosphorus or 50,
                                 K = info.potassium or 50,
-                                pH = math.floor((info.pH or 6.5)*10)/10,
+                                pH = info.pH and (math.floor(info.pH*10)/10) or 6.5,
                                 OM = math.floor((info.organicMatter or 5.0)*10)/10
                             }
                         else

@@ -268,6 +268,9 @@ end
 ---@param bands table    cached bands (field._snBands)
 function SpatialNutrients:queueBandedDelta(selfSoilSystem, fieldId, field, mapKey, delta)
     if delta == 0 then return end
+    -- [SF-79] pH is written positionally through the PositionalPH writer; the old
+    -- banded second paint is retired so it cannot flatten the chemical map.
+    if mapKey == "pH" then return end
     local bands = field._snBands
     if not bands or #bands <= 1 then
         -- One band: the uniform path, exactly today's behaviour.
@@ -318,7 +321,7 @@ function SpatialNutrients:flushBands(selfSoilSystem, fieldId, field)
         local hull = field._snBandHull and field._snBandHull[bandKey]
         if hull and #hull >= 3 then
             for mapKey, amount in pairs(keys) do
-                if amount ~= 0 then
+                if amount ~= 0 and mapKey ~= "pH" then
                     local applied = selfSoilSystem.valueMaps:applyDeltaToPolygon(mapKey, hull, amount)
                     if applied ~= 0 then
                         keys[mapKey] = amount - applied
@@ -329,7 +332,7 @@ function SpatialNutrients:flushBands(selfSoilSystem, fieldId, field)
             -- No derivable hull: settle the whole band's delta through the field
             -- uniform path rather than losing it to a nil polygon.
             for mapKey, amount in pairs(keys) do
-                if amount ~= 0 then
+                if amount ~= 0 and mapKey ~= "pH" then
                     selfSoilSystem:_vmQueueFieldDelta(field, mapKey, amount)
                     keys[mapKey] = 0
                 end

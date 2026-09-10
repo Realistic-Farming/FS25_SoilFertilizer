@@ -311,12 +311,15 @@ function SoilFieldDetailDialog:_populateData()
 
     -- pH (0-14 scale, not %)
     if self.detailPH then
-        self.detailPH:setText(string.format("%.2f", info.pH or 7.0))
+        self.detailPH:setText(info.pH and string.format("%.2f", info.pH) or "-")
     end
     if self.detailPHStatus then
-        local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
+        local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
         local phStatus, phColor
-        if ph >= 6.5 and ph <= 7.0 then
+        if ph == nil then
+            phStatus = tr("sf_pda_status_unknown", "Unknown")
+            phColor  = COLOR_DIM
+        elseif ph >= 6.5 and ph <= 7.0 then
             phStatus = tr("sf_pda_status_good",  "Good")
             phColor  = COLOR_GOOD
         elseif ph >= 6.0 and ph < 7.5 then

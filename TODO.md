@@ -195,6 +195,17 @@
 - [x] SF-78 bar 109/0 (Groups A-I; Group A shipped-surface re-point); full suite 3505 passed, only om_213 red; syntax + lint clean.
 - [~] In-game (owed): SF78_RUNTIME_ACCEPTANCE harness (cannot run offline); native write + post-state, paired-file interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
 
+## SF-79 sprayed-area lime and chemical pH (2026-09-10, draft PR #933 into development)
+
+- [x] `src/PositionalPH.lua`: positional pH writer `_applyPHFootprint` (DELTA/SET/NORMALIZE x POINT/STRIP/POLYGON/FIELD); the pH map is the authority, the field number is a derived report; saturation cohorts before the interior add (240+10 -> 250).
+- [x] Derived `_phReport`/`_ensurePHReport` + preservation-first migration + domain-keyed sub-step remainders; metadata on `soilData` XML + StateLedger.
+- [x] Every pH writer routed (application, daily/meadow normalize, rain, burn, scorch, admin); pH removed from the scalar replay and the SpatialNutrients second paint.
+- [x] `getFieldInfo` pH read contract (pHStatus/pHGrainMetres/pHRevision/pHLastKnown; nil when unavailable) + ~20-consumer nil sweep; `needsFertilizationKnown`.
+- [x] `updatePHWorkAuto` pH-aware AUTO rate applied once before the multiplier.
+- [x] Network: `pHReportValid` beside the pH report on full/batch/update + NetworkSync SCALARS; FULL/PATCH chunk transport header + multi-part assembler.
+- [x] SF-79 bar 114/0 (Groups A-J; Group A shipped-surface re-point); full suite 3619 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF79_RUNTIME_ACCEPTANCE harness (cannot run offline); native executeGet sum/count, union masks, 8 KiB payload framing, save interruption + GRLE recovery, dedi/client sync.
+
 ## SF-14 One Ground zone yield (2026-09-10, draft PR #932 into development)
 
 - [x] `ZoneYield.lua` conformance rewrite over the SF-52 plan; four source defects retired (first-field/one-fruit identity, private 8m/600 ruler, incomplete axis-aligned drag box, legacy scalar readiness/freeze).

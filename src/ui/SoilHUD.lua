@@ -1100,7 +1100,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
     -- numbers in this box was redundant. Compaction still feeds the "Needs" summary below
     -- via compPct even though its own row is gone.
-    table.insert(lines, { group = "early", label = "pH",      value = string.format("%.1f", info.pH) })
+    table.insert(lines, { group = "early", label = "pH",      value = info.pH and string.format("%.1f", info.pH) or "--" })
     table.insert(lines, { group = "early", label = "OM",      value = string.format("%.1f%%", info.organicMatter) })
     if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label") or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
     if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label") or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
@@ -1208,7 +1208,7 @@ function SoilHUD:refreshFieldData()
         if fieldId ~= prevId and self.cachedFieldInfo then
             local info = self.cachedFieldInfo
             local ppm  = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
-            SoilLogger.debug("HUD field → %s | N=%d (raw) → %dppm | P=%d → %dppm | K=%d → %dppm | pH=%.1f | OM=%.1f",
+            SoilLogger.debug("HUD field → %s | N=%d (raw) → %dppm | P=%d → %dppm | K=%d → %dppm | pH=%s | OM=%.1f",
                 tostring(fieldId),
                 math.floor(info.nitrogen.value + 0.5),
                 math.floor(info.nitrogen.value   * ppm.N + 0.5),
@@ -1216,7 +1216,7 @@ function SoilHUD:refreshFieldData()
                 math.floor(info.phosphorus.value * ppm.P + 0.5),
                 math.floor(info.potassium.value  + 0.5),
                 math.floor(info.potassium.value  * ppm.K + 0.5),
-                info.pH,
+                tostring(info.pH),
                 info.organicMatter
             )
             SoilLogger.debug("HUD status → N:%s P:%s K:%s",
@@ -1247,7 +1247,7 @@ function SoilHUD:refreshFieldData()
         else
             self._fmt_cropText = g_i18n:getText("sf_hud_fallow")
         end
-        self._fmt_pHStr = string.format("%.1f",  info.pH)
+        self._fmt_pHStr = info.pH and string.format("%.1f",  info.pH) or "--"
         self._fmt_omStr = string.format("%.1f%%", info.organicMatter)
         -- N/P/K value strings pre-computed here; ghost-bar delta is still live in draw()
         local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
@@ -2022,20 +2022,22 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local PH_MIN, PH_MAX, PH_OPT = 5.0, 8.5, 6.75
     local phRange = PH_MAX - PH_MIN
 
-    local pH = info.pH or PH_OPT
+    local pH = info.pH
+    local phKnown = (pH ~= nil)
+    if not phKnown then pH = PH_OPT end   -- layout only; text/status report unknown
     local phNorm  = (math.max(PH_MIN, math.min(PH_MAX, pH)) - PH_MIN) / phRange
     local optNorm = (PH_OPT - PH_MIN) / phRange
 
-    local pHCol = self:pHColor(pH)
+    local pHCol = phKnown and self:pHColor(pH) or {0.5, 0.5, 0.5, 1.0}
 
     -- Same rounded fill-level track as the N/P/K rows. Directional pH preview
     -- remains a translucent overlay because it can move either left or right.
     local renderer = SoilHUD.getBaseGameRenderer()
     local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
-        and renderer:renderProgressBar(barX, barY, barW, barH, phNorm, pHCol)
+        and renderer:renderProgressBar(barX, barY, barW, barH, phKnown and phNorm or 0, pHCol)
     if not usedNativeBar then
         self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
-        if phNorm > 0 then
+        if phKnown and phNorm > 0 then
             self:drawRect(barX, barY, phNorm * barW, barH, pHCol)
         end
     end
@@ -2066,11 +2068,12 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local valX = barX + barW + 0.006*s
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
     renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
-               string.format("%.1f", pH))
+               phKnown and string.format("%.1f", pH) or "--")
 
     -- Status text (right-aligned)
     local phStatus
-    if pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
+    if not phKnown then phStatus = "Unknown"
+    elseif pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
     elseif pH >= 5.5 and pH <= 7.5 then phStatus = "Fair"
     else phStatus = "Poor" end
     setTextAlignment(RenderText.ALIGN_RIGHT)

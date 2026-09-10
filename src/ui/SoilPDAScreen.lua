@@ -894,6 +894,7 @@ function SoilPDAScreen:_refreshSummaryStats()
 
     -- Compute averages
     local sumN, sumP, sumK, sumPH, sumOM = 0, 0, 0, 0, 0
+    local phCount = 0
     local weedCount, pestCount, diseaseCount, attentionCount = 0, 0, 0, 0
     local n = totalFields
 
@@ -902,7 +903,8 @@ function SoilPDAScreen:_refreshSummaryStats()
         sumN  = sumN  + info.nitrogen.value
         sumP  = sumP  + info.phosphorus.value
         sumK  = sumK  + info.potassium.value
-        sumPH = sumPH + (info.pH or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] an unknown pH sample is excluded from the mean, never counted as 7.0.
+        if type(info.pH) == 'number' then sumPH = sumPH + info.pH; phCount = phCount + 1 end
         sumOM = sumOM + (info.organicMatter or 3.5)
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
@@ -913,7 +915,7 @@ function SoilPDAScreen:_refreshSummaryStats()
     local avgN   = n > 0 and math.floor(sumN  / n) or 0
     local avgP   = n > 0 and math.floor(sumP  / n) or 0
     local avgK   = n > 0 and math.floor(sumK  / n) or 0
-    local avgPH  = n > 0 and string.format("%.1f", sumPH / n) or "--"
+    local avgPH  = phCount > 0 and string.format("%.1f", sumPH / phCount) or "--"
     local avgOM  = n > 0 and string.format("%.1f", sumOM / n) or "--"
 
     -- Set text and color for nutrient averages
@@ -1047,15 +1049,20 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
 
     -- pH
     if phEl then
-        local phVal = string.format("%.1f", info.pH or SoilConstants.FIELD_DEFAULTS.pH)
-        phEl:setText(phVal)
-        local ph = math.floor(((info.pH or SoilConstants.FIELD_DEFAULTS.pH) * 10) + 0.5) / 10
-        if ph >= 6.5 and ph <= 7.0 then
-            phEl:setTextColor(unpack(COLOR_GOOD))
-        elseif ph >= 6.0 and ph < 7.5 then
-            phEl:setTextColor(unpack(COLOR_FAIR))
+        if info.pH == nil then
+            phEl:setText("--")
+            phEl:setTextColor(unpack(COLOR_DIM))
         else
-            phEl:setTextColor(unpack(COLOR_POOR))
+            local phVal = string.format("%.1f", info.pH)
+            phEl:setText(phVal)
+            local ph = math.floor((info.pH * 10) + 0.5) / 10
+            if ph >= 6.5 and ph <= 7.0 then
+                phEl:setTextColor(unpack(COLOR_GOOD))
+            elseif ph >= 6.0 and ph < 7.5 then
+                phEl:setTextColor(unpack(COLOR_FAIR))
+            else
+                phEl:setTextColor(unpack(COLOR_POOR))
+            end
         end
     end
 
@@ -1128,7 +1135,8 @@ local function buildNeedsString(info)
     if info.potassium.value  < kThreshPoor then
         table.insert(needs, tr("sf_pda_need_k", "Potassium"))
     end
-    if (info.pH or SoilConstants.FIELD_DEFAULTS.pH) < phThreshLow then
+    -- [SF-79] unknown pH cannot assert a lime need.
+    if type(info.pH) == 'number' and info.pH < phThreshLow then
         table.insert(needs, tr("sf_pda_need_ph", "Lime (pH)"))
     end
     if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then

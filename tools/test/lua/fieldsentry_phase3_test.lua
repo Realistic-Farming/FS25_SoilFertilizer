@@ -60,7 +60,7 @@ do
     nitrogen = 20, phosphorus = 20, potassium = 20, organicMatter = 3.0, pH = 5.5,
     weedPressure = 30, pestPressure = 20, diseasePressure = 10,
   }
-  sys:_applyMeadowProfile(field, 1.0, limits)
+  sys:_applyMeadowProfile(1, field, 1.0, limits)
   T.near("meadow regrows N", field.nitrogen, 20 + m.REGROW_N)
   T.near("meadow regrows P", field.phosphorus, 20 + m.REGROW_P)
   T.near("meadow regrows K", field.potassium, 20 + m.REGROW_K)
@@ -75,7 +75,7 @@ do
   local sys = setmetatable({}, { __index = SoilFertilitySystem })
   local field = { nitrogen = 20, phosphorus = 20, potassium = 20, organicMatter = 3.0,
                   pH = 6.5, weedPressure = 0.5, pestPressure = 0, diseasePressure = 0 }
-  sys:_applyMeadowProfile(field, 1.0, SoilConstants.NUTRIENT_LIMITS)
+  sys:_applyMeadowProfile(1, field, 1.0, SoilConstants.NUTRIENT_LIMITS)
   T.ok("weed pressure clamps at 0", field.weedPressure == 0)
 end
 
