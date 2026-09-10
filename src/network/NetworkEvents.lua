@@ -405,6 +405,10 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local potassium = streamReadFloat32(streamId)
         local organicMatter = streamReadFloat32(streamId)
         local pH = streamReadFloat32(streamId)
+        -- [SF-79] pH travels as a REPORT. pHReportValid says whether the sender had
+        -- a current positional report for this field; a false flag never overwrites
+        -- local/zone/display pH as authoritative soil.
+        local pHReportValid = streamReadBool(streamId)
         local lastCrop = streamReadString(streamId)
         local lastCrop2 = streamReadString(streamId)
         local lastCrop3 = streamReadString(streamId)
@@ -481,6 +485,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 potassium = potassium,
                 organicMatter = organicMatter,
                 pH = pH,
+                pHReportValid = pHReportValid == true,
                 lastCrop = lastCrop,
                 lastCrop2 = lastCrop2,
                 lastCrop3 = lastCrop3,
@@ -554,6 +559,8 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         streamWriteFloat32(streamId, field.potassium or SoilConstants.FIELD_DEFAULTS.potassium)
         streamWriteFloat32(streamId, field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter)
         streamWriteFloat32(streamId, field.pH or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] report validity beside the pH report (false = not current local soil).
+        streamWriteBool(streamId, field.pHReportValid ~= false)
         streamWriteString(streamId, field.lastCrop or "")
         streamWriteString(streamId, field.lastCrop2 or "")
         streamWriteString(streamId, field.lastCrop3 or "")
@@ -685,6 +692,8 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         streamWriteFloat32(streamId, field.potassium          or SoilConstants.FIELD_DEFAULTS.potassium)
         streamWriteFloat32(streamId, field.organicMatter      or SoilConstants.FIELD_DEFAULTS.organicMatter)
         streamWriteFloat32(streamId, field.pH                 or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] report validity beside the pH report.
+        streamWriteBool(streamId, field.pHReportValid ~= false)
         streamWriteString(streamId,  field.lastCrop           or "")
         streamWriteString(streamId,  field.lastCrop2          or "")
         streamWriteString(streamId,  field.lastCrop3          or "")
@@ -773,6 +782,8 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local potassium      = streamReadFloat32(streamId)
         local organicMatter  = streamReadFloat32(streamId)
         local pH             = streamReadFloat32(streamId)
+        -- [SF-79] pH report validity (see SoilFullSyncEvent).
+        local pHReportValid  = streamReadBool(streamId)
         local lastCrop       = streamReadString(streamId)
         local lastCrop2      = streamReadString(streamId)
         local lastCrop3      = streamReadString(streamId)
@@ -843,6 +854,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 potassium             = math.max(SoilConstants.NUTRIENT_LIMITS.MIN, math.min(SoilConstants.NUTRIENT_LIMITS.MAX, potassium)),
                 organicMatter         = math.max(SoilConstants.NUTRIENT_LIMITS.MIN, math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX, organicMatter)),
                 pH                    = math.max(SoilConstants.NUTRIENT_LIMITS.PH_MIN, math.min(SoilConstants.NUTRIENT_LIMITS.PH_MAX, pH)),
+                pHReportValid         = pHReportValid == true,
                 lastCrop              = lastCrop ~= "" and lastCrop or nil,
                 lastCrop2             = lastCrop2 ~= "" and lastCrop2 or nil,
                 lastCrop3             = lastCrop3 ~= "" and lastCrop3 or nil,
@@ -998,6 +1010,8 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local potassium = streamReadFloat32(streamId)
     local organicMatter = streamReadFloat32(streamId)
     local pH = streamReadFloat32(streamId)
+    -- [SF-79] pH travels as a REPORT (see SoilFullSyncEvent).
+    local pHReportValid = streamReadBool(streamId)
     local lastCrop = streamReadString(streamId)
     local lastCrop2 = streamReadString(streamId)
     local lastCrop3 = streamReadString(streamId)
@@ -1073,6 +1087,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
                                 math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX, organicMatter)),
         pH = math.max(SoilConstants.NUTRIENT_LIMITS.PH_MIN,
                      math.min(SoilConstants.NUTRIENT_LIMITS.PH_MAX, pH)),
+        pHReportValid = pHReportValid == true,
         lastCrop = lastCrop,
         lastCrop2 = lastCrop2,
         lastCrop3 = lastCrop3,
@@ -1126,6 +1141,8 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     streamWriteFloat32(streamId, self.field.potassium or SoilConstants.FIELD_DEFAULTS.potassium)
     streamWriteFloat32(streamId, self.field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter)
     streamWriteFloat32(streamId, self.field.pH or SoilConstants.FIELD_DEFAULTS.pH)
+    -- [SF-79] report validity beside the pH report (false = not current local soil).
+    streamWriteBool(streamId, self.field.pHReportValid ~= false)
     streamWriteString(streamId, self.field.lastCrop or "")
     streamWriteString(streamId, self.field.lastCrop2 or "")
     streamWriteString(streamId, self.field.lastCrop3 or "")
@@ -1920,6 +1937,11 @@ local sfValueMapResyncInFlight = {}
 local sfValueMapSyncRoundLayers = {}
 local SF_VALUE_MAP_RESYNC_MAX = 2
 
+-- [SF-79] Multi-part chunk assembler. Keyed by "<layerIdx>:<transferId>"; holds
+-- parts until the transfer is complete, then the caller applies them in order.
+-- A single-part chunk (the legacy shape) never enters here.
+local sfChunkAssembler = {}
+
 SoilValueMapChunkEvent = SoilValueMapChunkEvent or {}
 SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
 
@@ -1933,12 +1955,23 @@ end
 --- gyStart:  first sync-grid row carried by this chunk (0-based)
 --- rows:     array of row arrays (4-bit states, 1-based Lua arrays)
 --- isLast:   true on the final chunk of the final layer
-function SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, isLast)
+--- meta:     optional SF-79 transport header. Defaults reproduce the legacy
+---           single-part FULL send (mode FULL, revision 0, one part).
+function SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, isLast, meta)
     local self = SoilValueMapChunkEvent.emptyNew()
     self.layerIdx = layerIdx
     self.gyStart  = gyStart
     self.rows     = rows or {}
     self.isLast   = isLast or false
+    meta = meta or {}
+    self.mode             = meta.mode or "FULL"
+    self.revision         = meta.revision or 0
+    self.baseRevision     = meta.baseRevision or 0
+    self.transferId       = meta.transferId or 0
+    self.partIndex        = meta.partIndex or 0
+    self.partCount        = meta.partCount or 1
+    self.sourceResolution = meta.sourceResolution or 0
+    self.transportStride  = meta.transportStride or 1
     return self
 end
 
@@ -1947,6 +1980,15 @@ function SoilValueMapChunkEvent:writeStream(streamId, connection)
     streamWriteUInt16(streamId, self.gyStart)
     streamWriteUInt8(streamId, #self.rows)
     streamWriteBool(streamId, self.isLast)
+    -- [SF-79] transport header: FULL/PATCH mode, revision ordering and part identity.
+    streamWriteBool(streamId, self.mode == "PATCH")   -- mode: 1 bit
+    streamWriteInt32(streamId, self.revision or 0)
+    streamWriteInt32(streamId, self.baseRevision or 0)
+    streamWriteInt32(streamId, self.transferId or 0)
+    streamWriteUInt16(streamId, self.partIndex or 0)
+    streamWriteUInt16(streamId, self.partCount or 1)
+    streamWriteUInt16(streamId, self.sourceResolution or 0)
+    streamWriteUInt16(streamId, self.transportStride or 1)
     for _, row in ipairs(self.rows) do
         streamWriteUInt16(streamId, #row)
         -- RLE: (state, runLength) pairs - soil rows are mostly long runs
@@ -1972,6 +2014,16 @@ function SoilValueMapChunkEvent:readStream(streamId, connection)
     self.gyStart  = streamReadUInt16(streamId)
     local rowCount = streamReadUInt8(streamId)
     self.isLast   = streamReadBool(streamId)
+    -- [SF-79] transport header (matches writeStream order).
+    local isPatch        = streamReadBool(streamId)
+    self.mode            = isPatch and "PATCH" or "FULL"
+    self.revision        = streamReadInt32(streamId)
+    self.baseRevision    = streamReadInt32(streamId)
+    self.transferId      = streamReadInt32(streamId)
+    self.partIndex       = streamReadUInt16(streamId)
+    self.partCount       = streamReadUInt16(streamId)
+    self.sourceResolution = streamReadUInt16(streamId)
+    self.transportStride  = streamReadUInt16(streamId)
     self.rows = {}
     for r = 1, rowCount do
         local rowLen  = streamReadUInt16(streamId)
@@ -2006,15 +2058,49 @@ function SoilValueMapChunkEvent:run(connection)
     -- not be able to reach it. Refuse rather than trust the sender.
     if def.serverOnly == true then return end
 
-    -- First chunk of a layer (gyStart == 0): wipe residual local paint so the
-    -- server stream can converge. Without this, state-0 cells used to skip and
-    -- leftover pixels kept checksums permanently drifted.
-    if self.gyStart == 0 and vm.clearLayer then
+    -- [SF-79] Transport header validation. A malformed part is dropped, never applied.
+    if type(self.partCount) ~= "number" or self.partCount < 1 or self.partCount > 4096 then return end
+    if type(self.partIndex) ~= "number" or self.partIndex < 0 or self.partIndex >= self.partCount then return end
+    if self.sourceResolution and self.sourceResolution ~= 0 and vm.resolution and vm.resolution ~= 0
+        and self.sourceResolution ~= vm.resolution then
+        return
+    end
+
+    -- Assemble multi-part transfers; a single-part chunk applies directly.
+    local parts
+    if self.partCount > 1 then
+        local akey = self.layerIdx .. ":" .. tostring(self.transferId)
+        local asm = sfChunkAssembler[akey]
+        if asm == nil then
+            asm = { mode = self.mode, revision = self.revision, baseRevision = self.baseRevision,
+                    partCount = self.partCount, parts = {}, count = 0 }
+            sfChunkAssembler[akey] = asm
+        elseif asm.partCount ~= self.partCount or asm.mode ~= self.mode or asm.revision ~= self.revision then
+            sfChunkAssembler[akey] = nil
+            return
+        end
+        if asm.parts[self.partIndex] == nil then
+            asm.parts[self.partIndex] = self
+            asm.count = asm.count + 1
+        end
+        if asm.count < asm.partCount then return end
+        sfChunkAssembler[akey] = nil
+        parts = {}
+        for i = 0, asm.partCount - 1 do parts[#parts + 1] = asm.parts[i] end
+    else
+        parts = { self }
+    end
+
+    -- FULL clears at row zero so residual local paint cannot survive a server
+    -- stream; a PATCH (including row zero) NEVER clears.
+    if self.mode ~= "PATCH" and self.gyStart == 0 and vm.clearLayer then
         vm:clearLayer(def.key)
     end
 
-    for i, row in ipairs(self.rows) do
-        vm:applySyncRow(def.key, self.gyStart + (i - 1), row)
+    for _, part in ipairs(parts) do
+        for i, row in ipairs(part.rows) do
+            vm:applySyncRow(def.key, part.gyStart + (i - 1), row)
+        end
     end
 
     -- Track this layer as streamed this round (deduped: a layer streams many

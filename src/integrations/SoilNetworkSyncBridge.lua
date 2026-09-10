@@ -66,6 +66,8 @@ SoilNetworkSyncBridge.SCALARS = {
     { key = "potassium",           def = FD.potassium,      min = LIM.MIN,     max = LIM.MAX },
     { key = "organicMatter",       def = FD.organicMatter,  min = LIM.MIN,     max = LIM.ORGANIC_MATTER_MAX },
     { key = "pH",                  def = FD.pH,             min = LIM.PH_MIN,  max = LIM.PH_MAX },
+    -- [SF-79] pH report validity beside the pH report (1 = current local report).
+    { key = "pHReportValid",       def = 1,                 min = 0,           max = 1, bool = true },
     { key = "rotationBonusDaysLeft", def = 0,               min = 0,           max = nil },
     { key = "lastHarvest",         def = 0,                 min = 0,           max = nil },
     { key = "fertilizerApplied",   def = 0,                 min = 0,           max = nil },
@@ -106,7 +108,8 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
         arr[#arr + 1] = fieldId
         for _, s in ipairs(SoilNetworkSyncBridge.SCALARS) do
             local v = field[s.key]
-            if v == nil then v = s.def end
+            if s.bool then v = (v ~= false) and 1 or 0
+            elseif v == nil then v = s.def end
             arr[#arr + 1] = v
         end
         arr[#arr + 1] = field.lastCrop      or ""
@@ -172,8 +175,9 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
 
         local field = { initialized = true, coveredCells = {}, coveredCellCount = 0, zoneData = {} }
         for _, s in ipairs(SoilNetworkSyncBridge.SCALARS) do
-            field[s.key] = clamp(arr[i], s.min, s.max)
+            local v = clamp(arr[i], s.min, s.max)
             i = i + 1
+            if s.bool then field[s.key] = (v == 1) else field[s.key] = v end
         end
 
         local lc  = arr[i]; i = i + 1
