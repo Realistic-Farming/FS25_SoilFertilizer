@@ -1599,6 +1599,11 @@ function SoilFertilityManager:saveSoilData()
         if self.growthBlock and type(self.growthBlock.saveToXMLFile) == 'function' then
             self.growthBlock:saveToXMLFile(xmlFile, "soilData.growthBlock")
         end
+        -- [SF-14 One Ground] Zone-yield receipt/fallback metadata rides the same
+        -- soilData block; the dense capture truth is the yieldEfficiency GRLE file.
+        if self.zoneYield and type(self.zoneYield.saveToXMLFile) == 'function' then
+            self.zoneYield:saveToXMLFile(xmlFile, "soilData.zoneYield")
+        end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
         saveXMLFile(xmlFile)
         delete(xmlFile)
@@ -1700,6 +1705,12 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             -- PENDING_VALIDATION until current-session membership/fruit validation.
             if self.growthBlock and type(self.growthBlock.loadFromXMLFile) == 'function' then
                 self.growthBlock:loadFromXMLFile(xmlFile, "soilData.growthBlock")
+            end
+            -- [SF-14 One Ground] Restore the zone-yield receipt/fallback metadata
+            -- (the yieldEfficiency GRLE already restored inside valueMaps:initialize).
+            -- Receipts stay PENDING_VALIDATION until a current plan arrives.
+            if self.zoneYield and type(self.zoneYield.loadFromXMLFile) == 'function' then
+                self.zoneYield:loadFromXMLFile(xmlFile, "soilData.zoneYield")
             end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
             delete(xmlFile)
