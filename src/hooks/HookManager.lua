@@ -2803,6 +2803,11 @@ function HookManager:installZoneYieldCutterHook()
                         if scalar ~= 1.0 then
                             spec.workAreaParameters.lastMultiplierArea = before + added * scalar
                         end
+                        -- [SF-14 One Ground] Freeze the exact spatial or fallback
+                        -- receipt on this first positive matching cut.
+                        if zoneYield and type(zoneYield.onFirstCut) == "function" then
+                            zoneYield:onFirstCut(context)
+                        end
                         SoilLogger.debug("SF14_CUT field=%d fruit=%d path=%s base=%.3f sf=%.3f added=%.3f final=%.3f drag=%s",
                             context.fieldId, context.fruitTypeIndex, context.path or "none",
                             before, scalar, added, spec.workAreaParameters.lastMultiplierArea,
@@ -5696,6 +5701,18 @@ function HookManager:installSowingHook()
                 g_SoilFertilityManager.soilSystem._lastTillageZ = z
                 local cropBiomass = sowingSelf._sfCropBiomass or 0
                 g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType, cropBiomass)
+
+                -- [SF-14 One Ground] Clear only the matching polygon-fruit
+                -- receipts at the exact sowing work-area coordinates. A machine
+                -- root position is not crop-cycle identity; an unprovable polygon
+                -- leaves unrelated frozen receipts untouched.
+                local zy = g_SoilFertilityManager.zoneYield
+                if zy and type(zy.onSowingWorkArea) == "function"
+                   and sowingSelf.spec_workArea and sowingSelf.spec_workArea.workAreas then
+                    for _, wa in ipairs(sowingSelf.spec_workArea.workAreas) do
+                        pcall(function() zy:onSowingWorkArea(wa) end)
+                    end
+                end
             end)
 
             if not ok then
