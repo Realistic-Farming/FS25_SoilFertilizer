@@ -7265,6 +7265,10 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- F66 relief marker. Its presence means this save has already had the one-time
     -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
     setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
+    -- [SF-79] Positional pH schema marker. Its presence records that this save has
+    -- the positional pH contract; it never proves the pH carrier exists (a missing
+    -- map is an explicit recovery at load).
+    setXMLInt(xmlFile, key .. "#sf79PHSchema", 1)
 
     -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
     -- safety copy, the same one StateLedger's block mirrors).
@@ -7346,6 +7350,11 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             -- one fresh capture pass succeeds.
             if field.zoneYieldCaptureReady == true then
                 setXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady", true)
+            end
+
+            -- [SF-79] Positional pH metadata: frozen seed + sub-step remainders.
+            if type(self._phSaveFieldXML) == "function" then
+                self:_phSaveFieldXML(xmlFile, fieldKey, field)
             end
 
             -- Save daily application throttles
@@ -7496,6 +7505,13 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- Organic certification state (leaves the field conventional if absent)
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:loadFieldState(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+
+        -- [SF-79] Restore the positional pH metadata (seed + remainders). The report
+        -- stays absent until re-derived from the pH map, so a persisted placeholder
+        -- can never present as current local soil.
+        if type(self._phLoadFieldXML) == "function" then
+            self:_phLoadFieldXML(xmlFile, fieldKey, self.fieldData[fieldId])
         end
 
         -- Load daily application throttles
@@ -7728,6 +7744,17 @@ function SoilFertilitySystem:getSoilStateTable()
             if field.zoneYieldCaptureReady == true then
                 e.zoneYieldCaptureReady = true
             end
+            -- [SF-79] Positional pH metadata (matches XML save).
+            if type(field._phSeedScalar) == "number" then
+                e.sf79PHSeed = field._phSeedScalar
+            end
+            if field._phPending and #field._phPending > 0 then
+                local pt = {}
+                for i, p in ipairs(field._phPending) do
+                    pt[i] = { cause = p.cause, kind = p.kind, amount = p.amount, domainKey = p.domainKey }
+                end
+                e.sf79PHPending = pt
+            end
             -- Organic certification sub-table (only when present).
             if field.organic then
                 e.organic = {
@@ -7822,6 +7849,8 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 frozenYieldModifier   = e.frozenYieldModifier,
                 frozenYieldFruitType  = e.frozenYieldFruitType,
                 zoneYieldCaptureReady = e.zoneYieldCaptureReady == true and true or nil,
+                -- [SF-79] Positional pH metadata (matches the XML save).
+                _phSeedScalar         = e.sf79PHSeed,
                 coverageFraction      = e.coverageFraction or 0,
                 lastAlertSeason       = e.lastAlertSeason,
                 compaction            = 0,
@@ -7852,6 +7881,18 @@ function SoilFertilitySystem:applySoilStateTable(data)
             self.herbicideAppliedDay[fieldId]   = e.herbicideAppliedDay or 0
             self.insecticideAppliedDay[fieldId] = e.insecticideAppliedDay or 0
             self.fungicideAppliedDay[fieldId]   = e.fungicideAppliedDay or 0
+            -- [SF-79] Positional pH pending remainders (report re-derives on demand).
+            f._phPending = {}
+            if type(e.sf79PHPending) == "table" then
+                for _, p in ipairs(e.sf79PHPending) do
+                    if type(p) == "table" and p.domainKey ~= nil then
+                        f._phPending[#f._phPending + 1] = {
+                            cause = p.cause or "", kind = p.kind or "",
+                            amount = p.amount or 0, domainKey = p.domainKey,
+                        }
+                    end
+                end
+            end
             -- Per-area zone cells.
             if e.zoneData then
                 for cellKey, cell in pairs(e.zoneData) do

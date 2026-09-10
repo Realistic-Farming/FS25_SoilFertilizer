@@ -425,3 +425,196 @@ function SoilFertilitySystem:_seedPHFootprint(fieldId, scalar)
     end
     return seeded
 end
+
+-- ============================================================
+-- DERIVED REPORT AND RECOVERY (brief 3.B)
+-- ============================================================
+
+--- Mark a field's derived pH report stale. The domain revision advances so a
+--- cached report can never be served as CURRENT after a geometry change; the
+--- next _ensurePHReport recomputes from the map.
+function SoilFertilitySystem:_phInvalidateReport(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return end
+    field._phDomainRevision = (field._phDomainRevision or 0) + 1
+    if field._phReport ~= nil then field._phReport.dirty = true end
+end
+
+--- True when the cached report matches the current map and domain revisions.
+function SoilFertilitySystem:_phReportIsCurrent(field, rep)
+    return rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT
+        and rep.mapRevision == (self._phMapRevision or 0)
+        and rep.domainRevision == (field._phDomainRevision or 0)
+        and rep.dirty ~= true
+end
+
+--- Refresh and return the derived field report (brief 3.B). The value is the
+--- area-weighted mean over the written pixels of the complete cultivated parcel
+--- domain, via equal-grain affine decode. CURRENT/EMPTY/UNAVAILABLE are distinct;
+--- dirty is never CURRENT. Repeated reads of an unchanged revision reuse the cache.
+--- @return table
+function SoilFertilitySystem:_ensurePHReport(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return nil end
+    local rep = field._phReport
+    if self:_phReportIsCurrent(field, rep) then return rep end
+
+    local out = {
+        mapRevision = self._phMapRevision or 0,
+        domainRevision = field._phDomainRevision or 0,
+        dirty = false,
+        value = nil,
+        writtenPixels = 0,
+        status = PositionalPH.REPORT_UNAVAILABLE,
+    }
+    field._phReport = out
+
+    local vm = self.valueMaps
+    local def = PositionalPH.phDef()
+    local polys = self:_phFieldPolygons(fieldId)
+    if vm == nil or not vm.available or def == nil or polys == nil or #polys == 0 then
+        return out
+    end
+
+    local sumRaw, pixels = 0, 0
+    for _, verts in ipairs(polys) do
+        local rawAvg, n = vm:readAverageRawInBand(
+            PositionalPH.PH_LAYER, verts, SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX)
+        if type(rawAvg) == 'number' and type(n) == 'number' and n > 0 then
+            sumRaw = sumRaw + rawAvg * n
+            pixels = pixels + n
+        end
+    end
+    out.writtenPixels = pixels
+    if pixels <= 0 then
+        out.status = PositionalPH.REPORT_EMPTY
+    else
+        out.value = PositionalPH.phValue(sumRaw / pixels, def)
+        out.status = PositionalPH.REPORT_CURRENT
+    end
+    return out
+end
+
+--- The report read contract for a field request (brief 3.D): FIELD_REPORT when a
+--- current report exists, otherwise a typed unavailable state. A healthy report
+--- never fills a missing local sample.
+--- @return number|nil value
+--- @return string status
+function SoilFertilitySystem:_phReportRead(fieldId)
+    local rep = self:_ensurePHReport(fieldId)
+    if rep == nil then return nil, PositionalPH.READ_UNAVAILABLE end
+    if rep.status == PositionalPH.REPORT_CURRENT then
+        return rep.value, PositionalPH.READ_FIELD
+    end
+    return nil, PositionalPH.READ_UNAVAILABLE
+end
+
+--- One-time, preservation-first migration (brief 3.B). Valid map pixels are
+--- preserved; only raw-zero supported ground is seeded from the frozen scalar
+--- clamped to carrier bounds. A schema marker never suppresses missing-carrier
+--- recovery, so this re-seeds raw-zero ground even on an already-marked save.
+--- @return number seeded
+function SoilFertilitySystem:_migratePH(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return 0 end
+    local vm = self.valueMaps
+    if vm == nil or not vm.available or g_server == nil then return 0 end
+    local def = PositionalPH.phDef()
+    local polys = self:_phFieldPolygons(fieldId)
+    if def == nil or polys == nil or #polys == 0 then return 0 end
+
+    local limits = SoilConstants.NUTRIENT_LIMITS
+    local seed = field._phSeedScalar
+    if type(seed) ~= 'number' then seed = field.pH or SoilConstants.FIELD_DEFAULTS.pH end
+    seed = math.max(limits.PH_MIN, math.min(limits.PH_MAX, seed))
+    local raw = PositionalPH.phRaw(seed, def)
+
+    local writes = 0
+    for _, verts in ipairs(polys) do
+        -- Band [0,0] touches only unwritten ground; a valid pixel is outside it.
+        local ok = vm:setPolygonWhere(PositionalPH.PH_LAYER, verts, raw, 0, 0)
+        if ok then writes = writes + 1 end
+    end
+    if writes > 0 then
+        field._phSeeded = true
+        self:_phInvalidateReport(fieldId)
+    end
+    return writes
+end
+
+-- ============================================================
+-- SUB-STEP SCHEDULED FIELD REMAINDERS (brief 3.B)
+-- ============================================================
+-- A FIELD normalization that cannot finish in one pass keeps its remainder per
+-- cause/kind/domain. A remainder is restored only onto a matching domain key;
+-- it is never put into a field-wide scalar bank.
+
+function SoilFertilitySystem:_phAddPending(fieldId, cause, kind, amount, domainKey)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return end
+    field._phPending = field._phPending or {}
+    field._phPending[#field._phPending + 1] = {
+        cause = cause, kind = kind, amount = amount, domainKey = domainKey,
+    }
+end
+
+--- Take the pending remainders matching a domain key, leaving the rest.
+--- @return table
+function SoilFertilitySystem:_phTakePending(fieldId, domainKey)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil or field._phPending == nil then return {} end
+    local keep, take = {}, {}
+    for _, p in ipairs(field._phPending) do
+        if p.domainKey == domainKey then take[#take + 1] = p else keep[#keep + 1] = p end
+    end
+    field._phPending = keep
+    return take
+end
+
+-- ============================================================
+-- EXISTING SOIL XML PERSISTENCE (brief 3.B)
+-- ============================================================
+
+--- Persist the SF-79 field metadata (seed + pending remainders) into the existing
+--- soilData field record. The dense pH truth is the pH GRLE file; the report is
+--- never persisted (it is re-derived from the map on load).
+function SoilFertilitySystem:_phSaveFieldXML(xmlFile, fieldKey, field)
+    if xmlFile == nil or fieldKey == nil or field == nil then return end
+    local seed = field._phSeedScalar
+    if type(seed) == 'number' then
+        setXMLFloat(xmlFile, fieldKey .. "#sf79PHSeed", seed)
+    end
+    local idx = 0
+    for _, p in ipairs(field._phPending or {}) do
+        local pk = string.format("%s.sf79PHPending(%d)", fieldKey, idx)
+        setXMLString(xmlFile, pk .. "#cause", p.cause or '')
+        setXMLString(xmlFile, pk .. "#kind", p.kind or '')
+        setXMLFloat(xmlFile, pk .. "#amount", p.amount or 0)
+        setXMLString(xmlFile, pk .. "#domainKey", p.domainKey or '')
+        idx = idx + 1
+    end
+    setXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount", idx)
+end
+
+--- Restore the SF-79 field metadata. The report stays absent until re-derived, so
+--- persisted placeholders can never present as current local soil.
+function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
+    if xmlFile == nil or fieldKey == nil or field == nil then return end
+    local seed = getXMLFloat(xmlFile, fieldKey .. "#sf79PHSeed")
+    if type(seed) == 'number' then field._phSeedScalar = seed end
+    field._phPending = {}
+    local count = getXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount") or 0
+    for i = 0, count - 1 do
+        local pk = string.format("%s.sf79PHPending(%d)", fieldKey, i)
+        local domainKey = getXMLString(xmlFile, pk .. "#domainKey")
+        if domainKey ~= nil then
+            field._phPending[#field._phPending + 1] = {
+                cause = getXMLString(xmlFile, pk .. "#cause") or '',
+                kind = getXMLString(xmlFile, pk .. "#kind") or '',
+                amount = getXMLFloat(xmlFile, pk .. "#amount") or 0,
+                domainKey = domainKey,
+            }
+        end
+    end
+    field._phReport = nil
+end
