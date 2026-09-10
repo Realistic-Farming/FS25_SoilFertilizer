@@ -408,6 +408,79 @@ function SoilFertilitySystem:_applyPHFootprint(fieldId, request)
     return result
 end
 
+-- ============================================================
+-- WRITER ADAPTERS FOR THE EXISTING CALLERS (brief 3.C)
+-- ============================================================
+
+--- Refresh a field's cached pH scalar from the derived report. The map is the
+--- authority; the scalar is only the last published report value. A field whose
+--- map carries no written pixel keeps its previous scalar (the frozen seed).
+function SoilFertilitySystem:_phRefreshScalar(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return end
+    if type(self._ensurePHReport) ~= 'function' then return end
+    local rep = self:_ensurePHReport(fieldId)
+    if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+        field.pH = rep.value
+    end
+end
+
+--- Apply one whole-field pH operation through the writer, then republish the
+--- derived scalar. Used by the daily normalization, leach, burn and scorch
+--- consequences, which are physical whole-field effects.
+---
+--- DELTA and NORMALIZE are ACCUMULATIVE: a per-tick amount far below one raw step
+--- is banked as a domain-scoped remainder (brief 3.B) and applied once the running
+--- total reaches a whole step, so a slow drift is never lost to quantisation and
+--- never leaks into a field-wide scalar bank.
+function SoilFertilitySystem:_phApplyField(fieldId, operation, value, targetLow, targetHigh, source)
+    if type(self._applyPHFootprint) ~= 'function' then return nil end
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return nil end
+
+    if operation == PositionalPH.OP_DELTA or operation == PositionalPH.OP_NORMALIZE then
+        local domainKey = self:_phDomainKey(fieldId)
+        local pending = self:_phTakePending(fieldId, domainKey)
+        local total = value or 0
+        for _, p in ipairs(pending) do total = total + (p.amount or 0) end
+
+        local upr = PositionalPH.unitsPerRaw()
+        local rawDelta = PositionalPH.rawDeltaFor(total)
+        if rawDelta == 0 then
+            self:_phAddPending(fieldId, source, operation, total, domainKey)
+            return { status = PositionalPH.STATUS_NO_CHANGE, reason = 'sub-step',
+                     mapRevision = self._phMapRevision or 0, reportDirty = false }
+        end
+
+        local appliedSemantic = rawDelta * upr
+        local residual = total - appliedSemantic
+        local result = self:_applyPHFootprint(fieldId, {
+            operation = operation,
+            scope = PositionalPH.SCOPE_FIELD,
+            value = appliedSemantic,
+            targetLow = targetLow,
+            targetHigh = targetHigh,
+            source = source,
+        })
+        if residual ~= 0 then
+            self:_phAddPending(fieldId, source, operation, residual, domainKey)
+        end
+        self:_phRefreshScalar(fieldId)
+        return result
+    end
+
+    local result = self:_applyPHFootprint(fieldId, {
+        operation = operation,
+        scope = PositionalPH.SCOPE_FIELD,
+        value = value,
+        targetLow = targetLow,
+        targetHigh = targetHigh,
+        source = source,
+    })
+    self:_phRefreshScalar(fieldId)
+    return result
+end
+
 --- Seed raw-zero supported ground from a frozen scalar (brief 3.B). Only pixels
 --- with no record are touched (band [0,0]), so a valid pixel is preserved.
 --- @return number seeded
