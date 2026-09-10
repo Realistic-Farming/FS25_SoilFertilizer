@@ -7018,6 +7018,15 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local ph = field.pH         or SoilConstants.FIELD_DEFAULTS.pH
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
+    -- [SF-79] pH read contract. The map/report is the authority; pH is numeric only
+    -- for LOCAL / FIELD_REPORT / APPROXIMATE. Stale or unavailable returns nil, with
+    -- pHLastKnown carrying the frozen scalar separately. No unknown-to-7.0.
+    local phStatus      = PositionalPH and PositionalPH.READ_FIELD or 'FIELD_REPORT'
+    local phGrain       = nil
+    local phRevision    = self._phMapRevision or 0
+    local phLastKnown   = field.pH
+    local phResolved    = false
+
     local fromZoneCell = false
     local posPest = nil
     local posDisease = nil
@@ -7041,7 +7050,14 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = vn  or n
             p  = vp  or p
             k  = vk  or k
-            ph = vph or ph
+            -- [SF-79] a positional pH read is LOCAL; a missing pixel leaves the
+            -- request to the field report (never a fabricated default).
+            if type(vph) == 'number' then
+                ph = vph
+                phStatus = PositionalPH and PositionalPH.READ_LOCAL or 'LOCAL'
+                if type(self._phGrainMetres) == 'function' then phGrain = self:_phGrainMetres() end
+                phResolved = true
+            end
             om = vom or om
             posPest = vpest
             posDisease = vdis
@@ -7056,7 +7072,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = cell.N  or n
             p  = cell.P  or p
             k  = cell.K  or k
-            ph = cell.pH or ph
+            if type(cell.pH) == 'number' then
+                ph = cell.pH
+                phStatus = PositionalPH and PositionalPH.READ_APPROXIMATE or 'APPROXIMATE'
+                phResolved = true
+            end
             om = cell.OM or om
             fromZoneCell = true
         end
@@ -7206,6 +7226,35 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         if FieldSentry_Core.reasonL10nKey then fsReasonKey = FieldSentry_Core.reasonL10nKey(r) end
     end
 
+    -- [SF-79] Resolve the field-level pH from the derived report when the request
+    -- was not a positional sample. A field with no current report is UNAVAILABLE:
+    -- pH is nil, pHLastKnown carries the scalar, and no default is substituted.
+    if not phResolved and type(self._ensurePHReport) == "function" then
+        local rep = self:_ensurePHReport(fieldId)
+        if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+            ph = rep.value
+            phStatus = PositionalPH.READ_FIELD
+            phResolved = true
+        else
+            ph = nil
+            phStatus = PositionalPH.READ_UNAVAILABLE
+        end
+    end
+
+    -- [SF-79] needsFertilization uses the same pH sample as its request. A known
+    -- other deficiency stays true; otherwise unknown pH yields an unknown result.
+    local knownOtherNeed = field.nitrogen < fertThresholds.nitrogen
+        or field.phosphorus < fertThresholds.phosphorus
+        or field.potassium < fertThresholds.potassium
+    local needsFert, needsFertKnown
+    if ph ~= nil then
+        needsFert = knownOtherNeed or (ph < fertThresholds.pH)
+        needsFertKnown = true
+    else
+        needsFert = knownOtherNeed
+        needsFertKnown = knownOtherNeed
+    end
+
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
@@ -7219,6 +7268,10 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         cropTargets = cropTargets,
         organicMatter = om,
         pH = ph,
+        pHStatus = phStatus,
+        pHGrainMetres = phGrain,
+        pHRevision = phRevision,
+        pHLastKnown = phLastKnown,
         lastCrop = cropName,
         lastCrop2 = field.lastCrop2,
         lastCrop3 = field.lastCrop3,  -- #739: third-back crop, already stored+synced, now published for the rotation planner
@@ -7257,12 +7310,8 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         sessionLastProduct      = field.sessionLastProduct,
         compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
-        needsFertilization = (
-            field.nitrogen < fertThresholds.nitrogen or
-            field.phosphorus < fertThresholds.phosphorus or
-            field.potassium < fertThresholds.potassium or
-            field.pH < fertThresholds.pH
-        )
+        needsFertilization = needsFert,
+        needsFertilizationKnown = needsFertKnown
     }
 end
 
@@ -7282,7 +7331,9 @@ function SoilFertilitySystem:getFieldUrgency(fieldId)
 
     local phOpt = 6.5  -- optimal pH target (mid-point of neutral band 6.5-7.0)
     local phMin = SoilConstants.NUTRIENT_LIMITS and SoilConstants.NUTRIENT_LIMITS.PH_MIN or 5.0
-    local phDef = math.max(0, phOpt - info.pH) / (phOpt - phMin)
+    -- [SF-79] unknown pH contributes no urgency (never a fabricated deficit).
+    local phDef = (type(info.pH) == 'number')
+        and math.max(0, phOpt - info.pH) / (phOpt - phMin) or 0
 
     local weedDef = (info.weedPressure or 0) / 100
     local pestDef = (info.pestPressure or 0) / 100

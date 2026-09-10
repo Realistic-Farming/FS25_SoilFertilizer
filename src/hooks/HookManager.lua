@@ -6884,14 +6884,25 @@ function HookManager:installSprayerStartHook()
             local root = self.rootVehicle
             local rateVehId = (root and root ~= self) and (root.id or 0) or (self.id or 0)
             local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(rateVehId)
-            if mult == 1.0 then return end
+            -- [SF-79] pH-aware AUTO whole-rate, resolved before the multiplier and
+            -- applied once together with it.
+            local phFactor = 1.0
+            local soilSystem = g_SoilFertilityManager.soilSystem
+            if soilSystem and type(soilSystem.updatePHWorkAuto) == "function" then
+                local okPh, f = pcall(function()
+                    return soilSystem:updatePHWorkAuto(self, dt, spec.workArea and spec.workArea.workAreas)
+                end)
+                if okPh and type(f) == "number" then phFactor = f end
+            end
+            local totalMult = mult * phFactor
+            if totalMult == 1.0 then return end
 
             local wap = spec.workAreaParameters
             if wap.usage and wap.usage ~= 0 then
-                wap.usage = wap.usage * mult
+                wap.usage = wap.usage * totalMult
             end
             if wap.usagePerMin and wap.usagePerMin ~= 0 then
-                wap.usagePerMin = wap.usagePerMin * mult
+                wap.usagePerMin = wap.usagePerMin * totalMult
             end
         end
     )

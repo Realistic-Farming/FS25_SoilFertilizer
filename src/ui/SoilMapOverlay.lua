@@ -1384,9 +1384,12 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 4 then
         -- ── pH layer ────────────────────────────────────────────
-        local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
+        local pH = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
         local condLabel, actionLabel, condR, condG, condB
-        if pH >= 6.5 and pH <= 7.0 then
+        if pH == nil then
+            condLabel = tr("sf_map_target_no_data", "No data"); actionLabel = ""
+            condR, condG, condB = DIM[1], DIM[2], DIM[3]
+        elseif pH >= 6.5 and pH <= 7.0 then
             condLabel = tr("sf_map_ph_optimal", "Optimal");              actionLabel = tr("sf_map_ph_none_needed", "None needed")
             condR, condG, condB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
         elseif pH > 7.0 and pH <= 7.5 then
@@ -2219,8 +2222,9 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             else                             return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 4 then
             -- Match SoilHUD:pHColor (over-limed >7.0-7.5 is POOR, not FAIR).
-            local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-            if pH >= 6.5 and pH <= 7.0 then    return GOOD[1], GOOD[2], GOOD[3]
+            local pH = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+            if pH == nil then                  return 0.5, 0.5, 0.5
+            elseif pH >= 6.5 and pH <= 7.0 then    return GOOD[1], GOOD[2], GOOD[3]
             elseif pH > 7.0 and pH <= 7.5 then return POOR[1], POOR[2], POOR[3]
             elseif pH >= 5.5           then    return FAIR[1], FAIR[2], FAIR[3]
             else                               return POOR[1], POOR[2], POOR[3] end
@@ -2279,7 +2283,7 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     if     layerIdx == 1 then val = info.nitrogen     and info.nitrogen.value     or 0
     elseif layerIdx == 2 then val = info.phosphorus   and info.phosphorus.value   or 0
     elseif layerIdx == 3 then val = info.potassium    and info.potassium.value    or 0
-    elseif layerIdx == 4 then val = info.pH           or 7.0
+    elseif layerIdx == 4 then val = info.pH
     elseif layerIdx == 5 then val = info.organicMatter or 0
     elseif layerIdx == 6 then val = self.soilSystem:getFieldUrgency(farmlandId)
     elseif layerIdx == 7 then val = info.weedPressure  or 0
@@ -2298,6 +2302,11 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             return self:organicCertifiedColor()
         end
     else   val = 100 end
+
+    -- [SF-79] unknown pH paints the neutral unknown tone, never a substituted 7.0.
+    if layerIdx == 4 and val == nil then
+        return self:unknownColor()
+    end
 
     -- Unscouted disease shows the neutral unknown tone, never the pressure ramp.
     if layerIdx == 9 and info.shownDiseasePressure == nil then

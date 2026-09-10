@@ -306,8 +306,8 @@ local function collectPlanRows(fieldId)
             tr("sf_treat_action_k_fair", "Top-up with Liquid Potash or Potash (K)."), "fair", 3, 1)
     end
 
-    local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-    if ph < 6.5 then
+    local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+    if ph ~= nil and ph < 6.5 then
         addStaticRow(rows, "pH",
             productWithHow("LIME", tr("rf_pda_treat_method_dry", "spreader")),
             "poor", 2, 0,
@@ -318,7 +318,7 @@ local function collectPlanRows(fieldId)
             "poor", 2, 0,
             tr("rf_pda_treat_next_how_liq_lime", "apply with a sprayer/tank"),
             "LIQUIDLIME", true)
-    elseif ph > 7.5 then
+    elseif ph ~= nil and ph > 7.5 then
         addStaticRow(rows, "pH",
             productWithHow("GYPSUM", tr("rf_pda_treat_method_dry", "spreader")),
             "fair", 2, 1,

@@ -1399,7 +1399,7 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
             local fInfo = string.format(
                 "=== Field %d Soil Information ===\n" ..
                 "Nitrogen: %d ppm (%s)\nPhosphorus: %d ppm (%s)\nPotassium: %d ppm (%s)\n" ..
-                "Organic Matter: %.1f%%\npH: %.1f\n" ..
+                "Organic Matter: %.1f%%\npH: %s\n" ..
                 "Last Crop: %s\nDays Since Harvest: %d\nFertilizer Applied: %.0fL\n" ..
                 "Needs Fertilization: %s\n" ..
                 "================================",
@@ -1408,7 +1408,7 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
                 math.floor(info.phosphorus.value * ppm.P + 0.5), info.phosphorus.status,
                 math.floor(info.potassium.value  * ppm.K + 0.5), info.potassium.status,
                 info.organicMatter,
-                info.pH,
+                tostring(info.pH),
                 info.lastCrop or "None",
                 info.daysSinceHarvest,
                 info.fertilizerApplied,
@@ -1442,7 +1442,7 @@ function SoilSettingsGUI.writeFieldDump(fid, info)
     xml:setInt  ("fieldDump.nutrients#potassium",     math.floor(info.potassium.value  * ppm.K + 0.5))
     xml:setString("fieldDump.nutrients#potassiumStatus", info.potassium.status)
     xml:setFloat("fieldDump.nutrients#organicMatter", info.organicMatter)
-    xml:setFloat("fieldDump.nutrients#pH",            info.pH)
+    if info.pH ~= nil then xml:setFloat("fieldDump.nutrients#pH", info.pH) end
     xml:setString("fieldDump.status#lastCrop",        info.lastCrop or "")
     xml:setInt  ("fieldDump.status#daysSinceHarvest", info.daysSinceHarvest)
     xml:setFloat("fieldDump.status#fertilizerApplied",info.fertilizerApplied)
@@ -1485,7 +1485,7 @@ function SoilSettingsGUI:consoleCommandFieldForecast(fieldId)
             if info.nitrogen.value   < thresh then table.insert(recs, "Apply Nitrogen")   end
             if info.phosphorus.value < thresh then table.insert(recs, "Apply Phosphorus") end
             if info.potassium.value  < thresh then table.insert(recs, "Apply Potassium")  end
-            if info.pH < 6.0                  then table.insert(recs, "Apply Lime")       end
+            if info.pH ~= nil and info.pH < 6.0 then table.insert(recs, "Apply Lime") end
             if (info.weedPressure or 0) > 20  then table.insert(recs, "Apply Herbicide") end
 
             local recStr = #recs > 0 and table.concat(recs, ", ") or "None required"

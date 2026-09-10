@@ -207,8 +207,10 @@ function SoilTreatmentDialog.buildPrescription(fieldId)
     local rx = { fieldId = fieldId }
 
     -- 1. pH Action
-    local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-    if ph < 6.5 then
+    local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+    if ph == nil then
+        rx.ph = _action(tr("sf_treat_action_ph_unknown", "pH unknown - no lime advice until a current reading exists."), COLOR_DIM)
+    elseif ph < 6.5 then
         rx.ph = _action(tr("sf_treat_action_lime", "Apply LIME or LIQUID LIME to raise pH."), COLOR_POOR)
     elseif ph > 7.5 then
         rx.ph = _action(tr("sf_treat_action_gypsum", "Apply GYPSUM to lower pH / improve structure."), COLOR_FAIR)

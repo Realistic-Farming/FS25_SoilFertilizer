@@ -691,3 +691,69 @@ function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
     end
     field._phReport = nil
 end
+
+-- ============================================================
+-- AUTO RATE (brief 3.D)
+-- ============================================================
+-- Server-side, before the root-vehicle usage multiplier. Reads the LOCAL pH at
+-- the applicator and returns a bounded whole-rate factor for a pH-active product
+-- under AUTO: boost while the local ground is below the neutral band, reduce once
+-- it is above it. In-band or unknown ground is neutral. Cached on the existing
+-- five-second cadence per working vehicle; no global vehicle scan, no new
+-- subscription. The hook applies the returned factor once.
+
+function SoilFertilitySystem:updatePHWorkAuto(sprayerSelf, _dt, _workAreas)
+    if g_server == nil or self.settings == nil or not self.settings.enabled then return 1.0 end
+    if type(self._applyPHFootprint) ~= 'function' then return 1.0 end
+    local rm = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
+    if rm == nil or type(rm.getAutoMode) ~= 'function' then return 1.0 end
+
+    local root = sprayerSelf and sprayerSelf.rootVehicle
+    local vehId = (root and root ~= sprayerSelf) and (root.id or 0) or (sprayerSelf and sprayerSelf.id or 0)
+    if not rm:getAutoMode(vehId) then return 1.0 end
+
+    local now = (g_currentMission and g_currentMission.time) or 0
+    self._phAutoCache = self._phAutoCache or {}
+    local cached = self._phAutoCache[vehId]
+    if cached ~= nil and (now - cached.time) < 5000 then return cached.factor end
+
+    local function remember(factor)
+        self._phAutoCache[vehId] = { time = now, factor = factor }
+        return factor
+    end
+
+    local spec = sprayerSelf and sprayerSelf.spec_sprayer
+    local fillType = spec and spec.workAreaParameters and spec.workAreaParameters.sprayFillType
+    if fillType == nil or fillType.name == nil then return remember(1.0) end
+
+    local profiles = SoilConstants.FERTILIZER_PROFILES
+    local profile = profiles and profiles[(fillType.name or ""):upper()]
+    if profile == nil or profile.pH == nil or profile.pH == 0 then return remember(1.0) end
+
+    local x, z = self._lastSprayX, self._lastSprayZ
+    if x == nil or z == nil or not self:vmAvailable() then return remember(1.0) end
+
+    local limits = SoilConstants.NUTRIENT_LIMITS
+    local ph = self.valueMaps:readValueAtWorld(PositionalPH.PH_LAYER, x, z)
+    local factor = 1.0
+    if type(ph) == 'number' then
+        if profile.pH > 0 then
+            if ph < limits.PH_NEUTRAL_LOW then
+                local deficit = (limits.PH_NEUTRAL_LOW - ph)
+                    / math.max(0.001, limits.PH_NEUTRAL_LOW - limits.PH_MIN)
+                factor = 1.0 + math.min(0.5, deficit)
+            else
+                factor = 0.5
+            end
+        else
+            if ph > limits.PH_NEUTRAL_HIGH then
+                local excess = (ph - limits.PH_NEUTRAL_HIGH)
+                    / math.max(0.001, limits.PH_MAX - limits.PH_NEUTRAL_HIGH)
+                factor = 1.0 + math.min(0.5, excess)
+            else
+                factor = 0.5
+            end
+        end
+    end
+    return remember(factor)
+end
