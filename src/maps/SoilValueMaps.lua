@@ -134,6 +134,17 @@ SoilValueMaps.LAYER_DEFS = {
       minVal = 0, maxVal = 254, serverOnly = true },
     { key = "growthCreditFruit", file = "sfSoilMap_GrowthCreditFruit.grle",
       minVal = 0, maxVal = 254, serverOnly = true },
+    -- [SF-78] GROWTH BLOCK (hold) capture. Same one-logical-pair contract as the
+    -- credit pair (brief 3.1): growthBlockState holds the captured pre-state
+    -- 0..254; growthBlockFruit holds fruit 1..63 in the low six bits, ACTIVE in
+    -- bit 6 (64) and HELD in bit 7 (128) (both flags invalid). minVal 0 / maxVal
+    -- 254 gives unitsPerRaw 1 so the packed value round-trips without
+    -- quantisation; raw zero is "absent" and presence is carried by the fruit
+    -- byte's flag. Allocated only with the family enabled or prior pair files.
+    { key = "growthBlockState",  file = "sfSoilMap_GrowthBlockState.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    { key = "growthBlockFruit",  file = "sfSoilMap_GrowthBlockFruit.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel

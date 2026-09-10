@@ -49,6 +49,11 @@ function SoilStateLedgerBridge.buildState(mgr)
     if mgr ~= nil and mgr.growthCredit ~= nil and type(mgr.growthCredit.getStateTable) == 'function' then
         out.growthCredit = mgr.growthCredit:getStateTable()
     end
+    -- [SF-78 One Ground] Growth-block hold metadata mirrors the same way; no
+    -- per-cell list, the dense capture truth is the two GRLE files.
+    if mgr ~= nil and mgr.growthBlock ~= nil and type(mgr.growthBlock.getStateTable) == 'function' then
+        out.growthBlock = mgr.growthBlock:getStateTable()
+    end
     out.lastSeenVersion = (mgr ~= nil and mgr.lastSeenVersion) or ""
     return out
 end
@@ -68,6 +73,10 @@ function SoilStateLedgerBridge.applyState(mgr)
     -- [SF-53 One Ground] Restore the growth-credit metadata block (nil-safe).
     if mgr.growthCredit ~= nil and type(mgr.growthCredit.applyStateTable) == 'function' then
         mgr.growthCredit:applyStateTable(data.growthCredit)
+    end
+    -- [SF-78 One Ground] Restore the growth-block hold metadata block (nil-safe).
+    if mgr.growthBlock ~= nil and type(mgr.growthBlock.applyStateTable) == 'function' then
+        mgr.growthBlock:applyStateTable(data.growthBlock)
     end
     mgr.lastSeenVersion = data.lastSeenVersion or ""
     return true

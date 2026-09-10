@@ -182,3 +182,15 @@
 - [x] `readCreditAt` / `getGrowthSurfaceWitness` return server credit + provenance witness; client/stale/partial/mismatched return nil. Delete unregisters the Time Guard accrual and drops accessors.
 - [x] SF-53 bar 139/0 (Groups A-I; Group A re-pointed to shipped surfaces); siblings green (SF-52 137/0, SF-78 24/0, viability 70/0, zone_yield 53/0); only om_213 red.
 - [~] In-game (owed): SF53_RUNTIME_ACCEPTANCE harness (cannot run offline); native fruit-plane filter/ring/multi-write and post-state behavior, paired-file interruption + GRLE recovery, dedicated-server START/FINISHED and client engine sync, real bank bytes/save duration/frame cost.
+
+## SF-78 One Ground growth hold (2026-09-10, draft PR #931 into development)
+
+- [x] `GrowthBlock.lua` conformance rewrite over the SF-52 plan; seven unsafe behaviors retired (8m/600 lattice, ephemeral Lua capture, arbitrary restore cap, `isLive` gate-close wedge, subscription leak, no-ring/no-postread write, cached resolver socket).
+- [x] Paired carrier layers `growthBlockState` + `growthBlockFruit` (ACTIVE bit6/HELD bit7) in SoilValueMaps; one logical pair, no fifth map.
+- [x] Manager family dispatch routes START/FINISHED to GrowthBlock; no independent subscription; no Time Guard (engine bracket is the clock).
+- [x] Write-once ACTIVE capture at first START; later START never recaptures, increments stable-receipt transition count; global change stales the batch.
+- [x] Drained FINISHED restores stable receipts (bucket by fruit/source/target, rings at plan grain, one filtered executeSet, post-state re-read), HELD only verified cells, then clears active authority unconditionally (cert assertion).
+- [x] Target `max(captured, current - steps*transitionCount)`, never below captured; steps via `OptionScalingResolver` (agronomy base1 clamp1..2), neutral 1.
+- [x] Metadata rides `soilData.growthBlock` XML + StateLedger mirror; dense truth in the two GRLE files. `getGrowthSurfaceWitness` + `isCapturedAtFirstStart` surfaces.
+- [x] SF-78 bar 109/0 (Groups A-I; Group A shipped-surface re-point); full suite 3505 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF78_RUNTIME_ACCEPTANCE harness (cannot run offline); native write + post-state, paired-file interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
