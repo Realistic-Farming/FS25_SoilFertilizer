@@ -814,17 +814,19 @@ function SoilFertilityManager:activateSoilSystem()
             end
         end
 
-        -- [SF-53 One Ground] The single family growth dispatch: the manager owns
-        -- the one START/FINISHED message pair and routes to its conformed
-        -- members. GrowthCredit is the first member to receive through it (its
-        -- own independent FINISHED subscription is gone). GrowthBlock and
-        -- ZoneYield still subscribe themselves until SF-78/SF-14 conform and
-        -- migrate onto this same pair, so no member is double-delivered.
+        -- [SF-53 / SF-78 One Ground] The single family growth dispatch: the manager
+        -- owns the one START/FINISHED message pair and routes to its conformed
+        -- members (GrowthCredit, then GrowthBlock). Neither subscribes
+        -- independently any more. ZoneYield still subscribes itself until SF-14
+        -- conforms and migrates onto this same pair, so no member is
+        -- double-delivered.
         if g_server ~= nil then
             self:registerGrowthFamilyDispatch()
         end
 
-        -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
+        -- SF-78 GROWTH BLOCK: initialize only. It owns no independent growth
+        -- subscription (brief 3.3/3.11); START/FINISHED arrive through the family
+        -- dispatch above. register() is a no-op kept for the uniform member API.
         -- Server-only by the fruit-plane write's nature; the module's own live
         -- gate keeps it inert until the growth_modulation release gate opens.
         if self.growthBlock then
@@ -1594,6 +1596,11 @@ function SoilFertilityManager:saveSoilData()
         if self.growthCredit and type(self.growthCredit.saveToXMLFile) == 'function' then
             self.growthCredit:saveToXMLFile(xmlFile, "soilData.growthCredit")
         end
+        -- [SF-78 One Ground] Growth-block hold metadata rides the same soilData
+        -- block; the dense capture truth is the two GRLE files SoilValueMaps writes.
+        if self.growthBlock and type(self.growthBlock.saveToXMLFile) == 'function' then
+            self.growthBlock:saveToXMLFile(xmlFile, "soilData.growthBlock")
+        end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
         saveXMLFile(xmlFile)
         delete(xmlFile)
@@ -1689,6 +1696,12 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             -- PENDING_VALIDATION until current-session membership/fruit validation.
             if self.growthCredit and type(self.growthCredit.loadFromXMLFile) == 'function' then
                 self.growthCredit:loadFromXMLFile(xmlFile, "soilData.growthCredit")
+            end
+            -- [SF-78 One Ground] Restore the growth-block hold metadata (the GRLE
+            -- pair already restored inside valueMaps:initialize). The capture stays
+            -- PENDING_VALIDATION until current-session membership/fruit validation.
+            if self.growthBlock and type(self.growthBlock.loadFromXMLFile) == 'function' then
+                self.growthBlock:loadFromXMLFile(xmlFile, "soilData.growthBlock")
             end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
             delete(xmlFile)
@@ -2578,12 +2591,12 @@ end
 -- The manager owns the one START_GROWTH_PERIOD / FINISHED_GROWTH_PERIOD message
 -- pair for the SF-2M family and routes each delivery to its conformed members
 -- (brief 3.6, 9: "Receive START and FINISHED only from SoilFertilityManager's
--- one server family dispatch. Do not subscribe independently."). GrowthCredit is
--- the first member routed here. GrowthBlock and ZoneYield retain their own
--- subscriptions until SF-78 and SF-14 conform; they migrate onto this pair in
--- their own builds. The dispatch is server-only (fruit-plane writes are server
--- consequence). Each member call is pcall-guarded so one member can never take
--- the others down with it.
+-- one server family dispatch. Do not subscribe independently."). GrowthCredit and
+-- GrowthBlock are both routed here; neither subscribes independently. ZoneYield
+-- retains its own subscription until SF-14 conforms and migrates onto this pair.
+-- The dispatch is server-only (fruit-plane writes are server consequence). Each
+-- member call is pcall-guarded so one member can never take the others down with
+-- it.
 -- ============================================================
 
 function SoilFertilityManager:registerGrowthFamilyDispatch()
@@ -2613,14 +2626,21 @@ function SoilFertilityManager:onGrowthStart(transitionPeriod)
     if self.growthCredit and type(self.growthCredit.onStartGrowthPeriod) == 'function' then
         pcall(self.growthCredit.onStartGrowthPeriod, self.growthCredit, transitionPeriod)
     end
+    if self.growthBlock and type(self.growthBlock.onStartGrowthPeriod) == 'function' then
+        pcall(self.growthBlock.onStartGrowthPeriod, self.growthBlock, transitionPeriod)
+    end
 end
 
 --- FINISHED_GROWTH_PERIOD delivery, payload (finishedPeriod, hasPendingGrowth).
 --- Routed to conformed members in the family's consequence order: credit first,
---- then hold restore/active cleanup (SF-78, when it conforms), then SF-14 capture.
+--- then the hold restore/active cleanup (SF-78), then SF-14 capture when it
+--- conforms.
 function SoilFertilityManager:onGrowthFinished(finishedPeriod, hasPendingGrowth)
     if self.growthCredit and type(self.growthCredit.onFinishedGrowthPeriod) == 'function' then
         pcall(self.growthCredit.onFinishedGrowthPeriod, self.growthCredit, finishedPeriod, hasPendingGrowth)
+    end
+    if self.growthBlock and type(self.growthBlock.onFinishedGrowthPeriod) == 'function' then
+        pcall(self.growthBlock.onFinishedGrowthPeriod, self.growthBlock, finishedPeriod, hasPendingGrowth)
     end
 end
 
