@@ -194,3 +194,15 @@
 - [x] Metadata rides `soilData.growthBlock` XML + StateLedger mirror; dense truth in the two GRLE files. `getGrowthSurfaceWitness` + `isCapturedAtFirstStart` surfaces.
 - [x] SF-78 bar 109/0 (Groups A-I; Group A shipped-surface re-point); full suite 3505 passed, only om_213 red; syntax + lint clean.
 - [~] In-game (owed): SF78_RUNTIME_ACCEPTANCE harness (cannot run offline); native write + post-state, paired-file interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
+
+## SF-14 One Ground zone yield (2026-09-10, draft PR #932 into development)
+
+- [x] `ZoneYield.lua` conformance rewrite over the SF-52 plan; four source defects retired (first-field/one-fruit identity, private 8m/600 ruler, incomplete axis-aligned drag box, legacy scalar readiness/freeze).
+- [x] Plan consumption + polygon-fruit receipts `(farmlandId, sourcePolygonFingerprint, fruitTypeIndex)` with PENDING/READY/FROZEN_SPATIAL/FROZEN_FALLBACK; contract fallback map separate.
+- [x] Manager family dispatch routes START/FINISHED to ZoneYield; no independent subscription; bounded job pump from the manager update path.
+- [x] Capture reads N/P/K once, `clamp(baseline + (localRaw-baseline)*variationScale, 0.70, 1.15)`, writes the provider footprint and post-reads; a failed read/write/post-read fails the farmland job; drift cancels and leaves PENDING.
+- [x] Descriptor/route admission + two-part regrowth thaw + OptionScaling variation (agronomy base1 clamp0.5..1.5), neutral 1.
+- [x] Native fruit-filtered harvest read + rotated <=256 drag lattice; four Cutter surfaces retained; sowing door clears matching receipts.
+- [x] Metadata rides `soilData.zoneYield` XML + StateLedger mirror; dense truth in the yieldEfficiency GRLE. `getGrowthSurfaceWitness` surface.
+- [x] SF-14 bar 155/0 (Groups A-I; Group A shipped-surface re-point); full suite 3607 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF14_RUNTIME_ACCEPTANCE harness (cannot run offline); native writes + post-read, polygon clipping, save interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
