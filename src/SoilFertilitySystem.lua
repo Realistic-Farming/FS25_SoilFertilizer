@@ -153,6 +153,10 @@ function SoilFertilitySystem.new(settings)
     -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
     -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
     self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
+    -- [SF-79] Positional pH: the map revision advances on every applied pH
+    -- footprint write; a derived field report is CURRENT only at the revision it
+    -- was computed from. Session-local; the map's own GRLE file is the truth.
+    self._phMapRevision = 0
     -- [SF-43] MATERIAL DOWN. Created here beside the store it rides on; armed only
     -- after the store initializes, because arming asserts its layer keys resolved.
     self.materialDown = MaterialDown     and MaterialDown.new()     or nil

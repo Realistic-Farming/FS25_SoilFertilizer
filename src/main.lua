@@ -141,6 +141,11 @@ source(modDirectory .. "src/ZoneYield.lua")
 -- registration sits beside the soil bridges.
 source(modDirectory .. "src/TopographyCache.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
+-- SF-79 POSITIONAL PH: the chemical-soil authority is the pH value map; the field
+-- number is a report derived from its written pixels. Hangs the private writer
+-- (`_applyPHFootprint`) and report/cache routines on SoilFertilitySystem, so it
+-- loads after it. No new grid, product, rate curve or clock; release LOCKED.
+source(modDirectory .. "src/PositionalPH.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
 -- SoilFertilitySystem:computeYieldModifier at runtime; installed as a class hook by HookManager.
