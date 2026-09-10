@@ -1003,7 +1003,7 @@ function GrowthBlock:saveToXMLFile(xmlFile, key)
     setXMLInt(xmlFile, key .. "#schema", 1)
     setXMLInt(xmlFile, key .. "#captureGeneration", self._captureGeneration or 0)
     local env = self._envelope
-    setXMLBool(xmlFile, key .. "#active", env ~= nil)
+    setXMLInt(xmlFile, key .. "#active", env ~= nil and 1 or 0)
     if env ~= nil then
         setXMLInt(xmlFile, key .. "#firstTransitionPeriod", env.firstTransitionPeriod or 0)
         setXMLInt(xmlFile, key .. "#lastStartPeriod", env.lastStartPeriod or 0)
@@ -1014,7 +1014,7 @@ function GrowthBlock:saveToXMLFile(xmlFile, key)
         if meta ~= nil then
             local entryKey = string.format("%s.farmland(%d)", key, idx)
             setXMLInt(xmlFile, entryKey .. "#id", farmlandId)
-            setXMLBool(xmlFile, entryKey .. "#active", meta.active == true)
+            setXMLInt(xmlFile, entryKey .. "#active", meta.active == true and 1 or 0)
             setXMLString(xmlFile, entryKey .. "#fruitRoster", meta.fruitRosterFingerprint or '')
             setXMLInt(xmlFile, entryKey .. "#resolution", meta.terrainResolution or 0)
             setXMLFloat(xmlFile, entryKey .. "#grain", meta.truthGrainMetres or 0)
@@ -1045,7 +1045,7 @@ function GrowthBlock:loadFromXMLFile(xmlFile, key)
         if id ~= nil then
             self._metadata[id] = {
                 schema = 1,
-                active = getXMLBool(xmlFile, entryKey .. "#active") == true,
+                active = (getXMLInt(xmlFile, entryKey .. "#active") or 0) == 1,
                 fruitRosterFingerprint = getXMLString(xmlFile, entryKey .. "#fruitRoster") or '',
                 terrainResolution = getXMLInt(xmlFile, entryKey .. "#resolution") or 0,
                 truthGrainMetres = getXMLFloat(xmlFile, entryKey .. "#grain") or 0,
