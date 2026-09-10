@@ -153,11 +153,14 @@ end
 --- @return number
 function ZoneYield.effectiveVariationScale(profile)
     local declaration = ZoneYield.VARIATION_DECLARATION
+    local scale = declaration.neutral
     if OptionScalingResolver ~= nil and type(OptionScalingResolver.resolve) == 'function' then
         local ok, resolved = pcall(OptionScalingResolver.resolve, declaration, profile)
-        if ok and type(resolved) == 'number' then return resolved end
+        if ok and type(resolved) == 'number' then scale = resolved end
     end
-    return declaration.neutral
+    if scale < declaration.clampMin then scale = declaration.clampMin end
+    if scale > declaration.clampMax then scale = declaration.clampMax end
+    return scale
 end
 
 --- Descriptor/route admission (brief 3.4). Requires valid terrain data plane,
