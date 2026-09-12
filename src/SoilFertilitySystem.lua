@@ -4162,11 +4162,152 @@ end
 
 --- Local read-modify-write bump around a work position (residue/amendment
 --- incorporation at the tillage tool). deltas = {nitrogen=dN, ...}.
-function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius)
-    if not worldX or not worldZ or not self:vmAvailable() then return end
+-- [SF-934] Teleport guard for the tillage sweep, in multiples of the worked line
+-- length: a jump farther than this never spans a quad, it seeds a fresh strip.
+SoilFertilitySystem.TILLAGE_TELEPORT_FACTOR = 3.0
+
+--- [SF-934] The parallelogram vmLocalBump paints this tick, plus the anchor
+--- bookkeeping behind it. Split out so every write inside ONE tick shares ONE
+--- footprint: cultivation bumps residue and then oxidation bumps OM in the same
+--- tick, and a second call that reseeded would concentrate its delta onto a thin
+--- strip while the first spread over the full swept quad. The per-tick cache keeps
+--- both on the same ground, which is also what physically happened.
+---@param fieldId number|nil  anchors are keyed per field so a pass never links fields
+---@return table|nil  { sx, sz, wx, wz, hx, hz, areaM2 }, or nil when nothing to paint
+function SoilFertilitySystem:_tillageQuad(fieldId, ax, az, bx, bz, lineLen)
+    local nowMs = (g_currentMission and g_currentMission.time) or 0
+    local cached = self._vmTillQuad
+    if cached ~= nil and cached.time == nowMs and cached.fieldId == fieldId
+        and cached.ax == ax and cached.az == az and cached.bx == bx and cached.bz == bz then
+        return cached.quad
+    end
+
+    local anchors = self._vmTillAnchors
+    if anchors == nil then anchors = {}; self._vmTillAnchors = anchors end
+    local anchor = (fieldId ~= nil) and anchors[fieldId] or nil
+
+    local sx, sz, wx, wz, hx, hz, areaM2
+
+    if anchor ~= nil then
+        -- Tip-swap guard: the work-area node pair can arrive in either order from one
+        -- tick to the next, so pair each tip with whichever anchor tip it is nearer.
+        -- Without it a swapped pair folds the quad into a bow tie and the paint dies.
+        local dxS = (ax - anchor.ax) + (bx - anchor.bx)
+        local dzS = (az - anchor.az) + (bz - anchor.bz)
+        local dxW = (ax - anchor.bx) + (bx - anchor.ax)
+        local dzW = (az - anchor.bz) + (bz - anchor.az)
+        local travX, travZ
+        if (dxW * dxW + dzW * dzW) < (dxS * dxS + dzS * dzS) then
+            travX, travZ = dxW * 0.5, dzW * 0.5
+        else
+            travX, travZ = dxS * 0.5, dzS * 0.5
+        end
+        local travel = math.sqrt(travX * travX + travZ * travZ)
+        if travel < 0.05 or travel > lineLen * SoilFertilitySystem.TILLAGE_TELEPORT_FACTOR then
+            anchor = nil   -- standing still, or a teleport: seed, never span the gap
+        else
+            -- Quad between the previously worked line (base) and this one (travel edge).
+            sx, sz = anchor.ax, anchor.az
+            wx, wz = anchor.bx, anchor.bz
+            hx, hz = ax, az
+            areaM2 = math.abs((wx - sx) * (hz - sz) - (wz - sz) * (hx - sx))
+        end
+    end
+
+    if anchor == nil then
+        -- Seed: a thin strip centred on the current worked line.
+        local ux, uz = -(bz - az) / lineLen, (bx - ax) / lineLen
+        local h = math.max(0.5, lineLen * 0.02)
+        sx, sz = ax - ux * h, az - uz * h
+        wx, wz = bx - ux * h, bz - uz * h
+        hx, hz = ax + ux * h, az + uz * h
+        areaM2 = lineLen * (h * 2)
+    end
+
+    if areaM2 == nil or areaM2 <= lineLen * 0.02 then return nil end
+
+    local quad = { sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz, areaM2 = areaM2 }
+    if fieldId ~= nil then
+        anchors[fieldId] = { ax = ax, az = az, bx = bx, bz = bz }
+    end
+    self._vmTillQuad = { time = nowMs, fieldId = fieldId,
+                         ax = ax, az = az, bx = bx, bz = bz, quad = quad }
+    return quad
+end
+
+--- Paint one tillage / sowing tick's deltas into the value maps ADDITIVELY, along
+--- the strip the implement actually worked.
+---
+--- [SF-934] The old body called SoilValueMaps:addValueAtWorld, which despite the
+--- name is a read-modify-SET. It sampled ONE pixel under the implement root, added
+--- the delta, then stamped that single result flat across a CELL_SIZE square,
+--- replacing every other pixel in the square with whatever the sampled pixel held.
+--- The square is wider than most implements, so neighbouring passes overlap and each
+--- pass copied its own sampled pixel over the overlap. Driving back down the same
+--- track sampled a different neighbour, so an unchanged POSITIVE delta could stamp
+--- the square DOWN instead of up: N and K fell on one pass and rose on the next. The
+--- nutrient arithmetic never reversed; the stamp copied a different pixel each time.
+---
+--- This is the move spraying already made (RSF-762 / RSF-836): paint the swept quad
+--- between the last worked line and the current one through addPaintStrip, a real
+--- per-pixel executeAdd with a saturation band. Consecutive ticks share no overlap,
+--- so a dose never stacks, and no pixel is overwritten with a neighbour's value.
+---
+--- MASS IS CONSERVED. Callers express each delta as this tick's whole amount
+--- concentrated into one zone cell, so the real mass is delta * CELL_AREA_HA. Spread
+--- over the strip's own area that becomes delta * CELL_AREA_HA / stripAreaHa per
+--- pixel, the same arithmetic paintBoomStrip uses.
+---
+--- THE FALLBACK IS ADDITIVE TOO. A first tick, a field change, a teleport or a
+--- missing work line cannot span a quad, so they seed a thin strip on the current
+--- line, still through addPaintStrip. A point-write fallback would keep the
+--- flattening stamp alive on exactly the ticks this bug appears on: the first tick
+--- of every pass and every headland turn. There is deliberately no addValueAtWorld
+--- path left here. An engine without executeAdd paints nothing rather than
+--- reintroducing the destructive stamp, which is what paintBoomStrip already does.
+---@param worldX number
+---@param worldZ number
+---@param deltas table        key -> semantic delta, pre-scaled to one zone cell
+---@param radius number|nil   half-span used ONLY when no work line is available
+---@param fieldId number|nil  defaults to the field the hook last recorded
+function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius, fieldId)
+    if not worldX or not worldZ or not deltas or not self:vmAvailable() then return end
+
+    local fid  = fieldId or self._lastTillageFieldId
+    local line = self._lastTillageLine
+
+    -- The line worked this tick. Prefer the implement's real lateral span, which the
+    -- hook derives from the work-area nodes so it carries width AND heading. Without
+    -- one, stand a span of `radius` either side of the point: still an area, never a
+    -- single sampled pixel.
+    local ax, az, bx, bz
+    if line ~= nil and line.ax ~= nil and line.bx ~= nil then
+        ax, az, bx, bz = line.ax, line.az, line.bx, line.bz
+    else
+        local half = radius or 4.0
+        ax, az, bx, bz = worldX - half, worldZ, worldX + half, worldZ
+    end
+    local lineLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
+    if lineLen < 0.01 then
+        -- A degenerate span (co-located work-area nodes) must not silently paint
+        -- nothing: fall back to the same square the no-line case uses.
+        local half = radius or 4.0
+        ax, az, bx, bz = worldX - half, worldZ, worldX + half, worldZ
+        lineLen = half * 2
+        if lineLen < 0.01 then return end
+    end
+
+    local quad = self:_tillageQuad(fid, ax, az, bx, bz, lineLen)
+    if quad == nil then return end
+
+    local zone   = SoilConstants.ZONE
+    local cellHa = (zone and zone.CELL_AREA_HA) or 0.01
+    local scale  = cellHa / (quad.areaM2 / 10000)
+    local vm     = self.valueMaps
+
     for key, d in pairs(deltas) do
         if d and d ~= 0 then
-            self.valueMaps:addValueAtWorld(key, worldX, worldZ, d, radius or 4.0)
+            vm:addPaintStrip(key, quad.sx, quad.sz, quad.wx, quad.wz, quad.hx, quad.hz, d * scale)
         end
     end
 end

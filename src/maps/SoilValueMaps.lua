@@ -658,8 +658,17 @@ function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius, gro
 end
 
 --- Read-modify-write delta at a position: reads the pixel under (x,z),
---- adds `delta`, writes the result back over the radius square. Used by
---- residue/amendment incorporation which applies local bumps.
+--- adds `delta`, writes the result back over the radius square.
+---
+--- [SF-934] DO NOT USE THIS FOR INCREMENTAL FIELD WRITES. Despite the name this is
+--- a SET over an area, not an add over an area: it samples ONE pixel, adds the
+--- delta, then stamps that single result across the whole radius square, replacing
+--- every other pixel in the square with whatever the sampled pixel held. Two passes
+--- over the same ground therefore copy different neighbours and can move a value in
+--- opposite directions from an unchanged delta (#934, tillage NPK flipping with
+--- travel direction). `addPaintStrip` is the additive primitive; route per-pixel
+--- work through that. This is kept only for a caller that genuinely wants one
+--- sampled value levelled across a patch.
 function SoilValueMaps:addValueAtWorld(key, worldX, worldZ, delta, radius, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]

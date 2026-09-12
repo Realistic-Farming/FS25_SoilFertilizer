@@ -5149,13 +5149,11 @@ function HookManager:installPlowingHook()
                     local cropBiomass = cultivatorSelf._sfCropBiomass or 0
 
                     if isPlowingTool then
-                        g_SoilFertilityManager.soilSystem._lastTillageX = x
-                        g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                        hookMgrRef:_recordTillagePoint(cultivatorSelf, x, z, farmlandId)
                         g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, isAlsoSprayer, cropBiomass)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
                     else
-                        g_SoilFertilityManager.soilSystem._lastTillageX = x
-                        g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                        hookMgrRef:_recordTillagePoint(cultivatorSelf, x, z, farmlandId)
                         g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa, isAlsoSprayer, cropBiomass)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
@@ -5259,8 +5257,7 @@ function HookManager:installDedicatedPlowHook()
                 if farmlandId and farmlandId > 0 then
                     -- #674: green-manure biomass sampled (pre-clear) by the crop-biomass probe.
                     local cropBiomass = plowSelf._sfCropBiomass or 0
-                    g_SoilFertilityManager.soilSystem._lastTillageX = x
-                    g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                    hookMgrRef:_recordTillagePoint(plowSelf, x, z, farmlandId)
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
@@ -5479,8 +5476,7 @@ function HookManager:installMulcherHook()
                 local areaHa  = (speedMs * dtSec * widthM) / 10000
                 if areaHa <= 0 then return end
 
-                g_SoilFertilityManager.soilSystem._lastTillageX = x
-                g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                hookMgrRef:_recordTillagePoint(mulcherSelf, x, z, farmlandId)
                 g_SoilFertilityManager.soilSystem:onMulching(farmlandId, areaHa, biomass)
             end)
             if not success then
@@ -5549,8 +5545,7 @@ function HookManager:installWeederHook()
                 SoilLogger.debug("[WeederHook] pos=(%.1f,%.1f) farmlandId=%s grassland=%s",
                     x, z, tostring(farmlandId), tostring(spec.isGrasslandWeeder))
                 if farmlandId and farmlandId > 0 then
-                    mgr.soilSystem._lastTillageX = x
-                    mgr.soilSystem._lastTillageZ = z
+                    hookMgrRef:_recordTillagePoint(weederSelf, x, z, farmlandId)
                     if doWeed then
                         mgr.soilSystem:onCultivation(farmlandId, areaHa)
                         SoilLogger.debug("[WeederHook] Field %d: mechanical weed removal applied", farmlandId)
@@ -5697,8 +5692,7 @@ function HookManager:installSowingHook()
                 if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
                 local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
                 if areaHa <= 0 then return end
-                g_SoilFertilityManager.soilSystem._lastTillageX = x
-                g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                hookMgrRef:_recordTillagePoint(sowingSelf, x, z, fieldId)
                 local cropBiomass = sowingSelf._sfCropBiomass or 0
                 g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType, cropBiomass)
 
@@ -7942,6 +7936,29 @@ function HookManager:_collectBoomNodes(vehicle)
         end
     end
     return nodes
+end
+
+--- [SF-934] Record where a tillage / sowing tick actually worked, for the additive
+--- strip painter in SoilFertilitySystem:vmLocalBump.
+---
+--- The root node on its own is a single point: it carries no working width and no
+--- heading, so any painter seeded from it can only stamp a fixed square, which is
+--- what made the nutrient change depend on travel direction (#934). The work line is
+--- the same lateral span the sprayer painter uses, derived from the work-area
+--- start/width/height nodes that every tillage implement has, so the painted strip
+--- follows the real working width at any heading. fieldId keys the sweep anchor so a
+--- pass on one field never links to a pass on another.
+---@param vehicle table    the implement whose work area defines the span
+---@param x number         root-node world X (kept for the coarse zone-grid consumers)
+---@param z number         root-node world Z
+---@param fieldId number   the field this tick worked
+function HookManager:_recordTillagePoint(vehicle, x, z, fieldId)
+    local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if ss == nil then return end
+    ss._lastTillageX = x
+    ss._lastTillageZ = z
+    ss._lastTillageFieldId = fieldId
+    ss._lastTillageLine = self:getBoomLineEndpoints(vehicle, x, z)
 end
 
 --- The implement working width used by the fallback (broadcast spreader whose work
