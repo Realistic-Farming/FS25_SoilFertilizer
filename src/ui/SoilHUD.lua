@@ -2182,18 +2182,75 @@ function SoilHUD:getSprayerFillType(sprayer)
         end
     end
 
-    -- Priority 4: fall back to generic fill unit query (works when parked)
+    -- Priority 4: fall back to generic fill unit query (works when parked).
+    --
+    -- [FIX-4] Only consider fill types this mod can actually APPLY. The old loop
+    -- took the first non-empty unit, and on a tractor or a self-propelled machine
+    -- that is the fuel tank -- so auto-rate read DIESEL, found it absent from
+    -- FERTILIZER_PROFILES, and pinned the rate at 1.00x. Measured live: 1,226 LIME
+    -- applications went down at full rate while the log repeated
+    -- "Auto-rate calc: DIESEL NOT in FERTILIZER_PROFILES - holding 1.0x", which is
+    -- exactly the over-liming the player saw. Auto-rate cannot back off a product
+    -- it does not know it is spreading.
+    --
+    -- Two passes on purpose: prefer a unit holding something we have a profile for,
+    -- and only then accept any other non-fuel product, so an unrecognised custom
+    -- fertiliser still resolves rather than falling back to diesel.
     if not fillTypeIndex then
-        local ok, units = pcall(function() return sprayer:getFillUnits() end)
-        if ok and units then
-            for i = 1, #units do
-                local ft = sprayer:getFillUnitFillType(i)
-                if ft and ft > 0 and ft ~= FillType.UNKNOWN then
-                    fillTypeIndex = ft
-                    break
+        local profiles = SoilConstants.FERTILIZER_PROFILES or {}
+        local NON_PRODUCT = {
+            DIESEL = true, DEF = true, ADBLUE = true, AIR = true, ELECTRICCHARGE = true,
+            METHANE = true, LIQUIDMANURE = false,   -- liquid manure IS a product
+        }
+        -- Search the machine AND anything attached to it: on a tractor + spreader the
+        -- lime is in the implement's hopper, never in the tractor. Filtering fuel out
+        -- without also looking at implements just turned "reads DIESEL" into "reads
+        -- nothing", and auto-rate bailed instead of pinning -- worse, not better.
+        local candidates = { sprayer }
+        local function addImplements(v, depth)
+            if v == nil or depth > 3 then return end
+            local ok, impls = pcall(function()
+                return v.getAttachedImplements and v:getAttachedImplements() or nil
+            end)
+            if not ok or impls == nil then return end
+            for _, impl in ipairs(impls) do
+                local obj = impl and impl.object
+                if obj ~= nil then
+                    candidates[#candidates + 1] = obj
+                    addImplements(obj, depth + 1)
                 end
             end
         end
+        addImplements(sprayer, 1)
+        local root = sprayer.rootVehicle
+        if root and root ~= sprayer then
+            candidates[#candidates + 1] = root
+            addImplements(root, 1)
+        end
+
+        local firstOther
+        for _, v in ipairs(candidates) do
+            if fillTypeIndex then break end
+            local ok, units = pcall(function() return v:getFillUnits() end)
+            if ok and units then
+                for i = 1, #units do
+                    local ft = v:getFillUnitFillType(i)
+                    if ft and ft > 0 and ft ~= FillType.UNKNOWN then
+                        local desc = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ft)
+                        local name = desc and desc.name
+                        if name and NON_PRODUCT[name] ~= true then
+                            if profiles[name] ~= nil then
+                                fillTypeIndex = ft   -- known product: take it
+                                break
+                            elseif firstOther == nil then
+                                firstOther = ft      -- plausible product, keep as fallback
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if not fillTypeIndex then fillTypeIndex = firstOther end
     end
 
     if not fillTypeIndex then return nil end
