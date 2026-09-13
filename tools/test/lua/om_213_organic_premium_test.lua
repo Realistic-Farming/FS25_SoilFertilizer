@@ -111,6 +111,11 @@ T.eq("premium: SF absent opts out", fn({ fillTypeIndex = WHEAT }), nil)
 g_SoilFertilityManager.organic = sfAbsent
 
 -- ── the modifier moves the REAL engine's price, clamp B clips ──
+-- MD-15 made MarketEngine:_recalculate server-side only: a pure client (g_server nil)
+-- keeps the authoritative quote it received and never composes. This bench drives the
+-- engine as the host, the same way MD's own MD-15 bench does (g_server = {}), so the
+-- modifier product and clamp B actually run.
+g_server = {}
 local engine = MarketEngine.new()
 engine.prices[WHEAT] = { base = 10, volatilityFactor = 1.0, modifiers = {}, current = 10, history = {} }
 g_MarketDynamics.marketEngine = engine
@@ -132,6 +137,14 @@ currentFarmId = 1
 engine:_recalculate(WHEAT)
 T.near("premium: clamp B clips the composition band at 3.0", engine:getPrice(WHEAT), 30, 1e-6)
 g_MarketDynamics.priceModifiers["TestClamp"] = nil
+
+-- pure-client witness: with no server, _recalculate keeps the received quote and the
+-- organic modifier is never composed locally (the host's quote is authoritative).
+g_server = nil
+engine.prices[WHEAT].current = 12.5
+currentFarmId = 1
+engine:_recalculate(WHEAT)
+T.near("premium: a pure client keeps the received quote (MD-15 guard)", engine:getPrice(WHEAT), 12.5, 1e-9)
 
 -- registration lifecycle
 OrganicPremiumBridge.unregister()
