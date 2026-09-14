@@ -4025,6 +4025,18 @@ function HookManager:installSprayerAreaHook()
                 local vrWeightSum = 0.0
                 local herbAreaFraction = 1
 
+                -- RSF-F905: for a lime / organic amendment, capture THIS tick's boom points
+                -- before the application so the burn can be metered against the ground the
+                -- boom actually covered, not one sample point. Pure read, nothing marked; the
+                -- markBoomCells sweep further down keeps its own later capture and purpose.
+                local burnBoomPts = nil
+                if soilSys and isFertilizer and soilSys.computeCoveredBurnShare then
+                    local prof = SoilConstants.FERTILIZER_PROFILES[fillType.name]
+                    if prof and ((prof.pH and prof.pH > 0) or prof.OM) then
+                        burnBoomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    end
+                end
+
                 local function applySingle(fId, sectionLiters, spx, spz)
                     if not fId or fId <= 0 then return end
                     if soilSys then
@@ -4034,7 +4046,7 @@ function HookManager:installSprayerAreaHook()
                     SoilLogger.debug("Sprayer/Spreader hook: Field %d, %s, %.4fL (x%.2f rate)",
                         fId, fillType.name, sectionLiters, rateMultiplier)
                     if isFertilizer then
-                        soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters)
+                        soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters, burnBoomPts)
                     end
                     if herbOnlyDirect and soilSys.onHerbicideAppliedDirect then
                         soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
@@ -4188,6 +4200,15 @@ function HookManager:installSprayerAreaHook()
                                                 end
 
                                                 local secFillTypeIndex = fu.fillType
+                                                -- RSF-F905: same pre-application boom capture as the
+                                                -- primary path, for an amendment in a secondary tank.
+                                                local burnBoomPts2 = nil
+                                                if soilSys and isFert2 and soilSys.computeCoveredBurnShare then
+                                                    local prof2 = SoilConstants.FERTILIZER_PROFILES[ftName]
+                                                    if prof2 and ((prof2.pH and prof2.pH > 0) or prof2.OM) then
+                                                        burnBoomPts2 = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                    end
+                                                end
                                                 local function applyMulti(fId2, sLiters2, spx2, spz2)
                                                     if not fId2 or fId2 <= 0 then return end
                                                     if soilSys then
@@ -4197,7 +4218,7 @@ function HookManager:installSprayerAreaHook()
                                                     SoilLogger.debug("SprayerHook multi-tank: Field %d, %s, %.4fL",
                                                         fId2, ftName, sLiters2)
                                                     if isFert2 then
-                                                        soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2)
+                                                        soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2, burnBoomPts2)
                                                     end
                                                     if herbOnly2 and soilSys.onHerbicideAppliedDirect then
                                                         soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2 * herbAreaFraction)
@@ -4245,7 +4266,7 @@ function HookManager:installSprayerAreaHook()
                                                 end
 
                                                 if soilSys and fieldId and fieldId > 0 then
-                                                    local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                    local boomPts = burnBoomPts2 or burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                                                     -- RSF-836: the true boom line (tip to tip, in the vehicle's frame),
                                                     -- NOT the ends of the cell sweep array.
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
@@ -4304,7 +4325,7 @@ function HookManager:installSprayerAreaHook()
                 if soilSys and fieldId and fieldId > 0 then
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
-                    local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    local boomPts = burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                     -- RSF-836: the true boom line, never the ends of the cell sweep.
                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                     -- REFINED: paint the real boom-width strip into the per-pixel

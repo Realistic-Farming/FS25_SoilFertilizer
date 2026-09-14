@@ -460,8 +460,12 @@ function SoilTreatmentRates.buildNextStepLine(fieldId)
         body = body .. " " .. why
     end
 
-    -- Amendment burn: do not lime/manure now when crop would scorch.
-    if info and info.amendBurnRisk and (tip.nutrient == "pH" or tip.nutrient == "OM") then
+    -- Amendment burn: do not lime/manure now when crop would scorch. RSF-F905: same
+    -- condition as the HUD risk row (known, no burn yet, at risk), so the tip never
+    -- tells a farmer to wait on a crop that has already been scorched, and never
+    -- speaks on a client that has not received the burn value.
+    if info and info.amendBurnRisk and info.amendBurnKnown == true and (info.amendBurnPenalty or 0) <= 0
+       and (tip.nutrient == "pH" or tip.nutrient == "OM") then
         body = body .. " " .. tr("rf_pda_treat_burn_amend", "Wait: amending now can burn the crop.")
     end
 

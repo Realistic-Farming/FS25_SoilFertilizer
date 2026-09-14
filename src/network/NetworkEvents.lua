@@ -425,6 +425,9 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local burnDays = streamReadInt32(streamId)
         local coverageFrac = streamReadFloat32(streamId)
         local compaction = streamReadFloat32(streamId)
+        -- RSF-F905: amendment burn pair (value + owner-written known flag).
+        local amendBurnPen   = streamReadFloat32(streamId)
+        local amendBurnKnown = streamReadBool(streamId)
 
         -- Read nutrient buffer (V1.7)
         local buffer = {}
@@ -506,6 +509,8 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 burnDaysLeft = burnDays,
                 coverageFraction = math.max(0, math.min(1, coverageFrac or 0)),
                 compaction = math.max(0, math.min(100, compaction or 0)),
+                amendBurnPenalty = math.max(0, math.min(1, amendBurnPen or 0)),
+                amendBurnKnown = amendBurnKnown == true,
                 nutrientBuffer = buffer,
                 initialized = true
             }
@@ -577,6 +582,10 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId, field.burnDaysLeft or 0)
         streamWriteFloat32(streamId, field.coverageFraction or 0)
         streamWriteFloat32(streamId, field.compaction or 0)
+        -- RSF-F905: amendment burn pair. Only the owner writes this stream, so the
+        -- flag is always true and the value is authoritative, including zero.
+        streamWriteFloat32(streamId, field.amendBurnPenalty or 0)
+        streamWriteBool(streamId, true)
 
         -- Write nutrient buffer (V1.7)
         local buffer = field.nutrientBuffer or {}
@@ -710,6 +719,9 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId,   field.burnDaysLeft       or 0)
         streamWriteFloat32(streamId, field.coverageFraction   or 0)
         streamWriteFloat32(streamId, field.compaction         or 0)
+        -- RSF-F905: amendment burn pair (owner-written, always known).
+        streamWriteFloat32(streamId, field.amendBurnPenalty   or 0)
+        streamWriteBool(streamId, true)
 
         -- Nutrient buffer (V1.7)
         local buffer = field.nutrientBuffer or {}
@@ -800,6 +812,9 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local burnDays       = streamReadInt32(streamId)
         local coverageFrac   = streamReadFloat32(streamId)
         local compaction     = streamReadFloat32(streamId)
+        -- RSF-F905: amendment burn pair.
+        local amendBurnPen   = streamReadFloat32(streamId)
+        local amendBurnKnown = streamReadBool(streamId)
 
         local buffer = {}
         local bCount = streamReadInt32(streamId)
@@ -878,6 +893,8 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 coveredCells          = {},
                 coveredCellCount      = 0,
                 compaction            = math.max(0, math.min(100, compaction or 0)),
+                amendBurnPenalty      = math.max(0, math.min(1, amendBurnPen or 0)),
+                amendBurnKnown        = amendBurnKnown == true,
                 zoneData              = zd,
                 initialized           = true,
             }
@@ -1028,6 +1045,9 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local burnDays = streamReadInt32(streamId)
     local coverageFrac = streamReadFloat32(streamId)
     local compaction = streamReadFloat32(streamId)
+    -- RSF-F905: amendment burn pair.
+    local amendBurnPen   = streamReadFloat32(streamId)
+    local amendBurnKnown = streamReadBool(streamId)
 
     -- Read nutrient buffer (V1.7)
     local buffer = {}
@@ -1111,6 +1131,8 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
         coveredCells     = {},
         coveredCellCount = 0,
         compaction       = math.max(0, math.min(100, compaction or 0)),
+        amendBurnPenalty = math.max(0, math.min(1, amendBurnPen or 0)),
+        amendBurnKnown   = amendBurnKnown == true,
         zoneData         = zd,
         initialized      = true
     }
@@ -1159,6 +1181,9 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     streamWriteInt32(streamId, self.field.burnDaysLeft or 0)
     streamWriteFloat32(streamId, self.field.coverageFraction or 0)
     streamWriteFloat32(streamId, self.field.compaction or 0)
+    -- RSF-F905: amendment burn pair (owner-written, always known).
+    streamWriteFloat32(streamId, self.field.amendBurnPenalty or 0)
+    streamWriteBool(streamId, true)
 
     -- Write nutrient buffer (V1.7)
     local buffer = self.field.nutrientBuffer or {}

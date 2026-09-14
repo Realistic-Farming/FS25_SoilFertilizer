@@ -151,6 +151,6 @@ end
 
 -- Defensive: non-table / nil input degrades to zero fields, never crashes.
 do
-  T.eq("guard: nil input = 0 fields", next(B.deserializeFields(nil)) == nil and 0 or 1, 0)
-  T.eq("guard: empty array = 0 fields", next(B.deserializeFields({ 0 })) == nil and 0 or 1, 0)
+  T.eq("guard: nil input = 0 fields", next((B.deserializeFields(nil))) == nil and 0 or 1, 0)
+  T.eq("guard: empty array = 0 fields", next((B.deserializeFields({ 0 }))) == nil and 0 or 1, 0)
 end

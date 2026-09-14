@@ -418,8 +418,11 @@ function SoilHUD:getDetailRowCount(info)
             rows = rows + 1
         end
     end
-    if (info.amendBurnPenalty or 0) > 0 then rows = rows + 1 end
-    if (info.amendBurnPenalty or 0) <= 0 and info.amendBurnRisk == true then rows = rows + 1 end
+    -- RSF-F905: both burn rows need a KNOWN value. A client that has not received the
+    -- pair draws neither, so the count must skip both or the panel height lies.
+    local burnKnown = info.amendBurnKnown == true
+    if burnKnown and (info.amendBurnPenalty or 0) > 0 then rows = rows + 1 end
+    if burnKnown and (info.amendBurnPenalty or 0) <= 0 and info.amendBurnRisk == true then rows = rows + 1 end
     if info.yieldEfficiency then rows = rows + 1 end
     return rows
 end
@@ -915,8 +918,13 @@ function SoilHUD:update(dt)
         end
         -- Amendment burn text (lime/OM applied to a growing crop → big yield burn, #437).
         -- Surfaces the reason for a low yield once the burnDaysLeft warning has lapsed.
+        -- RSF-F905: three states. Known non-zero shows the percentage; known zero shows
+        -- the pre-emptive risk row (when at risk); not-known (a client that has not yet
+        -- received the pair) shows neither, because the warning would assert a
+        -- confirmed no-burn the client cannot support.
         local burn = info.amendBurnPenalty or 0
-        if burn > 0 then
+        local burnKnown = info.amendBurnKnown == true
+        if burnKnown and burn > 0 then
             self._fmt_burnText = string.format(g_i18n:getText("sf_hud_amend_burn"), math.floor(burn * 100 + 0.5))
         else
             self._fmt_burnText = nil
@@ -924,7 +932,7 @@ function SoilHUD:update(dt)
         -- Pre-emptive amendment-burn-risk warning (#684): the crop is established enough that
         -- liming or manuring it NOW would scorch it. Only shown before any burn has hit (the
         -- burn row above already explains it after the fact).
-        if info.amendBurnRisk == true and burn <= 0 then
+        if burnKnown and info.amendBurnRisk == true and burn <= 0 then
             self._fmt_burnRiskText = g_i18n:getText("sf_hud_burn_risk")
         else
             self._fmt_burnRiskText = nil
@@ -1045,7 +1053,9 @@ function SoilHUD:buildFieldInfoLines(info)
     -- Pre-emptive warning that liming/manuring THIS crop RIGHT NOW would scorch it.
     -- Same condition the standalone Soil Monitor panel uses (amendBurnRisk and no burn
     -- already in progress) so the two never disagree about when to show it.
-    local showBurnRisk = info.amendBurnRisk == true and (info.amendBurnPenalty or 0) <= 0
+    -- RSF-F905: and only when the burn value is KNOWN (never on a client that has not
+    -- received the pair).
+    local showBurnRisk = info.amendBurnKnown == true and info.amendBurnRisk == true and (info.amendBurnPenalty or 0) <= 0
 
     -- ── Sim asleep status (FieldSentry, #651) ────────────────
     -- A slept field's soil values are frozen by design (e.g. far from any active player) --
