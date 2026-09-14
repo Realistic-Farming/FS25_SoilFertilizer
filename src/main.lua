@@ -155,6 +155,10 @@ source(modDirectory .. "src/OrganicCertification.lua")
 source(modDirectory .. "src/ResistanceBands.lua")
 -- CD-10: after ResistanceBands, whose ceilingForMode it uses for the threshold arithmetic.
 source(modDirectory .. "src/HybridStrains.lua")
+-- RSF-F190: the dog's barn half asks this SoilFertilizer-owned reader for one
+-- resolved active-sickness answer per barn, the way its crop half asks
+-- getFieldInfo. Read-only bridge into the livestock provider; publishes nothing.
+source(modDirectory .. "src/LivestockWarningReader.lua")
 -- CD-13: dog early-warning. Passive, farm-wide crop disease alert when a doghouse
 -- is placed. Reads soilSystem:getFieldInfo; no write path. FarmTablet reads the
 -- published g_currentMission.dogEarlyWarning handle.
