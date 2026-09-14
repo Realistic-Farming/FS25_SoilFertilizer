@@ -1507,5 +1507,10 @@
     <e k="sf_res_pairs_no_field" v="Select one of your fields first." eh="dfc6d58d" />
     <e k="sf_dog_field_warning" v="Your dog senses something wrong with Field #%s." />
     <e k="sf_dog_barn_warning" v="Your dog senses something wrong at Barn %s." />
+    <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
+    <e k="sf_hud_status_fair" v="Fair" eh="f7f20cf0" />
+    <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
+    <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
 </elements>
 </l10n>

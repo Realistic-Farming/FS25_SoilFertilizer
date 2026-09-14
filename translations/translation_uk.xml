@@ -1076,29 +1076,29 @@
 		<e k="sf_dis_late_leaf_spot" v="[EN] Late Leaf Spot" eh="a012753f" />
 		<e k="sf_dis_peanut_rust" v="[EN] Peanut Rust" eh="5e46fad0" />
 		<e k="sf_dis_pod_rot" v="[EN] Sclerotinia Pod Rot" eh="244ed19f" />
-		<e k="sf_chem_PROPICONAZOLE" v="[EN] Propiconazole" eh="920d7ec6" />
-		<e k="sf_chem_TEBUCONAZOLE" v="[EN] Tebuconazole" eh="3755d13c" />
-		<e k="sf_chem_PROTHIOCONAZOLE" v="[EN] Prothioconazole" eh="98cddda9" />
-		<e k="sf_chem_FLUSILAZOLE" v="[EN] Flusilazole" eh="f79343a9" />
-		<e k="sf_chem_CYPROCONAZOLE" v="[EN] Cyproconazole" eh="220d4dca" />
-		<e k="sf_chem_DIFENOCONAZOLE" v="[EN] Difenoconazole" eh="6f2dce44" />
-		<e k="sf_chem_AZOXYSTROBIN" v="[EN] Azoxystrobin" eh="34160dda" />
-		<e k="sf_chem_PYRACLOSTROBIN" v="[EN] Pyraclostrobin" eh="b5f07095" />
-		<e k="sf_chem_TRIFLOXYSTROBIN" v="[EN] Trifloxystrobin" eh="9d00f6d7" />
-		<e k="sf_chem_BOSCALID" v="[EN] Boscalid" eh="5c0a4c40" />
-		<e k="sf_chem_PENTHIOPYRAD" v="[EN] Penthiopyrad" eh="f790ed1a" />
-		<e k="sf_chem_CHLOROTHALONIL" v="[EN] Chlorothalonil" eh="67688d75" />
-		<e k="sf_chem_MANCOZEB" v="[EN] Mancozeb" eh="5117fb39" />
-		<e k="sf_chem_MANEB" v="[EN] Maneb" eh="879fac4d" />
-		<e k="sf_chem_METALAXYL" v="[EN] Metalaxyl" eh="2c4598e3" />
-		<e k="sf_chem_FOSETYL_AL" v="[EN] Fosetyl-Al" eh="d292d7c7" />
-		<e k="sf_chem_THIOPHANATE_METHYL" v="[EN] Thiophanate-methyl" eh="46dd6b58" />
-		<e k="sf_chem_SULFUR" v="[EN] Sulfur" eh="529df3e8" />
-		<e k="sf_chem_COPPER_HYDROXIDE" v="[EN] Copper Hydroxide" eh="6b294851" />
-		<e k="sf_chem_FLUDIOXONIL" v="[EN] Fludioxonil" eh="d6448fdb" />
-		<e k="sf_chem_METALAXYL_M" v="[EN] Metalaxyl-M" eh="706a0ca9" />
-		<e k="sf_chem_THIRAM" v="[EN] Thiram" eh="63e2540c" />
-		<e k="sf_chem_CAPTAN" v="[EN] Captan" eh="dc89f49c" />
+		<e k="sf_chem_PROPICONAZOLE" v="Пропіконазол" eh="920d7ec6" />
+		<e k="sf_chem_TEBUCONAZOLE" v="Тебуконазол" eh="3755d13c" />
+		<e k="sf_chem_PROTHIOCONAZOLE" v="Протіоконазол" eh="98cddda9" />
+		<e k="sf_chem_FLUSILAZOLE" v="Флусилазол" eh="f79343a9" />
+		<e k="sf_chem_CYPROCONAZOLE" v="Ципроконазол" eh="220d4dca" />
+		<e k="sf_chem_DIFENOCONAZOLE" v="Дифеноконазол" eh="6f2dce44" />
+		<e k="sf_chem_AZOXYSTROBIN" v="Азоксистробін" eh="34160dda" />
+		<e k="sf_chem_PYRACLOSTROBIN" v="Піраклостробін" eh="b5f07095" />
+		<e k="sf_chem_TRIFLOXYSTROBIN" v="Трифлоксистробін" eh="9d00f6d7" />
+		<e k="sf_chem_BOSCALID" v="Боскалід" eh="5c0a4c40" />
+		<e k="sf_chem_PENTHIOPYRAD" v="Пентіопірад" eh="f790ed1a" />
+		<e k="sf_chem_CHLOROTHALONIL" v="Хлороталоніл" eh="67688d75" />
+		<e k="sf_chem_MANCOZEB" v="Манкоцеб" eh="5117fb39" />
+		<e k="sf_chem_MANEB" v="Манеб" eh="879fac4d" />
+		<e k="sf_chem_METALAXYL" v="Металаксил" eh="2c4598e3" />
+		<e k="sf_chem_FOSETYL_AL" v="Фосетил алюмінію" eh="d292d7c7" />
+		<e k="sf_chem_THIOPHANATE_METHYL" v="Тіофанат-метил" eh="46dd6b58" />
+		<e k="sf_chem_SULFUR" v="Сірка" eh="529df3e8" />
+		<e k="sf_chem_COPPER_HYDROXIDE" v="Гідроксид міді" eh="6b294851" />
+		<e k="sf_chem_FLUDIOXONIL" v="Флудіоксоніл" eh="d6448fdb" />
+		<e k="sf_chem_METALAXYL_M" v="Металаксил-М" eh="706a0ca9" />
+		<e k="sf_chem_THIRAM" v="Тирам" eh="63e2540c" />
+		<e k="sf_chem_CAPTAN" v="Каптан" eh="dc89f49c" />
     <e k="sf_treat_cycle" v="[EN] Next Fungicide" eh="50e1cf57" />
     <e k="sf_treat_apply" v="[EN] Apply Fungicide" eh="66b90889" />
 		<e k="sf_treat_vs" v="[EN] vs" eh="f4842dcb" />
@@ -1441,6 +1441,11 @@
     <e k="sf_res_pairs_no_field" v="[EN] Select one of your fields first." eh="dfc6d58d" />
     <e k="sf_dog_field_warning" v="Ваш собака відчуває, що з полем №%s щось не так." eh="405d8e87" />
     <e k="sf_dog_barn_warning" v="Ваш собака відчуває, що в хліві %s щось не так." eh="15ea2c1a" />
+    <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
+    <e k="sf_hud_status_fair" v="Fair" eh="f7f20cf0" />
+    <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
+    <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
 </elements>
 
 
