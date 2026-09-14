@@ -1448,25 +1448,25 @@
     <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
     <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
     <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
-    <e k="sf_res_title" v="[EN] Resistance" eh="9db444f7" />
-    <e k="sf_res_state_unknown" v="[EN] Field %d: resistance not yet known. Scout this field to learn its history." eh="ab16e14a" />
-    <e k="sf_res_state_waiting" v="[EN] Field %d: waiting for the server's resistance picture." eh="b3c62e5b" />
-    <e k="sf_res_state_known" v="[EN] Field %d: resistance history known." eh="8717924c" />
-    <e k="sf_res_mode" v="[EN] Mode %s" eh="fdbc9304" />
-    <e k="sf_res_band_unknown" v="[EN] Not yet known" eh="8f4a0706" />
-    <e k="sf_res_band_working" v="[EN] Good control" eh="75eb95bf" />
-    <e k="sf_res_band_slipping" v="[EN] Reduced control" eh="cc4d1243" />
-    <e k="sf_res_band_finished" v="[EN] No control" eh="dd802b99" />
-    <e k="sf_res_note" v="[EN] Tank-applied fungicides build resistance on this field. Menu treatments do not use this resistance model and charge by field area." eh="effb087f" />
-    <e k="sf_res_pairs_btn" v="[EN] Tank pairs" eh="fb0e4920" />
-    <e k="sf_res_pairs_title" v="[EN] Tank pairs for field %d" eh="d2e9272f" />
-    <e k="sf_res_pairs_intro" v="[EN] Control words are this field's current bands. A pair marked organic is on the organic approved list. Nothing here ranks, buys or mixes." eh="efb73722" />
-    <e k="sf_res_pairs_line" v="[EN] %s (mode %s): %s. Pairs with %s." eh="2a537b39" />
-    <e k="sf_res_pairs_all" v="[EN] every other fungicide" eh="2eee400b" />
-    <e k="sf_res_pairs_organic" v="[EN] organic pair" eh="49f08add" />
-    <e k="sf_res_pairs_none" v="[EN] pair table not loaded" eh="abbe2edb" />
-    <e k="sf_res_pairs_nothing" v="[EN] no listed partner" eh="06752d51" />
-    <e k="sf_res_pairs_no_field" v="[EN] Select one of your fields first." eh="dfc6d58d" />
+    <e k="sf_res_title" v="저항성" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="경작지 %d: 저항성을 아직 알 수 없습니다. 이 경작지를 정찰하여 이력을 확인하세요." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="경작지 %d: 서버의 저항성 정보를 기다리는 중입니다." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="경작지 %d: 저항성 이력을 알고 있습니다." eh="8717924c" />
+    <e k="sf_res_mode" v="모드 %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="아직 알 수 없음" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="방제 효과 양호" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="방제 효과 저하" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="방제 효과 없음" eh="dd802b99" />
+    <e k="sf_res_note" v="탱크로 살포한 살균제는 이 경작지에 저항성을 쌓습니다. 메뉴에서 실행하는 처리는 이 저항성 모델을 사용하지 않으며 경작지 면적으로 과금됩니다." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="탱크 조합" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="경작지 %d의 탱크 조합" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="방제 관련 표현은 이 경작지의 현재 단계입니다. 유기농으로 표시된 조합은 유기농 승인 목록에 있습니다. 여기서는 순위를 매기거나 구매하거나 혼합하지 않습니다." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s(모드 %s): %s. %s와(과) 조합할 수 있습니다." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="다른 모든 살균제" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="유기농 조합" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="조합표가 불러와지지 않았습니다" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="등록된 상대 없음" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="먼저 자신의 경작지를 선택하세요." eh="dfc6d58d" />
     <e k="sf_dog_field_warning" v="개가 %s번 밭에 뭔가 이상이 있다고 느낍니다." eh="405d8e87" />
     <e k="sf_dog_barn_warning" v="개가 축사 %s에 뭔가 이상이 있다고 느낍니다." eh="15ea2c1a" />
     <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />

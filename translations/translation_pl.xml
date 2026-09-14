@@ -1449,25 +1449,25 @@
     <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
     <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
     <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
-    <e k="sf_res_title" v="[EN] Resistance" eh="9db444f7" />
-    <e k="sf_res_state_unknown" v="[EN] Field %d: resistance not yet known. Scout this field to learn its history." eh="ab16e14a" />
-    <e k="sf_res_state_waiting" v="[EN] Field %d: waiting for the server's resistance picture." eh="b3c62e5b" />
-    <e k="sf_res_state_known" v="[EN] Field %d: resistance history known." eh="8717924c" />
-    <e k="sf_res_mode" v="[EN] Mode %s" eh="fdbc9304" />
-    <e k="sf_res_band_unknown" v="[EN] Not yet known" eh="8f4a0706" />
-    <e k="sf_res_band_working" v="[EN] Good control" eh="75eb95bf" />
-    <e k="sf_res_band_slipping" v="[EN] Reduced control" eh="cc4d1243" />
-    <e k="sf_res_band_finished" v="[EN] No control" eh="dd802b99" />
-    <e k="sf_res_note" v="[EN] Tank-applied fungicides build resistance on this field. Menu treatments do not use this resistance model and charge by field area." eh="effb087f" />
-    <e k="sf_res_pairs_btn" v="[EN] Tank pairs" eh="fb0e4920" />
-    <e k="sf_res_pairs_title" v="[EN] Tank pairs for field %d" eh="d2e9272f" />
-    <e k="sf_res_pairs_intro" v="[EN] Control words are this field's current bands. A pair marked organic is on the organic approved list. Nothing here ranks, buys or mixes." eh="efb73722" />
-    <e k="sf_res_pairs_line" v="[EN] %s (mode %s): %s. Pairs with %s." eh="2a537b39" />
-    <e k="sf_res_pairs_all" v="[EN] every other fungicide" eh="2eee400b" />
-    <e k="sf_res_pairs_organic" v="[EN] organic pair" eh="49f08add" />
-    <e k="sf_res_pairs_none" v="[EN] pair table not loaded" eh="abbe2edb" />
-    <e k="sf_res_pairs_nothing" v="[EN] no listed partner" eh="06752d51" />
-    <e k="sf_res_pairs_no_field" v="[EN] Select one of your fields first." eh="dfc6d58d" />
+    <e k="sf_res_title" v="Odporność" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="Pole %d: odporność jeszcze nieznana. Zbadaj to pole, aby poznać jego historię." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="Pole %d: oczekiwanie na obraz odporności z serwera." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="Pole %d: historia odporności znana." eh="8717924c" />
+    <e k="sf_res_mode" v="Tryb %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="Jeszcze nieznane" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="Dobra skuteczność" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="Obniżona skuteczność" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="Brak skuteczności" eh="dd802b99" />
+    <e k="sf_res_note" v="Fungicydy stosowane z opryskiwacza budują odporność na tym polu. Zabiegi z menu nie korzystają z tego modelu odporności i są rozliczane według powierzchni pola." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="Pary zbiornikowe" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="Pary zbiornikowe dla pola %d" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="Określenia skuteczności to aktualne przedziały tego pola. Para oznaczona jako ekologiczna znajduje się na zatwierdzonej liście ekologicznej. Nic tutaj nie ocenia, nie kupuje ani nie miesza." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s (tryb %s): %s. Łączy się z %s." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="każdy inny fungicyd" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="para ekologiczna" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="tabela par nie została wczytana" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="brak wskazanego partnera" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="Najpierw wybierz jedno ze swoich pól." eh="dfc6d58d" />
     <e k="sf_dog_field_warning" v="Twój pies wyczuwa, że coś jest nie tak z polem nr %s." eh="405d8e87" />
     <e k="sf_dog_barn_warning" v="Twój pies wyczuwa, że coś jest nie tak w oborze %s." eh="15ea2c1a" />
     <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
