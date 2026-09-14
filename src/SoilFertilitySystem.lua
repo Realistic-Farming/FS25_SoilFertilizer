@@ -2426,7 +2426,10 @@ end
 --- (optimistic - discovery is monotonic) and asks the server to make it authoritative and
 --- sync it farm-wide via the field-update broadcast.
 ---
---- CD-11 also records the durable `fieldEverScouted` bit here, and ONLY here. It is the
+--- CD-11 also records the durable `fieldEverScouted` bit here. This is the only place
+--- that SETS it; the one path that clears it is the one-time F66 resistance relief in
+--- _finalizeLoadedField (RSF-F237), which zeroes a field's scores and drops the bit with
+--- them so the readout says UNKNOWN rather than WORKING until the next scout. It is the
 --- gate the resistance readout reads (ResistanceBands.isFieldRevealed) and it outlives the
 --- per-outbreak diseaseDiscovered reset, so a farmer's resistance history stays visible
 --- through a new infection. It is written by the server alone: a client may reveal the
@@ -7873,8 +7876,15 @@ function SoilFertilitySystem:_finalizeLoadedField(fieldId, f)
     if type(f) ~= "table" then return end
 
     -- F66 relief (see _beginF66ResistanceRelief). One-time, both load paths.
+    -- RSF-F237: a relieved field also drops its durable scout bit. The classifier
+    -- reads a revealed field with no score as WORKING, so zeroed scores behind an
+    -- open gate would tell the farmer a burned mode is fine. Clearing the bit here,
+    -- before any encode or broadcast, makes the field read UNKNOWN until it is
+    -- scouted again. diseaseDiscovered is not touched: disease identity is a
+    -- different question from resistance history.
     if self._f66ReliefPending and type(f.resistance) == "table" and next(f.resistance) ~= nil then
         f.resistance = {}
+        f.fieldEverScouted = false
         self._f66ReliefCleared = (self._f66ReliefCleared or 0) + 1
     end
 
