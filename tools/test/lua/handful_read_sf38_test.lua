@@ -188,3 +188,20 @@ do
     T.eq("the field state was not mutated", sys.fieldData[1].diseaseDiscovered, false)
     T.ok("the assembly made reads, not writes", calls == 1)
 end
+
+-- RSF-F217: the reader is untouched by the kit readout. It still reports the
+-- ProStaff entitlement as a strict boolean, true only when the manager says so.
+do
+    patchManager(newSoilSystem())
+    local saved = g_currentMission
+    g_currentMission = { proStaffManager = { hasSoilTestKit = function(_self, farmId) return farmId == 1 end } }
+    local p = HandfulRead.assemble({ fieldId = 1, x = 25, z = 35, farmId = 1, currentDay = 105 })
+    T.eq("F217: kit flag true when the manager grants it for this farm", p.testKitActive, true)
+    T.eq("F217: the payload still carries the banded record, not a figure", p.N.value, 40)
+    local q = HandfulRead.assemble({ fieldId = 1, x = 25, z = 35, farmId = 2, currentDay = 105 })
+    T.eq("F217: kit flag false for a farm the manager does not grant", q.testKitActive, false)
+    g_currentMission = { proStaffManager = { hasSoilTestKit = function() return "yes" end } }
+    local r = HandfulRead.assemble({ fieldId = 1, x = 25, z = 35, farmId = 1, currentDay = 105 })
+    T.eq("F217: a non-boolean grant reads false", r.testKitActive, false)
+    g_currentMission = saved
+end
