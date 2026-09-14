@@ -244,7 +244,7 @@
             <economy pricePerLiter="0.10"/>
             <image hud="$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png"/>
             <textures diffuse="textures/fillPlanes/gypsum_diffuse.dds" normal="textures/fillPlanes/gypsum_normal.dds" height="textures/fillPlanes/gypsum_height.dds" displacement="textures/fillPlanes/gypsum_displacement.dds" distance="$data/fillPlanes/distance/limeDistance_diffuse.dds"/>
-            <sprayType sprayTypeStr="LIME"/>
+            <sprayType sprayTypeStr="FERTILIZER"/>
             <pallet filename="objects/bigBag/gypsum/bigBag_gypsum.xml" />
         </fillType>
 
