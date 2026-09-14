@@ -1439,6 +1439,8 @@
     <e k="sf_res_pairs_none" v="[EN] pair table not loaded" eh="abbe2edb" />
     <e k="sf_res_pairs_nothing" v="[EN] no listed partner" eh="06752d51" />
     <e k="sf_res_pairs_no_field" v="[EN] Select one of your fields first." eh="dfc6d58d" />
+    <e k="sf_dog_field_warning" v="Din hund känner att något är fel med fält %s." eh="405d8e87" />
+    <e k="sf_dog_barn_warning" v="Din hund känner att något är fel i stall %s." eh="15ea2c1a" />
 </elements>
 
 

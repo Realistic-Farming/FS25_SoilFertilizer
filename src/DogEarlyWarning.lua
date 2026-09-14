@@ -13,6 +13,55 @@ DogEarlyWarning = DogEarlyWarning or {}
 
 DogEarlyWarning.CADENCE_MS = 60000
 
+-- RSF-F192: the two warning templates resolve through the mod's own locale
+-- keys. The English sentences below are the exact conservative fallback when
+-- the lookup is unavailable, the key is absent, the template is not a string,
+-- or it does not carry exactly one string placeholder. They are not a
+-- substitute for shipping the keys in every locale file.
+DogEarlyWarning.FIELD_WARNING_KEY = "sf_dog_field_warning"
+DogEarlyWarning.BARN_WARNING_KEY  = "sf_dog_barn_warning"
+DogEarlyWarning.FIELD_WARNING_FALLBACK = "Your dog senses something wrong with Field #%s."
+DogEarlyWarning.BARN_WARNING_FALLBACK  = "Your dog senses something wrong at Barn %s."
+
+--- True when `fmt` carries exactly one unescaped %s and no other conversion.
+--- "%%" is a literal percent and does not count; a trailing lone % is rejected.
+local function hasOneStringPlaceholder(fmt)
+    if type(fmt) ~= "string" or fmt == "" then return false end
+    local stripped = fmt:gsub("%%%%", "")
+    if stripped:find("%%$") then return false end
+    local count, other = 0, false
+    for conv in stripped:gmatch("%%[%-%+ #0]*%d*%.?%d*([%a])") do
+        if conv == "s" then count = count + 1 else other = true end
+    end
+    return count == 1 and not other
+end
+
+--- Resolve one warning sentence with the field or barn identifier inserted.
+--- Never throws: every lookup and format runs under pcall, and the English
+--- fallback is used whenever the localized template cannot be trusted.
+---@param key string        the locale key
+---@param fallback string   the exact English sentence
+---@param id any            field or barn identifier
+---@return string
+function DogEarlyWarning.formatWarning(key, fallback, id)
+    local template = nil
+    pcall(function()
+        local i18n = g_i18n
+        if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+            return
+        end
+        if i18n:hasText(key) ~= true then return end
+        local text = i18n:getText(key)
+        if hasOneStringPlaceholder(text) then template = text end
+    end)
+    local ident = tostring(id)
+    local ok, msg = pcall(string.format, template or fallback, ident)
+    if ok and type(msg) == "string" then return msg end
+    ok, msg = pcall(string.format, fallback, ident)
+    if ok and type(msg) == "string" then return msg end
+    return fallback
+end
+
 function DogEarlyWarning.new(soilSystem)
     local self = {}
     setmetatable(self, { __index = DogEarlyWarning })
@@ -150,11 +199,11 @@ function DogEarlyWarning:_notify(farmId, flagged)
             notified[key] = true
             local msg
             if w.type == "crop" then
-                msg = string.format("Your dog senses something wrong with Field #%s.",
-                    tostring(w.fieldId))
+                msg = DogEarlyWarning.formatWarning(DogEarlyWarning.FIELD_WARNING_KEY,
+                    DogEarlyWarning.FIELD_WARNING_FALLBACK, w.fieldId)
             else
-                msg = string.format("Your dog senses something wrong at Barn %s.",
-                    tostring(w.fieldId))
+                msg = DogEarlyWarning.formatWarning(DogEarlyWarning.BARN_WARNING_KEY,
+                    DogEarlyWarning.BARN_WARNING_FALLBACK, w.fieldId)
             end
             pcall(function()
                 if g_currentMission ~= nil and g_currentMission.hud ~= nil
