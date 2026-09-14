@@ -66,6 +66,7 @@ SFNozzleEffects.init(modDirectory)
 
 -- 3. Core systems
 source(modDirectory .. "src/hooks/HookManager.lua")
+source(modDirectory .. "src/hooks/GroundTipGate.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
 source(modDirectory .. "src/maps/SoilValueMaps.lua")
@@ -267,9 +268,8 @@ local dogWarning = nil
 -- and the InputHelpDisplay.draw restore never ran.
 local _sprayerF1HookInstalled = false
 local _inputHelpDisplayOrigDraw = nil
--- getCanTipToGround is hooked once per game session (see loadedMission);
--- re-wrapping on every savegame load would chain stale closures.
-local _canTipHookInstalled = false
+-- getCanTipToGround is wrapped once per process and switched per mission; the
+-- install flag, the runtime flag and the wrapper live in GroundTipGate (RSF-F227).
 
 -- Helper: check if mod is initialized
 local function isEnabled()
@@ -481,24 +481,20 @@ local function loadedMission(mission, node)
                     end
                 end
 
-                -- Belt-and-suspenders: also hook getCanTipToGround at Lua level so the
-                -- discharge eligibility check passes even if C++ hasn't read our table.
-                -- Installed once per game session and resolving the manager dynamically:
-                -- loadedMission re-runs on every savegame load, and re-wrapping here would
-                -- chain wrappers and capture the previous mission's (stale) manager.
-                if registered > 0 and not _canTipHookInstalled and DensityMapHeightUtil and
-                   type(DensityMapHeightUtil.getCanTipToGround) == "function" then
-                    local _origGetCan = DensityMapHeightUtil.getCanTipToGround
-                    DensityMapHeightUtil.getCanTipToGround = function(fillTypeIndex)
-                        local mgr = g_densityMapHeightManager
-                        if mgr and mgr.fillTypeIndexToHeightType and
-                           mgr.fillTypeIndexToHeightType[fillTypeIndex] then
-                            return true
-                        end
-                        return _origGetCan(fillTypeIndex)
+                -- Belt-and-suspenders: also wrap getCanTipToGround at Lua level so the
+                -- discharge eligibility check sees our injected height types even if C++
+                -- has not read our table. The wrapper answers exactly what the engine body
+                -- answers (manager validity, then the type's own canBeTipped), and it is
+                -- installed ONCE per process: loadedMission re-runs on every savegame load,
+                -- and re-wrapping would chain wrappers. The manager is resolved live on
+                -- every call, nothing about it is captured. What makes the guard correct
+                -- across missions is the runtime flag: enabled here, only when the Lua
+                -- injection ran, and disabled again in unload (RSF-F227).
+                if registered > 0 then
+                    if GroundTipGate.install() then
+                        SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround wrapped")
                     end
-                    _canTipHookInstalled = true
-                    SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround hooked")
+                    GroundTipGate.enable()
                 end
             else
                 SoilLogger.warning("[TIP FIX] FERTILIZER template not found in DMHM - tip injection skipped")
@@ -699,6 +695,10 @@ end
 
 -- Unload handler
 local function unload()
+    -- RSF-F227: switch the ground-tip wrapper to pure delegation before anything
+    -- else, so the next mission never inherits this one's gates. Unconditional and
+    -- outside the sfm block: it must run even when the manager is already gone.
+    if GroundTipGate then GroundTipGate.disable() end
     -- [SF-22] Drop the pure-client farm-switch subscriber and any in-flight FULL
     -- buffer so a session reload never accumulates a stale subscription. Safe to
     -- call unconditionally: it no-ops when nothing was registered.
