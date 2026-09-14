@@ -140,48 +140,37 @@ function DogEarlyWarning:scan(farmId)
         end
     end
 
-    -- Ritter barn disease (read-only, pcall-wrapped, silent if absent).
+    -- RSF-F190: livestock barns. Same shape as the crop line above: ask one
+    -- SoilFertilizer-owned function (LivestockWarningReader) and test its
+    -- return for presence. Nothing here touches a provider field, a provider
+    -- method name, a disease name or the provider's manager; the reader's
+    -- own gate learns provider presence and the diseases-enabled state
+    -- through the provider's method. Each barn is read under its own
+    -- protection so one bad barn cannot silence the farm; the reader
+    -- contains failures per animal so one bad animal cannot silence a barn.
+    local placeables = nil
     pcall(function()
-        if g_diseaseManager == nil then return end
-        if not g_modIsLoaded["FS25_RealisticLivestockRM"] then return end
-        local ps = g_currentMission.placeableSystem
-        if ps == nil or ps.placeables == nil then return end
-        for _, p in ipairs(ps.placeables) do
-            if p ~= nil and p.spec_husbandryAnimals ~= nil then
+        local ps = g_currentMission and g_currentMission.placeableSystem
+        if ps ~= nil and type(ps.placeables) == "table" then placeables = ps.placeables end
+    end)
+    if placeables ~= nil and LivestockWarningReader ~= nil then
+        for _, p in ipairs(placeables) do
+            pcall(function()
+                if p.spec_husbandryAnimals == nil then return end
                 local pOwner = nil
                 if p.getOwnerFarmId ~= nil then pOwner = p:getOwnerFarmId() end
-                if pOwner == farmId then
-                    local cs = p.spec_husbandryAnimals.clusterSystem
-                    if cs ~= nil and cs.getAnimals ~= nil then
-                        local animals = cs:getAnimals() or {}
-                        for _, animal in ipairs(animals) do
-                            if animal.getDisease ~= nil then
-                                local diseased = false
-                                pcall(function()
-                                    local titles = g_diseaseManager:getDiseaseTitles()
-                                    for _, title in ipairs(titles or {}) do
-                                        local d = animal:getDisease(title)
-                                        if d ~= nil and d.active then
-                                            diseased = true
-                                        end
-                                    end
-                                end)
-                                if diseased then
-                                    local barnId = nil
-                                    pcall(function() barnId = p:getUniqueId() end)
-                                    flagged[#flagged + 1] = {
-                                        fieldId = barnId or "barn",
-                                        type = "livestock",
-                                    }
-                                    break
-                                end
-                            end
-                        end
-                    end
+                if pOwner ~= farmId then return end
+                if LivestockWarningReader.isBarnActivelySick(p) ~= nil then
+                    local barnId = nil
+                    pcall(function() barnId = p:getUniqueId() end)
+                    flagged[#flagged + 1] = {
+                        fieldId = barnId or "barn",
+                        type = "livestock",
+                    }
                 end
-            end
+            end)
         end
-    end)
+    end
 
     self.warnings[farmId] = #flagged > 0 and flagged or nil
     self:_notify(farmId, flagged)
