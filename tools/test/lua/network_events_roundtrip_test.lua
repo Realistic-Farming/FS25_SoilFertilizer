@@ -36,6 +36,9 @@ local function sampleField()
     weedPressure = 5, herbicideDaysLeft = 2, pestPressure = 3, insecticideDaysLeft = 1,
     diseasePressure = 17, fungicideDaysLeft = 4, dryDayCount = 6, burnDaysLeft = 2,
     coverageFraction = 0.5, compaction = 11,
+    -- RSF-F905: the amendment burn rides every field delivery as a value + known pair,
+    -- right after the field-level compaction.
+    amendBurnPenalty = 0.42,
     nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
     activeDisease = "septoria", diseaseDiscovered = true,
     -- CD-11: the durable scout bit is the band gate now (diseaseDiscovered alone no longer
@@ -54,6 +57,8 @@ local function assertSampleField(name, b)
   T.ok(name .. ": field present", b ~= nil)
   if b == nil then return end
   T.near(name .. ": nitrogen", b.nitrogen, 55)
+  T.near(name .. ": amendBurnPenalty (RSF-F905)", b.amendBurnPenalty, 0.42)
+  T.eq(name .. ": amendBurnKnown arrives true from the owner (RSF-F905)", b.amendBurnKnown, true)
   T.near(name .. ": phosphorus", b.phosphorus, 40)
   T.near(name .. ": potassium", b.potassium, 30)
   T.near(name .. ": organicMatter", b.organicMatter, 4.2)

@@ -942,11 +942,22 @@ function RfPdaSoilMerge.aggregateInfo(infos)
     local allScouted, allDiscovered = true, true
     local anyNeeds, anyBurn = false, false
     local allHerb, allInsect, allFung = true, true, true
+    -- RSF-F905: the grouped burn row. The group is known only when EVERY member is
+    -- known (a group holding an unreadable field cannot assert nothing in it burned);
+    -- its penalty is the worst known member, not an area weighting, because a
+    -- penalty is a per-field yield cut and the worst field is the number to act on.
+    local allBurnKnown, worstBurn = true, 0
     for _, info in ipairs(infos) do
         if info.shownDiseasePressure == nil then allScouted = false end
         if not info.diseaseDiscovered then allDiscovered = false end
         if info.needsFertilization then anyNeeds = true end
         if info.amendBurnRisk then anyBurn = true end
+        if info.amendBurnKnown == true then
+            local pen = tonumber(info.amendBurnPenalty) or 0
+            if pen > worstBurn then worstBurn = pen end
+        else
+            allBurnKnown = false
+        end
         if not info.herbicideActive then allHerb = false end
         if not info.insecticideActive then allInsect = false end
         if not info.fungicideActive then allFung = false end
@@ -959,6 +970,8 @@ function RfPdaSoilMerge.aggregateInfo(infos)
     out.diseaseDiscovered = allDiscovered
     out.needsFertilization = anyNeeds
     out.amendBurnRisk = anyBurn
+    out.amendBurnKnown = allBurnKnown
+    out.amendBurnPenalty = allBurnKnown and worstBurn or 0
     out.herbicideActive = allHerb
     out.insecticideActive = allInsect
     out.fungicideActive = allFung

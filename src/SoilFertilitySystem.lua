@@ -899,8 +899,9 @@ end
 ---@param fieldId number The field being fertilized
 ---@param fillTypeIndex number FS25 fill type index for fertilizer
 ---@param liters number Amount applied in liters
-function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters)
-    self:applyFertilizer(fieldId, fillTypeIndex, liters)
+---@param boomPoints table|nil RSF-F905: this tick's boom points, captured before the application
+function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters, boomPoints)
+    self:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
 
     local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
 
@@ -5580,29 +5581,114 @@ end
 --- than BURN_PASS_GAP_MS (boom lifted, headland turn) opens a fresh pass. The penalty never
 --- decreases (an OM application won't lower an existing lime burn), and is cleared on harvest
 --- (consumed) or on sow/tillage (#681).
+--- RSF-F905: the increment is scaled by the share of this tick's covered cells that
+--- carry a burnable crop (0-1). nil means "no measured share", which is today's
+--- single-point verdict and accrues the full increment. A measured zero still runs
+--- the clock (the pass stays open) but adds nothing.
 ---@param field table   Field data record
 ---@param maxPen number Cap this burn type builds up to (LIME_MAX / OM_MAX)
+---@param share number|nil Covered-crop share for this tick; nil = full increment
 ---@return number penalty  The current accumulated amendment-burn penalty (0-1)
-function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen)
+function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen, share)
     local burnCfg = SoilConstants.SPRAYER_RATE
     local gapMs   = (burnCfg and burnCfg.BURN_PASS_GAP_MS) or 1500
     local fullMs  = (burnCfg and burnCfg.BURN_FULL_DAMAGE_MS) or 8000
     local now     = (g_currentMission and g_currentMission.time) or 0
+    if share == nil then share = 1 end
 
     local last = field._amendBurnTickTime
     field._amendBurnTickTime = now
     local dt = (last and (now - last) <= gapMs) and (now - last) or 0
 
-    if dt > 0 and fullMs > 0 then
-        local inc    = maxPen * (dt / fullMs)
+    -- A zero share advances the clock above but never touches the record, so a pass
+    -- over exempt ground leaves the field exactly as absent as it was.
+    if dt > 0 and fullMs > 0 and share > 0 then
+        local inc    = maxPen * (dt / fullMs) * share
         local ramped = math.min(maxPen, (field.amendBurnPenalty or 0) + inc)
         field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, ramped)
     end
     return field.amendBurnPenalty or 0
 end
 
+--- RSF-F905: the share (0-1) of this tick's boom cells, inside this field's polygon,
+--- that carry a crop the amendment burn can scorch. This is the covered-ground verdict
+--- that replaces the single-point sample for the burn.
+---
+--- Returns nil for a MISSING read, which the caller must treat as "fall back to the
+--- single-point verdict", never as "nothing burnable": no boom points (the sweep
+--- returned nothing), no field polygon (an unavailable polygon must not become a
+--- count-everything, which is fine for the hectare meter in markBoomCells but would
+--- burn the farmer for headland overhang), no engine density read, or a read that
+--- failed. Returns a real 0 when the set was obtained and holds no burnable cell,
+--- including when the polygon rejected every cell.
+---
+--- The polygon is the COMPLETE parcel union for this farmland id (_getFarmlandPolygons,
+--- SF-52), not the first-match _getFieldPolyVerts: a farmland can carry several engine
+--- fields, and the first-match helper rejects every cell on the second parcel (its own
+--- note at the hectare meter records that symptom). For a yield penalty that would
+--- switch the burn off on every second parcel, which is F347 again by another road.
+--- A cell belongs when its centre lies inside ANY parcel of the metered farmland.
+---
+--- Cells are floored and deduplicated exactly as markBoomCells does, the membership
+--- test is the cell centre, and the crop is read at that same centre with the engine's
+--- own per-cell get (as GrowthBlock, GrowthCredit and ZoneYield already do). The
+--- verdict per cell is the unchanged isAmendmentBurnRisk. Sibling boom sections in
+--- the same tick pass the same boomPoints table, so the result is cached on the
+--- field record keyed by that table's identity; the cache lives only on this field,
+--- so a section that meters a different field always uses its own polygon.
+---@param fieldId    number
+---@param field      table       self.fieldData[fieldId]
+---@param boomPoints table|nil   This tick's boom points, captured BEFORE the application
+---@return number|nil share      0-1, or nil for a missing read
+function SoilFertilitySystem:computeCoveredBurnShare(fieldId, field, boomPoints)
+    if not boomPoints or #boomPoints == 0 or not field then return nil end
+    if field._amendBurnShareSrc == boomPoints then
+        return field._amendBurnShare
+    end
+    field._amendBurnShareSrc = boomPoints
+    field._amendBurnShare    = nil
+
+    if FSDensityMapUtil == nil or type(FSDensityMapUtil.getFruitTypeIndexAtWorldPos) ~= "function" then
+        return nil
+    end
+    local polygons = self:_getFarmlandPolygons(fieldId)
+    if polygons == nil or #polygons == 0 then return nil end
+
+    local cellSize = SoilConstants.ZONE.CELL_SIZE
+    local seen = {}
+    local sampled, burnable = 0, 0  -- sampled = in-polygon cells, crop or not
+    for _, pt in ipairs(boomPoints) do
+        local cx = math.floor(pt.x / cellSize)
+        local cz = math.floor(pt.z / cellSize)
+        local cellKey = cx * 10000 + cz
+        if not seen[cellKey] then
+            seen[cellKey] = true
+            local cellCx = (cx + 0.5) * cellSize
+            local cellCz = (cz + 0.5) * cellSize
+            local inside = false
+            for _, verts in ipairs(polygons) do
+                if _isPointInPoly(cellCx, cellCz, verts) then inside = true; break end
+            end
+            if inside then
+                local ok, fruitIndex, growthState = pcall(FSDensityMapUtil.getFruitTypeIndexAtWorldPos, cellCx, cellCz)
+                if not ok then return nil end  -- a failed read is a missing read
+                sampled = sampled + 1
+                if fruitIndex ~= nil and self:isAmendmentBurnRisk(fruitIndex, growthState) then
+                    burnable = burnable + 1
+                end
+            end
+        end
+    end
+
+    local share = (sampled > 0) and (burnable / sampled) or 0
+    field._amendBurnShare = share
+    return share
+end
+
 -- Apply fertilizer
-function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
+---@param boomPoints table|nil  RSF-F905: this tick's boom points, captured before the
+--- application (see computeCoveredBurnShare). nil = no coverage read available.
+function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
     if not self.settings.enabled then return end
 
     local field = self:getOrCreateField(fieldId, true)
@@ -5626,78 +5712,83 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
 
     -- Issue #437: pH/OM amendment burn on growing crops.
     -- LIME/LIQUIDLIME on growing crop → -80% yield. OM amendments → -20%.
-    -- Throttled to one warning per field per crop cycle via _amendBurnNotified flag.
+    -- The NOTIFICATION is throttled to one per field per crop cycle via _amendBurnNotified.
+    -- The burn itself is not (RSF-F905 / F347): that flag used to sit in this gate too, so
+    -- the metered slice ran exactly once per cycle, on the first tick of the pass, where
+    -- dt is always zero, and the penalty could never accrue past zero.
     local isLimeAmendment = entry.pH and entry.pH > 0  -- raises pH (LIME, LIQUIDLIME)
     local isOMAmendment   = entry.OM and not (entry.pH and entry.pH > 0)
-    if (isLimeAmendment or isOMAmendment) and not field._amendBurnNotified then
-        local spx, spz = self._lastSprayX, self._lastSprayZ
-        if spx and spz and g_farmlandManager then
-            local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
-            local fsField = farmlandTmp and g_fieldManager and g_fieldManager.farmlandIdFieldMapping and g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
-            -- Issue #532: use live FieldState query (fsField.fieldState is stale on freshly-plowed/fallow fields)
-            local hasCrop = false
-            local cropFruitIndex, cropGrowthState = nil, nil
-            if fsField and fsField.posX and fsField.posZ then
-                local ok, fs = pcall(function()
-                    local s = FieldState.new()
-                    -- Sample at the boom point (#842), not the field's stored reference
-                    -- point: on a part-harvested field the reference cell can read crop
-                    -- while the boom is over stubble (or the reverse), firing the wrong
-                    -- burn verdict. Read the ground actually under the applicator.
-                    s:update(spx, spz)
-                    return s
-                end)
-                if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
-                    hasCrop          = true
-                    cropFruitIndex   = fs.fruitTypeIndex
-                    cropGrowthState  = fs.growthState
+    if isLimeAmendment or isOMAmendment then
+        -- RSF-F905: the MEASURED covered-crop share of this tick's boom cells decides when
+        -- it is available (#905: one boom point under stubble must not excuse, or one
+        -- point under crop must not charge, a whole boom width). The slice then runs even
+        -- at a share of zero so the pass clock keeps ticking, and the single-point verdict
+        -- below is not consulted. A missing or failed read (nil) keeps today's single-point
+        -- verdict at the last spray position: it is never treated as "nothing burnable".
+        local share = self:computeCoveredBurnShare(fieldId, field, boomPoints)
+        local runSlice = (share ~= nil)
+        if share == nil then
+            local spx, spz = self._lastSprayX, self._lastSprayZ
+            if spx and spz and g_farmlandManager then
+                local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
+                local fsField = farmlandTmp and g_fieldManager and g_fieldManager.farmlandIdFieldMapping and g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
+                -- Issue #532: use live FieldState query (fsField.fieldState is stale on freshly-plowed/fallow fields)
+                local hasCrop = false
+                local cropFruitIndex, cropGrowthState = nil, nil
+                if fsField and fsField.posX and fsField.posZ then
+                    local ok, fs = pcall(function()
+                        local s = FieldState.new()
+                        -- Sample at the boom point (#842), not the field's stored reference
+                        -- point: on a part-harvested field the reference cell can read crop
+                        -- while the boom is over stubble (or the reverse), firing the wrong
+                        -- burn verdict. Read the ground actually under the applicator.
+                        s:update(spx, spz)
+                        return s
+                    end)
+                    if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
+                        hasCrop          = true
+                        cropFruitIndex   = fs.fruitTypeIndex
+                        cropGrowthState  = fs.growthState
+                    end
                 end
+                -- A short/early crop must not take the amendment burn: a seedling annual or a
+                -- short/cut perennial sward has no leaf canopy to scorch (#645/#646/#681). The
+                -- shared helper decides whether the crop is established enough to actually burn.
+                -- Liming or spreading organics on a short/cut sward is standard practice.
+                local burnExempt = not hasCrop or not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
+                runSlice = hasCrop and not burnExempt
             end
-            -- Perennial forage (grass, meadow, alfalfa…) is exempt from amendment burn
-            -- while the sward is short - young regrowth or freshly cut. Liming or spreading
-            -- organics on a short/cut sward is standard practice (small leaf area, low burn
-            -- risk), so only penalise once it has regrown into its harvest window (tall).
-            -- Annual crops are never exempt. Shared by lime (#646) and organic matter
-            -- (#629/#645).
-            -- A short/early crop must not take the amendment burn: a seedling annual or a
-            -- short/cut perennial sward has no leaf canopy to scorch (#645/#646/#681). The
-            -- shared helper decides whether the crop is established enough to actually burn.
-            local burnExempt = not hasCrop or not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
-            if hasCrop and not burnExempt then
+        end
 
-                local ab = SoilConstants.AMEND_BURN
+        if runSlice then
+            local ab = SoilConstants.AMEND_BURN
+            local cap
+            if isLimeAmendment then
+                -- #646/#681: established crops take the lime burn, built up over application
+                -- time (#688) toward LIME_MAX instead of an instant -80%.
+                cap = (ab and ab.LIME_MAX) or 0.80
+            else
+                -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on an established
+                -- crop builds up over application time toward OM_MAX (#688). Finished compost
+                -- scorches far more gently than fresh slurry/manure - stabilized humus carries
+                -- no free salt/ammonia to burn the canopy - so it caps at the lower COMPOST_MAX
+                -- (agronomic constant, Arissani 2026-07-24).
+                cap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
+                   or (ab and ab.OM_MAX) or 0.20
+            end
+            self:applyAmendmentBurnSlice(field, cap, share)
+            -- Notify once per field per crop cycle, and only for a tick that actually
+            -- charges something: a measured zero share is the repair working, not a burn.
+            if (share == nil or share > 0) and not field._amendBurnNotified then
+                field._amendBurnNotified = true
                 if isLimeAmendment then
-                    -- #646/#681: liming cut/early perennial forage or a freshly-sown annual is
-                    -- realistic, so skip the burn there. Established crops still take it, but it
-                    -- now builds up over application time (#688) instead of instant -80%.
-                    if not burnExempt then
-                        self:applyAmendmentBurnSlice(field, (ab and ab.LIME_MAX) or 0.80)
-                        if not field._amendBurnNotified then
-                            field._amendBurnNotified = true
-                            self:showNotification(
-                                g_i18n:getText("sf_notify_lime_crop_title"),
-                                string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
-                        end
-                    end
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_lime_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
                 else
-                    -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on short/cut
-                    -- perennial forage or a freshly-sown annual is standard practice, so skip it.
-                    -- On an established crop it builds up over application time toward OM_MAX (#688).
-                    if not burnExempt then
-                        -- Finished compost scorches an established crop far more gently than fresh
-                        -- slurry/manure - stabilized humus carries no free salt/ammonia to burn the
-                        -- canopy - so it caps at the lower COMPOST_MAX (agronomic constant, Arissani
-                        -- 2026-07-24). Seedling / short-cut sward stay exempt (handled above).
-                        local omCap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
-                                   or (ab and ab.OM_MAX) or 0.20
-                        self:applyAmendmentBurnSlice(field, omCap)
-                        if not field._amendBurnNotified then
-                            field._amendBurnNotified = true
-                            self:showNotification(
-                                g_i18n:getText("sf_notify_om_crop_title"),
-                                string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
-                        end
-                    end
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_om_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
                 end
             end
         end
@@ -7442,6 +7533,12 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
+        -- RSF-F905: whether that number is authoritative. The owner test is the same
+        -- one the sync bridge uses (pureClient = g_server == nil). The owner (server, including
+        -- single player) always knows, so a never-limed or freshly-cleared field is a
+        -- KNOWN zero. A client knows only once a payload delivered the pair; until
+        -- then the surfaces must not assert "no burn" off a zero they never received.
+        amendBurnKnown = (g_server ~= nil) or (field.amendBurnKnown == true),
         amendBurnRisk = self:isAmendmentBurnRisk(liveFruitTypeIndex, liveGrowthState),  -- (#684) true → liming/manuring NOW would scorch the crop
         -- [SF50-C1] Growth state of the live crop, additive for the harvester panel's
         -- yield estimate. nil when no live fruit is detected (bare/cut field), which the
