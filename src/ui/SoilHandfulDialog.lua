@@ -22,10 +22,14 @@
 --                        clause renders a dash in NEUTRAL grey, never a zero,
 --                        and never borrows a severity colour it did not earn.
 --   NO PHANTOM FIELDS  - we render HandfulRead.CLAUSES and nothing else.
---   BANDS, NOT NUMBERS - exact figures sit behind the test kit, and
---                        HandfulRead readTestKit() is a hardcoded false until
---                        the kit member ships. So gated clauses render as bands
---                        ALWAYS in v1. That is the contract working, not a bug.
+--   BANDS, THEN FIGURES - exact figures sit behind the test kit. Without the
+--                        kit (HandfulRead readTestKit() false or absent) the
+--                        gated clauses render as bands. With the kit the N, P,
+--                        K and pH tiles show the band word AND the figure, the
+--                        figure converted through the display-only PPM_DISPLAY
+--                        scale and rounded as the HUD rounds (RSF-F217). The
+--                        word stays because the cut points are crop-adjusted, so
+--                        the figure alone cannot be read back to a status.
 --   NO NEW THRESHOLDS  - every band below reuses a shipped constant or a shipped
 --                        display rule; this file invents none.
 -- =========================================================
@@ -100,6 +104,83 @@ local function bandPh(ph)
         return tr("sf_handful_band_alkaline", "Alkaline"), "poor"
     end
     return tr("sf_handful_band_fair", "Fair"), "fair"
+end
+
+-- -- Test-kit figures (RSF-F217) ---------------------------
+-- The kit branch composes "<band word> <figure>" into the ONE value text the
+-- tile already takes, with the band's own severity. Every guard below fails to
+-- the neutral dash: a tile that cannot form both a recognised status and a
+-- finite figure shows nothing rather than a word without a number or a number
+-- without its meaning. No reader is queried and nothing is resampled.
+local KIT_PPM_FALLBACK  = "%d ppm"
+local KIT_TILE_FALLBACK = "%s %s"
+
+local function isFinite(x)
+    return type(x) == "number" and x == x and x > -math.huge and x < math.huge
+end
+
+-- True when `fmt` carries exactly the conversions in `want` (a string of
+-- conversion letters, in order) and nothing else. "%%" is a literal and does not
+-- count. A translated pattern with the wrong placeholders would otherwise throw
+-- inside string.format, or silently drop an argument.
+local function patternHas(fmt, want)
+    if type(fmt) ~= "string" or fmt == "" then return false end
+    local got = {}
+    local stripped = fmt:gsub("%%%%", "")
+    for conv in stripped:gmatch("%%[%-%+ #0]*%d*%.?%d*([%a])") do
+        got[#got + 1] = conv
+    end
+    if stripped:find("%%$") then return false end
+    return table.concat(got) == want
+end
+
+-- Resolve a pattern key, validate it, and format under pcall. A missing or
+-- malformed translation uses the exact Lua fallback; a formatting failure on the
+-- fallback itself returns nil so the tile takes the dash.
+local function kitFormat(key, fallback, want, ...)
+    local fmt = tr(key, fallback)
+    if not patternHas(fmt, want) then fmt = fallback end
+    local ok, text = pcall(string.format, fmt, ...)
+    if ok and type(text) == "string" and text ~= "" then return text end
+    if fmt ~= fallback then
+        ok, text = pcall(string.format, fallback, ...)
+        if ok and type(text) == "string" and text ~= "" then return text end
+    end
+    return nil
+end
+
+local KIT_STATUS = { poor = true, fair = true, good = true }
+
+-- N/P/K with the kit: band word plus the ppm figure. Returns (text, severity)
+-- or nil for the dash.
+local function kitNutrient(clause, nutKey)
+    if type(clause) ~= "table" or type(clause.status) ~= "string" then return nil end
+    if not KIT_STATUS[clause.status:lower()] then return nil end
+    if not isFinite(clause.value) then return nil end
+    local disp = SoilConstants and SoilConstants.PPM_DISPLAY
+    if type(disp) ~= "table" then return nil end
+    local factor = disp[nutKey]
+    if not isFinite(factor) or factor <= 0 then return nil end
+    local ppm = math.floor(clause.value * factor + 0.5)
+    if not isFinite(ppm) then return nil end
+    local word, sev = bandNutrient(clause)
+    if word == nil then return nil end
+    local figure = kitFormat("sf_handful_ppm", KIT_PPM_FALLBACK, "d", ppm)
+    if figure == nil then return nil end
+    local text = kitFormat("sf_handful_kit_tile", KIT_TILE_FALLBACK, "ss", word, figure)
+    if text == nil then return nil end
+    return text, sev
+end
+
+-- pH with the kit: band word plus the one-decimal figure, band severity kept.
+local function kitPh(ph)
+    if not isFinite(ph) then return nil end
+    local word, sev = bandPh(ph)
+    if word == nil then return nil end
+    local figure = string.format("%.1f", ph)
+    local text = kitFormat("sf_handful_kit_tile", KIT_TILE_FALLBACK, "ss", word, figure)
+    if text == nil then return nil end
+    return text, sev
 end
 
 -- Organic matter: SoilConstants.REPORT_COLORS OM_GOOD / OM_FAIR.
@@ -277,11 +358,21 @@ function SoilHandfulDialog:_populate()
         and tr("sf_handful_grain_spot", "spot")
         or tr("sf_handful_grain_field", "field average"))
 
-    -- Nutrients (SPOT). Bands only: testKitActive is false until the kit ships.
-    tile(self.hfLblN,  self.hfValN,  tr("sf_handful_n", "N"),   bandNutrient(p.N))
-    tile(self.hfLblP,  self.hfValP,  tr("sf_handful_p", "P"),   bandNutrient(p.P))
-    tile(self.hfLblK,  self.hfValK,  tr("sf_handful_k", "K"),   bandNutrient(p.K))
-    tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), bandPh(p.pH))
+    -- Nutrients (SPOT). ONE kit decision for the four tiles and the footer: only
+    -- a strict boolean true opens the figure branch; false, absent or any other
+    -- truthy value keeps the bands (RSF-F217).
+    local kit = (p.testKitActive == true)
+    if kit then
+        tile(self.hfLblN,  self.hfValN,  tr("sf_handful_n", "N"),   kitNutrient(p.N, "N"))
+        tile(self.hfLblP,  self.hfValP,  tr("sf_handful_p", "P"),   kitNutrient(p.P, "P"))
+        tile(self.hfLblK,  self.hfValK,  tr("sf_handful_k", "K"),   kitNutrient(p.K, "K"))
+        tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), kitPh(p.pH))
+    else
+        tile(self.hfLblN,  self.hfValN,  tr("sf_handful_n", "N"),   bandNutrient(p.N))
+        tile(self.hfLblP,  self.hfValP,  tr("sf_handful_p", "P"),   bandNutrient(p.P))
+        tile(self.hfLblK,  self.hfValK,  tr("sf_handful_k", "K"),   bandNutrient(p.K))
+        tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), bandPh(p.pH))
+    end
     tile(self.hfLblOm, self.hfValOm, tr("sf_handful_om", "Organic matter"), bandOm(p.OM))
 
     -- Ground: compaction is SPOT, moisture is FIELD and UNGATED, so moisture
@@ -374,8 +465,8 @@ function SoilHandfulDialog:_populate()
         tile(self.hfLblVerdict, self.hfValVerdict, tr("sf_handful_mat_verdict", "Verdict"), vTxt, vSev)
     end
 
-    -- Footer: the kit state that explains why the readings above are words.
-    setText(self.hfFooter, p.testKitActive
+    -- Footer: the same kit decision, so the words and the figures never disagree.
+    setText(self.hfFooter, kit
         and tr("sf_handful_kit_yes", "Soil test kit in hand: exact figures")
         or tr("sf_handful_kit_no", "No soil test kit: readings are by hand, so they are qualitative"))
 end

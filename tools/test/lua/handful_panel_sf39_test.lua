@@ -259,3 +259,148 @@ do
   local p = render(nil)
   T.ok("a nil payload renders a spoken refusal", has(p.hfField.text, "Nothing read"))
 end
+
+-- ── RSF-F217: THE TEST KIT SHOWS WORD AND FIGURE ─────────────────────────────
+--
+-- With the kit, N/P/K/pH show "<band word> <figure>": the figure is the internal
+-- value through the display-only PPM_DISPLAY scale, rounded as the HUD rounds;
+-- pH is one decimal. The word stays because the cut points are crop-adjusted and
+-- acidic/alkaline share one colour. Every guard fails to the neutral dash.
+
+local KIT = SoilConstants.PPM_DISPLAY
+local NEUTRAL = { 0.55, 0.55, 0.55, 1 }
+
+do
+  local p = render(fullPayload({ testKitActive = true,
+    N = { value = 50, status = "Good" }, P = { value = 45, status = "Fair" },
+    K = { value = 40, status = "Poor" }, pH = 6.7 }))
+  T.eq("kit: N is word and figure", p.hfValN.text, "Good 150 ppm")
+  T.eq("kit: P is word and figure", p.hfValP.text, "Fair 27 ppm")
+  T.eq("kit: K is word and figure", p.hfValK.text, "Poor 160 ppm")
+  T.eq("kit: pH is word and one-decimal figure", p.hfValPh.text, "Good 6.7")
+  T.ok("kit: N keeps its severity colour", p.hfValN.color ~= nil and p.hfValN.color[1] == 0.42)
+  T.ok("kit: K keeps its poor colour", p.hfValK.color ~= nil and p.hfValK.color[1] == 0.90)
+  T.ok("kit: pH keeps its good colour", p.hfValPh.color ~= nil and p.hfValPh.color[1] == 0.42)
+  T.ok("kit: footer says exact figures", has(p.hfFooter.text, "exact figures"))
+  T.eq("kit: OM is still a band", p.hfValOm.text, "Good")
+end
+
+-- The word carries meaning the figure cannot: same 120 ppm, different status per crop.
+do
+  local wheat = render(fullPayload({ testKitActive = true, N = { value = 40, status = "Fair" } }))
+  local soy   = render(fullPayload({ testKitActive = true, N = { value = 40, status = "Good" } }))
+  T.eq("kit: same figure on wheat reads Fair", wheat.hfValN.text, "Fair 120 ppm")
+  T.eq("kit: same figure on soybean reads Good", soy.hfValN.text, "Good 120 ppm")
+end
+
+-- Only a strict boolean true opens the kit branch.
+do
+  local base = fullPayload()
+  local bands = render(base)
+  for _, v in ipairs({ false, 1, "true", {} }) do
+    local p = render(fullPayload({ testKitActive = v }))
+    T.eq("kit gate: " .. type(v) .. " keeps the band for N", p.hfValN.text, bands.hfValN.text)
+    T.eq("kit gate: " .. type(v) .. " keeps the band for pH", p.hfValPh.text, bands.hfValPh.text)
+    T.ok("kit gate: " .. type(v) .. " keeps the no-kit footer", has(p.hfFooter.text, "by hand"))
+  end
+  local absent = render(fullPayload({ testKitActive = NIL }))
+  T.eq("kit gate: absent keeps the band for N", absent.hfValN.text, bands.hfValN.text)
+  T.eq("kit: today's band output is byte-identical without the kit", bands.hfValN.text, "Good")
+end
+
+-- Per-tile dash for anything the kit branch cannot form; the other tiles are unaffected.
+do
+  local nan, inf = 0/0, math.huge
+  local p = render(fullPayload({ testKitActive = true,
+    N = NIL, P = { value = nan, status = "Good" }, K = { value = 30, status = "Unknown" }, pH = inf }))
+  T.eq("kit dash: missing N", p.hfValN.text, "--")
+  T.ok("kit dash: missing N is neutral grey", sameColor(p.hfValN.color, NEUTRAL))
+  T.eq("kit dash: NaN P value", p.hfValP.text, "--")
+  T.ok("kit dash: NaN P is neutral even though status says Good", sameColor(p.hfValP.color, NEUTRAL))
+  T.eq("kit dash: Unknown K status", p.hfValK.text, "--")
+  T.eq("kit dash: infinite pH", p.hfValPh.text, "--")
+  T.ok("kit dash: infinite pH is neutral", sameColor(p.hfValPh.color, NEUTRAL))
+
+  local q = render(fullPayload({ testKitActive = true,
+    N = { status = "Good" }, P = { value = "45", status = "Fair" }, K = { value = 40 }, pH = "6.7" }))
+  T.eq("kit dash: N without a value", q.hfValN.text, "--")
+  T.eq("kit dash: P with a string value", q.hfValP.text, "--")
+  T.eq("kit dash: K without a status", q.hfValK.text, "--")
+  T.eq("kit dash: pH as a string", q.hfValPh.text, "--")
+  T.eq("kit dash: NaN pH", render(fullPayload({ testKitActive = true, pH = nan })).hfValPh.text, "--")
+end
+
+-- A bad PPM factor blanks that one tile, and never falls back to a factor of 1.
+do
+  local saved = { N = KIT.N, P = KIT.P, K = KIT.K }
+  KIT.N = 0; KIT.P = nil; KIT.K = -4
+  local p = render(fullPayload({ testKitActive = true,
+    N = { value = 50, status = "Good" }, P = { value = 45, status = "Fair" }, K = { value = 40, status = "Poor" } }))
+  T.eq("kit factor: zero factor dashes N", p.hfValN.text, "--")
+  T.eq("kit factor: missing factor dashes P", p.hfValP.text, "--")
+  T.eq("kit factor: negative factor dashes K", p.hfValK.text, "--")
+  T.ok("kit factor: pH is unaffected", has(p.hfValPh.text, "6.5"))
+  KIT.N, KIT.P, KIT.K = saved.N, saved.P, saved.K
+  local savedTable = SoilConstants.PPM_DISPLAY
+  SoilConstants.PPM_DISPLAY = nil
+  local q = render(fullPayload({ testKitActive = true, N = { value = 50, status = "Good" } }))
+  T.eq("kit factor: missing table dashes N", q.hfValN.text, "--")
+  SoilConstants.PPM_DISPLAY = savedTable
+end
+
+-- Zero is a real measurement; .5 rounds up, as the HUD rounds.
+do
+  local p = render(fullPayload({ testKitActive = true,
+    N = { value = 0, status = "Poor" }, P = { value = 45.75, status = "Fair" }, K = { value = 0.125, status = "Poor" } }))
+  T.eq("kit: a valid zero renders 0 ppm", p.hfValN.text, "Poor 0 ppm")
+  T.eq("kit: 45.75 * 0.6 = 27.45 rounds to 27", p.hfValP.text, "Fair 27 ppm")
+  T.eq("kit: 0.125 * 4 = 0.5 rounds up to 1", p.hfValK.text, "Poor 1 ppm")
+  T.eq("kit: pH shows one decimal from a longer value",
+       render(fullPayload({ testKitActive = true, pH = 6.25 })).hfValPh.text, "Good 6.3")
+end
+
+-- A translated pattern with the wrong placeholders never throws and never drops an
+-- argument: the exact Lua fallback is used instead. A good pattern may reorder.
+do
+  local savedI18n = g_i18n
+  local texts = {}
+  g_i18n = { getText = function(_self, key) return texts[key] or "" end, hasText = function() return false end }
+
+  texts.sf_handful_ppm = "%d ppm %d"           -- one placeholder too many
+  texts.sf_handful_kit_tile = "%s"             -- one too few
+  local ok, p = pcall(render, fullPayload({ testKitActive = true, N = { value = 50, status = "Good" } }))
+  T.ok("kit i18n: a malformed pattern does not throw", ok)
+  T.eq("kit i18n: malformed patterns use the exact fallbacks", ok and p.hfValN.text, "Good 150 ppm")
+
+  texts.sf_handful_ppm = "%s ppm"              -- wrong conversion letter
+  texts.sf_handful_kit_tile = "%s %s %%"       -- escaped percent is allowed
+  p = render(fullPayload({ testKitActive = true, N = { value = 50, status = "Good" } }))
+  T.eq("kit i18n: wrong letter falls back, escaped %% is a literal", p.hfValN.text, "Good 150 ppm %")
+
+  texts.sf_handful_ppm = "%d ppm"
+  texts.sf_handful_kit_tile = "%s (%s)"        -- a translator's reorder/decoration
+  p = render(fullPayload({ testKitActive = true, N = { value = 50, status = "Good" } }))
+  T.eq("kit i18n: a valid translated pattern is honoured", p.hfValN.text, "Good (150 ppm)")
+
+  texts.sf_handful_ppm = ""                    -- empty resolves to fallback
+  texts.sf_handful_kit_tile = "%d %d"          -- wrong conversions entirely
+  p = render(fullPayload({ testKitActive = true, pH = 6.7 }))
+  T.eq("kit i18n: pH survives a bad tile pattern", p.hfValPh.text, "Good 6.7")
+  g_i18n = savedI18n
+end
+
+-- The panel reads; it never writes back into the frozen payload.
+do
+  local payload = fullPayload({ testKitActive = true, N = { value = 50, status = "Good" }, pH = 6.7 })
+  local before = { N = payload.N.value, Ns = payload.N.status, pH = payload.pH, kit = payload.testKitActive }
+  render(payload)
+  T.eq("kit: payload N value untouched", payload.N.value, before.N)
+  T.eq("kit: payload N status untouched", payload.N.status, before.Ns)
+  T.eq("kit: payload pH untouched", payload.pH, before.pH)
+  T.eq("kit: payload kit flag untouched", payload.testKitActive, before.kit)
+  local n = 0
+  for _ in pairs(payload) do n = n + 1 end
+  local m = 0
+  for _ in pairs(fullPayload({ testKitActive = true, N = { value = 50, status = "Good" }, pH = 6.7 })) do m = m + 1 end
+  T.eq("kit: no key added to the payload", n, m)
+end

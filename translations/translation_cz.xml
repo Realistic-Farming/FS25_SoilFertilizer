@@ -1391,6 +1391,8 @@
     <e k="sf_handful_unscouted" v="Unscouted" />
     <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
     <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
+    <e k="sf_handful_ppm" v="%d ppm" eh="62981443" />
+    <e k="sf_handful_kit_tile" v="%s %s" eh="29bf226e" />
     <e k="sf_handful_band_good" v="Good" />
     <e k="sf_handful_band_fair" v="Fair" />
     <e k="sf_handful_band_poor" v="Poor" />
