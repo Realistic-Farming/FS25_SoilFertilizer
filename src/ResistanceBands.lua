@@ -65,7 +65,10 @@ end
 -- is right for disease identity. Resistance history follows the ground and does not change
 -- when a new outbreak starts, so it must not go dark with it: fieldEverScouted is set once,
 -- by the server only, on the first successful scout of a known field, and no outbreak,
--- debug-disease, crop-cycle, sale or reset path ever clears it.
+-- debug-disease, crop-cycle or sale path ever clears it. The one exception is the one-time
+-- F66 resistance relief on load (RSF-F237): a field whose scores it zeroes also loses the
+-- bit, so the clean slate reads UNKNOWN here instead of WORKING until the field is scouted
+-- again.
 --
 -- It deliberately does NOT read getScoutReport's published expression
 -- (`field.activeDisease and not field.diseaseDiscovered`), which is inverted: a field with
