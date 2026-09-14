@@ -1375,7 +1375,13 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
                 if gap >= 0 then
                     addRow(gapLabel, string.format("+%d %s", math.floor(gap + 0.5), ppmUnit), ttGOOD[1], ttGOOD[2], ttGOOD[3])
                 else
-                    addRow(gapLabel, string.format("%d %s needed", math.floor(-gap + 0.5), ppmUnit), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                    -- RSF-F345: pattern key so a translator can reorder figure and unit; a
+                    -- malformed translation falls back to the English pattern instead of
+                    -- throwing out of the tooltip draw.
+                    local needN = math.floor(-gap + 0.5)
+                    local okNeed, needStr = pcall(string.format, tr("sf_map_gap_needed", "%d %s needed"), needN, ppmUnit)
+                    if not okNeed then needStr = string.format("%d %s needed", needN, ppmUnit) end
+                    addRow(gapLabel, needStr, ttPOOR[1], ttPOOR[2], ttPOOR[3])
                 end
             else
                 local crop = cropTitle(info.lastCrop)

@@ -15,6 +15,35 @@
 SoilHUD = SoilHUD or {}
 local SoilHUD_mt = Class(SoilHUD)
 
+-- RSF-F345 wave 1: the status tokens "Good" / "Fair" / "Poor" / "Unknown" are internal
+-- values (colour keys in statusColor, comparisons in overallStatus and the grade fold).
+-- They are translated at the render call only; nothing that produces or compares
+-- them changes. hasText gates getText, which is what closes the missing-key hole:
+-- the engine's I18N:getText returns a "Missing '<key>' in l10n" string on a miss,
+-- never nil, so a bare `getText(key) or fallback` can put that on screen. The
+-- "$l10n_<key>" rejection mirrors this file's sibling tr() helpers, which guard
+-- the placeholder shape other i18n shims in the ecosystem hand back. A missing
+-- key renders today's bare English token and never a key name.
+SoilHUD.STATUS_TEXT_KEYS = {
+    Good    = "sf_hud_status_good",
+    Fair    = "sf_hud_status_fair",
+    Poor    = "sf_hud_status_poor",
+    Unknown = "sf_hud_status_unknown",
+}
+function SoilHUD.statusText(status)
+    local key = SoilHUD.STATUS_TEXT_KEYS[status]
+    if key and g_i18n and g_i18n.hasText and g_i18n.getText then
+        local ok, has = pcall(g_i18n.hasText, g_i18n, key)
+        if ok and has == true then
+            local okText, text = pcall(g_i18n.getText, g_i18n, key)
+            if okText and type(text) == "string" and text ~= "" and text ~= ("$l10n_" .. key) then
+                return text
+            end
+        end
+    end
+    return status
+end
+
 -- ── Scale / resize ──────────────────────────────────────
 SoilHUD.MIN_SCALE          = 0.60
 SoilHUD.MAX_SCALE          = 1.80
@@ -1104,7 +1133,7 @@ function SoilHUD:buildFieldInfoLines(info)
             value = (g_i18n:getText("sf_fieldsentry_asleep") or "sim asleep") .. " (" .. simStatusStr .. ")"
         })
     end
-    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", value = grade })
+    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", value = SoilHUD.statusText(grade) })
     table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_yield") or "Yield",      value = yieldStr })
     -- N/P/K (ppm) and Compaction are intentionally NOT duplicated here -- they're already
     -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
@@ -2002,7 +2031,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     -- Status label
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, displayStatus)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(displayStatus))
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
@@ -2088,7 +2117,7 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     else phStatus = "Poor" end
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, phStatus)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(phStatus))
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
