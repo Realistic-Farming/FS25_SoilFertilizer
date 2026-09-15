@@ -23,8 +23,10 @@
 -- constructTerrainFillLayers rebuild and the tip-hook activation) is skipped in
 -- every phase; a later prepare failure, exception or failed fill load never
 -- releases that fence. endCapacityLoad clears only the matching binding and
--- leaves the legacy override disabled; Soil's unload calls it, and StockGuard's
--- teardown may repeat it safely.
+-- leaves the legacy override disabled; Soil's unload calls it with the mission
+-- being deleted, and StockGuard's teardown may repeat it safely. Both calls are
+-- dot calls by contract: a colon call, which would pass this table as the
+-- mission, is refused rather than silently bound.
 --
 -- PREPARATION: prepareGroundTypes appends the mod's missing solid ground
 -- definitions BEFORE native DensityMapHeightManager.initialize, so the engine
@@ -32,8 +34,9 @@
 -- terrain-layer association. It uses the same two templates (FERTILIZER for
 -- mineral types, MANURE for organic types) and the same field values as the
 -- legacy fallback, in the same fixed order, and validates everything before
--- touching the manager: on failure it returns false, reasonCode, offendingName
--- with no partial insertion. Existing sorted entries are preserved and missing
+-- touching the manager: both templates must be present (no cross-template
+-- fallback), and on failure it returns false, reasonCode, offendingName with no
+-- partial insertion. Existing sorted entries are preserved and missing
 -- rows are appended at numHeightTypes + 1; the combined roster is never sorted
 -- here (that would move legitimate saved indices). Idempotent per manager.
 -- =========================================================
@@ -72,7 +75,7 @@ end
 --- fence is established. Idempotent for the same mission; a different mission
 --- that has not been ended is rejected.
 function SoilCapacityIntegration.beginCapacityLoad(mission)
-    if type(mission) ~= "table" then return false end
+    if type(mission) ~= "table" or mission == SoilCapacityIntegration then return false end
     if _joinedMission ~= nil and _joinedMission ~= mission then
         return false
     end
@@ -83,10 +86,12 @@ function SoilCapacityIntegration.beginCapacityLoad(mission)
     return true
 end
 
---- Clear the matching binding; the legacy override stays disabled. Safe to
---- repeat, safe for a mission that was never joined.
+--- Clear only the matching binding; the legacy override stays disabled. Safe to
+--- repeat, safe for a mission that was never joined. A nil or non-matching
+--- mission leaves the binding alone.
 function SoilCapacityIntegration.endCapacityLoad(mission)
-    if _joinedMission ~= nil and (mission == nil or _joinedMission == mission) then
+    if mission == SoilCapacityIntegration then return false end
+    if _joinedMission ~= nil and _joinedMission == mission then
         _joinedMission = nil
     end
     if GroundTipGate ~= nil and GroundTipGate.disable ~= nil then
@@ -125,7 +130,15 @@ function SoilCapacityIntegration.prepareGroundTypes(heightManager, fillManager, 
         or type(fillManager.getFillTypeIndexByName) ~= "function"
         or type(heightManager.heightTypes) ~= "table"
         or type(heightManager.fillTypeIndexToHeightType) ~= "table"
-        or type(heightManager.numHeightTypes) ~= "number" then
+        or type(heightManager.fillTypeNameToHeightType) ~= "table"
+        or type(heightManager.heightTypeIndexToFillTypeIndex) ~= "table"
+        or type(heightManager.numHeightTypes) ~= "number"
+        or heightManager.numHeightTypes ~= math.floor(heightManager.numHeightTypes)
+        or heightManager.numHeightTypes < 0
+        or heightManager.heightTypes[heightManager.numHeightTypes + 1] ~= nil then
+        -- The engine creates all four maps (DensityMapHeightManager.lua:44-46);
+        -- a drifted count whose next slot is already occupied must never be
+        -- overwritten.
         return false, SoilCapacityIntegration.REASON_INVALID_ARGS, nil
     end
     if type(maximumGroundIndex) ~= "number" or maximumGroundIndex ~= maximumGroundIndex
@@ -137,10 +150,18 @@ function SoilCapacityIntegration.prepareGroundTypes(heightManager, fillManager, 
     local manureIdx = fillManager:getFillTypeIndexByName("MANURE")
     local tmplFert = fertIdx ~= nil and heightManager.fillTypeIndexToHeightType[fertIdx] or nil
     local tmplManure = manureIdx ~= nil and heightManager.fillTypeIndexToHeightType[manureIdx] or nil
-    local tmpl = tmplFert or tmplManure
+    -- Both templates are required before any write (brief: validates both
+    -- fallback templates). Minerals never take the MANURE row and organics never
+    -- take the FERTILIZER row; the absent template is named.
+    if type(tmplFert) ~= "table" then
+        return false, SoilCapacityIntegration.REASON_MISSING_TEMPLATE, "FERTILIZER"
+    end
+    if type(tmplManure) ~= "table" then
+        return false, SoilCapacityIntegration.REASON_MISSING_TEMPLATE, "MANURE"
+    end
 
-    -- Validate everything first: fill index, template, and slot for every
-    -- missing name, in order. Nothing is written until all twelve pass.
+    -- Validate everything first: fill index and slot for every missing name, in
+    -- order. Nothing is written until all twelve pass.
     local plan = {}
     local nextSlot = heightManager.numHeightTypes + 1
     for _, typeName in ipairs(SoilCapacityIntegration.SOLID_ORDER) do
@@ -149,10 +170,7 @@ function SoilCapacityIntegration.prepareGroundTypes(heightManager, fillManager, 
             return false, SoilCapacityIntegration.REASON_MISSING_FILL, typeName
         end
         if heightManager.fillTypeIndexToHeightType[idx] == nil then
-            local srcTmpl = (SoilCapacityIntegration.ORGANIC_SET[typeName] and tmplManure) or tmplFert or tmpl
-            if type(srcTmpl) ~= "table" then
-                return false, SoilCapacityIntegration.REASON_MISSING_TEMPLATE, typeName
-            end
+            local srcTmpl = SoilCapacityIntegration.ORGANIC_SET[typeName] and tmplManure or tmplFert
             if nextSlot > maximumGroundIndex then
                 return false, SoilCapacityIntegration.REASON_GROUND_CAPACITY, typeName
             end
@@ -171,12 +189,8 @@ function SoilCapacityIntegration.prepareGroundTypes(heightManager, fillManager, 
         ht.fillTypeName    = p.name
         ht.index           = p.slot
         heightManager.fillTypeIndexToHeightType[p.idx] = ht
-        if type(heightManager.fillTypeNameToHeightType) == "table" then
-            heightManager.fillTypeNameToHeightType[p.name] = ht
-        end
-        if type(heightManager.heightTypeIndexToFillTypeIndex) == "table" then
-            heightManager.heightTypeIndexToFillTypeIndex[p.slot] = p.idx
-        end
+        heightManager.fillTypeNameToHeightType[p.name] = ht
+        heightManager.heightTypeIndexToFillTypeIndex[p.slot] = p.idx
         heightManager.heightTypes[p.slot] = ht
         heightManager.numHeightTypes = p.slot
     end

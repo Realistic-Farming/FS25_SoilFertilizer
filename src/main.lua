@@ -711,15 +711,20 @@ local function load(mission)
     end
 end
 
--- Unload handler
-local function unload()
+-- Unload handler. Prepended to FSBaseMission.delete, so the argument is the
+-- mission being deleted (menu.lua deletes it before clearing g_currentMission).
+local function unload(mission)
     -- RSF-F227: switch the ground-tip wrapper to pure delegation before anything
     -- else, so the next mission never inherits this one's gates. Unconditional and
     -- outside the sfm block: it must run even when the manager is already gone.
     if GroundTipGate then GroundTipGate.disable() end
-    -- SG-6: clear the joined-mission binding (the legacy override stays
-    -- disabled); StockGuard's own teardown may repeat this safely.
-    if SoilCapacityIntegration ~= nil then SoilCapacityIntegration.endCapacityLoad(g_currentMission) end
+    -- SG-6: clear the joined-mission binding for exactly the mission being
+    -- deleted (the legacy override stays disabled); StockGuard's own teardown
+    -- may repeat this safely. The prepend's own argument is the exact object;
+    -- g_currentMission is only the fallback for a call without one.
+    if SoilCapacityIntegration ~= nil then
+        SoilCapacityIntegration.endCapacityLoad(mission ~= nil and mission or g_currentMission)
+    end
     -- [SF-22] Drop the pure-client farm-switch subscriber and any in-flight FULL
     -- buffer so a session reload never accumulates a stale subscription. Safe to
     -- call unconditionally: it no-ops when nothing was registered.

@@ -89,10 +89,15 @@ do
     end
     T.eq("StockGuard preflight admits this protocol", (soilPreflight(true, api)), true)
     T.eq("dot call with a non-table mission is refused, not an error", api.beginCapacityLoad("mission"), false)
-    -- A colon call shifts the arguments: the first parameter becomes the table itself.
+    -- A colon call shifts the arguments: the first parameter becomes the table
+    -- itself. The contract is dot calls, so that is refused, never bound.
     local ok = api:beginCapacityLoad({})
-    T.eq("colon call binds the API table as the mission and then fails on the real mission", ok, true)
-    T.eq("colon call left the API table as the joined mission, which a real mission rejects", api.beginCapacityLoad({}), false)
+    T.eq("colon call is refused", ok, false)
+    T.eq("colon call left nothing joined", api.getJoinedMission(), nil)
+    T.eq("colon end is refused too", (api:endCapacityLoad({})), false)
+    local real = { name = "real" }
+    T.eq("a real mission still joins after the refused colon call", api.beginCapacityLoad(real), true)
+    T.eq("the real mission is the joined one", api.isJoined(real), true)
     SoilCapacityIntegration._resetForTests()
 end
 
@@ -118,12 +123,16 @@ do
     -- The gate itself still honours a direct enable, so the fence is main.lua's job:
     T.eq("end for a non-matching mission leaves the binding", (SoilCapacityIntegration.endCapacityLoad({ name = "other" })), true)
     T.eq("binding survives a non-matching end", SoilCapacityIntegration.isJoined(mission), true)
+    T.eq("end with nil leaves the binding (only the matching binding clears)", (SoilCapacityIntegration.endCapacityLoad(nil)), true)
+    T.eq("binding survives a nil end", SoilCapacityIntegration.isJoined(mission), true)
     T.eq("end for the matching mission clears it", (SoilCapacityIntegration.endCapacityLoad(mission)), true)
     T.eq("binding cleared", SoilCapacityIntegration.isJoined(mission), false)
     T.eq("legacy override stays disabled after end", GroundTipGate.isActive(), false)
     T.eq("repeat end is safe", (SoilCapacityIntegration.endCapacityLoad(mission)), true)
-    T.eq("end with nil clears any binding", (function() SoilCapacityIntegration.beginCapacityLoad(mission) return SoilCapacityIntegration.endCapacityLoad(nil) end)(), true)
-    T.eq("nil end cleared it", SoilCapacityIntegration.getJoinedMission(), nil)
+    T.eq("end with nil is accepted but clears nothing", (function() SoilCapacityIntegration.beginCapacityLoad(mission) return SoilCapacityIntegration.endCapacityLoad(nil) end)(), true)
+    T.eq("nil end left the binding", SoilCapacityIntegration.getJoinedMission(), mission)
+    T.eq("the matching end clears it", (SoilCapacityIntegration.endCapacityLoad(mission)), true)
+    T.eq("matching end cleared it", SoilCapacityIntegration.getJoinedMission(), nil)
     -- After end, a new mission may join.
     local m3 = { name = "m3" }
     T.eq("a new mission joins after the old one ended", SoilCapacityIntegration.beginCapacityLoad(m3), true)
@@ -189,26 +198,50 @@ do
     T.eq("exact room for twelve rows succeeds", (SoilCapacityIntegration.prepareGroundTypes(hm2, fm2, 15)), true)
     T.eq("all twelve appended", hm2.numHeightTypes, 15)
 
-    -- Both templates missing: no row can be built.
+    -- Both templates missing: no row can be built; the absent template is named.
     local fm3 = newFillManager()
     local hm3 = { numHeightTypes = 0, heightTypes = {}, fillTypeNameToHeightType = {}, fillTypeIndexToHeightType = {}, heightTypeIndexToFillTypeIndex = {} }
     local ok3, reason3, name3 = SoilCapacityIntegration.prepareGroundTypes(hm3, fm3, 63)
     T.eq("missing templates refuse", ok3, false)
     T.eq("with MISSING_TEMPLATE", reason3, "MISSING_TEMPLATE")
-    T.eq("naming the first type", name3, "UREA")
+    T.eq("naming the absent FERTILIZER template", name3, "FERTILIZER")
     T.eq("nothing inserted without a template", hm3.numHeightTypes, 0)
 
-    -- Only the MANURE template present: minerals fall back to it (as the legacy path does).
+    -- Only the MANURE template present: both are required, so this refuses and
+    -- names FERTILIZER; minerals never take the manure row.
     local fm4 = newFillManager()
     local hm4 = { numHeightTypes = 0, heightTypes = {}, fillTypeNameToHeightType = {}, fillTypeIndexToHeightType = {}, heightTypeIndexToFillTypeIndex = {} }
     local mIdx = fm4._byName["MANURE"]
     local mt = { index = 1, fillTypeName = "MANURE", fillTypeIndex = mIdx, material = "manure-mat" }
     hm4.heightTypes[1] = mt; hm4.fillTypeNameToHeightType["MANURE"] = mt; hm4.fillTypeIndexToHeightType[mIdx] = mt; hm4.heightTypeIndexToFillTypeIndex[1] = mIdx; hm4.numHeightTypes = 1
-    T.eq("single template still prepares", (SoilCapacityIntegration.prepareGroundTypes(hm4, fm4, 63)), true)
-    T.eq("mineral falls back to the only template", hm4.fillTypeNameToHeightType["UREA"].material, "manure-mat")
+    local ok4, reason4, name4 = SoilCapacityIntegration.prepareGroundTypes(hm4, fm4, 63)
+    T.eq("single template refuses", ok4, false)
+    T.eq("single template: MISSING_TEMPLATE", reason4, "MISSING_TEMPLATE")
+    T.eq("single template: names FERTILIZER", name4, "FERTILIZER")
+    T.eq("single template: nothing inserted", hm4.numHeightTypes, 1)
+    -- Only the FERTILIZER template present: names MANURE, nothing written.
+    local fm5 = newFillManager()
+    local hm5 = { numHeightTypes = 0, heightTypes = {}, fillTypeNameToHeightType = {}, fillTypeIndexToHeightType = {}, heightTypeIndexToFillTypeIndex = {} }
+    local fIdx = fm5._byName["FERTILIZER"]
+    local ft = { index = 1, fillTypeName = "FERTILIZER", fillTypeIndex = fIdx, material = "fert-mat" }
+    hm5.heightTypes[1] = ft; hm5.fillTypeNameToHeightType["FERTILIZER"] = ft; hm5.fillTypeIndexToHeightType[fIdx] = ft; hm5.heightTypeIndexToFillTypeIndex[1] = fIdx; hm5.numHeightTypes = 1
+    local ok5, reason5, name5 = SoilCapacityIntegration.prepareGroundTypes(hm5, fm5, 63)
+    T.eq("fertilizer-only refuses", ok5, false)
+    T.eq("fertilizer-only names MANURE", name5, "MANURE")
+    T.eq("fertilizer-only: MISSING_TEMPLATE", reason5, "MISSING_TEMPLATE")
+    T.eq("fertilizer-only: nothing inserted", hm5.numHeightTypes, 1)
 
     -- Invalid arguments are refused, not errors.
     T.eq("nil managers refused", (SoilCapacityIntegration.prepareGroundTypes(nil, fm, 63)), false)
+    local hmNoName = newHeightManager(fm2); hmNoName.fillTypeNameToHeightType = nil
+    T.eq("missing fillTypeNameToHeightType refused", select(2, SoilCapacityIntegration.prepareGroundTypes(hmNoName, fm2, 63)), "INVALID_ARGS")
+    local hmNoIdx = newHeightManager(fm2); hmNoIdx.heightTypeIndexToFillTypeIndex = nil
+    T.eq("missing heightTypeIndexToFillTypeIndex refused", select(2, SoilCapacityIntegration.prepareGroundTypes(hmNoIdx, fm2, 63)), "INVALID_ARGS")
+    local hmDrift = newHeightManager(fm2); hmDrift.numHeightTypes = hmDrift.numHeightTypes - 1
+    local okD, reasonD = SoilCapacityIntegration.prepareGroundTypes(hmDrift, fm2, 63)
+    T.eq("a drifted count whose next slot is occupied is refused", okD, false)
+    T.eq("drifted count: INVALID_ARGS", reasonD, "INVALID_ARGS")
+    T.eq("drifted count: the live row was not overwritten", hmDrift.heightTypes[3].fillTypeName, "MANURE")
     T.eq("non-integer limit refused", (SoilCapacityIntegration.prepareGroundTypes(newHeightManager(fm2), fm2, 6.5)), false)
     T.eq("zero limit refused", (SoilCapacityIntegration.prepareGroundTypes(newHeightManager(fm2), fm2, 0)), false)
 end
@@ -229,7 +262,7 @@ do
     SoilCapacityIntegration.endCapacityLoad(mission)
     GroundTipGate.install(); GroundTipGate.enable()
     T.eq("standalone mission: wrapper active", GroundTipGate.isActive(), true)
-    SoilCapacityIntegration.endCapacityLoad(nil)   -- Soil unload
+    SoilCapacityIntegration.endCapacityLoad({ name = "standalone-mission" })   -- Soil unload passes the deleted mission
     T.eq("unload disables the surviving wrapper", GroundTipGate.isActive(), false)
     local sg = { name = "stockguard-mission" }
     SoilCapacityIntegration.beginCapacityLoad(sg)
@@ -238,4 +271,24 @@ do
     g_densityMapHeightManager._valid = false
     T.eq("invalid manager follows the predecessor while disabled", DensityMapHeightUtil.getCanTipToGround(99), true)
     SoilCapacityIntegration.endCapacityLoad(sg)
+end
+
+-- ── Two saves in one process: unload A with A, then B joins ─────────────────
+do
+    freshProcess()
+    local a = { name = "save-A" }
+    local b = { name = "save-B" }
+    T.eq("A joins", SoilCapacityIntegration.beginCapacityLoad(a), true)
+    -- Unload passes the mission being deleted (main.lua's FSBaseMission.delete prepend argument).
+    T.eq("unload A with A", (SoilCapacityIntegration.endCapacityLoad(a)), true)
+    T.eq("A no longer joined", SoilCapacityIntegration.isJoined(a), false)
+    T.eq("B joins after A was unloaded", SoilCapacityIntegration.beginCapacityLoad(b), true)
+    T.eq("B is the joined mission", SoilCapacityIntegration.isJoined(b), true)
+    -- The failure mode Bob named: an unload that passes nothing leaves A bound and B is refused.
+    SoilCapacityIntegration._resetForTests()
+    SoilCapacityIntegration.beginCapacityLoad(a)
+    SoilCapacityIntegration.endCapacityLoad(nil)
+    T.eq("a nil unload does not clear A", SoilCapacityIntegration.isJoined(a), true)
+    T.eq("so B would be refused: the unload must pass the deleted mission", SoilCapacityIntegration.beginCapacityLoad(b), false)
+    SoilCapacityIntegration._resetForTests()
 end
