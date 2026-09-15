@@ -29,8 +29,17 @@
 --   FruitTypeDesc fields fruits/FruitTypeDesc.lua:127-128 (state channels),
 --     :142-143 and :233/:240 (cutStates, witheredState), :601 (plane id)
 --   Per-pixel reads getDensityTypeIndexAtWorldPos / getDensityStatesAtWorldPos
---     (engine, LUADOC docs/engine/Terrain Detail; no decompiled script calls
---     them, so their return shapes are logged raw here)
+--     used at utils/FSDensityMapUtil.lua:2851-2856: the type index maps to a
+--     fruit through g_fruitTypeManager:getFruitTypeByDensityTypeIndex
+--     (fruits/FruitTypeManager.lua:491, set at :488) and the raw states word
+--     is decoded with desc:getGrowthStateByDensityState
+--     (fruits/FruitTypeDesc.lua:794: band(rshift(state, startStateChannel),
+--     2^numStateChannels - 1)); the raw word is logged beside the decode
+--   Type-index filter: DensityMapFilter.new(planeId, startStateChannel,
+--     numStateChannels) with setTypeIndexCompareMode(DensityTypeCompareType
+--     .EQUAL) as at utils/FSDensityMapUtil.lua:807-814; the source does not
+--     show which type index EQUAL compares against, so the typed counts are
+--     logged beside the unfiltered ones and read, never assumed
 --   Work-area pointer capture vehicles/specializations/WorkArea.lua:266,
 --     called at :182-183; hook sites Cutter.lua:584, Mower.lua:328,
 --     SowingMachine.lua:362; Soil's four-surface wrap pattern
@@ -48,12 +57,35 @@ P.HOOK_SITES = {
     { class = "SowingMachine", fn = "processSowingMachineArea" },
 }
 P.DEFAULT_INSET_FRACTION = 0.1
+P.LOG_CAP = 500            -- in-memory log lines kept (oldest dropped)
+P.FRAME_MAX_KEEP = 32      -- worst per-frame probe costs kept
+P.AREA_MAX_CELLS = 400     -- "area" refuses beyond this many cells
+P.HOOK_LOG_INTERVAL_MS = 500 -- a hook site logs when its cell set changes or after this many ms
+
+local unpack = table.unpack or unpack
+local function pack(...) return { n = select("#", ...), ... } end
 
 local function isFinite(n) return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge end
 local function log(fmt, ...)
     local msg = "[CD15 probe] " .. string.format(fmt, ...)
     if SoilLogger ~= nil and SoilLogger.info ~= nil then SoilLogger.info(msg) else print(msg) end
-    P.state.log[#P.state.log + 1] = msg
+    local buf = P.state.log
+    buf[#buf + 1] = msg
+    if #buf > P.LOG_CAP then table.remove(buf, 1) end
+end
+
+--- Keep only the worst N per-frame probe costs.
+local function noteFrameMax(frame, t)
+    local fm = P.state.frameMax
+    fm[frame] = math.max(fm[frame] or 0, t)
+    local n = 0
+    for _ in pairs(fm) do n = n + 1 end
+    if n > P.FRAME_MAX_KEEP * 2 then
+        local keys = {}
+        for k in pairs(fm) do keys[#keys + 1] = k end
+        table.sort(keys, function(a, b) return fm[a] > fm[b] end)
+        for i = P.FRAME_MAX_KEEP + 1, #keys do fm[keys[i]] = nil end
+    end
 end
 
 -- =========================================================
@@ -106,6 +138,21 @@ function P.classifyState(desc, state)
     local maxState = desc.numStateChannels ~= nil and (2 ^ desc.numStateChannels - 1) or nil
     if maxState ~= nil and state > maxState then return "other" end
     return "living"
+end
+
+--- Decode a raw per-pixel states word into the fruit's growth state the way
+--- the engine does (FruitTypeDesc.lua:794). A descriptor without the method
+--- (a stub) or a non-finite word returns nil.
+function P.decodeGrowthState(desc, states)
+    if desc == nil or not isFinite(states) then return nil end
+    if type(desc.getGrowthStateByDensityState) == "function" then
+        local ok, v = pcall(desc.getGrowthStateByDensityState, desc, states)
+        if ok then return v end
+        return nil
+    end
+    local shift = desc.startStateChannel or 0
+    local channels = desc.numStateChannels or 0
+    return math.floor(states / 2 ^ shift) % 2 ^ channels
 end
 
 --- Compare per-class counts from the point enumeration with the modifier.
@@ -163,7 +210,9 @@ end
 -- =========================================================
 -- Runtime state (nothing here runs unless a console command asks)
 -- =========================================================
-P.state = P.state or { enabled = false, hooks = nil, fruits = nil, timings = {}, frameMax = {}, log = {}, insetFraction = P.DEFAULT_INSET_FRACTION }
+P.state = P.state or { enabled = false, hooks = nil, fruits = nil, timings = {}, frameMax = {}, log = {}, insetFraction = P.DEFAULT_INSET_FRACTION, rawSeen = {}, hookLast = {} }
+P.state.rawSeen = P.state.rawSeen or {}
+P.state.hookLast = P.state.hookLast or {}
 
 local function terrainFacts()
     local sfm = g_SoilFertilityManager
@@ -195,11 +244,27 @@ function P.ensureFruitCache()
             local anyFilter = DensityMapFilter.new(modifier)
             anyFilter:setValueCompareParams(DensityValueCompareType.GREATER, 0)
             multi:addExecuteGet("any", modifier, anyFilter)
+            -- Second machine: the same gets through filters built on the plane
+            -- form with the type-index compare mode EQUAL (FSDensityMapUtil.lua:807-814).
+            local multiTyped = nil
+            if DensityTypeCompareType ~= nil and DensityTypeCompareType.EQUAL ~= nil then
+                multiTyped = DensityMapMultiModifier.new()
+                for state = 1, maxState do
+                    local filter = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+                    filter:setValueCompareParams(DensityValueCompareType.EQUAL, state)
+                    filter:setTypeIndexCompareMode(DensityTypeCompareType.EQUAL)
+                    multiTyped:addExecuteGet("s" .. state, modifier, filter)
+                end
+                local anyTyped = DensityMapFilter.new(desc.terrainDataPlaneId, desc.startStateChannel, desc.numStateChannels)
+                anyTyped:setValueCompareParams(DensityValueCompareType.GREATER, 0)
+                anyTyped:setTypeIndexCompareMode(DensityTypeCompareType.EQUAL)
+                multiTyped:addExecuteGet("any", modifier, anyTyped)
+            end
             local mapSize = getDensityMapSize ~= nil and getDensityMapSize(desc.terrainDataPlaneId) or nil
             local pixelMetres = (isFinite(terrainSize) and isFinite(mapSize) and mapSize > 0) and (terrainSize / mapSize) or nil
             planeUsers[desc.terrainDataPlaneId] = (planeUsers[desc.terrainDataPlaneId] or 0) + 1
             fruits[#fruits + 1] = { desc = desc, name = desc.name, planeId = desc.terrainDataPlaneId, modifier = modifier, multi = multi,
-                maxState = maxState, mapSize = mapSize, pixelMetres = pixelMetres, stats = {} }
+                multiTyped = multiTyped, maxState = maxState, mapSize = mapSize, pixelMetres = pixelMetres, stats = {} }
         end
     end
     for _, f in ipairs(fruits) do f.planeShared = (planeUsers[f.planeId] or 0) > 1 end
@@ -207,16 +272,20 @@ function P.ensureFruitCache()
     return fruits
 end
 
---- Modifier counts of one cell for one fruit (per class), and the seconds it took.
-function P.countCellModifier(f, gx, gz, inset)
+--- Modifier counts of one cell for one fruit (per class), and the seconds it
+--- took. With typed=true the type-index-filtered machine runs instead (nil
+--- when the engine offers no DensityTypeCompareType).
+function P.countCellModifier(f, gx, gz, inset, typed)
     local terrainSize, resolution = terrainFacts()
     local sx, sz, wx, wz, hx, hz = P.cellParallelogram(gx, gz, terrainSize, resolution, inset)
     if sx == nil then return nil, 0 end
+    local multi = typed and f.multiTyped or f.multi
+    if multi == nil then return nil, 0 end
     f.modifier:setParallelogramWorldCoords(sx, sz, wx, wz, hx, hz, DensityCoordType.POINT_POINT_POINT)
     local stats = {}
-    f.multi:resetStats()
+    multi:resetStats()
     local t0 = getTimeSec ~= nil and getTimeSec() or 0
-    local _, _, _, touched = f.multi:execute(nil, stats, nil)
+    local _, _, _, touched = multi:execute(nil, stats, nil)
     local dt = (getTimeSec ~= nil and getTimeSec() or 0) - t0
     local counts = { living = 0, cut = 0, withered = 0, empty = 0, other = 0, any = stats.any or 0, total = touched or 0 }
     local classified = 0
@@ -233,14 +302,23 @@ function P.countCellModifier(f, gx, gz, inset)
 end
 
 --- Point enumeration of one cell for one fruit: every fruit pixel centre in
---- the cell is read with the two per-pixel functions; raw return shapes are
---- kept for the log the first time they are seen.
+--- the cell is read with the two per-pixel functions. A pixel counts for
+--- fruit f only when the plane's type index maps back to f's descriptor
+--- (FruitTypeManager.lua:491); a pixel of another fruit on a shared plane is
+--- "foreign", a zero word is "empty". The raw states word is decoded with
+--- getGrowthStateByDensityState before classification, and the first raw
+--- word seen per fruit and growth state is logged next to its decode. The
+--- histogram covers every pixel of the cell regardless of fruit.
 function P.countCellPoints(f, gx, gz)
     local terrainSize, resolution = terrainFacts()
     local minX, minZ, maxX, maxZ = P.cellBounds(gx, gz, terrainSize, resolution)
     if minX == nil or f.pixelMetres == nil or getDensityTypeIndexAtWorldPos == nil or getDensityStatesAtWorldPos == nil then return nil end
-    local counts = { living = 0, cut = 0, withered = 0, empty = 0, other = 0, any = 0, total = 0 }
+    local counts = { living = 0, cut = 0, withered = 0, empty = 0, other = 0, any = 0, total = 0, owned = 0, foreign = 0 }
     local typeSeen = {}
+    local ftm = g_fruitTypeManager
+    local canMap = ftm ~= nil and type(ftm.getFruitTypeByDensityTypeIndex) == "function"
+    local rawSeen = P.state.rawSeen[f.name]
+    if rawSeen == nil then rawSeen = {} P.state.rawSeen[f.name] = rawSeen end
     local step = f.pixelMetres
     local x = minX + step * 0.5
     while x < maxX do
@@ -250,14 +328,30 @@ function P.countCellPoints(f, gx, gz)
             local states = getDensityStatesAtWorldPos(f.planeId, x, 0, z)
             typeSeen[tostring(typeIndex)] = (typeSeen[tostring(typeIndex)] or 0) + 1
             counts.total = counts.total + 1
-            local cls = P.classifyState(f.desc, states)
-            counts[cls] = counts[cls] + 1
-            if isFinite(states) and states > 0 then counts.any = counts.any + 1 end
+            local growth = P.decodeGrowthState(f.desc, states)
+            local owner = canMap and ftm:getFruitTypeByDensityTypeIndex(typeIndex) or nil
+            local owned = (owner == f.desc) or (not canMap)
+            if isFinite(states) and states == 0 then
+                counts.empty = counts.empty + 1
+            elseif owned then
+                counts.owned = counts.owned + 1
+                local cls = P.classifyState(f.desc, growth)
+                if cls == "empty" then cls = "other" end
+                counts[cls] = counts[cls] + 1
+                counts.any = counts.any + 1
+                if growth ~= nil and rawSeen[growth] == nil then
+                    rawSeen[growth] = states
+                    log("  %s raw states word %s decodes to growth state %s (typeIndex %s)", f.name, tostring(states), tostring(growth), tostring(typeIndex))
+                end
+            else
+                counts.foreign = counts.foreign + 1
+            end
             z = z + step
         end
         x = x + step
     end
     counts.typeIndexHistogram = typeSeen
+    counts.typeMapped = canMap
     return counts
 end
 
@@ -280,18 +374,27 @@ function P.reportCell(gx, gz, tag)
         local inset = (f.pixelMetres or size) * P.state.insetFraction
         local exact, dtExact = P.countCellModifier(f, gx, gz, 0)
         local insetCounts, dtInset = P.countCellModifier(f, gx, gz, inset)
+        local typedCounts, dtTyped = nil, 0
+        if f.planeShared then typedCounts, dtTyped = P.countCellModifier(f, gx, gz, 0, true) end
         local points = P.countCellPoints(f, gx, gz)
         P.state.timings[#P.state.timings + 1] = dtExact
-        local anyHere = (exact and exact.any or 0) > 0 or (points and points.any or 0) > 0
+        local anyHere = (exact and exact.any or 0) > 0 or (points and points.any or 0) > 0 or (points and points.foreign or 0) > 0
         if anyHere then
-            log("  %s plane %s%s pixel %.3f m (%s px per cell edge) exact %.1f us inset %.1f us",
+            log("  %s plane %s%s pixel %.3f m (%s px per cell edge) exact %.1f us inset %.1f us%s",
                 f.name, tostring(f.planeId), f.planeShared and " SHARED" or "", f.pixelMetres or -1,
-                f.pixelMetres and string.format("%.2f", size / f.pixelMetres) or "?", dtExact * 1e6, dtInset * 1e6)
+                f.pixelMetres and string.format("%.2f", size / f.pixelMetres) or "?", dtExact * 1e6, dtInset * 1e6,
+                typedCounts and string.format(" typed %.1f us", dtTyped * 1e6) or "")
             for _, row in ipairs(P.compareCounts(points, exact)) do
                 local ins = insetCounts and insetCounts[row.class] or 0
-                log("    %-8s point %5d  modifier %5d (delta %+d)  inset %5d", row.class, row.point, row.modifier, row.delta, ins)
+                local typedText = typedCounts and string.format("  typed %5d", typedCounts[row.class] or 0) or ""
+                log("    %-8s point %5d  modifier %5d (delta %+d)  inset %5d%s", row.class, row.point, row.modifier, row.delta, ins, typedText)
             end
-            if points and points.typeIndexHistogram then log("    typeIndex histogram: %s", histogramText(points.typeIndexHistogram)) end
+            if points then
+                log("    point pixels owned by %s: %d, foreign (another fruit on the plane): %d%s", f.name, points.owned or 0, points.foreign or 0,
+                    points.typeMapped and "" or " (type index not mappable, every non-empty pixel counted as owned)")
+                if points.typeIndexHistogram then log("    typeIndex histogram (all pixels): %s", histogramText(points.typeIndexHistogram)) end
+            end
+            if f.planeShared and typedCounts == nil then log("    typed machine unavailable (no DensityTypeCompareType)") end
         end
     end
 end
@@ -315,10 +418,11 @@ end
 
 function P.reportArea(x1, z1, x2, z2)
     local terrainSize, resolution = terrainFacts()
-    local a = P.cellOfWorld(math.min(x1, x2), math.min(z1, z2), terrainSize, resolution)
     local ax, az = P.cellOfWorld(math.min(x1, x2), math.min(z1, z2), terrainSize, resolution)
     local bx, bz = P.cellOfWorld(math.max(x1, x2), math.max(z1, z2), terrainSize, resolution)
     if ax == nil or bx == nil then log("area refused: a corner is off the map") return end
+    local cellCount = (bx - ax + 1) * (bz - az + 1)
+    if cellCount > P.AREA_MAX_CELLS then log("area refused: %d cells exceeds the %d cell limit", cellCount, P.AREA_MAX_CELLS) return end
     local n = 0
     for gx = ax, bx do for gz = az, bz do P.reportCell(gx, gz) n = n + 1 end end
     log("area done: %d cells", n)
@@ -382,8 +486,9 @@ end
 --- delegate; when on it snapshots the touched cells before the native call,
 --- delegates once with unchanged arguments, and reads again in the same frame.
 function P.makeWrapper(site, chainFn)
-    return function(vehicleSelf, workArea, dt)
-        if not P.state.enabled then return chainFn(vehicleSelf, workArea, dt) end
+    return function(...)
+        if not P.state.enabled then return chainFn(...) end
+        local workArea = (select(2, ...))
         local terrainSize, resolution = terrainFacts()
         local cells = {}
         local ok, quad = pcall(function() return { workAreaQuad(workArea) } end)
@@ -393,17 +498,28 @@ function P.makeWrapper(site, chainFn)
         local before = {}
         pcall(function() before = snapshotCells(cells) end)
         local t0 = getTimeSec ~= nil and getTimeSec() or 0
-        local r1, r2, r3, r4, r5 = chainFn(vehicleSelf, workArea, dt)
+        local results = pack(chainFn(...))
         local tNative = (getTimeSec ~= nil and getTimeSec() or 0) - t0
         local after = {}
         local t1 = getTimeSec ~= nil and getTimeSec() or 0
         pcall(function() after = snapshotCells(cells) end)
         local tProbe = (getTimeSec ~= nil and getTimeSec() or 0) - t1
         local frame = g_currentMission ~= nil and g_currentMission.time or 0
-        P.state.frameMax[frame] = math.max(P.state.frameMax[frame] or 0, tProbe)
-        log("%s.%s frame %s cells %d native %.1f us probe %.1f us | before %s | after (same frame) %s",
-            site.class, site.fn, tostring(frame), #cells, tNative * 1e6, tProbe * 1e6, describe(before), describe(after))
-        return r1, r2, r3, r4, r5
+        pcall(noteFrameMax, frame, tProbe)
+        -- Throttle: one line per site when the touched cell set changes or
+        -- after HOOK_LOG_INTERVAL_MS, so log.txt is not written every frame.
+        local keyParts = {}
+        for _, c in ipairs(cells) do keyParts[#keyParts + 1] = c.gx .. ":" .. c.gz end
+        local key = table.concat(keyParts, ",")
+        local siteKey = site.class .. "." .. site.fn
+        local last = P.state.hookLast[siteKey]
+        local due = last == nil or last.key ~= key or (isFinite(frame) and isFinite(last.frame) and frame - last.frame >= P.HOOK_LOG_INTERVAL_MS)
+        if due then
+            P.state.hookLast[siteKey] = { key = key, frame = frame }
+            pcall(log, "%s.%s frame %s cells %d native %.1f us probe %.1f us | before %s | after (same frame) %s",
+                site.class, site.fn, tostring(frame), #cells, tNative * 1e6, tProbe * 1e6, describe(before), describe(after))
+        end
+        return unpack(results, 1, results.n)
     end
 end
 
@@ -417,8 +533,9 @@ function P.hooksOn()
     local function wrapSlot(holder, key, site, label)
         local fn = holder[key]
         if type(fn) ~= "function" then return end
-        hooks.originals[#hooks.originals + 1] = { holder = holder, key = key, fn = fn, label = label }
-        holder[key] = P.makeWrapper(site, fn)
+        local wrapper = P.makeWrapper(site, fn)
+        hooks.originals[#hooks.originals + 1] = { holder = holder, key = key, fn = fn, wrapper = wrapper, label = label }
+        holder[key] = wrapper
     end
     for _, site in ipairs(P.HOOK_SITES) do
         local cls = _G[site.class]
@@ -455,14 +572,21 @@ function P.hooksOff()
     local hooks = P.state.hooks
     P.state.enabled = false
     if hooks == nil then log("hooks off: nothing installed") return true end
-    local restored = 0
+    local restored, left = 0, 0
     for i = #hooks.originals, 1, -1 do
         local o = hooks.originals[i]
-        o.holder[o.key] = o.fn
-        restored = restored + 1
+        if o.holder[o.key] == o.wrapper then
+            o.holder[o.key] = o.fn
+            restored = restored + 1
+        else
+            -- Something re-wrapped this slot after us; our wrapper is a pure
+            -- delegate now that enabled is false, so leave the later wrapper.
+            left = left + 1
+        end
     end
     P.state.hooks = nil
-    log("hooks off: %d slots restored", restored)
+    P.state.hookLast = {}
+    log("hooks off: %d slots restored, %d left in place (re-wrapped after hooks on; ours delegates unchanged)", restored, left)
     return true
 end
 
@@ -481,6 +605,8 @@ function P.reset()
     P.state.timings = {}
     P.state.frameMax = {}
     P.state.log = {}
+    P.state.rawSeen = {}
+    P.state.hookLast = {}
     return "probe reset"
 end
 
