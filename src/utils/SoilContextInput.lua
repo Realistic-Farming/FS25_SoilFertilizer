@@ -129,6 +129,18 @@ function M.activate(record, owner, mission, specsByContext)
     -- (same action and trigger already resident), which is item 10's silent
     -- failure. A stacked reload copy therefore adopts the binding instead.
     if record.active and record.owner == owner and record.mission == mission then return end
+    -- Same mission, different owner: keep the live targets and re-point them.
+    -- Minting new targets here would leave the old registrations resident and
+    -- the engine would refuse every re-add on the action+trigger check.
+    if record.active and record.mission == mission and next(record.targets) ~= nil then
+        record.owner = owner
+        for _, t in pairs(record.targets) do
+            t.__f201Owner = owner
+            t.__f201Live = true
+        end
+        record.memo = {}
+        return
+    end
     for _, old in pairs(record.targets) do
         old.__f201Live = false
         old.__f201Owner = nil
@@ -247,15 +259,16 @@ function M.reconcile(record, binding, contextName, specs)
     end
 
     record.inFlight = true
-    binding:beginActionEventsModification(contextName)
-    -- The bracket may have created the context; key the memo by the live one.
-    local liveCtx = (type(binding.contexts) == "table") and binding.contexts[contextName] or nil
-    if liveCtx ~= nil and liveCtx ~= memoKey then
-        record.memo[liveCtx] = memo
-    end
-
+    local opened = false
     local added, removed = 0, 0
     local ok, err = pcall(function()
+        binding:beginActionEventsModification(contextName)
+        opened = true
+        -- The bracket may have created the context; key the memo by the live one.
+        local liveCtx = (type(binding.contexts) == "table") and binding.contexts[contextName] or nil
+        if liveCtx ~= nil and liveCtx ~= memoKey then
+            record.memo[liveCtx] = memo
+        end
         for _, item in ipairs(obsolete) do
             binding:removeActionEvent(item.ev.id)
             if item.spec.idField ~= nil and owner[item.spec.idField] == item.ev.id then
@@ -279,8 +292,11 @@ function M.reconcile(record, binding, contextName, specs)
             -- A false return is unavailability: keep the mark, continue the batch.
         end
     end)
-    -- Always attempt the matching close, then release local protection (item 6).
-    local closeOk, closeErr = pcall(binding.endActionEventsModification, binding)
+    -- Always attempt the matching close if we opened, then release local protection (item 6).
+    local closeOk, closeErr = true, nil
+    if opened then
+        closeOk, closeErr = pcall(binding.endActionEventsModification, binding)
+    end
     record.inFlight = false
     if not ok then error(err, 0) end
     if not closeOk then error(closeErr, 0) end

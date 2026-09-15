@@ -92,15 +92,14 @@ local SF_VEHICLE_SPECS = {
 --- forwarding targets. A second manager in the same session (mission reload)
 --- only rebinds; the wrappers and their captured predecessors stay put.
 function SoilFertilityManager:installContextInput(mission)
+    -- Install once per loaded script environment; the helper latches on its
+    -- captured predecessors, so a second manager only rebinds below.
     local record = SoilContextInput.record(SoilFertilityManager, "_f201Input")
-    if not record.installed then
-        record.installed = true
-        if SoilContextInput.installPlayerWrapper(record, SF_PLAYER_SPECS) then
-            SoilLogger.info("PlayerInputComponent hook installed (PLAYER context, F201)")
-        end
-        if SoilContextInput.installVehicleWrapper(record, SF_VEHICLE_SPECS) then
-            SoilLogger.info("InputBinding.endActionEventsModification hooked for VEHICLE context keys (F201)")
-        end
+    if record.playerOriginal == nil and SoilContextInput.installPlayerWrapper(record, SF_PLAYER_SPECS) then
+        SoilLogger.info("PlayerInputComponent hook installed (PLAYER context, F201)")
+    end
+    if record.vehicleOriginal == nil and SoilContextInput.installVehicleWrapper(record, SF_VEHICLE_SPECS) then
+        SoilLogger.info("InputBinding.endActionEventsModification hooked for VEHICLE context keys (F201)")
     end
     if PlayerInputComponent == nil or Vehicle == nil then return end
     SoilContextInput.activate(record, self, mission or self.mission or g_currentMission, {
@@ -656,6 +655,10 @@ function SoilFertilityManager:onMissionStarted()
     -- won't fire until I remap" report. Re-asserting after the mission has fully loaded
     -- (saved bindings applied) registers any event the first pass missed. Idempotent.
     if self.soilHUD then
+        -- RSF-F201 detail 6: one immediate PLAYER reconciliation from this existing
+        -- post-load door (no-op when the set is complete or the context is absent),
+        -- then the unchanged two-second net for the load-order race.
+        self:registerPlayerContextInputEvents(g_inputBinding)
         self._pendingInputReassert      = true
         self._pendingInputReassertDelay = 2000
     end
@@ -681,7 +684,7 @@ function SoilFertilityManager:registerPlayerContextInputEvents(binding)
     if added > 0 then
         SoilLogger.info("#677 input re-assert: registered %d previously-missing PLAYER event(s)", added)
     else
-        SoilLogger.debug("#677 input re-assert: all PLAYER events already registered")
+        SoilLogger.debug("#677 input re-assert: no PLAYER events added")
     end
 end
 
