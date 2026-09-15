@@ -354,8 +354,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`modSettings/` folder structure reorganized** - Files now grouped under `modSettings/FS25_SoilFertilizer/{Settings,HUD,Debug}/` for a cleaner per-mod layout.
 
 ### Added
-- **Debug output files** - When debug mode is active, three files are written to `modSettings/FS25_SoilFertilizer/Debug/`:
-  - `debug.xml` - buffered `SoilLogger.debug()` messages (flushed when debug mode is toggled off or the game session ends)
+- **Debug output files** - Three files use `modSettings/FS25_SoilFertilizer/Debug/`,
+  each through its own export route:
+  - `debug.xml` - buffered `SoilLogger.debug()` messages. With Soil debug mode on,
+    `SoilDebug` switches it off and exports the retained history. If it is already off,
+    the first `SoilDebug` turns it on without exporting; run it again to switch off and export.
+    Normal session teardown also exports retained history. Other ways of switching Soil debug
+    off save the setting without exporting: game settings, the mod panel toggle, Soil's row in
+    tablet System Settings, SettingsHub Control Center, and `SoilResetSettings` or the panel's
+    admin Reset action. An empty history writes no file. A successful export reports its path
+    in the game log. Use the new message from this export attempt; an older success line does
+    not prove a file is current after another attempt. Without a new message, a leftover file
+    may be earlier, failed or incomplete. A save failure reported without an exception still
+    clears the buffered history; toggling again cannot recover those cleared records. An abrupt
+    exit that skips teardown writes no shutdown export; an ordinary quit that runs teardown
+    uses that route.
   - `field_dump.xml` - full nutrient snapshot for a single field (written each time `SoilFieldInfo <id>` is run)
   - `soil_export.xml` - snapshot of all tracked field data (written each time `SoilSaveData` is run)
 - **Current-pass coverage tracker** - The HUD now shows spray-pass progress as `"Pass: 45% (Digestate)"` regardless of the native FS25 fertilizer density-map state. Farmers working a field already at 100% vanilla fertilizer state could no longer see which strips they had covered (soil doesn't darken further); the new tracker accumulates coverage area independently and displays the localized product name alongside the percentage. Turns green at the ≥70% full-coverage threshold. Resets on harvest; survives game-day rollovers mid-pass.
