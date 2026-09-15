@@ -1378,6 +1378,9 @@
     <e k="sf_handful_grain_cell" v="this cell" />
     <e k="sf_handful_grain_field" v="field average" />
     <e k="sf_handful_unscouted" v="Unscouted" />
+    <e k="sf_handful_ph_unavailable" v="inte tillgängligt här" />
+    <e k="sf_handful_ph_last_known" v="registrerat fältvärde" />
+    <e k="sf_handful_ph_approx" v="ungefärlig" />
     <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
     <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
     <e k="sf_handful_ppm" v="%d ppm" eh="62981443" />

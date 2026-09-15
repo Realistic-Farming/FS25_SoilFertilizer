@@ -7286,7 +7286,8 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             p  = vp  or p
             k  = vk  or k
             -- [SF-79] a positional pH read is LOCAL; a missing pixel leaves the
-            -- request to the field report (never a fabricated default).
+            -- positional request UNAVAILABLE below (RSF-F219): the field report
+            -- only supplies pHLastKnown, never the current slot or a default.
             if type(vph) == 'number' then
                 ph = vph
                 phStatus = PositionalPH and PositionalPH.READ_LOCAL or 'LOCAL'
@@ -7461,18 +7462,39 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         if FieldSentry_Core.reasonL10nKey then fsReasonKey = FieldSentry_Core.reasonL10nKey(r) end
     end
 
-    -- [SF-79] Resolve the field-level pH from the derived report when the request
-    -- was not a positional sample. A field with no current report is UNAVAILABLE:
-    -- pH is nil, pHLastKnown carries the scalar, and no default is substituted.
-    if not phResolved and type(self._ensurePHReport) == "function" then
-        local rep = self:_ensurePHReport(fieldId)
-        if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
-            ph = rep.value
-            phStatus = PositionalPH.READ_FIELD
-            phResolved = true
-        else
+    if not phResolved then
+        if x ~= nil and z ~= nil then
+            -- [RSF-F219] A positional request that resolved neither a LOCAL pixel
+            -- nor an APPROXIMATE zone cell is UNAVAILABLE at that spot: nil pH,
+            -- nil grain, no report or default substituted into the current slot.
+            -- The miss is assigned outside the report-helper guard so a build
+            -- without _ensurePHReport still returns no seed. A CURRENT report
+            -- refreshes pHLastKnown only; _phRefreshScalar owns the field scalar.
             ph = nil
-            phStatus = PositionalPH.READ_UNAVAILABLE
+            phStatus = PositionalPH and PositionalPH.READ_UNAVAILABLE or 'UNAVAILABLE'
+            phGrain = nil
+            if type(self._ensurePHReport) == "function" then
+                local rep = self:_ensurePHReport(fieldId)
+                if rep ~= nil and PositionalPH ~= nil
+                    and rep.status == PositionalPH.REPORT_CURRENT
+                    and type(rep.value) == 'number' then
+                    phLastKnown = rep.value
+                end
+            end
+        elseif type(self._ensurePHReport) == "function" then
+            -- [SF-79] Resolve the field-level pH from the derived report when the
+            -- request was not a positional sample. A field with no current report
+            -- is UNAVAILABLE: pH is nil, pHLastKnown carries the scalar, and no
+            -- default is substituted.
+            local rep = self:_ensurePHReport(fieldId)
+            if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+                ph = rep.value
+                phStatus = PositionalPH.READ_FIELD
+                phResolved = true
+            else
+                ph = nil
+                phStatus = PositionalPH.READ_UNAVAILABLE
+            end
         end
     end
 

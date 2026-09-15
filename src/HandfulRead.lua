@@ -214,6 +214,12 @@ function HandfulRead.assemble(ctx)
         P = info and info.phosphorus or nil,
         K = info and info.potassium or nil,
         pH = info and info.pH or nil,
+        -- [RSF-F219] pH carries its own status beside the value: the shared
+        -- fromZoneCell flag below describes N/P/K/OM, not whether pH was read
+        -- here. Grain and last-known ride along for the tile's own word.
+        pHStatus = info and info.pHStatus or nil,
+        pHGrainMetres = info and info.pHGrainMetres or nil,
+        pHLastKnown = info and info.pHLastKnown or nil,
         OM = info and info.organicMatter or nil,
         fromZoneCell = info and info.fromZoneCell or false,
         -- spot grain, qualitative always

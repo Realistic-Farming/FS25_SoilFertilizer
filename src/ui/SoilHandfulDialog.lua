@@ -183,6 +183,48 @@ local function kitPh(ph)
     return text, sev
 end
 
+-- pH tile (RSF-F219): the value text, its severity and the status word drawn
+-- under the tile. pH does not inherit the shared N/P/K/OM refinement word; it
+-- says for itself whether it was read here.
+--   LOCAL        current pH at the spot, "spot" plus the carrier grain when known
+--   APPROXIMATE  current pH from the zone cell, "approximate"
+--   FIELD_REPORT defensive totality only; the repaired handful never sends it
+--   UNAVAILABLE  no current pH: the band of a numeric pHLastKnown under the
+--                recorded-field label, otherwise the dash under "unavailable"
+--   anything else (STALE, unknown, absent) dashes with no word
+-- The kit decision is the caller's: with the kit the band carries the figure,
+-- without it the band alone, for the current and the recorded value alike.
+-- The recorded value is a field report or captured field scalar, never a
+-- remembered measurement of this spot, and its label says so.
+local function phTile(p, kit)
+    local fmt = kit and kitPh or bandPh
+    local status = p.pHStatus
+    if status == "LOCAL" and type(p.pH) == "number" then
+        local word = tr("sf_handful_grain_spot", "spot")
+        local grain = p.pHGrainMetres
+        if type(grain) == "number" and grain > 0 then
+            word = string.format("%s (%.1f m)", word, grain)
+        end
+        local text, sev = fmt(p.pH)
+        return text, sev, word
+    elseif status == "APPROXIMATE" and type(p.pH) == "number" then
+        local text, sev = fmt(p.pH)
+        return text, sev, tr("sf_handful_ph_approx", "approximate")
+    elseif status == "FIELD_REPORT" and type(p.pH) == "number" then
+        local text, sev = fmt(p.pH)
+        return text, sev, tr("sf_handful_grain_field", "field average")
+    elseif status == "UNAVAILABLE" then
+        if type(p.pHLastKnown) == "number" then
+            local text, sev = fmt(p.pHLastKnown)
+            if text ~= nil then
+                return text, sev, tr("sf_handful_ph_last_known", "recorded field value")
+            end
+        end
+        return nil, nil, tr("sf_handful_ph_unavailable", "unavailable here")
+    end
+    return nil, nil, ""
+end
+
 -- Organic matter: SoilConstants.REPORT_COLORS OM_GOOD / OM_FAIR.
 local function bandOm(om)
     if type(om) ~= "number" then return nil end
@@ -281,7 +323,7 @@ end
 local ELEMENT_IDS = {
     "hfField", "hfGrain",
     "hfLblN", "hfValN", "hfLblP", "hfValP", "hfLblK", "hfValK",
-    "hfLblPh", "hfValPh", "hfLblOm", "hfValOm",
+    "hfLblPh", "hfValPh", "hfPhGrain", "hfLblOm", "hfValOm",
     "hfLblComp", "hfValComp", "hfLblMoist", "hfValMoist",
     "hfLblDis", "hfValDis", "hfLblPest", "hfValPest", "hfLblWeed", "hfValWeed",
     "hfDisGrain",
@@ -351,7 +393,9 @@ function SoilHandfulDialog:_populate()
     end
 
     -- Header: which field, and whether the nutrient row was refined to the spot.
-    -- ONE shared refinement flag for N/P/K/pH/OM, labelled once, per the contract.
+    -- ONE shared refinement flag for N/P/K/OM, labelled once, per the contract.
+    -- pH carries its own status word on its tile (RSF-F219): the shared flag
+    -- says nothing about whether the pH pixel under the hand answered.
     setText(self.hfField, string.format("%s%s",
         tr("sf_detail_field_label", "Field #"), tostring(p.fieldId or "?")))
     setText(self.hfGrain, p.fromZoneCell
@@ -366,13 +410,15 @@ function SoilHandfulDialog:_populate()
         tile(self.hfLblN,  self.hfValN,  tr("sf_handful_n", "N"),   kitNutrient(p.N, "N"))
         tile(self.hfLblP,  self.hfValP,  tr("sf_handful_p", "P"),   kitNutrient(p.P, "P"))
         tile(self.hfLblK,  self.hfValK,  tr("sf_handful_k", "K"),   kitNutrient(p.K, "K"))
-        tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), kitPh(p.pH))
     else
         tile(self.hfLblN,  self.hfValN,  tr("sf_handful_n", "N"),   bandNutrient(p.N))
         tile(self.hfLblP,  self.hfValP,  tr("sf_handful_p", "P"),   bandNutrient(p.P))
         tile(self.hfLblK,  self.hfValK,  tr("sf_handful_k", "K"),   bandNutrient(p.K))
-        tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), bandPh(p.pH))
     end
+    -- pH: its own meaning, its own word under the tile (RSF-F219).
+    local phText, phSev, phWord = phTile(p, kit)
+    tile(self.hfLblPh, self.hfValPh, tr("sf_handful_ph", "pH"), phText, phSev)
+    setText(self.hfPhGrain, phWord)
     tile(self.hfLblOm, self.hfValOm, tr("sf_handful_om", "Organic matter"), bandOm(p.OM))
 
     -- Ground: compaction is SPOT, moisture is FIELD and UNGATED, so moisture
