@@ -15,6 +15,16 @@ local PREFIX = "[SoilFertilizer]"
 SoilLogger.debugBuffer    = {}
 SoilLogger.DEBUG_BUF_MAX  = 500
 
+-- RSF-F202: the debug history is a bounded circular store. debugBuffer holds
+-- the physical slots; these two file-local values are the private ring
+-- bookkeeping (index of the oldest retained record, and how many are
+-- retained). They are initialized here, alongside the fresh buffer, so a
+-- re-source of this chunk resets storage and metadata together. Physical
+-- slot order is private; the logical order is oldest to newest. Never derive
+-- count or order from #debugBuffer or ipairs over it.
+local historyOldest = 1
+local historyCount  = 0
+
 --- Coerce format args that string.format cannot stringify (tables, userdata).
 local function coerceFormatArg(v)
     local t = type(v)
@@ -54,35 +64,62 @@ function SoilLogger.debug(msg, ...)
     if g_SoilFertilityManager and g_SoilFertilityManager.settings and g_SoilFertilityManager.settings.debugMode then
         local line = safeFormat(PREFIX .. " DEBUG: ", msg, ...)
         print(line)
+        -- RSF-F202: one slot write per accepted message. While the ring is
+        -- not full the next free slot is taken; once full the oldest slot is
+        -- overwritten and the oldest cursor advances. No shift, no copy, no
+        -- scan of the history on append.
         local buf = SoilLogger.debugBuffer
-        buf[#buf + 1] = {
+        local slot
+        if historyCount < SoilLogger.DEBUG_BUF_MAX then
+            slot = ((historyOldest + historyCount - 1) % SoilLogger.DEBUG_BUF_MAX) + 1
+            historyCount = historyCount + 1
+        else
+            slot = historyOldest
+            historyOldest = (historyOldest % SoilLogger.DEBUG_BUF_MAX) + 1
+        end
+        buf[slot] = {
             t   = g_currentMission and math.floor(g_currentMission.time or 0) or 0,
             msg = line,
         }
-        if #buf > SoilLogger.DEBUG_BUF_MAX then
-            table.remove(buf, 1)
-        end
     end
 end
 
 --- Flush buffered debug messages to Debug/debug.xml in the mod profile folder.
---- Called when debug mode is turned off or the game session ends.
+--- Called by the SoilDebug console command when it switches debug mode off, and
+--- at session teardown (SoilFertilityManager:delete). The other debug-off
+--- routes (game settings, the mod panel toggle, the tablet System Settings row,
+--- SettingsHub Control Center, SoilResetSettings and the panel's admin Reset)
+--- save the setting without exporting.
+--- RSF-F202: walks the ring oldest to newest and writes the same zero-based
+--- keys as before. Storage and bookkeeping reset together only after save and
+--- delete both return normally; exceptions propagate with the history intact.
+--- One info line announces the written file only when the Lua XML save
+--- wrapper reported true; false, nil or anything else announces nothing.
 function SoilLogger.flushDebugLog()
     local buf = SoilLogger.debugBuffer
-    if #buf == 0 then return end
+    if historyCount == 0 then return end
     local base = SettingsManager and SettingsManager.getModProfileDir and SettingsManager.getModProfileDir()
     if not base then return end
     local xml = XMLFile.create("sf_debugLog", base .. "/Debug/debug.xml", "debugLog")
     if not xml then return end
-    xml:setInt("debugLog#count", #buf)
-    for i, entry in ipairs(buf) do
-        local key = string.format("debugLog.entry(%d)", i - 1)
+    local written = historyCount
+    local first = historyOldest
+    xml:setInt("debugLog#count", written)
+    for offset = 0, written - 1 do
+        local slot = ((first + offset - 1) % SoilLogger.DEBUG_BUF_MAX) + 1
+        local entry = buf[slot]
+        local key = string.format("debugLog.entry(%d)", offset)
         xml:setInt(key .. "#t", entry.t)
         xml:setString(key .. "#msg", entry.msg)
     end
-    xml:save()
+    local saveSucceeded = xml:save()
     xml:delete()
     SoilLogger.debugBuffer = {}
+    historyOldest = 1
+    historyCount = 0
+    if saveSucceeded == true then
+        SoilLogger.info("Debug log written: %s/Debug/debug.xml (%d entries)", base, written)
+    end
 end
 
 --- Log an info message (always shown)
