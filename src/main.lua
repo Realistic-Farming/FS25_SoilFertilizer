@@ -68,6 +68,10 @@ SFNozzleEffects.init(modDirectory)
 -- 3. Core systems
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/hooks/GroundTipGate.lua")
+-- SG-6 (Soil half): the capacity-load join StockGuard's preflight resolves as
+-- getfenv(0)["FS25_SoilFertilizer"].SoilCapacityIntegration. Sourced right after
+-- the tip gate it drives.
+source(modDirectory .. "src/hooks/SoilCapacityIntegration.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
 source(modDirectory .. "src/maps/SoilValueMaps.lua")
@@ -404,7 +408,16 @@ local function loadedMission(mission, node)
     -- from debug pass 2 (2026-05-13): allowsSmoothing, canBeTipped, collisionBaseOffset,
     -- collisionScale, fillToGroundScale, fillTypeIndex, fillTypeName, index,
     -- maxCollisionOffset, maxSurfaceAngle, minCollisionOffset.
-    do
+    -- SG-6: while this exact mission is joined to StockGuard's capacity load,
+    -- the whole legacy fallback below (late Lua insertion, the
+    -- constructTerrainFillLayers rebuild and the tip-hook activation) is
+    -- skipped in every phase. StockGuard called prepareGroundTypes before
+    -- native initialization, so the engine registered every row itself; a
+    -- failed prepare or fill load does not release this fence, and the tip
+    -- wrapper stays in pure delegation.
+    if SoilCapacityIntegration ~= nil and SoilCapacityIntegration.isJoined(mission) then
+        SoilLogger.info("[TIP FIX] joined StockGuard capacity load; legacy ground fallback skipped")
+    else
         local dmhm = g_densityMapHeightManager
         local ftm  = g_fillTypeManager
         if dmhm and ftm and dmhm.heightTypes and dmhm.fillTypeIndexToHeightType then
@@ -704,6 +717,9 @@ local function unload()
     -- else, so the next mission never inherits this one's gates. Unconditional and
     -- outside the sfm block: it must run even when the manager is already gone.
     if GroundTipGate then GroundTipGate.disable() end
+    -- SG-6: clear the joined-mission binding (the legacy override stays
+    -- disabled); StockGuard's own teardown may repeat this safely.
+    if SoilCapacityIntegration ~= nil then SoilCapacityIntegration.endCapacityLoad(g_currentMission) end
     -- [SF-22] Drop the pure-client farm-switch subscriber and any in-flight FULL
     -- buffer so a session reload never accumulates a stale subscription. Safe to
     -- call unconditionally: it no-ops when nothing was registered.
