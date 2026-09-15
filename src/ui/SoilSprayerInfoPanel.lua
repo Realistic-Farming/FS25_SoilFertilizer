@@ -386,9 +386,17 @@ function SoilSprayerInfoPanel:update(dt)
     for _, nd in ipairs(NUTRIENT_ROWS) do
         if info then
             local raw = info[nd.fieldKey]
-            local tgt = (type(raw) == "table") and (raw.value or 0) or (raw or 0)
-            local cur = sv[nd.fieldKey]
-            sv[nd.fieldKey] = (cur == nil) and tgt or (cur + (tgt - cur) * alpha)
+            if nd.profileKey == "pH" and type(raw) ~= "number" then
+                -- [RSF-F219] No current pH at this sample: the smoothed slot is
+                -- cleared, never written to 0 or eased toward 0, so a previous
+                -- local value cannot survive as a current measurement. A later
+                -- real sample snaps in from the actual pH.
+                sv[nd.fieldKey] = nil
+            else
+                local tgt = (type(raw) == "table") and (raw.value or 0) or (raw or 0)
+                local cur = sv[nd.fieldKey]
+                sv[nd.fieldKey] = (cur == nil) and tgt or (cur + (tgt - cur) * alpha)
+            end
         else
             sv[nd.fieldKey] = nil
         end
@@ -682,7 +690,14 @@ function SoilSprayerInfoPanel:draw()
         local info = self._fieldInfo
         for _, nd in ipairs(activeRows) do
             local pKey    = nd.profileKey
-            local rawVal  = self._smoothValues[nd.fieldKey] or 0
+            local smooth  = self._smoothValues[nd.fieldKey]
+            -- [RSF-F219] The pH row is unavailable as a whole when the current
+            -- sample carries no numeric pH: no or-0 coercion, no fill ratio or
+            -- status colour from a fake number, the host dash in the dim colour
+            -- over an empty bar. N/P/K/OM keep their smoothing and drawing.
+            local phUnknown = (pKey == "pH")
+                and (smooth == nil or info == nil or type(info.pH) ~= "number")
+            local rawVal  = phUnknown and nil or (smooth or 0)
             local maxVal  = nd.maxVal
             local rowBot  = cy - rowH
             local barMidY = rowBot + (rowH - barH) * 0.5
@@ -691,8 +706,14 @@ function SoilSprayerInfoPanel:draw()
             setTextColor(unpack(SoilSprayerInfoPanel.C_LABEL))
             renderText(panelX + pad, rowBot + (rowH - lblSz) * 0.42, lblSz, nd.label)
 
-            local fillRatio = math.max(0, math.min(rawVal / maxVal, 1))
-            local barColor  = statusColor(pKey, rawVal)
+            local fillRatio, barColor
+            if phUnknown then
+                fillRatio = 0
+                barColor  = SoilSprayerInfoPanel.C_DIM
+            else
+                fillRatio = math.max(0, math.min(rawVal / maxVal, 1))
+                barColor  = statusColor(pKey, rawVal)
+            end
             local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
                 and renderer:renderProgressBar(barX, barMidY, barW, barH, fillRatio, barColor)
             if not usedNativeBar then
@@ -711,7 +732,9 @@ function SoilSprayerInfoPanel:draw()
 
             -- Value
             local valStr
-            if pKey == "pH" then
+            if phUnknown then
+                valStr = "--"
+            elseif pKey == "pH" then
                 valStr = string.format("%.1f", rawVal)
             elseif pKey == "OM" then
                 valStr = string.format("%.1f%%", rawVal)

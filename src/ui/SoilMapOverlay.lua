@@ -1411,7 +1411,15 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
             condLabel = tr("sf_map_ph_very_acidic", "Very acidic");          actionLabel = tr("sf_map_ph_apply_lime_urgent", "Apply lime urgently")
             condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         end
-        addRow("pH",        fmtV(string.format("%.1f", pH)), condR, condG, condB)
+        -- [RSF-F219] Guarded at the format call: the click stored the whole info
+        -- table and the layer is chosen here, so a cell clicked on another layer
+        -- and switched to pH through the settings panel reaches this branch with
+        -- a positional miss (info.pH == nil). No numeric row, no formatter call,
+        -- and pHLastKnown is never shown as the current pH. The No data
+        -- condition row above stays.
+        if pH ~= nil then
+            addRow("pH",    fmtV(string.format("%.1f", pH)), condR, condG, condB)
+        end
         addRow(tr("sf_map_condition", "Condition"), condLabel,   condR, condG, condB)
         addRow(tr("sf_map_treatment", "Treatment"), actionLabel, NEU[1], NEU[2], NEU[3])
 

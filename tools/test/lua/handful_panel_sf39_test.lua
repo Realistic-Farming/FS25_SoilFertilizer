@@ -37,7 +37,7 @@ end
 local IDS = {
   "hfField", "hfGrain",
   "hfLblN", "hfValN", "hfLblP", "hfValP", "hfLblK", "hfValK",
-  "hfLblPh", "hfValPh", "hfLblOm", "hfValOm",
+  "hfLblPh", "hfValPh", "hfPhGrain", "hfLblOm", "hfValOm",
   "hfLblComp", "hfValComp", "hfLblMoist", "hfValMoist",
   "hfLblDis", "hfValDis", "hfLblPest", "hfValPest", "hfLblWeed", "hfValWeed",
   "hfDisGrain", "hfCrops", "hfRotation", "hfOrganic",
@@ -67,6 +67,7 @@ local function fullPayload(over)
     P = { value = 30, status = "Fair" },
     K = { value = 12, status = "Poor" },
     pH = 6.5,
+    pHStatus = "LOCAL", pHGrainMetres = 2.0, pHLastKnown = 6.5,
     OM = 4.2,
     compaction = 18,
     moisture = 0.47,
