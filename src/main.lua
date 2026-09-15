@@ -168,6 +168,9 @@ source(modDirectory .. "src/LivestockWarningReader.lua")
 -- is placed. Reads soilSystem:getFieldInfo; no write path. FarmTablet reads the
 -- published g_currentMission.dogEarlyWarning handle.
 source(modDirectory .. "src/DogEarlyWarning.lua")
+-- CD-15 native cell probe (chore, read-only logging behind the sfCd15Probe
+-- console command; no gameplay effect; remove this line and the file to retire).
+source(modDirectory .. "src/probe/CD15NativeCellProbe.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
