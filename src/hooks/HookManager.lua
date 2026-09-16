@@ -3597,11 +3597,41 @@ function HookManager:installCombineSwathHook()
         return ft and ft.name or nil
     end
 
+    -- ONE-SHOT PROOF THAT THE WRAPPER ACTUALLY RAN, with the armed state in the
+    -- SAME LINE. The install count above was non-zero for this hook's entire life
+    -- while this body never executed once, so "patched" can never be the
+    -- acceptance again.
+    --
+    -- The armed state is in the line for the reason it was added to the tedder
+    -- hook at aa9e61f8: straw birth sits behind the ground_material release gate
+    -- (materialDown arms at SoilFertilitySystem.lua:294, and the check below
+    -- returns early when it has not), so on an ordinary save this wrapper runs and
+    -- NOTHING FOLLOWS IT. A line that reads like success above a gate that is
+    -- closed is exactly how a tester gets sent hunting an effect that cannot
+    -- appear, and how a working repair gets reported as broken.
+    local firstRunLogged = false
+
     local function makeWrapper(realFn)
         return function(combineSelf, workArea, ...)
             -- DELEGATE FIRST, always, and forward every return: the engine's own
             -- caller reads the dropped-litres value.
             local results = { realFn(combineSelf, workArea, ...) }
+
+            if not firstRunLogged then
+                firstRunLogged = true
+                local mdNow = g_SoilFertilityManager
+                    and g_SoilFertilityManager.soilSystem
+                    and g_SoilFertilityManager.soilSystem.materialDown
+                local armed = mdNow ~= nil and mdNow.isArmed ~= nil and mdNow:isArmed() or false
+                SoilLogger.info(
+                    "[SwathHook] FIRST EXECUTION: the work-area wrapper ran on a real combine pass "
+                    .. "(RSF-F226 combine half confirmed live). MaterialDown armed: %s. %s",
+                    tostring(armed),
+                    armed
+                        and "A straw birth WILL be recorded when this pass drops litres on a field."
+                        or "No straw birth will be recorded: the ground-material family is gated off. "
+                           .. "Turn on Experimental Systems to see straw birth.")
+            end
 
             if not combineSelf.isServer then return unpack(results) end
 
@@ -3649,31 +3679,50 @@ function HookManager:installCombineSwathHook()
         end
     end
 
-    -- Patch combines already in the world.
+    -- INSTALL ON THE SLOT THE ENGINE ACTUALLY CALLS (RSF-F226, the combine half).
+    --
+    -- This used to assign vehicle.processCombineSwathArea, the instance copy that
+    -- WorkArea:onLoad had already read from at WorkArea.lua:266, so the engine
+    -- called its own captured pointer and never looked at ours again. Straw birth
+    -- has therefore never been recorded from a combine swath in a shipped game,
+    -- dead for exactly the same reason the tedder hook was.
+    --
+    -- The comment above this function already knew the class table was wrong. It
+    -- just stopped one copy short: the instance copy is ALSO upstream of the
+    -- captured pointer. Getting trap 3 right and trap 4 wrong looks identical from
+    -- the log, because both produce a healthy non-zero patched count.
+    --
+    -- processCombineSwathArea has zero direct callers anywhere in the engine, the
+    -- same as processTedderArea and processWindrowerArea, which is what confirms it
+    -- is reached only through the work-area slot.
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            if vehicle.spec_combine and type(vehicle.processCombineSwathArea) == "function" then
-                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
-                patchedCount = patchedCount + 1
-            end
+            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_combine", "processCombineSwathArea", makeWrapper)
         end
     end
 
-    -- And any that spawn later, the same way the tedder and harvest hooks do.
+    -- And any that spawn later, the same way the tedder hook does.
     if vs and type(vs.addVehicle) == "function" then
         local origAdd = vs.addVehicle
         vs.addVehicle = function(self, vehicle, ...)
-            if vehicle and vehicle.spec_combine
-               and type(vehicle.processCombineSwathArea) == "function" then
-                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
-            end
+            HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_combine", "processCombineSwathArea", makeWrapper)
             return origAdd(self, vehicle, ...)
         end
     end
 
-    SoilLogger.info("[OK] Combine swath hook installed (instance-level, %d existing combines patched)", patchedCount)
+    -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS. The tedder
+    -- hook's equivalent line reported a non-zero count for its entire life while
+    -- nothing behind it executed once, and that is the whole reason F226 went
+    -- unnoticed. The wrapper logs its FIRST REAL EXECUTION separately, with the
+    -- armed state in the same line, and THAT is what proves the repair.
+    SoilLogger.info(
+        "[OK] Combine swath hook installed on %d work area(s). This is an INSTALL count, not proof it "
+        .. "runs; watch for the first-execution line during an actual combine pass with the swath on.",
+        patchedCount)
     return true
 end
 
