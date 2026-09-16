@@ -652,3 +652,140 @@ do
   T.eq("caps: and there is no groundCondition table to bind to",
        admit.groundCondition, nil)
 end
+
+-- ── Bob's four coverage MAJORs from the #955 cold review ─────────────────────
+-- Every rule in that PR had a bar under it except these four, and all four are
+-- guards: the things that decide who may arm, which write is stale, and which
+-- lease token is real. Each case below is PAIRED. The refusal assertion is only
+-- worth what its positive twin proves about the fixture reaching the code, since
+-- a fixture that falls out early reports "refused" exactly like a working guard.
+
+-- (1) THE SERVER-ONLY GUARDS. These are the multiplayer authority rule: a client
+-- must never arm, because a published admissionRevision 1 tells a consumer it may
+-- lease and write. Both guards had zero coverage, so replacing either with
+-- `if false then` left the bench fully green.
+do
+    local savedServer = g_server
+
+    -- Positive twin first, so the negatives below mean something.
+    g_server = {}
+    local coordOn, cellsOn = armedCoord(105, 105, nil, 105)
+    T.eq("server: with a server the coordinator arms", coordOn:isArmed(), true)
+    local admitOn = GroundConditionAdmission.new()
+    T.eq("server: and the admission interface publishes", admitOn:arm(coordOn, cellsOn), true)
+    T.eq("server: at admission revision 1",
+         admitOn:getCapabilities().groundCondition.admissionRevision, 1)
+
+    -- A CLIENT MUST NOT ARM EITHER HALF.
+    --
+    -- THE CELLS ARE BUILT WHILE g_server IS STILL SET, deliberately. GroundConditionCells
+    -- carries its own server guard, so building them after nilling g_server would
+    -- leave them unarmed and the coordinator would refuse at its cells check no
+    -- matter what its own server guard did. The first version of this case did
+    -- exactly that and the mutation survived: the fixture could not reach the guard
+    -- it claimed to test. Armed cells plus a nil server isolates the coordinator's
+    -- own guard as the only thing that can refuse.
+    local cellsCl = armedCells()
+    T.eq("server: the cells are armed before the client test begins", cellsCl:isArmed(), true)
+
+    g_server = nil
+    local downCl, wetnCl = newOwners(105, 105, nil)
+    local coordCl = GroundConditionCoordinator.new()
+    T.eq("server: a client does NOT arm the coordinator, even with armed cells",
+         coordCl:arm(cellsCl, downCl, wetnCl, { _currentMonotonicDay = function() return 105 end }), false)
+    T.eq("server: and it reports itself unarmed", coordCl:isArmed(), false)
+
+    -- Even handed an ALREADY ARMED coordinator, a client must not publish. That is
+    -- the guard doing its own work rather than inheriting a refusal from upstream.
+    local admitCl = GroundConditionAdmission.new()
+    T.eq("server: a client does NOT publish the interface even with an armed coordinator",
+         admitCl:arm(coordOn, cellsOn), false)
+    T.eq("server: so a client consumer sees no groundCondition at all",
+         admitCl:getCapabilities().groundCondition, nil)
+    T.eq("server: and there is no table for it to bind to", admitCl.groundCondition, nil)
+
+    g_server = savedServer
+end
+
+-- (2) THE expectedRevision GUARD on writeConditionCell. isGeometryCurrent is
+-- covered; the caller-supplied revision path was not, and that is the one SG-2
+-- holds across a geometry change. Deleting the guard left the bench green.
+do
+    local cells, _vm, age, wet = armedCells()
+    local g = cells:getConditionGeometry()
+    age.cells["4:2"], wet.cells["4:2"] = 15, 55
+
+    -- Positive twin: the current revision writes.
+    local ok = cells:writeConditionCell(g, 4, 2, cells.geometryRevision, 60, 80)
+    T.eq("revision: the current revision is accepted", ok.ok, true)
+    T.eq("revision: and the age byte landed", layerGet(age, 4, 2), 60)
+
+    -- A caller holding a revision from before a rebind must be refused.
+    local stale = cells:writeConditionCell(g, 4, 2, cells.geometryRevision - 1, 99, 99)
+    T.eq("revision: a stale caller revision is refused",
+         stale.refused, GroundConditionCells.REFUSE_REVISION)
+    T.eq("revision: and it is not reported as a partial pair", stale.partial, false)
+    T.eq("revision: THE AGE BYTE DID NOT MOVE", layerGet(age, 4, 2), 60)
+    T.eq("revision: nor the wetness byte", layerGet(wet, 4, 2), 80)
+
+    -- nil means the caller is making no claim, which is still allowed.
+    local noClaim = cells:writeConditionCell(g, 4, 2, nil, 70, 90)
+    T.eq("revision: a nil revision makes no claim and is accepted", noClaim.ok, true)
+    T.eq("revision: and that write landed", layerGet(age, 4, 2), 70)
+end
+
+-- (3) RE-ARMING INVALIDATES EVERY PREVIOUS LEASE. A carrier holding a token from
+-- before a geometry change must not be able to deliver against the new one.
+-- Changing `self.leases = {}` to `self.leases or {}` left the bench green.
+do
+    local coord, cells = armedCoord(105, 105, nil, 105)
+    local admit = GroundConditionAdmission.new()
+    admit:arm(coord, cells)
+    local gc = admit.groundCondition
+
+    local lease = gc.admitPrimitive({}, "TEDDER", {}, "area1")
+    T.eq("rearm: a lease is admitted before the re-arm", lease.status, "ADMITTED")
+
+    -- Positive twin: that token works right now. Without this, the refusal below
+    -- could just mean the token was never valid.
+    local before = gc.deliverMovement(lease.leaseToken, { cells = {} })
+    T.eq("rearm: and it delivers while the epoch is live", before.status, "ADMITTED")
+
+    -- Re-arm, as a reload or a geometry change would.
+    admit:arm(coord, cells)
+    local after = admit.groundCondition.deliverMovement(lease.leaseToken, { cells = {} })
+    T.eq("rearm: THE OLD TOKEN IS DEAD after a re-arm", after.status, "REFUSED")
+    T.eq("rearm: and it is reported as no such lease",
+         after.reason, GroundConditionAdmission.DELIVER_NO_LEASE)
+    T.eq("rearm: the open-lease count restarts from zero", admit:getOpenLeaseCount(), 0)
+
+    -- And a token minted after the re-arm works, so the re-arm did not break admission.
+    local fresh = admit.groundCondition.admitPrimitive({}, "TEDDER", {}, "area1")
+    T.eq("rearm: a freshly minted token still works", fresh.status, "ADMITTED")
+end
+
+-- (4) THE LEASE TOKEN TYPE GUARD. A caller passing something that is not a token
+-- must be refused rather than used to index the lease table.
+do
+    local coord, cells = armedCoord(105, 105, nil, 105)
+    local admit = GroundConditionAdmission.new()
+    admit:arm(coord, cells)
+    local gc = admit.groundCondition
+
+    -- Positive twin: a real string token is accepted.
+    local lease = gc.admitPrimitive({}, "MOWER", {}, "area1")
+    T.eq("token: a real string token delivers",
+         gc.deliverMovement(lease.leaseToken, { cells = {} }).status, "ADMITTED")
+
+    T.eq("token: nil is refused", gc.deliverMovement(nil, { cells = {} }).reason,
+         GroundConditionAdmission.DELIVER_NO_LEASE)
+    T.eq("token: a table is refused", gc.deliverMovement({}, { cells = {} }).reason,
+         GroundConditionAdmission.DELIVER_NO_LEASE)
+    T.eq("token: a number is refused", gc.deliverMovement(7, { cells = {} }).reason,
+         GroundConditionAdmission.DELIVER_NO_LEASE)
+    T.eq("token: a string that is not a token is refused",
+         gc.deliverMovement("SFGC-not-real", { cells = {} }).reason,
+         GroundConditionAdmission.DELIVER_NO_LEASE)
+    T.eq("token: closePrimitive refuses a non-string too",
+         gc.closePrimitive({}).reason, GroundConditionAdmission.DELIVER_NO_LEASE)
+end
