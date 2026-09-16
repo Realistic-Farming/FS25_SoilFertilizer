@@ -539,3 +539,93 @@ do
          B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 1)
     T.eq("L23 the drop area is untouched", engineCall(sprayer, 2), 3)
 end
+
+-- ── M: the canRestore gate, which was itself unpinned ───────────────────────
+-- The gate exists to close the one failure on this hook a player cannot recover
+-- from without a restart: a block armed with no restore installed, leaving a
+-- sprayer permanently unable to spray. Bob found the gate had nothing under it,
+-- so a later refactor could quietly reopen the very thing it was added to close.
+--
+-- WHY THIS DRIVES THE REAL PREPEND instead of just running the installer. The
+-- block is not armed at install time; it is armed inside the prepend when
+-- coverage reaches 99 percent. So an install-only case cannot distinguish a
+-- working gate from a deleted one. M1 exists to prove this fixture genuinely
+-- REACHES the arm: if M1 ever stops showing a block, M2's "no block" means
+-- nothing, because a fixture that falls out early would report exactly the same.
+do
+    local savedSprayer, savedUtils = Sprayer, Utils
+    local savedFT, savedMission, savedSFM = g_fillTypeManager, g_currentMission, g_SoilFertilityManager
+
+    Utils = {
+        prependedFunction = function(orig, new)
+            return function(...) new(...) if orig then return orig(...) end end
+        end,
+        appendedFunction = function(orig, new)
+            return function(...)
+                local r = orig and { orig(...) } or {}
+                new(...)
+                return unpack(r)
+            end
+        end,
+    }
+    g_fillTypeManager = { getFillTypeByName = function(_, n)
+        if n == "FERTILIZER" then return { index = 42 } end
+        return nil
+    end }
+    g_currentMission = { time = 100000 }
+
+    --- Build the whole world the prepend walks, then run the REAL installer and
+    --- the REAL prepend. `withRestore` decides whether Sprayer has an
+    --- onEndWorkAreaProcessing, which is the only input to canRestore.
+    local function runPass(withRestore)
+        Sprayer = { onStartWorkAreaProcessing = function() end }
+        if withRestore then Sprayer.onEndWorkAreaProcessing = function() end end
+
+        local realRan = 0
+        local sprayer = buildVehicle("spec_sprayer", {
+            { functionName = "processSprayerArea", fn = function() realRan = realRan + 1 return 250, 3 end },
+        })
+        sprayer.spec_variableWorkWidth = { sections = { { isActive = true } } }
+        sprayer.spec_sprayer = { workAreaParameters = { sprayFillType = 42 }, effects = {}, sprayTypes = {} }
+        sprayer._sfRootX, sprayer._sfRootZ = 10, 10
+
+        -- 99 percent session coverage on the field the root sits in, which is what
+        -- makes every section already-sprayed ground and arms the block.
+        g_SoilFertilityManager = {
+            settings = { overlapPrevention = true, debugMode = false },
+            soilSystem = { fieldData = { [7] = {
+                sessionCoverageCells = { ["1:1"] = true },
+                sessionCoverageFraction = 1.0,
+            } } },
+        }
+
+        local installed = HookManager.installOverlapPreventionHook({
+            hooks = {},
+            register = function() end,
+            getFieldIdAtWorldPosition = function() return 7 end,
+        })
+
+        -- Drive the real prepend, then dispatch the way WorkArea does.
+        Sprayer.onStartWorkAreaProcessing(sprayer, 16)
+        local drawn = engineCall(sprayer, 1)
+        return installed, drawn, realRan, sprayer
+    end
+
+    local installedA, drawnA, ranA, sprayerA = runPass(true)
+    T.eq("M1 with a restore available the installer succeeds", installedA, true)
+    T.eq("M1b AND THE BLOCK ACTUALLY FIRES, so this fixture reaches the arm", drawnA, 0)
+    T.eq("M1c the real spray function never ran", ranA, 0)
+    T.ok("M1d the work area carries our saved original, ready to restore",
+         sprayerA.spec_workArea.workAreas[1]._sfBlocked ~= nil
+         and sprayerA.spec_workArea.workAreas[1]._sfBlocked["processSprayerArea"] ~= nil)
+
+    local installedB, drawnB, ranB, sprayerB = runPass(false)
+    T.eq("M2 with NO restore available the hook still installs", installedB, true)
+    T.eq("M2b BUT THE BLOCK IS NEVER ARMED, so the sprayer keeps working", drawnB, 250)
+    T.eq("M2c and the real spray function ran normally", ranB, 1)
+    T.eq("M2d nothing was saved for a restore that could never happen",
+         sprayerB.spec_workArea.workAreas[1]._sfBlocked, nil)
+
+    Sprayer, Utils = savedSprayer, savedUtils
+    g_fillTypeManager, g_currentMission, g_SoilFertilityManager = savedFT, savedMission, savedSFM
+end
