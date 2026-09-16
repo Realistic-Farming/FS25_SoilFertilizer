@@ -3290,9 +3290,31 @@ function HookManager:installTedderHook()
         return function(tedderSelf, workArea, dt)
             if not firstRunLogged then
                 firstRunLogged = true
+                -- THE ARMED STATE GOES IN THE SAME LINE, and that is the whole
+                -- point of it. This log sits ABOVE the hayBet:isArmed() gate
+                -- below, so it fires whether or not any drying can follow. Saying
+                -- only "the wrapper ran" would hand a tester on default settings a
+                -- line that looks like success next to a drying effect that never
+                -- comes, and they would report the repair as broken when it is
+                -- working and the FAMILY is simply gated off.
+                --
+                -- The ground-material family sits behind the ground_material
+                -- release gate, so on an ordinary save HayBet is inert and the
+                -- honest answer is "the wrapper runs, and there is nothing behind
+                -- it yet". Reading this one line tells you which of the two
+                -- states you are in without opening the settings panel.
+                local hb = g_SoilFertilityManager
+                    and g_SoilFertilityManager.soilSystem
+                    and g_SoilFertilityManager.soilSystem.hayBet
+                local armed = hb ~= nil and hb.isArmed ~= nil and hb:isArmed() or false
                 SoilLogger.info(
                     "[TedderHook] FIRST EXECUTION: the work-area wrapper ran on a real tedder pass "
-                    .. "(RSF-F226 repair confirmed live). HayBet drying is now reachable.")
+                    .. "(RSF-F226 repair confirmed live). HayBet armed: %s. %s",
+                    tostring(armed),
+                    armed
+                        and "Drying WILL be applied on this pass."
+                        or "Drying will NOT be applied: the ground-material family is gated off. "
+                           .. "Turn on Experimental Systems to see the drying effect.")
             end
             -- DELEGATE fully: original processTedderArea first
             local results = { realFn(tedderSelf, workArea, dt) }
