@@ -3409,6 +3409,51 @@ function HookManager.unblockWorkAreaProcessing(vehicle, specField, functionName)
     return restored
 end
 
+--- How many matching work areas are blocked RIGHT NOW, read from the record
+--- blockWorkAreaProcessing leaves, not from the count it returned. That return
+--- is 0 for an area that was already blocked, so it cannot answer "is the block
+--- in effect" on a pass whose restore did not run.
+---@return number blocked
+function HookManager.countBlockedWorkAreas(vehicle, specField, functionName)
+    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+
+    local blocked = 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table" and type(workArea._sfBlocked) == "table"
+           and workArea._sfBlocked[functionName] ~= nil then
+            blocked = blocked + 1
+        end
+    end
+    return blocked
+end
+
+--- RSF-F226e: did WE refuse this sprayer's pass for overlap, with the refusal
+--- actually in effect? The external-fill billing skip reads this.
+---
+--- BOTH halves are required, and each for its own reason.
+---
+--- The SWAP. The overlap prepend sets _sfOverlapBlockedPass beside its call to
+--- blockWorkAreaProcessing and never reads what that call returned. A vehicle
+--- whose sprayer areas are declared under another functionName (the name is
+--- pure XML, WorkArea.lua:257-266) gets the flag with nothing swapped, sprays
+--- normally, and must be billed normally.
+---
+--- The FLAG. A block record can outlive its pass: a throw inside the work-area
+--- loop skips the end event (WorkArea.lua:183 has no pcall), so the restore
+--- does not run. The next pass clears the flag at its start. Skipping billing on
+--- the record alone would then hand that pass zero usage WITHOUT the flag, and
+--- the nutrient hook's buy-mode injection (AI-1, installSprayerAreaHook) treats
+--- an AI pass with zero usage and zero fill level as "buy mode shipped nothing"
+--- and credits nutrients anyway. The #964 skip that prevents that keys on the
+--- flag, so billing may only be skipped where that skip also fires.
+---@return boolean
+function HookManager.isOverlapBlockedPass(sprayer)
+    if type(sprayer) ~= "table" or not sprayer._sfOverlapBlockedPass then return false end
+    return HookManager.countBlockedWorkAreas(sprayer, "spec_sprayer", "processSprayerArea") > 0
+end
+
 -- =========================================================
 -- HOOK 1e: Tedder (hay drying acceleration - SF-44 "THE HAY BET")
 -- =========================================================
@@ -7140,6 +7185,9 @@ end
 --   • Buy mode active → charge our price (1.5× AI premium), return our custom type.
 --   • Buy mode inactive → return (UNKNOWN, 0) so the AI stops rather than falling
 --     through to vanilla FERTILIZER.
+--
+-- RSF-F226e: a pass WE blocked for overlap is not billed, at any of the six places
+-- that charge for external fill. See the wrapper at the bottom of this function.
 ---@return boolean success
 function HookManager:installExternalFillHook()
     if not Sprayer or type(Sprayer.getExternalFill) ~= "function" then
@@ -7152,7 +7200,9 @@ function HookManager:installExternalFillHook()
 
     local original = Sprayer.getExternalFill
 
-    Sprayer.getExternalFill = function(sprayerSelf, fillType, dt)
+    -- Everything that bills for external fill: our own custom-type charge below,
+    -- and the original, which holds the other five.
+    local function billedExternalFill(sprayerSelf, fillType, dt)
         local hookMgr = hookMgrRef
         local prices  = hookMgr and hookMgr.customFillTypePrices
 
@@ -7298,6 +7348,73 @@ function HookManager:installExternalFillHook()
         end
 
         return customIdx, usage
+    end
+
+    -- RSF-F226e: A PASS WE BLOCKED FOR OVERLAP IS NOT BILLED.
+    --
+    -- #964 stopped such a pass crediting nutrients. It still cost the player,
+    -- because getExternalFill runs inside native onStartWorkAreaProcessing
+    -- (called at Sprayer.lua:889), before any work area processes, where the
+    -- block cannot reach. Six places bill from here:
+    --   - native buy-mode money: slurry :407, manure :430, helperBuyFertilizer :457
+    --   - native loading-station WITHDRAWALS, real stored product and not money:
+    --     slurry :414-417 (helperSlurrySource > 2), manure :437 (helperManureSource > 2)
+    --   - our own 1.5x custom-type charge in billedExternalFill above
+    -- Not calling billedExternalFill covers all six at once. A refund afterwards
+    -- could not: it cannot put product back into a station, and the usage it
+    -- would have to reverse varies with speed from frame to frame.
+    --
+    -- WHAT IT RETURNS INSTEAD, and why neither obvious answer works.
+    --
+    -- (UNKNOWN, 0), the refusal this hook already uses, makes native fall back to
+    -- the tank at :890-892. For an empty buy-mode tank that writes UNKNOWN into
+    -- wap.sprayFillType at :926, the overlap prepend reads that stale UNKNOWN at
+    -- the start of the NEXT pass and returns before its block decision, so that
+    -- pass is unblocked and billed, and the one after blocks again. Suppression on
+    -- every other frame (Bob's trace, ledger 35d0dad).
+    --
+    -- The correct type with zero usage keeps wap trackable, but computing the type
+    -- without calling the original means copying about 40 lines of engine fill-type
+    -- branching, and for the station modes the type depends on what the withdrawal
+    -- itself returns, which cannot be known without making it.
+    --
+    -- So a blocked pass repeats what this wrapper returned the last time it reached
+    -- the billing path, with zero usage. On consecutive passes that is the return
+    -- native built wap from on the pass before, so native stays on the branch it
+    -- was already on and the skip changes billing and nothing else: an external
+    -- type stays external, and a last return of UNKNOWN (nothing external found)
+    -- keeps the tank fallback, where the tank pays for anything an unswapped area
+    -- still sprays. Repeating wap's own type instead would push a tank-fallback
+    -- pass onto the external branch. No engine branching is copied, so nothing
+    -- can drift from it. A sprayer that has never reached the billing path has
+    -- nothing to repeat and returns UNKNOWN, the engine's own "nothing external".
+    --
+    -- Zero usage is safe downstream: native writes it to wap.sprayFillLevel and
+    -- wap.usage, the tank draw at :940 is gated on isActive (false on a blocked
+    -- pass), and it skips the nil sprayVehicle an external type implies (:943).
+    -- When the repeated type is a real one, an area the block did not swap (a mod
+    -- alias for processSprayerArea) sees sprayFillLevel 0 and returns at :320
+    -- without spraying, and without the out-of-fill AI stop at :316, which only
+    -- fires on an UNKNOWN type.
+    local function repeatedFill(sprayerSelf)
+        local last = sprayerSelf._sfLastExternalFillType
+        if last == nil then
+            return FillType.UNKNOWN, 0
+        end
+        return last, 0
+    end
+
+    local function packn(...)
+        return select("#", ...), { ... }
+    end
+
+    Sprayer.getExternalFill = function(sprayerSelf, fillType, dt)
+        if HookManager.isOverlapBlockedPass(sprayerSelf) then
+            return repeatedFill(sprayerSelf)
+        end
+        local n, r = packn(billedExternalFill(sprayerSelf, fillType, dt))
+        sprayerSelf._sfLastExternalFillType = r[1]
+        return unpack(r, 1, n)
     end
 
     self:register(Sprayer, "getExternalFill", original, "Sprayer.getExternalFill")
