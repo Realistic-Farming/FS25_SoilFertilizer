@@ -2184,12 +2184,45 @@ function HookManager:installOverlapPreventionHook()
                 SoilLogger.debug("[OverlapPrev] suppressed %d sections", suppressCount)
             end
 
-            -- When all sections are overlap-suppressed, also block processSprayerArea
-            -- at the instance level so the non-VWW centre work area cannot drain the
+            -- When all sections are overlap-suppressed, also block the sprayer's
+            -- work-area processing so the non-VWW centre work area cannot drain the
             -- tank. Restored in onEndWorkAreaProcessing each frame.
+            --
+            -- THIS BLOCK HAS NEVER TAKEN EFFECT (RSF-F226, the sprayer case). It
+            -- used to assign sprayerSelf.processSprayerArea, the instance copy that
+            -- WorkArea:onLoad had already read from at WorkArea.lua:266, so the
+            -- engine went on calling its own captured pointer and the centre work
+            -- area kept drawing from the tank on fully suppressed ground. Unlike
+            -- the tedder and combine cases this one is not gated behind anything:
+            -- overlapPrevention defaults to true, so it has been costing every
+            -- player with default settings real product.
+            --
+            -- AND THIS FILE ALREADY EXPLAINED THE TRAP, FOR THIS EXACT FUNCTION.
+            -- See :1208-1218, which sets out why a class-level replacement of
+            -- Sprayer.processSprayerArea never reaches loaded vehicles, and gives
+            -- the right answer: hook onStartWorkAreaProcessing, because
+            -- registerEventListener resolves dynamically at each fire.
+            --
+            -- This hook FOLLOWED that advice. It is a prepend on
+            -- onStartWorkAreaProcessing precisely so it reaches every vehicle. Then,
+            -- inside that handler, it reintroduced the same trap one level down by
+            -- assigning the instance copy. Getting the outer mechanism right is
+            -- what made the inner mistake invisible: the hook demonstrably runs on
+            -- every sprayer, so the only thing that could be wrong was what it did
+            -- once it got there.
+            --
+            -- The TIMING was always right. This is a prepend on
+            -- onStartWorkAreaProcessing, so it runs before the work areas process,
+            -- and the restore is an append on onEndWorkAreaProcessing. Only the
+            -- target moved.
+            --
+            -- It returns 0, 0 rather than 0 because the engine's own refusal paths
+            -- do (Sprayer.lua:317-318) and WorkArea.lua:183 destructures two.
             if coverageComplete then
                 sprayerSelf._sfSprayAreaBlocked = true
-                sprayerSelf.processSprayerArea  = function() return 0 end
+                HookManager.blockWorkAreaProcessing(
+                    sprayerSelf, "spec_sprayer", "processSprayerArea",
+                    function() return 0, 0 end)
             end
         end
     )
@@ -2208,10 +2241,18 @@ function HookManager:installOverlapPreventionHook()
         Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
             Sprayer.onEndWorkAreaProcessing,
             function(sprayerSelf, dt, hasProcessed)
-                -- Restore the processSprayerArea instance override we set in the PREPEND.
-                -- This runs AFTER the processing window, so any no-op blocking already took effect.
+                -- Restore the work-area override we set in the PREPEND. This runs
+                -- AFTER the processing window, so the block has already done its job.
+                --
+                -- It puts back the exact pointer that was saved, which is the only
+                -- Precision-Farming-safe restore: with PF installed the captured
+                -- pointer is PF's own wrapper, because ExtendedSprayer registers
+                -- processSprayerArea through registerOverwrittenFunction. Restoring
+                -- to Sprayer.processSprayerArea, or nilling the field as this used
+                -- to, would drop PF's behaviour for the rest of the session.
                 if sprayerSelf._sfSprayAreaBlocked then
-                    sprayerSelf.processSprayerArea = nil
+                    HookManager.unblockWorkAreaProcessing(
+                        sprayerSelf, "spec_sprayer", "processSprayerArea")
                     sprayerSelf._sfSprayAreaBlocked = nil
                 end
 
@@ -3240,6 +3281,81 @@ function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName, 
         end
     end
     return restored, leftInPlace
+end
+
+--- TEMPORARILY override the captured processing pointer of every matching work
+--- area, and remember exactly what was there.
+---
+--- This is the OTHER half of the wrap-slot rule, and it is a different job from
+--- wrapWorkAreaProcessing above. That one installs a permanent delegating wrapper
+--- once. This one substitutes a pointer for the duration of ONE processing window
+--- and puts the original back afterwards, which is what a per-frame block needs.
+---
+--- WHY IT SAVES RATHER THAN RESTORING A KNOWN VALUE, and this is the part that
+--- matters most. With Precision Farming installed, the pointer WorkArea captured
+--- is already PF's wrapper: ExtendedSprayer registers processSprayerArea through
+--- SpecializationUtil.registerOverwrittenFunction, which writes
+--- objectType.functions[name] = Utils.overwrittenFunction(existing, new), so the
+--- instance copy and therefore the captured pointer are PF's chain, not the base
+--- Sprayer function. Restoring to Sprayer.processSprayerArea, or to the instance
+--- copy, would silently delete PF's behaviour for the rest of the session. Saving
+--- the live value and putting that exact value back is the only PF-safe move, and
+--- it is correct whether PF is present or not.
+---
+--- Idempotent on both sides: blocking an already-blocked area does not overwrite
+--- the saved original, and restoring an unblocked area is a no-op. That matters
+--- because the block and the restore are separate engine callbacks, and a frame
+--- where the restore does not run must not lose the original.
+---@return number blocked
+function HookManager.blockWorkAreaProcessing(vehicle, specField, functionName, replacement)
+    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
+    if type(replacement) ~= "function" then return 0 end
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+
+    local blocked = 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table"
+           and workArea.functionName == functionName
+           and type(workArea.processingFunction) == "function" then
+            workArea._sfBlocked = workArea._sfBlocked or {}
+            if workArea._sfBlocked[functionName] == nil then
+                -- Save the LIVE value, whatever it is. See the PF note above.
+                workArea._sfBlocked[functionName] = workArea.processingFunction
+                workArea.processingFunction = replacement
+                blocked = blocked + 1
+            end
+        end
+    end
+    return blocked
+end
+
+--- Put back exactly what blockWorkAreaProcessing saved.
+---
+--- Restores unconditionally rather than checking that the live pointer is still
+--- our replacement, which is the opposite of the teardown rule for the permanent
+--- wrapper. The reason is that this override lives for one processing window: if
+--- something else has replaced the pointer inside that window, leaving our block
+--- in place would keep the tank blocked for the rest of the session, which is a
+--- far worse failure than briefly overwriting a same-frame interloper.
+---@return number restored
+function HookManager.unblockWorkAreaProcessing(vehicle, specField, functionName)
+    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+
+    local restored = 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table" and type(workArea._sfBlocked) == "table" then
+            local saved = workArea._sfBlocked[functionName]
+            if saved ~= nil then
+                workArea.processingFunction = saved
+                workArea._sfBlocked[functionName] = nil
+                restored = restored + 1
+            end
+        end
+    end
+    return restored
 end
 
 -- =========================================================

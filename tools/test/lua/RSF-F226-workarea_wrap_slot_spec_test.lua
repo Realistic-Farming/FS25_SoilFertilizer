@@ -276,4 +276,119 @@ do
          vehicle.spec_workArea.workAreas[1].processingFunction, nil)
 end
 
+
+-- ── L: the sprayer block, the OTHER half of the wrap slot ────────────────────
+-- The overlap-prevention hook does not install a permanent wrapper; it swaps the
+-- pointer out for one processing window and puts it back. Same slot, different
+-- lifetime, and it was assigning the instance copy too, so the tank block has
+-- never taken effect on any save.
+local B = HookManager.blockWorkAreaProcessing
+local Ub = HookManager.unblockWorkAreaProcessing
+
+do
+    local realRan = 0
+    local real = function() realRan = realRan + 1 return 250, 3 end
+    local sprayer = buildVehicle("spec_sprayer",
+        { { functionName = "processSprayerArea", fn = real } })
+
+    -- Unblocked, the engine reaches the real function and litres are drawn.
+    local drawn = engineCall(sprayer, 1)
+    T.eq("L1 unblocked, the sprayer draws from the tank", drawn, 250)
+    T.eq("L2 and the real function ran", realRan, 1)
+
+    T.eq("L3 the block takes one work area",
+         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 1)
+
+    realRan = 0
+    local blockedDraw, second = engineCall(sprayer, 1)
+    T.eq("L4 BLOCKED, the engine's own dispatch draws nothing", blockedDraw, 0)
+    T.eq("L5 and returns the second value the engine's refusal path returns", second, 0)
+    T.eq("L6 THE REAL FUNCTION NEVER RAN, which is the whole point", realRan, 0)
+
+    T.eq("L7 the restore puts one work area back", Ub(sprayer, "spec_sprayer", "processSprayerArea"), 1)
+    local after = engineCall(sprayer, 1)
+    T.eq("L8 restored, the sprayer draws again", after, 250)
+    T.eq("L9 and it is the ORIGINAL function, not a copy of it",
+         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+end
+
+do
+    -- THE DEFECT, reproduced. This is what shipped and why the tank kept draining.
+    local realRan = 0
+    local real = function() realRan = realRan + 1 return 250, 3 end
+    local sprayer = buildVehicle("spec_sprayer",
+        { { functionName = "processSprayerArea", fn = real } })
+
+    sprayer.processSprayerArea = function() return 0 end
+
+    local drawn = engineCall(sprayer, 1)
+    T.eq("L10 blocking the instance copy does NOT stop the draw", drawn, 250)
+    T.eq("L11 the real function ran anyway, which is the tank emptying", realRan, 1)
+end
+
+do
+    -- PRECISION FARMING. With PF installed, the pointer WorkArea captured is
+    -- already PF's wrapper, because ExtendedSprayer registers processSprayerArea
+    -- through registerOverwrittenFunction, which rewrites objectType.functions
+    -- before the instance copy is taken. So the restore MUST put back whatever was
+    -- there rather than any known value: restoring the base function, or nilling
+    -- the field as the old code did, silently deletes PF for the session.
+    local pfRan, baseRan = 0, 0
+    local base = function() baseRan = baseRan + 1 return 100, 1 end
+    local sprayer = buildVehicle("spec_sprayer",
+        { { functionName = "processSprayerArea", fn = base } })
+
+    -- PF's wrapper is what the work area ends up holding.
+    local pfWrapper = function(v, w, d) pfRan = pfRan + 1 return base(v, w, d) end
+    sprayer.spec_workArea.workAreas[1].processingFunction = pfWrapper
+
+    B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end)
+    engineCall(sprayer, 1)
+    T.eq("L12 while blocked, PF's wrapper does not run either", pfRan, 0)
+
+    Ub(sprayer, "spec_sprayer", "processSprayerArea")
+    T.eq("L13 THE RESTORE PUTS PF'S WRAPPER BACK, not the base function",
+         sprayer.spec_workArea.workAreas[1].processingFunction == pfWrapper, true)
+    engineCall(sprayer, 1)
+    T.eq("L14 so PF still runs after a block/restore cycle", pfRan, 1)
+    T.eq("L15 and the base function still runs underneath it", baseRan, 1)
+end
+
+do
+    -- Lifetime edges. The block and the restore are separate engine callbacks, so
+    -- a frame where one does not run must not lose the original.
+    local real = function() return 7 end
+    local sprayer = buildVehicle("spec_sprayer",
+        { { functionName = "processSprayerArea", fn = real } })
+    local blocker = function() return 0, 0 end
+
+    T.eq("L16 first block takes it", B(sprayer, "spec_sprayer", "processSprayerArea", blocker), 1)
+    T.eq("L17 a second block does NOT overwrite the saved original",
+         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 0)
+    Ub(sprayer, "spec_sprayer", "processSprayerArea")
+    T.eq("L18 so the restore still returns the true original",
+         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+
+    T.eq("L19 restoring an unblocked area is a no-op",
+         Ub(sprayer, "spec_sprayer", "processSprayerArea"), 0)
+    T.eq("L20 and leaves the pointer alone",
+         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+end
+
+do
+    -- Selection, same rule as the permanent wrapper: spec and name together.
+    local tedder = buildVehicle("spec_tedder",
+        { { functionName = "processTedderArea", fn = function() return 1 end } })
+    T.eq("L21 a sprayer block does not touch a tedder",
+         B(tedder, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 0)
+
+    local sprayer = buildVehicle("spec_sprayer", {
+        { functionName = "processSprayerArea", fn = function() return 2 end },
+        { functionName = "processDropArea",    fn = function() return 3 end },
+    })
+    T.eq("L22 and it takes only the sprayer area, not a same-vehicle drop area",
+         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 1)
+    T.eq("L23 the drop area is untouched", engineCall(sprayer, 2), 3)
+end
+
 T.summary()
