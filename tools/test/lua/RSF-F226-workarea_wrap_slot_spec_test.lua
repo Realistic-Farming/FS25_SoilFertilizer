@@ -214,4 +214,66 @@ do
     T.eq("G5 and the engine pointer is left working", engineCall(v, 1), 1)
 end
 
+
+-- ── H: THE SEQUENCE Bob found, and it is the one that stacks ─────────────────
+-- Install, another mod wraps on top, teardown, install again. Nothing pinned the
+-- interaction between teardown and the idempotency test, and the failure is not
+-- an error: the wrapper simply runs TWICE per pass, so a drying delta applies at
+-- double rate with a green bar behind it.
+--
+-- Not reachable today, because unwrapWorkAreaProcessing has no production caller
+-- and nothing builds the originals map. That is exactly why it is pinned now,
+-- before the mower and windrower observers or a hot-reload path wire teardown up.
+do
+    local applied = 0
+    local vehicle = buildVehicle("spec_tedder", { { functionName = "processTedderArea", fn = function() return 4 end } })
+    local originals = {}
+    local mk = function(realFn)
+        local w = function(v, a, d) applied = applied + 1 return realFn(v, a, d) end
+        originals[w] = realFn
+        return w
+    end
+
+    T.eq("H1 install wraps once", W(vehicle, "spec_tedder", "processTedderArea", mk), 1)
+
+    -- Another mod wraps on top of ours.
+    local ours = vehicle.spec_workArea.workAreas[1].processingFunction
+    vehicle.spec_workArea.workAreas[1].processingFunction = function(v, a, d) return ours(v, a, d) end
+
+    local restored, left = U(vehicle, "spec_tedder", "processTedderArea", originals)
+    T.eq("H2 teardown correctly restores nothing", restored, 0)
+    T.eq("H3 and reports ours as left in the chain", left, 1)
+
+    -- The install sweep runs again, as it does on every load.
+    T.eq("H4 a re-install must NOT wrap a second time over our own live wrapper",
+         W(vehicle, "spec_tedder", "processTedderArea", mk), 0)
+
+    applied = 0
+    engineCall(vehicle, 1)
+    T.eq("H5 so the delta applies exactly ONCE per pass, not twice", applied, 1)
+end
+
+-- ── I: the selector still requires a real pointer ────────────────────────────
+-- WorkArea.lua:262-264 refuses to insert an area whose function does not resolve,
+-- so every inserted area has one. But if a foreign mod nils a pointer later, we
+-- must not CREATE one where the engine has none: WorkArea.lua:182 guards on
+-- `processingFunction ~= nil`, and filling that slot would defeat the guard and
+-- then throw on a nil realFn inside the wrapper.
+do
+    local vehicle = buildVehicle("spec_tedder", { { functionName = "processTedderArea", fn = function() return 1 end } })
+    vehicle.spec_workArea.workAreas[1].processingFunction = nil
+    -- The maker MUST behave like the real one: HookManager's makeWrapper returns a
+    -- closure whether or not realFn is anything, so a stub that returns f (and
+    -- therefore nil) would let the helper's own "is it a function" check pass this
+    -- case for the wrong reason. It did, on the first attempt, and the mutation
+    -- survived until the stub was made honest.
+    local realisticMaker = function(realFn)
+        return function(v, a, d) return realFn(v, a, d) end
+    end
+    T.eq("I1 a work area whose pointer was nilled is not wrapped",
+         W(vehicle, "spec_tedder", "processTedderArea", realisticMaker), 0)
+    T.eq("I2 and no pointer is invented where the engine had none",
+         vehicle.spec_workArea.workAreas[1].processingFunction, nil)
+end
+
 T.summary()

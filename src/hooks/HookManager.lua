@@ -3218,11 +3218,24 @@ function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName, 
                 local original = originals and originals[ours] or nil
                 if workArea.processingFunction == ours and original ~= nil then
                     workArea.processingFunction = original
+                    -- Ours is gone from the chain, so the record goes with it.
+                    workArea._sfWraps[functionName] = nil
                     restored = restored + 1
                 else
+                    -- THE RECORD STAYS, and this is the half that matters.
+                    --
+                    -- We are here because our wrapper is still IN the chain with
+                    -- something else on top of it. Clearing the record would tell
+                    -- the next install sweep this work area is unwrapped, it would
+                    -- wrap again, and the chain becomes W2 over X over W over the
+                    -- original. For a drying delta that means the effect applies
+                    -- TWICE per pass, so hay dries at double rate and nothing
+                    -- anywhere reports a problem.
+                    --
+                    -- Keeping the record makes the idempotency test below refuse
+                    -- the second wrap, which is exactly what it is for.
                     leftInPlace = leftInPlace + 1
                 end
-                workArea._sfWraps[functionName] = nil
             end
         end
     end
