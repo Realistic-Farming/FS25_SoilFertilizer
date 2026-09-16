@@ -168,6 +168,13 @@ function SoilFertilitySystem.new(settings)
     -- [SF-46] THE YARD LADDER. Per-bale condition tracking on the shelter
     -- ladder, ending in condemnation.
     self.yardLadder = YardLadder and YardLadder.new() or nil
+    -- [RSF-F208] GROUND CONDITION RELOCATION. The exact-cell surface, the
+    -- pre-operation settlement barrier and the StockGuard admission interface.
+    -- Created beside the family it rides on; armed last, because it asserts that
+    -- both condition owners are actually ARMED and not merely present.
+    self.groundConditionCells = GroundConditionCells and GroundConditionCells.new() or nil
+    self.groundConditionCoordinator = GroundConditionCoordinator and GroundConditionCoordinator.new() or nil
+    self.groundConditionAdmission = GroundConditionAdmission and GroundConditionAdmission.new() or nil
     -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
     -- cells that reveal the trouble's pattern where the player walked, on foot.
     -- Armed after the value maps initialize; its own bridges register in
@@ -299,6 +306,22 @@ function SoilFertilitySystem:initialize()
     -- [SF-46] Armed after HayBet; depends on all three sibling systems.
     if self.yardLadder and ReleaseGate.isSystemLive("ground_material") then
         self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
+    end
+    -- [RSF-F208] Armed last in the family: the cells assert both condition layers
+    -- share one geometry, the coordinator asserts both owners are armed, and the
+    -- admission interface publishes ONLY when the coordinator armed. Under the
+    -- gate, or on any refusal along that chain, getCapabilities() reports no
+    -- groundCondition and every consumer correctly treats Soil as absent for this
+    -- join. Absent is the normal path and it is what ships today.
+    if self.groundConditionCells and ReleaseGate.isSystemLive("ground_material") then
+        if self.groundConditionCells:arm(self.valueMaps) and self.groundConditionCoordinator then
+            if self.groundConditionCoordinator:arm(
+                   self.groundConditionCells, self.materialDown, self.materialWetness, self)
+               and self.groundConditionAdmission then
+                self.groundConditionAdmission:arm(
+                    self.groundConditionCoordinator, self.groundConditionCells)
+            end
+        end
     end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.

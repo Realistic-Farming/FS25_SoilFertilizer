@@ -446,6 +446,16 @@ function SoilFertilityManager:activateSoilSystem()
     local ok, err = pcall(function()
         self.soilSystem:initialize()
 
+        -- [RSF-F208] Publish the ground-condition admission surface on the manager
+        -- handle, which is the handle the contract and Iris' D2 answer name:
+        -- g_currentMission.soilFertilityManager.groundCondition. The table exists
+        -- ONLY when the admission interface armed, so a consumer that finds no
+        -- groundCondition here is seeing the truth. The capability getter below is
+        -- the thing they must actually test; this property alone is explicitly NOT
+        -- proof that the interface is present.
+        local admission = self.soilSystem.groundConditionAdmission
+        self.groundCondition = admission ~= nil and admission.groundCondition or nil
+
         -- SF-18 establishment failure: initialize + register the daily kill with
         -- Time Guard (simulation flow) when present; SF's own day pass is the
         -- fallback cadence. Server-only by the density write's nature.
@@ -2299,6 +2309,45 @@ end
 --   local sfm = g_currentMission and g_currentMission.soilFertilityManager
 --   local info = sfm and sfm:getCellGrowthInfo(fieldId, x, z)
 -- ============================================================
+
+-- ============================================================
+-- RSF-F208 THE PUBLISHED CAPABILITY GETTER (cross-mod surface)
+--
+-- This is the ONE thing a consumer may test to decide whether Soil can receive a
+-- ground-condition delivery. StockGuard SG-2 binds to it as:
+--
+--   local sfm = g_currentMission and g_currentMission.soilFertilityManager
+--   local caps = sfm and sfm:getCapabilities()
+--   local live = caps and caps.groundCondition
+--                and caps.groundCondition.admissionRevision == 1
+--
+-- Everything else is explicitly NOT proof, by the contract's own words:
+--   * a registered `soil.groundCondition` property is not proof;
+--   * StockGuard's own getCapabilities() is not proof;
+--   * the presence of the `groundCondition` table on this manager is not proof.
+--
+-- Missing handle, missing or throwing getCapabilities, a revision other than 1,
+-- or a call failure all mean the same thing: Soil is ABSENT for this join. The
+-- consumer then suppresses nothing, delivers nothing, keeps its own quantity
+-- observation running, and reports live ground condition unavailable. There is no
+-- hard dependency in either direction and no guessed condition.
+--
+-- Absent is the NORMAL path. The ground-material family is gated, so on an
+-- ordinary save this returns an empty table, and that is correct.
+-- ============================================================
+
+--- Published capabilities of this Soil install.
+--- @return table  possibly empty; never nil, and never throws across the boundary
+function SoilFertilityManager:getCapabilities()
+    local sys = self.soilSystem
+    local admission = sys ~= nil and sys.groundConditionAdmission or nil
+    if admission == nil or type(admission.getCapabilities) ~= 'function' then
+        return {}
+    end
+    local ok, caps = pcall(function() return admission:getCapabilities() end)
+    if not ok or type(caps) ~= 'table' then return {} end
+    return caps
+end
 
 --- Per-cell growth judgement at a world position.
 --- @return table|nil { blocked, blockedBy, bands, credit, capturedEfficiency }

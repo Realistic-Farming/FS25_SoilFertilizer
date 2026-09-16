@@ -82,6 +82,11 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
+-- [RSF-F208] Ground condition relocation. Loaded after both condition owners
+-- because arming asserts against their layer keys and their armed state.
+source(modDirectory .. "src/ground/GroundConditionCells.lua")
+source(modDirectory .. "src/ground/GroundConditionCoordinator.lua")
+source(modDirectory .. "src/ground/GroundConditionAdmission.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")
 -- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
