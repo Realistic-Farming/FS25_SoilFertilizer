@@ -276,4 +276,140 @@ do
          vehicle.spec_workArea.workAreas[1].processingFunction, nil)
 end
 
+
+-- ── J: the combine half of the same defect ───────────────────────────────────
+-- processCombineSwathArea was installed the same wrong way as the tedder's, onto
+-- the instance copy that WorkArea:onLoad had already read from, so straw birth
+-- has never been recorded from a combine swath in a shipped game.
+--
+-- It reaches the engine through the same slot: processCombineSwathArea has ZERO
+-- direct callers anywhere in the decompiled engine, exactly like
+-- processTedderArea and processWindrowerArea, which is what confirms it is
+-- invoked only via WorkArea.lua:182-183.
+do
+    local ran, sawVehicle = 0, nil
+    -- The engine's own swath function returns TWO values (Combine.lua:734-739
+    -- returns 0, 0 on its refusal paths), and the first is the dropped litres the
+    -- wrapper reads to decide whether anything landed. Both must survive.
+    local real = function(_self, _wa) return 42, 7 end
+    local combine = buildVehicle("spec_combine",
+        { { functionName = "processCombineSwathArea", fn = real } })
+
+    local wrapped = W(combine, "spec_combine", "processCombineSwathArea", function(realFn)
+        return function(vehSelf, wa, dt)
+            ran = ran + 1
+            sawVehicle = vehSelf
+            local r = { realFn(vehSelf, wa, dt) }
+            return unpack(r)
+        end
+    end)
+    T.eq("J1 the combine's swath area is wrapped", wrapped, 1)
+
+    local dropped, second = engineCall(combine, 1)
+    T.eq("J2 THE WRAPPER RAN through the engine's own dispatch", ran, 1)
+    T.eq("J3 the dropped-litres return survives, which the wrapper reads as evidence", dropped, 42)
+    T.eq("J4 the second return survives too", second, 7)
+    T.ok("J5 the combine arrives as an explicit first argument", sawVehicle == combine)
+end
+
+do
+    -- THE DEFECT, reproduced. This is what shipped.
+    local ran = 0
+    local real = function() return 99 end
+    local combine = buildVehicle("spec_combine",
+        { { functionName = "processCombineSwathArea", fn = real } })
+
+    combine.processCombineSwathArea = function(vehSelf, wa, dt)
+        ran = ran + 1
+        return real(vehSelf, wa, dt)
+    end
+
+    local dropped = engineCall(combine, 1)
+    T.eq("J6 patching the instance copy does NOT reach the engine's pointer", ran, 0)
+    T.eq("J7 the original runs and the wrapper is never consulted", dropped, 99)
+
+    W(combine, "spec_combine", "processCombineSwathArea", function(realFn)
+        return function(v, w, d) ran = ran + 100 return realFn(v, w, d) end
+    end)
+    engineCall(combine, 1)
+    T.eq("J8 wrapping the work-area slot DOES reach it", ran, 100)
+end
+
+do
+    -- THE TWO CARRIERS MUST NOT CROSS. A combine and a tedder can both be on the
+    -- map, and the selector takes the owning spec as well as the name, so neither
+    -- install can reach the other's areas.
+    local tedder = buildVehicle("spec_tedder",
+        { { functionName = "processTedderArea", fn = function() return 1 end } })
+    local combine = buildVehicle("spec_combine",
+        { { functionName = "processCombineSwathArea", fn = function() return 2 end } })
+
+    T.eq("J9 the combine install does not touch a tedder",
+         W(tedder, "spec_combine", "processCombineSwathArea", function(f) return f end), 0)
+    T.eq("J10 the tedder install does not touch a combine",
+         W(combine, "spec_tedder", "processTedderArea", function(f) return f end), 0)
+    T.eq("J11 each reaches its own",
+         W(combine, "spec_combine", "processCombineSwathArea", function(f) return f end)
+         + W(tedder, "spec_tedder", "processTedderArea", function(f) return f end), 2)
+end
+
+do
+    -- A combine carrying BOTH a swath area and a chopper area: only the swath one
+    -- is ours. Selecting on the spec alone would take both.
+    local hits = 0
+    local combine = buildVehicle("spec_combine", {
+        { functionName = "processCombineChopperArea", fn = function() return 5 end },
+        { functionName = "processCombineSwathArea",   fn = function() return 6 end },
+    })
+    T.eq("J12 only the swath area is wrapped, not the chopper area",
+         W(combine, "spec_combine", "processCombineSwathArea", function(realFn)
+             return function(v, w, d) hits = hits + 1 return realFn(v, w, d) end
+         end), 1)
+    local chopper = engineCall(combine, 1)
+    engineCall(combine, 2)
+    T.eq("J13 the chopper area runs untouched and returns its own value", chopper, 5)
+    T.eq("J14 and only the swath pass reached our wrapper", hits, 1)
+end
+
+-- ── K: the INSTALL SITE passes the right arguments ──────────────────────────
+-- Everything above tests the helper with arguments written out in the test. That
+-- proves the helper behaves; it proves nothing about what installCombineSwathHook
+-- actually hands it. Swap "spec_combine" for "spec_tedder" at the call site, or
+-- misspell the function name, and every case above still passes while no combine
+-- in the game is ever wrapped.
+--
+-- This is the same gap Bob found on MD-16, where reset was correct and nothing
+-- proved it was still called. The answer there was to call the real entry point,
+-- and it is the answer here: run the REAL installer against a real work-area
+-- chain and assert the right area came back wrapped.
+do
+    local realRan = 0
+    local combine = buildVehicle("spec_combine", {
+        { functionName = "processCombineChopperArea", fn = function() return 1 end },
+        { functionName = "processCombineSwathArea",   fn = function() realRan = realRan + 1 return 0, 0 end },
+    })
+
+    -- The installer's collaborators, and only the ones it reaches at install time.
+    local savedCombine, savedMission = Combine, g_currentMission
+    Combine = { processCombineSwathArea = function() return 0, 0 end }
+    g_currentMission = { vehicleSystem = { vehicles = { combine } } }
+
+    local installed = HookManager.installCombineSwathHook({
+        getFieldIdAtWorldPosition = function() return 1 end,
+    })
+    T.eq("K1 the real installer reports success", installed, true)
+
+    local areas = combine.spec_workArea.workAreas
+    T.ok("K2 THE INSTALLER WRAPPED THE SWATH AREA, so it passed the right spec and name",
+         areas[2]._sfWraps ~= nil and areas[2]._sfWraps["processCombineSwathArea"] ~= nil)
+    T.eq("K3 and it left the chopper area alone", areas[1]._sfWraps, nil)
+
+    -- Dispatch the way the engine does and confirm the original still runs
+    -- underneath the installed wrapper.
+    engineCall(combine, 2)
+    T.eq("K4 the original swath function still runs through the installed wrapper", realRan, 1)
+
+    Combine, g_currentMission = savedCombine, savedMission
+end
+
 T.summary()
