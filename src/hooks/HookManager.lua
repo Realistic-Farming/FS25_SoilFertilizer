@@ -2042,6 +2042,22 @@ function HookManager:installOverlapPreventionHook()
     Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(
         Sprayer.onStartWorkAreaProcessing,
         function(sprayerSelf, dt)
+            -- RSF-F226d: one flag per pass, cleared HERE at the start of every pass
+            -- so a blocked pass can never colour a later one. Read by the nutrient
+            -- hook's append on onEndWorkAreaProcessing.
+            --
+            -- DELIBERATELY SEPARATE FROM _sfSprayAreaBlocked. That flag is cleared
+            -- by the restore append on onEndWorkAreaProcessing, so whether the
+            -- nutrient hook can still see it depends on which append was registered
+            -- first: installSprayerAreaHook runs early in this file's install
+            -- sequence and installOverlapPreventionHook much later, so today the
+            -- nutrient append happens to run before the restore clears it. That is
+            -- a coincidence of registration order, and resting a live consumable
+            -- correctness rule on it is how this class of defect gets written in
+            -- the first place. This flag is cleared at the start of the pass
+            -- instead and does not depend on append order at all.
+            sprayerSelf._sfOverlapBlockedPass = nil
+
             local sfm = g_SoilFertilityManager
             if not sfm then return end
             if sfm.settings and sfm.settings.overlapPrevention == false then return end
@@ -2241,6 +2257,12 @@ function HookManager:installOverlapPreventionHook()
             -- do (Sprayer.lua:317-318) and WorkArea.lua:183 destructures two.
             if coverageComplete and canRestore then
                 sprayerSelf._sfSprayAreaBlocked = true
+                -- RSF-F226d: the same instant, and only here. This is the one case
+                -- where consumption and application are guaranteed to disagree,
+                -- because WE are the reason nothing reached the ground. Partial
+                -- suppression leaves coverageComplete false, does not block, and
+                -- must still credit the ground it did cover.
+                sprayerSelf._sfOverlapBlockedPass = true
                 HookManager.blockWorkAreaProcessing(
                     sprayerSelf, "spec_sprayer", "processSprayerArea",
                     function() return 0, 0 end)
@@ -4005,6 +4027,39 @@ function HookManager:installSprayerAreaHook()
                         end)
                     end
                 end
+            end
+
+            -- RSF-F226d: a pass whose work-area processing WE blocked for overlap
+            -- put nothing on the ground, so it must credit nothing here.
+            --
+            -- Why the guards below do not already catch it: this hook gates on
+            -- sprayFillLevel > 0 and usage > 0, and BOTH are computed inside native
+            -- onStartWorkAreaProcessing (the function begins at Sprayer.lua:855,
+            -- usage is computed at :928), which runs before any work area's
+            -- processingFunction and is untouched by our block. So on a blocked
+            -- overlapping pass every guard below still passes, no product leaves
+            -- the tank, and the nutrients land anyway. Free fertiliser for driving
+            -- back over ground you already sprayed. #959 shipped that ungated into
+            -- every ordinary save, with no error and nothing in the log.
+            --
+            -- DO NOT REPLACE THIS WITH A GATE ON isActive. Read the note directly
+            -- below first. On an already-fertilised field the vanilla density map
+            -- returns changedArea 0, so isActive stays false while product genuinely
+            -- IS consumed; gating there drops every real application and
+            -- reintroduces #764 exactly, which is the trap that note was written to
+            -- prevent.
+            --
+            -- The overlap flag is the right signal precisely because it is set only
+            -- when we refused the pass ourselves.
+            if self._sfOverlapBlockedPass then
+                local _now = (g_currentMission and g_currentMission.time) or 0
+                if not self._sfOverlapSkipLogAt or (_now - self._sfOverlapSkipLogAt) > 3000 then
+                    self._sfOverlapSkipLogAt = _now
+                    SoilLogger.debug(
+                        "SprayerHook SKIP [overlap]: veh=%s - work area blocked for overlap, no nutrients, no coverage, no billing",
+                        tostring(self.id))
+                end
+                return
             end
 
             -- Guard: sprayer must have a valid fill type and consumed product this frame.
