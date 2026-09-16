@@ -389,11 +389,25 @@ do
         { functionName = "processCombineSwathArea",   fn = function() realRan = realRan + 1 return 0, 0 end },
     })
 
-    -- The installer's collaborators, and only the ones it reaches at install time.
+    -- What the installer genuinely reads at install time: the Combine global it
+    -- guards on, and the vehicle system it sweeps. Those two are load-bearing.
     local savedCombine, savedMission = Combine, g_currentMission
     Combine = { processCombineSwathArea = function() return 0, 0 end }
     g_currentMission = { vehicleSystem = { vehicles = { combine } } }
 
+    -- THE ARGUMENT BELOW IS INERT FOR THIS CASE, and saying so is the point.
+    -- installCombineSwathHook is declared with a colon, so this table lands in the
+    -- implicit self. The installer captures it (`local hookMgrRef = self`) but the
+    -- only use is hookMgrRef:getFieldIdAtWorldPosition deep inside the wrapper,
+    -- past the isServer and isArmed returns that this case never gets past. So the
+    -- stub method is never read, by this test or by K's dispatch.
+    --
+    -- It is left in place rather than deleted because it documents the real
+    -- dependency, but the risk is worth naming: if the installer ever starts using
+    -- self AT INSTALL TIME, this test feeds a one-method table while production
+    -- feeds the real HookManager, and the bar would stay green straight across
+    -- that divergence. An earlier version of this comment claimed the stub was a
+    -- collaborator the installer reaches, which was simply not true.
     local installed = HookManager.installCombineSwathHook({
         getFieldIdAtWorldPosition = function() return 1 end,
     })
