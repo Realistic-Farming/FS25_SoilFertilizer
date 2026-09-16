@@ -1979,6 +1979,27 @@ function HookManager:installOverlapPreventionHook()
         return false
     end
 
+    -- DECIDED BEFORE ANYTHING CAN ARM A BLOCK, and the order is the point.
+    --
+    -- The block goes on in a prepend to onStartWorkAreaProcessing and comes off in
+    -- an append to onEndWorkAreaProcessing. Those were installed independently, and
+    -- only the End half was guarded on its function existing, so a world where the
+    -- End half failed to install gave blocks that never came off. That is the one
+    -- failure on this hook a player cannot recover from without a restart: a
+    -- sprayer permanently unable to spray.
+    --
+    -- It is not reachable today, because the engine defines both (Sprayer.lua:855
+    -- and :938). Deciding it here makes it structurally impossible rather than
+    -- merely unlikely: if the restore cannot be installed, the block is never armed,
+    -- and the worst case degrades to the old behaviour of not blocking at all.
+    local canRestore = type(Sprayer.onEndWorkAreaProcessing) == "function"
+    if not canRestore then
+        SoilLogger.warning(
+            "[OverlapPrev] Sprayer.onEndWorkAreaProcessing not found, so the work-area block cannot be "
+            .. "restored. Section suppression still runs; the tank block stays OFF rather than risking a "
+            .. "sprayer that can never spray again.")
+    end
+
     local hookMgrRef = self
 
     -- Build fill-type lookup table at install time.
@@ -2218,7 +2239,7 @@ function HookManager:installOverlapPreventionHook()
             --
             -- It returns 0, 0 rather than 0 because the engine's own refusal paths
             -- do (Sprayer.lua:317-318) and WorkArea.lua:183 destructures two.
-            if coverageComplete then
+            if coverageComplete and canRestore then
                 sprayerSelf._sfSprayAreaBlocked = true
                 HookManager.blockWorkAreaProcessing(
                     sprayerSelf, "spec_sprayer", "processSprayerArea",
@@ -2236,7 +2257,7 @@ function HookManager:installOverlapPreventionHook()
     -- g_effectManager:startEffects(spec.effects) on a state-change tick (e.g. sprayer
     -- just turned on after braking), restarting effects we suppressed in the PREPEND.
     -- This APPEND re-stops them so the boom stays visually correct.
-    if type(Sprayer.onEndWorkAreaProcessing) == "function" then
+    if canRestore then
         local origEnd = Sprayer.onEndWorkAreaProcessing
         Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
             Sprayer.onEndWorkAreaProcessing,
@@ -3334,10 +3355,18 @@ end
 ---
 --- Restores unconditionally rather than checking that the live pointer is still
 --- our replacement, which is the opposite of the teardown rule for the permanent
---- wrapper. The reason is that this override lives for one processing window: if
---- something else has replaced the pointer inside that window, leaving our block
---- in place would keep the tank blocked for the rest of the session, which is a
---- far worse failure than briefly overwriting a same-frame interloper.
+--- wrapper. The load-bearing difference is NOT the lifetime, it is WHAT A FOREIGN
+--- WRAPPER WOULD BE WRAPPING.
+---
+--- In the permanent case an interloper has wrapped a real function that goes on
+--- being called, so clobbering it deletes working behaviour. Here an interloper has
+--- wrapped OUR STUB: a function that returns 0, 0 and is about to become garbage.
+--- Leaving it in place preserves a wrapper whose inner call is permanently dead,
+--- and costs the player every future spray from that work area.
+---
+--- Stated that way the rule survives a change of lifetime, which the
+--- one-frame-versus-session version did not: if this override ever became
+--- longer-lived, unconditional restore would still be correct.
 ---@return number restored
 function HookManager.unblockWorkAreaProcessing(vehicle, specField, functionName)
     if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
