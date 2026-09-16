@@ -3115,6 +3115,121 @@ function HookManager:installMowerYieldHook()
 end
 
 -- =========================================================
+-- THE WORK-AREA WRAP SLOT (RSF-F226)
+-- =========================================================
+-- There are THREE copies of a work-area processing function in series, and each
+-- one freezes the previous. Verified in the decompiled engine, not inferred:
+--
+--   1. SpecializationUtil.registerFunction writes objectType.functions[name].
+--   2. Vehicle.lua:486 calls SpecializationUtil.copyTypeFunctionsInto, which is
+--      literally `for funcName, func in pairs(typeDef.functions) do
+--      target[funcName] = func end` (SpecializationUtil.lua:141-145). That puts a
+--      copy on the INSTANCE, and it runs before onPreLoad is raised at :532, so
+--      before any onLoad.
+--   3. WorkArea:onLoad then captures `workArea.processingFunction =
+--      self[workArea.functionName]` (WorkArea.lua:266), reading that instance copy.
+--   4. WorkArea.lua:182-183 calls ONLY the captured pointer:
+--      `local xs, _ = workArea.processingFunction(self, workArea, dt)`.
+--      It never re-resolves self[functionName].
+--
+-- So a wrapper installed on the class table, on objectType.functions, or on the
+-- instance copy is INERT. All three sit upstream of a pointer that was taken
+-- before the wrapper existed. This is the whole of RSF-F226, and it is why the
+-- tedder hook below logged "N tedders patched" for months while its wrapper never
+-- ran once, and why HayBet drying has never fired.
+--
+-- WHY THE OLD HOOK'S TIMING WAS NEVER THE PROBLEM. It patched at install and again
+-- from VehicleSystem.addVehicle. addVehicle runs after the vehicle has finished
+-- loading, which is exactly when spec_workArea.workAreas is populated, so it is
+-- the RIGHT moment. Only the target was wrong.
+--
+-- TWO TRAPS FOR ANYONE ADDING A CARRIER HERE.
+--
+-- First, the signature is (vehicleSelf, workArea, dt) with the vehicle passed
+-- EXPLICITLY as the first argument. It is a dot call, not a colon call, so a
+-- wrapper written as a method silently shifts every argument.
+--
+-- Second, PRESERVE EVERY RETURN. WorkArea.lua:183 destructures `local xs, _` and
+-- the very next line is `if xs > 0`. A wrapper that returns nothing therefore
+-- compares nil with a number and THROWS inside the work-area loop; it does not
+-- merely lose the worked-hectares figure. Delegate and return what the original
+-- returned, which is what unpack over a packed result table does below.
+--
+-- And a naming trap: all three carrier specializations register a function called
+-- `processDropArea` (Mower.lua:34, Tedder.lua:23, Windrower.lua:27). Selecting a
+-- work area by functionName ALONE would conflate a mower's drop area with a
+-- tedder's, so the owning spec field is part of the selector.
+
+--- Wrap the captured processing pointer of every matching work area on one vehicle.
+---
+--- Idempotent: a work area we already wrapped is skipped, so a second sweep or a
+--- re-entrant addVehicle cannot stack wrappers. The wrapper we installed is
+--- remembered on the work area so teardown can restore ONLY what is still ours and
+--- never clobber another mod that wrapped us in turn.
+---
+---@param vehicle table       the vehicle instance, after its load has finished
+---@param specField string    e.g. "spec_tedder", the owning specialization
+---@param functionName string e.g. "processTedderArea", as registered
+---@param makeWrapper function  (realFn) -> wrapperFn
+---@return number wrapped  how many work areas were newly wrapped
+function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, makeWrapper)
+    if type(vehicle) ~= "table" then return 0 end
+    -- The owning spec must be present: functionName alone is not unique across
+    -- carriers, and a vehicle without the spec has no business being wrapped.
+    if vehicle[specField] == nil then return 0 end
+
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+
+    local wrapped = 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table"
+           and workArea.functionName == functionName
+           and type(workArea.processingFunction) == "function" then
+            workArea._sfWraps = workArea._sfWraps or {}
+            if workArea._sfWraps[functionName] == nil then
+                local wrapper = makeWrapper(workArea.processingFunction)
+                if type(wrapper) == "function" then
+                    workArea._sfWraps[functionName] = wrapper
+                    workArea.processingFunction = wrapper
+                    wrapped = wrapped + 1
+                end
+            end
+        end
+    end
+    return wrapped
+end
+
+--- Remove our wrapper from one vehicle's matching work areas, but ONLY where the
+--- live pointer is still the wrapper we installed. If something else has wrapped
+--- us since, restoring the original would silently delete that other mod's hook,
+--- so we leave it alone and say so.
+---@return number restored, number leftInPlace
+function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName, originals)
+    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0, 0 end
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0, 0 end
+
+    local restored, leftInPlace = 0, 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table" and type(workArea._sfWraps) == "table" then
+            local ours = workArea._sfWraps[functionName]
+            if ours ~= nil then
+                local original = originals and originals[ours] or nil
+                if workArea.processingFunction == ours and original ~= nil then
+                    workArea.processingFunction = original
+                    restored = restored + 1
+                else
+                    leftInPlace = leftInPlace + 1
+                end
+                workArea._sfWraps[functionName] = nil
+            end
+        end
+    end
+    return restored, leftInPlace
+end
+
+-- =========================================================
 -- HOOK 1e: Tedder (hay drying acceleration - SF-44 "THE HAY BET")
 -- =========================================================
 --- Instance-level delegating wrapper on Tedder.processTedderArea.
@@ -3165,8 +3280,20 @@ function HookManager:installTedderHook()
     --- Create a delegating wrapper for one tedder instance.
     --- DELEGATES fully (superFunc first), then applies the
     --- hay bet's drying delta and enqueues the correction pass.
+    -- ONE-SHOT PROOF THAT THE WRAPPER ACTUALLY RAN. The install count above was
+    -- non-zero for months while this body never executed, so "patched" can never
+    -- be the acceptance again. This fires once per session, on the first real
+    -- pass, and it is the line an in-game check should look for.
+    local firstRunLogged = false
+
     local function makeWrapper(realFn)
         return function(tedderSelf, workArea, dt)
+            if not firstRunLogged then
+                firstRunLogged = true
+                SoilLogger.info(
+                    "[TedderHook] FIRST EXECUTION: the work-area wrapper ran on a real tedder pass "
+                    .. "(RSF-F226 repair confirmed live). HayBet drying is now reachable.")
+            end
             -- DELEGATE fully: original processTedderArea first
             local results = { realFn(tedderSelf, workArea, dt) }
 
@@ -3201,33 +3328,44 @@ function HookManager:installTedderHook()
         end
     end
 
-    -- PATCH existing tedder instances (placed on map at load)
+    -- INSTALL ON THE SLOT THE ENGINE ACTUALLY CALLS (RSF-F226).
+    --
+    -- This used to assign vehicle.processTedderArea, the instance copy, which
+    -- WorkArea:onLoad had already read from at WorkArea.lua:266. The engine then
+    -- called its own captured pointer and never looked at ours again, so this
+    -- wrapper had never run once, and HayBet tedder drying has never fired in a
+    -- shipped game. See the wrap-slot note above wrapWorkAreaProcessing.
+    --
+    -- The TIMING here was always right and is unchanged: both sweeps happen after
+    -- a vehicle has finished loading, which is exactly when spec_workArea.workAreas
+    -- exists. Only the target moved.
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            if vehicle.spec_tedder
-               and type(vehicle.processTedderArea) == "function" then
-                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
-                patchedCount = patchedCount + 1
-            end
+            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_tedder", "processTedderArea", makeWrapper)
         end
     end
 
-    -- HOOK VehicleSystem.addVehicle to patch future tedder spawns
+    -- HOOK VehicleSystem.addVehicle for tedders that spawn later.
     if vs and type(vs.addVehicle) == "function" then
         local origAdd = vs.addVehicle
         vs.addVehicle = function(self, vehicle, ...)
-            if vehicle
-               and vehicle.spec_tedder
-               and type(vehicle.processTedderArea) == "function" then
-                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
-            end
+            HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_tedder", "processTedderArea", makeWrapper)
             return origAdd(self, vehicle, ...)
         end
     end
 
-    SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
+    -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS, and saying
+    -- so here is the point. This exact line reported a non-zero count for months
+    -- while nothing behind it ever executed, which is what hid the defect. The
+    -- wrapper logs its FIRST REAL EXECUTION separately (see makeWrapper), and that
+    -- line, not this one, is what proves the repair.
+    SoilLogger.info(
+        "[OK] Tedder hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "watch for the first-execution line during an actual tedder pass.", patchedCount)
     return true
 end
 
