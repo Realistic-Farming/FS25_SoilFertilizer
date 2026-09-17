@@ -6,6 +6,60 @@
 --   SellingStation observation (the premium visible at a sell point) is the in-game
 --   acceptance item this bar deliberately does not pretend to cover.
 --
+-- =============================================================================
+-- READ THIS BEFORE TRUSTING A GREEN RESULT FROM THIS FILE.
+--
+-- THIS TEST LOADS ANOTHER REPOSITORY'S WORKING TREE BY RELATIVE PATH. The two
+-- ../FS25_MarketDynamics entries below are not pinned to a commit, a tag or a
+-- branch. They read whatever that clone happens to be checked out on at the
+-- moment the suite runs. Two people running this at the same time on the same
+-- machine can get different meanings from the same assertions.
+--
+-- TODAY THE GREEN IS CORRECT. MarketDynamics main and development apply the
+-- pooled OrganicPremium modifier, and so does the MD-16 branch while its md16
+-- modules are not loaded: its MarketEngine resolves Md16SaleComponents to nil,
+-- takes the "no retirement and no capture" path, and composes exactly as
+-- development does. With the sibling clone on development or on the MD-16
+-- branch, these assertions describe the behaviour that ships today.
+--
+-- WHAT THE GREEN CANNOT SEE. MD-16 (MarketDynamics PR #153, still a draft)
+-- retires OrganicPremium by excluding it BY NAME inside MarketEngine's
+-- composition loop, reading Md16SaleComponents.RETIRED_MODIFIER. The load list
+-- below does not include the md16 modules, so this file never exercises that
+-- retirement. It is blind to MD-16's retired state.
+--
+-- IT BECOMES A FALSE GREEN WHEN MD-16 MERGES. From then on modDesc loads the
+-- md16 modules in the game and the premium is retired there, while this file,
+-- still without them, keeps passing at the premium value.
+--
+-- THE TRIPWIRE IS ALREADY CORRECT. The "recalculate moves the price for an
+-- organic seller" assertion expects 11.333. With the md16 modules on the load
+-- list it fails at 10.0 (observed 2026-09-17 against MD-16 at 6851a19, and it is
+-- the only assertion in this file that fails). It is not missing; it is
+-- unreachable while md16 is absent from the load list.
+--
+-- IT CANNOT BE CLOSED FROM THIS SIDE YET. src/md16 does not exist on
+-- MarketDynamics development, and a --!load of a missing file fails the whole
+-- file, so adding the md16 modules today would break this suite for anyone whose
+-- sibling clone is on development.
+--
+-- SO: WHEN MD-16 MERGES, UPDATE THIS FILE IN THE SAME CYCLE. Add
+-- ../FS25_MarketDynamics/src/md16/Md16Material.lua and then
+-- ../FS25_MarketDynamics/src/md16/Md16SaleComponents.lua (which depends on it)
+-- to the load list after MarketEngine.lua, in the order modDesc loads them, and
+-- move the "recalculate moves the price for an organic seller" expectation to
+-- the base price. That is the only expectation that moves. The direct modifier
+-- calls call the registered function itself, which a composition-point exclusion
+-- does not touch, and the conventional-seller, clamp B and pure-client
+-- assertions come out the same either way. Merging MD-16 without this update
+-- leaves this file green and lying.
+--
+-- ONE MORE CONSEQUENCE OF THE RELATIVE PATH: this file fails outright in any git
+-- worktree that is not sited as a sibling of FS25_MarketDynamics, because the
+-- path does not resolve. That is not a bug in the test; it is the same coupling
+-- seen from a second direction.
+-- =============================================================================
+--
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, ../FS25_MarketDynamics/src/MarketEngine.lua, ../FS25_MarketDynamics/src/OrganicPremiumBridge.lua
 
 -- ── engine-surface stubs ────────────────────────────────
@@ -120,6 +174,13 @@ local engine = MarketEngine.new()
 engine.prices[WHEAT] = { base = 10, volatilityFactor = 1.0, modifiers = {}, current = 10, history = {} }
 g_MarketDynamics.marketEngine = engine
 
+-- THIS IS THE TRIPWIRE described in the header. It expects the premium to be
+-- applied, which is correct for every shipped MarketDynamics today. Once the md16
+-- modules are on the load list it fails with 10.0 against 11.333 (observed
+-- against MD-16 at 6851a19). That is correct and is the signal to finish the
+-- update. If you are reading this because it just went red, do not "fix" it by
+-- keeping the premium value or by taking md16 back off the load list: under MD-16
+-- the premium is retired and the expected value is the base, 10.
 currentFarmId = 1    -- farm with a positive organic share
 engine:_recalculate(WHEAT)
 T.near("premium: recalculate moves the price for an organic seller",
