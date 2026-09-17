@@ -7,9 +7,9 @@
 -- getExternalFill is called (Sprayer.lua:889) before any work area processes and
 -- so before the block can reach anything. Six places bill there:
 --   S1 native slurry buy        Sprayer.lua:407   money
---   S2 native slurry station    Sprayer.lua:414   STORED PRODUCT, not money
+--   S2 native slurry station    Sprayer.lua:413   STORED PRODUCT, not money (DIGESTATE :416)
 --   S3 native manure buy        Sprayer.lua:430   money
---   S4 native manure station    Sprayer.lua:437   STORED PRODUCT, not money
+--   S4 native manure station    Sprayer.lua:436   STORED PRODUCT, not money
 --   S5 native fertilizer buy    Sprayer.lua:457   money
 --   S6 our own custom-type 1.5x charge in Hook 9                  money
 -- Each gets its own fixture, and every fixture is two-sided: the pass before the

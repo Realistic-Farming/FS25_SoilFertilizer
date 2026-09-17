@@ -7358,7 +7358,7 @@ function HookManager:installExternalFillHook()
     -- block cannot reach. Six places bill from here:
     --   - native buy-mode money: slurry :407, manure :430, helperBuyFertilizer :457
     --   - native loading-station WITHDRAWALS, real stored product and not money:
-    --     slurry :414-417 (helperSlurrySource > 2), manure :437 (helperManureSource > 2)
+    --     slurry :413 and :416 (helperSlurrySource > 2), manure :436 (helperManureSource > 2)
     --   - our own 1.5x custom-type charge in billedExternalFill above
     -- Not calling billedExternalFill covers all six at once. A refund afterwards
     -- could not: it cannot put product back into a station, and the usage it
