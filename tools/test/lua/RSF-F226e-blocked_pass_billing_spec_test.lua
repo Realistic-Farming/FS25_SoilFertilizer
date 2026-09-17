@@ -29,6 +29,15 @@
 -- prepend reads that stale value and returns before its block decision, and the
 -- second frame is billed. One blocked frame cannot see that; the third can.
 --
+-- AND ONLY WHILE THE PRODUCT IS THE SAME ONE (Bob, #965 review). Repeating the
+-- last billed type after the tank switched to an untracked product (herbicide)
+-- kept the old trackable type in wap, so the prepend blocked the herbicide on
+-- every pass. Group L pins that; group D pins the opposite case, a tank that runs
+-- dry part way through a blocked stretch, which must keep repeating.
+--
+-- EVERY CASE RUNS INSIDE group(), so a Lua error fails a named row and the cases
+-- after it still report, instead of the suite discarding the whole file.
+--
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
@@ -364,30 +373,46 @@ local function siteCase(tag, opts, measure)
     return books, v
 end
 
+--- Run one case. A Lua error inside it fails as a NAMED row for that case, and
+--- the cases after it still run and report. Without this, a mutation that breaks
+--- the return shape stops the whole file at its first error, and the suite then
+--- discards every row the file had already printed, so the mutation dies on an
+--- error instead of on a name.
+local function group(tag, fn)
+    local ok, err = pcall(fn)
+    T.eq(tag .. "x the case ran to its end without a Lua error", ok and "clean" or tostring(err), "clean")
+end
+
 -- ── S: each of the six billing sites ────────────────────────────────────────
 
-siteCase("S1", { ai = true, slurrySource = 2, allows = { FillType.LIQUIDMANURE } },
-    function(b) return b.charges end)
+group("S1", function()
+    siteCase("S1", { ai = true, slurrySource = 2, allows = { FillType.LIQUIDMANURE } },
+        function(b) return b.charges end)
+end)
 
-do
+group("S2", function()
     local books = siteCase("S2", { ai = true, slurrySource = 3, allows = { FillType.LIQUIDMANURE } },
         function(b) return b.withdrawn end)
     T.eq("S2h the station path is PRODUCT, and no money moved on it at all", books.charges, 0)
-end
+end)
 
-siteCase("S3", { ai = true, manureSource = 2, allows = { FillType.MANURE } },
-    function(b) return b.charges end)
+group("S3", function()
+    siteCase("S3", { ai = true, manureSource = 2, allows = { FillType.MANURE } },
+        function(b) return b.charges end)
+end)
 
-do
+group("S4", function()
     local books = siteCase("S4", { ai = true, manureSource = 3, allows = { FillType.MANURE } },
         function(b) return b.withdrawn end)
     T.eq("S4h the station path is PRODUCT, and no money moved on it at all", books.charges, 0)
-end
+end)
 
-siteCase("S5", { ai = true, buyFertilizer = true, allows = { FillType.LIQUIDFERTILIZER } },
-    function(b) return b.charges end)
+group("S5", function()
+    siteCase("S5", { ai = true, buyFertilizer = true, allows = { FillType.LIQUIDFERTILIZER } },
+        function(b) return b.charges end)
+end)
 
-do
+group("S6", function()
     -- Our own charge, in the shape it actually takes: an AI helper in buy mode with
     -- an EMPTY tank, which reports UNKNOWN, so Hook 9 finds the product through the
     -- _soilLastCustomFillType stamp the sprayer-area hook leaves, charges its own
@@ -400,11 +425,11 @@ do
     T.eq("S6h and the type it kept in wap is the custom one, not a vanilla fallback",
          v.spec_sprayer.workAreaParameters.sprayFillType, FillType.UREA)
     T.eq("S6i no station product moved for a custom type", books.withdrawn, 0)
-end
+end)
 
 -- ── F: what the skip keys on ────────────────────────────────────────────────
 
-do
+group("F1", function()
     -- THE FLAG WITHOUT A SWAP. An area declared under another functionName is not
     -- swapped by the block (the name is pure XML, WorkArea.lua:257-266), but the
     -- overlap prepend sets the pass flag anyway. That area sprays, so the pass
@@ -424,9 +449,9 @@ do
     T.ok("F3 THE PASS IS BILLED, because the alias area is about to spray", books.charges > before)
     local wa = v.spec_workArea.workAreas[1]
     T.ok("F4 and it does spray", wa.processingFunction(v, wa, 16) > 0)
-end
+end)
 
-do
+group("F5", function()
     -- THE SWAP WITHOUT THE FLAG. A throw inside the work-area loop skips the end
     -- event, so the restore does not run and the block record outlives its pass.
     -- The next pass clears the flag at its start and, with the overlap gone, does
@@ -449,9 +474,9 @@ do
     T.ok("F7 SO IT IS BILLED, and never handed zero usage without the flag", books.charges > before)
     T.ok("F8 with real usage in wap for the nutrient hook to read",
          v.spec_sprayer.workAreaParameters.usage > 0)
-end
+end)
 
-do
+group("R", function()
     -- THE REPEATED TYPE IS THE LAST ONE BILLED, INCLUDING UNKNOWN. Buy mode off,
     -- product in the tank: the original returns UNKNOWN and native falls back to the
     -- tank (:890-892), drawing from sprayVehicle = self. A blocked pass must leave
@@ -470,9 +495,9 @@ do
     T.eq("R3 a blocked pass keeps native on the tank fallback", wap.sprayVehicle, v)
     T.eq("R4 with the tank's own type", wap.sprayFillType, FillType.LIQUIDFERTILIZER)
     T.eq("R5 and nothing was billed on either pass", billed(books), 0)
-end
+end)
 
-do
+group("U", function()
     -- NEVER BILLED YET. A blocked pass can arrive before this wrapper has ever
     -- reached the billing path on this sprayer: product sprayed by hand from the
     -- tank covered the field, then a helper is hired in buy mode, and its first
@@ -500,9 +525,9 @@ do
     frame(v)
     T.ok("U7 and the first unblocked pass is billed", books.charges > 0)
     T.eq("U8 which is the pass that records a type to repeat", v._sfLastExternalFillType, FillType.LIQUIDFERTILIZER)
-end
+end)
 
-do
+group("A", function()
     -- THE AI IS NOT STOPPED. A vehicle with a swapped area AND an alias area: on a
     -- blocked buy-mode pass the alias area still runs the real processSprayerArea.
     -- With a real repeated type it returns at :320, not at the out-of-fill stop at
@@ -517,9 +542,74 @@ do
     T.eq("A1 three blocked passes, the alias area included, put nothing down", sprayed, 0)
     T.eq("A2 and bill nothing", books.charges, before)
     T.eq("A3 AND THE HELPER IS NEVER STOPPED FOR OUT OF FILL", v.rootVehicle.aiStops, 0)
-end
+end)
 
-do
+-- ── L and D: when the product in the tank changes during a blocked stretch ──
+
+group("L", function()
+    -- A DIFFERENT PRODUCT OVER COVERED GROUND (Bob, #965 review). The helper buys
+    -- fertiliser from an empty tank and is billed, blocks over ground covered this
+    -- session, then the tank is filled with herbicide. Herbicide is not a product
+    -- the overlap rule tracks, so the block must let go of it within one pass.
+    -- Repeating the last billed type put LIQUIDFERTILIZER back into wap on every
+    -- pass, the prepend kept blocking on it, and the herbicide never went down.
+    local books, v = install({ ai = true, buyFertilizer = true,
+                               allows = { FillType.LIQUIDFERTILIZER, FillType.HERBICIDE } })
+    setCoverage(0.5)
+    frame(v)
+    T.eq("L1 the helper bought fertiliser from an empty tank", v._sfLastExternalFillType, FillType.LIQUIDFERTILIZER)
+    setCoverage(1.0)
+    T.eq("L2 and blocked over covered ground", frame(v) + frame(v), 0)
+    local before = billed(books)
+
+    v.getFillUnitFillType  = function() return FillType.HERBICIDE end
+    v.getFillUnitFillLevel = function() return 900 end
+    local switchPass = frame(v)
+    local wap = v.spec_sprayer.workAreaParameters
+    T.eq("L3 the pass that meets the herbicide was still blocked, on the old type", switchPass, 0)
+    T.eq("L4 and billed nothing", billed(books), before)
+    T.eq("L5 WAP NAMES THE HERBICIDE AFTER ONE PASS, not the repeated fertiliser", wap.sprayFillType, FillType.HERBICIDE)
+
+    local after = frame(v)
+    T.eq("L6 so the next pass is not blocked", v._sfOverlapBlockedPass, nil)
+    T.ok("L7 AND THE HERBICIDE GOES DOWN", after > 0)
+    T.ok("L8 billed, because herbicide really was sprayed on that pass", billed(books) > before)
+    T.eq("L9 and herbicide is now the type on record", v._sfLastExternalFillType, FillType.HERBICIDE)
+end)
+
+group("D", function()
+    -- THE TANK RUNS DRY PART WAY THROUGH A BLOCKED STRETCH. The argument native
+    -- passes goes from the tank's product to UNKNOWN. That is still the same helper
+    -- buying the same product, and UNKNOWN is exactly the stale value the repeat
+    -- keeps out of wap: returning UNKNOWN there would bill the pass after it, and
+    -- an area the block did not swap would stop the helper for out of fill at :316.
+    local books, v = install({ ai = true, buyFertilizer = true, tankType = FillType.LIQUIDFERTILIZER,
+                               tankLevel = 900, allows = { FillType.LIQUIDFERTILIZER },
+                               functionNames = { "processSprayerArea", "processSprayerAreaAlias" } })
+    setCoverage(0.5)
+    frame(v)
+    T.ok("D1 billed with fertiliser in the tank", books.charges > 0)
+    setCoverage(1.0)
+    -- Still full, and the argument is the product the billing path saw. It must
+    -- be repeated: UNKNOWN would send native to the tank fallback, whose level
+    -- becomes sprayFillLevel, and the alias area would spray on a blocked pass.
+    T.eq("D2 a blocked pass with the same product still in the tank puts nothing down", frame(v), 0)
+    T.eq("D3 because it repeats the billed product with no fill level",
+         v.spec_sprayer.workAreaParameters.sprayFillLevel, 0)
+    local before = billed(books)
+
+    v.getFillUnitFillType  = function() return FillType.UNKNOWN end
+    v.getFillUnitFillLevel = function() return 0 end
+    local sprayed = frame(v) + frame(v) + frame(v)
+    T.eq("D4 three blocked passes after the tank ran dry put nothing down", sprayed, 0)
+    T.eq("D5 AND BILL NOTHING, so no pass slipped through on a stale UNKNOWN", billed(books), before)
+    T.eq("D6 wap still names the product", v.spec_sprayer.workAreaParameters.sprayFillType, FillType.LIQUIDFERTILIZER)
+    T.eq("D7 and the helper was never stopped for out of fill", v.rootVehicle.aiStops, 0)
+end)
+
+-- ── W: the shape of what the wrapper returns ────────────────────────────────
+
+group("W", function()
     -- Both returns survive the wrapper. Native destructures two at :889.
     local _, v = install({ ai = true, buyFertilizer = true, allows = { FillType.LIQUIDFERTILIZER } })
     setCoverage(0.5)
@@ -528,7 +618,37 @@ do
     local ft, usage = v:getExternalFill(FillType.UNKNOWN, 16)
     T.eq("W2 the resolved type", ft, FillType.LIQUIDFERTILIZER)
     T.eq("W3 and its usage", usage, 12)
-end
+
+    -- And so does a blocked one. A full pass first puts a trackable type into wap
+    -- (the direct calls above never touch it); then the start event blocks and,
+    -- with no end event, leaves the block record live, so the direct calls below
+    -- are blocked calls.
+    frame(v)
+    setCoverage(1.0)
+    Sprayer.onStartWorkAreaProcessing(v, 16)
+    T.eq("W4 the calls below are blocked ones", HookManager.isOverlapBlockedPass(v), true)
+    T.eq("W5 a blocked call returns exactly two values", select("#", v:getExternalFill(FillType.UNKNOWN, 16)), 2)
+    local bft, busage = v:getExternalFill(FillType.UNKNOWN, 16)
+    T.eq("W6 the repeated type", bft, FillType.LIQUIDFERTILIZER)
+    T.eq("W7 and a usage that is the number zero", busage, 0)
+end)
+
+group("W8", function()
+    -- NEVER BILLED, EMPTY TANK. wap still names the product sprayed by hand before
+    -- the tank ran dry, so the first externally filled pass blocks. The argument
+    -- is UNKNOWN, so the product check cannot decide it; only the never-billed
+    -- fallback keeps a nil out of native's fill type.
+    local _, v = install({ ai = true, buyFertilizer = true, startType = FillType.LIQUIDFERTILIZER,
+                           allows = { FillType.LIQUIDFERTILIZER } })
+    setCoverage(1.0)
+    Sprayer.onStartWorkAreaProcessing(v, 16)
+    T.eq("W8 this sprayer has never been billed", v._sfLastExternalFillType, nil)
+    T.eq("W9 the call below is a blocked one", HookManager.isOverlapBlockedPass(v), true)
+    local ft, usage = v:getExternalFill(FillType.UNKNOWN, 16)
+    T.eq("W10 A NEVER-BILLED BLOCKED CALL RETURNS THE ENGINE'S UNKNOWN, never nil", ft, FillType.UNKNOWN)
+    T.eq("W11 with zero usage", usage, 0)
+    T.eq("W12 and native wrote UNKNOWN, not nil, into wap", v.spec_sprayer.workAreaParameters.sprayFillType, FillType.UNKNOWN)
+end)
 
 Sprayer, Utils, FillType, ToolType = saved.Sprayer, saved.Utils, saved.FillType, saved.ToolType
 MoneyType, UIHelper = saved.MoneyType, saved.UIHelper

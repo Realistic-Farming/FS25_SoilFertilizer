@@ -7396,9 +7396,26 @@ function HookManager:installExternalFillHook()
     -- alias for processSprayerArea) sees sprayFillLevel 0 and returns at :320
     -- without spraying, and without the out-of-fill AI stop at :316, which only
     -- fires on an UNKNOWN type.
-    local function repeatedFill(sprayerSelf)
+    --
+    -- ONLY WHILE IT IS STILL THE SAME PRODUCT. Native writes whatever this returns
+    -- into wap.sprayFillType (:926), and the next prepend decides on that. If the
+    -- tank now holds a different product (fertiliser billed, then herbicide loaded
+    -- over ground already covered), repeating the old trackable type keeps the
+    -- prepend blocking a product the overlap rule does not track, pass after pass,
+    -- and it never goes down. So the last return is repeated only when the type
+    -- native passed in is the one the billing path last saw. On any other real
+    -- type this returns UNKNOWN, 0, and native's tank fallback (:890-892) puts the
+    -- tank's real type into wap for the next prepend to judge on its own. An
+    -- UNKNOWN argument (an empty tank, the buy-mode case) still repeats: UNKNOWN is
+    -- the stale value the repeat exists to keep out of wap, and a tank that ran dry
+    -- part way through a blocked stretch is still the same helper buying the same
+    -- product.
+    local function repeatedFill(sprayerSelf, fillType)
         local last = sprayerSelf._sfLastExternalFillType
         if last == nil then
+            return FillType.UNKNOWN, 0
+        end
+        if fillType ~= FillType.UNKNOWN and fillType ~= sprayerSelf._sfLastExternalFillArg then
             return FillType.UNKNOWN, 0
         end
         return last, 0
@@ -7410,10 +7427,11 @@ function HookManager:installExternalFillHook()
 
     Sprayer.getExternalFill = function(sprayerSelf, fillType, dt)
         if HookManager.isOverlapBlockedPass(sprayerSelf) then
-            return repeatedFill(sprayerSelf)
+            return repeatedFill(sprayerSelf, fillType)
         end
         local n, r = packn(billedExternalFill(sprayerSelf, fillType, dt))
         sprayerSelf._sfLastExternalFillType = r[1]
+        sprayerSelf._sfLastExternalFillArg = fillType
         return unpack(r, 1, n)
     end
 
