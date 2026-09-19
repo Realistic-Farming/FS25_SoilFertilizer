@@ -129,6 +129,15 @@ g_currentMission.fieldGroundSystem = g_currentMission.fieldGroundSystem or {
 Event = Event or { new = function(mt) return setmetatable({}, mt) end }
 function InitEventClass(class, name) class.className = name; return class end
 
+-- FarmManager: the farm-id wire width, which SoilScoutingMaskSyncEvent writes and
+-- reads on both sides. Value taken from the decompiled engine at
+-- farms/FarmManager.lua:2, not guessed: FARM_ID_SEND_NUM_BITS = 4.
+--
+-- Its absence is why that event had no round-trip test. The production code indexes
+-- FarmManager for its width, the harness did not stand in for it, so the event could
+-- not be exercised at all and its two UIntN sites were unguarded by construction.
+FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4 }
+
 -- ── Mock network stream ────────────────────────────────────
 -- A typed FIFO standing in for an FS25 streamId. Every streamWriteX pushes a
 -- {tag,value}; the paired streamReadX pops it and checks the tag. This turns the
@@ -136,17 +145,51 @@ function InitEventClass(class, name) class.className = name; return class end
 -- a local assertion: a correct writeStream/readStream pair drains the FIFO exactly,
 -- with zero type mismatches and zero underflows. No float32 truncation is modelled
 -- (values pass through as Lua doubles), matching the repo's other round-trip tests.
+--
+-- WIDTH IS NOW CHECKED, having been claimed and not checked since this mock was
+-- written. The comment above has always listed "wrong width" among the bugs it turns
+-- into an assertion, while streamWriteUIntN took the bit count as `_n` and threw it
+-- away. A 3-bit write read back as 4 bits round-tripped perfectly clean, which is a
+-- genuine desync: the engine packs and unpacks by that count, so the two sides
+-- disagree about where every following field begins.
+--
+-- Two faults are counted, and they are different failures:
+--   widthErrors  the read declared a different bit count than the write. In the
+--                engine the reader then consumes the wrong number of bits and every
+--                subsequent field is misaligned.
+--   rangeErrors  the value does not fit the declared width. The engine truncates
+--                silently, so the value that arrives is not the value that was sent
+--                and nothing anywhere reports it.
+--
+-- Neither raises, for the same reason the existing counters do not: a test should see
+-- the whole picture rather than dying on the first fault.
 function _sfMockStream()
-  return { q = {}, r = 1, typeErrors = 0, underflows = 0 }
+  return { q = {}, r = 1, typeErrors = 0, underflows = 0, widthErrors = 0, rangeErrors = 0 }
 end
 
-local function _sfPush(s, tag, v) s.q[#s.q + 1] = { t = tag, v = v } end
-local function _sfPull(s, tag)
+local function _sfPush(s, tag, v, width)
+  if width ~= nil and type(v) == "number" then
+    -- Values are unsigned by contract; 2^width - 1 is the largest that survives.
+    if v < 0 or v > (2 ^ width) - 1 then s.rangeErrors = s.rangeErrors + 1 end
+  end
+  s.q[#s.q + 1] = { t = tag, v = v, w = width }
+end
+
+local function _sfPull(s, tag, width)
   local e = s.q[s.r]
   if e == nil then s.underflows = s.underflows + 1; return nil end
   s.r = s.r + 1
   if e.t ~= tag then s.typeErrors = s.typeErrors + 1 end
+  if e.w ~= width then s.widthErrors = s.widthErrors + 1 end
   return e.v
+end
+
+--- Total faults on a stream. Prefer this to adding counters by hand at each call
+--- site: a round-trip row written before widthErrors existed would keep passing
+--- while ignoring it, which is how the width claim went unchecked in the first place.
+function _sfStreamFaults(s)
+  if s == nil then return -1 end
+  return s.typeErrors + s.underflows + s.widthErrors + s.rangeErrors
 end
 
 function streamWriteInt32(s, v)    _sfPush(s, "i32", v) end
@@ -159,8 +202,8 @@ function streamWriteString(s, v)    _sfPush(s, "str", v) end
 function streamReadString(s)        return _sfPull(s, "str") end
 function streamWriteBool(s, v)      _sfPush(s, "bool", v and true or false) end
 function streamReadBool(s)          return _sfPull(s, "bool") end
-function streamWriteUIntN(s, v, _n) _sfPush(s, "uN", v) end
-function streamReadUIntN(s, _n)     return _sfPull(s, "uN") end
+function streamWriteUIntN(s, v, n)  _sfPush(s, "uN", v, n) end
+function streamReadUIntN(s, n)      return _sfPull(s, "uN", n) end
 function streamWriteUInt16(s, v)    _sfPush(s, "u16", v) end
 function streamReadUInt16(s)         return _sfPull(s, "u16") end
 
