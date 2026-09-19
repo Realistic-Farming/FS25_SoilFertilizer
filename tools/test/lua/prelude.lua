@@ -181,9 +181,17 @@ FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4, MAX_NUM_FARMS = 8 }
 --                        Logging.error("value %d out of bounds (%d bits, %d max)")
 --                        printCallstack()
 --                so both bounds and both failure directions are the engine's, not
---                ours. That guard runs only in debug builds, which is precisely why
---                a bench check earns its place: in a release build the violation is
---                unreported whatever the primitive does with it.
+--                ours.
+--
+--                And the guard REPORTS without PREVENTING. There is no early return
+--                after Logging.error and printCallstack: storeStats runs and the
+--                function ends `return engineStreamWriteUIntN(...)`, so the
+--                out-of-range write proceeds regardless. That is why a bench check
+--                earns its place, and it needs no assumption about which builds the
+--                wrapper is active in. (Which is just as well: nothing in the
+--                decompiled tree references WrapFunctions at all, so its activation
+--                condition is not observable from here either. An earlier draft said
+--                "runs only in debug builds", which was another model.)
 --
 --                Engine callers hold the contract at the call site rather than
 --                relying on the primitive: NetworkUtil.lua:67 writes
