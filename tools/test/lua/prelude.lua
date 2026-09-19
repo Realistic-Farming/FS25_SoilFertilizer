@@ -136,7 +136,15 @@ function InitEventClass(class, name) class.className = name; return class end
 -- Its absence is why that event had no round-trip test. The production code indexes
 -- FarmManager for its width, the harness did not stand in for it, so the event could
 -- not be exercised at all and its two UIntN sites were unguarded by construction.
-FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4 }
+-- MAX_NUM_FARMS is here because sf22_private_mask_spec_test.lua:19 declares
+-- `FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4, MAX_NUM_FARMS = 8 }`.
+-- With this prelude stub present that `or` short-circuits, so the shared stub has to
+-- be the COMPLETE one or that file silently stops stubbing what its comment says it
+-- does. Nothing reads MAX_NUM_FARMS today, so it was latent rather than live.
+--
+-- A neat small instance of this document's own subject: the `or` idiom is exactly
+-- what makes the shadowing silent.
+FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4, MAX_NUM_FARMS = 8 }
 
 -- ── Mock network stream ────────────────────────────────────
 -- A typed FIFO standing in for an FS25 streamId. Every streamWriteX pushes a
@@ -157,9 +165,34 @@ FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4 }
 --   widthErrors  the read declared a different bit count than the write. In the
 --                engine the reader then consumes the wrong number of bits and every
 --                subsequent field is misaligned.
---   rangeErrors  the value does not fit the declared width. The engine truncates
---                silently, so the value that arrives is not the value that was sent
---                and nothing anywhere reports it.
+--   rangeErrors  the value does not fit the declared width, which is a violation of
+--                the engine's own stated contract for this call.
+--
+--                An earlier draft of this comment said "the engine truncates
+--                silently". That was a model, not a fact: streamWriteUIntN is
+--                engine-native and its overflow behaviour is not observable from the
+--                decompile, so what happens to an out-of-range value is unknown here
+--                and this counter does not claim to know.
+--
+--                What IS verifiable is the contract, and the engine states it
+--                itself. Its debug wrapper at debug/WrapFunctions.lua:718-725 guards
+--                the identical predicate:
+--                    if 2 ^ numBits - 1 < value or value < 0 then
+--                        Logging.error("value %d out of bounds (%d bits, %d max)")
+--                        printCallstack()
+--                so both bounds and both failure directions are the engine's, not
+--                ours. That guard runs only in debug builds, which is precisely why
+--                a bench check earns its place: in a release build the violation is
+--                unreported whatever the primitive does with it.
+--
+--                Engine callers hold the contract at the call site rather than
+--                relying on the primitive: NetworkUtil.lua:67 writes
+--                math.floor(value * (2 ^ numBits - 1)), ForestryPhysicsRope.lua:162
+--                scales by (2 ^ NUM_LENGTH_BITS - 1), and precisionFarming's
+--                ExtendedCombine.lua:51 writes
+--                math.min(math.floor(x), YIELD_MAX_VALUE) against the paired
+--                YIELD_NUM_BITS. So an out-of-range write is a caller-contract
+--                violation, true whatever the native function does with it.
 --
 -- Neither raises, for the same reason the existing counters do not: a test should see
 -- the whole picture rather than dying on the first fault.
