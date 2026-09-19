@@ -74,7 +74,21 @@ for (const tf of testFiles) {
 
   if (rc !== 0) {
     hadError = true;
-    console.log(c.red(`✗ ${c.bold(tf)} - Lua error while loading/running:`));
+    // Report what the file DID produce before it died, then the error.
+    //
+    // This branch used to `continue` immediately, discarding every ##TEST_PASS and
+    // ##TEST_FAIL the file had already emitted. A test that failed an assertion and
+    // then crashed reported only "Lua error", so the diagnosis it had already
+    // printed was thrown away by the reporter rather than never existing. That is
+    // the worst case to lose evidence in: a crash is exactly when you need to know
+    // which assertion went red first.
+    const crashPasses = [...out.matchAll(/^##TEST_PASS (.+)$/gm)].map((m) => m[1]);
+    const crashFails = [...out.matchAll(/^##TEST_FAIL (.+)$/gm)].map((m) => m[1]);
+    totalPass += crashPasses.length;
+    totalFail += crashFails.length;
+    console.log(c.red(`✗ ${c.bold(tf)} - Lua error while loading/running`) +
+      c.dim(` (${crashPasses.length} passed, ${crashFails.length} failed before the error)`));
+    for (const f of crashFails) console.log(`    ${c.red("FAIL")} ${f}`);
     console.log(`  ${c.red(errMsg || "(no message)")}`);
     continue;
   }
