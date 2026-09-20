@@ -7433,37 +7433,37 @@
   "2026-09-20": [
     {
       "referrer": "Google",
-      "count": 773,
-      "uniques": 320
+      "count": 749,
+      "uniques": 322
     },
     {
       "referrer": "github.com",
-      "count": 723,
+      "count": 714,
       "uniques": 207
     },
     {
       "referrer": "Bing",
-      "count": 140,
-      "uniques": 63
+      "count": 128,
+      "uniques": 64
     },
     {
       "referrer": "youtube.com",
-      "count": 101,
-      "uniques": 51
+      "count": 105,
+      "uniques": 52
     },
     {
       "referrer": "kingmods.net",
-      "count": 92,
-      "uniques": 40
+      "count": 89,
+      "uniques": 39
     },
     {
       "referrer": "DuckDuckGo",
       "count": 40,
-      "uniques": 10
+      "uniques": 9
     },
     {
       "referrer": "chatgpt.com",
-      "count": 20,
+      "count": 18,
       "uniques": 9
     },
     {
@@ -7473,13 +7473,13 @@
     },
     {
       "referrer": "realisticfarming.com",
-      "count": 15,
-      "uniques": 6
+      "count": 14,
+      "uniques": 7
     },
     {
       "referrer": "reddit.com",
-      "count": 14,
-      "uniques": 10
+      "count": 13,
+      "uniques": 9
     }
   ]
 }
