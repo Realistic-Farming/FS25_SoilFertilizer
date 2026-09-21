@@ -15,8 +15,7 @@
 SoilTreatmentDialog = SoilTreatmentDialog or {}
 local SoilTreatmentDialog_mt = Class(SoilTreatmentDialog, ScreenElement)
 
--- Capture mod directory at source-time. The mod NAME was captured here too, solely
--- for the g_modEnvironments lookup removed from tr() below; it had no other reader.
+-- Capture mod directory at source-time
 local SF_TREAT_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 -- Singleton
@@ -47,11 +46,12 @@ end
 -- for EVERY key in this dialog. That is how a missing sf_treat_action_ph_unknown
 -- reached a player as the engine's error text instead of the sentence at the call.
 --
--- The former g_modEnvironments lookup is gone rather than left dead. That global
--- does not exist in FS25 (I18N keeps modEnvironments as a private field), and the
--- field it read was .i18n where mods.lua:453 sets .g_i18n. Inside a mod's own
--- environment g_i18n IS that mod's I18N instance, whose texts table chains to the
--- global one, so the plain read resolves mod keys and base-game keys both.
+-- The former g_modEnvironments lookup is gone rather than left dead, and the
+-- source-time mod-name local went with it as its only reader. That global does not
+-- exist in FS25 (I18N keeps modEnvironments as a private field), and the field it
+-- read was .i18n where mods.lua:453 sets .g_i18n. Inside a mod's own environment
+-- g_i18n IS that mod's I18N instance, whose texts table chains to the global one,
+-- so the plain read resolves mod keys and base-game keys both.
 --
 -- Mirrors DogEarlyWarning.formatWarning (RSF-F192), already covered by
 -- tools/test/lua/RSF-F192-dog_warning_l10n_test.lua.
