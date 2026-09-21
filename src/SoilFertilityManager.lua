@@ -1402,6 +1402,82 @@ end
 
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
+-- Deferred fill type registration retry (dedicated server timing fix: #431)
+-- Also re-patches ALL vehicles every frame until all custom types are resolvable,
+-- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
+-- are handled without depending on _sprayTypesComplete.
+--
+-- Lifted out of update() so it can be driven directly by a test. update() runs a
+-- dozen unrelated systems after this point, and a bar that had to survive all of
+-- them to reach its assertions would be testing those instead of this.
+--
+-- WHAT WAS WRONG, from the 2026-09-21 session log this rewrite is built on:
+--   19:49:55.179  reapplyFillUnitPatch reports unavailable, and spray types report
+--                 64 registered with 0 skipped, so _sprayTypesComplete became true
+--   19:49:55.293  "still unavailable after 120 retries"
+--   19:51:24.700  Entered Gameplay, ie. isMissionStarted only becomes true HERE
+--   19:51:28.150  the dependency actually arrives: 13 solid + 49 liquid detected
+--   19:51:28.151  Hook installation complete: 33/33 successful, 0 failed
+-- Both warnings landed about 89 seconds before the mission started and 93 before
+-- the thing they were waiting for existed, and the feature then worked perfectly.
+--
+-- The old loop did NOT burn a 120 budget. Each of those two warnings appears
+-- exactly once in a log whose logger does not deduplicate, so the body ran a
+-- SINGLE tick: 121 was assigned as a "stop" sentinel, and the unconditional
+-- increment at the top of the next tick walked it straight to 122, which was the
+-- give-up branch. Success and failure therefore reached the same warning, on every
+-- load, having retried zero times. Raising 120 would not have changed one line of
+-- that; the budget was never the mechanism.
+--
+-- The retry now ends on the real completion signal (spray types complete AND the
+-- fill unit re-patch reporting true) and the timeout is only a ceiling for a
+-- genuinely broken setup. The ceiling is MISSION time: isMissionStarted is the
+-- engine's own signal, set in BaseMission:onStartMission (BaseMission.lua:247)
+-- beside the "Entered Gameplay" line, its only other writer being the false
+-- initialiser at :56. isRunning is NOT that signal: BaseMission.lua:53 is one of
+-- many writers and AIJob/AITask own the others.
+function SoilFertilityManager:_updateDeferredInit(dt)
+    if self._deferredInitDone then return end
+    if not self.soilSystem or not self.soilSystem.hookManager then return end
+
+    local hm = self.soilSystem.hookManager
+    hm:registerCustomSprayTypes()
+    local fillUnitsPatched = hm:reapplyFillUnitPatch()
+    hm:reapplyEffectTypeRemap()
+    hm:patchExistingSilos()
+
+    if hm._sprayTypesComplete and fillUnitsPatched then
+        self._deferredInitDone = true
+        if (self._deferredInitMs or 0) > 0 then
+            SoilLogger.info("[DeferredInit] Fill-type re-patch complete %.1fs after gameplay started",
+                self._deferredInitMs / 1000)
+        end
+        return
+    end
+
+    -- Not complete. Only spend the budget once the mission is actually running:
+    -- update() ticks throughout loading, and load ticks measure nothing this is
+    -- waiting for. Elapsed time rather than frames, because a frame budget means a
+    -- different amount of waiting on every machine while the dependency arrives on
+    -- a wall clock: 3.45 seconds after Entered Gameplay in the reference log.
+    if g_currentMission == nil or g_currentMission.isMissionStarted ~= true then return end
+
+    self._deferredInitMs = (self._deferredInitMs or 0) + (dt or 0)
+    if self._deferredInitMs >= SoilConstants.TIMING.DEFERRED_INIT_TIMEOUT then
+        self._deferredInitDone = true
+        -- State what is known and nothing else. The previous text volunteered
+        -- "dedicated server or modded map may have incomplete fill type loading",
+        -- naming a suspect it had no evidence for, and that guess sent a night of
+        -- investigation after a fill-type cap that was never involved.
+        SoilLogger.warning(
+            "[DeferredInit] Gave up %.1fs after gameplay started. sprayTypesComplete=%s, fillUnitRepatch=%s, fillUnitHookInstalled=%s. Custom fill types may be incomplete. No cause is established by this message.",
+            self._deferredInitMs / 1000,
+            tostring(hm._sprayTypesComplete == true),
+            tostring(fillUnitsPatched == true),
+            tostring(hm._fuSolidNames ~= nil))
+    end
+end
+
 function SoilFertilityManager:update(dt)
     -- RSF-F201: admission reset is the first input act of every update interval,
     -- before the #677 one-shot below, so its attempt marks survive the interval.
@@ -1420,29 +1496,9 @@ function SoilFertilityManager:update(dt)
         end
     end
 
-    -- Deferred fill type registration retry (dedicated server timing fix: #431)
-    -- Also re-patches ALL vehicles every frame until all custom types are resolvable,
-    -- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
-    -- are handled without depending on _sprayTypesComplete.
-    if self.soilSystem and self.soilSystem.hookManager then
-        self._deferredRetryCount = (self._deferredRetryCount or 0) + 1
-        if self._deferredRetryCount <= 120 then
-            local hm = self.soilSystem.hookManager
-            hm:registerCustomSprayTypes()
-            hm:reapplyFillUnitPatch()
-            hm:reapplyEffectTypeRemap()
-            hm:patchExistingSilos()
-            if hm._sprayTypesComplete then
-                if self._deferredRetryCount > 1 then
-                    SoilLogger.info("[DeferredInit] Fill-type re-patch complete on retry #%d", self._deferredRetryCount)
-                end
-                self._deferredRetryCount = 121  -- stop retrying once complete
-            end
-        elseif self._deferredRetryCount == 122 then
-            SoilLogger.warning("[DeferredInit] Fill types still unavailable after 120 retries - dedicated server or modded map may have incomplete fill type loading")
-            self.soilSystem.hookManager._sprayTypesComplete = true  -- stop retrying
-        end
-    end
+    -- Deferred fill type registration retry, extracted to its own method so a
+    -- test can drive it without running the rest of update(). See above.
+    self:_updateDeferredInit(dt)
 
     -- Deferred incompatibility dialog (Precision Farming)
     if self._pendingIncompatDialog then

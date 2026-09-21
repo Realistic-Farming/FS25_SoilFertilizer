@@ -6600,10 +6600,31 @@ function HookManager:reapplyFillUnitPatch()
     local manureIdx  = self._fuManureIndex  or fm:getFillTypeIndexByName("MANURE")
     local limeIdx    = self._fuLimeIndex    or fm:getFillTypeIndexByName("LIME")
 
+    -- NOT `self._fuSolidNames or {}`. That substitution is why this function used to
+    -- report a diagnosis it had never made.
+    --
+    -- _fuSolidNames is assigned from a 13-name literal in installFillUnitHook, so once
+    -- that has run it is never legitimately empty. Before it runs the field is nil, the
+    -- `or {}` made the loop body execute zero times, and `found` stayed 0 with
+    -- missingNames empty. The `found == 0` test below then announced "custom fill types
+    -- still unavailable (missing: )" with nothing after the colon, which is zero names
+    -- CHECKED being reported as zero names FOUND.
+    --
+    -- Those are different facts and only one of them is a problem. Returning early here
+    -- keeps the `found == 0` branch meaning what it says: we looked, and nothing we
+    -- expected was registered.
+    if self._fuSolidNames == nil then
+        if not self._loggedFuHookPending then
+            self._loggedFuHookPending = true
+            SoilLogger.debug("[DeferredInit] reapplyFillUnitPatch: installFillUnitHook has not run yet, so there is nothing to re-patch (this is normal during load)")
+        end
+        return false
+    end
+
     local solidIdxs, liquidIdxs, manureIdxs, limeIdxs = {}, {}, {}, {}
     local found, missing = 0, 0
     local missingNames = {}
-    for _, name in ipairs(self._fuSolidNames or {}) do
+    for _, name in ipairs(self._fuSolidNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then table.insert(solidIdxs, idx); found = found + 1
         else missing = missing + 1; table.insert(missingNames, name) end
