@@ -35,6 +35,77 @@ local function sfResolveFilename(self, superFunc)
 end
 GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilename, sfResolveFilename)
 
+-- =========================================================
+-- FILL TYPE INDEX WIDTH FLOOR (absorbs FillType Extender)
+-- =========================================================
+-- Raise the engine's fill-type index width to 10 (a cap of 1023 fill types) so
+-- players on large maps do not need FillType Extender alongside this mod.
+--
+-- TWO CLAIMS THAT LOOK ALIKE AND ARE NOT THE SAME CLAIM. Only the second one
+-- justifies this block, and they were conflated for most of an evening.
+--   1. "Our fill type warnings are caused by the 255 cap, and FTE prevents them."
+--      FALSE. Those warnings fired with FTE loaded AND with FTE disabled, about 27
+--      seconds before gameplay started. They were the deferred-init defect, fixed
+--      in #970. This block does not touch them.
+--   2. "Some large maps genuinely exceed 255 fill types." TRUE, and it is the
+--      whole reason for this block. Known cases: Null Creek, Witcombe, No Creek.
+--      Measured case: a tester's River Bend session carried at least 513
+--      registered fill types, read from the live engine registry.
+--
+-- WHY 10 AND NOT FILLTYPE EXTENDER'S 9, deliberately. A 9-bit floor caps at 511,
+-- and the one heavy modset we have actually measured is at 513 or more, so 9 would
+-- not load it. Matching FTE's number would have shipped the shape of the
+-- capability without reaching the cases that motivated it. A player dropping FTE
+-- still sees no regression, because 10 is strictly above 9 and this never lowers.
+-- At 10 we match Realistic Livestock exactly.
+--
+-- THE GUARD IS MANDATORY, NOT STYLISTIC. Realistic Livestock raises this same
+-- constant to 10 at its own file load, and other mods in the ecosystem go higher.
+-- An unconditional assignment would LOWER the width whenever such a mod sourced
+-- first, silently truncating a width another mod had already established, and the
+-- symptom would be a multiplayer desync on someone else's server rather than
+-- anything visible here. Only ever raise.
+--
+-- TOP-LEVEL FILE SCOPE IS REQUIRED, not a load callback. Verified against the
+-- decompiled tree: extraSourceFiles are sourced at mods.lua:933-937, a mod's own
+-- fill types are only QUEUED at mods.lua:1070-1073 (addModWithFillTypes is
+-- table.insert into modsToLoad, FillTypeManager.lua:76-78) and are registered
+-- later from loadModFillTypes, called as an async task at mission00.lua:261. The
+-- cap is recomputed from this constant on EVERY addFillType call
+-- (FillTypeManager.lua:203-204, `2 ^ FillTypeManager.SEND_NUM_BITS - 1`) rather
+-- than cached, so a raise at source time is seen by every registration. The same
+-- raise inside a callback would land after registration and do nothing.
+--
+-- WHAT THIS DOES AND DOES NOT DO FOR BALES. Of the 81 engine sites reading this
+-- constant, exactly two use the SIGNED variant: Baler.lua:672 streamReadIntN and
+-- :712 streamWriteIntN. Signed N bits covers -2^(N-1)..2^(N-1)-1, so at the
+-- default 8 a bale whose fill type index exceeds 127 already wraps today. Raising
+-- does NOT "cover the whole index space", because the cap is derived from the same
+-- constant and moves with it: at 10 the ceiling becomes 1023 while the signed
+-- field reaches 511, so the wrap lands at 512..1023. No value of this constant
+-- fixes it, since a signed field cannot cover an unsigned index space derived from
+-- that same field; raising only moves which indices wrap.
+--
+-- Stated plainly rather than buried: the measured 513-fill-type setup sits inside
+-- that wrapped range. That figure is a TESTER REPORT, cited line by line in
+-- src/utils/SoilFillTypeWidth.lua rather than measured on a dev machine. It also
+-- sits inside that range TODAY, because Realistic Livestock already raises this
+-- constant to 10 on that machine, so nothing gets worse for anyone from this
+-- change.
+-- introduce or can repair here. Bale.lua's own sites (:81, :114, :150, :174) are
+-- unsigned, so standalone bales are unaffected.
+-- Read from the decompiled source, NOT observed in game by anyone.
+--
+-- Sourced and called here, before every other module, so the raise is in force for
+-- the whole of this mod's load and for every later fill type registration.
+source(modDirectory .. "src/utils/SoilFillTypeWidth.lua")
+local sfWidthRaised, sfWidthNow = SoilFillTypeWidth.applyFloor()
+if sfWidthRaised then
+    print(string.format(
+        "[SoilFertilizer] Fill type index width raised to %d (%d fill types). FillType Extender is not required.",
+        sfWidthNow, SoilFillTypeWidth.maxFillTypes(sfWidthNow)))
+end
+
 -- Source all required files (order matters: dependencies first)
 -- 1. Utilities and config (no dependencies)
 source(modDirectory .. "src/utils/Logger.lua")
