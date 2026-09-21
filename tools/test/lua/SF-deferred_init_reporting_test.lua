@@ -222,3 +222,73 @@ do
     T.ok("E3: and the warning names what it looked for",
         joined(logged.warning):find("UREA", 1, true) ~= nil)
 end
+
+-- ── GROUP F: changing the call FREQUENCY must not change the warning frequency ─
+--
+-- This group exists because of the fix itself, not because of the original defect.
+-- Before this PR the deferred loop reached reapplyFillUnitPatch exactly once per
+-- load, so its warnings could not repeat no matter how they were written. The loop
+-- now runs every tick until the work completes, which is the whole point, and that
+-- turns any unguarded warning into one line PER FRAME while the condition holds.
+--
+-- On a dedicated server with late fill types (#431, the case this retry exists for)
+-- that is thousands of identical lines, and they would bury the give-up message
+-- carrying the real diagnostics. A fix for a misleading log that floods the log
+-- instead has not improved anyone's morning.
+do
+    local TICKS = 400
+
+    -- F1: no fill type manager at all.
+    captureLogs()
+    g_fillTypeManager = nil
+    local hm1 = setmetatable({}, { __index = HookManager })
+    for _ = 1, TICKS do HookManager.reapplyFillUnitPatch(hm1) end
+    T.eq("F1: 'g_fillTypeManager not available' warns once, not once per tick",
+        countMatching(logged.warning, "g_fillTypeManager not available"), 1)
+
+    -- F2: names present, none resolvable, set never changes.
+    captureLogs()
+    local hm2 = setmetatable({
+        _fuFm = { getFillTypeIndexByName = function() return nil end },
+        _fuSolidNames = { "UREA", "AN" },
+    }, { __index = HookManager })
+    for _ = 1, TICKS do HookManager.reapplyFillUnitPatch(hm2) end
+    T.eq("F2: an unchanging missing set warns once across 400 ticks",
+        countMatching(logged.warning, "still unavailable"), 1)
+
+    -- F3: pins WHY a plain one-shot is correct here rather than a set-keyed guard.
+    -- This warning is reachable only when `found == 0`, ie. when NOTHING resolved, so
+    -- the missing list is always the complete name list. The moment any single name
+    -- resolves, the branch is not reached at all. A first draft keyed the guard on the
+    -- missing set so a shrinking set could speak again; this assertion is what proved
+    -- that state unreachable, and the guard was simplified rather than left looking
+    -- like it handled a case it could never see.
+    captureLogs()
+    local resolvable = {}
+    local hm3 = setmetatable({
+        _fuFm = { getFillTypeIndexByName = function(_s, n) return resolvable[n] end },
+        _fuSolidNames = { "UREA", "AN" },
+    }, { __index = HookManager })
+    for _ = 1, 10 do HookManager.reapplyFillUnitPatch(hm3) end
+    T.eq("F3: warns once while nothing resolves",
+        countMatching(logged.warning, "still unavailable"), 1)
+    T.ok("F3: and that one line names the COMPLETE list, never a partial one",
+        logged.warning[1]:find("UREA", 1, true) ~= nil
+        and logged.warning[1]:find("AN", 1, true) ~= nil)
+
+    resolvable["UREA"] = 42          -- one name arrives: found becomes non-zero
+    for _ = 1, 10 do HookManager.reapplyFillUnitPatch(hm3) end
+    T.eq("F3: once ANY name resolves the warning stops entirely, no partial-set line",
+        countMatching(logged.warning, "still unavailable"), 1)
+
+    -- F4: types resolve, but there is no vehicle system to patch.
+    captureLogs()
+    g_currentMission = {}
+    local hm4 = setmetatable({
+        _fuFm = { getFillTypeIndexByName = function() return 7 end },
+        _fuSolidNames = { "UREA" },
+    }, { __index = HookManager })
+    for _ = 1, TICKS do HookManager.reapplyFillUnitPatch(hm4) end
+    T.eq("F4: 'no vehicleSystem.vehicles' warns once, not once per tick",
+        countMatching(logged.warning, "no vehicleSystem.vehicles"), 1)
+end

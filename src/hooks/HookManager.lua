@@ -6596,9 +6596,21 @@ end
 -- which is how the deferred init could consider itself finished while this function
 -- had never once succeeded.
 function HookManager:reapplyFillUnitPatch()
+    -- EVERY warning in this function is one-shot, and that is load-bearing rather than
+    -- tidiness. Before this PR the deferred loop reached here exactly once per load, so
+    -- an unguarded warning could not repeat. The loop now runs every tick until the work
+    -- actually completes, which is the point of the fix, and that turns each unguarded
+    -- warning into one line PER FRAME for as long as the condition holds. On a dedicated
+    -- server with late fill types, which is #431 and the whole reason this retry exists,
+    -- that is thousands of identical lines burying the give-up message that carries the
+    -- real diagnostics. The frequency of these messages must not change just because the
+    -- call frequency did.
     local fm = self._fuFm or g_fillTypeManager
     if not fm then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        if not self._loggedFuNoFillTypeManager then
+            self._loggedFuNoFillTypeManager = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        end
         return false
     end
 
@@ -6650,13 +6662,28 @@ function HookManager:reapplyFillUnitPatch()
     end
 
     if found == 0 then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        -- A plain one-shot, deliberately, after trying to be cleverer than this.
+        --
+        -- The first attempt keyed the guard on the missing SET, so that a shrinking set
+        -- could speak again while an unchanging one stayed quiet. The bar proved that
+        -- state is unreachable: this branch runs only when `found == 0`, meaning NOTHING
+        -- in _fuSolidNames resolved, so missingNames is always the complete list. The
+        -- moment a single name resolves, found is non-zero and this warning is not
+        -- reached at all. There is exactly one possible set here, and keying on it was
+        -- sophistication that could never fire.
+        if not self._loggedFuAllMissing then
+            self._loggedFuAllMissing = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        end
         return false  -- still not available
     end
 
     local vehicleSystem = g_currentMission and g_currentMission.vehicleSystem
     if not vehicleSystem or not vehicleSystem.vehicles then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        if not self._loggedFuNoVehicles then
+            self._loggedFuNoVehicles = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        end
         return false
     end
 
@@ -6919,7 +6946,7 @@ end
 -- If fill types weren't in g_fillTypeManager at install time (dedi server),
 -- the remap table is sparsely populated. Since it's a Lua table reference,
 -- we can add missing entries directly - the closures automatically see them.
--- Called by SoilFertilityManager:update() alongside reapplyFillUnitPatch().
+-- Called by SoilFertilityManager:_updateDeferredInit() alongside reapplyFillUnitPatch().
 function HookManager:reapplyEffectTypeRemap()
     local remap = self._effectTypeRemap
     if not remap then return end

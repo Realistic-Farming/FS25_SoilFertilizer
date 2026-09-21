@@ -101,11 +101,32 @@ def m4(mgr, hook):
     return mgr.replace(needle, "if hm._sprayTypesComplete then", 1), hook
 
 
+def m5(mgr, hook):
+    """One-shot log guards never latch, so warnings repeat every tick.
+
+    Models the state this PR would have shipped without Bob's MAJOR: the retry now
+    runs every frame instead of once per load, so an unlatched guard is thousands
+    of identical lines burying the give-up diagnostics.
+    """
+    flags = ["_loggedFuNoFillTypeManager", "_loggedFuAllMissing",
+             "_loggedFuNoVehicles", "_loggedFuHookPending"]
+    out, changed = hook, 0
+    for f in flags:
+        needle = "self.%s = true" % f
+        if needle in out:
+            out = out.replace(needle, "self.%s = false" % f, 1)
+            changed += 1
+    if changed != len(flags):
+        return None, None
+    return mgr, out
+
+
 MUTANTS = [
     ("M1 reapplyFillUnitPatch iterates `_fuSolidNames or {}` again", m1),
     ("M2 budget is spent during load (no isMissionStarted gate)", m2),
     ("M3 warning invents 'dedicated server or modded map'", m3),
     ("M4 completion ignores the fill unit re-patch result", m4),
+    ("M5 one-shot log guards never latch, warnings repeat per tick", m5),
 ]
 
 
