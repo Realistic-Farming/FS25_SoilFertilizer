@@ -87,9 +87,11 @@ GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilenam
 -- that same field; raising only moves which indices wrap.
 --
 -- Stated plainly rather than buried: the measured 513-fill-type setup sits inside
--- that wrapped range. It also sits there TODAY, because Realistic Livestock
--- already raises this constant to 10 on that machine, so nothing gets worse for
--- anyone as a result of this change. It is an engine defect we inherit, not one we
+-- that wrapped range. That figure is a TESTER REPORT, cited line by line in
+-- src/utils/SoilFillTypeWidth.lua rather than measured on a dev machine. It also
+-- sits inside that range TODAY, because Realistic Livestock already raises this
+-- constant to 10 on that machine, so nothing gets worse for anyone from this
+-- change.
 -- introduce or can repair here. Bale.lua's own sites (:81, :114, :150, :174) are
 -- unsigned, so standalone bales are unaffected.
 -- Read from the decompiled source, NOT observed in game by anyone.

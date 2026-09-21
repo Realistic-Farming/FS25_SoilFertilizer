@@ -145,10 +145,50 @@ do
     T.eq("F2: at FillType Extender's 9, 511, which is BELOW the measured 513", SoilFillTypeWidth.maxFillTypes(9), 511)
     T.eq("F3: at our floor of 10, 1023", SoilFillTypeWidth.maxFillTypes(10), 1023)
     -- The reason the floor is 10 and not 9, as a number rather than an argument.
-    local MEASURED = 513   -- live engine indices in a tester's River Bend session
+    --
+    -- CITED SO IT CAN BE RE-RUN RATHER THAN TRUSTED. A bench asserting a bare
+    -- measurement reads as settled fact while being uncheckable by the next reader,
+    -- which makes it weaker than not asserting it at all. Bob raised exactly that
+    -- and was right to: he could not reach this log, because it is not in any game
+    -- log path. On his machine the equivalent numbers are 474 prices and a highest
+    -- index of 495, which is a different machine and a different modset.
+    --
+    -- Source: Wizard's River Bend session, 2026-09-21, delivered through Discord to
+    --   C:\Users\tison\.claude\channels\discord\inbox\1790024913586-1551700977298706484.txt
+    -- Two lines carry it, and the second is the one that matters:
+    --   :3083  "[MDM] MarketEngine: snapshotted 491 base prices"  (a COUNT)
+    --   :6229  "[MDM] MarketScreenGraph: seeded buffer for fillType 513"  (an INDEX,
+    --          the highest in the file)
+    -- Note 491 also appears as an index at :6207, so count and index must not be
+    -- crossed here; the count line is :3083 and nothing else.
+    --
+    -- WHY AN INDEX OF 513 CAN EXIST AT ALL, which is the corroboration rather than
+    -- the observation: 513 is impossible under a 511 cap, so something raised the
+    -- width. FS25_RealisticLivestockRM is loaded at :1161 of that log and raises it
+    -- to 10 at file load, silently, with no print of its own. So that setup reaches
+    -- 513 only because RL is already raising it, and WITHOUT RL it would not load
+    -- at 9. That is precisely F3b's claim, arrived at from the opposite direction.
+    --
+    -- Why the index is the lower bound on the registry: MarketEngine keys prices by
+    -- fillType.index taken from g_fillTypeManager:getFillTypes(), and addFillType
+    -- assigns index = #fillTypes + 1, so an index of 513 means at least 513 were
+    -- registered. And the entries are live rather than restored junk: MDM restored
+    -- 576 rows from a legacy save by raw index, but cleanupStaleEntries purges any
+    -- index absent from the live registry, it is called unconditionally on the
+    -- server path, and the log shows zero purges. That it RAN is provable rather
+    -- than assumed, because "economic model latched" is logged from six lines after
+    -- the purge call and is present in the file.
+    local MEASURED = 513
     T.ok("F3b: 9 bits would NOT load the measured 513-fill-type setup",
         SoilFillTypeWidth.maxFillTypes(9) < MEASURED)
     T.ok("F3c: our floor of 10 does", SoilFillTypeWidth.maxFillTypes(FLOOR) >= MEASURED)
+    -- F3d is the SAME conclusion with no measurement in it at all. StockGuard's own
+    -- cited record puts Realistic Livestock at 10, so sitting there gives one agreed
+    -- floor instead of two competing ones. If the log above is ever lost, the reason
+    -- for 10 over 9 survives in this assertion alone.
+    local RL_RECORDED_FLOOR = 10   -- StockGuard SGCapacity.ADAPTERS, realisticLivestock
+    T.eq("F3d: and 10 is where Realistic Livestock already sits, measurement aside",
+        FLOOR, RL_RECORDED_FLOOR)
 
     -- The Baler's two SIGNED sites (Baler.lua:672, :712) cover
     -- -2^(bits-1) .. 2^(bits-1)-1, while the cap above is unsigned. The signed

@@ -38,10 +38,25 @@ SoilFillTypeWidth = SoilFillTypeWidth or {}
 --- The floor this mod guarantees. 10 bits, a cap of 1023 fill types.
 ---
 --- DELIBERATELY ABOVE FillType Extender's 9, and that choice is the point of the
---- change rather than an incidental detail. A 9-bit floor caps at 511, and the one
---- heavy modset we have actually measured, Wizard's River Bend session, carries at
---- least 513 registered fill types. Matching FTE's number would have shipped the
---- shape of the capability without reaching the cases that motivated it.
+--- change rather than an incidental detail. Two independent reasons agree on 10:
+---
+--- 1. MEASURED, and cited so it can be re-run rather than trusted. A 9-bit floor
+---    caps at 511, and a tester's River Bend session carries at least 513 live
+---    fill types. Source: the log delivered through Discord at
+---    C:\Users\tison\.claude\channels\discord\inbox\1790024913586-1551700977298706484.txt
+---    line 3083 "snapshotted 491 base prices" (a COUNT) and line 6229
+---    "seeded buffer for fillType 513" (the highest INDEX). Beware that 491 also
+---    appears as an index at :6207; the count is :3083 and nothing else. This log
+---    is from one machine and is not reproducible from any log on ours, where the
+---    equivalent figures are 474 and 495.
+---
+--- 2. UNMEASURED, and it survives if that log is ever lost. StockGuard's own
+---    source-cited record puts Realistic Livestock at 10. Sitting exactly there
+---    means a session with both mods has one agreed floor rather than two
+---    competing ones, and the ADAPTERS registry gains no new shape.
+---
+--- Matching FTE's 9 would have shipped the shape of the capability without
+--- reaching the cases that motivated it.
 ---
 --- A player dropping FTE still sees no regression, because 10 is strictly above 9
 --- and this only ever raises. At 10 we match Realistic Livestock exactly, which is
