@@ -543,6 +543,7 @@
     <e k="sf_treat_action_optimal" v="Ideal - Nenhuma ação necessária." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Aplique CALCÁRIO ou CALCÁRIO LÍQUIDO para aumentar o pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplique GESSO para diminuir o pH / melhorar a estrutura." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Incorpore ESTERCO, COMPOSTO ou pique a palha." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitore. Mantenha os aportes orgânicos." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Aplique UAN32, UREIA ou AMÔNIA ANIDRA." eh="ebc225b0" />

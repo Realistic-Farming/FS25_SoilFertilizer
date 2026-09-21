@@ -522,6 +522,7 @@
     <e k="sf_treat_action_optimal" v="Optimalt - Ingen åtgärd krävs." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Sprid KALK eller FLYTANDE KALK för att höja pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Sprid GIPS för att sänka pH / förbättra strukturen." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Ploj ner STALLGÖDSEL, KOMPOST eller hacka halm." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Övervaka. Behåll organiska tillsatser." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Sprid UAN32, UREA eller VATTENFRITT AMMONIAK." eh="ebc225b0" />

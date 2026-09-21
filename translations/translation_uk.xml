@@ -522,6 +522,7 @@
     <e k="sf_treat_action_optimal" v="Оптимально - дій не потрібно." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Внесіть ВАПНО для підвищення pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Внесіть ГІПС для зниження pH / покращення структури." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Заоріть ГНІЙ, КОМПОСТ або подрібніть солому." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Моніторинг. Підтримуйте рівень органіки." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Внесіть КАС-32, КАРБАМІД або БЕЗВОДНИЙ АМІАК." eh="ebc225b0" />

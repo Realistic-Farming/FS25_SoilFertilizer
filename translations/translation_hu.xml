@@ -541,6 +541,7 @@
     <e k="sf_treat_action_optimal" v="Optimális - nincs szükség beavatkozásra." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Alkalmazzon MESZET a pH emeléséhez." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Alkalmazzon GIPSZET a pH csökkentéséhez / szerkezetjavításhoz." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Szántson be TRÁGYÁT, KOMPOSZTOT vagy darált szalmát." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Figyelés. Tartsa fenn a szerves bevitelt." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Alkalmazzon UAN32-t, KARBAMIDOT vagy VÍZMENTES AMMÓNIÁT." eh="ebc225b0" />

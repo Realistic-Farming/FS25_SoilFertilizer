@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Optimální - Není vyžadována žádná akce." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Aplikujte VÁPNO nebo TEKUTÉ VÁPNO ke zvýšení pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplikujte SÁDROVEC ke snížení pH / zlepšení struktury." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Zaorejte HNŮJ, KOMPOST nebo rozdrcenou slámu." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Sledujte. Udržujte organické vstupy." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Aplikujte UAN32, MOČOVINU nebo BEZVODÝ AMONIAK." eh="ebc225b0" />

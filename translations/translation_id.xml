@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - Tidak perlu tindakan." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Terapkan KAPUR atau KAPUR CAIR untuk meningkatkan pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Terapkan GIPS untuk menurunkan pH / memperbaiki struktur." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Bajak KOTORAN HEWAN, KOMPOS, atau cacah jerami." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitor. Pertahankan input organik." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Terapkan UAN32, UREA, atau ANHIDRAT." eh="ebc225b0" />

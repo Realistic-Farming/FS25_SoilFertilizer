@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - No action needed." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Apply LIME or LIQUID LIME to raise pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Apply GYPSUM to lower pH / improve structure." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Plow in MANURE, COMPOST, or chop straw." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitor. Maintain organic inputs." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Apply UAN32, UREA, or ANHYDROUS." eh="ebc225b0" />

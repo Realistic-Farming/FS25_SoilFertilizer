@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="最佳狀態 - 無需採取行動。" eh="4501a96b" />
     <e k="sf_treat_action_lime" v="施用石灰或液態石灰以提高 pH 值。" eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="施用石膏以降低 pH 值 / 改善結構。" eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="耕入廄肥、堆肥，或粉碎秸稈。" eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="監測中。維持有機質投入。" eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="施用 UAN32、尿素或無水氨。" eh="ebc225b0" />

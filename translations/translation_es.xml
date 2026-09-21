@@ -522,6 +522,7 @@
     <e k="sf_treat_action_optimal" v="Óptimo - Sin acción necesaria." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Aplica CAL o CAL LÍQUIDA para subir el pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplica YESO para bajar el pH / mejorar estructura." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Labra con ESTIÉRCOL, COMPOST o pica paja." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitorear. Mantener aportes orgánicos." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Aplica UAN32, UREA o ANHIDRO." eh="ebc225b0" />
