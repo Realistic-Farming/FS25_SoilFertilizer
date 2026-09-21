@@ -18,6 +18,14 @@ SoilConstants.TIMING = {
     UPDATE_INTERVAL = 30000,     -- ms between periodic checks
     FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in (already season-scaled at its read site by daysPerMonth; do NOT season-scale again, see DURATION)
     MAX_DAILY_CATCHUP = 10,      -- cap on skipped days simulated in one catch-up pass
+    -- Ceiling on the deferred fill-type re-patch, measured in MISSION time (ms elapsed
+    -- after isMissionStarted), never in frames and never during load. It is a safety
+    -- stop for a genuinely broken setup, NOT the mechanism that decides success: the
+    -- loop finishes the moment spray types are complete and the fill unit re-patch
+    -- reports true. 30s is deliberately far above the 3.45s the dependency took to
+    -- arrive after Entered Gameplay in the 2026-09-21 reference log, so a slow or
+    -- heavily modded load ends by completing rather than by timing out.
+    DEFERRED_INIT_TIMEOUT = 30000,
 }
 
 -- ========================================

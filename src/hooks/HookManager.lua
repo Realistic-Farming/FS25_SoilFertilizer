@@ -6586,12 +6586,31 @@ end
 -- On dedicated servers, fill types from fillTypes.xml may not be registered in
 -- g_fillTypeManager at the time installFillUnitHook runs (inside loadMission00Finished).
 -- This results in empty solidIndices/liquidIndices and a no-op retroactive patch.
--- SoilFertilityManager:update() calls this once _sprayTypesComplete is false, after
--- a small delay, to re-resolve indices and re-patch vehicles once fill types are available.
+-- SoilFertilityManager:_updateDeferredInit() calls this every tick until it returns
+-- true, to re-resolve indices and re-patch vehicles once fill types are available.
+--
+-- The RETURN VALUE is half of that caller's completion test, so it has to mean
+-- something: false is "not done, call me again", true is "indices resolved and
+-- vehicles patched". It is not a success/failure report about the mod. The caller
+-- previously ignored it entirely and keyed completion on _sprayTypesComplete alone,
+-- which is how the deferred init could consider itself finished while this function
+-- had never once succeeded.
 function HookManager:reapplyFillUnitPatch()
+    -- EVERY warning in this function is one-shot, and that is load-bearing rather than
+    -- tidiness. Before this PR the deferred loop reached here exactly once per load, so
+    -- an unguarded warning could not repeat. The loop now runs every tick until the work
+    -- actually completes, which is the point of the fix, and that turns each unguarded
+    -- warning into one line PER FRAME for as long as the condition holds. On a dedicated
+    -- server with late fill types, which is #431 and the whole reason this retry exists,
+    -- that is thousands of identical lines burying the give-up message that carries the
+    -- real diagnostics. The frequency of these messages must not change just because the
+    -- call frequency did.
     local fm = self._fuFm or g_fillTypeManager
     if not fm then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        if not self._loggedFuNoFillTypeManager then
+            self._loggedFuNoFillTypeManager = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        end
         return false
     end
 
@@ -6600,10 +6619,31 @@ function HookManager:reapplyFillUnitPatch()
     local manureIdx  = self._fuManureIndex  or fm:getFillTypeIndexByName("MANURE")
     local limeIdx    = self._fuLimeIndex    or fm:getFillTypeIndexByName("LIME")
 
+    -- NOT `self._fuSolidNames or {}`. That substitution is why this function used to
+    -- report a diagnosis it had never made.
+    --
+    -- _fuSolidNames is assigned from a 13-name literal in installFillUnitHook, so once
+    -- that has run it is never legitimately empty. Before it runs the field is nil, the
+    -- `or {}` made the loop body execute zero times, and `found` stayed 0 with
+    -- missingNames empty. The `found == 0` test below then announced "custom fill types
+    -- still unavailable (missing: )" with nothing after the colon, which is zero names
+    -- CHECKED being reported as zero names FOUND.
+    --
+    -- Those are different facts and only one of them is a problem. Returning early here
+    -- keeps the `found == 0` branch meaning what it says: we looked, and nothing we
+    -- expected was registered.
+    if self._fuSolidNames == nil then
+        if not self._loggedFuHookPending then
+            self._loggedFuHookPending = true
+            SoilLogger.debug("[DeferredInit] reapplyFillUnitPatch: installFillUnitHook has not run yet, so there is nothing to re-patch (this is normal during load)")
+        end
+        return false
+    end
+
     local solidIdxs, liquidIdxs, manureIdxs, limeIdxs = {}, {}, {}, {}
     local found, missing = 0, 0
     local missingNames = {}
-    for _, name in ipairs(self._fuSolidNames or {}) do
+    for _, name in ipairs(self._fuSolidNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then table.insert(solidIdxs, idx); found = found + 1
         else missing = missing + 1; table.insert(missingNames, name) end
@@ -6622,13 +6662,28 @@ function HookManager:reapplyFillUnitPatch()
     end
 
     if found == 0 then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        -- A plain one-shot, deliberately, after trying to be cleverer than this.
+        --
+        -- The first attempt keyed the guard on the missing SET, so that a shrinking set
+        -- could speak again while an unchanging one stayed quiet. The bar proved that
+        -- state is unreachable: this branch runs only when `found == 0`, meaning NOTHING
+        -- in _fuSolidNames resolved, so missingNames is always the complete list. The
+        -- moment a single name resolves, found is non-zero and this warning is not
+        -- reached at all. There is exactly one possible set here, and keying on it was
+        -- sophistication that could never fire.
+        if not self._loggedFuAllMissing then
+            self._loggedFuAllMissing = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        end
         return false  -- still not available
     end
 
     local vehicleSystem = g_currentMission and g_currentMission.vehicleSystem
     if not vehicleSystem or not vehicleSystem.vehicles then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        if not self._loggedFuNoVehicles then
+            self._loggedFuNoVehicles = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        end
         return false
     end
 
@@ -6891,7 +6946,7 @@ end
 -- If fill types weren't in g_fillTypeManager at install time (dedi server),
 -- the remap table is sparsely populated. Since it's a Lua table reference,
 -- we can add missing entries directly - the closures automatically see them.
--- Called by SoilFertilityManager:update() alongside reapplyFillUnitPatch().
+-- Called by SoilFertilityManager:_updateDeferredInit() alongside reapplyFillUnitPatch().
 function HookManager:reapplyEffectTypeRemap()
     local remap = self._effectTypeRemap
     if not remap then return end
