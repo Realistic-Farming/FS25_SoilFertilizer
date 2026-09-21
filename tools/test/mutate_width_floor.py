@@ -6,12 +6,12 @@ The entire risk of this change lives in one comparison. Four mutants, each a
 plausible way to write it wrong rather than an arbitrary edit:
 
   M1  the guard is dropped entirely, leaving an unconditional assignment. This is
-      the version that LOWERS Realistic Livestock's 10 to 9 and desyncs someone
+      the version that LOWERS a higher width another mod set and desyncs someone
       else's server. It is the single most important thing this bar must catch.
   M2  `>=` becomes `>`, so a width already exactly at the floor is rewritten and
       reported as a raise. A second call stops being a no-op.
-  M3  the floor is 8, the engine default, so the raise silently achieves nothing
-      and a player dropping FillType Extender loses capacity.
+  M3  the floor drops to FTE's 9, which caps at 511 and would not load the
+      measured 513-fill-type setup. This is the version Tyson rejected.
   M4  the width is captured on first call instead of read live, so a later call
       decides against a number that no longer exists.
 
@@ -71,7 +71,7 @@ def guard_re(src):
 
 
 def m1(src):
-    """Drop the guard: unconditional assignment, lowers RL's 10 to 9."""
+    """Drop the guard: unconditional assignment, lowers any higher width."""
     m = guard_re(src)
     return src.replace(m.group(0), "", 1) if m else None
 
@@ -85,11 +85,11 @@ def m2(src):
 
 
 def m3(src):
-    """The floor is the engine default, so the raise achieves nothing."""
-    needle = "SoilFillTypeWidth.FLOOR_BITS = 9"
+    """The floor drops to FTE's 9: caps at 511, below the measured 513."""
+    needle = "SoilFillTypeWidth.FLOOR_BITS = 10"
     if needle not in src:
         return None
-    return src.replace(needle, "SoilFillTypeWidth.FLOOR_BITS = 8", 1)
+    return src.replace(needle, "SoilFillTypeWidth.FLOOR_BITS = 9", 1)
 
 
 def m4(src):
@@ -109,9 +109,9 @@ def m4(src):
 
 
 MUTANTS = [
-    ("M1 guard dropped: unconditional assignment lowers RL's 10", m1),
+    ("M1 guard dropped: unconditional assignment lowers a higher width", m1),
     ("M2 `>=` becomes `>`: a width at the floor is rewritten", m2),
-    ("M3 floor is 8: the raise achieves nothing", m3),
+    ("M3 floor drops to 9: caps below the measured 513", m3),
     ("M4 width captured on first call instead of read live", m4),
 ]
 

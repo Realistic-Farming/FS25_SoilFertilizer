@@ -38,22 +38,33 @@ GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilenam
 -- =========================================================
 -- FILL TYPE INDEX WIDTH FLOOR (absorbs FillType Extender)
 -- =========================================================
--- Raise the engine's fill-type index width so players do not need FillType
--- Extender installed alongside this mod. FTE does exactly this and nothing else
--- of consequence; this is the capability, not a fix for anything of ours.
+-- Raise the engine's fill-type index width to 10 (a cap of 1023 fill types) so
+-- players on large maps do not need FillType Extender alongside this mod.
 --
--- THIS IS NOT A FIX FOR OUR FILL TYPE ERRORS. The belief that those errors were a
--- 255-cap problem FTE was saving us from was tested and is false: FTE was loaded
--- and active at width 9 while this mod emitted them, and the engine's own cap
--- error, FillTypeManager.lua:206, appears zero times across six sessions. The real
--- cause was the deferred-init defect fixed in #970. Recorded here so nobody
--- re-derives the wrong version from the presence of this block.
+-- TWO CLAIMS THAT LOOK ALIKE AND ARE NOT THE SAME CLAIM. Only the second one
+-- justifies this block, and they were conflated for most of an evening.
+--   1. "Our fill type warnings are caused by the 255 cap, and FTE prevents them."
+--      FALSE. Those warnings fired with FTE loaded AND with FTE disabled, about 27
+--      seconds before gameplay started. They were the deferred-init defect, fixed
+--      in #970. This block does not touch them.
+--   2. "Some large maps genuinely exceed 255 fill types." TRUE, and it is the
+--      whole reason for this block. Known cases: Null Creek, Witcombe, No Creek.
+--      Measured case: a tester's River Bend session carried at least 513
+--      registered fill types, read from the live engine registry.
+--
+-- WHY 10 AND NOT FILLTYPE EXTENDER'S 9, deliberately. A 9-bit floor caps at 511,
+-- and the one heavy modset we have actually measured is at 513 or more, so 9 would
+-- not load it. Matching FTE's number would have shipped the shape of the
+-- capability without reaching the cases that motivated it. A player dropping FTE
+-- still sees no regression, because 10 is strictly above 9 and this never lowers.
+-- At 10 we match Realistic Livestock exactly.
 --
 -- THE GUARD IS MANDATORY, NOT STYLISTIC. Realistic Livestock raises this same
--- constant to 10 at its own file load. An unconditional assignment would LOWER the
--- width whenever that mod sourced first, silently truncating a width another mod
--- had already established, and the symptom would be a multiplayer desync on
--- someone else's server rather than anything visible here. Only ever raise.
+-- constant to 10 at its own file load, and other mods in the ecosystem go higher.
+-- An unconditional assignment would LOWER the width whenever such a mod sourced
+-- first, silently truncating a width another mod had already established, and the
+-- symptom would be a multiplayer desync on someone else's server rather than
+-- anything visible here. Only ever raise.
 --
 -- TOP-LEVEL FILE SCOPE IS REQUIRED, not a load callback. Verified against the
 -- decompiled tree: extraSourceFiles are sourced at mods.lua:933-937, a mod's own
@@ -69,14 +80,19 @@ GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilenam
 -- constant, exactly two use the SIGNED variant: Baler.lua:672 streamReadIntN and
 -- :712 streamWriteIntN. Signed N bits covers -2^(N-1)..2^(N-1)-1, so at the
 -- default 8 a bale whose fill type index exceeds 127 already wraps today. Raising
--- to 9 fixes that for indices 128..255, which is every save that can hit it now.
--- It does NOT "cover the whole index space": the cap is derived from the same
--- constant, so at 9 the ceiling moves to 511 and indices 256..511 wrap instead. No
--- value of this constant fixes it, because a signed field cannot cover an unsigned
--- index space; raising the width only moves which indices wrap. That is an engine
--- defect we inherit, not one we introduce or can repair here. Bale.lua's own sites
--- (:81, :114, :150, :174) are unsigned, so standalone bales are unaffected.
--- Read from the decompiled source, not observed in game.
+-- does NOT "cover the whole index space", because the cap is derived from the same
+-- constant and moves with it: at 10 the ceiling becomes 1023 while the signed
+-- field reaches 511, so the wrap lands at 512..1023. No value of this constant
+-- fixes it, since a signed field cannot cover an unsigned index space derived from
+-- that same field; raising only moves which indices wrap.
+--
+-- Stated plainly rather than buried: the measured 513-fill-type setup sits inside
+-- that wrapped range. It also sits there TODAY, because Realistic Livestock
+-- already raises this constant to 10 on that machine, so nothing gets worse for
+-- anyone as a result of this change. It is an engine defect we inherit, not one we
+-- introduce or can repair here. Bale.lua's own sites (:81, :114, :150, :174) are
+-- unsigned, so standalone bales are unaffected.
+-- Read from the decompiled source, NOT observed in game by anyone.
 --
 -- Sourced and called here, before every other module, so the raise is in force for
 -- the whole of this mod's load and for every later fill type registration.

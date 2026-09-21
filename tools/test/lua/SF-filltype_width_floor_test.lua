@@ -1,18 +1,26 @@
 -- FILL TYPE INDEX WIDTH FLOOR: absorbing FillType Extender's capability.
 --
--- We raise FillTypeManager.SEND_NUM_BITS from the engine default of 8 to 9 so a
--- player can drop FTE. The whole risk of this change sits in one word: it must
--- RAISE and never SET, because Realistic Livestock raises the same constant to 10
--- at its own file load, and sourcing order decides who runs first. An
--- unconditional assignment would truncate a width RL had already established, and
--- the symptom would be a multiplayer desync on a stranger's server rather than
--- anything visible on the machine that caused it.
+-- We raise FillTypeManager.SEND_NUM_BITS from the engine default of 8 to 10, a cap
+-- of 1023 fill types, so players on large maps do not need FTE. The whole risk of
+-- this change sits in one word: it must RAISE and never SET, because other mods
+-- write this same constant at their own file load and sourcing order decides who
+-- runs first. An unconditional assignment would truncate a width another mod had
+-- already established, and the symptom would be a multiplayer desync on a
+-- stranger's server rather than anything visible on the machine that caused it.
 --
--- NOT A FIX FOR OUR FILL TYPE ERRORS, and the bar says so because the code says
--- so. That premise was tested and is false: FTE was loaded and active at width 9
--- while this mod emitted those errors, and the engine's own cap error
--- (FillTypeManager.lua:206) appears zero times across six sessions. The real cause
--- was the deferred-init defect fixed in #970.
+-- WHY 10 AND NOT FTE'S 9. A 9-bit floor caps at 511, and the one heavy modset
+-- anyone has measured carries at least 513 live fill types, so 9 would not load
+-- it. F3b and F3c pin that as arithmetic rather than leaving it as an argument.
+--
+-- TWO CLAIMS THAT LOOK ALIKE AND ARE NOT THE SAME CLAIM. Only the second justifies
+-- this change, and conflating them cost an evening:
+--   1. "Our fill type warnings are caused by the 255 cap, and FTE prevents them."
+--      FALSE. They fired with FTE loaded AND with FTE disabled, about 27 seconds
+--      before gameplay began. They were the deferred-init defect, fixed in #970.
+--   2. "Some large maps genuinely exceed 255 fill types." TRUE. Known cases: Null
+--      Creek, Witcombe, No Creek. Measured case: 513+ live engine indices in a
+--      tester's River Bend session.
+-- Nothing in this bar has anything to do with claim 1.
 --
 -- Engine facts this bar encodes, each read from D:\FS25_Decoded at the line:
 --   FillTypeManager.lua:6        SEND_NUM_BITS = 8, the default we raise from
@@ -41,26 +49,33 @@ end
 
 -- ── GROUP A: the floor itself ────────────────────────────────────────────────
 do
-    T.eq("A1: the floor is 9, matching FillType Extender exactly", FLOOR, 9)
+    T.eq("A1: the floor is 10, deliberately ABOVE FillType Extender's 9", FLOOR, 10)
 
     local m = manager(DEFAULT_BITS)
     local raised, width = SoilFillTypeWidth.applyFloor(m)
     T.eq("A2: the engine default of 8 is raised", raised, true)
-    T.eq("A3: to exactly 9", m.SEND_NUM_BITS, 9)
-    T.eq("A4: and the new width is reported back", width, 9)
+    T.eq("A3: to exactly 10", m.SEND_NUM_BITS, 10)
+    T.eq("A4: and the new width is reported back", width, 10)
 end
 
 -- ── GROUP B: it must never LOWER, which is the whole risk ────────────────────
 do
-    -- Realistic Livestock sourced first and set 10.
+    -- Realistic Livestock sourced first and set 10. We now match that exactly, so
+    -- this is the equal case rather than the above case: still no write, because
+    -- the guard raises only when strictly below the floor.
     local m = manager(RL_BITS)
     local raised, width = SoilFillTypeWidth.applyFloor(m)
-    T.eq("B1: a width of 10 is NOT lowered to 9", m.SEND_NUM_BITS, 10)
+    T.eq("B1: a width already at 10 is left alone", m.SEND_NUM_BITS, 10)
     T.eq("B2: and the call reports it did not raise", raised, false)
-    T.eq("B3: reporting the width actually in force, not our floor", width, 10)
+    T.eq("B3: reporting the width actually in force", width, 10)
 
-    -- Anything above the floor is left alone, not just 10.
-    for _, bits in ipairs({ 9, 10, 11, 12, 16 }) do
+    -- A width ABOVE ours, which other ecosystem mods do set, must never be lowered.
+    -- This is the case that would desync a stranger's server.
+    local hi = manager(12)
+    SoilFillTypeWidth.applyFloor(hi)
+    T.eq("B3b: a width of 12 is NOT lowered to our 10", hi.SEND_NUM_BITS, 12)
+
+    for _, bits in ipairs({ 10, 11, 12, 16 }) do
         local mm = manager(bits)
         SoilFillTypeWidth.applyFloor(mm)
         T.eq("B4: width " .. bits .. " is left untouched", mm.SEND_NUM_BITS, bits)
@@ -77,8 +92,8 @@ do
     T.eq("C1: the first call raises", firstRaised, true)
     T.eq("C2: the second does not", secondRaised, false)
     T.eq("C3: nor the third", thirdRaised, false)
-    T.eq("C4: and the width is still 9, not 10 or 18", m.SEND_NUM_BITS, 9)
-    T.eq("C5: the second call reports the width in force", secondWidth, 9)
+    T.eq("C4: and the width is still 10, not 20", m.SEND_NUM_BITS, 10)
+    T.eq("C5: the second call reports the width in force", secondWidth, 10)
 end
 
 -- ── GROUP D: the width is read LIVE, never captured ──────────────────────────
@@ -87,17 +102,17 @@ end
 -- so that is a real sequence and not a hypothetical one.
 do
     local m = manager(DEFAULT_BITS)
-    SoilFillTypeWidth.applyFloor(m)             -- now 9
-    m.SEND_NUM_BITS = RL_BITS                   -- RL sources after us and raises to 10
+    SoilFillTypeWidth.applyFloor(m)             -- now 10
+    m.SEND_NUM_BITS = 12                        -- something else raises higher after us
     local raised = SoilFillTypeWidth.applyFloor(m)
-    T.eq("D1: a later call sees 10, not the 8 it first saw", raised, false)
-    T.eq("D2: and leaves RL's width alone", m.SEND_NUM_BITS, 10)
+    T.eq("D1: a later call sees 12, not the 8 it first saw", raised, false)
+    T.eq("D2: and leaves the higher width alone", m.SEND_NUM_BITS, 12)
 
     -- The reverse direction: something lowers it back below the floor.
     m.SEND_NUM_BITS = DEFAULT_BITS
     local raisedAgain = SoilFillTypeWidth.applyFloor(m)
     T.eq("D3: and it raises again when the live value is below the floor", raisedAgain, true)
-    T.eq("D4: back to 9", m.SEND_NUM_BITS, 9)
+    T.eq("D4: back to 10", m.SEND_NUM_BITS, 10)
 end
 
 -- ── GROUP E: a malformed or absent manager is survived, never written to ─────
@@ -127,8 +142,13 @@ end
 -- ── GROUP F: what the width actually buys, mirroring the engine's own formula ─
 do
     T.eq("F1: at the engine default, 255 fill types", SoilFillTypeWidth.maxFillTypes(8), 255)
-    T.eq("F2: at our floor, 511", SoilFillTypeWidth.maxFillTypes(9), 511)
-    T.eq("F3: at Realistic Livestock's 10, 1023", SoilFillTypeWidth.maxFillTypes(10), 1023)
+    T.eq("F2: at FillType Extender's 9, 511, which is BELOW the measured 513", SoilFillTypeWidth.maxFillTypes(9), 511)
+    T.eq("F3: at our floor of 10, 1023", SoilFillTypeWidth.maxFillTypes(10), 1023)
+    -- The reason the floor is 10 and not 9, as a number rather than an argument.
+    local MEASURED = 513   -- live engine indices in a tester's River Bend session
+    T.ok("F3b: 9 bits would NOT load the measured 513-fill-type setup",
+        SoilFillTypeWidth.maxFillTypes(9) < MEASURED)
+    T.ok("F3c: our floor of 10 does", SoilFillTypeWidth.maxFillTypes(FLOOR) >= MEASURED)
 
     -- The Baler's two SIGNED sites (Baler.lua:672, :712) cover
     -- -2^(bits-1) .. 2^(bits-1)-1, while the cap above is unsigned. The signed

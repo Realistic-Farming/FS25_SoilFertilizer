@@ -1,17 +1,31 @@
 -- =========================================================
 -- FS25 Realistic Soil & Fertilizer - Fill type index width floor
 -- =========================================================
--- Raises the engine's fill-type index width so players do not need FillType
--- Extender installed alongside this mod. FTE does exactly this and nothing else
--- of consequence, so absorbing it means adopting its floor, not copying its file.
+-- Raises the engine's fill-type index width so players on large maps do not need
+-- FillType Extender installed alongside this mod. FTE exists because the 255
+-- default is a real ceiling that real maps reach.
 --
--- THIS IS NOT A FIX FOR OUR FILL TYPE ERRORS. The belief that those errors were a
--- 255-cap problem FTE was saving us from was tested and is FALSE: FTE was loaded
--- and active at width 9 while this mod emitted them, and the engine's own cap
--- error (FillTypeManager.lua:206) appears zero times across six sessions. The real
--- cause was the deferred-init defect fixed in #970. Written here because the
--- presence of this file is exactly what would invite someone to re-derive the
--- wrong version in a month.
+-- TWO CLAIMS THAT LOOK ALIKE AND ARE NOT THE SAME CLAIM. They were conflated for
+-- most of an evening and it cost hours, so both are written down here.
+--
+--   1. "SoilFertilizer's fill type warnings are caused by the 255 cap, and FTE
+--      prevents them." FALSE. The warnings fired with FTE loaded AND with FTE
+--      disabled, roughly 27 seconds before gameplay even started. They were the
+--      deferred-init defect, fixed in #970. Nothing in this file touches them.
+--
+--   2. "Some large maps genuinely exceed 255 fill types, so players there need
+--      FTE today." TRUE, and it is the entire reason this file exists. Known
+--      cases: Null Creek, Witcombe, No Creek. Measured case: a tester's River
+--      Bend session carried at least 513 registered fill types, confirmed from
+--      the live engine registry rather than from a count of mod declarations.
+--
+-- Only claim 1 was false. Absorbing FTE is justified by claim 2 alone and needs
+-- no reference to our own warnings.
+--
+-- WHY A FUNCTION RATHER THAN THREE INLINE LINES IN main.lua: so the bench can
+-- drive the real guard instead of a copy of it. The call site stays at top-level
+-- file scope in main.lua, which is what the timing requires; this file only gives
+-- that call something addressable to test.
 --
 -- WHY A FUNCTION RATHER THAN THREE INLINE LINES IN main.lua: so the bench can
 -- drive the real guard instead of a copy of it. The call site stays at top-level
@@ -21,9 +35,18 @@
 
 SoilFillTypeWidth = SoilFillTypeWidth or {}
 
---- The floor this mod guarantees. 9 bits is FillType Extender's value, and
---- matching it exactly is the point: a player who drops FTE must see no change.
-SoilFillTypeWidth.FLOOR_BITS = 9
+--- The floor this mod guarantees. 10 bits, a cap of 1023 fill types.
+---
+--- DELIBERATELY ABOVE FillType Extender's 9, and that choice is the point of the
+--- change rather than an incidental detail. A 9-bit floor caps at 511, and the one
+--- heavy modset we have actually measured, Wizard's River Bend session, carries at
+--- least 513 registered fill types. Matching FTE's number would have shipped the
+--- shape of the capability without reaching the cases that motivated it.
+---
+--- A player dropping FTE still sees no regression, because 10 is strictly above 9
+--- and this only ever raises. At 10 we match Realistic Livestock exactly, which is
+--- also the value StockGuard already records for it.
+SoilFillTypeWidth.FLOOR_BITS = 10
 
 --- Raise FillTypeManager.SEND_NUM_BITS to the floor, never lower it.
 ---
