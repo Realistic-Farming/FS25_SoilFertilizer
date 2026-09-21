@@ -6586,8 +6586,15 @@ end
 -- On dedicated servers, fill types from fillTypes.xml may not be registered in
 -- g_fillTypeManager at the time installFillUnitHook runs (inside loadMission00Finished).
 -- This results in empty solidIndices/liquidIndices and a no-op retroactive patch.
--- SoilFertilityManager:update() calls this once _sprayTypesComplete is false, after
--- a small delay, to re-resolve indices and re-patch vehicles once fill types are available.
+-- SoilFertilityManager:_updateDeferredInit() calls this every tick until it returns
+-- true, to re-resolve indices and re-patch vehicles once fill types are available.
+--
+-- The RETURN VALUE is half of that caller's completion test, so it has to mean
+-- something: false is "not done, call me again", true is "indices resolved and
+-- vehicles patched". It is not a success/failure report about the mod. The caller
+-- previously ignored it entirely and keyed completion on _sprayTypesComplete alone,
+-- which is how the deferred init could consider itself finished while this function
+-- had never once succeeded.
 function HookManager:reapplyFillUnitPatch()
     local fm = self._fuFm or g_fillTypeManager
     if not fm then
