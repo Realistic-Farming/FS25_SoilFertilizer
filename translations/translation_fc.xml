@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="状态最佳 - 无需处理" eh="4501a96b" />
     <e k="sf_treat_action_lime" v="使用石灰/液态石灰提升酸碱度" eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="使用石膏降低酸碱度/改良土壤结构" eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="翻耕粪肥、堆肥或秸秆还田" eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="持续观察，维持有机肥投入" eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="使用UAN32、尿素或无水氨补充氮肥" eh="ebc225b0" />

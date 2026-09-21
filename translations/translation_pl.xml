@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Optymalnie - brak potrzebnych działań." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Zastosuj WAPNO lub WAPNO W PŁYNIE, aby podnieść pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Zastosuj GIPS, aby obniżyć pH / poprawić strukturę." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Przyoruj OBORNIK, KOMPOST lub siekaną słomę." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitoruj. Utrzymuj dostarczanie materii organicznej." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Zastosuj UAN32, MOCZNIK lub BEZWODNY AMONIAK." eh="ebc225b0" />

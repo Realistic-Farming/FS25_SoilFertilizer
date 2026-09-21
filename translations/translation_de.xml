@@ -539,6 +539,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - Keine Aktion erforderlich." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Kalk ausbringen, um den pH-Wert zu erhöhen." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Gips ausbringen, um den pH-Wert zu senken." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Mist oder Kompost einarbeiten. Strohmatte auf dem Feld belassen." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Zufuhr Organischer Substanz beibehalten." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="AHL-32, Harnstoff oder Ammoniumsulfat ausbringen." eh="ebc225b0" />

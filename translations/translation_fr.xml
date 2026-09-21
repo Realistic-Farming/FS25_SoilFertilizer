@@ -527,6 +527,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - Aucune action requise." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Appliquer de la CHAUX ou CHAUX LIQUIDE pour augmenter le pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Appliquer du GYPSE pour réduire le pH / améliorer la structure." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Incorporer du FUMIER, COMPOST ou broyer les résidus de paille." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Surveiller. Maintenir les apports organiques." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Appliquer UAN32, URÉE ou AMMONIAC ANHYDRE." eh="ebc225b0" />

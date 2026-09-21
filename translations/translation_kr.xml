@@ -541,6 +541,7 @@
     <e k="sf_treat_action_optimal" v="최적 - 조치 불필요." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="pH를 높이기 위해 석회 또는 액상 석회를 살포하세요." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="pH를 낮추고 구조를 개선하기 위해 석고를 살포하세요." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="퇴비, 컴포스트를 갈아엎거나 볏짚을 써세요." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="모니터링하세요. 유기물 투입을 유지하세요." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="UAN32, 요소 또는 무수 암모니아를 살포하세요." eh="ebc225b0" />

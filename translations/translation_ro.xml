@@ -543,6 +543,7 @@
     <e k="sf_treat_action_optimal" v="Optim - Nicio acțiune necesară." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Aplică VAR sau VAR LICHID pentru a crește pH-ul." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Aplică IPSOS pentru a scădea pH-ul / îmbunătăți structura." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Încorporează GUNOI DE GRAJD, COMPOST sau toacă paiele." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitorizează. Menține inputurile organice." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Aplică UAN32, UREE sau AMONIAC ANIDRU." eh="ebc225b0" />

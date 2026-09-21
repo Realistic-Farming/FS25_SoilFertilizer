@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Ottimale - Nessuna azione necessaria." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Applica CALCE o CALCE LIQUIDA per aumentare il pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Applica GESSO per abbassare il pH / migliorare la struttura." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Interra LETAME, COMPOST o paglia tritata." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitorare. Mantenere gli apporti organici." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Applica UAN32, UREA o ANIDRA." eh="ebc225b0" />

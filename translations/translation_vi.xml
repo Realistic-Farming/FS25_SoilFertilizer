@@ -522,6 +522,7 @@
     <e k="sf_treat_action_optimal" v="Tối ưu - Không cần xử lý." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Bón VÔI hoặc VÔI LỎNG để tăng pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Bón THẠCH CAO để giảm pH / cải thiện cấu trúc." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Cày vùi PHÂN CHUỒNG, COMPOST hoặc băm rơm." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Theo dõi. Duy trì đầu vào hữu cơ." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Bón UAN32, URÊ hoặc AMONIAC KHAN." eh="ebc225b0" />
