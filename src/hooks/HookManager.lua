@@ -41,7 +41,128 @@ function HookManager.new()
     self.hooks = {}
     self.installed = false
     self._sectionScratch = {}   -- reused scratch table for sprayer section loops
+    -- RSF-F196 R1a: two product-level maps with different jobs, both keyed by fill
+    -- type index and neither keyed by price.
+    --   customProductIndices  identity only. Membership of the one fixed name
+    --                         population, rebuilt whenever indices become available.
+    --   refusedProducts       a property of the PRODUCT, not of any machine, work
+    --                         area or pass. Written only by the registration path.
+    -- Neither is saved or transmitted; each peer reaches the same verdict from its
+    -- own loaded descriptors.
+    self.customProductIndices = {}
+    self.refusedProducts = {}
     return self
+end
+
+-- =========================================================
+-- RSF-F196: custom-product identity, kept apart from price
+-- =========================================================
+
+--- The one custom-product name population (V12b).
+--- Returned fresh each call because SoilBlends.appendNames APPENDS: handing out a
+--- shared table would grow it by the blend list on every rebuild.
+---@return string[]
+function HookManager.buildCustomNamePopulation()
+    local names = {
+        -- Liquid
+        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
+        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
+        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
+        -- Solid
+        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+    }
+    if SoilBlends and SoilBlends.appendNames then
+        SoilBlends.appendNames(names)   -- CD-12
+    end
+    return names
+end
+
+--- The twelve dry products (R7). A subset of the population above, named here once
+--- so the Drain Vehicle recovery and the density refusal cannot drift apart.
+HookManager.DRY_PRODUCT_NAMES = {
+    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+    "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+}
+
+--- Rebuild the identity catalogue from the one name population (V12).
+--- Membership records identity ONLY. Price is not consulted here and must not be:
+--- a product whose price arrives late is still the same product, and V12b exists
+--- because identity that disappears when price is late is how a helper decision
+--- silently falls back to a price-keyed path.
+---@return number  how many names resolved to an index
+function HookManager:rebuildCustomProductCatalogue()
+    self.customProductIndices = {}
+    if not g_fillTypeManager then return 0 end
+    local resolved = 0
+    for _, name in ipairs(HookManager.buildCustomNamePopulation()) do
+        local ok, idx = pcall(function() return g_fillTypeManager:getFillTypeIndexByName(name) end)
+        if ok and idx and idx > 0 and idx ~= FillType.UNKNOWN then
+            self.customProductIndices[idx] = true
+            resolved = resolved + 1
+        end
+    end
+    return resolved
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isCustomProduct(index)
+    return index ~= nil and self.customProductIndices[index] == true
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isRefusedProduct(index)
+    return index ~= nil and self.refusedProducts[index] ~= nil
+end
+
+--- R1b, the ONE product-intent resolver. Every refusal and helper-buy consumer
+--- calls this and no consumer invents another membership or price-keyed path.
+---
+--- Candidate priority, and the order is the argument:
+---   1. a direct non-UNKNOWN fill type supplied by the caller, including the final
+---      post-native workAreaParameters.sprayFillType. That covers an attached nurse
+---      tank, which would otherwise disappear behind a local empty unit.
+---   2. the current physical fill type of the local unit getSprayerFillUnitIndex()
+---      names. Current outranks last-valid so an actual product switch wins at once.
+---   3. that unit's native getFillUnitLastValidFillType (FillUnit.lua:699). This is
+---      the empty-tank and late-join answer: the engine retains it when the level
+---      reaches zero and syncs it in its own stream (FillUnit.lua:482 initial, :541
+---      update), so a client joining after the tank emptied reaches the same product
+---      without a new event or any transmitted verdict.
+---
+--- A candidate is accepted only when it is a catalogue member. A fresh empty unit
+--- with no last-valid custom product has NO custom intent and stays eligible for
+--- ordinary native behaviour; this does not guess one.
+---@param sprayer table|nil
+---@param directFillType number|nil
+---@return number|nil  a catalogue member index, or nil for no custom intent
+function HookManager:resolveCustomProductIntent(sprayer, directFillType)
+    if directFillType ~= nil and directFillType ~= FillType.UNKNOWN
+        and self:isCustomProduct(directFillType) then
+        return directFillType
+    end
+
+    if sprayer == nil or sprayer.getSprayerFillUnitIndex == nil then return nil end
+    local okFui, fuIdx = pcall(function() return sprayer:getSprayerFillUnitIndex() end)
+    if not okFui or fuIdx == nil then return nil end
+
+    if sprayer.getFillUnitFillType ~= nil then
+        local okFt, current = pcall(function() return sprayer:getFillUnitFillType(fuIdx) end)
+        if okFt and current ~= nil and current ~= FillType.UNKNOWN and self:isCustomProduct(current) then
+            return current
+        end
+    end
+
+    if sprayer.getFillUnitLastValidFillType ~= nil then
+        local okLast, lastValid = pcall(function() return sprayer:getFillUnitLastValidFillType(fuIdx) end)
+        if okLast and lastValid ~= nil and lastValid ~= FillType.UNKNOWN and self:isCustomProduct(lastValid) then
+            return lastValid
+        end
+    end
+
+    return nil
 end
 
 -- =========================================================
@@ -7030,16 +7151,10 @@ function HookManager:installPurchaseRefillHook()
     -- Build a lookup table: fillTypeIndex → pricePerLiter for all our custom types.
     -- Prices come from Constants (authoritative single source) and fall back to
     -- the fillTypes.xml economy values via FillTypeManager if a type isn't in Constants.
-    local ALL_CUSTOM_NAMES = {
-        -- Liquid
-        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
-        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
-        -- Solid
-        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
-    }
-    SoilBlends.appendNames(ALL_CUSTOM_NAMES)   -- CD-12
+    -- RSF-F196 V12b: ONE name population, defined at HookManager.buildCustomNamePopulation
+    -- and read here. It used to be a second copy of the same list living beside the price
+    -- table, which is how identity and price could drift apart without anything failing.
+    local ALL_CUSTOM_NAMES = HookManager.buildCustomNamePopulation()
 
     -- Prices from Constants (already defined there)
     local PRICE_OVERRIDES = {}
