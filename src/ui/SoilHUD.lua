@@ -1947,7 +1947,15 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
 
                 -- Ghost bar shows the gain remaining to reach the 90% threshold
                 local threshold = targetVolume * (SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD or 0.90)
-                local remaining = math.max(0, threshold - currentBuffer)
+                -- RSF-F196 U3 (site 4 of 4): the buffer is litres and the threshold is
+                -- kg-derived. The SAME function applyFertilizer's fully-treated check
+                -- uses converts the litres, so the ghost bar and the threshold can never
+                -- disagree. Guarded only for a bench that loads the HUD alone.
+                local bufferMass = currentBuffer
+                if HookManager and type(HookManager.massEquivalent) == "function" then
+                    bufferMass = HookManager.massEquivalent(fillType, currentBuffer)
+                end
+                local remaining = math.max(0, threshold - bufferMass)
                 
                 if remaining > 0 then
                     -- Apply replenishment rate multiplier: the actual nutrient gain in
