@@ -1141,7 +1141,11 @@ function HookManager:registerCustomSprayTypes()
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0) and priceComplete
     if not self._sprayTypesComplete then
-        SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+        if skipped > 0 then
+            SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+        else
+            SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+        end
     end
 end
 
