@@ -702,7 +702,42 @@ end
 -- five-second cadence per working vehicle; no global vehicle scan, no new
 -- subscription. The hook applies the returned factor once.
 
-function SoilFertilitySystem:updatePHWorkAuto(sprayerSelf, _dt, _workAreas)
+--- [SF-79 D] The local pH under the CURRENT work areas: the mean, over each
+--- active, non-auxiliary area, of the map value at the area's centre. The engine's
+--- work area is the parallelogram start / width / height (WorkArea.lua:289-291),
+--- whose centre is the midpoint of the width and height nodes, read through
+--- getWorldTranslation NOW, not remembered from an earlier tick. nil when no area
+--- yields a numeric sample; the caller then retains the selected rate.
+---@param soilSys table
+---@param vehicle table|nil  the sprayer, for getIsWorkAreaActive (Sprayer.lua:726)
+---@param workAreas table|nil the list the engine raised the start event with
+---@return number|nil
+function PositionalPH.sampleWorkAreasPH(soilSys, vehicle, workAreas)
+    if type(workAreas) ~= 'table' or soilSys == nil or soilSys.valueMaps == nil then return nil end
+    local aux = (WorkAreaType ~= nil) and WorkAreaType.AUXILIARY or nil
+    local sum, n = 0, 0
+    for _, wa in ipairs(workAreas) do
+        local usable = type(wa) == 'table' and (aux == nil or wa.type ~= aux)
+        if usable and vehicle ~= nil and type(vehicle.getIsWorkAreaActive) == 'function' then
+            local ok, active = pcall(vehicle.getIsWorkAreaActive, vehicle, wa)
+            if ok and active == false then usable = false end
+        end
+        if usable and wa.width ~= nil and wa.height ~= nil then
+            local okW, wx, _, wz = pcall(getWorldTranslation, wa.width)
+            local okH, hx, _, hz = pcall(getWorldTranslation, wa.height)
+            if okW and okH and type(wx) == 'number' and type(hx) == 'number'
+               and type(wz) == 'number' and type(hz) == 'number' then
+                local ph = soilSys.valueMaps:readValueAtWorld(PositionalPH.PH_LAYER,
+                    (wx + hx) * 0.5, (wz + hz) * 0.5)
+                if type(ph) == 'number' then sum, n = sum + ph, n + 1 end
+            end
+        end
+    end
+    if n == 0 then return nil end
+    return sum / n
+end
+
+function SoilFertilitySystem:updatePHWorkAuto(sprayerSelf, _dt, workAreas)
     if g_server == nil or self.settings == nil or not self.settings.enabled then return 1.0 end
     if type(self._applyPHFootprint) ~= 'function' then return 1.0 end
     local rm = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
@@ -722,19 +757,39 @@ function SoilFertilitySystem:updatePHWorkAuto(sprayerSelf, _dt, _workAreas)
         return factor
     end
 
+    -- [SF-79 D, defect 1] workAreaParameters.sprayFillType is a fill-type INDEX
+    -- (Sprayer.lua:926 assigns it from externalFillType; :316 and :922 compare it
+    -- to FillType.UNKNOWN), not a descriptor. Indexing it for a name raised inside
+    -- the caller's pcall, whose assignment happens only on success, so the factor
+    -- stayed at its initialised 1.0 on every path: AUTO had never changed a rate.
+    -- Resolve the descriptor through the manager, as every index consumer in
+    -- HookManager does.
     local spec = sprayerSelf and sprayerSelf.spec_sprayer
-    local fillType = spec and spec.workAreaParameters and spec.workAreaParameters.sprayFillType
+    local ftIdx = spec and spec.workAreaParameters and spec.workAreaParameters.sprayFillType
+    if type(ftIdx) ~= 'number' or ftIdx <= 0 or (FillType ~= nil and ftIdx == FillType.UNKNOWN) then
+        return remember(1.0)
+    end
+    local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ftIdx)
     if fillType == nil or fillType.name == nil then return remember(1.0) end
 
     local profiles = SoilConstants.FERTILIZER_PROFILES
     local profile = profiles and profiles[(fillType.name or ""):upper()]
     if profile == nil or profile.pH == nil or profile.pH == 0 then return remember(1.0) end
 
-    local x, z = self._lastSprayX, self._lastSprayZ
-    if x == nil or z == nil or not self:vmAvailable() then return remember(1.0) end
+    -- [SF-79 D, defect 2] "Use current nodes/section state, never the previous
+    -- interval's". The only coordinate this read ever had was _lastSprayX/Z,
+    -- written by the AREA hook, which runs AFTER this start hook in the same tick:
+    -- the previous tick's point, or nil on the first. The engine hands this
+    -- function the CURRENT work-area list (WorkArea.lua:126 raises the start event
+    -- with spec.workAreas; the caller passes it through), so the sample is the
+    -- local pH under those areas' nodes, read now. No area, no node or no numeric
+    -- sample retains the selected rate; nothing falls back to the stale point,
+    -- which this function no longer reads at all.
+    if not self:vmAvailable() then return remember(1.0) end
+    local ph = PositionalPH.sampleWorkAreasPH(self, sprayerSelf, workAreas)
+    if ph == nil then return remember(1.0) end
 
     local limits = SoilConstants.NUTRIENT_LIMITS
-    local ph = self.valueMaps:readValueAtWorld(PositionalPH.PH_LAYER, x, z)
     local factor = 1.0
     if type(ph) == 'number' then
         if profile.pH > 0 then
