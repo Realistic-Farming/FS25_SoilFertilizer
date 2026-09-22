@@ -16,15 +16,20 @@ local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- ── i18n helper ───────────────────────────────────────────
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n   = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 -- Word-wrap a string into lines that fit maxWidth at the given size. Uses the

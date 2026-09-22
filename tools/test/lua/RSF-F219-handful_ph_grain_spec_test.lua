@@ -357,7 +357,15 @@ getTextHeight = function() return 0.02 end
 getNormalizedScreenValues = function(a, b) return a, b end
 drawFilledRect = function() end
 RenderText = RenderText or { ALIGN_LEFT = 0, ALIGN_RIGHT = 1, ALIGN_CENTER = 2, VERTICAL_ALIGN_MIDDLE = 1 }
-g_i18n = { getText = function(_self, key) return key end }
+-- A locale in which every key is present and translates to its own name. The
+-- assertions below pin WHICH key the overlay reached for, which is why the
+-- translation is the key rather than English text. hasText must answer, and must
+-- answer true, because the repaired gates require it (I18N.lua:194); a fixture
+-- with getText alone is refused and every row would silently read as English.
+g_i18n = {
+  hasText = function(_self, key) return key ~= nil end,
+  getText = function(_self, key) return key end,
+}
 
 local function newOverlay(info, layer)
   local ov = setmetatable({
