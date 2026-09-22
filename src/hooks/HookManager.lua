@@ -108,6 +108,43 @@ HookManager.DRY_PRODUCT_NAMES = {
     "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
     "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
 }
+local DRY_PRODUCT_SET = {}
+for _, dryName in ipairs(HookManager.DRY_PRODUCT_NAMES) do DRY_PRODUCT_SET[dryName] = true end
+
+---@param name string|nil
+---@return boolean
+function HookManager.isDryProductName(name)
+    return name ~= nil and DRY_PRODUCT_SET[name] == true
+end
+
+--- RSF-F196 U2: THE conversion, in one place. A dry product's public rate is
+--- kilograms per hectare, while every stored, drained, billed and transmitted
+--- quantity is engine litres (U1). So wherever litres meet a kg/ha number, the
+--- litres are multiplied by the product's density first. That is the whole
+--- conversion; it happens at the point of use and stores nothing. Only the
+--- twelve dry products convert. Everything else is passthrough (U4): liquids,
+--- base-game FERTILIZER and LIME (dry in the public table, but not F196's), and
+--- the crop-protection buffer keys keep their exact arithmetic.
+---@param fillType table|nil  a fill-type descriptor (name, massPerLiter)
+---@return number|nil  kg per litre for one of the twelve, nil = passthrough
+function HookManager.rateKgPerLiter(fillType)
+    if fillType == nil or not HookManager.isDryProductName(fillType.name) then return nil end
+    return HookManager.densityOf(fillType)
+end
+
+--- Litres expressed as the mass a kg/ha rate can be compared with (U2/U3). The
+--- four interpretation sites (the nutrient factor, the fully-treated comparison,
+--- the litre-fallback coverage and the HUD ghost bar) all call this, so the bar
+--- and the threshold can never disagree. A dry product whose density is unusable
+--- never reaches these sites: it is refused at registration and applies nothing.
+---@param fillType table|nil
+---@param liters number
+---@return number
+function HookManager.massEquivalent(fillType, liters)
+    local kgPerLiter = HookManager.rateKgPerLiter(fillType)
+    if kgPerLiter == nil then return liters end
+    return liters * kgPerLiter
+end
 
 --- Rebuild the identity catalogue from the one name population (V12).
 --- Membership records identity ONLY. Price is not consulted here and must not be:
@@ -626,6 +663,15 @@ function HookManager:installAll(soilSystem)
     -- see-and-spray, variable rate). It runs after native's final assignment and
     -- after everything the mod already installs, so nothing later can re-arm a
     -- dose it zeroed. The overlap hook below is a PREPEND and is not in the way.
+    --
+    -- FILE ORDER ARGUES THE OPPOSITE, AND FILE ORDER IS WRONG. The body of
+    -- installSprayerStartHook (the rate multiplier append) sits near the END of
+    -- this file, textually far below installDensityRefusalHook, so a reader walking
+    -- the file top to bottom concludes the rate multiplier is appended later. What
+    -- settles append order is the CALL order in this function: the start hook is
+    -- installed above as System 1, this call comes after every other append, and
+    -- the only installs that follow it are prepends. Bob re-derived this in the
+    -- #974 cold review; it lives here so nobody has to again.
     self:installDensityRefusalHook()
 
     -- System 4: Overlap Prevention - density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
@@ -953,9 +999,21 @@ function HookManager:registerCustomSprayTypes()
                 -- removes the refusal atomically, before registering it.
                 if ft.index ~= nil then self.refusedProducts[ft.index] = nil end
 
+                -- RSF-F196 C2: the public rate is KILOGRAMS per hectare and the engine
+                -- drains LITRES, so the registered litres-per-second is the mass rate
+                -- divided by the product's density. A hectare at 1.0x then drains
+                -- exactly the configured mass (COMPOST at 0.60 kg/L draws 8,333 L/ha
+                -- where it used to draw 5,000). The tank, the wire and the bill stay in
+                -- litres; the four interpretation sites in SoilFertilitySystem and the
+                -- HUD convert litres back to mass through HookManager.massEquivalent,
+                -- so a full correct pass has the same agronomic consequence as before.
+                -- densityOf is nil only on an object that never went through the loader
+                -- (see the refusal above); that registers at factor 1, passthrough.
                 local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
-                local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
-                SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+                local kgPerLiter = HookManager.densityOf(ft) or 1
+                local customLPS  = (customRate / kgPerLiter) / 36000
+                SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha  density=%.3f kg/L  (%.0f L/ha)",
+                    name, customLPS, customRate, kgPerLiter, customRate / kgPerLiter)
 
                 g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
                 registered = registered + 1
@@ -4945,7 +5003,36 @@ function HookManager:installSprayerAreaHook()
                         local spraySpec = self.spec_sprayer
                         local fuSpec    = self.spec_fillUnit
                         if spraySpec and fuSpec and fuSpec.fillUnits then
-                            local activeFui = spraySpec.workAreaParameters.sprayFillUnitIndex
+                            -- RSF-F196 U5b: exclude the DRIVING unit by identity, using fields
+                            -- the engine actually writes. This used to read
+                            -- workAreaParameters.sprayFillUnitIndex, a field nothing assigns
+                            -- (native writes sprayVehicleFillUnitIndex, Sprayer.lua:859-931 in
+                            -- our tree), so the exclusion was always nil, every local unit
+                            -- passed it, and a single-tank custom pass was enumerated again as
+                            -- its own secondary: drained and credited TWICE. Split on where the
+                            -- product comes from (Sprayer.lua:863-865, :874-881, :895-896):
+                            --   sprayVehicle == self : the machine draws from its own tank. The
+                            --     driving unit is the one native named AND the one the resolver
+                            --     reads (getSprayerFillUnitIndex, :581); both local, both excluded.
+                            --   another vehicle or nil: its index numbers a unit over THERE and can
+                            --     collide with an unrelated local secondary, so nothing local is
+                            --     excluded by index, and the stale local getSprayerFillUnitIndex
+                            --     reading is not used either (SoilUtils.lua:76-78 prefers the
+                            --     work-area fill type on that path for the same reason).
+                            -- Identity only: one physical unit is counted once. Two distinct
+                            -- tanks holding the same product remain the open question the brief
+                            -- names, and the name dedup below is unchanged.
+                            local wapU5b   = spraySpec.workAreaParameters
+                            local excluded = {}
+                            if wapU5b and wapU5b.sprayVehicle == self then
+                                if wapU5b.sprayVehicleFillUnitIndex ~= nil then
+                                    excluded[wapU5b.sprayVehicleFillUnitIndex] = true
+                                end
+                                local okOwn, ownFui = pcall(function() return self:getSprayerFillUnitIndex() end)
+                                if okOwn and type(ownFui) == "number" and fuSpec.fillUnits[ownFui] ~= nil then
+                                    excluded[ownFui] = true
+                                end
+                            end
                             local profileSet = {}
                             for _, fu in ipairs(fuSpec.fillUnits) do
                                 if fu.fillLevel > 0 and fu.fillType and fu.fillType > 0 then
@@ -4960,7 +5047,7 @@ function HookManager:installSprayerAreaHook()
                                 -- RSF-F196 R3d: a secondary unit holding a refused product
                                 -- costs only that unit. No drain, no credit, no coverage for
                                 -- it; every other unit, the driving one included, is unaffected.
-                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0
+                                if not excluded[fuIdx] and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0
                                         and not hookMgrRef:isRefusedProduct(fu.fillType) then
                                     local ft = g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                                     local ftName = ft and ft.name or nil
@@ -7594,15 +7681,9 @@ function HookManager:installExternalFillHook()
             return original(sprayerSelf, fillType, dt)
         end
 
-        -- Identify the intended custom product.
-        -- Priority order (issue #205 STARTER → LIQUIDFERTILIZER fix):
-        --   1. fillType arg is already one of our custom types (direct match).
-        --   2. Ask the tank what it actually holds (authoritative on a full/partial tank).
-        --   3. Fall back to _soilLastCustomFillType (stamp set by the Sprayer-area hook;
-        --      covers the empty-tank AI case where tank fill type is UNKNOWN).
-        -- Step 2 is what prevents the "STARTER loaded but vanilla picks LIQUIDFERTILIZER"
-        -- bug: when the caller passes fillType=UNKNOWN, the tank's real contents win over
-        -- vanilla's allowLiquidFertilizer/allowFertilizer/allowHerbicide cascade.
+        -- Identify the intended custom product (the issue #205 shape: a STARTER tank
+        -- must never let vanilla's allowLiquidFertilizer/allowFertilizer/allowHerbicide
+        -- cascade pick LIQUIDFERTILIZER when the caller passes fillType=UNKNOWN).
         -- RSF-F196 R3a: identity comes from the ONE resolver, never from the price
         -- table. The three steps that lived here (direct argument, tank contents,
         -- the _soilLastCustomFillType stamp) were keyed on prices[], which is V12's

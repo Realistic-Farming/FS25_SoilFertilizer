@@ -43,6 +43,22 @@ local function getTuningMult(settings, settingId, lutKey)
     return 1.0
 end
 
+--- RSF-F196 U2/U3: litres as the mass-equivalent a kg/ha rate can be compared
+--- with. The one conversion lives in HookManager.massEquivalent (the HUD ghost bar
+--- calls the same function, so bar and threshold cannot disagree); this wrapper
+--- only exists so a bench that loads this file without HookManager still runs,
+--- at passthrough, which is what every product outside the twelve dry ones is.
+--- In production HookManager loads before this file (main.lua).
+---@param fillType table|nil
+---@param liters number
+---@return number
+local function massEquivalent(fillType, liters)
+    if HookManager and type(HookManager.massEquivalent) == "function" then
+        return HookManager.massEquivalent(fillType, liters)
+    end
+    return liters
+end
+
 --- Invalidate cached polygon vertices for a field when farmland ownership or
 --- geometry may have changed (F61). Forces the next coverage calculation to
 --- re-resolve from the live g_fieldManager rather than using stale cached data.
@@ -5902,7 +5918,13 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         -- 2. Apply standard nutrients (scaled by the liters applied this frame)
         local rrIdx  = self.settings.replenishmentRate or 3
         local rrMult = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
-        local factor = (liters / 1000) / areaInHa * rrMult
+        -- RSF-F196 U3 (site 1 of 4): litres become mass-equivalent BEFORE the divide
+        -- by area. A dry product's tank drains rate/density litres per hectare (C2),
+        -- so each litre carries 1/density of the configured mass; converting back
+        -- makes one full hectare at 1.0x deliver exactly the configured kg/ha and the
+        -- same nutrient consequence a full pass had before the repair. Passthrough
+        -- products (liquids, base-game FERTILIZER and LIME) convert by nothing.
+        local factor = (massEquivalent(fillType, liters) / 1000) / areaInHa * rrMult
 
         -- Capture before-values for diagnostic logging (debug mode only).
         local dbgN0, dbgP0, dbgK0, dbgPH0 = field.nitrogen, field.phosphorus, field.potassium, field.pH
@@ -6123,7 +6145,9 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         local coverageThreshold = targetVolume * SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD
 
         local minCoverage = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
-        if field.nutrientBuffer[fillTypeIndex] >= coverageThreshold and
+        -- RSF-F196 U3 (site 2 of 4): the buffer is litres (U1, unchanged) and the
+        -- threshold is derived from a kg/ha rate, so the litres convert first.
+        if massEquivalent(fillType, field.nutrientBuffer[fillTypeIndex]) >= coverageThreshold and
            (field.coverageFraction or 0) >= minCoverage then
             local today = (g_currentMission and g_currentMission.environment and
                            g_currentMission.environment.currentDay) or 0
@@ -6290,7 +6314,16 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     local rateEntry = fillTypeName and baseRates and (baseRates[fillTypeName] or baseRates.DEFAULT)
     local ratePerHa = (rateEntry and rateEntry.value and rateEntry.value > 0) and rateEntry.value or 93.5
 
-    local areaThisTick = liters / ratePerHa
+    -- RSF-F196 U3 (site 3 of 4): litres convert to mass-equivalent before dividing
+    -- by the kg/ha rate. This path receives a NAME, so the descriptor is looked up
+    -- for the conversion; crop protection and every other passthrough product
+    -- resolve to factor 1 and keep their exact arithmetic.
+    local ftDesc = nil
+    if fillTypeName and g_fillTypeManager and type(g_fillTypeManager.getFillTypeByName) == "function" then
+        local okDesc, desc = pcall(g_fillTypeManager.getFillTypeByName, g_fillTypeManager, fillTypeName)
+        if okDesc then ftDesc = desc end
+    end
+    local areaThisTick = massEquivalent(ftDesc, liters) / ratePerHa
     field.coveredAreaHa = (field.coveredAreaHa or 0) + areaThisTick
 
     local prevCoverage = field.coverageFraction or 0
