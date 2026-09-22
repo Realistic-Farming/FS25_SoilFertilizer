@@ -4120,7 +4120,9 @@ function SoilFertilitySystem:seedValueMaps(force)
                 elseif source == 'genesis' then fromGenesis = fromGenesis + 1 end
             end
         end
-        SoilLogger.info("[SF-79] pH seed: layer restored=%s, %d field(s), %d polygon(s) seeded (%d from a frozen seed, %d from genesis)",
+        -- "processed", not "seeded": setPolygonWhere reports success, never a changed-pixel
+        -- count, so on a fully seeded save every polygon is processed and none changes.
+        SoilLogger.info("[SF-79] pH seed: layer restored=%s, %d field(s), %d polygon(s) processed in band [0,0] (unwritten ground only; %d from a frozen seed, %d from genesis)",
             tostring(phRestored), fields, polys, fromSeed, fromGenesis)
     end
     if self.valueMaps.loadedFromSave and not force then

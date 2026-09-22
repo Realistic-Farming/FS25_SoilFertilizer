@@ -159,8 +159,8 @@ do
   T.eq("SEEDW A3: and that genesis value is now FROZEN as field 2's seed", s.fieldData[2]._phSeedScalar, clampPH(GEN[2]))
   T.eq("SEEDW A4: field 1's frozen seed is untouched", s.fieldData[1]._phSeedScalar, 6.2)
   T.eq("SEEDW A5: one pH seed line per seedValueMaps call, not per field", loggedMatching("[SF-79] pH seed:"), 1)
-  T.ok("SEEDW A6: the line says layer restored=false, 2 fields, 2 polygons, 1 from a frozen seed, 1 from genesis",
-       loggedMatching("layer restored=false, 2 field(s), 2 polygon(s) seeded (1 from a frozen seed, 1 from genesis)") == 1)
+  T.ok("SEEDW A6: the line says layer restored=false, 2 fields, 2 polygons processed in band [0,0], 1 from a frozen seed, 1 from genesis",
+       loggedMatching("layer restored=false, 2 field(s), 2 polygon(s) processed in band [0,0] (unwritten ground only; 1 from a frozen seed, 1 from genesis)") == 1)
   T.ok("SEEDW A7: the N/P/K/OM seed still ran for the missing layer", (function() for _, c in ipairs(s.valueMaps.calls) do if c == "seed:nitrogen" then return true end end return false end)())
   local before = pixelsOf(s.valueMaps, 1)
   s:_phApplyField(1, PositionalPH.OP_DELTA, LIME, nil, nil, 'application')
