@@ -3515,6 +3515,27 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     return self.fieldData[fieldId]
 end
 
+-- [SF-79 3.C] Route a re-rolled field's pH through the positional writer, shared by
+-- both re-rolls. A FIELD SET at the re-rolled scalar over the parcel union, then the
+-- scalar is republished from the derived report so it equals the quantised map value.
+-- The writer refuses off the server (UNAVAILABLE 'not-server'), matching the console
+-- commands that call the re-rolls. When PositionalPH is absent nothing is painted,
+-- which is what the re-roll did on this branch before (vmSeedField skips pH).
+-- _phSeedScalar and _phPending are deliberately left alone: after a FIELD SET no
+-- raw-zero ground is left in the union, and re-freezing the seed would change what
+-- "frozen" means, which is not this item's call.
+function SoilFertilitySystem:_phRerollField(fieldId, field)
+    if type(self._applyPHFootprint) ~= "function" or field == nil then return nil end
+    local result = self:_applyPHFootprint(fieldId, {
+        operation = PositionalPH.OP_SET, scope = PositionalPH.SCOPE_FIELD,
+        value = field.pH, source = 'reroll',
+    })
+    if type(self._phRefreshScalar) == "function" then
+        self:_phRefreshScalar(fieldId)
+    end
+    return result
+end
+
 -- Re-roll the starting soil profile of EVERY known field using the current variation
 -- logic (:_computeInitialSoil). Lets players on an existing save pick up the regional
 -- variation introduced in 2.4.2.6 without starting a new game (issue #632). Resets
@@ -3538,6 +3559,16 @@ function SoilFertilitySystem:rerollAllFields()
             self:_prePopulateZoneData(fieldId)
             -- REFINED: repaint the per-pixel value maps with the re-rolled profile
             self:vmSeedField(fieldId, true)
+            -- [SF-79 3.C] pH is not in vmSeedField's keys any more (the map is the
+            -- chemical authority), so the re-rolled pH goes through the positional
+            -- writer as a FIELD SET, the admin path's shape (:3766-3772). Without it
+            -- the map kept its old pixels, the report showed the OLD mean at once,
+            -- and the next pH write republished that old mean over the scalar: the
+            -- re-roll was invisible and then undone. SET's band is 0..RAW_MAX, so
+            -- raw-zero ground in the union is written too, which is the right
+            -- outcome for "re-roll the starting soil". The scalar is then refreshed
+            -- from the report so it equals the quantised map value.
+            self:_phRerollField(fieldId, field)
             count = count + 1
         end
     end
@@ -3585,6 +3616,8 @@ function SoilFertilitySystem:rerollUnownedFields()
                 self:_prePopulateZoneData(fieldId)
                 -- REFINED: repaint the per-pixel value maps with the re-rolled profile
                 self:vmSeedField(fieldId, true)
+                -- [SF-79 3.C] The re-rolled pH reaches the map (see rerollAllFields).
+                self:_phRerollField(fieldId, field)
                 rerolled = rerolled + 1
             end
         end
