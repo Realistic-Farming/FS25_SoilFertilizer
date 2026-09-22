@@ -56,6 +56,9 @@ local function massEquivalent(fillType, liters)
     if HookManager and type(HookManager.massEquivalent) == "function" then
         return HookManager.massEquivalent(fillType, liters)
     end
+    -- Observable, never silent: converting by 1 is the defect the unit rule
+    -- repairs, so a bar can assert this branch was not taken (#976 cold review).
+    SoilFertilitySystem.unitRuleFallbacks = (SoilFertilitySystem.unitRuleFallbacks or 0) + 1
     return liters
 end
 
@@ -940,6 +943,21 @@ end
 ---@param liters number Amount applied in liters
 ---@param boomPoints table|nil RSF-F905: this tick's boom points, captured before the application
 function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters, boomPoints)
+    -- RSF-F196 V7: the resolved result enters the application path HERE, as the
+    -- second fence behind R2 (the dose is zeroed) and R3 (every consumer refuses
+    -- by name). A refused product returns exactly false BEFORE the nutrient buffer,
+    -- agronomy, organic input, overlay refresh or multiplayer broadcast; a valid
+    -- pass returns exactly true after its side effects complete, and both callers
+    -- gate the fertilizer-specific burn, scorch, boom paint and litre coverage on
+    -- result == true. Not a whole-helper gate: herbicide-, insecticide- and
+    -- fungicide-only products never come through this function and keep their
+    -- direct effects, paint, coverage and heat scorch. A system with no refused
+    -- table in reach (a bench) refuses nothing, which is today's behaviour.
+    local hm = self.hookManager
+    if hm ~= nil and type(hm.isRefusedProduct) == "function" and hm:isRefusedProduct(fillTypeIndex) then
+        return false
+    end
+
     self:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
 
     local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
@@ -979,6 +997,7 @@ function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters,
             end
         end
     end
+    return true
 end
 
 -- Hook delegate: called by HookManager when field ownership changes.
@@ -6322,6 +6341,11 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     if fillTypeName and g_fillTypeManager and type(g_fillTypeManager.getFillTypeByName) == "function" then
         local okDesc, desc = pcall(g_fillTypeManager.getFillTypeByName, g_fillTypeManager, fillTypeName)
         if okDesc then ftDesc = desc end
+    end
+    if fillTypeName ~= nil and ftDesc == nil then
+        -- A name that resolved to no descriptor converts by 1. Counted, so a bar can
+        -- tell passthrough by design from a lookup that failed (#976 cold review).
+        SoilFertilitySystem.unitRuleUnresolvedNames = (SoilFertilitySystem.unitRuleUnresolvedNames or 0) + 1
     end
     local areaThisTick = massEquivalent(ftDesc, liters) / ratePerHa
     field.coveredAreaHa = (field.coveredAreaHa or 0) + areaThisTick

@@ -4887,6 +4887,12 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
 
+                -- RSF-F196 V7: the application's result. The fertilizer-specific effects
+                -- below and after the section loop require it to be exactly true. It
+                -- starts true and any section's application that returns anything else
+                -- clears it; refusal is per product, so every section of a pass agrees.
+                -- Crop-protection-only products never set it and are never gated by it.
+                local fertResult = true
                 local function applySingle(fId, sectionLiters, spx, spz)
                     if not fId or fId <= 0 then return end
                     if soilSys then
@@ -4896,7 +4902,9 @@ function HookManager:installSprayerAreaHook()
                     SoilLogger.debug("Sprayer/Spreader hook: Field %d, %s, %.4fL (x%.2f rate)",
                         fId, fillType.name, sectionLiters, rateMultiplier)
                     if isFertilizer then
-                        soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters, burnBoomPts)
+                        if soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters, burnBoomPts) ~= true then
+                            fertResult = false
+                        end
                     end
                     if herbOnlyDirect and soilSys.onHerbicideAppliedDirect then
                         soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
@@ -4908,7 +4916,7 @@ function HookManager:installSprayerAreaHook()
                         soilSys:onFungicideAppliedDirect(fId, diseaseEffectiveness, sectionLiters, fillType.name)
                     end
                     local entry = SoilConstants.FERTILIZER_PROFILES[fillType.name]
-                    if entry and (entry.N or entry.P or entry.K) and
+                    if fertResult and entry and (entry.N or entry.P or entry.K) and
                        rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                         soilSys:applyBurnEffect(fId, rateMultiplier)
                     end
@@ -4917,7 +4925,11 @@ function HookManager:installSprayerAreaHook()
                     -- (SULFUR / COPPER_HYDROXIDE take the fungicide branch above and
                     -- would never reach a guarded line). The HEAT_SENSITIVITY probe
                     -- inside applyScorchEffect is the whole cost when absent.
-                    soilSys:applyScorchEffect(fId, fillType.name)
+                    -- RSF-F196 V7: a fertilizer product's scorch requires result == true;
+                    -- a crop-protection-only product is not gated and keeps its scorch.
+                    if not isFertilizer or fertResult then
+                        soilSys:applyScorchEffect(fId, fillType.name)
+                    end
                 end
 
                 if vww and vww.sections and #vww.sections > 0 then
@@ -5092,6 +5104,8 @@ function HookManager:installSprayerAreaHook()
                                                         burnBoomPts2 = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
                                                     end
                                                 end
+                                                -- RSF-F196 V7, the secondary's copy of the result gate.
+                                                local fertResult2 = true
                                                 local function applyMulti(fId2, sLiters2, spx2, spz2)
                                                     if not fId2 or fId2 <= 0 then return end
                                                     if soilSys then
@@ -5101,7 +5115,9 @@ function HookManager:installSprayerAreaHook()
                                                     SoilLogger.debug("SprayerHook multi-tank: Field %d, %s, %.4fL",
                                                         fId2, ftName, sLiters2)
                                                     if isFert2 then
-                                                        soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2, burnBoomPts2)
+                                                        if soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2, burnBoomPts2) ~= true then
+                                                            fertResult2 = false
+                                                        end
                                                     end
                                                     if herbOnly2 and soilSys.onHerbicideAppliedDirect then
                                                         soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2 * herbAreaFraction)
@@ -5112,12 +5128,15 @@ function HookManager:installSprayerAreaHook()
                                                     if disOnly2 and soilSys.onFungicideAppliedDirect then
                                                         soilSys:onFungicideAppliedDirect(fId2, disE, sLiters2, ftName)
                                                     end
-                                                    if rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
+                                                    if (not isFert2 or fertResult2)
+                                                            and rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                                                         soilSys:applyBurnEffect(fId2, rateMultiplier)
                                                     end
-                                                    -- CD-14 heat scorch: unconditional,
-                                                    -- beside the burn branch (see applySingle).
-                                                    soilSys:applyScorchEffect(fId2, ftName)
+                                                    -- CD-14 heat scorch beside the burn branch (see applySingle);
+                                                    -- RSF-F196 V7 gates it for a fertilizer product only.
+                                                    if not isFert2 or fertResult2 then
+                                                        soilSys:applyScorchEffect(fId2, ftName)
+                                                    end
                                                 end
 
                                                 if vww and vww.sections and #vww.sections > 0 and scratchN > 0 then
@@ -5148,7 +5167,7 @@ function HookManager:installSprayerAreaHook()
                                                     applyMulti(fieldId, effectiveLiters, rootX, rootZ)
                                                 end
 
-                                                if soilSys and fieldId and fieldId > 0 then
+                                                if soilSys and fieldId and fieldId > 0 and (not isFert2 or fertResult2) then
                                                     local boomPts = burnBoomPts2 or burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                                                     -- RSF-836: the true boom line (tip to tip, in the vehicle's frame),
                                                     -- NOT the ends of the cell sweep array.
@@ -5205,7 +5224,9 @@ function HookManager:installSprayerAreaHook()
                 --     solids onto this path; the reliable liter-based estimate (#454) has no
                 --     polygon dependency, so we use it for the counter and let markBoomCells
                 --     stamp the visual overlay only.
-                if soilSys and fieldId and fieldId > 0 then
+                -- RSF-F196 V7: boom paint and litre coverage for a fertilizer product
+                -- require result == true; a crop-protection-only pass is not gated.
+                if soilSys and fieldId and fieldId > 0 and (not isFertilizer or fertResult) then
                     local vww = self.spec_variableWorkWidth
                     local hasVWW = vww and vww.sections and #vww.sections > 0
                     local boomPts = burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
