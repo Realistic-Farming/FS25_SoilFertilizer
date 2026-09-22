@@ -3512,6 +3512,18 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     -- as soon as a new field is created (e.g. on farmland purchase).
     self:_prePopulateZoneData(fieldId)
 
+    -- [SF-79 3.B] "New cultivated ground uses the frozen seed, never the later
+    -- report." A field born here has its genesis pH frozen as the seed at once,
+    -- and its raw-zero ground seeded from it before any write can land. The seed
+    -- returns 0 when the maps are not up yet; the load-time migration in
+    -- seedValueMaps catches that field later from the same frozen value.
+    if type(self._seedPHFootprint) == "function" then
+        local limits = SoilConstants.NUTRIENT_LIMITS
+        local seed = math.max(limits.PH_MIN, math.min(limits.PH_MAX, soil.pH))
+        self.fieldData[fieldId]._phSeedScalar = seed
+        self:_seedPHFootprint(fieldId, seed)
+    end
+
     return self.fieldData[fieldId]
 end
 
@@ -4086,6 +4098,30 @@ function SoilFertilitySystem:seedValueMaps(force)
     -- load, even when the persisted layers were all restored and seeding is skipped.
     for fieldId, field in pairs(self.fieldData) do
         self:paintOrganicStatus(fieldId, field)
+    end
+    -- [SF-79 3.B] pH is NOT in VM_NUTRIENT_KEYS (the map is the chemical
+    -- authority, f9e3db4a), so nothing below seeds it, and until this ran nothing
+    -- did: on any save created after f9e3db4a the pH layer stayed raw zero, the
+    -- writer skipped it (every band starts at RAW_MIN), the report was EMPTY and
+    -- pH read UNAVAILABLE. The migration runs BEFORE the all-layers-restored
+    -- return because it is per-layer and preservation-first: band [0,0] fills
+    -- only unwritten ground, so a restored layer gets its holes filled and a
+    -- missing layer is recovered whole. One info line per call, never per field.
+    if type(self._migratePH) == "function" then
+        local phEntry = self.valueMaps.getLayerEntry and self.valueMaps:getLayerEntry(PositionalPH.PH_LAYER)
+        local phRestored = phEntry ~= nil and phEntry.loaded == true
+        local fields, polys, fromSeed, fromGenesis = 0, 0, 0, 0
+        for fieldId in pairs(self.fieldData) do
+            fields = fields + 1
+            local written, source = self:_migratePH(fieldId)
+            if written and written > 0 then
+                polys = polys + written
+                if source == 'seed' then fromSeed = fromSeed + 1
+                elseif source == 'genesis' then fromGenesis = fromGenesis + 1 end
+            end
+        end
+        SoilLogger.info("[SF-79] pH seed: layer restored=%s, %d field(s), %d polygon(s) seeded (%d from a frozen seed, %d from genesis)",
+            tostring(phRestored), fields, polys, fromSeed, fromGenesis)
     end
     if self.valueMaps.loadedFromSave and not force then
         SoilLogger.info("ValueMaps: all layers restored from savegame - seeding skipped")
