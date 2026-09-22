@@ -208,3 +208,43 @@ do
     -- still a strict improvement for any save at or below 255 fill types, which is
     -- every save that can reach the defect today.
 end
+
+-- ── GROUP G: the one load line, driven as main.lua's call site drives it ────────
+-- main.lua does exactly this: applyFloor(), then loadLine(raised, width), then
+-- print the line if there is one. Tyson's ruling of 2026-09-22: when another mod
+-- has already satisfied the floor, say so, so a log alone shows the floor is in
+-- force. A tester's log with no "raised" line read as a possible miss for an
+-- evening until FS25_ProductionStorageControl was found setting 10 before us.
+do
+    local function callSite(bits)
+        local m = manager(bits)
+        local raised, width = SoilFillTypeWidth.applyFloor(m)
+        return SoilFillTypeWidth.loadLine(raised, width)
+    end
+    local line8 = callSite(DEFAULT_BITS)
+    T.ok("G1: at the engine default of 8 the line is the RAISED line, naming 10 and 1023",
+        line8 ~= nil and line8:find("width raised to 10 (1023 fill types)", 1, true) ~= nil)
+    T.ok("G2: and it is not the already line", line8 ~= nil and line8:find("already", 1, true) == nil)
+
+    local line10 = callSite(RL_BITS)
+    T.ok("G3: at 10 (Realistic Livestock, ProductionStorageControl got there first) the line is the ALREADY line naming 10 and 1023",
+        line10 ~= nil and line10:find("width already 10 (1023 fill types)", 1, true) ~= nil)
+    T.ok("G4: naming the floor it satisfies", line10 ~= nil and line10:find("floor 10 satisfied", 1, true) ~= nil)
+    T.ok("G5: and it is not the raised line", line10 ~= nil and line10:find("raised to", 1, true) == nil)
+
+    local line11 = callSite(11)
+    T.ok("G6: at 11 the already line names 11 and 2047, the width IN FORCE, and still floor 10",
+        line11 ~= nil and line11:find("width already 11 (2047 fill types)", 1, true) ~= nil
+        and line11:find("floor 10 satisfied", 1, true) ~= nil)
+
+    T.eq("G7: an unreadable manager (applyFloor gave false, nil) prints nothing", SoilFillTypeWidth.loadLine(false, nil), nil)
+    T.eq("G8: raised with a non-number width is still nothing, never a malformed line", SoilFillTypeWidth.loadLine(true, nil), nil)
+    T.ok("G9: exactly one line per load: neither carries an embedded newline",
+        line8 ~= nil and line10 ~= nil and line8:find("\n", 1, true) == nil and line10:find("\n", 1, true) == nil)
+    T.ok("G10: both start with the [SoilFertilizer] prefix so a log grep finds them",
+        line8 ~= nil and line10 ~= nil and line8:sub(1, 16) == "[SoilFertilizer]" and line10:sub(1, 16) == "[SoilFertilizer]")
+    T.ok("G11: the already line says it is the width AT SoilFertilizer load (a later mod can still change it) and that FTE is not required",
+        line10 ~= nil and line10:find("at SoilFertilizer load", 1, true) ~= nil
+        and line10:find("FillType Extender is not required", 1, true) ~= nil)
+    T.ok("G12: loadLine never printed anything itself (pure: main.lua owns the print)", type(SoilFillTypeWidth.loadLine) == "function")
+end

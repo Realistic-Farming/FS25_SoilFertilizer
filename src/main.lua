@@ -99,11 +99,14 @@ GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilenam
 -- Sourced and called here, before every other module, so the raise is in force for
 -- the whole of this mod's load and for every later fill type registration.
 source(modDirectory .. "src/utils/SoilFillTypeWidth.lua")
+-- Exactly one line prints when the width is readable: "raised to" when this mod
+-- did the raising, "already ... floor satisfied" when another mod got there first
+-- (Realistic Livestock, ProductionStorageControl). A log alone then shows the
+-- floor is in force. Plain print, not SoilLogger: Logger.lua is sourced below.
 local sfWidthRaised, sfWidthNow = SoilFillTypeWidth.applyFloor()
-if sfWidthRaised then
-    print(string.format(
-        "[SoilFertilizer] Fill type index width raised to %d (%d fill types). FillType Extender is not required.",
-        sfWidthNow, SoilFillTypeWidth.maxFillTypes(sfWidthNow)))
+local sfWidthLine = SoilFillTypeWidth.loadLine(sfWidthRaised, sfWidthNow)
+if sfWidthLine ~= nil then
+    print(sfWidthLine)
 end
 
 -- Source all required files (order matters: dependencies first)

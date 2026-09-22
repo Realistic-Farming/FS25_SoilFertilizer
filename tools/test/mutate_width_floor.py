@@ -14,6 +14,12 @@ plausible way to write it wrong rather than an arbitrary edit:
       measured 513-fill-type setup. This is the version Tyson rejected.
   M4  the width is captured on first call instead of read live, so a later call
       decides against a number that no longer exists.
+  M5  the "already satisfied" line is deleted, so a floor another mod satisfied
+      is silent again. Tyson's ruling of 2026-09-22 exists because that silence
+      read as a possible miss for an evening.
+  M6  the already line prints the floor where the width in force belongs, so a
+      log at 11 would say 10.
+  M7  the raised and already lines swap.
 
 Each must apply, must send the bar red, and the file must come back byte-identical.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -108,11 +114,45 @@ def m4(src):
     return src.replace(needle, replacement, 1)
 
 
+def _sub(src, needle, replacement):
+    """Replace exactly one occurrence, in either line ending; None if absent."""
+    for n, r in ((needle, replacement),
+                 (needle.replace("\n", "\r\n"), replacement.replace("\n", "\r\n"))):
+        if src.count(n) == 1:
+            return src.replace(n, r, 1)
+    return None
+
+
+ALREADY = ("    return string.format(\n"
+           "        \"[SoilFertilizer] Fill type index width already %d (%d fill types) at SoilFertilizer load, floor %d satisfied. FillType Extender is not required.\",\n"
+           "        width, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n")
+
+
+def m5(src):
+    """The already branch is deleted: a satisfied floor is silent again (the defect Tyson ruled on)."""
+    return _sub(src, ALREADY, "    return nil\n")
+
+
+def m6(src):
+    """The already line prints the floor where the width in force belongs."""
+    return _sub(src, "        width, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n",
+                "        SoilFillTypeWidth.FLOOR_BITS, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n")
+
+
+def m7(src):
+    """The two lines swap: a raise reports 'already' and a satisfied floor reports 'raised'."""
+    return _sub(src, "    if raised then\n        return string.format(\n            \"[SoilFertilizer] Fill type index width raised to",
+                "    if not raised then\n        return string.format(\n            \"[SoilFertilizer] Fill type index width raised to")
+
+
 MUTANTS = [
     ("M1 guard dropped: unconditional assignment lowers a higher width", m1),
     ("M2 `>=` becomes `>`: a width at the floor is rewritten", m2),
     ("M3 floor drops to 9: caps below the measured 513", m3),
     ("M4 width captured on first call instead of read live", m4),
+    ("M5 the already branch is deleted: a satisfied floor is silent again", m5),
+    ("M6 the already line prints the floor, not the width in force", m6),
+    ("M7 the raised and already lines swap", m7),
 ]
 
 
