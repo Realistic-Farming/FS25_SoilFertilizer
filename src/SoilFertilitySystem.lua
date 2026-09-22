@@ -7938,6 +7938,10 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
     self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
+    -- [SF-79] The positional pH schema marker, read once. Its one reader is the
+    -- per-field seed freeze below (_phFreezeSeedFromLoad): an unmarked save proves
+    -- its #pH predates the contract. It gates nothing else.
+    local sf79Marked = (getXMLInt(xmlFile, key .. "#sf79PHSchema") or 0) == 1
 
     -- OM-213 organic premium provenance ledger (absent on older saves = empty).
     if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -8034,6 +8038,10 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- can never present as current local soil.
         if type(self._phLoadFieldXML) == "function" then
             self:_phLoadFieldXML(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+        -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED save, once.
+        if type(self._phFreezeSeedFromLoad) == "function" then
+            self:_phFreezeSeedFromLoad(self.fieldData[fieldId], sf79Marked)
         end
 
         -- Load daily application throttles
@@ -8216,7 +8224,9 @@ end
 -- save. StateLedger's serializer round-trips arbitrary nested tables.
 function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, fields = {} }
+    -- [SF-79] sf79PHSchema mirrors the XML root marker, so a ledger restore makes
+    -- the same seed-freeze decision an XML load makes.
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -8335,6 +8345,9 @@ function SoilFertilitySystem:applySoilStateTable(data)
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
     self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
+    -- [SF-79] The schema marker, mirrored from the XML root by getSoilStateTable.
+    -- Same one reader as the XML load: the per-field seed freeze below.
+    local sf79Marked = (data.sf79PHSchema or 0) == 1
 
     local count = 0
     local fields = data.fields or {}
@@ -8434,6 +8447,11 @@ function SoilFertilitySystem:applySoilStateTable(data)
                         compaction      = cell.compaction or 0,
                     }
                 end
+            end
+            -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED snapshot,
+            -- once, after the seed restore above so a carried seed is never re-frozen.
+            if type(self._phFreezeSeedFromLoad) == "function" then
+                self:_phFreezeSeedFromLoad(f, sf79Marked)
             end
             self.fieldData[fieldId] = f
             self:_finalizeLoadedField(fieldId, f)
