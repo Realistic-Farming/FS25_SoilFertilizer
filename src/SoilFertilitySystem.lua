@@ -58,6 +58,9 @@ local function massEquivalent(fillType, liters)
     end
     -- Observable, never silent: converting by 1 is the defect the unit rule
     -- repairs, so a bar can assert this branch was not taken (#976 cold review).
+    -- The unit is WRAPPER INVOCATIONS, not applications: one applyFertilizer call
+    -- reaches this wrapper twice (the factor and the fully-treated comparison), so
+    -- a per-pass count read here would be wrong by two (#978 cold review).
     SoilFertilitySystem.unitRuleFallbacks = (SoilFertilitySystem.unitRuleFallbacks or 0) + 1
     return liters
 end

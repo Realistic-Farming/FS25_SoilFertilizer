@@ -7972,7 +7972,7 @@ function HookManager:installSprayerStartHook()
     local original = Sprayer.onStartWorkAreaProcessing
     Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         original,
-        function(self, dt)
+        function(self, dt, workAreas)
             if not self.isServer then return end
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
@@ -7988,8 +7988,18 @@ function HookManager:installSprayerStartHook()
             local phFactor = 1.0
             local soilSystem = g_SoilFertilityManager.soilSystem
             if soilSystem and type(soilSystem.updatePHWorkAuto) == "function" then
+                -- [SF-79 D] Hand AUTO the CURRENT work-area list: the one the engine
+                -- raised this event with (WorkArea.lua:126 passes spec.workAreas), or the
+                -- vehicle's own list. spec_sprayer has no workArea member (none in the
+                -- decompiled Sprayer.lua), so the old read here was nil on every real
+                -- vehicle: AUTO could never have sampled anything even with its own two
+                -- defects fixed. The third defect, in the caller.
+                local currentAreas = workAreas
+                if type(currentAreas) ~= "table" then
+                    currentAreas = self.spec_workArea and self.spec_workArea.workAreas
+                end
                 local okPh, f = pcall(function()
-                    return soilSystem:updatePHWorkAuto(self, dt, spec.workArea and spec.workArea.workAreas)
+                    return soilSystem:updatePHWorkAuto(self, dt, currentAreas)
                 end)
                 if okPh and type(f) == "number" then phFactor = f end
             end
