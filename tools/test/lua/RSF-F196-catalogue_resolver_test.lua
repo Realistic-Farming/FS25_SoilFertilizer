@@ -189,3 +189,139 @@ do
          cold:resolveCustomProductIntent(sprayerWith({ current = UREA }), UREA), nil)
     T.eq("F196 G2: and membership is false rather than nil", cold:isCustomProduct(UREA), false)
 end
+
+-- ── DENSITY, and the unit the engine actually stores ─────────────────────────
+-- FillTypeDesc.lua:71 reads physics#massPerLiter in KILOGRAMS and stores value*0.001,
+-- over a default of 0.001 set at :13, so the stored field is TONNES per litre.
+-- FillTypeManager.MASS_SCALE is 1. A comparison against a kg/ha rate that skips this
+-- scale is out by a thousand, which is the unit error U2 exists to prevent.
+do
+    -- T.near, not T.eq: 0.00077 * 1000 is 0.7699999999999999 in binary floating
+    -- point. The bar caught that on its first run, which is the right way round.
+    T.near("F196 H1: a stored 0.00077 t/L reads as 0.77 kg/L, the UREA figure",
+           HookManager.densityOf({ massPerLiter = 0.00077 }), 0.77, 1e-9)
+    T.eq("F196 H2: the engine default 0.001 t/L reads as 1 kg/L",
+         HookManager.densityOf({ massPerLiter = 0.001 }), 1)
+    T.eq("F196 H3: nil fill type has no density", HookManager.densityOf(nil), nil)
+    T.eq("F196 H4: a missing field has no density", HookManager.densityOf({}), nil)
+    T.eq("F196 H5: zero is nonsense", HookManager.densityOf({ massPerLiter = 0 }), nil)
+    T.eq("F196 H6: negative is nonsense", HookManager.densityOf({ massPerLiter = -0.5 }), nil)
+    T.eq("F196 H7: a non-number is nonsense", HookManager.densityOf({ massPerLiter = "0.77" }), nil)
+    -- NaN passes `> 0` in Lua only by failing it, but it also fails `<= 0`, so it
+    -- reaches the multiply. The self-comparison is what catches it.
+    local nan = 0 / 0
+    T.eq("F196 H8: NaN does not survive as a density", HookManager.densityOf({ massPerLiter = nan }), nil)
+    -- The limit, pinned so nobody later believes this detects an undeclared density.
+    T.eq("F196 H9: an UNDECLARED density is indistinguishable from a declared 1 kg/L, and is accepted",
+         HookManager.densityOf({ massPerLiter = 0.001 }), HookManager.densityOf({ massPerLiter = 0.001 }))
+end
+
+-- ── WHAT ACTUALLY PROTECTS THE DOSE, which is not the density test ───────────
+-- Bob's finding in the F196 intake: 28 fill types in this mod declare
+-- massPerLiter="0.001", one gram per litre, every crop-protection product and every
+-- BLEND_* type. That is POSITIVE, so a nil-or-non-positive density test accepts it.
+-- If such a product were ever treated as a dry product to be mass-dosed, the
+-- conversion would be wrong by about a thousand and the density gate would not
+-- object, because there is nothing invalid about the number.
+--
+-- So membership, not density, is what keeps a volume-dosed product out of the mass
+-- path. This pins that boundary directly rather than trusting it.
+do
+    local cp = { massPerLiter = 0.001 }    -- a crop-protection product's declared density
+    T.near("F196 I1: a 0.001 t/L product has a perfectly valid density of 1 kg/L",
+           HookManager.densityOf(cp), 1, 1e-12)
+    local DRY = {}
+    for _, n in ipairs(HookManager.DRY_PRODUCT_NAMES) do DRY[n] = true end
+    T.eq("F196 I2: the dry catalogue is exactly twelve products", #HookManager.DRY_PRODUCT_NAMES, 12)
+    T.eq("F196 I3: a fungicide is not one of them, which is the real gate",
+         DRY["PROPICONAZOLE"], nil)
+    T.eq("F196 I4: nor is a blend", DRY["BLEND_A"], nil)
+    T.eq("F196 I5: and the twelve are the ones R7 recovers",
+         DRY["UREA"] and DRY["AN"] and DRY["POLIFOSKA"] and DRY["GYPSUM"], true)
+    -- The point restated as a property: density cannot tell these apart, membership can.
+    T.eq("F196 I6: density alone cannot distinguish a fungicide from a fertiliser",
+         HookManager.densityOf({ massPerLiter = 0.001 }) ~= nil
+         and HookManager.densityOf({ massPerLiter = 0.00077 }) ~= nil, true)
+end
+
+-- ── a nil density is not a product defect ────────────────────────────────────
+-- FillTypeDesc.lua:13 and :71 mean the loader always writes a number, over the
+-- schema default of 1 kg at :290. A nil only appears on an object that did not come
+-- through the loader, so refusing it would fire the gate on fixtures rather than on
+-- products. densityOf still answers nil, because it cannot assess one.
+do
+    T.eq("F196 J1: densityOf cannot assess a fill type with no massPerLiter",
+         HookManager.densityOf({ name = "FIXTURE" }), nil)
+end
+
+-- ── R1/R1a/R6: the refusal at registration, and the retry that clears it ─────
+-- A density-refused solid is RESOLVED BUT NOT REGISTERED, and its index goes in the
+-- refused table. Refusal is then a fact read by name rather than inferred from a
+-- zero, which matters because AI-1's entry condition is both dose fields being zero
+-- or nil: a numeric refusal would be indistinguishable from an empty tank a helper
+-- should refill.
+--
+-- This needs a synthetic invalid product. All twelve dry products in the shipped
+-- fillTypes.xml declare a valid density (0.60 to 1.10 kg/L), so the gate fires on
+-- nothing in today's configuration and there is no real product to point at.
+do
+    local savedFtm, savedStm = g_fillTypeManager, g_sprayTypeManager
+    local declared = {}       -- name -> massPerLiter in t/L, nil means no such fill type
+    local addedSprayTypes = {}
+
+    g_fillTypeManager = {
+        getFillTypeByName = function(_self, name)
+            if declared[name] == nil then return nil end
+            return { name = name, index = #name, massPerLiter = declared[name] }
+        end,
+        getFillTypeIndexByName = function(_self, name)
+            if declared[name] == nil then return nil end
+            return #name
+        end,
+    }
+    g_sprayTypeManager = {
+        getSprayTypeByName = function(_self, name)
+            if name == "FERTILIZER" then return { litersPerSecond = 0.006, sprayGroundType = 3 } end
+            if name == "LIQUIDFERTILIZER" then return { litersPerSecond = 0.0081, sprayGroundType = 2 } end
+            return nil
+        end,
+        addSprayType = function(_self, name) addedSprayTypes[name] = true; return {} end,
+    }
+
+    local GY = #"GYPSUM"
+    local mgr = HookManager.new()
+
+    -- pass one: GYPSUM declares a negative density, UREA a good one
+    declared["GYPSUM"] = -0.001
+    declared["UREA"] = 0.00077
+    addedSprayTypes = {}
+    pcall(HookManager.registerCustomSprayTypes, mgr)
+    T.eq("F196 K1: a negative density refuses the product", mgr:isRefusedProduct(GY), true)
+    T.eq("F196 K2: and it is NOT registered as a spray type", addedSprayTypes["GYPSUM"], nil)
+    T.eq("F196 K3: a valid sibling is unaffected and still registers", addedSprayTypes["UREA"], true)
+    T.eq("F196 K4: the valid sibling is not refused", mgr:isRefusedProduct(#"UREA"), false)
+
+    -- pass two: the retry finds it valid. R6 requires the entry to be removed
+    -- atomically before the product is registered.
+    declared["GYPSUM"] = 0.0011
+    addedSprayTypes = {}
+    pcall(HookManager.registerCustomSprayTypes, mgr)
+    T.eq("F196 K5: a retry that resolves the density clears the refusal", mgr:isRefusedProduct(GY), false)
+    T.eq("F196 K6: and the product registers on that pass", addedSprayTypes["GYPSUM"], true)
+
+    -- zero is refused too, and refusal is by index rather than by name
+    declared["GYPSUM"] = 0
+    addedSprayTypes = {}
+    pcall(HookManager.registerCustomSprayTypes, mgr)
+    T.eq("F196 K7: a zero density refuses", mgr:isRefusedProduct(GY), true)
+    T.eq("F196 K8: refusal is keyed by fill type index, not by name", mgr.refusedProducts[GY] ~= nil, true)
+
+    -- a fill type that does not resolve at all leaves NO fabricated index (R1a)
+    declared["GYPSUM"] = nil
+    addedSprayTypes = {}
+    local before = mgr:isRefusedProduct(GY)
+    pcall(HookManager.registerCustomSprayTypes, mgr)
+    T.eq("F196 K9: an unresolved name does not invent a refusal entry", mgr:isRefusedProduct(GY), before)
+
+    g_fillTypeManager, g_sprayTypeManager = savedFtm, savedStm
+end

@@ -78,6 +78,30 @@ function HookManager.buildCustomNamePopulation()
     return names
 end
 
+--- A fill type's density in KILOGRAMS PER LITRE, or nil when it has none usable.
+---
+--- The engine stores this in TONNES per litre, not kilograms. FillTypeDesc.lua:71
+--- reads `physics#massPerLiter` (documented in kilograms at :290) and multiplies by
+--- 0.001, over a default of 0.001 set at :13. FillTypeManager.MASS_SCALE is 1.
+--- Anything comparing the stored number against a kg/ha rate without this scale is
+--- out by a thousand, which is the unit error U2 exists to prevent.
+---
+--- WHAT THIS CANNOT DETECT, stated because the gap is in the engine and not here:
+--- a fill type that declares NO density is stored as 0.001 t/L, exactly 1 kg/L, and
+--- is indistinguishable from one that declares massPerLiter="1.0". "Absent" is not
+--- reachable through the loader, so refusal covers nonsense (nil or non-positive)
+--- and does not pretend to cover absence.
+---@param fillType table|nil
+---@return number|nil  kg per litre, or nil when unusable
+function HookManager.densityOf(fillType)
+    if fillType == nil then return nil end
+    local stored = fillType.massPerLiter
+    if type(stored) ~= "number" or stored <= 0 then return nil end
+    local kgPerLitre = stored * 1000
+    if kgPerLitre ~= kgPerLitre then return nil end   -- NaN survives the > 0 test
+    return kgPerLitre
+end
+
 --- The twelve dry products (R7). A subset of the population above, named here once
 --- so the Drain Vehicle recovery and the density refusal cannot drift apart.
 HookManager.DRY_PRODUCT_NAMES = {
@@ -92,6 +116,7 @@ HookManager.DRY_PRODUCT_NAMES = {
 --- silently falls back to a price-keyed path.
 ---@return number  how many names resolved to an index
 function HookManager:rebuildCustomProductCatalogue()
+    self:ensureProductTables()
     self.customProductIndices = {}
     if not g_fillTypeManager then return 0 end
     local resolved = 0
@@ -105,15 +130,27 @@ function HookManager:rebuildCustomProductCatalogue()
     return resolved
 end
 
+--- Make sure the two product tables exist on this instance.
+--- HookManager.new() creates them, but registerCustomSprayTypes is reachable on an
+--- object built straight from the metatable (the F187 bar does exactly that), and a
+--- registration path that indexes a nil table would fail for a reason that has
+--- nothing to do with registration.
+function HookManager:ensureProductTables()
+    if self.customProductIndices == nil then self.customProductIndices = {} end
+    if self.refusedProducts == nil then self.refusedProducts = {} end
+end
+
 ---@param index number|nil
 ---@return boolean
 function HookManager:isCustomProduct(index)
+    self:ensureProductTables()
     return index ~= nil and self.customProductIndices[index] == true
 end
 
 ---@param index number|nil
 ---@return boolean
 function HookManager:isRefusedProduct(index)
+    self:ensureProductTables()
     return index ~= nil and self.refusedProducts[index] ~= nil
 end
 
@@ -878,14 +915,45 @@ function HookManager:registerCustomSprayTypes()
         end
     end
 
+    self:ensureProductTables()
     for _, name in ipairs(solidNames) do
-        if g_fillTypeManager:getFillTypeByName(name) then
-            local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
-            local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
-            SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+        local ft = g_fillTypeManager:getFillTypeByName(name)
+        if ft then
+            -- RSF-F196 R1: a dry product's rate is stated in kg/ha, so it can only be
+            -- interpreted through the product's density. A product whose density is
+            -- unusable is RESOLVED BUT NOT REGISTERED, and its index is recorded in
+            -- the refused table. Refusal is then a first-class fact read by name, not
+            -- inferred from a zero: AI-1's entry condition is both dose fields being
+            -- zero or nil, so a numeric refusal would be indistinguishable from an
+            -- empty tank a helper should refill.
+            -- Refuse only on a density that is PRESENT and nonsense. A nil or
+            -- non-number massPerLiter is not a product defect: FillTypeDesc.lua:13
+            -- and :71 mean the engine's loader always writes a number, over a
+            -- schema default of 1 kg at :290, so nil is unreachable from real
+            -- product data and only appears on an object that did not come through
+            -- the loader. Refusing it would fire the gate on fixtures rather than
+            -- on products, which is the same mistake as encoding an i18n shape the
+            -- engine cannot produce.
+            local declared = ft.massPerLiter
+            local invalid = type(declared) == "number" and HookManager.densityOf(ft) == nil
+            if invalid then
+                self.refusedProducts[ft.index or -1] = "density"
+                SoilLogger.warning(
+                    "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
+                    name, tostring(ft.massPerLiter))
+                skipped = skipped + 1
+            else
+                -- R1a/R6: a retry that finds a previously refused product now valid
+                -- removes the refusal atomically, before registering it.
+                if ft.index ~= nil then self.refusedProducts[ft.index] = nil end
 
-            g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
-            registered = registered + 1
+                local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
+                local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
+                SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+
+                g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
+                registered = registered + 1
+            end
         else
             skipped = skipped + 1
         end
