@@ -277,6 +277,10 @@ end
 
 --- Apply one pH footprint request. Returns
 --- { status, mapRevision, reportDirty, bounds, reason }.
+--- request.isTrueLime (brief 3.A) is the application callers' diagnostic
+--- classification: whether the pass is also a vanilla LIME spray type. This
+--- writer deliberately never reads it; it is not permission, and nothing here
+--- grants or fabricates native lime credit.
 ---@param fieldId number
 ---@param request table
 function SoilFertilitySystem:_applyPHFootprint(fieldId, request)
