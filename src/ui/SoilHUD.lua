@@ -1954,6 +1954,10 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
                 local bufferMass = currentBuffer
                 if HookManager and type(HookManager.massEquivalent) == "function" then
                     bufferMass = HookManager.massEquivalent(fillType, currentBuffer)
+                else
+                    -- Observable, never silent (#976 cold review): a bar can assert this
+                    -- branch was not taken.
+                    SoilHUD.unitRuleFallbacks = (SoilHUD.unitRuleFallbacks or 0) + 1
                 end
                 local remaining = math.max(0, threshold - bufferMass)
                 
