@@ -167,6 +167,80 @@ function HookManager:rebuildCustomProductCatalogue()
     return resolved
 end
 
+--- RSF-F196 X1 / V12a: the ONE price source, by name. Overrides from Constants
+--- (PURCHASABLE_SINGLE_NUTRIENT pricePerLiter) win, else the fillTypes.xml economy
+--- fallback. Lifted verbatim from installPurchaseRefillHook so the install-time
+--- wrapper and the per-attempt rebuild below read one table, never two copies
+--- that can drift. A name with no entry here (every blend) has NO price and is
+--- not eligible for the completeness predicate; billing such a product is
+--- native's path, not ours (V17).
+local FALLBACK_PRICES = {
+    UAN32 = 1.60, UAN28 = 1.50, ANHYDROUS = 1.85, STARTER = 1.70,
+    LIQUIDLIME = 1.20, INSECTICIDE = 1.20, FUNGICIDE = 1.30,
+    -- Physical named fungicides (6-chemical kit): premium anchors, balance pass owns finals
+    PROPICONAZOLE = 1.40, AZOXYSTROBIN = 1.60, BOSCALID = 1.85,
+    MANCOZEB = 0.90, METALAXYL = 1.45, TEBUCONAZOLE = 1.55,
+    -- Organic-approved preventatives (OM-209): cheap, priced below the synthetic six
+    SULFUR = 0.40, COPPER_HYDROXIDE = 0.55,
+    LIQUID_UREA = 1.70, LIQUID_AMS = 1.45, LIQUID_MAP = 2.00, LIQUID_DAP = 1.80, LIQUID_POTASH = 1.85,
+    UREA = 1.65, AN = 1.55, AMS = 1.40, MAP = 1.95, DAP = 1.75, POTASH = 1.80, POLIFOSKA = 1.35,
+    COMPOST = 0.60, BIOSOLIDS = 0.55, CHICKEN_MANURE = 0.50,
+    PELLETIZED_MANURE = 0.70, GYPSUM = 0.35,  -- reduced: amendment, not plant food ($525/ha vs $1200)
+}
+---@param name string|nil
+---@return number|nil pricePerLiter, nil when the name has no price entry
+function HookManager.customPriceFor(name)
+    if type(name) ~= "string" then return nil end
+    local pcs = SoilConstants and SoilConstants.PURCHASABLE_SINGLE_NUTRIENT
+    if pcs then
+        for entryName, data in pairs(pcs) do
+            if string.upper(entryName) == name and data.pricePerLiter ~= nil then
+                return data.pricePerLiter
+            end
+        end
+    end
+    return FALLBACK_PRICES[name]
+end
+
+--- RSF-F196 X1 / V12a: rebuild the price map on EVERY registration attempt, the
+--- dedi retry included, beside the identity catalogue. Until this existed the map
+--- had exactly one writer, installPurchaseRefillHook, which runs once from
+--- installAll and never on a retry: a product whose descriptor arrived late
+--- (#431) resolved into the catalogue and never got a price, so helper buying
+--- refused it for the whole session while the completion flag still went true.
+---
+--- Builds a COMPLETE replacement for every resolved, non-refused population index
+--- whose name has a price, then assigns it in ONE step, so no partial map is ever
+--- observable by the two call-time readers (getExternalFill's charge and the
+--- backup refill). Returns whether the map is complete: every such eligible index
+--- carries a finite, nonnegative price. Eligibility is "the name has a price
+--- entry"; blends have none and must never count as missing, or every load would
+--- time out. The purchase wrapper's captured install-time copy is untouched here
+--- (V12a's wrapper half, with V12c).
+---@return boolean complete
+function HookManager:rebuildCustomPriceMap()
+    self:ensureProductTables()
+    local fm = g_fillTypeManager
+    local map, complete = {}, true
+    if fm ~= nil then
+        for _, name in ipairs(HookManager.buildCustomNamePopulation()) do
+            local price = HookManager.customPriceFor(name)
+            if price ~= nil then
+                local ok, idx = pcall(function() return fm:getFillTypeIndexByName(name) end)
+                if ok and idx and idx > 0 and self.refusedProducts[idx] == nil then
+                    if type(price) == "number" and price == price and price >= 0 and price < math.huge then
+                        map[idx] = price
+                    else
+                        complete = false
+                    end
+                end
+            end
+        end
+    end
+    self.customFillTypePrices = map
+    return complete
+end
+
 --- Make sure the two product tables exist on this instance.
 --- HookManager.new() creates them, but registerCustomSprayTypes is reachable on an
 --- object built straight from the metatable (the F187 bar does exactly that), and a
@@ -1056,9 +1130,16 @@ function HookManager:registerCustomSprayTypes()
     -- catalogue themselves, so none of them noticed that production never did.
     local catalogued = self:rebuildCustomProductCatalogue()
     SoilLogger.debug("[F196] identity catalogue: %d custom products resolved to an index", catalogued)
+    -- RSF-F196 X1 / V12a: the price map is rebuilt on the same cadence as the
+    -- catalogue, so a product that resolved late has its price the moment it
+    -- exists (see rebuildCustomPriceMap). Completion is now honest about price:
+    -- every name resolved AND every eligible resolved product priced. The brief's
+    -- `_sprayTypesExhausted` is the mission-time timeout in _updateDeferredInit
+    -- (#970), which warns once, keeps refusals and leaves this false; no flag.
+    local priceComplete = self:rebuildCustomPriceMap()
 
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
-    self._sprayTypesComplete = (skipped == 0)
+    self._sprayTypesComplete = (skipped == 0) and priceComplete
     if not self._sprayTypesComplete then
         SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
     end
@@ -7475,46 +7556,19 @@ function HookManager:installPurchaseRefillHook()
     -- Build a lookup table: fillTypeIndex → pricePerLiter for all our custom types.
     -- Prices come from Constants (authoritative single source) and fall back to
     -- the fillTypes.xml economy values via FillTypeManager if a type isn't in Constants.
-    -- RSF-F196 V12b: ONE name population, defined at HookManager.buildCustomNamePopulation
-    -- and read here. It used to be a second copy of the same list living beside the price
-    -- table, which is how identity and price could drift apart without anything failing.
-    local ALL_CUSTOM_NAMES = HookManager.buildCustomNamePopulation()
-
-    -- Prices from Constants (already defined there)
-    local PRICE_OVERRIDES = {}
-    if SoilConstants and SoilConstants.PURCHASABLE_SINGLE_NUTRIENT then
-        for name, data in pairs(SoilConstants.PURCHASABLE_SINGLE_NUTRIENT) do
-            if data.pricePerLiter then
-                PRICE_OVERRIDES[string.upper(name)] = data.pricePerLiter
-            end
-        end
-    end
-    -- Fallback prices match fillTypes.xml economy entries
-    local FALLBACK_PRICES = {
-        UAN32 = 1.60, UAN28 = 1.50, ANHYDROUS = 1.85, STARTER = 1.70,
-        LIQUIDLIME = 1.20, INSECTICIDE = 1.20, FUNGICIDE = 1.30,
-        -- Physical named fungicides (6-chemical kit): premium anchors, balance pass owns finals
-        PROPICONAZOLE = 1.40, AZOXYSTROBIN = 1.60, BOSCALID = 1.85,
-        MANCOZEB = 0.90, METALAXYL = 1.45, TEBUCONAZOLE = 1.55,
-        -- Organic-approved preventatives (OM-209): cheap, priced below the synthetic six
-        SULFUR = 0.40, COPPER_HYDROXIDE = 0.55,
-        LIQUID_UREA = 1.70, LIQUID_AMS = 1.45, LIQUID_MAP = 2.00, LIQUID_DAP = 1.80, LIQUID_POTASH = 1.85,
-        UREA = 1.65, AN = 1.55, AMS = 1.40, MAP = 1.95, DAP = 1.75, POTASH = 1.80, POLIFOSKA = 1.35,
-        COMPOST = 0.60, BIOSOLIDS = 0.55, CHICKEN_MANURE = 0.50,
-        PELLETIZED_MANURE = 0.70, GYPSUM = 0.35,  -- reduced: amendment, not plant food ($525/ha vs $1200)
-    }
-
-    -- customPrices[fillTypeIndex] = pricePerLiter
-    local customPrices = {}
-    for _, name in ipairs(ALL_CUSTOM_NAMES) do
-        local idx = fm:getFillTypeIndexByName(name)
-        if idx then
-            local price = PRICE_OVERRIDES[name] or FALLBACK_PRICES[name]
-            if price then
-                customPrices[idx] = price
-            end
-        end
-    end
+    -- RSF-F196 V12b/X1: ONE name population (HookManager.buildCustomNamePopulation)
+    -- and ONE price source (HookManager.customPriceFor), both read by the one
+    -- rebuild. The population used to be a second copy of the same list living
+    -- beside a price table that lived only here, which is how identity and price
+    -- could drift apart without anything failing, and how a product resolving
+    -- after this install never got a price at all (X1: the rebuild now runs on
+    -- every registration attempt).
+    --
+    -- customPrices[fillTypeIndex] = pricePerLiter. This is the install-time copy the
+    -- wrapper below captures; making the wrapper read the live map at call time is
+    -- V12a's wrapper half and rides with V12c.
+    self:rebuildCustomPriceMap()
+    local customPrices = self.customFillTypePrices
 
     if not next(customPrices) then
         SoilLogger.warning("Purchase refill hook: no custom fill types with prices found - skipping")
@@ -7663,8 +7717,9 @@ function HookManager:installPurchaseRefillHook()
         FillUnit.addFillUnitFillLevel = original
     end)
 
-    -- Share the price table with the sprayer hook (used as a reliable backup path)
-    self.customFillTypePrices = customPrices
+    -- The live price table the sprayer hook and the backup refill read at call time
+    -- is self.customFillTypePrices, assigned by rebuildCustomPriceMap above and
+    -- replaced on every registration attempt; nothing to share here any more.
 
     SoilLogger.info("[OK] Purchase refill hook installed - BUY mode enabled for %d custom fill types", count)
     return true
