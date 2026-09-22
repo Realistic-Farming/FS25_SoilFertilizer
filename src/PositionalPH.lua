@@ -748,7 +748,12 @@ end
 ---@return number|nil
 function PositionalPH.sampleWorkAreasPH(soilSys, vehicle, workAreas)
     if type(workAreas) ~= 'table' or soilSys == nil or soilSys.valueMaps == nil then return nil end
-    local aux = (WorkAreaType ~= nil) and WorkAreaType.AUXILIARY or nil
+    -- MAINTENANCE row 74: read the engine global BARE. The old `(WorkAreaType ~= nil)
+    -- and ... or nil` guard failed OPEN: with the global missing, aux was nil and
+    -- every auxiliary area was counted. WorkAreaType is an engine class present on
+    -- every peer at mission time; a bench that forgets it must fail loudly here,
+    -- not pass with auxiliary areas silently admitted.
+    local aux = WorkAreaType.AUXILIARY
     local sum, n = 0, 0
     for _, wa in ipairs(workAreas) do
         local usable = type(wa) == 'table' and (aux == nil or wa.type ~= aux)
