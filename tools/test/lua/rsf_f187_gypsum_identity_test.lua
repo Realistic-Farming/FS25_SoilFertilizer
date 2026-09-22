@@ -43,6 +43,9 @@ g_fillTypeManager = {
 }
 
 local hm = setmetatable({}, { __index = HookManager })
+-- The engine global the catalogue rebuild reads (registration now builds the identity
+-- catalogue on every attempt, and rebuildCustomProductCatalogue compares to FillType.UNKNOWN).
+FillType = FillType or { UNKNOWN = 0 }
 local ok, err = pcall(HookManager.registerCustomSprayTypes, hm)
 T.ok("F187 registerCustomSprayTypes runs", ok, err)
 
