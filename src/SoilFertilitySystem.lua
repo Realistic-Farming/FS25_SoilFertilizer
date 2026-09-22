@@ -4504,6 +4504,7 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
                 operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_STRIP,
                 sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz,
                 value = sd.dPH * scale, source = 'application',
+                isTrueLime = sd.isTrueLime == true,
             })
             self:_phRefreshScalar(fieldId)
         elseif sd.dPH ~= 0 then
@@ -5988,6 +5989,21 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         -- exact shortcut SF-79 retires.
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
 
+        -- [SF-79 3.A] isTrueLime: does this pass also earn vanilla lime credit? That is
+        -- the ENGINE's own axis, sprayType.isLime (SprayTypeManager.lua:62, true only for
+        -- a spray type registered as LIME), the flag FSDensityMapUtil.updateSprayArea
+        -- tests before it calls updateLimeArea (:1296-1297). It is NOT the pH-sign axis
+        -- the #437 burn gate above and the VR section curve use: GYPSUM moves pH and earns
+        -- no lime credit, and a product could raise pH without being registered as LIME.
+        -- The two agree on today's profiles and are still separate facts. Diagnostic
+        -- classification only: the writer never reads it, and nothing here grants or
+        -- fabricates native credit. It rides the dose record below, which resets on a
+        -- product change, so one record always means one product.
+        local sprayType = g_sprayTypeManager ~= nil
+            and type(g_sprayTypeManager.getSprayTypeByFillTypeIndex) == "function"
+            and g_sprayTypeManager:getSprayTypeByFillTypeIndex(fillTypeIndex) or nil
+        local isTrueLime = sprayType ~= nil and sprayType.isLime == true
+
         -- #735: stash THIS tick's field-average nutrient delta so markBoomCells can paint
         -- the boom's newly-covered cells with the correct LOCAL dose (each cell = its own
         -- pre-spray value + the local application rate) instead of the drifting field
@@ -5999,7 +6015,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         local now = (g_currentMission and g_currentMission.time) or 0
         if not field._sprayDose or field._sprayDose.time ~= now or field._sprayDose.product ~= fillType.name then
             field._sprayDose = { dN = 0, dP = 0, dK = 0, dPH = 0, dOM = 0,
-                                 area = areaInHa, time = now, product = fillType.name }
+                                 area = areaInHa, time = now, product = fillType.name,
+                                 isTrueLime = isTrueLime }
         end
         local sd = field._sprayDose
         sd.area = areaInHa
@@ -6026,8 +6043,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
             local phBufPrev = phBuf - liters
             if math.floor(phBuf / 1000) ~= math.floor(phBufPrev / 1000) then
                 SoilLogger.info(
-                    "FertApply pH field=%d type=%-12s buf=%.0fL factor=%.4f  pH %.3f -> %.3f (area=%.2fha)",
-                    fieldId, fillType.name, phBuf, factor, dbgPH0, field.pH, areaInHa)
+                    "FertApply pH field=%d type=%-12s buf=%.0fL factor=%.4f  pH %.3f -> %.3f (area=%.2fha) trueLime=%s",
+                    fieldId, fillType.name, phBuf, factor, dbgPH0, field.pH, areaInHa, tostring(isTrueLime))
             end
             SoilLogger.debug(
                 "FertApply pH field=%d type=%-12s liters=%.4f factor=%.6f  pH %.3f -> %.3f (delta=%.4f)",
@@ -6095,6 +6112,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
                 self:_applyPHFootprint(fieldId, {
                     operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_POINT,
                     x = sprayX, z = sprayZ, value = entry.pH * factor * tunFert, source = 'application',
+                    isTrueLime = isTrueLime,
                 })
                 self:_phRefreshScalar(fieldId)
             elseif dotPH ~= 0 then
