@@ -5988,21 +5988,48 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         end
 
         -- REFINED: per-pixel write at the sprayer position into the runtime value
-        -- maps (~2 m/px). The full boom-width strip is now painted per-cell by
-        -- markBoomCells (#735, correct local dose). This dot is the NARROW-TOOL
-        -- fallback only: tools whose span is under one cell yield no boom points, so
-        -- markBoomCells never runs and this dot is their sole per-pixel write. It
-        -- DEFERS whenever a boom paint happened in the last ~half second (a wide
-        -- sprayer), so it can't restamp the field average over the correct strip.
+        -- maps (~2 m/px). The full boom-width strip is painted per-cell by
+        -- paintBoomStrip (#735/#762, correct local dose). This dot is the
+        -- NARROW-TOOL fallback only: tools whose span is under one cell yield no
+        -- boom points, so the strip never paints and this dot is their sole
+        -- per-pixel write. It DEFERS whenever a boom paint happened in the last
+        -- ~half second (a wide sprayer), so it can't repaint over the correct strip.
+        -- The defer flag is the PREVIOUS tick's, so every tool's first tick of a
+        -- pass reaches this dot once before its strip.
+        --
+        -- The dot ADDS this tick's delta over a 5 m square through addPaintStrip,
+        -- the additive primitive paintBoomStrip uses, on the parallelogram
+        -- writeValueAtWorld builds for the same radius. It used to SET the field
+        -- scalar there through writeValueAtWorld, which levelled every pixel in the
+        -- square to the field average and erased the per-pixel record the strip had
+        -- built: a narrow tool crossing a boom strip flattened it, and every tool's
+        -- first tick stamped the average over the ground under the sprayer.
+        -- The delta is the same expression as the pH dot below and the scalar
+        -- update above: this tick's FIELD-AVERAGE delta, not a local dose (the strip
+        -- rescales by its own area; the dot has no travel geometry to rescale by).
+        -- The footprint is the 5 m square the stamp always used, about eleven times
+        -- the pH dot's grain cell; the dose magnitude is a MAINTENANCE item, not
+        -- decided here.
+        -- Seeding: none, like the strip. N/P/K/OM are seeded over the field polygon
+        -- at birth (vmSeedField) and addPaintStrip skips unrecorded pixels (raw 0),
+        -- so ground the seeder never covered stays unrecorded under every tool
+        -- instead of being invented at the field average by this one.
         local sprayX = self._lastSprayX
         local sprayZ = self._lastSprayZ
         local boomRecent = field._vmBoomPaintTime ~= nil
             and (now - field._vmBoomPaintTime) >= 0 and (now - field._vmBoomPaintTime) < 500
         if sprayX and sprayZ and self:vmAvailable() and not boomRecent then
             local vm = self.valueMaps
-            if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
-            if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
-            if entry.K  then vm:writeValueAtWorld("potassium",     sprayX, sprayZ, field.potassium,     2.5) end
+            local r = 2.5
+            local sx, sz, wx, wz, hx, hz = sprayX - r, sprayZ - r, sprayX + r, sprayZ - r, sprayX - r, sprayZ + r
+            local dotN  = (entry.N  or 0) * factor * tunFert
+            local dotP  = (entry.P  or 0) * factor * tunFert
+            local dotK  = (entry.K  or 0) * factor * tunFert
+            local dotPH = (entry.pH or 0) * factor * tunFert
+            local dotOM = (entry.OM or 0) * factor * tunFert
+            if dotN ~= 0 then vm:addPaintStrip("nitrogen",   sx, sz, wx, wz, hx, hz, dotN) end
+            if dotP ~= 0 then vm:addPaintStrip("phosphorus", sx, sz, wx, wz, hx, hz, dotP) end
+            if dotK ~= 0 then vm:addPaintStrip("potassium",  sx, sz, wx, wz, hx, hz, dotK) end
             -- [SF-79] The narrow-tool pH dot goes through the positional writer, then
             -- republishes the field scalar from the derived report.
             if entry.pH and type(self._applyPHFootprint) == "function" then
@@ -6011,10 +6038,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
                     x = sprayX, z = sprayZ, value = entry.pH * factor * tunFert, source = 'application',
                 })
                 self:_phRefreshScalar(fieldId)
-            elseif entry.pH then
-                vm:writeValueAtWorld("pH", sprayX, sprayZ, field.pH, 2.5)
+            elseif dotPH ~= 0 then
+                vm:addPaintStrip("pH", sx, sz, wx, wz, hx, hz, dotPH)
             end
-            if entry.OM then vm:writeValueAtWorld("organicMatter", sprayX, sprayZ, field.organicMatter, 2.5) end
+            if dotOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, dotOM) end
             local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
             if minimapLayer then minimapLayer:markDirty() end
         end
