@@ -65,7 +65,7 @@ MUTATIONS = [
      "KILLED"),
 
     ("P2-getext-returns-the-key",
-     [("      return string.format(\"Missing '%s' in l10n.xml\", tostring(key))",
+     [("      return string.format(\"Missing '%s' in l10n%s.xml\", tostring(key), tostring(g_languageSuffix))",
        "      return tostring(key)", 1)],
      "an absent key comes back as the key itself, the old prelude's fiction, a shape the engine "
      "never returns and the one every $l10n_ guard mistook for a translation",
@@ -81,6 +81,14 @@ MUTATIONS = [
      [("  hasText = function(self, key)", "  hasTextRemoved = function(self, key)", 1)],
      "the exact regression this commit repairs: an i18n object that cannot answer hasText, "
      "which a correctly repaired gate must refuse",
+     "KILLED"),
+
+    ("P6-suffix-hardcoded",
+     [("      return string.format(\"Missing '%s' in l10n%s.xml\", tostring(key), tostring(g_languageSuffix))",
+       "      return string.format(\"Missing '%s' in l10n.xml\", tostring(key))", 1)],
+     "the missing sentence hardcodes one suffix instead of interpolating g_languageSuffix "
+     "(I18N.lua:186), so the harness renders a sentence no client produces and a non-English "
+     "client's shape can never be exercised. This was the shipped first draft of this commit.",
      "KILLED"),
 
     ("P5-nil-key-guard-dropped",

@@ -37,9 +37,17 @@ g_currentMission = {
   missionInfo = {},
 }
 
+-- The engine's own global: main.lua:33 sets it to "_en", and main.lua:1187 (and
+-- NPCManager.lua:358) reassign it to the client's language suffix at runtime. It is
+-- here because getText's missing sentence interpolates it, so a harness that
+-- hardcodes the suffix renders a sentence no client ever produces. A bar that wants
+-- a non-English client assigns this and puts it back.
+g_languageSuffix = "_en"
+
 -- i18n, modelled on the engine rather than on a convenient shim. I18N.lua:175
--- getText returns texts[name] and, when the key is absent, the literal sentence
--- "Missing '<key>' in l10n<suffix>.xml" - never nil, never "" and never the
+-- getText returns texts[name] and, when the key is absent, the sentence
+-- "Missing '<key>' in l10n<suffix>.xml" with g_languageSuffix interpolated at
+-- I18N.lua:186 - never nil, never "" and never the
 -- "$l10n_" XML attribute prefix. I18N.lua:194 hasText answers whether the key
 -- exists at all, and is false for a nil name. The harness loads no locale file,
 -- so by default NO key exists: a gate written the engine's way takes its English
@@ -56,7 +64,7 @@ g_i18n = {
   getText = function(self, key)
     local ret = self.texts[key]
     if ret == nil then
-      return string.format("Missing '%s' in l10n.xml", tostring(key))
+      return string.format("Missing '%s' in l10n%s.xml", tostring(key), tostring(g_languageSuffix))
     end
     return ret
   end,
