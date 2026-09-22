@@ -38,6 +38,7 @@
 -- two SIGNED Baler sites. Those are network facts and belong to the TESTING row.
 --
 --!load: src/utils/SoilFillTypeWidth.lua
+--!text: src/main.lua
 
 local DEFAULT_BITS = 8    -- FillTypeManager.lua:6
 local RL_BITS      = 10   -- Realistic Livestock's floor
@@ -246,5 +247,42 @@ do
     T.ok("G11: the already line says it is the width AT SoilFertilizer load (a later mod can still change it) and that FTE is not required",
         line10 ~= nil and line10:find("at SoilFertilizer load", 1, true) ~= nil
         and line10:find("FillType Extender is not required", 1, true) ~= nil)
-    T.ok("G12: loadLine never printed anything itself (pure: main.lua owns the print)", type(SoilFillTypeWidth.loadLine) == "function")
+    -- Pure: loadLine formats and never prints. print is stubbed for the three calls
+    -- and must be called zero times; main.lua owns the one print.
+    local savedPrint, printed = print, 0
+    print = function() printed = printed + 1 end
+    local okCalls = pcall(function()
+        SoilFillTypeWidth.loadLine(true, DEFAULT_BITS)
+        SoilFillTypeWidth.loadLine(false, RL_BITS)
+        SoilFillTypeWidth.loadLine(false, nil)
+    end)
+    print = savedPrint
+    T.ok("G12: loadLine never printed anything itself at 8, 10 or nil (pure: main.lua owns the print)", okCalls and printed == 0)
+end
+
+-- ── GROUP H: source witness. main.lua's call site is pinned as TEXT, in order ───
+-- Group G drives the same sequence, but a bar that re-creates the call site pins
+-- nothing in main.lua: deleting the print there would stay green. The runner hands
+-- this bar src/main.lua's text (the --!text directive), and these rows pin the three
+-- lines and their order. mutate_width_floor.py M8 deletes the print and must go red.
+do
+    local src = SOURCE_TEXT and SOURCE_TEXT["src/main.lua"]
+    T.ok("H1: the runner handed this bar src/main.lua's text", type(src) == "string" and #src > 0)
+    src = src or ""
+    local a = src:find("local sfWidthRaised, sfWidthNow = SoilFillTypeWidth.applyFloor()", 1, true)
+    local b = src:find("local sfWidthLine = SoilFillTypeWidth.loadLine(sfWidthRaised, sfWidthNow)", 1, true)
+    local c = src:find("print(sfWidthLine)", 1, true)
+    T.ok("H2: main.lua calls applyFloor() into sfWidthRaised, sfWidthNow", a ~= nil)
+    T.ok("H3: then loadLine(sfWidthRaised, sfWidthNow) into sfWidthLine", b ~= nil)
+    T.ok("H4: then prints sfWidthLine", c ~= nil)
+    T.ok("H5: in that order", a ~= nil and b ~= nil and c ~= nil and a < b and b < c)
+    local _, nPrints = src:gsub("print%(sfWidthLine%)", "")
+    T.eq("H6: exactly one print of the line", nPrints, 1)
+    T.ok("H7: guarded on nil: the print sits under `if sfWidthLine ~= nil then`",
+        src:find("if sfWidthLine ~= nil then%s+print%(sfWidthLine%)") ~= nil)
+    local loggerSource = src:find('source%(modDirectory %.%. "src/utils/Logger%.lua"%)')
+    T.ok("H8: the call site runs before Logger.lua is sourced, so a plain print is the only option there",
+        c ~= nil and loggerSource ~= nil and c < loggerSource)
+    local _, nApply = src:gsub("SoilFillTypeWidth%.applyFloor%(", "")
+    T.eq("H9: applyFloor is called exactly once in main.lua (once per load)", nApply, 1)
 end
