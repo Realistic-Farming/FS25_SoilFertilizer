@@ -25,8 +25,9 @@
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/ui/SoilSettingsPanel.lua
 
 -- Force tr() down its fallback path so the assertions below read the English the
--- player sees. The prelude's stub returns the KEY, which tr() treats as a valid
--- translation; returning "" is the real "key absent" case.
+-- player sees. The prelude's i18n would take this bar down the same path anyway,
+-- since it registers no keys, but this stub states the intent locally and pins the
+-- empty-string return, which is a shape the prelude does not produce.
 g_i18n = { getText = function(_self, _key) return "" end, hasText = function() return false end }
 
 local function newPanel(isAdmin, startValue)
