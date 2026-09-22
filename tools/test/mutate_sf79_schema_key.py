@@ -16,6 +16,13 @@ SF-79-ph_schema_seed_freeze_test.lua RED:
                                           every load, so "frozen" means nothing.
   M5  XML loader drops the freeze call    unmarked XML saves never freeze.
   M6  ledger loader drops the freeze call unmarked ledger snapshots never freeze.
+  M7  ledger loader ignores the XML       every pre-#982 ledger snapshot lacks the
+      root marker                         key, so a dev save's later-report scalar
+                                          is frozen and persisted (Bob's BLOCKER).
+  M8  loadSoilData stops passing the      same outcome one level out: the marker
+      marker into the ledger apply        is read and never reaches the loader.
+  M9  a missing safety copy counts as     a released player's pre-marker save with
+      MARKED                              a ledger block never freezes.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -39,6 +46,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SFS = os.path.join(ROOT, "src", "SoilFertilitySystem.lua")
 PPH = os.path.join(ROOT, "src", "PositionalPH.lua")
+SFM = os.path.join(ROOT, "src", "SoilFertilityManager.lua")
 BAR = "SF-79-ph_schema_seed_freeze_test.lua"
 BAR_RE = re.compile(re.escape(BAR) + r"[^\n(]*\((\d+) passed, (\d+) failed")
 
@@ -52,6 +60,9 @@ XML_CALL = ("        if type(self._phFreezeSeedFromLoad) == \"function\" then\n"
 LEDGER_CALL = ("            if type(self._phFreezeSeedFromLoad) == \"function\" then\n"
                "                self:_phFreezeSeedFromLoad(f, sf79Marked)\n"
                "            end\n")
+LEDGER_MARK = "    local sf79Marked = (data.sf79PHSchema or 0) == 1 or xmlRootMarked == true\n"
+MGR_PASS = "        SoilStateLedgerBridge.applyState(self, self:_readSoilXMLSchemaMarker())\n"
+MGR_MISSING = "    if not fileExists(xmlPath) then return false end\n    local xmlFile = loadXMLFile(\"soilDataSchemaMarker\", xmlPath)\n"
 
 MUTATIONS = [
     ("M1 ignore the marker (always freeze)", PPH,
@@ -62,6 +73,12 @@ MUTATIONS = [
     ("M4 re-freeze when a seed is present", PPH, [(HAS_SEED, "", 1)]),
     ("M5 XML loader drops the freeze call", SFS, [(XML_CALL, "", 1)]),
     ("M6 ledger loader drops the freeze call", SFS, [(LEDGER_CALL, "", 1)]),
+    ("M7 ledger loader ignores the XML root marker", SFS,
+     [(LEDGER_MARK, "    local sf79Marked = (data.sf79PHSchema or 0) == 1\n", 1)]),
+    ("M8 loadSoilData stops passing the marker", SFM,
+     [(MGR_PASS, "        SoilStateLedgerBridge.applyState(self)\n", 1)]),
+    ("M9 a missing safety copy counts as MARKED", SFM,
+     [(MGR_MISSING, "    if not fileExists(xmlPath) then return true end\n    local xmlFile = loadXMLFile(\"soilDataSchemaMarker\", xmlPath)\n", 1)]),
 ]
 
 
@@ -101,7 +118,7 @@ def apply(src, edits):
 
 
 def main():
-    bases = {p: (read(p), digest(p)) for p in (SFS, PPH)}
+    bases = {p: (read(p), digest(p)) for p in (SFS, PPH, SFM)}
     p, f, tail = run_bar()
     if p is None or f != 0 or p == 0:
         print("ABORT: the bar is not green before mutating.\n" + tail)

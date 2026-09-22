@@ -65,12 +65,16 @@ end
 
 -- Apply the cached ledger state into the manager. Returns true if a real block was
 -- applied, false when there is nothing to apply (new save / no block yet).
-function SoilStateLedgerBridge.applyState(mgr)
+-- [SF-79] xmlRootMarked is the root #sf79PHSchema of the soilData.xml safety copy,
+-- read by loadSoilData. Every ledger snapshot written before #982 lacks the key,
+-- so on this path "absent" cannot mean "unmarked"; the safety copy those same
+-- builds did write carries the answer, and it travels alongside the block here.
+function SoilStateLedgerBridge.applyState(mgr, xmlRootMarked)
     local data = SoilStateLedgerBridge.pendingState
     if type(data) ~= "table" or mgr == nil then return false end
 
     if mgr.soilSystem ~= nil and mgr.soilSystem.applySoilStateTable ~= nil then
-        mgr.soilSystem:applySoilStateTable(data.soil)
+        mgr.soilSystem:applySoilStateTable(data.soil, xmlRootMarked)
     end
     if FieldSentry_API ~= nil and FieldSentry_API.applyStateTable ~= nil then
         FieldSentry_API.applyStateTable(data.fieldSentry)

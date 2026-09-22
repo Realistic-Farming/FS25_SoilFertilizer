@@ -26,7 +26,14 @@
 -- the engine's XML functions (in-game row), and anything about seeding the map itself
 -- (the seeding item, which consumes the seed this item originates).
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
+-- Group I is the transition bar Bob's cold review on #982 asked for: with StateLedger
+-- delivering a block, loadSoilData runs ONLY applySoilStateTable, and every ledger
+-- snapshot written before #982 lacks sf79PHSchema. So on that path "absent" is not
+-- "unmarked"; the root marker of the soilData.xml safety copy is the proof, read by
+-- loadSoilData and passed alongside the block. Group I drives the REAL loadSoilData
+-- through its ledger branch with the real SoilStateLedgerBridge.applyState.
+--
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/integrations/SoilStateLedgerBridge.lua
 
 -- The prelude's XML mock covers int, float and string; the field loader also reads
 -- one bool attribute, so the same shape is supplied here (a table keyed by path).
@@ -191,3 +198,78 @@ do
   T.eq("SEED H6: the helper reports true exactly when it froze", s:_phFreezeSeedFromLoad(rec, false), true)
   T.eq("SEED H7: and false on the second call, the seed being present", s:_phFreezeSeedFromLoad(rec, false), false)
 end
+
+-- =====================================================================
+-- GROUP I: the transition, through the REAL loadSoilData ledger branch. The ledger
+-- block never carries the key (every snapshot written before #982); the soilData.xml
+-- safety copy on disk may or may not carry the root marker. The disk is a fixture:
+-- fileExists/loadXMLFile/delete resolve against a table of path -> XML handle.
+-- =====================================================================
+local savedFns = { fileExists = fileExists, loadXMLFile = loadXMLFile, delete = delete }
+local savedMission = g_currentMission.missionInfo
+local disk = {}
+fileExists  = function(path) return disk[path] ~= nil end
+loadXMLFile = function(_name, path) return disk[path] end
+delete      = function() end
+g_currentMission.missionInfo = { savegameDirectory = "/save" }
+local SAFETY = "/save/soilData.xml"
+
+-- A ledger block as every pre-#982 build wrote it: no sf79PHSchema key.
+local function ledgerBlock(fieldPH, seed)
+  return { soil = { lastUpdateDay = 3, fields = { [1] = { fieldArea = 2.0, pH = fieldPH, sf79PHSeed = seed } } } }
+end
+-- The safety copy on disk, marked or not, with a DIFFERENT pH so the bar can tell
+-- which loader ran.
+local function safetyCopy(marked)
+  local h = {}
+  h[KEY .. "#lastUpdateDay"] = 3
+  if marked then h[KEY .. "#sf79PHSchema"] = 1 end
+  h[KEY .. ".field(0)#id"] = 1
+  h[KEY .. ".field(0)#pH"] = 5.5
+  return h
+end
+local function loadViaLedger(block, diskCopy)
+  disk = {}
+  if diskCopy ~= nil then disk[SAFETY] = diskCopy end
+  SoilStateLedgerBridge.active = true
+  SoilStateLedgerBridge.delivered = true
+  SoilStateLedgerBridge.pendingState = block
+  local mgr = setmetatable({ soilSystem = newSys() }, { __index = SoilFertilityManager })
+  local ok, err = pcall(SoilFertilityManager.loadSoilData, mgr)
+  SoilStateLedgerBridge.active, SoilStateLedgerBridge.delivered, SoilStateLedgerBridge.pendingState = false, false, nil
+  return mgr.soilSystem, ok, err
+end
+do
+  local s, ok, err = loadViaLedger(ledgerBlock(6.9), safetyCopy(true))
+  T.ok("SEED I0: the ledger branch ran (" .. tostring(err) .. ")", ok)
+  T.eq("SEED I1: it was the LEDGER that loaded (pH 6.9 from the block, not 5.5 from the safety copy)", s.fieldData[1] and s.fieldData[1].pH, 6.9)
+  T.eq("SEED I2: ledger without the key, safety copy MARKED: no freeze (the scalar may be the later report)", s.fieldData[1]._phSeedScalar, nil)
+end
+do
+  local s = loadViaLedger(ledgerBlock(6.9), safetyCopy(false))
+  T.eq("SEED I3: ledger without the key, safety copy UNMARKED: the seed is frozen at 6.9", s.fieldData[1]._phSeedScalar, 6.9)
+end
+do
+  local s = loadViaLedger(ledgerBlock(8.0), nil)
+  T.eq("SEED I4: ledger without the key, NO safety copy on disk: counts as unmarked, frozen at the carrier bound 7.5", s.fieldData[1]._phSeedScalar, 7.5)
+end
+do
+  local s = loadViaLedger({ soil = { lastUpdateDay = 3, sf79PHSchema = 1, fields = { [1] = { fieldArea = 2.0, pH = 6.9 } } } }, nil)
+  T.eq("SEED I5: ledger WITH the key (a post-#982 snapshot), no safety copy: no freeze", s.fieldData[1]._phSeedScalar, nil)
+end
+do
+  local s = loadViaLedger(ledgerBlock(6.9, 6.1), safetyCopy(true))
+  T.eq("SEED I6: ledger without the key, safety copy marked, seed in the block: 6.1 carried", s.fieldData[1]._phSeedScalar, 6.1)
+end
+do
+  -- The marker read on its own: the helper the manager calls before applyState.
+  local mgr = setmetatable({}, { __index = SoilFertilityManager })
+  disk = {}; disk[SAFETY] = safetyCopy(true)
+  T.eq("SEED I7: _readSoilXMLSchemaMarker reads a marked safety copy as true", mgr:_readSoilXMLSchemaMarker(), true)
+  disk[SAFETY] = safetyCopy(false)
+  T.eq("SEED I8: and an unmarked one as false", mgr:_readSoilXMLSchemaMarker(), false)
+  disk = {}
+  T.eq("SEED I9: and a missing one as false (the named edge)", mgr:_readSoilXMLSchemaMarker(), false)
+end
+fileExists, loadXMLFile, delete = savedFns.fileExists, savedFns.loadXMLFile, savedFns.delete
+g_currentMission.missionInfo = savedMission

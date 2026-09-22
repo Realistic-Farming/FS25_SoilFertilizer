@@ -8333,7 +8333,10 @@ end
 -- Apply a plain-table snapshot (from getSoilStateTable / StateLedger) back into
 -- fieldData. Mirrors loadFromXMLFile's raw read + clamps, then routes every
 -- field through the shared _finalizeLoadedField. Returns the field count.
-function SoilFertilitySystem:applySoilStateTable(data)
+---@param data table the ledger snapshot (getSoilStateTable's shape)
+---@param xmlRootMarked boolean|nil the root #sf79PHSchema of the soilData.xml
+--- safety copy, read by the caller. See the marker read below.
+function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
     local defaults = SoilConstants.FIELD_DEFAULTS
     self.fieldData = {}
     local _curDay = (g_currentMission and g_currentMission.environment
@@ -8345,9 +8348,22 @@ function SoilFertilitySystem:applySoilStateTable(data)
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
     self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
-    -- [SF-79] The schema marker, mirrored from the XML root by getSoilStateTable.
-    -- Same one reader as the XML load: the per-field seed freeze below.
-    local sf79Marked = (data.sf79PHSchema or 0) == 1
+    -- [SF-79] The schema marker, with the same one reader as the XML load: the
+    -- per-field seed freeze below. Two sources, either one marks:
+    --   1. data.sf79PHSchema, mirrored into the snapshot by getSoilStateTable
+    --      from #982 on;
+    --   2. xmlRootMarked, the root #sf79PHSchema of the soilData.xml safety copy,
+    --      read by loadSoilData's ledger branch.
+    -- The second exists because EVERY ledger snapshot written before #982 lacks
+    -- the key, dev and tester snapshots included, and with StateLedger delivering
+    -- a block this function is the only loader that runs (SoilFertilityManager
+    -- loadSoilData). On this path an absent key is not "unmarked": those builds
+    -- wrote the marker into the safety copy and their field.pH may already be
+    -- the later report, so freezing from the snapshot alone would persist a
+    -- forbidden seed at the next save. A missing safety copy counts as unmarked
+    -- (the caller passes false), which keeps the freeze for released players
+    -- whose saves predate the marker entirely.
+    local sf79Marked = (data.sf79PHSchema or 0) == 1 or xmlRootMarked == true
 
     local count = 0
     local fields = data.fields or {}
