@@ -21,6 +21,10 @@
 --
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
 
+-- The engine global the catalogue rebuild reads: registration now builds the identity
+-- catalogue on every attempt (the #974 wiring hotfix), and group B drives the real registration.
+FillType = FillType or { UNKNOWN = 0 }
+
 local BR  = SoilConstants.SPRAYER_RATE.BASE_RATES
 local PF  = SoilConstants.FERTILIZER_PROFILES
 local RR  = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[3]

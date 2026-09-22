@@ -1046,6 +1046,17 @@ function HookManager:registerCustomSprayTypes()
         )
         SoilLogger.info("     Enable SoilDebug to see per-type LPS and rate values")
     end
+    -- RSF-F196 V12/V12a: rebuild the identity catalogue on EVERY registration
+    -- attempt, the dedi retry included (SoilFertilityManager calls this function
+    -- again until it completes), so a fill type that resolved late is a product
+    -- from the moment it exists. THIS IS THE ONLY PRODUCTION CALLER. Without it
+    -- the catalogue stays empty and every custom product resolves as "not
+    -- custom" at the external-fill charge, the purchase intercept and the backup
+    -- refill, which is the regression #974 shipped: its benches all supplied the
+    -- catalogue themselves, so none of them noticed that production never did.
+    local catalogued = self:rebuildCustomProductCatalogue()
+    SoilLogger.debug("[F196] identity catalogue: %d custom products resolved to an index", catalogued)
+
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0)
     if not self._sprayTypesComplete then
