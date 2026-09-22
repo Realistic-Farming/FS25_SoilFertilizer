@@ -1420,18 +1420,33 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
             changed = true
         end
 
+        -- [SF-79 C] Plow normalisation targets 7.0 at the existing intensity
+        -- (0.1 x clamped accepted hectares / field hectares), ROUTED THROUGH THE
+        -- POSITIONAL WRITER like the meadow drift, with the scalar republished from
+        -- the derived report. Before this fix the block wrote field.pH directly:
+        -- the map never learned, and the next application's report refresh
+        -- overwrote the scalar from a map that never saw the plow, so the plow's pH
+        -- effect was discarded on the next spray. The magnitude is carried, not
+        -- re-derived. Equal bounds are the brief's "plow's equal 7.0 bounds"; the
+        -- writer banks a sub-step amount (brief 3.B) rather than losing it.
         local phBefore = field.pH or SoilConstants.FIELD_DEFAULTS.pH
         local phTarget = 7.0
         local phNormalization = 0.1 * factor
-        local phAfter = phBefore
-        if phBefore < phTarget then
-            phAfter = math.min(phBefore + phNormalization, phTarget)
-        elseif phBefore > phTarget then
-            phAfter = math.max(phBefore - phNormalization, phTarget)
-        end
-        if phAfter ~= phBefore then
-            field.pH = phAfter
-            changed = true
+        if type(self._phApplyField) == "function" then
+            self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phNormalization,
+                phTarget, phTarget, 'plow')
+            if (field.pH or phBefore) ~= phBefore then changed = true end
+        else
+            local phAfter = phBefore
+            if phBefore < phTarget then
+                phAfter = math.min(phBefore + phNormalization, phTarget)
+            elseif phBefore > phTarget then
+                phAfter = math.max(phBefore - phNormalization, phTarget)
+            end
+            if phAfter ~= phBefore then
+                field.pH = phAfter
+                changed = true
+            end
         end
     end
 
