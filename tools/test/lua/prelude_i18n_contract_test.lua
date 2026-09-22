@@ -61,12 +61,27 @@ T.eq("prelude i18n: hasText answers with a real boolean, not a truthy value",
 -- ── getText on an absent key: the engine's sentence, and none of the fictions ──
 local missing = call("getText", ABSENT)
 T.eq("prelude i18n: an absent key returns the engine's missing sentence",
-     missing, "Missing '" .. ABSENT .. "' in l10n.xml")
+     missing, "Missing '" .. ABSENT .. "' in l10n_en.xml")
 T.eq("prelude i18n: it is a string", type(missing), "string")
 T.ok("prelude i18n: it is never empty", missing ~= "")
 T.ok("prelude i18n: it is never the key itself (the old prelude's fiction)", missing ~= ABSENT)
 T.ok("prelude i18n: it is never the $l10n_ attribute prefix (the old guards' fiction)",
      missing ~= ("$l10n_" .. ABSENT))
+
+-- The suffix is interpolated, not spelled into the harness. I18N.lua:186 formats
+-- with g_languageSuffix, which main.lua:33 defaults to "_en" and main.lua:1187
+-- reassigns per client language. A harness that hardcodes one suffix renders a
+-- sentence no non-English client produces, which is the same class of fiction this
+-- file exists to remove.
+T.eq("prelude i18n: the default suffix is the engine's own (main.lua:33)", g_languageSuffix, "_en")
+do
+    local saved = g_languageSuffix
+    g_languageSuffix = "_de"
+    T.eq("prelude i18n: the missing sentence follows the client's language suffix",
+         call("getText", ABSENT), "Missing '" .. ABSENT .. "' in l10n_de.xml")
+    g_languageSuffix = saved
+    T.eq("prelude i18n: and it follows it back", call("getText", ABSENT), missing)
+end
 
 -- ── setText registers a key ──────────────────────────────────────────────────
 call("setText", KEY, "Eine echte Uebersetzung")

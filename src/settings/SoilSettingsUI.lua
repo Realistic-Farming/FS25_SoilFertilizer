@@ -15,24 +15,30 @@ SoilSettingsUI = SoilSettingsUI or {}
 local SoilSettingsUI_mt = Class(SoilSettingsUI)
 
 -- Capture mod name at load time - (SoilFertilizerModName or g_currentModName) is only valid during loading.
-local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- The 3 settings injected into the vanilla settings page (Shift+Esc).
 -- Everything else lives in the custom SoilSettingsPanel (Shift+O).
 local VANILLA_SETTINGS = { "enabled", "showNotifications", "debugMode" }
 
--- Resolve a translation key using the mod-scoped i18n instance.
--- g_i18n is the base-game global and does not know about mod keys.
+-- Resolve a translation key. g_i18n DOES know this mod's keys: mods.lua:453
+-- sets modEnv.g_i18n = g_i18n:addModI18N(modName), and that instance chains to
+-- the global, so a mod key resolves through either. The g_modEnvironments table
+-- this helper used to consult appears in zero files of the decompiled engine.
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 function SoilSettingsUI.new(settings)
