@@ -20,8 +20,10 @@
 --
 -- GROUP A is the regression bar for defect 2 and fails against the old gate.
 -- GROUP B proves a real translation is still preferred over the fallback.
--- GROUP C walks the untrusted i18n shapes, including the one the shared prelude
--- itself has (getText but no hasText), and requires a readable sentence from each.
+-- GROUP C walks the untrusted i18n shapes, including getText without hasText, and
+-- requires a readable sentence from each. That shape used to be the shared
+-- prelude's own; the prelude now models I18N.lua instead, so the case is kept
+-- because real third-party i18n shims still have it, not because our harness does.
 -- GROUP D holds the three sibling pH branches, which run through the same helper.
 --
 -- Models the dialog's callers, not the GUI: buildPrescription is the real shipped
@@ -42,7 +44,7 @@ local function engineMissing(key)
     return "Missing '" .. key .. "' in l10n_en.xml"
 end
 
--- opts.noHasText     - omit hasText entirely (this is the shared prelude's shape)
+-- opts.noHasText     - omit hasText entirely (an old-engine / third-party shape)
 -- opts.hasTextValue  - force hasText's return, including non-boolean values
 -- opts.hasTextThrows - hasText raises
 -- opts.getTextValue  - force getText's return
@@ -131,7 +133,7 @@ end
 -- ── GROUP C: every untrusted i18n shape yields a readable sentence ────────────
 do
     local cases = {
-        { name = "C1 hasText absent (the shared prelude's own shape)",
+        { name = "C1 hasText absent (an i18n object that cannot answer)",
           i18n = i18nWith({ [KEY] = "never reached" }, { noHasText = true }) },
         { name = "C2 hasText false",
           i18n = i18nWith({ [KEY] = "never reached" }, { hasTextValue = false }) },

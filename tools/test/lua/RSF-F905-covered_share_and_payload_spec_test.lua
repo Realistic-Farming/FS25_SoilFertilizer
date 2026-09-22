@@ -539,6 +539,13 @@ do
 end
 
 do
+  -- SoilFertilitySystem.lua:5809 sends this title through g_i18n:getText. The shared
+  -- prelude models the engine, so an unregistered key comes back as the engine's
+  -- "Missing '<key>' in l10n.xml" sentence rather than as the key itself. Register
+  -- it and assert the translation: that still pins the key the source reaches for,
+  -- and additionally proves a real translation reaches the toast.
+  local LIME_TOAST_TITLE = "Lime burn warning"
+  g_i18n:setText("sf_notify_lime_crop_title", LIME_TOAST_TITLE)
   local field = { _polyVerts = SQUARE }
   local sys, notices = gateSys(field)
   cropAt = { ["1_1"] = { 1, 5 } }
@@ -546,7 +553,7 @@ do
   at(1000); sys:applyFertilizer(1, 7, 10, { cellPt(1, 1) })
   at(2000); sys:applyFertilizer(1, 7, 10, { cellPt(1, 1) })
   T.eq("F905 I3: the toast fires exactly once per field per crop cycle", #notices, 1)
-  T.eq("F905 I4: and it is the lime toast", notices[1], "sf_notify_lime_crop_title")
+  T.eq("F905 I4: and it is the lime toast", notices[1], LIME_TOAST_TITLE)
 end
 
 do
@@ -704,9 +711,15 @@ local function infoOf(known, pen, risk)
            fieldArea = 1, lastCrop = "wheat" }
 end
 
+-- Same reason as the lime toast above: SoilHUD.lua:1171 builds this row's label
+-- through g_i18n:getText, and the prelude hands back the engine's missing sentence
+-- for a key no test registered. Register it, and match on the translation.
+local BURN_RISK_LABEL = "Amendment burn risk"
+g_i18n:setText("sf_fieldinfo_burn_risk", BURN_RISK_LABEL)
+
 local function hasBurnRiskLine(info)
   for _, l in ipairs(hud:buildFieldInfoLines(info)) do
-    if l.label == "sf_fieldinfo_burn_risk" then return true end
+    if l.label == BURN_RISK_LABEL then return true end
   end
   return false
 end

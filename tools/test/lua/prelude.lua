@@ -37,7 +37,30 @@ g_currentMission = {
   missionInfo = {},
 }
 
-g_i18n = { getText = function(_self, key) return key end }
+-- i18n, modelled on the engine rather than on a convenient shim. I18N.lua:175
+-- getText returns texts[name] and, when the key is absent, the literal sentence
+-- "Missing '<key>' in l10n<suffix>.xml" - never nil, never "" and never the
+-- "$l10n_" XML attribute prefix. I18N.lua:194 hasText answers whether the key
+-- exists at all, and is false for a nil name. The harness loads no locale file,
+-- so by default NO key exists: a gate written the engine's way takes its English
+-- fallback here, which is the honest result. A test that needs a translated
+-- string registers it with g_i18n:setText(key, text) or by assigning its own
+-- object, as several already do.
+g_i18n = {
+  texts = {},
+  setText = function(self, key, value) self.texts[key] = value end,
+  hasText = function(self, key)
+    if key == nil then return false end
+    return self.texts[key] ~= nil
+  end,
+  getText = function(self, key)
+    local ret = self.texts[key]
+    if ret == nil then
+      return string.format("Missing '%s' in l10n.xml", tostring(key))
+    end
+    return ret
+  end,
+}
 g_messageCenter = { subscribe = function() end, unsubscribe = function() end, publish = function() end }
 
 -- Minimal in-memory XML mock: the file handle is a plain table keyed by the XML path
