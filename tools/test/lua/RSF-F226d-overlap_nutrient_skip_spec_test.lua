@@ -99,7 +99,12 @@ local function newWorld(opts)
         soilSystem = soilSys,
     }
 
-    local hookMgr = {
+    -- A REAL HookManager underneath, not a bag of fields. The hooks capture `self`
+    -- and call its methods (RSF-F196 added resolveCustomProductIntent and the
+    -- refused-product table, and a bare table has neither), so a fixture that omits
+    -- the class metatable models a manager production never hands the closure. The
+    -- fields below still override whatever the class would supply.
+    local hookMgr = setmetatable({
         hooks = {},
         register = function() end,
         registerCleanup = function() end,
@@ -112,7 +117,11 @@ local function newWorld(opts)
         _sectionScratch = {},
         _settings = { multiTankApplication = false },
         customFillTypePrices = {},
-    }
+        -- Identity mirrors the priced set, which is the pre-F196 world this bar
+        -- models: nothing priced here, so nothing custom, and no refusals.
+        customProductIndices = {},
+        refusedProducts = {},
+    }, { __index = HookManager })
     return seen, hookMgr
 end
 

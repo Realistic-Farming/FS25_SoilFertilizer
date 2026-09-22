@@ -41,7 +41,165 @@ function HookManager.new()
     self.hooks = {}
     self.installed = false
     self._sectionScratch = {}   -- reused scratch table for sprayer section loops
+    -- RSF-F196 R1a: two product-level maps with different jobs, both keyed by fill
+    -- type index and neither keyed by price.
+    --   customProductIndices  identity only. Membership of the one fixed name
+    --                         population, rebuilt whenever indices become available.
+    --   refusedProducts       a property of the PRODUCT, not of any machine, work
+    --                         area or pass. Written only by the registration path.
+    -- Neither is saved or transmitted; each peer reaches the same verdict from its
+    -- own loaded descriptors.
+    self.customProductIndices = {}
+    self.refusedProducts = {}
     return self
+end
+
+-- =========================================================
+-- RSF-F196: custom-product identity, kept apart from price
+-- =========================================================
+
+--- The one custom-product name population (V12b).
+--- Returned fresh each call because SoilBlends.appendNames APPENDS: handing out a
+--- shared table would grow it by the blend list on every rebuild.
+---@return string[]
+function HookManager.buildCustomNamePopulation()
+    local names = {
+        -- Liquid
+        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
+        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
+        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
+        -- Solid
+        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+    }
+    if SoilBlends and SoilBlends.appendNames then
+        SoilBlends.appendNames(names)   -- CD-12
+    end
+    return names
+end
+
+--- A fill type's density in KILOGRAMS PER LITRE, or nil when it has none usable.
+---
+--- The engine stores this in TONNES per litre, not kilograms. FillTypeDesc.lua:71
+--- reads `physics#massPerLiter` (documented in kilograms at :290) and multiplies by
+--- 0.001, over a default of 0.001 set at :13. FillTypeManager.MASS_SCALE is 1.
+--- Anything comparing the stored number against a kg/ha rate without this scale is
+--- out by a thousand, which is the unit error U2 exists to prevent.
+---
+--- WHAT THIS CANNOT DETECT, stated because the gap is in the engine and not here:
+--- a fill type that declares NO density is stored as 0.001 t/L, exactly 1 kg/L, and
+--- is indistinguishable from one that declares massPerLiter="1.0". "Absent" is not
+--- reachable through the loader, so refusal covers nonsense (nil or non-positive)
+--- and does not pretend to cover absence.
+---@param fillType table|nil
+---@return number|nil  kg per litre, or nil when unusable
+function HookManager.densityOf(fillType)
+    if fillType == nil then return nil end
+    local stored = fillType.massPerLiter
+    if type(stored) ~= "number" or stored <= 0 then return nil end
+    local kgPerLitre = stored * 1000
+    if kgPerLitre ~= kgPerLitre then return nil end   -- NaN survives the > 0 test
+    return kgPerLitre
+end
+
+--- The twelve dry products (R7). A subset of the population above, named here once
+--- so the Drain Vehicle recovery and the density refusal cannot drift apart.
+HookManager.DRY_PRODUCT_NAMES = {
+    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+    "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+}
+
+--- Rebuild the identity catalogue from the one name population (V12).
+--- Membership records identity ONLY. Price is not consulted here and must not be:
+--- a product whose price arrives late is still the same product, and V12b exists
+--- because identity that disappears when price is late is how a helper decision
+--- silently falls back to a price-keyed path.
+---@return number  how many names resolved to an index
+function HookManager:rebuildCustomProductCatalogue()
+    self:ensureProductTables()
+    self.customProductIndices = {}
+    if not g_fillTypeManager then return 0 end
+    local resolved = 0
+    for _, name in ipairs(HookManager.buildCustomNamePopulation()) do
+        local ok, idx = pcall(function() return g_fillTypeManager:getFillTypeIndexByName(name) end)
+        if ok and idx and idx > 0 and idx ~= FillType.UNKNOWN then
+            self.customProductIndices[idx] = true
+            resolved = resolved + 1
+        end
+    end
+    return resolved
+end
+
+--- Make sure the two product tables exist on this instance.
+--- HookManager.new() creates them, but registerCustomSprayTypes is reachable on an
+--- object built straight from the metatable (the F187 bar does exactly that), and a
+--- registration path that indexes a nil table would fail for a reason that has
+--- nothing to do with registration.
+function HookManager:ensureProductTables()
+    if self.customProductIndices == nil then self.customProductIndices = {} end
+    if self.refusedProducts == nil then self.refusedProducts = {} end
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isCustomProduct(index)
+    self:ensureProductTables()
+    return index ~= nil and self.customProductIndices[index] == true
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isRefusedProduct(index)
+    self:ensureProductTables()
+    return index ~= nil and self.refusedProducts[index] ~= nil
+end
+
+--- R1b, the ONE product-intent resolver. Every refusal and helper-buy consumer
+--- calls this and no consumer invents another membership or price-keyed path.
+---
+--- Candidate priority, and the order is the argument:
+---   1. a direct non-UNKNOWN fill type supplied by the caller, including the final
+---      post-native workAreaParameters.sprayFillType. That covers an attached nurse
+---      tank, which would otherwise disappear behind a local empty unit.
+---   2. the current physical fill type of the local unit getSprayerFillUnitIndex()
+---      names. Current outranks last-valid so an actual product switch wins at once.
+---   3. that unit's native getFillUnitLastValidFillType (FillUnit.lua:699). This is
+---      the empty-tank and late-join answer: the engine retains it when the level
+---      reaches zero and syncs it in its own stream (FillUnit.lua:482 initial, :541
+---      update), so a client joining after the tank emptied reaches the same product
+---      without a new event or any transmitted verdict.
+---
+--- A candidate is accepted only when it is a catalogue member. A fresh empty unit
+--- with no last-valid custom product has NO custom intent and stays eligible for
+--- ordinary native behaviour; this does not guess one.
+---@param sprayer table|nil
+---@param directFillType number|nil
+---@return number|nil  a catalogue member index, or nil for no custom intent
+function HookManager:resolveCustomProductIntent(sprayer, directFillType)
+    if directFillType ~= nil and directFillType ~= FillType.UNKNOWN
+        and self:isCustomProduct(directFillType) then
+        return directFillType
+    end
+
+    if sprayer == nil or sprayer.getSprayerFillUnitIndex == nil then return nil end
+    local okFui, fuIdx = pcall(function() return sprayer:getSprayerFillUnitIndex() end)
+    if not okFui or fuIdx == nil then return nil end
+
+    if sprayer.getFillUnitFillType ~= nil then
+        local okFt, current = pcall(function() return sprayer:getFillUnitFillType(fuIdx) end)
+        if okFt and current ~= nil and current ~= FillType.UNKNOWN and self:isCustomProduct(current) then
+            return current
+        end
+    end
+
+    if sprayer.getFillUnitLastValidFillType ~= nil then
+        local okLast, lastValid = pcall(function() return sprayer:getFillUnitLastValidFillType(fuIdx) end)
+        if okLast and lastValid ~= nil and lastValid ~= FillType.UNKNOWN and self:isCustomProduct(lastValid) then
+            return lastValid
+        end
+    end
+
+    return nil
 end
 
 -- =========================================================
@@ -463,6 +621,12 @@ function HookManager:installAll(soilSystem)
 
     -- System 3: Variable Rate - per-section rate pre-computation (appended after See & Spray).
     self:installVariableRateHook()
+    -- RSF-F196 R2: MUST be the last append on Sprayer.onStartWorkAreaProcessing,
+    -- after the five above (rate multiplier, density-map remap, section sensor,
+    -- see-and-spray, variable rate). It runs after native's final assignment and
+    -- after everything the mod already installs, so nothing later can re-arm a
+    -- dose it zeroed. The overlap hook below is a PREPEND and is not in the way.
+    self:installDensityRefusalHook()
 
     -- System 4: Overlap Prevention - density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
     -- Runs after VariableRate so the rate computation still sees the original isActive states.
@@ -757,14 +921,45 @@ function HookManager:registerCustomSprayTypes()
         end
     end
 
+    self:ensureProductTables()
     for _, name in ipairs(solidNames) do
-        if g_fillTypeManager:getFillTypeByName(name) then
-            local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
-            local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
-            SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+        local ft = g_fillTypeManager:getFillTypeByName(name)
+        if ft then
+            -- RSF-F196 R1: a dry product's rate is stated in kg/ha, so it can only be
+            -- interpreted through the product's density. A product whose density is
+            -- unusable is RESOLVED BUT NOT REGISTERED, and its index is recorded in
+            -- the refused table. Refusal is then a first-class fact read by name, not
+            -- inferred from a zero: AI-1's entry condition is both dose fields being
+            -- zero or nil, so a numeric refusal would be indistinguishable from an
+            -- empty tank a helper should refill.
+            -- Refuse only on a density that is PRESENT and nonsense. A nil or
+            -- non-number massPerLiter is not a product defect: FillTypeDesc.lua:13
+            -- and :71 mean the engine's loader always writes a number, over a
+            -- schema default of 1 kg at :290, so nil is unreachable from real
+            -- product data and only appears on an object that did not come through
+            -- the loader. Refusing it would fire the gate on fixtures rather than
+            -- on products, which is the same mistake as encoding an i18n shape the
+            -- engine cannot produce.
+            local declared = ft.massPerLiter
+            local invalid = type(declared) == "number" and HookManager.densityOf(ft) == nil
+            if invalid then
+                self.refusedProducts[ft.index or -1] = "density"
+                SoilLogger.warning(
+                    "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
+                    name, tostring(ft.massPerLiter))
+                skipped = skipped + 1
+            else
+                -- R1a/R6: a retry that finds a previously refused product now valid
+                -- removes the refusal atomically, before registering it.
+                if ft.index ~= nil then self.refusedProducts[ft.index] = nil end
 
-            g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
-            registered = registered + 1
+                local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
+                local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
+                SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+
+                g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
+                registered = registered + 1
+            end
         else
             skipped = skipped + 1
         end
@@ -1973,6 +2168,106 @@ end
 -- only ever reflect what this sprayer session has actually applied.
 -- StatePreserver restores section.isActive after work areas process - no permanent lock.
 -- No-ops when the overlapPrevention setting is disabled.
+-- =========================================================
+-- RSF-F196 R2: the density refusal, last append on Sprayer.onStartWorkAreaProcessing
+-- =========================================================
+-- Native onStartWorkAreaProcessing ends by writing the frame's dose into
+-- workAreaParameters (Sprayer.lua:926-931 in our tree): sprayFillType, sprayFillLevel,
+-- usage, usagePerMin, sprayVehicle, sprayVehicleFillUnitIndex. Everything downstream
+-- reads those fields as permission: processSprayerArea paints only while
+-- sprayFillLevel > 0 (:320) and onEndWorkAreaProcessing drains by usage (:942).
+--
+-- So refusing a product is zeroing the three dose fields AFTER native and after every
+-- append the mod already installs, and leaving sprayVehicle, the fill units and the
+-- real tank levels alone. Nothing is painted, credited, advanced, drained or charged
+-- for that frame, on any peer.
+--
+-- NOT SERVER-ONLY, and this is the clause that was easy to get wrong: the rate
+-- multiplier append returns at once when not the server, and a refusal folded into
+-- it would inherit that return. processSprayerArea runs on CLIENTS (Sprayer.lua:314)
+-- while the mod's end hook is server-only, so a server-only refusal leaves every
+-- nearby client painting a product the server refused. This append runs on both,
+-- and each peer reaches the same verdict from its own loaded descriptors: no
+-- refusal state is transmitted, and none needs to be.
+
+--- Log the technical reason once per vehicle at the existing 3 s throttle, and tell
+--- the farmer once per product for the loaded mission (V18). Respects
+--- showNotifications through showNotification itself.
+---@param vehicle table
+---@param fillTypeIndex number
+function HookManager:_noteRefusedPass(vehicle, fillTypeIndex)
+    local now = (g_currentMission and g_currentMission.time) or 0
+    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+    local name = (ft and ft.name) or tostring(fillTypeIndex)
+    if not vehicle._sfRefusalLogAt or (now - vehicle._sfRefusalLogAt) > 3000 then
+        vehicle._sfRefusalLogAt = now
+        SoilLogger.warning("[F196] pass refused: %s has no usable density (reason=%s), veh=%s; nothing painted, drained or charged",
+            name, tostring(self.refusedProducts[fillTypeIndex]), tostring(vehicle.id))
+    end
+    self._refusalNotified = self._refusalNotified or {}
+    if self._refusalNotified[fillTypeIndex] then return end
+    self._refusalNotified[fillTypeIndex] = true
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if not soilSys or type(soilSys.showNotification) ~= "function" then return end
+    local title = HookManager._text("sf_notify_treated_title", "Soil Update")
+    local body  = HookManager._text("sf_notify_density_refused",
+        "%s has no usable density and was skipped. Use Drain Vehicle before refilling.")
+    local display = (ft and ft.title) or name
+    local okFmt, msg = pcall(string.format, body, display)
+    soilSys:showNotification(title, okFmt and msg or (display .. ": " .. body))
+end
+
+--- Localised text the #973 way: hasText is the gate, the return is opaque past it.
+---@param key string
+---@param fallback string
+---@return string
+function HookManager._text(key, fallback)
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback
+    end
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback end
+    return text
+end
+
+---@return boolean success
+function HookManager:installDensityRefusalHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[F196] Sprayer.onStartWorkAreaProcessing not available - density refusal not installed")
+        return false
+    end
+    local hookMgrRef = self
+    local original = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(original, function(self, dt)
+        -- The same stand-down as the end hook: when SoilFertilizer has stood down,
+        -- including its Precision Farming stand-down, this does nothing and does not
+        -- become a new partial compatibility path.
+        if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem
+           or not g_SoilFertilityManager.settings or not g_SoilFertilityManager.settings.enabled then
+            return
+        end
+        local spec = self.spec_sprayer
+        local wap = spec and spec.workAreaParameters
+        if not wap then return end
+        -- The direct candidate is native's FINAL sprayFillType, which is the local,
+        -- attached-source or external-fill product native actually selected, so an
+        -- attached nurse tank does not disappear behind a local empty unit.
+        local intent = hookMgrRef:resolveCustomProductIntent(self, wap.sprayFillType)
+        if intent == nil or not hookMgrRef:isRefusedProduct(intent) then return end
+        wap.sprayFillLevel = 0
+        wap.usage          = 0
+        wap.usagePerMin    = 0
+        hookMgrRef:_noteRefusedPass(self, intent)
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", original,
+        "Sprayer.onStartWorkAreaProcessing (F196 density refusal, last append)")
+    SoilLogger.info("[OK] F196 density refusal installed as the last append on onStartWorkAreaProcessing (server and client)")
+    return true
+end
+
 function HookManager:installOverlapPreventionHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[OverlapPrev] Sprayer.onStartWorkAreaProcessing not found - skipping")
@@ -4065,7 +4360,16 @@ function HookManager:installSprayerAreaHook()
                     local okLvl, level = pcall(function() return self:getFillUnitFillLevel(fuIdx) end)
                     local okTy, fillTy = pcall(function() return self:getFillUnitFillType(fuIdx) end)
                     if okLvl and okTy and level and level > 0 and level < 0.001
-                            and fillTy and fillTy ~= FillType.UNKNOWN then
+                            and fillTy and fillTy ~= FillType.UNKNOWN
+                            -- RSF-F196 R3c: this negative delta reaches the purchase
+                            -- intercept, which in buy mode charges it and stamps the
+                            -- vehicle, and outside buy mode physically removes it. For a
+                            -- product the start append just refused, either way moves
+                            -- money or material in the same frame the dose was zeroed.
+                            -- So consume the refusal on the fillTy already read above and
+                            -- skip the snap entirely. A valid product keeps the incumbent
+                            -- #764 behaviour unchanged, intermittency and AI stop included.
+                            and not hookMgrRef:isRefusedProduct(fillTy) then
                         local okFarm, farmId = pcall(function() return self:getOwnerFarmId() end)
                         pcall(function()
                             self:addFillUnitFillLevel(farmId, fuIdx, -level, fillTy, ToolType.UNDEFINED)
@@ -4204,12 +4508,11 @@ function HookManager:installSprayerAreaHook()
             -- would never be set. getExternalFill (Hook 9) relies on this field to identify
             -- the intended product when fillType arrives as UNKNOWN - without it, Hook 9
             -- falls through to original and no money is ever charged (issue #205).
-            do
-                local _hm = hookMgrRef
-                if _hm and _hm.customFillTypePrices and _hm.customFillTypePrices[fillTypeIndex] then
-                    self._soilLastCustomFillType = fillTypeIndex
-                end
-            end
+            -- RSF-F196 R1b: the _soilLastCustomFillType stamp that used to be written
+            -- here is retired as an identity authority. Every consumer now resolves
+            -- intent through HookManager:resolveCustomProductIntent, whose third step
+            -- is the engine's own synced lastValidFillType, so the empty-tank answer no
+            -- longer depends on a private field this hook happened to set on the server.
 
             -- AI-1: an AI helper spraying in buy mode currently leaves the ground
             -- untouched. Buy mode ships zero usage and zero sprayFillLevel (the tank
@@ -4226,7 +4529,19 @@ function HookManager:installSprayerAreaHook()
             -- protection and it keys on that field staying nil on the external-fill
             -- path. isInBuyMode is scoped inside installPurchaseRefillHook, so the
             -- detection is mirrored inline (same three mission flags, same AI paths).
-            if (liters == nil or liters <= 0) and (sprayFillLevel == nil or sprayFillLevel <= 0) then
+            -- RSF-F196 R3b: AI-1's entry condition is both dose fields being zero or
+            -- nil, which is exactly what R2 leaves behind for a refused product, so a
+            -- numeric refusal is indistinguishable from an empty buy-mode tank here
+            -- and the `or 1` litres-per-second fallback below would fabricate a dose
+            -- for a product with no registered spray type. Ask the refused table by
+            -- name, BEFORE the injection, so that fallback is never reached. The
+            -- direct candidate is the post-native work-area fill type, which covers
+            -- an attached source; the resolver's tank steps cover loaded and empty
+            -- buy-mode tanks on server and client.
+            local _refusedPass = hookMgrRef:isRefusedProduct(
+                hookMgrRef:resolveCustomProductIntent(self, spec.workAreaParameters.sprayFillType))
+            if (liters == nil or liters <= 0) and (sprayFillLevel == nil or sprayFillLevel <= 0)
+                    and not _refusedPass then
                 local isAI = false
                 local okAIb, resAIb = pcall(function() return self:getIsAIActive() end)
                 if okAIb and resAIb then isAI = true end
@@ -4346,9 +4661,8 @@ function HookManager:installSprayerAreaHook()
                                 _ftName, _wapFillType.name)
                             fillTypeIndex = _wapFT
                             fillType = _wapFillType
-                            if hookMgrRef and hookMgrRef.customFillTypePrices and hookMgrRef.customFillTypePrices[_wapFT] then
-                                self._soilLastCustomFillType = _wapFT
-                            end
+                            -- RSF-F196 R1b: the stamp write that used to follow here is
+                            -- retired; see the note at the primary resolution above.
                         end
                     end
                 end
@@ -4643,7 +4957,11 @@ function HookManager:installSprayerAreaHook()
                             end
 
                             for fuIdx, fu in ipairs(fuSpec.fillUnits) do
-                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0 then
+                                -- RSF-F196 R3d: a secondary unit holding a refused product
+                                -- costs only that unit. No drain, no credit, no coverage for
+                                -- it; every other unit, the driving one included, is unaffected.
+                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0
+                                        and not hookMgrRef:isRefusedProduct(fu.fillType) then
                                     local ft = g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                                     local ftName = ft and ft.name or nil
                                     if ftName then
@@ -4846,7 +5164,11 @@ function HookManager:installSprayerAreaHook()
                 local hookMgr = hookMgrRef
                 local buyPrices = hookMgr and hookMgr.customFillTypePrices
                 local pricePerLiter = buyPrices and buyPrices[fillTypeIndex]
-                if pricePerLiter then
+                -- RSF-F196 V12/R1b: identity is catalogue membership, price is only the
+                -- charge. A custom product whose price is late used to fall silently to
+                -- native here. No refusal gate is needed (R3e): a refused driving product
+                -- had its usage zeroed by R2 and never reaches this block.
+                if pricePerLiter and hookMgr and hookMgr:isCustomProduct(fillTypeIndex) then
                     -- Courseplay-aware AI detection (mirrors isInBuyMode above).
                     -- getIsAIActive() returns false for CP-driven vehicles; we must also
                     -- check CP's own spec and legacy vehicle.cp flag.
@@ -7016,6 +7338,10 @@ end
 -- this - checking spec_sprayer or fillUnit reloadState is incorrect.
 ---@return boolean success
 function HookManager:installPurchaseRefillHook()
+    -- RSF-F196: the FillUnit wrapper below needs the manager for catalogue identity.
+    -- Captured explicitly, the way installSprayerAreaHook does, rather than leaning
+    -- on `self` as an implicit upvalue from inside a function that has no self.
+    local hookMgrRef = self
     if not FillUnit or type(FillUnit.addFillUnitFillLevel) ~= "function" then
         SoilLogger.warning("Purchase refill hook: FillUnit.addFillUnitFillLevel not available - skipping")
         return false
@@ -7030,16 +7356,10 @@ function HookManager:installPurchaseRefillHook()
     -- Build a lookup table: fillTypeIndex → pricePerLiter for all our custom types.
     -- Prices come from Constants (authoritative single source) and fall back to
     -- the fillTypes.xml economy values via FillTypeManager if a type isn't in Constants.
-    local ALL_CUSTOM_NAMES = {
-        -- Liquid
-        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
-        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
-        -- Solid
-        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
-    }
-    SoilBlends.appendNames(ALL_CUSTOM_NAMES)   -- CD-12
+    -- RSF-F196 V12b: ONE name population, defined at HookManager.buildCustomNamePopulation
+    -- and read here. It used to be a second copy of the same list living beside the price
+    -- table, which is how identity and price could drift apart without anything failing.
+    local ALL_CUSTOM_NAMES = HookManager.buildCustomNamePopulation()
 
     -- Prices from Constants (already defined there)
     local PRICE_OVERRIDES = {}
@@ -7176,6 +7496,15 @@ function HookManager:installPurchaseRefillHook()
             return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
         end
 
+        -- RSF-F196 V12/R1b: identity is catalogue membership, not the presence of a
+        -- price. A refused product is not intercepted: R3c already stops the residual
+        -- snap sending a delta for one, and R2 zeroes its usage so native never drains
+        -- it, but if a delta arrives by any other route it must not be turned into a
+        -- charge. Price is consulted only once identity is settled, and an absent
+        -- price is a source failure (V17), which is native's path, not ours.
+        if not hookMgrRef:isCustomProduct(fillTypeIndex) or hookMgrRef:isRefusedProduct(fillTypeIndex) then
+            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+        end
         local pricePerLiter = customPrices[fillTypeIndex]
         if not pricePerLiter then
             return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
@@ -7274,26 +7603,37 @@ function HookManager:installExternalFillHook()
         -- Step 2 is what prevents the "STARTER loaded but vanilla picks LIQUIDFERTILIZER"
         -- bug: when the caller passes fillType=UNKNOWN, the tank's real contents win over
         -- vanilla's allowLiquidFertilizer/allowFertilizer/allowHerbicide cascade.
-        local customIdx = nil
-        if fillType and fillType ~= FillType.UNKNOWN and prices[fillType] then
-            customIdx = fillType
-        else
-            -- Step 2: read actual tank contents
-            local okFui, sprayFui = pcall(function() return sprayerSelf:getSprayerFillUnitIndex() end)
-            if okFui and sprayFui then
-                local okTankFt, tankFt = pcall(function() return sprayerSelf:getFillUnitFillType(sprayFui) end)
-                if okTankFt and tankFt and tankFt ~= FillType.UNKNOWN and prices[tankFt] then
-                    customIdx = tankFt
-                end
-            end
-            -- Step 3: empty-tank stamp fallback
-            if not customIdx and sprayerSelf._soilLastCustomFillType and prices[sprayerSelf._soilLastCustomFillType] then
-                customIdx = sprayerSelf._soilLastCustomFillType
-            end
-        end
+        -- RSF-F196 R3a: identity comes from the ONE resolver, never from the price
+        -- table. The three steps that lived here (direct argument, tank contents,
+        -- the _soilLastCustomFillType stamp) were keyed on prices[], which is V12's
+        -- defect: a product whose price arrived late was not a product at all, and
+        -- the stamp was a private server-side field standing in for the engine's own
+        -- synced lastValidFillType. The resolver's third step reads that engine field,
+        -- so the empty-tank AI case that step 3 existed for is covered by the engine.
+        --
+        -- This runs from inside native onStartWorkAreaProcessing (Sprayer.lua:889),
+        -- BEFORE native's final assignment that R2 follows, which is why it is the
+        -- first consumer the engine reaches and must refuse on its own.
+        local customIdx = hookMgr:resolveCustomProductIntent(sprayerSelf, fillType)
 
         if not customIdx then
+            -- No catalogue member in reach: native owns this fill entirely.
             return original(sprayerSelf, fillType, dt)
+        end
+
+        -- A catalogue member IS in reach, so native is never delegated to from here:
+        -- delegating would let vanilla's allowFertilizer cascade pick FERTILIZER for
+        -- a tank that holds UREA (the #205 shape). Three refusals, each UNKNOWN, 0:
+        if hookMgr:isRefusedProduct(customIdx) then
+            -- a refused rate contract. No paint, no drain, no money for this frame.
+            return FillType.UNKNOWN, 0
+        end
+        if prices[customIdx] == nil or prices[customIdx] <= 0 then
+            -- an absent or invalid current price. The `or 1.0` that used to sit at the
+            -- charge below fabricated a price here; V17 says a source failure is not a
+            -- product refusal, so this is UNKNOWN, 0 and the loaded tank stays on its
+            -- native path, not a charge at a made-up rate.
+            return FillType.UNKNOWN, 0
         end
 
         local mi = g_currentMission and g_currentMission.missionInfo
@@ -7364,7 +7704,9 @@ function HookManager:installExternalFillHook()
             end
         end
         if sprayerSelf.isServer and usage > 0 then
-            local pricePerLiter = prices[customIdx] or 1.0
+            -- prices[customIdx] is known present and positive: the absent-price case
+            -- returned UNKNOWN, 0 above rather than charging at a fabricated 1.0.
+            local pricePerLiter = prices[customIdx]
             local price = usage * pricePerLiter * 1.5  -- 1.5× AI premium (matches vanilla)
             local farmId = sprayerSelf:getActiveFarm()
             local statsFarmId = farmId
@@ -7796,17 +8138,15 @@ function HookManager:installExternalFillOptInHook()
             local okFW, fw = pcall(function() return root:getIsFieldWorkActive() end)
             if not (okFW and fw) then return vanillaResult end
 
-            -- Identify tank contents (priority: arg fill type → tank fill type → last known custom type).
-            local fillType = nil
-            local okFui, sprayFui = pcall(function() return sprayerSelf:getSprayerFillUnitIndex() end)
-            if okFui and sprayFui then
-                local okFt, ft = pcall(function() return sprayerSelf:getFillUnitFillType(sprayFui) end)
-                if okFt and ft and ft ~= FillType.UNKNOWN then fillType = ft end
-            end
-            if (not fillType or not prices[fillType]) and sprayerSelf._soilLastCustomFillType then
-                fillType = sprayerSelf._soilLastCustomFillType
-            end
-            if not fillType or not prices[fillType] then return vanillaResult end
+            -- RSF-F196 R1b: identity through the one resolver (current tank, then the
+            -- engine's synced lastValidFillType), not through prices[] and not through
+            -- the retired _soilLastCustomFillType stamp. A refused product is not opted
+            -- in: the opt-in is what puts a tank on the external-fill path, and a
+            -- refused product must not reach that path at all.
+            local fillType = hm:resolveCustomProductIntent(sprayerSelf, nil)
+            if not fillType then return vanillaResult end
+            if hm:isRefusedProduct(fillType) then return vanillaResult end
+            if not prices[fillType] then return vanillaResult end
 
             local mi = g_currentMission and g_currentMission.missionInfo
             if not mi then return vanillaResult end

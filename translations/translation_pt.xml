@@ -1498,6 +1498,7 @@
     <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
+    <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
 </elements>
 
 

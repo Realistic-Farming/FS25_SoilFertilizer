@@ -126,12 +126,19 @@ local function newWorld(opts)
         } } },
     }
 
-    local hookMgr = {
+    -- A REAL HookManager underneath, not a bag of fields. billedExternalFill now
+    -- resolves identity through self:resolveCustomProductIntent (RSF-F196 R3a), so a
+    -- fixture without the class metatable hands the closure a manager production
+    -- never does. Identity mirrors the priced set: UREA is the one custom product
+    -- this bar knows, and nothing is refused.
+    local hookMgr = setmetatable({
         register = function() end,
         registerCleanup = function() end,
         getFieldIdAtWorldPosition = function() return 7 end,
         customFillTypePrices = { [FillType.UREA] = 2.0 },
-    }
+        customProductIndices = { [FillType.UREA] = true },
+        refusedProducts = {},
+    }, { __index = HookManager })
     return books, hookMgr
 end
 
@@ -291,6 +298,11 @@ local function newSprayer(opts)
         getIsSprayerExternallyFilled = function() return true end,
         getSprayerFillUnitIndex = function() return 1 end,
         getFillUnitFillType  = function() return tankType end,
+        -- RSF-F196 R1b: the empty-tank identity this bar used to model through the
+        -- private _soilLastCustomFillType stamp now flows through the engine's own
+        -- retained lastValidFillType (FillUnit.lua:699, synced at :482/:541). The
+        -- stamp line above is left so the bar still proves a stale stamp is ignored.
+        getFillUnitLastValidFillType = function() return opts.lastCustom or tankType end,
         getFillUnitFillLevel = function() return tankLevel end,
         getFillUnitAllowsFillType = function(_, _fui, ft) return allows[ft] == true end,
         getSprayerUsage = function() return 12 end,
