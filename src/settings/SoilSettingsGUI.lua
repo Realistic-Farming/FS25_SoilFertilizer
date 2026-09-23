@@ -1577,7 +1577,10 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     local fm = g_fillTypeManager
     if not fm then return "Error: FillTypeManager not available" end
 
-    -- Build a set of custom fill type indices this mod manages
+    -- Build a set of custom fill type indices this mod manages: the legacy list first,
+    -- then (RSF-F196 R7) the twelve dry products from HookManager.DRY_PRODUCT_NAMES,
+    -- unioned in from the catalogue rather than a second hand-written list, so AN and
+    -- POLIFOSKA are drained the way UREA is and the two lists cannot drift apart.
     local customNames = {
         "UREA","AMS","MAP","DAP","POTASH","COMPOST","BIOSOLIDS",
         "CHICKEN_MANURE","PELLETIZED_MANURE","GYPSUM",
@@ -1585,9 +1588,18 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
         "INSECTICIDE","FUNGICIDE",
         "LIQUID_UREA","LIQUID_AMS","LIQUID_MAP","LIQUID_DAP","LIQUID_POTASH",
     }
+    if HookManager and type(HookManager.DRY_PRODUCT_NAMES) == "table" then
+        local seen = {}
+        for _, n in ipairs(customNames) do seen[n] = true end
+        for _, n in ipairs(HookManager.DRY_PRODUCT_NAMES) do
+            if not seen[n] then customNames[#customNames + 1] = n; seen[n] = true end
+        end
+    end
     local customSet = {}
     local priceTable = {}
-    -- Prices match FALLBACK_PRICES in installPurchaseRefillHook
+    -- Prices match FALLBACK_PRICES in installPurchaseRefillHook. A name without an
+    -- entry here refunds at 1.0/L: the existing rule, unchanged by R7 (the refund
+    -- price policy is a separate question, see the register).
     local fallbackPrices = {
         UREA=1.65, AMS=1.40, MAP=1.95, DAP=1.75, POTASH=1.80,
         COMPOST=0.60, BIOSOLIDS=0.55, CHICKEN_MANURE=0.50,
@@ -1603,6 +1615,16 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
             customSet[idx] = name
             priceTable[idx] = fallbackPrices[name] or 1.0
         end
+    end
+
+    -- RSF-F196 R7: the refusal table (R1a), reached the way the settings panel reaches
+    -- the hook manager. A refused product is one the helper may never buy again; when
+    -- its unit is verified empty below, the remembered intent is cleared too.
+    local hookMgr = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.hookManager
+    local function isRefused(idx)
+        return idx ~= nil and idx ~= FillType.UNKNOWN and hookMgr ~= nil
+            and type(hookMgr.isRefusedProduct) == "function" and hookMgr:isRefusedProduct(idx) == true
     end
 
     -- Find the controlled vehicle
@@ -1638,6 +1660,7 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
 
     local totalRefund  = 0
     local totalDrained = 0
+    local totalCleared = 0
     local report       = {}
 
     local isServer = g_currentMission:getIsServer()
@@ -1648,33 +1671,69 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
         if spec and spec.fillUnits then
             for fuIdx, fillUnit in ipairs(spec.fillUnits) do
                 local currentType = fillUnit.fillType
-                if currentType and customSet[currentType] then
-                    local level = fillUnit.fillLevel or 0
-                    if level > 0 then
-                        local typeName = customSet[currentType]
-                        local refund   = level * priceTable[currentType] * 0.5
+                local pre = fillUnit.fillLevel or 0
+                -- The remembered product (FillUnit.lua:699-706): set on every fill, kept
+                -- when the unit empties, and what the helper's next purchase is steered by.
+                local okLv, lastValid = pcall(function() return veh:getFillUnitLastValidFillType(fuIdx) end)
+                if not okLv then lastValid = nil end
 
-                        if isServer then
-                            pcall(function()
-                                veh:addFillUnitFillLevel(farmId, fuIdx, -level, currentType, ToolType.UNDEFINED, nil)
-                            end)
+                if currentType and customSet[currentType] and pre > 0 then
+                    local typeName = customSet[currentType]
+                    local drained, refund = 0, 0
+                    local cleared = false
+                    if isServer then
+                        pcall(function()
+                            veh:addFillUnitFillLevel(farmId, fuIdx, -pre, currentType, ToolType.UNDEFINED, nil)
+                        end)
+                        -- R7: refund what ACTUALLY left, read after the call. A drain that a
+                        -- wrapper swallowed (the untokened BUY intercept before V13) or that
+                        -- only partly landed refunds the drained amount, never the level.
+                        local post = fillUnit.fillLevel or 0
+                        drained = math.max(0, pre - post)
+                        refund  = drained * priceTable[currentType] * 0.5
+                        if refund > 0 then
                             pcall(function()
                                 g_currentMission:addMoney(refund, farmId, MoneyType.PURCHASE_FERTILIZER, true, true)
                             end)
                         end
-
-                        totalDrained = totalDrained + level
-                        totalRefund  = totalRefund  + refund
+                        -- R7 recovery: only a unit verified EMPTY, and only when the product it
+                        -- held or the product it remembers was refused. A partial drain, a
+                        -- valid product's natural empty and a remembered valid product are
+                        -- never cleared.
+                        if post <= 0 and (isRefused(currentType) or isRefused(lastValid)) then
+                            pcall(function() veh:setFillUnitLastValidFillType(fuIdx, FillType.UNKNOWN) end)
+                            cleared = true
+                            totalCleared = totalCleared + 1
+                        end
                         table.insert(report, string.format(
-                            "  %s: %.0f L/kg drained → refund %s", typeName, level, UIHelper.formatCurrencyValue(refund)))
-                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %s, refund %s",
-                            level, typeName, UIHelper.formatCurrencyValue(refund))
+                            "  %s: %.0f of %.0f L/kg drained → refund %s%s", typeName, drained, pre,
+                            UIHelper.formatCurrencyValue(refund), cleared and " (refused product forgotten)" or ""))
+                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %.0f of %s, refund %s%s",
+                            drained, pre, typeName, UIHelper.formatCurrencyValue(refund), cleared and ", last-valid cleared" or "")
+                    else
+                        table.insert(report, string.format(
+                            "  %s: %.0f L/kg present (not host, drain logged only)", typeName, pre))
+                        SoilLogger.info("SoilDrainVehicle: %.0f of %s present, not host, nothing drained", pre, typeName)
+                    end
+                    totalDrained = totalDrained + drained
+                    totalRefund  = totalRefund  + refund
+                elseif pre <= 0 and (currentType == nil or currentType == FillType.UNKNOWN) and isRefused(lastValid) then
+                    -- R7: already empty, nothing to drain or refund, but the unit still
+                    -- remembers a refused product. Forget it so the next helper purchase is
+                    -- not steered back to a product it may not buy.
+                    local remembered = customSet[lastValid] or tostring(lastValid)
+                    if isServer then
+                        pcall(function() veh:setFillUnitLastValidFillType(fuIdx, FillType.UNKNOWN) end)
+                        totalCleared = totalCleared + 1
+                        table.insert(report, string.format("  %s: empty, remembered refused product forgotten", remembered))
+                        SoilLogger.info("SoilDrainVehicle: empty unit remembered refused %s, last-valid cleared", remembered)
+                    else
+                        table.insert(report, string.format("  %s: empty, remembered refused product (not host, logged only)", remembered))
                     end
                 end
             end
         end
     end
-
     if #report == 0 then
         return "No custom fertilizer found in vehicle or attached implements."
     end
@@ -1684,8 +1743,8 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
 
     local summary = string.format(
-        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%%)\n========================",
-        table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund)
+        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%%) | Refused products forgotten: %d\n========================",
+        table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund), totalCleared
     )
     print(summary)
     return summary

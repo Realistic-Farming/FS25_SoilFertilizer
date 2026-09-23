@@ -102,3 +102,35 @@ end
 function SoilFillTypeWidth.maxFillTypes(bits)
     return 2 ^ bits - 1
 end
+
+--- The one load-time line main.lua prints for applyFloor's outcome, or nil when
+--- there is nothing to say. Pure: it formats, it never prints, so applyFloor and
+--- this stay two functions the bench drives for real.
+---
+--- WHY THE "ALREADY" LINE EXISTS (Tyson's ruling, 2026-09-22). When another mod
+--- has raised the width first, applyFloor returns false and used to say nothing,
+--- so a log alone could not show whether the floor was in force. It cost an
+--- evening: a tester's log with no "raised" line read as a possible miss until
+--- FS25_ProductionStorageControl was found setting 10 before us. On Tyson's own
+--- machine Realistic Livestock does the same. Now exactly one of the two lines
+--- prints on every load where the width is readable: "raised" when this mod did
+--- it, "already" when it found the floor satisfied. "At SoilFertilizer load"
+--- because the value is the width in force when THIS mod sources; a mod sourcing
+--- later can still change it.
+---
+--- Once per load, never per frame: the only caller is main.lua's top-level file
+--- scope, the mod's single extraSourceFile, sourced once by loadMod.
+---@param raised boolean applyFloor's first return
+---@param width number|nil applyFloor's second return
+---@return string|nil line
+function SoilFillTypeWidth.loadLine(raised, width)
+    if type(width) ~= "number" then return nil end
+    if raised then
+        return string.format(
+            "[SoilFertilizer] Fill type index width raised to %d (%d fill types). FillType Extender is not required.",
+            width, SoilFillTypeWidth.maxFillTypes(width))
+    end
+    return string.format(
+        "[SoilFertilizer] Fill type index width already %d (%d fill types) at SoilFertilizer load, floor %d satisfied. FillType Extender is not required.",
+        width, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)
+end

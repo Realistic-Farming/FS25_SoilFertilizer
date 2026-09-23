@@ -70,27 +70,27 @@ NO_HASTEXT = (
 
 # (id, [(old, new, expected_count)], the defect it reintroduces, expectation)
 MUTATIONS = [
-    ("S1-old-dollar-l10n-guard", [(GATE, OLD_GUARD, 2)],
+    ("S1-old-dollar-l10n-guard", [(GATE, OLD_GUARD, 1)],
      "the shipped defect: the only rejection test is a comparison against "
      "(\"$l10n_\" .. key), a string getText cannot return, so the engine's "
      "\"Missing '<key>' in l10n<suffix>.xml\" reaches the player",
      "KILLED"),
 
-    ("S2-hastext-dropped", [(GATE, NO_HASTEXT, 2)],
+    ("S2-hastext-dropped", [(GATE, NO_HASTEXT, 1)],
      "a half-repair that keeps the type and empty checks but never asks whether the key "
      "exists, so the missing sentence is accepted as a translation",
      "KILLED"),
 
     ("S3-truthy-hastext-accepted",
      [("    if not okHas or has ~= true then return fallback end",
-       "    if not okHas or not has then return fallback end", 2)],
+       "    if not okHas or not has then return fallback end", 1)],
      "hasText's answer is taken as truthy rather than compared to true, so an i18n shim "
      "returning 1 or a string passes where the engine's own boolean would not",
      "KILLED"),
 
     ("S4-type-check-dropped",
      [("    if not ok or type(text) ~= \"string\" or text == \"\" then return fallback end",
-       "    if not ok or text == nil or text == \"\" then return fallback end", 2)],
+       "    if not ok or text == nil or text == \"\" then return fallback end", 1)],
      "a non-string translation is passed through to a caller that will concatenate or "
      "lower() it",
      "KILLED"),
