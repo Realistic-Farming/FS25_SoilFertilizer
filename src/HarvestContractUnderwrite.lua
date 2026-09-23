@@ -526,6 +526,85 @@ function HarvestContractUnderwrite.faultPrepared(prepared, reason)
     if prepared ~= nil then faultRecord(prepared.record, reason) end
 end
 
+-- =========================================================
+-- RSF-741 v1.13 item 10: the record persists on the SoilFertilizer field
+-- =========================================================
+-- Seven flat keys, the same names on both save owners: XML attributes on the field node
+-- (soilData.xml) and fields of the StateLedger projection entry. A key set that does not
+-- describe a valid armed record is DISCARDED on load (absent = no record = vanilla), which
+-- is also the meaning of an old save or ledger snapshot that has none of the keys. A stale
+-- record is inert anyway: only a running mission with the same saved uniqueId and fruit
+-- can consume it.
+HarvestContractUnderwrite.KEYS = {
+    "underwriteMissionUniqueId", "underwriteFruitTypeIndex", "underwriteArmed", "underwriteCaptureFault",
+    "underwritePreTotal", "underwritePostTotal", "underwriteCutCount",
+}
+
+--- A record from the seven flat values, or nil when they do not describe a valid armed one.
+function HarvestContractUnderwrite.recordFromFlat(src)
+    if type(src) ~= "table" then return nil end
+    local uid = src.underwriteMissionUniqueId
+    local fruit = src.underwriteFruitTypeIndex
+    local armed = src.underwriteArmed
+    local fault = src.underwriteCaptureFault
+    local pre, post, cuts = src.underwritePreTotal, src.underwritePostTotal, src.underwriteCutCount
+    if type(uid) ~= "string" or uid == "" then return nil end
+    if type(fruit) ~= "number" or fruit <= 0 or fruit ~= math.floor(fruit) then return nil end
+    if armed ~= true or type(fault) ~= "boolean" then return nil end
+    if not (finite(pre) and pre >= 0 and finite(post) and post >= 0) then return nil end
+    if type(cuts) ~= "number" or cuts < 0 or cuts ~= math.floor(cuts) then return nil end
+    -- No cut recorded yet means no material either way.
+    if cuts == 0 and (pre ~= 0 or post ~= 0) then return nil end
+    return { missionUniqueId = uid, fruitTypeIndex = fruit, armed = true, captureFault = fault,
+             preTotal = pre, postTotal = post, cutCount = cuts }
+end
+
+--- Write a record's seven flat values into `out` (a ledger entry). Nothing for no record.
+function HarvestContractUnderwrite.recordToFlat(rec, out)
+    if type(rec) ~= "table" or type(out) ~= "table" then return end
+    if HarvestContractUnderwrite.recordFromFlat({
+        underwriteMissionUniqueId = rec.missionUniqueId, underwriteFruitTypeIndex = rec.fruitTypeIndex,
+        underwriteArmed = rec.armed, underwriteCaptureFault = rec.captureFault == true,
+        underwritePreTotal = rec.preTotal, underwritePostTotal = rec.postTotal, underwriteCutCount = rec.cutCount,
+    }) == nil then
+        return
+    end
+    out.underwriteMissionUniqueId = rec.missionUniqueId
+    out.underwriteFruitTypeIndex  = rec.fruitTypeIndex
+    out.underwriteArmed           = true
+    out.underwriteCaptureFault    = rec.captureFault == true
+    out.underwritePreTotal        = rec.preTotal
+    out.underwritePostTotal       = rec.postTotal
+    out.underwriteCutCount        = rec.cutCount
+end
+
+--- XML save owner: the seven attributes under the field node.
+function HarvestContractUnderwrite.saveRecordXML(xmlFile, fieldKey, rec)
+    local flat = {}
+    HarvestContractUnderwrite.recordToFlat(rec, flat)
+    if flat.underwriteMissionUniqueId == nil then return end
+    setXMLString(xmlFile, fieldKey .. "#underwriteMissionUniqueId", flat.underwriteMissionUniqueId)
+    setXMLInt(xmlFile, fieldKey .. "#underwriteFruitTypeIndex", flat.underwriteFruitTypeIndex)
+    setXMLBool(xmlFile, fieldKey .. "#underwriteArmed", true)
+    setXMLBool(xmlFile, fieldKey .. "#underwriteCaptureFault", flat.underwriteCaptureFault)
+    setXMLFloat(xmlFile, fieldKey .. "#underwritePreTotal", flat.underwritePreTotal)
+    setXMLFloat(xmlFile, fieldKey .. "#underwritePostTotal", flat.underwritePostTotal)
+    setXMLInt(xmlFile, fieldKey .. "#underwriteCutCount", flat.underwriteCutCount)
+end
+
+--- XML load owner: a validated record, or nil.
+function HarvestContractUnderwrite.loadRecordXML(xmlFile, fieldKey)
+    return HarvestContractUnderwrite.recordFromFlat({
+        underwriteMissionUniqueId = getXMLString(xmlFile, fieldKey .. "#underwriteMissionUniqueId"),
+        underwriteFruitTypeIndex  = getXMLInt(xmlFile, fieldKey .. "#underwriteFruitTypeIndex"),
+        underwriteArmed           = getXMLBool(xmlFile, fieldKey .. "#underwriteArmed"),
+        underwriteCaptureFault    = getXMLBool(xmlFile, fieldKey .. "#underwriteCaptureFault"),
+        underwritePreTotal        = getXMLFloat(xmlFile, fieldKey .. "#underwritePreTotal"),
+        underwritePostTotal       = getXMLFloat(xmlFile, fieldKey .. "#underwritePostTotal"),
+        underwriteCutCount        = getXMLInt(xmlFile, fieldKey .. "#underwriteCutCount"),
+    })
+end
+
 --- Install the class-level getCompletion override on HarvestMission. Idempotent and
 --- reload-safe. Wraps (does not replace) the base method: the vanilla completion is computed
 --- first, unchanged, then the underwrite adds its correction on top under a pcall, so a bug
