@@ -56,7 +56,15 @@ MUTATIONS = [
     "O.OCCUPANCY_TYPES    = { \"GRASS_WINDROW\", \"DRYGRASS_WINDROW\" }", 1)],
   "whole-cell occupancy misses straw: a straw cell clears, a straw destination reads empty"),
 
+ ("A8-observer-reads-over-the-cap", OBS,
+  [("    if #cells > O.MAX_CELLS then", "    if false then", 1)],
+  "an envelope over the read cap is read every frame instead of marked"),
+
  # --- the carrier ---
+ ("B0-refused-envelope-marks-nothing", CAR,
+  [("        for _, cell in ipairs(prim.cells) do\n            markUnavailable(frame, cell, \"ENVELOPE:\" .. tostring(prim.refused))\n        end\n",
+    "", 1)],
+  "Bob's MAJOR on #994: a drop through an unreadable envelope leaves old records standing"),
  ("B1-carrier-ignores-lease", CAR,
   [("    if admission ~= nil and admission:hasLiveLeaseFor(vehicle, workArea) then",
     "    if false then", 1)],
@@ -123,6 +131,12 @@ MUTATIONS = [
   "nothing in log.txt shows the carrier ever ran"),
 
  # --- the tedder wrapper ---
+ ("H0-observer-cleanup-not-registered", HM,
+  [("            self:registerCleanup(\"DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)\", function()\n"
+    "                GroundNativeObserver.uninstall()\n"
+    "            end)\n",
+    "", 1)],
+  "the observer's wrap outlives the hook manager's teardown"),
  ("H1-observer-never-installed", HM,
   [("        local okObs, whyObs = GroundNativeObserver.install()",
     "        local okObs, whyObs = false, \"MUTANT\"", 1)],

@@ -21,6 +21,8 @@
 --   B  refusals: a refused barrier, a live StockGuard lease, a client, a throw
 --   O  the observer is inert without a frame
 --   W  two contributors in one drop update each cell once
+--   E  an envelope too large to read: every cell it covers goes unavailable
+--   Z  the observer's cleanup is registered and restores the native primitive
 --
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementCarrier.lua
 
@@ -359,4 +361,50 @@ group("W", function()
     cells.writeConditionCell = nil
     T.eq("W1 [reached] the drop's two contributors both reached cell (8,9)", condition(8, 9), "5/100")
     T.eq("W2 and each drop cell was written exactly once", tostring(writes["8:9"]) .. "/" .. tostring(writes["9:9"]) .. "/" .. tostring(writes["7:9"]), "1/1/1")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- E. AN ENVELOPE TOO LARGE TO READ
+-- ══════════════════════════════════════════════════════════════════════════
+-- Over the read cap the observer reads nothing, but it still names every cell the
+-- line can reach, and the carrier marks each one unavailable with its bytes kept.
+-- Otherwise a drop through it would leave the old known condition standing under
+-- material that just arrived (contract section 2). A small cap forces the case.
+group("E", function()
+    world(100)
+    local tedder = tedderInWorld()
+    grass()
+    setCell(8, 8, 3, 60)
+    setCell(9, 8, 5, 100)
+    setCell(8, 9, 9, 40)
+    W.sys.hookManager:installTedderHook()
+    local reads = O.stats.occupancyReads
+    local saved = O.MAX_CELLS
+    O.MAX_CELLS = 2
+    local ok = pcall(ENGINE.tick, tedder, 16)
+    O.MAX_CELLS = saved
+    local coord = W.sys.groundConditionCoordinator
+    T.eq("E1 [native] the pass still ran", tostring(ok) .. "/" .. HEIGHT.total(FT.DRYGRASS_WINDROW), "true/800.0")
+    T.eq("E2 the drop cell's old record is marked unavailable, its bytes kept", tostring(coord:isUnavailable(8, 9)) .. "/" .. condition(8, 9), "true/9/40")
+    T.eq("E3 the source cells are too, their bytes kept", tostring(coord:isUnavailable(8, 8)) .. "/" .. condition(8, 8), "true/3/60")
+    T.eq("E4 and no occupancy was read for an envelope over the read cap", O.stats.occupancyReads - reads, 0)
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Z. THE OBSERVER'S CLEANUP (last: it unwraps the primitive)
+-- ══════════════════════════════════════════════════════════════════════════
+group("Z", function()
+    world(100)
+    tedderInWorld()
+    O.uninstall()
+    T.eq("Z0 [world] the primitive starts unwrapped, so this install is the one that wraps it", rawget(DensityMapHeightUtil, O.MARKER), nil)
+    local hm = W.sys.hookManager
+    hm:installTedderHook()
+    local entry
+    for _, h in ipairs(hm.hooks) do
+        if tostring(h.name):find("ground-condition observer", 1, true) then entry = h end
+    end
+    T.ok("Z1 the tedder hook registered a cleanup for the observer it installed", entry ~= nil and type(entry.cleanup) == "function")
+    if entry ~= nil then entry.cleanup() end
+    T.eq("Z2 and the cleanup restores the native primitive", rawget(DensityMapHeightUtil, O.MARKER), nil)
 end)

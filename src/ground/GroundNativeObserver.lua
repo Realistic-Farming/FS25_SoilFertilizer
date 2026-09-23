@@ -43,9 +43,13 @@ O.MARKER             = "_sfGroundNativeObserver"
 O.PRIMITIVE_TIP_LINE = "TIP_TO_GROUND_AROUND_LINE"
 -- The native types whose occupancy decides a Soil cell (contract section 2).
 O.OCCUPANCY_TYPES    = { "GRASS_WINDROW", "DRYGRASS_WINDROW", "STRAW" }
--- An envelope covering more Soil cells than this is refused as unobservable rather
--- than read cell by cell every frame; the affected cells then go unavailable.
+-- An envelope covering more Soil cells than this is not READ: its occupancy would
+-- cost too many reads per frame. It is still ENUMERATED, so the carrier can mark
+-- every cell it covers unavailable; the cap bounds reads, not marking.
 O.MAX_CELLS          = 256
+-- A hard bound on enumeration alone, against a pathological reach. Beyond it the
+-- primitive cannot even be placed on cells.
+O.MAX_MARK_CELLS     = 16384
 
 O.frames = O.frames or {}
 O.nextOrdinal = O.nextOrdinal or 0
@@ -119,8 +123,10 @@ end
 --- The Soil cells a line of this reach can touch. A cell is in when its centre is
 --- within reach plus half its diagonal of the segment: a superset, because a cell
 --- whose occupancy did not change is skipped by the handler anyway.
+---@param limit number|nil  the most cells to enumerate (default MAX_MARK_CELLS)
 ---@return table|nil cells  { { gx, gz, x0, z0, x1, z1, x2, z2 }, ... }, string|nil reason
-function O.envelopeCells(geometry, sx, sz, ex, ez, reach)
+function O.envelopeCells(geometry, sx, sz, ex, ez, reach, limit)
+    limit = limit or O.MAX_MARK_CELLS
     if type(geometry) ~= "table" then return nil, "NO_GEOMETRY" end
     if not (finite(sx) and finite(sz) and finite(ex) and finite(ez) and finite(reach)) or reach < 0 then
         return nil, "NONFINITE_ENVELOPE"
@@ -138,7 +144,7 @@ function O.envelopeCells(geometry, sx, sz, ex, ez, reach)
         for gz = gz0, gz1 do
             local x0, z0 = ox + gx * grain, oz + gz * grain
             if distanceToSegment(x0 + grain * 0.5, z0 + grain * 0.5, sx, sz, ex, ez) <= pad then
-                if #cells >= O.MAX_CELLS then return nil, "ENVELOPE_TOO_LARGE" end
+                if #cells >= limit then return nil, "ENVELOPE_UNBOUNDED" end
                 cells[#cells + 1] = { gx = gx, gz = gz, x0 = x0, z0 = z0, x1 = x0 + grain, z1 = z0, x2 = x0, z2 = z0 + grain }
             end
         end
@@ -203,6 +209,13 @@ local function prepare(frame, delta, fillTypeIndex, sx, sz, ex, ez, innerRadius,
         O.stats.refusedEnvelopes = O.stats.refusedEnvelopes + 1
         return rec
     end
+    if #cells > O.MAX_CELLS then
+        -- Too many cells to read every frame. Keep the indices, read nothing: the
+        -- carrier marks them all unavailable rather than let old records stand.
+        rec.refused, rec.unobservable, rec.cells = "ENVELOPE_TOO_LARGE", true, cells
+        O.stats.refusedEnvelopes = O.stats.refusedEnvelopes + 1
+        return rec
+    end
     local typeIndices = O.occupancyTypeIndices(fillTypeIndex)
     local windrowSet = {}
     for _, ft in ipairs(O.occupancyTypeIndices(nil)) do windrowSet[ft] = true end
@@ -217,7 +230,7 @@ end
 
 local function complete(frame, rec, litres, lineOffset)
     rec.litres, rec.lineOffset = litres, lineOffset
-    if rec.cells ~= nil then
+    if rec.cells ~= nil and not rec.unobservable then
         for _, cell in ipairs(rec.cells) do
             cell.after, cell.afterWhole = readCell(cell, rec.typeIndices, rec.windrowSet)
         end

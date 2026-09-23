@@ -146,7 +146,7 @@ end
 
 --- Handler: before the native call, capture the condition of every cell it may touch.
 function C.beforePrimitive(frame, prim)
-    if prim.cells == nil or not frame.barrierOk then return end
+    if prim.cells == nil or prim.unobservable or not frame.barrierOk then return end
     for _, cell in ipairs(prim.cells) do
         cell.ageRaw, cell.wetnessRaw = cellCondition(frame, cell.gx, cell.gz)
     end
@@ -161,6 +161,18 @@ function C.onPrimitive(frame, prim)
     -- Unobservable envelope: native moved material we cannot place. Whatever it
     -- picked up is of unknown condition; whatever it dropped leaves the account.
     if prim.cells == nil then
+        if prim.pickup and litres < 0 then C.accountAdd(acc, -litres, nil, nil, frame.today) end
+        if not prim.pickup and litres > 0 then C.accountRemove(acc, litres) end
+        return
+    end
+
+    -- Enumerated but too large to read: every cell it covers may have changed and
+    -- none can be vouched for. Mark them all, keep their bytes, project nothing
+    -- (contract section 2: preserve bytes as unavailable, never clear or invent).
+    if prim.unobservable then
+        for _, cell in ipairs(prim.cells) do
+            markUnavailable(frame, cell, "ENVELOPE:" .. tostring(prim.refused))
+        end
         if prim.pickup and litres < 0 then C.accountAdd(acc, -litres, nil, nil, frame.today) end
         if not prim.pickup and litres > 0 then C.accountRemove(acc, litres) end
         return

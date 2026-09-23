@@ -4335,6 +4335,12 @@ function HookManager:installTedderHook()
         local okObs, whyObs = GroundNativeObserver.install()
         if not okObs and whyObs ~= "CLIENT" then
             SoilLogger.warning("[TedderHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            -- This install wrapped the primitive, so this manager owns its removal.
+            -- uninstall restores the native function only while ours is current.
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
         end
     end
 
