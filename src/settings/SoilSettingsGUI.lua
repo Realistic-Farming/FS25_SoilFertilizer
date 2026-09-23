@@ -1597,23 +1597,27 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
     local customSet = {}
     local priceTable = {}
-    -- Prices match FALLBACK_PRICES in installPurchaseRefillHook. A name without an
-    -- entry here refunds at 1.0/L: the existing rule, unchanged by R7 (the refund
-    -- price policy is a separate question, see the register).
-    local fallbackPrices = {
-        UREA=1.65, AMS=1.40, MAP=1.95, DAP=1.75, POTASH=1.80,
-        COMPOST=0.60, BIOSOLIDS=0.55, CHICKEN_MANURE=0.50,
-        PELLETIZED_MANURE=0.70, GYPSUM=0.80,
-        UAN32=1.60, UAN28=1.50, ANHYDROUS=1.85, STARTER=1.70,
-        LIQUIDLIME=1.20, INSECTICIDE=1.20, FUNGICIDE=1.30,
-        LIQUID_UREA=1.70, LIQUID_AMS=1.45, LIQUID_MAP=2.00,
-        LIQUID_DAP=1.80, LIQUID_POTASH=1.85,
-    }
+    -- The refund basis is the product's SHOP price: the fillTypes.xml economy price the
+    -- engine holds on the fill type (FillTypeDesc.pricePerLiter, read from
+    -- `.economy#pricePerLiter` at FillTypeDesc.lua:75, default 0 at :12 when a fill type
+    -- declares no economy). Read at call time through the manager, so a map or mod that
+    -- redefines a product is honoured and no second price copy can drift (the old
+    -- hand-written table here did). NOT EconomyManager:getPricePerLiter, which adds
+    -- the seasonal factor and the difficulty multipliers: the ruling (Tyson,
+    -- 2026-09-23) is the XML price at the existing 50%, and the XML price is
+    -- seasonal-invariant, so there is no buy-cheap, drain-dear timing. A product with
+    -- no usable shop price (nil, non-finite, negative or 0) refunds 0 and says so.
+    local function shopPricePerLiter(idx)
+        local desc = type(fm.getFillTypeByIndex) == "function" and fm:getFillTypeByIndex(idx) or nil
+        local price = desc ~= nil and tonumber(desc.pricePerLiter) or nil
+        if price == nil or price ~= price or price == math.huge or price < 0 then return 0 end
+        return price
+    end
     for _, name in ipairs(customNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then
             customSet[idx] = name
-            priceTable[idx] = fallbackPrices[name] or 1.0
+            priceTable[idx] = shopPricePerLiter(idx)
         end
     end
 
@@ -1705,9 +1709,12 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
                             cleared = true
                             totalCleared = totalCleared + 1
                         end
+                        local unpriced = drained > 0 and (priceTable[currentType] or 0) <= 0
                         table.insert(report, string.format(
-                            "  %s: %.0f of %.0f L/kg drained → refund %s%s", typeName, drained, pre,
-                            UIHelper.formatCurrencyValue(refund), cleared and " (refused product forgotten)" or ""))
+                            "  %s: %.0f of %.0f L/kg drained → refund %s%s%s", typeName, drained, pre,
+                            UIHelper.formatCurrencyValue(refund),
+                            unpriced and " (no shop price, refund 0)" or "",
+                            cleared and " (refused product forgotten)" or ""))
                         SoilLogger.info("SoilDrainVehicle: drained %.0f of %.0f of %s, refund %s%s",
                             drained, pre, typeName, UIHelper.formatCurrencyValue(refund), cleared and ", last-valid cleared" or "")
                     else
@@ -1743,7 +1750,7 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
 
     local summary = string.format(
-        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%%) | Refused products forgotten: %d\n========================",
+        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%% of shop price) | Refused products forgotten: %d\n========================",
         table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund), totalCleared
     )
     print(summary)
