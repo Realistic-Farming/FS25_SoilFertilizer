@@ -527,6 +527,7 @@ function HookManager:installAll(soilSystem)
 
     -- Harvest hook: direct-cut combines and forage harvesters (Cutter spec)
     local harvestOk = self:installHarvestHook()
+    self._harvestHookOk = harvestOk == true   -- RSF-741 item 9: the token rides this wrapper
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Zone yield cutter hook (SF-14): scales the newly-added Cutter
@@ -534,6 +535,7 @@ function HookManager:installAll(soilSystem)
     -- field-average scalar) on the live cutter work-area pointer. Replaces
     -- the old FillUnit hopper yield-modifier wrapper.
     local zoneYieldOk = self:installZoneYieldCutterHook()
+    self._zoneYieldHookOk = zoneYieldOk == true   -- RSF-741 item 9: standing capture rides this wrapper
     if zoneYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Harvest contract underwrite (#741 / SF-29): wraps HarvestMission.getCompletion so a
@@ -541,8 +543,10 @@ function HookManager:installAll(soilSystem)
     -- expected completion at delivery (divides out the same yield modifier the cutter hook
     -- above applied). Server-side, fail-safe, no soil write, no farm-money move. Must run
     -- after installZoneYieldCutterHook so the modifier it inverts is the one in force.
+    -- RSF-741: the underwrite is live only when every capture surface is (item 9); see
+    -- installHarvestUnderwrite. A failure leaves the underwrite vanilla passthrough.
     if HarvestContractUnderwrite and HarvestContractUnderwrite.install then
-        local underwriteOk = HarvestContractUnderwrite.install(self)
+        local underwriteOk = self:installHarvestUnderwrite()
         if underwriteOk then successCount = successCount + 1 else failCount = failCount + 1 end
     end
 
@@ -3211,6 +3215,16 @@ function HookManager:installHarvestHook()
             SoilLogger.debug("Harvest hook entered: isServer=%s area=%.1f liters=%.0f fruit=%s",
                 tostring(combineSelf.isServer), area or 0, liters or 0, tostring(inputFruitType))
 
+            -- RSF-741 items 7 and 8: consume the cutter-end token for THIS combine before the
+            -- original runs (the additive branch is judged on the tank as it stands). The live
+            -- arguments are the truth; a missing token is a no-op.
+            local uwPrepared = nil
+            local HCU = HarvestContractUnderwrite
+            if combineSelf.isServer and HCU ~= nil and HCU._token ~= nil and HCU.takeToken ~= nil then
+                local okTok, prep = pcall(HCU.takeToken, combineSelf, liters, inputFruitType, outputFillType)
+                if okTok then uwPrepared = prep end
+            end
+
             -- Detect field for nutrient depletion tracking (onHarvest).
             -- Yield modifier is NO LONGER applied here - see installZoneYieldCutterHook.
             local detectedFieldId = nil
@@ -3330,7 +3344,20 @@ function HookManager:installHarvestHook()
             end
 
             -- Pass arguments completely untouched - we no longer modify liters here.
-            local r1, r2, r3, r4, r5 = chainFn(combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad)
+            local r1, r2, r3, r4, r5
+            if uwPrepared ~= nil then
+                -- Only a tokened call runs under pcall: an error faults the named record and
+                -- then travels on unchanged.
+                local res = { pcall(chainFn, combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad) }
+                if not res[1] then
+                    pcall(HCU.faultPrepared, uwPrepared, "Combine.addCutterArea raised")
+                    error(res[2], 0)
+                end
+                r1, r2, r3, r4, r5 = res[2], res[3], res[4], res[5], res[6]
+                pcall(HCU.recordApplied, uwPrepared, r1)
+            else
+                r1, r2, r3, r4, r5 = chainFn(combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad)
+            end
 
             -- Nutrient depletion uses original (biological) liters - the soil depleted what
             -- the crop grew regardless of the yield modifier applied to the hopper.
@@ -3496,10 +3523,15 @@ function HookManager:installZoneYieldCutterHook()
     end
 
     local hookMgrRef = self
+    -- RSF-741 item 9: one tagged wrapper per callable. A slot already holding one of these
+    -- is skipped, so a re-run cannot stack a second scaling (or a second capture) layer.
+    HookManager._zoneYieldWrappers = HookManager._zoneYieldWrappers or setmetatable({}, { __mode = "k" })
+    local zyTags = HookManager._zoneYieldWrappers
 
     -- One factory so the same delta-scaling logic wraps any chainFn.
     local function makeCutterWrapper(chainFn)
-        return function(cutterSelf, workArea, dt)
+        local wrapper
+        wrapper = function(cutterSelf, workArea, dt)
             -- Prepare the pre-cut context BEFORE the destructive base call so we
             -- snapshot lastMultiplierArea and resolve the scalar first.
             local context = nil
@@ -3522,9 +3554,14 @@ function HookManager:installZoneYieldCutterHook()
             -- Call the chain once; capture its return values unchanged.
             local r1, r2, r3, r4, r5 = chainFn(cutterSelf, workArea, dt)
 
+            -- The native delta, before any SF scaling (RSF-741 item 5 reads it below).
+            local added = 0
+            if spec ~= nil and spec.workAreaParameters ~= nil then
+                added = (spec.workAreaParameters.lastMultiplierArea or 0) - before
+            end
+
             -- Scale only when we have a valid context (fruit + field resolved).
             if context ~= nil and spec ~= nil and spec.workAreaParameters ~= nil then
-                local added = spec.workAreaParameters.lastMultiplierArea - before
                 if added > 0
                    and spec.workAreaParameters.lastFruitType == context.fruitTypeIndex
                    and context.fieldId and context.fieldId > 0
@@ -3556,14 +3593,30 @@ function HookManager:installZoneYieldCutterHook()
                 end
             end
 
+            -- RSF-741 item 5: the standing pair for the harvest underwrite. Healthy is the
+            -- native delta, actual is what stands after SF scaling (equal when SF-14 had no
+            -- context, a 1.0 scalar or a fruit mismatch). Server only; clients never capture.
+            if cutterSelf.isServer and added > 0 and spec ~= nil and spec.workAreaParameters ~= nil
+                and HarvestContractUnderwrite ~= nil and HarvestContractUnderwrite.onStandingArea ~= nil then
+                local actual = (spec.workAreaParameters.lastMultiplierArea or 0) - before
+                local okUw, errUw = pcall(HarvestContractUnderwrite.onStandingArea, cutterSelf, workArea, added, actual)
+                if not okUw then
+                    SoilLogger.debug("Harvest underwrite standing capture skipped: %s", tostring(errUw))
+                end
+            end
+
             return r1, r2, r3, r4, r5
         end
+        zyTags[wrapper] = true
+        return wrapper
     end
 
     -- Layer 1: Cutter class (future registration).
     local classOriginal = Cutter.processCutterArea
-    Cutter.processCutterArea = makeCutterWrapper(classOriginal)
-    hookMgrRef:register(Cutter, "processCutterArea", classOriginal, "Cutter.processCutterArea (zone yield)")
+    if not zyTags[classOriginal] then
+        Cutter.processCutterArea = makeCutterWrapper(classOriginal)
+        hookMgrRef:register(Cutter, "processCutterArea", classOriginal, "Cutter.processCutterArea (zone yield)")
+    end
 
     -- Layer 2: every registered cutter type's functions.processCutterArea.
     local typesPatched = 0
@@ -3581,7 +3634,8 @@ function HookManager:installZoneYieldCutterHook()
                     end
                 end
             end
-            if hasCutter and typeDef.functions and typeDef.functions.processCutterArea then
+            if hasCutter and typeDef.functions and typeDef.functions.processCutterArea
+                and not zyTags[typeDef.functions.processCutterArea] then
                 local origTypeFn = typeDef.functions.processCutterArea
                 typeDef.functions.processCutterArea = makeCutterWrapper(origTypeFn)
                 hookMgrRef:register(typeDef.functions, "processCutterArea", origTypeFn, "type.processCutterArea (zone yield)")
@@ -3594,7 +3648,8 @@ function HookManager:installZoneYieldCutterHook()
     local instancesPatched = 0
     if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
         for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
-            if vehicle.spec_cutter and type(vehicle.processCutterArea) == "function" then
+            if vehicle.spec_cutter and type(vehicle.processCutterArea) == "function"
+                and not zyTags[vehicle.processCutterArea] then
                 local origInst = vehicle.processCutterArea
                 vehicle.processCutterArea = makeCutterWrapper(origInst)
                 hookMgrRef:register(vehicle, "processCutterArea", origInst, "instance.processCutterArea (zone yield)")
@@ -3610,7 +3665,8 @@ function HookManager:installZoneYieldCutterHook()
         for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
             if vehicle.spec_cutter and vehicle.spec_workArea and vehicle.spec_workArea.workAreas then
                 for _, wa in ipairs(vehicle.spec_workArea.workAreas) do
-                    if wa.functionName == "processCutterArea" and type(wa.processingFunction) == "function" then
+                    if wa.functionName == "processCutterArea" and type(wa.processingFunction) == "function"
+                        and not zyTags[wa.processingFunction] then
                         local origWa = wa.processingFunction
                         wa.processingFunction = makeCutterWrapper(origWa)
                         hookMgrRef:register(wa, "processingFunction", origWa, "workArea.processingFunction (zone yield)")
@@ -3648,6 +3704,148 @@ end
 -- Depletion is area-based (not liter-based) via SoilFertilitySystem:onMow().
 -- SoilConstants.MOWER_HA_FACTOR calibrates per-ha depletion relative to grain crops.
 ---@return boolean success True if hook installed successfully
+-- =========================================================
+-- RSF-741 items 5, 6 and 9: the rest of the underwrite capture surface
+-- =========================================================
+-- The standing half rides installZoneYieldCutterHook and the Combine half rides
+-- installHarvestHook. What remains is the pickup work-area function (a registered
+-- function, COPIED into every vehicle type and instance and captured again as each work
+-- area's processingFunction at load, WorkArea.lua loadWorkAreaFromXML) and the Cutter
+-- start/end event listeners (dispatched through the Cutter class table at call time,
+-- SpecializationUtil.raiseEvent, so one class wrapper reaches every cutter).
+
+--- Install the pickup layer and the Cutter start/end wrappers. True only when all are live.
+---@return boolean
+function HookManager:installUnderwriteCaptureHooks()
+    local HCU = HarvestContractUnderwrite
+    if HCU == nil or Cutter == nil then return false end
+    HookManager._underwriteWrappers = HookManager._underwriteWrappers or setmetatable({}, { __mode = "k" })
+    local tags = HookManager._underwriteWrappers
+    local refs = {}
+
+    local function makePickupWrapper(chainFn)
+        local wrapper = function(cutterSelf, workArea, dt)
+            local r1, r2, r3, r4, r5 = chainFn(cutterSelf, workArea, dt)
+            -- Server pickup positivity: the engine returns 1 only when pickedUpLiters > 0
+            -- wrote lastLiters on the server (Cutter.lua processPickupCutterArea).
+            if cutterSelf.isServer and type(r1) == "number" and r1 > 0 and HCU.onPickup ~= nil then
+                local okUw, errUw = pcall(HCU.onPickup, cutterSelf, workArea)
+                if not okUw then SoilLogger.debug("Harvest underwrite pickup capture skipped: %s", tostring(errUw)) end
+            end
+            return r1, r2, r3, r4, r5
+        end
+        tags[wrapper] = true
+        return wrapper
+    end
+    local function wrapSlot(slot, key, fn, maker)
+        if type(fn) ~= "function" or tags[fn] then return false end
+        local wrapper = maker(fn)
+        slot[key] = wrapper
+        refs[#refs + 1] = { slot = slot, key = key, predecessor = fn, wrapper = wrapper }
+        return true
+    end
+
+    -- (a) pickup: class, every cutter type, every live instance, every live pickup work area
+    local pickupOk = type(Cutter.processPickupCutterArea) == "function"
+    if pickupOk then
+        wrapSlot(Cutter, "processPickupCutterArea", Cutter.processPickupCutterArea, makePickupWrapper)
+        local types = g_vehicleTypeManager and g_vehicleTypeManager.types
+        if type(types) == "table" then
+            for _, typeDef in pairs(types) do
+                local carries = typeDef and typeDef.specializationsByName and typeDef.specializationsByName.cutter
+                if carries and typeDef.functions then
+                    wrapSlot(typeDef.functions, "processPickupCutterArea", typeDef.functions.processPickupCutterArea, makePickupWrapper)
+                end
+            end
+        end
+        local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles) or {}
+        for _, vehicle in pairs(vList) do
+            if type(vehicle) == "table" and vehicle.spec_cutter then
+                wrapSlot(vehicle, "processPickupCutterArea", rawget(vehicle, "processPickupCutterArea"), makePickupWrapper)
+                local areas = vehicle.spec_workArea and vehicle.spec_workArea.workAreas
+                if type(areas) == "table" then
+                    for _, wa in ipairs(areas) do
+                        if wa.functionName == "processPickupCutterArea" then
+                            wrapSlot(wa, "processingFunction", wa.processingFunction, makePickupWrapper)
+                        end
+                    end
+                end
+            end
+        end
+    else
+        SoilLogger.warning("Harvest underwrite: Cutter.processPickupCutterArea not available")
+    end
+
+    -- (b) Cutter start and end
+    local startEndOk = type(Cutter.onStartWorkAreaProcessing) == "function"
+        and type(Cutter.onEndWorkAreaProcessing) == "function"
+    if startEndOk then
+        wrapSlot(Cutter, "onStartWorkAreaProcessing", Cutter.onStartWorkAreaProcessing, function(orig)
+            local wrapper = function(cutterSelf, ...)
+                -- Item 6: start clears the pending material and binding.
+                if cutterSelf.isServer then pcall(HCU.beginTick, cutterSelf) end
+                return orig(cutterSelf, ...)
+            end
+            tags[wrapper] = true
+            return wrapper
+        end)
+        wrapSlot(Cutter, "onEndWorkAreaProcessing", Cutter.onEndWorkAreaProcessing, function(orig)
+            local wrapper = function(cutterSelf, ...)
+                -- Item 6: end performs no spatial lookup; one unanimous mission gets a token,
+                -- the base end runs (and calls the Combine, which consumes it), and the token
+                -- and the pending tick are cleared after it returns, Combine called or not.
+                local token = nil
+                if cutterSelf.isServer then
+                    local okT, tk = pcall(HCU.makeToken, cutterSelf)
+                    if okT then token = tk end
+                end
+                HCU._token = token
+                local okE, errE = pcall(orig, cutterSelf, ...)
+                HCU._token = nil
+                local spec = cutterSelf.spec_cutter
+                if spec ~= nil then spec._sf741 = nil end
+                if not okE then error(errE, 0) end
+            end
+            tags[wrapper] = true
+            return wrapper
+        end)
+    else
+        SoilLogger.warning("Harvest underwrite: Cutter start/end work-area events not available")
+    end
+
+    self:registerCleanup("Harvest underwrite capture (pickup layer, Cutter start/end)", function()
+        for i = #refs, 1, -1 do
+            local ref = refs[i]
+            if ref.slot[ref.key] == ref.wrapper then ref.slot[ref.key] = ref.predecessor end
+        end
+        HCU._token = nil
+    end)
+    return pickupOk and startEndOk
+end
+
+--- The harvest underwrite, whole (RSF-741): the capture surface above plus the Combine and
+--- standing halves (installHarvestHook, installZoneYieldCutterHook, which installAll runs
+--- first), then the completion wrapper. Provenance is READY only when every one of them is
+--- live; otherwise the underwrite stays vanilla passthrough (item 9).
+---@return boolean ready
+function HookManager:installHarvestUnderwrite()
+    local HCU = HarvestContractUnderwrite
+    if HCU == nil or type(HCU.install) ~= "function" then return false end
+    HCU.setCaptureReady(false)
+    local captureOk = self:installUnderwriteCaptureHooks()
+    local pairOk = HCU.install(self) == true
+    local ready = self._harvestHookOk == true and self._zoneYieldHookOk == true and captureOk and pairOk
+    HCU.setCaptureReady(ready)
+    self:registerCleanup("Harvest underwrite readiness", function() HCU.setCaptureReady(false) end)
+    if ready then
+        SoilLogger.info("[OK] Harvest underwrite capture ready (combine, standing, pickup, cutter start/end, completion)")
+    else
+        SoilLogger.warning("Harvest underwrite NOT ready (combine=%s standing=%s capture=%s completion=%s): contracts stay vanilla",
+            tostring(self._harvestHookOk), tostring(self._zoneYieldHookOk), tostring(captureOk), tostring(pairOk))
+    end
+    return ready
+end
+
 function HookManager:installMowerHook()
     if not Mower or type(Mower.onEndWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[MowerHook] Mower.onEndWorkAreaProcessing not available - forage crop tracking skipped")
