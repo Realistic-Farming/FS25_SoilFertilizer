@@ -18,7 +18,11 @@
 #   - the ordinary-farm test inside isFieldScoutAuthorized: a non-ordinary farm is refused
 #     again by isRevealAuthorized one call down, so removing it changes no verdict;
 #   - clearing the chem list on a refused dialog: a fresh panel has no list to keep, and
-#     Apply already returns on a nil chemical (G3 holds either way).
+#     Apply already returns on a nil chemical (G3 holds either way);
+#   - the hotkey's `return` after its no-standing warning (SoilFertilityManager.lua:1012):
+#     since the refusal returns nil (Bob's finding on #998, carried here), the guard on the
+#     next line (`if not rep ... then return end`) returns anyway, so removing it changes
+#     nothing observable; H3 and H4 pin that a refused hotkey opens nothing either way.
 #
 # Anchors are written with "\n"; in a CRLF file they are matched as "\r\n".
 #
@@ -48,15 +52,18 @@ MUTATIONS = [
 
  # ── the writer ─────────────────────────────────────────────────────────────
  ("W1-writer-does-not-gate", FS,
-  [("    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED\n    end\n", "", 1)],
+  [("    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        return nil, SoilFertilitySystem.SCOUT_REFUSED\n    end\n", "", 1)],
   "the writer trusts every caller"),
  ("W2-discovery-flipped-before-the-test", FS,
-  [("    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED\n    end\n",
-    "    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        field.diseaseDiscovered = true\n        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED\n    end\n", 1)],
+  [("    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        return nil, SoilFertilitySystem.SCOUT_REFUSED\n    end\n",
+    "    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then\n        field.diseaseDiscovered = true\n        return nil, SoilFertilitySystem.SCOUT_REFUSED\n    end\n", 1)],
   "a refusal still hands the asker the named disease"),
  ("W3-refusal-not-reported", FS,
-  [("        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED\n", "        return self:getScoutReport(fieldId)\n", 1)],
-  "the doors cannot tell a refusal from a clean field"),
+  [("        return nil, SoilFertilitySystem.SCOUT_REFUSED\n", "        return nil\n", 1)],
+  "the doors cannot tell a refusal from a missing field"),
+ ("W6-refusal-returns-the-current-report", FS,
+  [("        return nil, SoilFertilitySystem.SCOUT_REFUSED\n", "        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED\n", 1)],
+  "a refused door reads back the owner's scouted truth"),
  ("W4-no-spatial-scouting-admits", FS,
   [("    if SpatialScouting == nil or type(SpatialScouting.isFieldScoutAuthorized) ~= \"function\" then\n        return false\n    end\n",
     "    if SpatialScouting == nil or type(SpatialScouting.isFieldScoutAuthorized) ~= \"function\" then\n        return true\n    end\n", 1)],
@@ -85,10 +92,6 @@ MUTATIONS = [
  ("H1-hotkey-passes-no-farm", FM,
   [("    local rep, refused = self.soilSystem:scoutField(fieldId, SoilFertilitySystem.localScoutFarmId())", "    local rep, refused = self.soilSystem:scoutField(fieldId)", 1)],
   "the hotkey is refused for everyone"),
- ("H2-hotkey-opens-on-refusal", FM,
-  [("            g_currentMission.hud:showBlinkingWarning(g_i18n:getText(\"sf_scout_no_standing\"), 3000)\n        end\n        return\n    end",
-    "            g_currentMission.hud:showBlinkingWarning(g_i18n:getText(\"sf_scout_no_standing\"), 3000)\n        end\n    end", 1)],
-  "a refused hotkey still flashes and opens the dialog"),
  ("K1-console-scout-passes-no-farm", GUI,
   [("    local rep, refused = sfm.soilSystem:scoutField(fid, SoilFertilitySystem.localScoutFarmId())", "    local rep, refused = sfm.soilSystem:scoutField(fid, 1)", 1)],
   "the console scouts as farm 1 on every machine"),
