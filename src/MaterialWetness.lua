@@ -483,16 +483,30 @@ function MaterialWetness:onConditionAccrual(ctx)
     -- CATCH-UP. Skipped days are identifiable from the persisted cursor. Walk them
     -- oldest-first so each day's verdict is recorded in order.
     local firstDay = day - boundaries + 1
+    -- RSF-F213 part 1: the walk starts where the cursor ACTUALLY stands. A day held
+    -- earlier (no sky and no climate) left the cursor behind it, and the caller's span
+    -- does not know that (Time Guard counts its own boundaries), so the held day is
+    -- replayed here rather than stepped over.
+    if self.appliedThroughDay ~= nil and self.appliedThroughDay + 1 < firstDay then
+        firstDay = self.appliedThroughDay + 1
+    end
     for d = firstDay, day do
         local isToday = (d == day)
-        self:settleOneDay(d, isToday)
+        if not self:settleOneDay(d, isToday) then
+            -- A HELD day. The cursor stays on the last day actually settled: the
+            -- ground-condition contract (section 2) forbids advancing a domain
+            -- cursor past an unsettled day, and the settlement barrier reads exactly
+            -- this cursor to know whether pre-operation ground is settled. The later
+            -- days are not walked either, so each day is still applied in order.
+            return
+        end
+        self.appliedThroughDay = d
     end
-
-    self.appliedThroughDay = day
 end
 
 --- Settle a single day. `isToday` selects the live sky; a skipped day is
 --- CLIMATE-DERIVED and says so, the same honesty as humidityDefaulted.
+---@return boolean settled false when the day HOLDS (no live sky and no climate)
 function MaterialWetness:settleOneDay(dayNumber, isToday)
     local sky, rain, derived = nil, nil, false
 
@@ -510,7 +524,7 @@ function MaterialWetness:settleOneDay(dayNumber, isToday)
         if climate == nil then
             -- No WeatherGuard at all: the accrual HOLDS. No invented sky.
             SoilLogger.debug("[MaterialWetness] day %s: no sky and no climate - holding", tostring(dayNumber))
-            return
+            return false
         end
         sky = {
             humidity      = 0.65,
@@ -523,6 +537,7 @@ function MaterialWetness:settleOneDay(dayNumber, isToday)
     self:dryPass(sky)
     local watered, source = self:wetPass(rain)
     self:recordDay(dayNumber, watered, source, derived)
+    return true
 end
 
 --- DRY. Three bands by current value, each with its own subtraction, one filtered
