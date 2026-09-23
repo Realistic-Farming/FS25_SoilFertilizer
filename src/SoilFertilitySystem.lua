@@ -8530,17 +8530,11 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
             self.herbicideAppliedDay[fieldId]   = e.herbicideAppliedDay or 0
             self.insecticideAppliedDay[fieldId] = e.insecticideAppliedDay or 0
             self.fungicideAppliedDay[fieldId]   = e.fungicideAppliedDay or 0
-            -- [SF-79] Positional pH pending remainders (report re-derives on demand).
+            -- [SF-79] Positional pH pending remainders (report re-derives on demand),
+            -- kept only when they name their cause and kind (MAINTENANCE row 72).
             f._phPending = {}
-            if type(e.sf79PHPending) == "table" then
-                for _, p in ipairs(e.sf79PHPending) do
-                    if type(p) == "table" and p.domainKey ~= nil then
-                        f._phPending[#f._phPending + 1] = {
-                            cause = p.cause or "", kind = p.kind or "",
-                            amount = p.amount or 0, domainKey = p.domainKey,
-                        }
-                    end
-                end
+            if type(self._phRestorePending) == "function" then
+                self:_phRestorePending(fieldId, f, e.sf79PHPending, "ledger")
             end
             -- Per-area zone cells.
             if e.zoneData then
