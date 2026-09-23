@@ -71,6 +71,24 @@ function PositionalPH.unitsPerRaw()
     return (limits.PH_MAX - limits.PH_MIN) / span
 end
 
+--- A banked remainder is usable only with its cause, its kind and its domain all
+--- known (brief 3.B: remainders stay separate per cause/kind/domain) and its amount
+--- below one raw step: a whole step is applied, never banked, so a larger entry is
+--- not a remainder. An entry missing any of these could only ever be applied as
+--- some other operation's amount, which is the mixing MAINTENANCE row 72 records.
+--- The domain may be the empty string (a field with no geometry banks under '').
+function PositionalPH.isValidPending(p)
+    if type(p) ~= 'table' then return false end
+    if type(p.cause) ~= 'string' or p.cause == '' then return false end
+    if p.kind ~= PositionalPH.OP_DELTA and p.kind ~= PositionalPH.OP_NORMALIZE then return false end
+    local a = p.amount
+    if type(a) ~= 'number' or a ~= a or a == math.huge or a == -math.huge then return false end
+    local upr = PositionalPH.unitsPerRaw()
+    if upr > 0 and math.abs(a) >= upr then return false end
+    if type(p.domainKey) ~= 'string' then return false end
+    return true
+end
+
 --- The raw step count for a semantic pH delta, TRUNCATED TOWARD ZERO to
 --- match the current quantizer. Zero means a sub-step change.
 --- @return number
@@ -444,7 +462,9 @@ function SoilFertilitySystem:_phApplyField(fieldId, operation, value, targetLow,
 
     if operation == PositionalPH.OP_DELTA or operation == PositionalPH.OP_NORMALIZE then
         local domainKey = self:_phDomainKey(fieldId)
-        local pending = self:_phTakePending(fieldId, domainKey)
+        -- Only this cause's remainders of this kind on this domain join this write:
+        -- a plow NORMALIZE remainder never rides a rain DELTA (MAINTENANCE row 72).
+        local pending = self:_phTakePending(fieldId, domainKey, source, operation)
         local total = value or 0
         for _, p in ipairs(pending) do total = total + (p.amount or 0) end
 
@@ -651,29 +671,76 @@ end
 -- SUB-STEP SCHEDULED FIELD REMAINDERS (brief 3.B)
 -- ============================================================
 -- A FIELD normalization that cannot finish in one pass keeps its remainder per
--- cause/kind/domain. A remainder is restored only onto a matching domain key;
--- it is never put into a field-wide scalar bank.
+-- cause/kind/domain. A remainder is taken back only by the same cause's write of
+-- the same kind on a matching domain key (a NORMALIZE magnitude means "toward the
+-- target", a DELTA is a signed change; the two are never summed), and it is never
+-- put into a field-wide scalar bank.
 
 function SoilFertilitySystem:_phAddPending(fieldId, cause, kind, amount, domainKey)
     local field = self.fieldData and self.fieldData[fieldId]
-    if field == nil then return end
+    if field == nil then return false end
+    local entry = { cause = cause, kind = kind, amount = amount, domainKey = domainKey }
+    if not PositionalPH.isValidPending(entry) then
+        -- Nothing can ever take such an entry back under its own operation, or it
+        -- is a whole step that should have been applied; not banked, said once,
+        -- since a caller that produces one is a code defect.
+        if not PositionalPH._pendingRefusedLogged and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
+            PositionalPH._pendingRefusedLogged = true
+            SoilLogger.warning("[SF-79] pH bank: a remainder with no cause or kind, or not below one raw step, was not banked (field %s, cause %s, kind %s, amount %s)",
+                tostring(fieldId), tostring(cause), tostring(kind), tostring(amount))
+        end
+        return false
+    end
+    if amount == 0 then return false end
     field._phPending = field._phPending or {}
-    field._phPending[#field._phPending + 1] = {
-        cause = cause, kind = kind, amount = amount, domainKey = domainKey,
-    }
+    field._phPending[#field._phPending + 1] = entry
+    return true
 end
 
---- Take the pending remainders matching a domain key, leaving the rest.
+--- Take the pending remainders of one cause and kind on a domain key, leaving the
+--- rest banked for their own operations.
 --- @return table
-function SoilFertilitySystem:_phTakePending(fieldId, domainKey)
+function SoilFertilitySystem:_phTakePending(fieldId, domainKey, cause, kind)
     local field = self.fieldData and self.fieldData[fieldId]
     if field == nil or field._phPending == nil then return {} end
     local keep, take = {}, {}
     for _, p in ipairs(field._phPending) do
-        if p.domainKey == domainKey then take[#take + 1] = p else keep[#keep + 1] = p end
+        if p.domainKey == domainKey and p.cause == cause and p.kind == kind then
+            take[#take + 1] = p
+        else
+            keep[#keep + 1] = p
+        end
     end
     field._phPending = keep
     return take
+end
+
+--- Restore a field's banked remainders from a save (XML or the StateLedger mirror),
+--- keeping only usable entries: a cause, a kind, a domain and an amount below one raw
+--- step (isValidPending). An older save wrote a remainder without a cause or kind
+--- (the XML defaulted both to ''); such an entry could only be applied as some other
+--- operation's amount, so it is dropped and said once per field per load.
+--- @return number kept
+--- @return number dropped
+function SoilFertilitySystem:_phRestorePending(fieldId, field, list, origin)
+    field._phPending = {}
+    if type(list) ~= 'table' then return 0, 0 end
+    local kept, dropped = 0, 0
+    for _, p in ipairs(list) do
+        if PositionalPH.isValidPending(p) then
+            field._phPending[#field._phPending + 1] = {
+                cause = p.cause, kind = p.kind, amount = p.amount, domainKey = p.domainKey,
+            }
+            kept = kept + 1
+        else
+            dropped = dropped + 1
+        end
+    end
+    if dropped > 0 and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
+        SoilLogger.warning("[SF-79] pH bank: field %s, %d banked remainder(s) in the %s save were dropped: a usable remainder names its cause and kind and is below one raw step (%.4f pH), and these did not (an older save)",
+            tostring(fieldId), dropped, tostring(origin), PositionalPH.unitsPerRaw())
+    end
+    return kept, dropped
 end
 
 -- ============================================================
@@ -737,13 +804,13 @@ function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
     if xmlFile == nil or fieldKey == nil or field == nil then return end
     local seed = getXMLFloat(xmlFile, fieldKey .. "#sf79PHSeed")
     if type(seed) == 'number' then field._phSeedScalar = seed end
-    field._phPending = {}
+    local list = {}
     local count = getXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount") or 0
     for i = 0, count - 1 do
         local pk = string.format("%s.sf79PHPending(%d)", fieldKey, i)
         local domainKey = getXMLString(xmlFile, pk .. "#domainKey")
         if domainKey ~= nil then
-            field._phPending[#field._phPending + 1] = {
+            list[#list + 1] = {
                 cause = getXMLString(xmlFile, pk .. "#cause") or '',
                 kind = getXMLString(xmlFile, pk .. "#kind") or '',
                 amount = getXMLFloat(xmlFile, pk .. "#amount") or 0,
@@ -751,6 +818,7 @@ function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
             }
         end
     end
+    self:_phRestorePending(field.id or fieldKey, field, list, 'xml')
     field._phReport = nil
 end
 
