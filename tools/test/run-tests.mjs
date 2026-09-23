@@ -26,6 +26,22 @@ function parseDeps(src) {
   return m[1].split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+// `--!text: path, path` hands a bar the TEXT of a repo file as
+// SOURCE_TEXT["path"], for source-witness rows that pin a call site's shape
+// (fengari has no io.open). The file is not executed, only quoted; a long
+// bracket level absent from the text is chosen so nothing can close it early.
+function parseTexts(src) {
+  const m = src.match(/--!text:\s*(.+)/);
+  if (!m) return [];
+  return m[1].split(",").map((s) => s.trim()).filter(Boolean);
+}
+function luaLongString(text) {
+  let level = 0;
+  while (text.includes("]" + "=".repeat(level) + "]")) level += 1;
+  const eq = "=".repeat(level);
+  return `[${eq}[\n${text}]${eq}]`;
+}
+
 // Run one Lua program string, return { rc, out } with stdout captured.
 function runLua(program) {
   let out = "";
@@ -57,6 +73,7 @@ for (const tf of testFiles) {
   const testPath = join(LUA_DIR, tf);
   const testSrc = readFileSync(testPath, "utf8");
   const deps = parseDeps(testSrc);
+  const texts = parseTexts(testSrc);
 
   const parts = [prelude];
   for (const d of deps) {
@@ -64,6 +81,15 @@ for (const tf of testFiles) {
       parts.push(`-- <<< ${d} >>>\n` + readFileSync(join(REPO_ROOT, d), "utf8"));
     } catch {
       console.log(c.red(`✗ ${tf}: cannot read declared dependency '${d}'`));
+      hadError = true;
+    }
+  }
+  for (const t of texts) {
+    try {
+      const text = readFileSync(join(REPO_ROOT, t), "utf8");
+      parts.push(`-- <<< text: ${t} >>>\nSOURCE_TEXT = SOURCE_TEXT or {}\nSOURCE_TEXT[${JSON.stringify(t)}] = ${luaLongString(text)}\n`);
+    } catch {
+      console.log(c.red(`✗ ${tf}: cannot read declared text '${t}'`));
       hadError = true;
     }
   }

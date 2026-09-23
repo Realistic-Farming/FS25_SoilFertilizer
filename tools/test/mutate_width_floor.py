@@ -14,6 +14,15 @@ plausible way to write it wrong rather than an arbitrary edit:
       measured 513-fill-type setup. This is the version Tyson rejected.
   M4  the width is captured on first call instead of read live, so a later call
       decides against a number that no longer exists.
+  M5  the "already satisfied" line is deleted, so a floor another mod satisfied
+      is silent again. Tyson's ruling of 2026-09-22 exists because that silence
+      read as a possible miss for an evening.
+  M6  the already line prints the floor where the width in force belongs, so a
+      log at 11 would say 10.
+  M7  the raised and already lines swap.
+  M8  main.lua drops the print. Groups A to G cannot see this, because they
+      drive the functions, not the call site; only the source witness (group H,
+      fed src/main.lua's text by the runner's --!text directive) goes red.
 
 Each must apply, must send the bar red, and the file must come back byte-identical.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -39,18 +48,21 @@ GUARD = ("    if current >= SoilFillTypeWidth.FLOOR_BITS then\n"
          "    end\n")
 
 
-def read():
-    with io.open(TARGET, "r", encoding="utf-8", newline="") as fh:
+MAIN = os.path.join(ROOT, "src", "main.lua")
+
+
+def read(path=TARGET):
+    with io.open(path, "r", encoding="utf-8", newline="") as fh:
         return fh.read()
 
 
-def write(s):
-    with io.open(TARGET, "w", encoding="utf-8", newline="") as fh:
+def write(s, path=TARGET):
+    with io.open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(s)
 
 
-def digest():
-    return hashlib.sha256(read().encode("utf-8")).hexdigest()[:12]
+def digest(path=TARGET):
+    return hashlib.sha256(read(path).encode("utf-8")).hexdigest()[:12]
 
 
 def run_bar():
@@ -108,17 +120,56 @@ def m4(src):
     return src.replace(needle, replacement, 1)
 
 
+def _sub(src, needle, replacement):
+    """Replace exactly one occurrence, in either line ending; None if absent."""
+    for n, r in ((needle, replacement),
+                 (needle.replace("\n", "\r\n"), replacement.replace("\n", "\r\n"))):
+        if src.count(n) == 1:
+            return src.replace(n, r, 1)
+    return None
+
+
+ALREADY = ("    return string.format(\n"
+           "        \"[SoilFertilizer] Fill type index width already %d (%d fill types) at SoilFertilizer load, floor %d satisfied. FillType Extender is not required.\",\n"
+           "        width, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n")
+
+
+def m5(src):
+    """The already branch is deleted: a satisfied floor is silent again (the defect Tyson ruled on)."""
+    return _sub(src, ALREADY, "    return nil\n")
+
+
+def m6(src):
+    """The already line prints the floor where the width in force belongs."""
+    return _sub(src, "        width, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n",
+                "        SoilFillTypeWidth.FLOOR_BITS, SoilFillTypeWidth.maxFillTypes(width), SoilFillTypeWidth.FLOOR_BITS)\n")
+
+
+def m7(src):
+    """The two lines swap: a raise reports 'already' and a satisfied floor reports 'raised'."""
+    return _sub(src, "    if raised then\n        return string.format(\n            \"[SoilFertilizer] Fill type index width raised to",
+                "    if not raised then\n        return string.format(\n            \"[SoilFertilizer] Fill type index width raised to")
+
+
+def m8(src):
+    """main.lua no longer prints the line: the call site is silent and only the source witness sees it."""
+    return _sub(src, "if sfWidthLine ~= nil then\n    print(sfWidthLine)\nend\n", "if sfWidthLine ~= nil then\nend\n")
+
+
 MUTANTS = [
-    ("M1 guard dropped: unconditional assignment lowers a higher width", m1),
-    ("M2 `>=` becomes `>`: a width at the floor is rewritten", m2),
-    ("M3 floor drops to 9: caps below the measured 513", m3),
-    ("M4 width captured on first call instead of read live", m4),
+    ("M1 guard dropped: unconditional assignment lowers a higher width", m1, TARGET),
+    ("M2 `>=` becomes `>`: a width at the floor is rewritten", m2, TARGET),
+    ("M3 floor drops to 9: caps below the measured 513", m3, TARGET),
+    ("M4 width captured on first call instead of read live", m4, TARGET),
+    ("M5 the already branch is deleted: a satisfied floor is silent again", m5, TARGET),
+    ("M6 the already line prints the floor, not the width in force", m6, TARGET),
+    ("M7 the raised and already lines swap", m7, TARGET),
+    ("M8 main.lua drops the print: the call site goes silent", m8, MAIN),
 ]
 
 
 def main():
-    base_src = read()
-    base = digest()
+    bases = {p: (read(p), digest(p)) for p in (TARGET, MAIN)}
 
     p, f, tail = run_bar()
     if p is None or f != 0 or p == 0:
@@ -127,19 +178,20 @@ def main():
     print("baseline        : %d passed, %d failed\n" % (p, f))
 
     killed, survived, unapplied = 0, [], []
-    for name, fn in MUTANTS:
+    for name, fn, path in MUTANTS:
+        base_src = bases[path][0]
         mutated = fn(base_src)
         if mutated is None or mutated == base_src:
             unapplied.append(name)
             print("  %-56s MUTATION DID NOT APPLY" % name)
             continue
-        shutil.copyfile(TARGET, TARGET + ".bak")
+        shutil.copyfile(path, path + ".bak")
         try:
-            write(mutated)
+            write(mutated, path)
             mp, mf, mtail = run_bar()
         finally:
-            shutil.copyfile(TARGET + ".bak", TARGET)
-            os.remove(TARGET + ".bak")
+            shutil.copyfile(path + ".bak", path)
+            os.remove(path + ".bak")
 
         if mf is None:
             print("  %-56s DID NOT RUN\n%s" % (name, mtail))
@@ -151,9 +203,10 @@ def main():
             survived.append(name)
             print("  %-56s SURVIVED" % name)
 
-    if digest() != base:
-        print("\nRESULT: restore FAILED, the file is not byte-identical.")
-        return 1
+    for path, (_, d) in bases.items():
+        if digest(path) != d:
+            print("\nRESULT: restore FAILED, %s is not byte-identical." % os.path.basename(path))
+            return 1
 
     p2, f2, _ = run_bar()
     print("\nafter restore   : %d passed, %d failed (source byte-identical)" % (p2, f2))
