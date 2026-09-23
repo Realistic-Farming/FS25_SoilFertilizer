@@ -47,10 +47,13 @@ HarvestContractUnderwrite = HarvestContractUnderwrite or {}
 -- when the underwrite is what carries the contract across that same line.
 HarvestContractUnderwrite.SUCCESS_THRESHOLD = 0.995
 
--- Reference to our installed wrapper, so install() is idempotent and reload-safe without a
--- stale boolean: if the class method is no longer ours (e.g. uninstallAll restored the
--- original), install() re-wraps; if it is still ours, install() is a no-op.
+-- References to our two installed wrappers, each under its OWN name (RSF-741 v0.5): the
+-- completion wrapper on HarvestMission.getCompletion and the arming wrapper on
+-- HarvestMission.finishedPreparing. Each is compared against its own key, so a re-run of
+-- installAll without an uninstall is a no-op for whichever is still ours, and a shared
+-- field can never make one installer mistake the other for itself.
 HarvestContractUnderwrite._wrapper = nil
+HarvestContractUnderwrite._armWrapper = nil
 
 -- i18n helper with an English fallback. The notification key ships in translation_en.xml;
 -- other languages fall back to English until a translation pass (the dialogs use the same
@@ -624,45 +627,141 @@ function HarvestContractUnderwrite.loadRecordXML(xmlFile, fieldKey)
     })
 end
 
---- Install the class-level getCompletion override on HarvestMission. Idempotent and
---- reload-safe. Wraps (does not replace) the base method: the vanilla completion is computed
---- first, unchanged, then the underwrite adds its correction on top under a pcall, so a bug
---- in the correction can never break the base mission (it falls back to the vanilla value).
+-- =========================================================
+-- RSF-741 v0.5 item 3: the record is armed when the base game's own harvest
+-- preparation has completed and the mission is genuinely alive
+-- =========================================================
+-- startMission returns OK while the mission is still PREPARING; RUNNING is set later,
+-- from AbstractMission:update on the server, by finishedPreparing. HarvestMission's
+-- override calls its parent first (RUNNING), computes expectedLiters and can FAIL the
+-- mission in the same body; and its caller can still finish it in the same call: the
+-- vehicle-load failure pair, the timeout, and validate(). So the record is armed AFTER the
+-- original finishedPreparing returns, and only when none of those finishes can still land.
+-- Every test below is a question native asks of the same mission in the same call, asked
+-- through the mission's own methods, never an inlined copy of their bodies.
+
+--- Arm (or refuse to arm) the underwrite record for a mission that just finished preparing.
+---@return boolean armed
+function HarvestContractUnderwrite.arm(mission)
+    if type(mission) ~= "table" then return false end
+    -- The native transition is server-only on the MISSION's own flag (AbstractMission:update);
+    -- the wrapper asks the same flag, not a global.
+    if mission.isServer ~= true then return false end
+    if not (SoilConstants and SoilConstants.HARVEST_UNDERWRITE and SoilConstants.HARVEST_UNDERWRITE.ENABLED) then
+        return false
+    end
+    if not HarvestContractUnderwrite.isHarvestMission(mission) then return false end
+    -- The harvest body's own zero-expected-litres failure has already happened if it will.
+    if type(mission.getIsRunning) ~= "function" or mission:getIsRunning() ~= true then return false end
+    -- The vehicle-load failure pair the caller tests next (AbstractMission:update).
+    local pending = mission.pendingVehicleLoadingData
+    if mission.failedToLoadVehicles and (type(pending) ~= "table" or #pending == 0) then return false end
+    -- The RUNNING block after it: timeout, then validate(), called on the instance so a
+    -- harvest mission dispatches to HarvestMission:validate (its selling-station half included).
+    if type(mission.isTimedOut) == "function" and mission:isTimedOut() then return false end
+    if type(mission.validate) ~= "function" or mission:validate() ~= true then return false end
+
+    local field = mission.field
+    local farmlandId = field and field.farmland and field.farmland.id
+    local fruitTypeIndex = mission.fruitTypeIndex
+    local uid = type(mission.getUniqueId) == "function" and mission:getUniqueId() or mission.uniqueId
+    if type(farmlandId) ~= "number" or type(fruitTypeIndex) ~= "number" or fruitTypeIndex <= 0 then return false end
+    if type(uid) ~= "string" or uid == "" then return false end
+
+    -- A missing field record stays vanilla: none is created to hold the underwrite.
+    local soil = soilSystem()
+    local fd = soil and type(soil.fieldData) == "table" and soil.fieldData[farmlandId] or nil
+    if type(fd) ~= "table" then return false end
+
+    -- A different mission replaces the old record at this boundary.
+    fd.harvestUnderwriteProvenance = {
+        missionUniqueId = uid, fruitTypeIndex = fruitTypeIndex,
+        armed = true, captureFault = false, preTotal = 0, postTotal = 0, cutCount = 0,
+    }
+    if SoilLogger then
+        SoilLogger.info("Harvest underwrite: armed for mission %s (farmland %d, fruit %d)",
+            uid, farmlandId, fruitTypeIndex)
+    end
+    return true
+end
+
+--- Install the underwrite PAIR on HarvestMission: the completion wrapper on getCompletion
+--- and the arming wrapper on finishedPreparing (RSF-741 items 1 and 9, v0.5 install rules).
+--- Two stored references, two availability guards, two idempotence comparisons. Returns ONE
+--- honest boolean: false whenever the pair is not fully live, and then the class is left
+--- exactly as found (a half-installed pair is undone by a DIRECT restore, because
+--- HookManager's teardown is a no-op until installAll finishes). Rows reach the hook manager
+--- only after both are live.
 ---@param hookManager table|nil  optional HookManager, for uninstall bookkeeping
 ---@return boolean installed
 function HarvestContractUnderwrite.install(hookManager)
-    if HarvestMission == nil or type(HarvestMission.getCompletion) ~= "function" then
+    local HCU = HarvestContractUnderwrite
+    if HarvestMission == nil then
+        if SoilLogger then SoilLogger.info("Harvest underwrite: HarvestMission unavailable - skipped") end
+        return false
+    end
+    local completionLive = HCU._wrapper ~= nil and HarvestMission.getCompletion == HCU._wrapper
+    local armingLive = HCU._armWrapper ~= nil and HarvestMission.finishedPreparing == HCU._armWrapper
+    if completionLive and armingLive then return true end
+
+    if (not completionLive and type(HarvestMission.getCompletion) ~= "function")
+        or (not armingLive and type(HarvestMission.finishedPreparing) ~= "function") then
         if SoilLogger then
-            SoilLogger.info("Harvest underwrite: HarvestMission.getCompletion unavailable - skipped")
+            SoilLogger.info("Harvest underwrite: HarvestMission.%s unavailable - skipped (contracts stay vanilla)",
+                type(HarvestMission.getCompletion) ~= "function" and "getCompletion" or "finishedPreparing")
         end
         return false
     end
 
-    -- Already ours (installAll re-ran without an uninstall): nothing to do.
-    if HarvestMission.getCompletion == HarvestContractUnderwrite._wrapper then
-        return true
-    end
-
-    local original = HarvestMission.getCompletion
-    local wrapper = function(missionSelf)
-        local vanilla = original(missionSelf)
-        local ok, corrected = pcall(HarvestContractUnderwrite.correct, missionSelf, vanilla)
-        if ok and type(corrected) == "number" then
-            return corrected
+    local assigned = {}
+    if not completionLive then
+        local original = HarvestMission.getCompletion
+        local wrapper = function(missionSelf)
+            local vanilla = original(missionSelf)
+            local ok, corrected = pcall(HCU.correct, missionSelf, vanilla)
+            if ok and type(corrected) == "number" then
+                return corrected
+            end
+            return vanilla
         end
-        return vanilla
+        HCU._wrapper = wrapper
+        HarvestMission.getCompletion = wrapper
+        assigned[#assigned + 1] = { key = "getCompletion", original = original, wrapper = wrapper,
+            name = "HarvestMission.getCompletion (contract underwrite #741)" }
+    end
+    if not armingLive then
+        local original = HarvestMission.finishedPreparing
+        local wrapper = function(missionSelf, ...)
+            -- The native body runs whole and first: RUNNING, expectedLiters and its own
+            -- failure all happen inside it. The arming then runs under pcall so an error in
+            -- it can never skip the native statements after this call.
+            local r1, r2, r3 = original(missionSelf, ...)
+            pcall(HCU.arm, missionSelf)
+            return r1, r2, r3
+        end
+        HCU._armWrapper = wrapper
+        HarvestMission.finishedPreparing = wrapper
+        assigned[#assigned + 1] = { key = "finishedPreparing", original = original, wrapper = wrapper,
+            name = "HarvestMission.finishedPreparing (contract underwrite arming, #741 v0.5)" }
     end
 
-    HarvestContractUnderwrite._wrapper = wrapper
-    HarvestMission.getCompletion = wrapper
+    if HarvestMission.getCompletion ~= HCU._wrapper or HarvestMission.finishedPreparing ~= HCU._armWrapper then
+        -- Not fully live: restore what this call assigned, directly, newest first.
+        for i = #assigned, 1, -1 do
+            local a = assigned[i]
+            if HarvestMission[a.key] == a.wrapper then HarvestMission[a.key] = a.original end
+        end
+        if SoilLogger then SoilLogger.info("Harvest underwrite: the install pair did not go live - class left as found") end
+        return false
+    end
 
     if hookManager and hookManager.register then
-        hookManager:register(HarvestMission, "getCompletion", original,
-            "HarvestMission.getCompletion (contract underwrite #741)")
+        for _, a in ipairs(assigned) do
+            hookManager:register(HarvestMission, a.key, a.original, a.name)
+        end
     end
-
     if SoilLogger then
-        SoilLogger.info("[OK] Harvest contract underwrite installed (HarvestMission.getCompletion)")
+        SoilLogger.info("[OK] Harvest contract underwrite installed (HarvestMission.getCompletion + finishedPreparing)")
     end
     return true
 end
