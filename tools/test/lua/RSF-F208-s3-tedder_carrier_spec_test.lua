@@ -24,7 +24,8 @@
 --
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementCarrier.lua
 
-SoilLogger.info = function() end
+local INFO = {}
+SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
 SoilLogger.debug = function() end
 SoilLogger.warning = function() end
 
@@ -94,6 +95,14 @@ group("S", function()
     T.eq("S8 HayBet ran AFTER the projection: it saw the moved condition, not bare ground", W.sys.hayBet.seen[1], "5/100")
     T.eq("S9 the frame closed and the account is empty", tostring(O.isAtRest()) .. "/" .. C.accountTotal(C.accountOf(work)), "true/0")
     T.eq("S10 nothing was marked unavailable", W.sys.groundConditionCoordinator:getUnavailableCount(), 0)
+    local function firstPassLines()
+        local n = 0
+        for _, line in ipairs(INFO) do if line:find("FIRST TEDDER PASS OBSERVED", 1, true) then n = n + 1 end end
+        return n
+    end
+    T.eq("S10b the first observed pass says so in the log, once", firstPassLines(), 1)
+    ENGINE.tick(tedder, 16)
+    T.eq("S10c and a second pass does not repeat it", firstPassLines(), 1)
 
     -- A tedder added later through VehicleSystem.addVehicle gets the carrier too.
     local late, lateWork = ENGINE.newTedder({ uid = "late", x0 = 16, z0 = 0, width = 8, depth = 2, dropZ = 6 })

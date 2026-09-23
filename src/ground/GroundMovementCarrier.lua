@@ -294,9 +294,21 @@ end
 --- reconciled with the native remainder at the NEXT begin, before any primitive can
 --- read it, so a change made between calls (another mod clearing the remainder) is
 --- caught where it matters.
+---
+--- The first pass that actually observed a primitive says so ONCE in the log, with
+--- the running totals. It is the line an in-game check looks for: nothing a player
+--- sees reads ground condition directly, and a count of installed wrappers is not
+--- evidence that one ran.
 function C.finish(frame)
     if frame == nil then return end
     GroundNativeObserver.close(frame)
+    if not C.firstPassLogged and (frame.primitives or 0) > 0 then
+        C.firstPassLogged = true
+        SoilLogger.info(
+            "[GroundCarrier] FIRST %s PASS OBSERVED: %d primitive(s) in this call; so far %d cell(s) projected, " ..
+            "%d cleared, %d marked unavailable. Ground age and wetness now follow the material this machine moves.",
+            tostring(frame.kind), frame.primitives, C.stats.projected, C.stats.cleared, C.stats.unavailable)
+    end
 end
 
 --- The Tedder's native remainder (Tedder.lua:297, :304).

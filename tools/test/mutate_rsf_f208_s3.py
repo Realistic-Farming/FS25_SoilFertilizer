@@ -113,6 +113,15 @@ MUTATIONS = [
     "                    end", 1)],
   "each contributor writes the cell separately instead of one combined update"),
 
+ ("B13-first-pass-logged-every-pass", CAR,
+  [("    if not C.firstPassLogged and (frame.primitives or 0) > 0 then",
+    "    if (frame.primitives or 0) > 0 then", 1)],
+  "the in-game proof line repeats on every tedder pass"),
+ ("B14-first-pass-never-logged", CAR,
+  [("    if not C.firstPassLogged and (frame.primitives or 0) > 0 then",
+    "    if false then", 1)],
+  "nothing in log.txt shows the carrier ever ran"),
+
  # --- the tedder wrapper ---
  ("H1-observer-never-installed", HM,
   [("        local okObs, whyObs = GroundNativeObserver.install()",
