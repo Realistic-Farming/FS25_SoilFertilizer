@@ -13,24 +13,22 @@
 -- only calls finish(SUCCESS) once getCompletion() >= 0.995, so it never completes and never
 -- pays.
 --
--- The fix (Tyson OPTION 2, Arissani blessed - "standalone, retained contract-mask"): wrap
--- HarvestMission.getCompletion and divide the vanilla completion by SF's OWN yield modifier
--- for that field. computeYieldModifier is the exact factor the combine hopper applied (and
--- it is frozen for the harvest run, #556), so dividing it out restores the completion the
--- field would have shown at full health - the vanilla expectation, and nothing more.
+-- SF-29 first shipped this by dividing the WHOLE completion by SF's yield modifier. That was
+-- wrong (RSF-741): HarvestMission:getCompletion blends field-cut progress (80 percent for
+-- grain, 50 for onion) with delivered-grain progress, so cutting a field without delivering
+-- a litre could finish the contract. RSF-741 v1.13 with its v0.5 arming amendment repairs it:
 --
--- Bounds honoured (the SF-29 fence, each a cert gate):
---   * NO soil write, NO applyRetroactiveHarvest - this only reads computeYieldModifier and
---     corrects the mission's own completion metric.
---   * Delivery-time only - getCompletion is polled server-side as harvest/delivery progress;
---     the credit materialises only from liters actually harvested and delivered, so a partly
---     harvested field reads partly complete (no free money).
---   * Vanilla expectation is the ceiling - corrected completion is capped at 1.0, so the base
---     game pays exactly its own (unchanged) reward on SUCCESS; farm money is never touched.
---   * Server-authoritative - completion is a server value synced to clients; the correction
---     is gated on g_server and applied once, on the authority.
---   * Fail-safe - every guard miss and any error in the correction returns the vanilla value,
---     so the underwrite can only ever help a contract reach 100%, never break one.
+--   * Field-cut progress is left exactly native. Only the delivered-grain component is
+--     corrected, and only by the share SF's own reduction took: the healthy-versus-actual
+--     material pair captured at the cutter and weighed through the Combine's own return
+--     (items 4 to 9), carried by a record on the SF field that the mission lifecycle arms
+--     (v0.5 item 3) and both save owners persist (item 10).
+--   * corrected = vanilla + (1 - harvestCompletionFactor) * (sellCorrected - sellVanilla),
+--     sellVanilla = min(deposited / expected / SUCCESS_FACTOR, 1), sellCorrected =
+--     min(sellVanilla / appliedRatio, 1), clamped to [vanilla, 1] (items 12 to 15). No
+--     delivery means no credit, however much has been cut.
+--   * No soil, crop, yield, reward or farm-money value is written. Server-authoritative.
+--     Every missing, faulted, stale or invalid input is vanilla passthrough (item 17).
 --
 -- Composes with the retained FieldSentry contract mask: orthogonal, no shared state. The
 -- mask (isFieldSimDisabled) only skips the daily soil sim; it never touched the harvest
@@ -65,8 +63,14 @@ local function tr(key, fallback)
     return fallback or key
 end
 
---- Corrected completion for a base-game harvest contract on SF soil. Pure and fail-safe:
---- returns `vanilla` unchanged on any guard miss, and never exceeds 1.0.
+--- True when provenance can be trusted: every capture surface and the completion install
+--- are live (item 9, set by HookManager:installHarvestUnderwrite).
+function HarvestContractUnderwrite.isReady()
+    return HarvestContractUnderwrite._captureReady == true
+end
+
+--- Corrected completion for a base-game harvest contract (RSF-741 items 11 to 17). Pure
+--- apart from the one-shot notification, fail-safe, and never below vanilla or above 1.0.
 ---@param mission table   the HarvestMission instance (self)
 ---@param vanilla number  the mission's own getCompletion() result
 ---@return number completion
@@ -83,33 +87,48 @@ function HarvestContractUnderwrite.correct(mission, vanilla)
     -- would double-apply.
     if g_server == nil then return vanilla end
 
-    -- Already at (or past) success: nothing to underwrite.
-    if vanilla >= 1.0 then return vanilla end
+    -- Already at (or past) success, or not a number we can reason about: nothing to do.
+    if not HarvestContractUnderwrite._finite(vanilla) or vanilla >= 1.0 then return vanilla end
 
-    -- The field's farmland id is SF's soil key in this codebase (fieldData is keyed by
-    -- farmland id; the combine hook writes the same key). Use it, not field:getId().
+    -- Item 9: partial capture is not accepted.
+    if not HarvestContractUnderwrite.isReady() then return vanilla end
+
+    -- Item 11: the field key only LOCATES the SF record; the record itself must be armed,
+    -- unfaulted and bound to this exact mission (saved uniqueId and fruit). No yield
+    -- modifier is read and no freeze is consumed: the ratio is what the cutter measured.
     local field = mission.field
-    local farmland = field and field.farmland
-    local farmlandId = farmland and farmland.id
+    local farmlandId = field and field.farmland and field.farmland.id
     if type(farmlandId) ~= "number" then return vanilla end
-
     local fruitTypeIndex = mission.fruitTypeIndex
     if type(fruitTypeIndex) ~= "number" or fruitTypeIndex <= 0 then return vanilla end
+    local rec = HarvestContractUnderwrite.recordFor(mission)
+    if rec == nil or rec.captureFault ~= false then return vanilla end
+    local finite = HarvestContractUnderwrite._finite
+    local pre, post = rec.preTotal, rec.postTotal
+    if not (finite(pre) and pre > 0 and finite(post) and post >= 0) then return vanilla end
+    local appliedRatio = post / pre
+    -- Outside (0, 1) no degraded-yield underwrite is owed.
+    if not (appliedRatio > 0 and appliedRatio < 1) then return vanilla end
 
-    local sfm = g_SoilFertilityManager
-    local soil = sfm and sfm.soilSystem
-    if soil == nil or type(soil.computeYieldModifier) ~= "function" then return vanilla end
+    -- Item 17: every native input the correction reads must be present and valid; no
+    -- default weight is invented.
+    local expected, deposited = mission.expectedLiters, mission.depositedLiters
+    local hcf = mission.harvestCompletionFactor
+    local successFactor = HarvestMission and HarvestMission.SUCCESS_FACTOR
+    if not (finite(expected) and expected > 0) then return vanilla end
+    if not (finite(deposited) and deposited >= 0) then return vanilla end
+    if not (finite(hcf) and hcf >= 0 and hcf <= 1) then return vanilla end
+    if not (finite(successFactor) and successFactor > 0) then return vanilla end
 
-    -- The SAME modifier the combine hopper applied to this field's harvest. It returns 1.0
-    -- when SF is disabled or the field is untracked, which no-ops the underwrite correctly.
-    local ym = soil:computeYieldModifier(farmlandId, fruitTypeIndex)
-    if type(ym) ~= "number" or ym >= 1.0 or ym <= 0 then return vanilla end
-
-    local corrected = vanilla / ym
+    -- Items 12 to 15: correct only the delivered-grain component, at its native weight.
+    local sellVanilla = math.min(deposited / expected / successFactor, 1)
+    local sellCorrected = math.min(sellVanilla / appliedRatio, 1)
+    local corrected = vanilla + (1 - hcf) * (sellCorrected - sellVanilla)
+    if corrected < vanilla then corrected = vanilla end
     if corrected > 1.0 then corrected = 1.0 end
 
-    -- One-shot player messaging the moment the underwrite is what completes the contract
-    -- (vanilla would have stalled below success this poll).
+    -- Item 16: the one-shot notification, only when THIS correction carries the contract
+    -- across the native success line while vanilla stays below it.
     if corrected >= HarvestContractUnderwrite.SUCCESS_THRESHOLD
        and vanilla < HarvestContractUnderwrite.SUCCESS_THRESHOLD
        and not mission._sfUnderwriteNotified then

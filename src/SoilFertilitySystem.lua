@@ -630,9 +630,10 @@ end
 --- actually receives on any stressed field whenever SCS is installed.
 ---
 --- DISPLAY USE ONLY. computeYieldModifier must never include this: SCS applies its
---- own cut itself, and HarvestContractUnderwrite divides out exactly the value the
---- hopper hook applied. Folding it into the applied path would double-charge the
---- player and break the contract top-up in the same stroke.
+--- own cut itself, upstream of ours, and the harvest underwrite measures SF's OWN share
+--- from the healthy-versus-actual cutter pair around our scaling (RSF-741). Folding SCS
+--- into the applied path would double-charge the player and hand the contract top-up a
+--- share SF never took, in the same stroke.
 ---
 --- Pull-only, pcall-guarded, neutral when absent - mirrors the SCS-001 moisture read
 --- in _applyRainLeaching. The function-type guard also keeps us neutral against an
@@ -705,7 +706,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     -- field-average values, so SF's own share of the cut is identical on both paths.
     -- The monitor additionally multiplies in SeasonalCropStress's keep-factor
     -- (SCS-002) - deliberately NOT done here, because SCS applies that cut itself
-    -- upstream and HarvestContractUnderwrite inverts exactly what we return.
+    -- upstream, and the harvest underwrite measures only the cut this value causes (RSF-741).
     local modifier = self:_yieldModifierFromNutrients(
         field, cropName, field.nitrogen, field.phosphorus, field.potassium, fieldId)
 
