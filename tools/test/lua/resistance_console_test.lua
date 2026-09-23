@@ -3,7 +3,7 @@
 -- These two are the IN-GAME verification tool for F66 and CD-11, which makes a crash or a
 -- wrong verdict in them worse than useless: it would send someone chasing a bug that is not
 -- there, or clear a bug that is. So they get exercised for real here rather than trusted.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/settings/SoilSettingsGUI.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/settings/SoilSettingsGUI.lua
 
 local R = SoilConstants.RESISTANCE
 local B = R.BANDS
@@ -37,11 +37,17 @@ end
 
 local function withMod(field, fn)
   local prevMgr, prevServer = g_SoilFertilityManager, g_server
+  local prevPlayer, prevFarmland, prevFarms = g_localPlayer, g_farmlandManager, g_farmManager
   local sys = newSys(field)
   g_SoilFertilityManager = { soilSystem = sys, settings = {} }
   g_server = {}
+  -- [RSF-F231] the readout gates on standing: this machine's farm 1 owns farmland 1.
+  g_localPlayer = { farmId = 1 }
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
   local ok, res = pcall(fn, sys)
   g_SoilFertilityManager, g_server = prevMgr, prevServer
+  g_localPlayer, g_farmlandManager, g_farmManager = prevPlayer, prevFarmland, prevFarms
   if not ok then error(res, 0) end
   return res
 end
@@ -97,9 +103,14 @@ end
 -- column is invented from zeros the server never sent.
 do
   local prevMgr, prevServer = g_SoilFertilityManager, g_server
+  local prevPlayer, prevFarmland, prevFarms = g_localPlayer, g_farmlandManager, g_farmManager
   local field = newField({ fieldEverScouted = true, resistance = { ["3"] = R.MAX_SYNTHETIC } })
   g_SoilFertilityManager = { soilSystem = newSys(field), settings = {} }
   g_server = nil
+  -- [RSF-F231] the client's readout gates on standing too: its farm 1 owns farmland 1.
+  g_localPlayer = { farmId = 1 }
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
   local before = SoilSettingsGUI.consoleCommandResistance(SoilSettingsGUI, "1")
   T.ok("readout: client before delivery says WAITING", before:find("WAITING") ~= nil)
   T.ok("readout: client before delivery mode 3 reads UNKNOWN", modeRowHas(before, "3", "UNKNOWN"))
@@ -113,6 +124,7 @@ do
   T.ok("readout: client after delivery reads a silent mode as WORKING", modeRowHas(after, "11", "WORKING"))
   T.ok("readout: client after delivery still has no SCORE column", after:find("SCORE/MAX") == nil)
   g_SoilFertilityManager, g_server = prevMgr, prevServer
+  g_localPlayer, g_farmlandManager, g_farmManager = prevPlayer, prevFarmland, prevFarms
 end
 
 -- An untracked field id must not throw.

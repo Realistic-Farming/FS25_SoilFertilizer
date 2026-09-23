@@ -9,7 +9,7 @@
 -- F66 relief: CD-9 shipped 2026-07-29 with a build that counted every boom section as a
 -- full application. The meter landed 2026-08-01, but the damage is PERSISTED. Arissani
 -- ruled the player should not stay burned by a choice the bug made for him.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R     = SoilConstants.RESISTANCE
 local BUILD = R.BUILD_PER_APPLICATION
@@ -275,10 +275,15 @@ do
   sys:_finalizeLoadedField(1, f)
   T.eq("F237: relief cleared the bit before the scout", f.fieldEverScouted, false)
   local savedServer, savedMission = g_server, g_currentMission
+  local savedFarmland, savedFarms = g_farmlandManager, g_farmManager
   g_server = {}
   g_currentMission = { missionDynamicInfo = { isMultiplayer = false } }
-  sys:scoutField(1)
+  -- [RSF-F231] the scout is made FOR farm 1, which owns farmland 1.
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
+  sys:scoutField(1, 1)
   g_server, g_currentMission = savedServer, savedMission
+  g_farmlandManager, g_farmManager = savedFarmland, savedFarms
   T.eq("F237: a server scout sets the bit true again", f.fieldEverScouted, true)
   T.eq("F237: ...and the classifier is back to WORKING on the clean slate",
        ResistanceBands.computeBand(f, "3"), B.WORKING)

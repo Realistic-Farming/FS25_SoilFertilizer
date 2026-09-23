@@ -934,6 +934,11 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
 
     local field = soilSys.fieldData and soilSys.fieldData[fid]
     if not field then return string.format("Field %d: no soil data", fid) end
+    -- [RSF-F231] The readout prints learned agronomy (scouted state, bands, scores),
+    -- the same information the scout write earns, so it gates on the same standing.
+    if not SoilFertilitySystem.isScoutAuthorized(SoilFertilitySystem.localScoutFarmId(), fid) then
+        return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land)", fid)
+    end
 
     local R = SoilConstants.RESISTANCE
     local lines = {}
@@ -1124,7 +1129,12 @@ function SoilSettingsGUI:consoleCommandScout(fieldId)
 
     -- Scouting is the deliberate reveal: it flips the discovery gate so the report
     -- returns the full truth (and, in MP, tells the server to open the gate farm-wide).
-    local rep = sfm.soilSystem:scoutField(fid)
+    -- [RSF-F231] For this machine's own farm. A dedicated server's console has no
+    -- local farm, so it refuses: land standing has no admin override.
+    local rep, refused = sfm.soilSystem:scoutField(fid, SoilFertilitySystem.localScoutFarmId())
+    if refused ~= nil then
+        return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land); nothing scouted", fid)
+    end
     if not rep then return string.format("Field %d: no soil data", fid) end
     if rep.enabled == false then return "Disease system is disabled (enable Disease Pressure in settings)" end
 

@@ -1135,6 +1135,7 @@
 		<e k="sf_scout_clean_title" v="Kein Krankheit entdeckt." eh="6bc14095" />
 		<e k="sf_scout_clean_hint" v="Der Bestand sieht gesund aus. Du kannst aber präventive Maßnahemn durchführen." eh="b81cdbda" />
 		<e k="sf_scout_disabled" v="Krankheiten sind deaktiviert." eh="a2ffd328" />
+		<e k="sf_scout_no_standing" v="[EN] Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
     <e k="sf_admin_field_set_disease_label" v="Erkrankung festlegen" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="Lege die aktuelle Erkrankung des Feldes fest und wie stark der Befall sein soll." eh="d86eb3e1" />
         <e k="sf_propiconazole_title" v="[EN] Propiconazole" eh="920d7ec6" />

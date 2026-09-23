@@ -1417,11 +1417,39 @@ function SoilScoutFieldEvent:writeStream(streamId, connection)
     streamWriteInt32(streamId, self.fieldId or 0)
 end
 
+--- [RSF-F231] The farm behind a connection, from the SERVER'S OWN PLAYER RECORD:
+--- PlayerSystem:getPlayerByConnection (PlayerSystem.lua:233-235, the table the
+--- system fills at :270 when a player joins) and Player.farmId (Player.lua:103).
+--- Never a farm id off the wire, never User.farmId. nil when the connection has no
+--- player. With no connection at all (an event run on the host itself) the local
+--- player's farm, the same resolution the kneel makes (SpatialScouting:revealCellAt).
+---@param connection table|nil
+---@return number|nil farmId
+function SoilNetworkEvents_FarmIdOfConnection(connection)
+    local player = nil
+    if connection ~= nil then
+        local ps = g_currentMission and g_currentMission.playerSystem
+        if ps ~= nil and type(ps.getPlayerByConnection) == "function" then
+            player = ps:getPlayerByConnection(connection)
+        end
+    else
+        player = g_localPlayer
+    end
+    if type(player) ~= "table" then return nil end
+    return player.farmId
+end
+
 function SoilScoutFieldEvent:run(connection)
     -- SERVER ONLY: authoritative reveal (scoutField broadcasts the field update).
     if g_server == nil then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then return end
-    g_SoilFertilityManager.soilSystem:scoutField(self.fieldId)
+    -- [RSF-F231] The sender is in hand: its farm comes from the server's player
+    -- record for this connection, and the writer applies the standing test (owner
+    -- or contracting, both ordinary). A sender with no player record is refused.
+    -- A refusal is silent to the sender: nothing written, nothing broadcast.
+    local actingFarmId = SoilNetworkEvents_FarmIdOfConnection(connection)
+    if actingFarmId == nil then return end
+    g_SoilFertilityManager.soilSystem:scoutField(self.fieldId, actingFarmId)
 end
 
 -- ==========================================================================

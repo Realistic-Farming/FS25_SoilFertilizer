@@ -9,7 +9,7 @@
 --   * the gate is the durable fieldEverScouted bit, not the per-outbreak diseaseDiscovered
 --     flag, so resistance history survives a fresh infection
 --   * a pure client reads UNKNOWN until the server has delivered the field once
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua
 
 local R  = SoilConstants.RESISTANCE
 local B  = R.BANDS
@@ -217,6 +217,7 @@ end
 -- outbreak reset that clears diseaseDiscovered.
 do
   local prevServer, prevMission, prevClient = g_server, g_currentMission, g_client
+  local prevFarmland, prevFarms = g_farmlandManager, g_farmManager
   local function newSys()
     return setmetatable({ settings = { diseasePressure = true },
                           -- no activeDisease: the report walk needs SoilDiseaseSystem, which
@@ -225,12 +226,15 @@ do
                                                 resistance = { ["3"] = R.MAX_SYNTHETIC } } } },
                         { __index = SoilFertilitySystem })
   end
+  -- [RSF-F231] A scout is made FOR a farm with standing: farm 1 owns farmland 1.
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
 
   -- Single player / server: one scout sets both flags.
   g_server = {}
   g_currentMission = { missionDynamicInfo = { isMultiplayer = false } }
   local sp = newSys()
-  sp:scoutField(1)
+  sp:scoutField(1, 1)
   T.ok("scoutField (server): diseaseDiscovered set", sp.fieldData[1].diseaseDiscovered == true)
   T.ok("scoutField (server): fieldEverScouted set", sp.fieldData[1].fieldEverScouted == true)
   T.eq("scoutField (server): the band is readable right after", sp:getResistanceBand(1, "3"), B.FINISHED)
@@ -247,21 +251,22 @@ do
   local prevEvent = SoilScoutFieldEvent
   SoilScoutFieldEvent = { new = function(id) return { fieldId = id } end }
   local cl = newSys()
-  cl:scoutField(1)
+  cl:scoutField(1, 1)
   T.ok("scoutField (client): diseaseDiscovered marked optimistically", cl.fieldData[1].diseaseDiscovered == true)
   T.ok("scoutField (client): the durable bit is NOT written by a client", cl.fieldData[1].fieldEverScouted ~= true)
   T.eq("scoutField (client): one scout event sent", sent, 1)
   T.eq("scoutField (client): still UNKNOWN until the server writes and delivers", cl:getResistanceBand(1, "3"), B.UNKNOWN)
   -- Already revealed locally but the durable bit never came back: ask again, once per scout.
-  cl:scoutField(1)
+  cl:scoutField(1, 1)
   T.eq("scoutField (client): re-asks while the durable bit is missing", sent, 2)
   -- Once the server's delivery carried the bit, a further scout is silent.
   cl.fieldData[1].fieldEverScouted = true
-  cl:scoutField(1)
+  cl:scoutField(1, 1)
   T.eq("scoutField (client): no event once the bit has arrived", sent, 2)
 
   SoilScoutFieldEvent = prevEvent
   g_server, g_currentMission, g_client = prevServer, prevMission, prevClient
+  g_farmlandManager, g_farmManager = prevFarmland, prevFarms
 end
 
 -- ── The system-level getter, which is the whole surface the presentation build consumes.
