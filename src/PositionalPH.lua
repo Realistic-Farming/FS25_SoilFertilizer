@@ -500,6 +500,13 @@ function SoilFertilitySystem:_seedPHFootprint(fieldId, scalar)
         local ok = vm:setPolygonWhere(PositionalPH.PH_LAYER, verts, raw, 0, 0)
         if ok then seeded = seeded + 1 end
     end
+    -- A seed that changed the map is a map change: the cached report is stale and
+    -- getFieldInfo's pHRevision (published from _phMapRevision) must move, or a
+    -- reader keeps serving the pre-seed report as current.
+    if seeded > 0 then
+        self:_phInvalidateReport(fieldId)
+        self._phMapRevision = (self._phMapRevision or 0) + 1
+    end
     return seeded
 end
 
@@ -590,20 +597,39 @@ end
 --- preserved; only raw-zero supported ground is seeded from the frozen scalar
 --- clamped to carrier bounds. A schema marker never suppresses missing-carrier
 --- recovery, so this re-seeds raw-zero ground even on an already-marked save.
---- @return number seeded
+---
+--- THE SEED, in the brief's order: the frozen pre-migration scalar when the load
+--- froze one (#982: only an UNMARKED save proves its scalar predates the
+--- contract), else "the existing genesis rule", _computeInitialSoil, which is
+--- deterministic by fieldId and farmland centre. NEVER field.pH: on a marked
+--- save with no seed (every dev and tester save since 71c9bcf2) field.pH is the
+--- later report republished by _phRefreshScalar, and 3.B forbids seeding from it.
+--- Whichever value is used is then FROZEN into field._phSeedScalar, so
+--- #sf79PHSeed persists and a later tuning change cannot move it.
+---
+--- Called from seedValueMaps for every field on every load, BEFORE the
+--- all-layers-restored early return: a restored pH layer only has its holes
+--- filled (band [0,0]), and a missing layer is recovered whole. Server only.
+--- @return number seeded  polygons written
+--- @return string|nil source  'seed', 'genesis', or nil when nothing was written
 function SoilFertilitySystem:_migratePH(fieldId)
     local field = self.fieldData and self.fieldData[fieldId]
-    if field == nil then return 0 end
+    if field == nil then return 0, nil end
     local vm = self.valueMaps
-    if vm == nil or not vm.available or g_server == nil then return 0 end
+    if vm == nil or not vm.available or g_server == nil then return 0, nil end
     local def = PositionalPH.phDef()
     local polys = self:_phFieldPolygons(fieldId)
-    if def == nil or polys == nil or #polys == 0 then return 0 end
+    if def == nil or polys == nil or #polys == 0 then return 0, nil end
 
     local limits = SoilConstants.NUTRIENT_LIMITS
-    local seed = field._phSeedScalar
-    if type(seed) ~= 'number' then seed = field.pH or SoilConstants.FIELD_DEFAULTS.pH end
+    local seed, source = field._phSeedScalar, 'seed'
+    if type(seed) ~= 'number' then
+        local genesis = self:_computeInitialSoil(fieldId)
+        seed = genesis and genesis.pH or SoilConstants.FIELD_DEFAULTS.pH
+        source = 'genesis'
+    end
     seed = math.max(limits.PH_MIN, math.min(limits.PH_MAX, seed))
+    field._phSeedScalar = seed
     local raw = PositionalPH.phRaw(seed, def)
 
     local writes = 0
@@ -615,8 +641,10 @@ function SoilFertilitySystem:_migratePH(fieldId)
     if writes > 0 then
         field._phSeeded = true
         self:_phInvalidateReport(fieldId)
+        self._phMapRevision = (self._phMapRevision or 0) + 1
+        return writes, source
     end
-    return writes
+    return 0, nil
 end
 
 -- ============================================================
@@ -748,7 +776,12 @@ end
 ---@return number|nil
 function PositionalPH.sampleWorkAreasPH(soilSys, vehicle, workAreas)
     if type(workAreas) ~= 'table' or soilSys == nil or soilSys.valueMaps == nil then return nil end
-    local aux = (WorkAreaType ~= nil) and WorkAreaType.AUXILIARY or nil
+    -- MAINTENANCE row 74: read the engine global BARE. The old `(WorkAreaType ~= nil)
+    -- and ... or nil` guard failed OPEN: with the global missing, aux was nil and
+    -- every auxiliary area was counted. WorkAreaType is an engine class present on
+    -- every peer at mission time; a bench that forgets it must fail loudly here,
+    -- not pass with auxiliary areas silently admitted.
+    local aux = WorkAreaType.AUXILIARY
     local sum, n = 0, 0
     for _, wa in ipairs(workAreas) do
         local usable = type(wa) == 'table' and (aux == nil or wa.type ~= aux)
