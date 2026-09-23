@@ -31,7 +31,7 @@
 -- the cleared last-valid. The TESTING row.
 --
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/hooks/HookManager.lua, src/settings/SoilSettingsGUI.lua
---!text: src/settings/SoilSettingsGUI.lua
+--!text: src/settings/SoilSettingsGUI.lua, fillTypes.xml
 
 local saved = { FillType = FillType, ToolType = ToolType, MoneyType = MoneyType, UIHelper = UIHelper,
                 g_currentMission = g_currentMission, g_fillTypeManager = g_fillTypeManager, g_sprayTypeManager = g_sprayTypeManager,
@@ -47,7 +47,9 @@ SoilLogger.info = function() end; SoilLogger.warning = function() end; SoilLogge
 -- ── the fill-type world: GYPSUM declares a nonsense density, so R1a refuses it ────
 local declared = { UREA = 0.00077, AN = 0.0008, POLIFOSKA = 0.0009, GYPSUM = -0.001, STARTER = 0.001, LIQUID_UREA = 0.0011, FERTILIZER = 0.001, LIQUIDFERTILIZER = 0.001 }
 -- The fillTypes.xml economy price each fill type carries (FillTypeDesc.pricePerLiter,
--- FillTypeDesc.lua:75); STARTER declares no economy, so it holds the engine default 0.
+-- FillTypeDesc.lua:75). The fixture WITHHOLDS STARTER's price (the real fillTypes.xml has
+-- 0.90) so it can stand for a fill type that declares no economy and holds the engine
+-- default 0; every other price here must equal the real XML (group J pins that).
 local prices = { UREA = 0.55, AN = 0.50, POLIFOSKA = 0.60, GYPSUM = 0.10, STARTER = 0, LIQUID_UREA = 0.60, FERTILIZER = 0.30, LIQUIDFERTILIZER = 0.30 }
 local IDX, nextIdx = {}, 100
 local function indexOf(name) if IDX[name] == nil then IDX[name] = nextIdx; nextIdx = nextIdx + 1 end return IDX[name] end
@@ -277,7 +279,7 @@ do
   T.ok("DRAIN I6: the summary names the basis", out:find("50% of shop price", 1, true) ~= nil)
 end
 do
-  local v = newVehicle({ [1] = unit(STARTER, 120, STARTER) })   -- STARTER declares no economy: engine default 0
+  local v = newVehicle({ [1] = unit(STARTER, 120, STARTER) })   -- price withheld by the fixture: stands for no economy, engine default 0
   newWorld(v, true)
   local out = run()
   T.eq("DRAIN I7: an unpriced product is still drained", v.spec_fillUnit.fillUnits[1].fillLevel, 0)
@@ -306,6 +308,61 @@ do
   T.ok("DRAIN I12: source witness: the file was handed to the bar", #src > 1000 and fnStart > 0)
   T.ok("DRAIN I13: source witness: the command has no price table of its own", src:find("fallbackPrices", 1, true) == nil and src:find("FALLBACK_PRICES in installPurchaseRefillHook", 1, true) == nil)
   T.ok("DRAIN I14: source witness: the command reads pricePerLiter through the manager", body:find("getFillTypeByIndex", 1, true) ~= nil and body:find("pricePerLiter", 1, true) ~= nil)
+end
+
+-- =====================================================================
+-- GROUP J (Bob's review of #990): the production world. Every name the command drains
+-- (its legacy list, read from the source, plus HookManager.DRY_PRODUCT_NAMES) must have a
+-- POSITIVE economy pricePerLiter in the real fillTypes.xml, or the ruling refunds 0 for
+-- it; and every price this fixture gives a drained product must equal the real XML, so a
+-- fixture price can never drift from the file it stands for. STARTER's is the one the
+-- fixture withholds on purpose.
+-- =====================================================================
+do
+  local xml = SOURCE_TEXT and SOURCE_TEXT["fillTypes.xml"] or ""
+  local gui = SOURCE_TEXT and SOURCE_TEXT["src/settings/SoilSettingsGUI.lua"] or ""
+  T.ok("DRAIN J1: the real fillTypes.xml was handed to the bar", #xml > 1000 and xml:find("<fillType ", 1, true) ~= nil)
+
+  local function xmlPrice(name)
+    local s = xml:find('<fillType name="' .. name .. '"', 1, true)
+    if s == nil then return nil end
+    local e = xml:find("</fillType>", s, true) or #xml
+    local block = xml:sub(s, e)
+    return tonumber(block:match('<economy%s+pricePerLiter="([%d%.]+)"'))
+  end
+
+  -- the command's legacy list, from its source, plus the dry catalogue it unions in
+  local fnStart = gui:find("function SoilSettingsGUI:consoleCommandDrainVehicle", 1, true) or 1
+  local listStart = gui:find("local customNames = {", fnStart, true)
+  local listEnd = listStart and gui:find("}", listStart, true)
+  local names, seen = {}, {}
+  if listStart and listEnd then
+    for n in gui:sub(listStart, listEnd):gmatch('"([%u%d_]+)"') do
+      if not seen[n] then names[#names + 1] = n; seen[n] = true end
+    end
+  end
+  for _, n in ipairs(saved.DRY or {}) do
+    if not seen[n] then names[#names + 1] = n; seen[n] = true end
+  end
+  T.eq("DRAIN J2: the drain population is the 22 legacy names plus AN and POLIFOSKA", #names, 24)
+
+  local missing = {}
+  for _, n in ipairs(names) do
+    local pr = xmlPrice(n)
+    if pr == nil or pr <= 0 then missing[#missing + 1] = n end
+  end
+  T.eq("DRAIN J3: every drained product has a positive shop price in the real fillTypes.xml (missing: " .. table.concat(missing, ",") .. ")", #missing, 0)
+
+  local drift = {}
+  for name, pr in pairs(prices) do
+    if seen[name] and name ~= "STARTER" then
+      local real = xmlPrice(name)
+      if real == nil or math.abs(real - pr) > 1e-9 then drift[#drift + 1] = name end
+    end
+  end
+  table.sort(drift)
+  T.eq("DRAIN J4: every fixture price for a drained product equals the real XML (drifted: " .. table.concat(drift, ",") .. ")", #drift, 0)
+  T.near("DRAIN J5: STARTER's real price is what the fixture withholds (0.90), not an absent economy", xmlPrice("STARTER"), 0.90, 1e-9)
 end
 
 FillType, ToolType, MoneyType, UIHelper = saved.FillType, saved.ToolType, saved.MoneyType, saved.UIHelper

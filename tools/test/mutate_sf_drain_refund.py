@@ -1,13 +1,15 @@
 # Drain Vehicle refund basis (Tyson's ruling 2026-09-23): does the bar catch the versions
 # that would ship it wrong?
 #
-# Five mutants, each must send RSF-F196-r7_drain_vehicle_test.lua RED by a NAMED row:
+# Seven mutants, each must send RSF-F196-r7_drain_vehicle_test.lua RED by a NAMED row:
 #
 #   M1  the command's own price table restored     the XML price is ignored again
 #   M2  the 50% dropped                             the refund is the full shop price
 #   M3  a captured price instead of the manager     a redefined product keeps the first price seen
 #   M4  an unpriced product refunds at 1.0/L        the old fallback rule for a product with no economy
 #   M5  the "no shop price" report suffix dropped   a zero refund is not explained
+#   M6  one <economy> line deleted from the XML     a drained product loses its real shop price
+#   M7  one XML price moved                         the fixture no longer stands for the real file
 #
 # Every edit asserts it LANDED by exact occurrence count; restore is proved by sha256.
 # "DID NOT APPLY" never counts as a kill.
@@ -19,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 def p(rel): return os.path.join(ROOT, rel)
 
 GUI = "src/settings/SoilSettingsGUI.lua"
+XML = "fillTypes.xml"
 
 READ = "            priceTable[idx] = shopPricePerLiter(idx)\n"
 REFUND = "                        refund  = drained * priceTable[currentType] * 0.5\n"
@@ -43,6 +46,17 @@ MUTATIONS = [
  ("M4-unpriced-refunds-at-one", GUI,
   [(GUARD, "        if price == nil or price ~= price or price == math.huge or price <= 0 then return 1.0 end\n", 1)],
   "a product with no shop price refunds at 1.0/L, the old fallback rule"),
+
+ ("M6-one-economy-line-deleted", XML,
+  # Bob's review of #990: the production world is pinned, not just the fixture.
+  # GYPSUM's economy line removed: the engine default 0 would refund nothing.
+  [("            <economy pricePerLiter=\"0.10\"/>\n", "", 1)],
+  "a drained product loses its shop price in fillTypes.xml, so the ruling refunds 0 for it"),
+
+ ("M7-one-xml-price-drifts-from-the-fixture", XML,
+  [("            <economy pricePerLiter=\"0.55\"/>\n            <image hud=\"$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png\"/>\n            <textures diffuse=\"textures/fillPlanes/urea_diffuse.dds\"",
+    "            <economy pricePerLiter=\"0.65\"/>\n            <image hud=\"$dataS/menu/hud/fillTypes/hud_fill_fertilizer.png\"/>\n            <textures diffuse=\"textures/fillPlanes/urea_diffuse.dds\"", 1)],
+  "UREA's real price moves and the fixture's 0.55 no longer stands for it"),
 
  ("M5-no-shop-price-suffix-dropped", GUI,
   [(SUFFIX, "                            \"\",\n", 1)],
