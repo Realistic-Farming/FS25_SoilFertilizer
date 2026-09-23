@@ -635,13 +635,12 @@ function HookManager:installAll(soilSystem)
     local extFillOk = self:installExternalFillHook()
     if extFillOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- CRITICAL: propagate the getExternalFill wrapper down to vehicleType.functions and
-    -- live vehicle instances. SpecializationUtil.copyTypeFunctionsInto copies function
-    -- refs directly onto vehicle instances at load time, so patching Sprayer.getExternalFill
-    -- on the class table alone NEVER reaches already-loaded vehicles (issue #205).
-    if extFillOk then
-        self:propagateExternalFillHookToLiveVehicles()
-    end
+    -- RSF-F196 V12c: SpecializationUtil.copyTypeFunctionsInto copies function refs
+    -- onto vehicle instances at load time, so a class-table patch alone never reaches
+    -- a loaded vehicle (issue #205). The owned layer inside installExternalFillHook
+    -- now wraps the class, every sprayer type and every live instance itself, with
+    -- records and one cleanup; the old propagate pass, which assigned the CLASS
+    -- wrapper over any type-level predecessor, is gone.
 
     -- Rate multiplier → wap.usage + wap.usagePerMin (event listener, reliable class-table dispatch).
     -- Must run before installSprayerUsageHook so the chain is: vanilla sets wap.usage → this hook
@@ -758,6 +757,11 @@ function HookManager:installAll(soilSystem)
     -- section.isActive=false permanently (VWW only resets it via setSectionsActive/CTRL+Z),
     -- causing the boom to lock at minimum width until the player manually cycles the width.
     self:installSectionStatePreserver()
+
+    -- RSF-F196 V13: the drain token, installed LAST so its prepend is the outermost
+    -- wrapper on Sprayer.onEndWorkAreaProcessing and stores exactly the usage native
+    -- reads (every usage writer sits inside it).
+    self:installDrainTokenHook()
 
     self.installed = true
 end
@@ -2949,6 +2953,206 @@ function HookManager:registerCleanup(name, cleanupFn)
         name = name,
         cleanup = cleanupFn
     })
+end
+
+-- =========================================================
+-- RSF-F196 V12c: the OWNED registered-function layer
+-- =========================================================
+-- A registered specialization function (SpecializationUtil.registerFunction,
+-- SpecializationUtil.lua:38) is COPIED: finalizeTypes reads the class function
+-- into every vehicle type's `functions` table at game boot (TypeManager.lua:185-
+-- 199; FillUnit.lua:197, Sprayer.lua:81-82), and Vehicle:load copies the type
+-- table onto each instance (SpecializationUtil.copyTypeFunctionsInto :141-145,
+-- from Vehicle.lua:486). This mod installs from installAll at mission load, long
+-- after both copies, so a class-level patch reaches NO loaded vehicle. That is
+-- how the purchase-refill FillUnit hook shipped for weeks without ever firing:
+-- "BUY SUCCESS (FillUnit hook)" could not happen in production.
+--
+-- One installer, three surfaces, ONE owner record per reference:
+--   (i)   the class slot, wrapped from its current value (a composed chain such as
+--         Utils.overwrittenFunction(FillUnit, SowingMachine) is wrapped, never
+--         bypassed);
+--   (ii)  every vehicle type carrying the relevant specialization whose functions
+--         table holds the slot, wrapping the function ACTUALLY present there;
+--   (iii) every live instance holding a raw copy of the slot (rawget), reusing the
+--         type wrapper when the raw pointer equals a type predecessor so one type
+--         gets one wrapper, not one per vehicle.
+-- The installer refuses to wrap a slot already holding one of its own wrappers,
+-- so a retry cannot stack layers. Late vehicles get exactly one wrapper through
+-- ensureOwnedLayers, called from the FillUnit onPostLoad prepend (raised at
+-- Vehicle.lua:905, after the copy at :486). ONE cleanup restores a slot only if
+-- it still holds the recorded wrapper, so a later owner's replacement is left.
+-- Written as a reusable method taking (class, funcName, factory) on purpose:
+-- RSF-741 item 9 tags the same shape once per surface and reuses this.
+
+--- Install one owned layer on a registered function.
+---@param class table        the specialization class (FillUnit, Sprayer)
+---@param funcName string    the registered function's name
+---@param makeWrapper fun(predecessor:function):function  the factory
+---@param specName string    the specialization a type must carry ("fillUnit", "sprayer")
+---@param label string|nil   for the cleanup entry
+---@return table record      the layer record (also kept on self._f196Layers)
+function HookManager:installOwnedRegisteredFunctionLayer(class, funcName, makeWrapper, specName, label)
+    self._f196Layers = self._f196Layers or {}
+    local existing = self._f196Layers[funcName]
+    if existing ~= nil then return existing end
+
+    local layer = {
+        owner = "F196", class = class, funcName = funcName, specName = specName,
+        makeWrapper = makeWrapper,
+        refs = {},          -- { slot, predecessor, wrapper } per reference wrapped
+        wrappers = {},      -- wrapper -> true, the set of this layer's own closures
+        typeWrappers = {},  -- predecessor -> wrapper, shared between a type and its instances
+    }
+    local function wrapSlot(slot, predecessor, reuse)
+        if type(predecessor) ~= "function" or layer.wrappers[predecessor] then return nil end
+        local wrapper = reuse and layer.typeWrappers[predecessor] or nil
+        if wrapper == nil then
+            wrapper = makeWrapper(predecessor)
+            layer.wrappers[wrapper] = true
+            if reuse then layer.typeWrappers[predecessor] = wrapper end
+        end
+        slot[funcName] = wrapper
+        layer.refs[#layer.refs + 1] = { slot = slot, predecessor = predecessor, wrapper = wrapper }
+        return wrapper
+    end
+    layer.wrapSlot = wrapSlot
+
+    -- (i) the class
+    if type(class) == "table" then
+        wrapSlot(class, rawget(class, funcName), false)
+    end
+    -- (ii) every type carrying the specialization; the function present there is
+    -- the predecessor, whatever chain it already is.
+    local types = g_vehicleTypeManager and g_vehicleTypeManager.types
+    if type(types) == "table" then
+        for _, typeDef in pairs(types) do
+            local carries = typeDef and typeDef.specializationsByName and typeDef.specializationsByName[specName]
+            if carries and typeDef.functions and typeDef.functions[funcName] ~= nil then
+                wrapSlot(typeDef.functions, typeDef.functions[funcName], true)
+            end
+        end
+    end
+    -- (iii) every live instance holding a raw copy
+    local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles)
+        or (g_currentMission and g_currentMission.vehicles) or {}
+    for _, vehicle in pairs(vList) do
+        if type(vehicle) == "table" and rawget(vehicle, funcName) ~= nil then
+            wrapSlot(vehicle, rawget(vehicle, funcName), true)
+        end
+    end
+
+    self._f196Layers[funcName] = layer
+    self:registerCleanup(label or (funcName .. " (F196 owned layer)"), function()
+        for _, ref in ipairs(layer.refs) do
+            if ref.slot[funcName] == ref.wrapper then
+                ref.slot[funcName] = ref.predecessor
+            end
+        end
+        if self._f196Layers then self._f196Layers[funcName] = nil end
+    end)
+    SoilLogger.debug("[F196] owned layer on %s: %d reference(s) wrapped", funcName, #layer.refs)
+    return layer
+end
+
+--- Give a late vehicle exactly one wrapper per installed layer. A vehicle whose
+--- slot already holds a layer wrapper (its type was patched before it loaded, so
+--- the copy at Vehicle.lua:486 brought the wrapper) gets nothing.
+---@param vehicle table
+---@return number wrapped
+function HookManager:ensureOwnedLayers(vehicle)
+    local layers = self._f196Layers
+    if type(layers) ~= "table" or type(vehicle) ~= "table" then return 0 end
+    local wrapped = 0
+    for funcName, layer in pairs(layers) do
+        local raw = rawget(vehicle, funcName)
+        if raw ~= nil and layer.wrapSlot(vehicle, raw, true) ~= nil then
+            wrapped = wrapped + 1
+        end
+    end
+    return wrapped
+end
+
+--- Re-sweep the live vehicle list through ensureOwnedLayers. Kept for callers
+--- of the old propagation pass (it used to assign the CLASS wrapper over every
+--- type and instance); the layers now wrap at install and this only catches a
+--- vehicle listed since. Idempotent.
+---@return number wrapped
+function HookManager:propagateExternalFillHookToLiveVehicles()
+    local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles)
+        or (g_currentMission and g_currentMission.vehicles) or {}
+    local wrapped = 0
+    for _, vehicle in pairs(vList) do
+        wrapped = wrapped + self:ensureOwnedLayers(vehicle)
+    end
+    return wrapped
+end
+
+--- True when a function is one of this manager's F196 layer wrappers.
+function HookManager:isOwnedLayerWrapper(fn)
+    local layers = self._f196Layers
+    if type(layers) ~= "table" or fn == nil then return false end
+    for _, layer in pairs(layers) do
+        if layer.wrappers[fn] then return true end
+    end
+    return false
+end
+
+-- =========================================================
+-- RSF-F196 V13: the native-drain token
+-- =========================================================
+-- Native drains the spray vehicle from Sprayer:onEndWorkAreaProcessing
+-- (Sprayer.lua:938-957): if self.isServer and wap.isActive and wap.sprayVehicle
+-- ~= nil, it calls sprayVehicle:addFillUnitFillLevel(ownerFarmId,
+-- wap.sprayVehicleFillUnitIndex, -usage, wap.sprayFillType, ToolType.UNDEFINED,
+-- unloadInfo) (:950). The receiver is the SPRAY VEHICLE, not always self. A
+-- prepend here stores a token on that vehicle holding exactly the call native
+-- will make: {fuIdx, delta, fillType}. The FillUnit layer below consumes a token
+-- only on the exact match; every UNTOKENED delta (-math.huge, emptyAllFillUnits,
+-- the settings drain, the residual snap, stream sync, SoilDrainVehicle) delegates
+-- to its predecessor. An append clears any token native did not consume, the
+-- guard for a propagation miss. Installed LAST in installAll so this prepend is
+-- the outermost wrapper and sees the FINAL wap.usage: the writers (R2, the rate
+-- multiplier, AI-1) all sit inside it.
+function HookManager:installDrainTokenHook()
+    if not Sprayer or type(Sprayer.onEndWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[F196] V13 drain token: Sprayer.onEndWorkAreaProcessing not available - skipping")
+        return false
+    end
+    local original = Sprayer.onEndWorkAreaProcessing
+    local function tokenFor(sprayerSelf)
+        local spec = sprayerSelf and sprayerSelf.spec_sprayer
+        local wap = spec and spec.workAreaParameters
+        if wap == nil or not sprayerSelf.isServer or wap.isActive ~= true then return nil, nil end
+        local target = wap.sprayVehicle
+        local usage = wap.usage
+        if target == nil or type(usage) ~= "number" or usage ~= usage or usage <= 0 or usage == math.huge then
+            return nil, nil
+        end
+        return target, { fuIdx = wap.sprayVehicleFillUnitIndex, delta = -usage, fillType = wap.sprayFillType }
+    end
+    local withPrepend = Utils.prependedFunction(original, function(sprayerSelf)
+        local target, token = tokenFor(sprayerSelf)
+        if target ~= nil then target._sfF196DrainToken = token end
+    end)
+    Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(withPrepend, function(sprayerSelf)
+        local spec = sprayerSelf and sprayerSelf.spec_sprayer
+        local target = spec and spec.workAreaParameters and spec.workAreaParameters.sprayVehicle
+        if type(target) == "table" and target._sfF196DrainToken ~= nil then
+            target._sfF196DrainToken = nil
+        end
+    end)
+    self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing (F196 V13 drain token)")
+    SoilLogger.info("[OK] F196 V13 drain token installed on Sprayer.onEndWorkAreaProcessing")
+    return true
+end
+
+--- True when a FillUnit call matches the token native was about to make.
+---@return boolean
+function HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex)
+    if type(token) ~= "table" or type(fillLevelDelta) ~= "number" then return false end
+    if fillLevelDelta ~= fillLevelDelta or fillLevelDelta >= 0 or fillLevelDelta == -math.huge then return false end
+    return token.fuIdx == fillUnitIndex and token.delta == fillLevelDelta and token.fillType == fillTypeIndex
 end
 
 -- =========================================================
@@ -6758,9 +6962,15 @@ function HookManager:installFillUnitHookEarly()
     local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject it into dedicated lime spreaders
     local limeCompatNames    = {"GYPSUM"}
+    local hookMgrRef = self
 
     local original = FillUnit.onPostLoad
     FillUnit.onPostLoad = Utils.prependedFunction(original, function(vehicleSelf)
+        -- RSF-F196 V12c: a vehicle loading after installAll carries raw copies of its
+        -- type's functions (Vehicle.lua:486, before this event at :905). Give it
+        -- exactly one owned-layer wrapper per installed layer; a copy that already
+        -- IS a layer wrapper (its type was patched first) gets nothing.
+        hookMgrRef:ensureOwnedLayers(vehicleSelf)
         local fm = g_fillTypeManager
         if not fm then return end
         local fertIdx    = fm:getFillTypeIndexByName("FERTILIZER")
@@ -7575,8 +7785,7 @@ function HookManager:installPurchaseRefillHook()
     local customPrices = self.customFillTypePrices
 
     if not next(customPrices) then
-        SoilLogger.warning("Purchase refill hook: no custom fill types with prices found - skipping")
-        return false
+        SoilLogger.warning("Purchase refill hook: no custom fill types with prices found yet - the layer installs anyway and reads the live map at call time (V12a)")
     end
 
     local count = 0
@@ -7666,64 +7875,57 @@ function HookManager:installPurchaseRefillHook()
 
     -- FS25 real signature: FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
     -- When replaced as a class method, 'vehicle' is the implicit self (the vehicle with FillUnit spec).
-    local original = FillUnit.addFillUnitFillLevel
-    FillUnit.addFillUnitFillLevel = function(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        -- Only intercept consumption (negative delta) of our custom types
-        if fillLevelDelta >= 0 then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+    -- RSF-F196 V12c + V13. The FillUnit layer, one wrapper per reference (class,
+    -- every fillUnit type, every live instance, late instances via onPostLoad),
+    -- each around the function ACTUALLY in its slot. A delta is billed here ONLY
+    -- when it carries the V13 token native's drain set on this vehicle a moment
+    -- ago and the exact call matches; then, in BUY mode with a resolved, unrefused
+    -- product that has a price, the farm is charged and the predecessor is NOT
+    -- called (the tank is untouched, native's drain becomes a purchase). Every
+    -- other delta, positive or negative, tokened or not, delegates: -math.huge,
+    -- emptyAllFillUnits, the settings drain, the residual snap, stream sync and
+    -- SoilDrainVehicle all reach the chain that was there. Prices and identity are
+    -- read from the manager at CALL time (V12a's wrapper half), never captured, so
+    -- a product that resolved after install is billable.
+    local function makeFillUnitWrapper(predecessor)
+        return function(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+            local token = type(vehicle) == "table" and vehicle._sfF196DrainToken or nil
+            if token ~= nil and HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex) then
+                vehicle._sfF196DrainToken = nil   -- consumed, billed or not
+                local prices = hookMgrRef.customFillTypePrices
+                local resolved = hookMgrRef:resolveCustomProductIntent(vehicle, fillTypeIndex)
+                local pricePerLiter = (resolved ~= nil and prices ~= nil) and prices[resolved] or nil
+                if resolved ~= nil and not hookMgrRef:isRefusedProduct(resolved) and pricePerLiter ~= nil
+                   and isInBuyMode(vehicle, fillUnitIndex, fillTypeIndex) then
+                    local litersConsumed = -fillLevelDelta
+                    local cost = litersConsumed * pricePerLiter
+                    local chargeFarmId = (farmId and farmId > 0) and farmId
+                        or vehicle.ownerFarmId
+                        or (vehicle.spec_enterable and vehicle.spec_enterable.activeFarmId)
+                    if chargeFarmId and chargeFarmId > 0 and g_currentMission then
+                        pcall(function()
+                            g_currentMission:addMoney(-cost, chargeFarmId, MoneyType.PURCHASE_FERTILIZER, true, true)
+                        end)
+                    end
+                    if g_currentMission then
+                        vehicle._soilBuyHandledAt = g_currentMission.time
+                    end
+                    hookMgrRef._f196LayerCharges = (hookMgrRef._f196LayerCharges or 0) + 1
+                    SoilLogger.debug("BUY SUCCESS (F196 FillUnit layer): veh=%d, type=%d, liters=%.2f, cost=%.2f",
+                        vehicle.id or 0, fillTypeIndex, litersConsumed, cost)
+                    return fillLevelDelta
+                end
+            end
+            return predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
         end
-
-        -- RSF-F196 V12/R1b: identity is catalogue membership, not the presence of a
-        -- price. A refused product is not intercepted: R3c already stops the residual
-        -- snap sending a delta for one, and R2 zeroes its usage so native never drains
-        -- it, but if a delta arrives by any other route it must not be turned into a
-        -- charge. Price is consulted only once identity is settled, and an absent
-        -- price is a source failure (V17), which is native's path, not ours.
-        if not hookMgrRef:isCustomProduct(fillTypeIndex) or hookMgrRef:isRefusedProduct(fillTypeIndex) then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        end
-        local pricePerLiter = customPrices[fillTypeIndex]
-        if not pricePerLiter then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        end
-
-        -- Check BUY mode
-        if not isInBuyMode(vehicle, fillUnitIndex, fillTypeIndex) then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        end
-
-        -- |fillLevelDelta| is the liters consumed this frame (negative value).
-        local litersConsumed = -fillLevelDelta
-        local cost = litersConsumed * pricePerLiter
-
-        -- Charge the owning farm (use the farmId arg - it is the authoritative owner)
-        local chargeFarmId = (farmId and farmId > 0) and farmId
-            or vehicle.ownerFarmId
-            or (vehicle.spec_enterable and vehicle.spec_enterable.activeFarmId)
-        if chargeFarmId and chargeFarmId > 0 and g_currentMission then
-            pcall(function()
-                g_currentMission:addMoney(-cost, chargeFarmId, MoneyType.PURCHASE_FERTILIZER, true, true)
-            end)
-        end
-
-        -- Stamp this vehicle so the sprayer-hook backup knows we already handled this frame.
-        if g_currentMission then
-            vehicle._soilBuyHandledAt = g_currentMission.time
-        end
-        -- Return the original delta so sprayer logic continues, but skip calling original
-        -- so the physical fill level is never subtracted.
-        SoilLogger.debug("BUY SUCCESS (FillUnit hook): veh=%d, type=%d, liters=%.2f, cost=%.2f",
-            vehicle.id or 0, fillTypeIndex, litersConsumed, cost)
-        return fillLevelDelta
     end
+    self:installOwnedRegisteredFunctionLayer(FillUnit, "addFillUnitFillLevel", makeFillUnitWrapper, "fillUnit",
+        "FillUnit.addFillUnitFillLevel (F196 purchase layer)")
 
-    self:registerCleanup("FillUnit.addFillUnitFillLevel (purchase refill)", function()
-        FillUnit.addFillUnitFillLevel = original
-    end)
-
-    -- The live price table the sprayer hook and the backup refill read at call time
-    -- is self.customFillTypePrices, assigned by rebuildCustomPriceMap above and
-    -- replaced on every registration attempt; nothing to share here any more.
+    -- The live price table the sprayer hook, the backup refill and the layer above
+    -- read at CALL time is self.customFillTypePrices, assigned by rebuildCustomPriceMap
+    -- above and replaced on every registration attempt (X1); the owned layer's cleanup
+    -- is registered by installOwnedRegisteredFunctionLayer, nothing to share here.
 
     SoilLogger.info("[OK] Purchase refill hook installed - BUY mode enabled for %d custom fill types", count)
     return true
@@ -7760,11 +7962,11 @@ function HookManager:installExternalFillHook()
     -- Capture HookManager instance (see note in installSprayerAreaHook).
     local hookMgrRef = self
 
-    local original = Sprayer.getExternalFill
-
     -- Everything that bills for external fill: our own custom-type charge below,
-    -- and the original, which holds the other five.
-    local function billedExternalFill(sprayerSelf, fillType, dt)
+    -- and the original, which holds the other five. RSF-F196 V12c: `original` is
+    -- the PREDECESSOR the owned layer hands each wrapper (class, type or instance),
+    -- not a captured class pointer, so the chain present in the slot is what runs.
+    local function billedExternalFill(original, sprayerSelf, fillType, dt)
         local hookMgr = hookMgrRef
         local prices  = hookMgr and hookMgr.customFillTypePrices
 
@@ -7994,18 +8196,24 @@ function HookManager:installExternalFillHook()
         return select("#", ...), { ... }
     end
 
-    Sprayer.getExternalFill = function(sprayerSelf, fillType, dt)
-        if HookManager.isOverlapBlockedPass(sprayerSelf) then
-            return repeatedFill(sprayerSelf, fillType)
+    -- RSF-F196 V12c: one factory, three surfaces, through the owned layer. This
+    -- replaces the class assignment plus propagateExternalFillHookToLiveVehicles,
+    -- which assigned the CLASS wrapper onto types and instances and discarded any
+    -- type-level predecessor, and whose cleanup restored the class only.
+    local function makeExternalFillWrapper(original)
+        return function(sprayerSelf, fillType, dt)
+            if HookManager.isOverlapBlockedPass(sprayerSelf) then
+                return repeatedFill(sprayerSelf, fillType)
+            end
+            local n, r = packn(billedExternalFill(original, sprayerSelf, fillType, dt))
+            sprayerSelf._sfLastExternalFillType = r[1]
+            sprayerSelf._sfLastExternalFillArg = fillType
+            return unpack(r, 1, n)
         end
-        local n, r = packn(billedExternalFill(sprayerSelf, fillType, dt))
-        sprayerSelf._sfLastExternalFillType = r[1]
-        sprayerSelf._sfLastExternalFillArg = fillType
-        return unpack(r, 1, n)
     end
-
-    self:register(Sprayer, "getExternalFill", original, "Sprayer.getExternalFill")
-    SoilLogger.info("[OK] External fill hook installed (Sprayer.getExternalFill)")
+    self:installOwnedRegisteredFunctionLayer(Sprayer, "getExternalFill", makeExternalFillWrapper, "sprayer",
+        "Sprayer.getExternalFill (F196 owned layer)")
+    SoilLogger.info("[OK] External fill hook installed (Sprayer.getExternalFill, owned layer)")
     return true
 end
 
@@ -8355,115 +8563,15 @@ function HookManager:installExternalFillOptInHook()
     -- -----------------------------------------------------------------
     -- Layer 1: patch the Sprayer class table (future vehicleType loads).
     -- -----------------------------------------------------------------
-    Sprayer.getIsSprayerExternallyFilled = makeReplacement(originalClassFn)
-
-    -- -----------------------------------------------------------------
-    -- Layer 2: patch g_vehicleTypeManager.types[*].functions for every
-    -- type that has Sprayer in its specialization list.
-    -- -----------------------------------------------------------------
-    local typesPatched, typesSeen, typesSkipped = 0, 0, 0
-    local typeManager = g_vehicleTypeManager
-    if typeManager and typeManager.types then
-        for _, typeDef in pairs(typeManager.types) do
-            typesSeen = typesSeen + 1
-            local hasSprayer = false
-            if typeDef.specializationsByName and typeDef.specializationsByName.sprayer then
-                hasSprayer = true
-            elseif typeDef.specializations then
-                for _, spec in ipairs(typeDef.specializations) do
-                    if spec == Sprayer or (spec and spec.specName == "sprayer") then
-                        hasSprayer = true
-                        break
-                    end
-                end
-            end
-            if hasSprayer and typeDef.functions and typeDef.functions.getIsSprayerExternallyFilled then
-                local origTypeFn = typeDef.functions.getIsSprayerExternallyFilled
-                typeDef.functions.getIsSprayerExternallyFilled = makeReplacement(origTypeFn)
-                typesPatched = typesPatched + 1
-            elseif hasSprayer then
-                typesSkipped = typesSkipped + 1
-            end
-        end
-    end
-    SoilLogger.debug("BUY opt-in hook: vehicleType scan - seen=%d, sprayer-types patched=%d",
-        typesSeen, typesPatched)
-
-    -- -----------------------------------------------------------------
-    -- Layer 3: patch every already-live vehicle instance.
-    -- -----------------------------------------------------------------
-    local vehPatched, vehSeen = 0, 0
-    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
-        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
-            vehSeen = vehSeen + 1
-            if vehicle and rawget(vehicle, "getIsSprayerExternallyFilled") then
-                local origInstFn = vehicle.getIsSprayerExternallyFilled
-                vehicle.getIsSprayerExternallyFilled = makeReplacement(origInstFn)
-                vehPatched = vehPatched + 1
-            end
-        end
-    elseif g_currentMission and g_currentMission.vehicles then
-        -- Older API path fallback
-        for _, vehicle in pairs(g_currentMission.vehicles) do
-            vehSeen = vehSeen + 1
-            if vehicle and rawget(vehicle, "getIsSprayerExternallyFilled") then
-                local origInstFn = vehicle.getIsSprayerExternallyFilled
-                vehicle.getIsSprayerExternallyFilled = makeReplacement(origInstFn)
-                vehPatched = vehPatched + 1
-            end
-        end
-    end
-    SoilLogger.debug("BUY opt-in hook: live vehicle scan - seen=%d, patched=%d", vehSeen, vehPatched)
-
-    -- -----------------------------------------------------------------
-    -- Cleanup: restore only the Sprayer class reference on uninstall.
-    -- (Types/instances aren't restored - they'd already be stale.)
-    -- -----------------------------------------------------------------
-    self:register(Sprayer, "getIsSprayerExternallyFilled", originalClassFn,
-        "Sprayer.getIsSprayerExternallyFilled (class only)")
+    -- RSF-F196 V12c: the same factory on all three surfaces through the owned
+    -- layer. This replaces the inline class assignment, the vehicle-type scan and
+    -- the live-vehicle scan that lived here unowned: no records, no idempotence
+    -- guard, no late-vehicle ensure, and a cleanup that restored the class only.
+    local layer = self:installOwnedRegisteredFunctionLayer(Sprayer, "getIsSprayerExternallyFilled", makeReplacement, "sprayer",
+        "Sprayer.getIsSprayerExternallyFilled (F196 owned layer)")
+    SoilLogger.debug("BUY opt-in hook: owned layer references=%d", layer and #layer.refs or 0)
     SoilLogger.info("[OK] External fill opt-in hook installed - BUY mode should now engage for custom types")
     return true
-end
-
--- =========================================================
--- Re-apply the opt-in patch to the `getExternalFill` function too
--- (same dispatch issue - the existing installExternalFillHook patches only the
--- class table, so it never reaches live instances).  We piggy-back here to
--- patch typeDef.functions["getExternalFill"] and live instances with the
--- SAME wrapper that installExternalFillHook already built.
--- =========================================================
-function HookManager:propagateExternalFillHookToLiveVehicles()
-    if not Sprayer then return end
-    local classFn = Sprayer.getExternalFill  -- the wrapper installed by installExternalFillHook
-    if not classFn then return end
-
-    local typesPatched = 0
-    if g_vehicleTypeManager and g_vehicleTypeManager.types then
-        for typeName, typeDef in pairs(g_vehicleTypeManager.types) do
-            local hasSprayer = false
-            if typeDef.specializationsByName and typeDef.specializationsByName.sprayer then
-                hasSprayer = true
-            end
-            if hasSprayer and typeDef.functions and typeDef.functions.getExternalFill then
-                -- Only overwrite if still pointing at the original vanilla fn.
-                typeDef.functions.getExternalFill = classFn
-                typesPatched = typesPatched + 1
-            end
-        end
-    end
-
-    local vehPatched = 0
-    local vList = (g_currentMission and g_currentMission.vehicleSystem and
-                   g_currentMission.vehicleSystem.vehicles) or
-                  (g_currentMission and g_currentMission.vehicles) or {}
-    for _, vehicle in pairs(vList) do
-        if vehicle and rawget(vehicle, "getExternalFill") then
-            vehicle.getExternalFill = classFn
-            vehPatched = vehPatched + 1
-        end
-    end
-    SoilLogger.debug("getExternalFill wrapper propagated - typeDefs=%d, liveVehicles=%d",
-        typesPatched, vehPatched)
 end
 
 -- =========================================================

@@ -291,7 +291,9 @@ do
     T.eq("R3a G2: and zero usage", usage, 0)
     T.eq("R3a G3: no money moved", #money, 0)
     T.eq("R3a G4: native was NOT delegated to (its cascade would have picked FERTILIZER)", nativeCalls, 0)
-    T.eq("R3a G5: the propagated instance copy IS the wrapper", v.getExternalFill == Sprayer.getExternalFill, true)
+    -- V12c: the instance carries the layer's wrapper around ITS OWN predecessor, one
+    -- per predecessor rather than the class closure copied everywhere.
+    T.eq("R3a G5: the propagated instance copy IS an owned-layer wrapper", hm:isOwnedLayerWrapper(v.getExternalFill), true)
 end
 do
     -- Same shape with a valid product: the existing charge is preserved.
