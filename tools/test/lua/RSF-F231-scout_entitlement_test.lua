@@ -39,6 +39,8 @@
 --   G  the dialog door: a refused panel offers nothing to apply
 --   P  privacy: a refused scout never hands over the named disease
 --   U  unchanged: the walked-cell rule, the durable fact's shape, existing marks
+--   SP singleplayer: the farm scouts the land it owns; land it has not bought (a field
+--      mission's field among it) is refused, the reading declared to Design
 --
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua, src/ui/SoilScoutDialog.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
@@ -102,7 +104,7 @@ local function hostWorld(opts)
   if opts.dedicated then g_dedicatedServer = {} end
   g_localPlayer = { farmId = opts.hostFarm or 1 }
   if opts.noLocalPlayer then g_localPlayer = nil end
-  g_currentMission = { missionDynamicInfo = { isMultiplayer = true }, playerSystem = ps,
+  g_currentMission = { missionDynamicInfo = { isMultiplayer = not opts.singleplayer }, playerSystem = ps,
                        environment = { currentDay = 1, daysPerPeriod = 1 }, missionInfo = {},
                        hud = { showBlinkingWarning = function(_, text) WARNINGS[#WARNINGS + 1] = text end } }
   local sys = newSys()
@@ -323,11 +325,16 @@ end)
 group("P", function()
   local sys = hostWorld()
   local rep, refused = sys:scoutField(2, 1)
-  T.eq("P1 a refused scout returns the gated report: undiscovered, no disease named", tostring(rep and rep.discovered) .. "/" .. tostring(rep and rep.diseaseId) .. "/" .. tostring(refused), "false/nil/NO_STANDING")
+  T.eq("P1 a refused scout returns no report at all", tostring(rep) .. "/" .. tostring(refused), "nil/NO_STANDING")
   local later = sys:getScoutReport(2)
   T.eq("P2 and the field reads the same afterwards", tostring(later.discovered), "false")
-  rep, refused = sys:scoutField(2, nil)
-  T.eq("P3 no farm at all is refused, never defaulted to farm 1", tostring(refused) .. "/" .. flags(sys, 2), "NO_STANDING/false/false")
+  -- Once the owner has scouted, the current report is the full truth: a refused door
+  -- must not read it back (Bob, #998).
+  sys:scoutField(2, 2)
+  rep, refused = sys:scoutField(2, 1)
+  T.eq("P2b a neighbour refused on a field the owner has scouted still gets no report", tostring(rep) .. "/" .. tostring(refused) .. "/" .. tostring(sys:getScoutReport(2).diseaseId), "nil/NO_STANDING/septoria")
+  rep, refused = sys:scoutField(3, nil)
+  T.eq("P3 no farm at all is refused, never defaulted to farm 1", tostring(refused) .. "/" .. flags(sys, 3), "NO_STANDING/false/false")
   rep, refused = sys:scoutField(1, 1)
   T.eq("P4 an admitted scout names the disease and returns no refusal", tostring(rep.diseaseId) .. "/" .. tostring(refused), "septoria/nil")
   -- The rule module is the writer's authority; without it the writer fails closed.
@@ -349,6 +356,25 @@ group("U", function()
   sys.fieldData[2].diseaseDiscovered, sys.fieldData[2].fieldEverScouted = true, true
   sys:scoutField(2, 1)
   T.eq("U3 an existing mark is not cleared by a refused scout", flags(sys, 2), "true/true")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- SP. SINGLEPLAYER
+-- ══════════════════════════════════════════════════════════════════════════
+-- The reading declared to Design (Bob, #998): a singleplayer farm does not own every
+-- field, and the brief's item 4 gives singleplayer no exemption, so land the farm
+-- has not bought (a field mission's field among it) is refused exactly as the walk
+-- and the kneel already refuse it. Whether singleplayer or an active field mission
+-- should give standing is Arissani's question, on the DESIGN-CHECK row.
+group("SP", function()
+  local sys = hostWorld({ singleplayer = true })
+  hotkey(1)
+  T.eq("SP1 the singleplayer farm scouts the field it owns", flags(sys, 1) .. "/" .. tostring(OPENED[1]) .. "/" .. #WARNINGS, "true/true/1/0")
+  hotkey(4)
+  T.eq("SP2 land it has not bought (a field mission's field) is refused: nothing written, the warning shown", flags(sys, 4) .. "/" .. #OPENED .. "/" .. #WARNINGS, "false/false/1/1")
+  local out = console("SoilScout", "4")
+  T.ok("SP3 and the console says no standing on it", type(out) == "string" and out:find("no standing", 1, true) ~= nil)
+  T.eq("SP4 no broadcast in singleplayer either way", #BROADCASTS, 0)
 end)
 
 SoilScoutDialog.show = realShow

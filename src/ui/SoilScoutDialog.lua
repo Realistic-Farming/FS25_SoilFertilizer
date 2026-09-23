@@ -130,7 +130,6 @@ function SoilScoutDialog:_populate()
     -- [RSF-F231] For the local player's own farm. Refused: the panel says so and
     -- offers no chemical, so Apply has nothing to send.
     local rep, refused = sfm.soilSystem:scoutField(self._fieldId, SoilFertilitySystem.localScoutFarmId())
-    if not rep then return end
     if refused ~= nil then
         setText(self.scoutDisease, tr("sf_scout_no_standing", "Your farm neither owns nor contracts this land. Nothing was scouted."))
         setText(self.scoutSci, "")
@@ -141,6 +140,7 @@ function SoilScoutDialog:_populate()
         self._chemList, self._chemIdx = {}, 1
         return
     end
+    if not rep then return end
     if rep.enabled == false then
         setText(self.scoutDisease, tr("sf_scout_disabled", "Disease system disabled"))
         setText(self.scoutSci, "")

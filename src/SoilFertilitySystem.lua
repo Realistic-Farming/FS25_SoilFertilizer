@@ -2551,21 +2551,21 @@ SoilFertilitySystem.SCOUT_REFUSED = "NO_STANDING"
 --- hotkey, the console, the dialog) supplies the farm it is acting for, and a
 --- caller that reaches the writer another way cannot bypass the rule. The acting
 --- farm must own the farmland or be contracting its owner (the walked-cell rule).
---- A refusal writes NOTHING, flips nothing, sends nothing and broadcasts nothing:
---- it returns the report exactly as an unscouted caller already sees it (the
---- discovery gate intact), plus SCOUT_REFUSED, so no door hands the asker the
---- named disease for a field it has no standing on. On a client the same test runs
---- against the synced farmland owner before the optimistic flip and the event; the
---- server tests again from the sender's own player record.
+--- A refusal writes NOTHING, flips nothing, sends nothing and broadcasts nothing,
+--- and returns NO report at all (nil plus SCOUT_REFUSED): the current report would be
+--- the full truth once the owner has scouted, so a refused door must not read it
+--- back (Bob, #998). On a client the same test runs against the synced farmland
+--- owner before the optimistic flip and the event; the server tests again from the
+--- sender's own player record.
 ---@param fieldId number
 ---@param actingFarmId number|nil  the farm this scout is made for; nil refuses
----@return table|nil report  the now-revealed scout report, or the gated report on a refusal
+---@return table|nil report  the now-revealed scout report; nil on a refusal
 ---@return string|nil refused  SoilFertilitySystem.SCOUT_REFUSED when the farm has no standing
 function SoilFertilitySystem:scoutField(fieldId, actingFarmId)
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return self:getScoutReport(fieldId) end
     if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then
-        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED
+        return nil, SoilFertilitySystem.SCOUT_REFUSED
     end
 
     local changed = false
