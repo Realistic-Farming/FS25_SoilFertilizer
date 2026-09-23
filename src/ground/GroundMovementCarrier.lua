@@ -2,7 +2,7 @@
 -- GroundMovementCarrier
 --
 -- RSF-F208, section 3 of GROUND-CONDITION-CONTRACT v1.5: the Soil-alone movement
--- carriers: the TEDDER (S2a) and the WINDROWER (S2b). The Mower follows.
+-- carriers: the TEDDER (S2a), the WINDROWER and the MOWER (S2b).
 --
 -- WHAT A CARRIER DOES, per real processing call, in the contract's order:
 --   1. If a StockGuard lease is live for this vehicle and work area, do nothing: the
@@ -33,6 +33,20 @@
 -- it picked up but did not drop is native loss, discarded with the frame. Nothing here
 -- changes a native quantity.
 --
+-- THE MOWER SPANS TWO CALLS AND ONE ACCOUNT PER DROP AREA. Each mower work area's cut
+-- (processMowerArea, Mower.lua:328-382) feeds the SHARED auxiliary dropArea.litersToDrop
+-- (:358): the fresh converted output, plus any old DRYGRASS_WINDROW it picks up under
+-- the cut (:362-364), then the native 1000 L cap (:366-367). The drop comes later, per
+-- drop area, from the end of processing (processDropArea, :383-405). So the account
+-- lives on the DROP AREA, and both calls open a frame over it:
+--   - the cut frame records the old windrow's pickup with its pre-removal condition,
+--     adds the fresh output born today (age raw 1) with its wetness left UNKNOWN until
+--     F212 supplies the fresh-grass profile, then reconciles to the native remainder,
+--     so a cap loss discards condition uniformly and never re-creates it;
+--   - the drop frame projects the mixture where the drop actually landed.
+-- The direct-to-FillUnit branch (no drop area, :353-355) is not a ground deposit and
+-- opens no frame. Each frame's lease check names the area actually calling.
+--
 -- P-GROUND-1, PROVISIONAL (Tyson D1 2026-09-15, Arissani's ratification owed): off
 -- the ground, material keeps its captured wetness, and its age is the captured raw
 -- age plus the whole days since capture, saturating at the ceiling, applied ONCE when
@@ -47,6 +61,7 @@ local C = GroundMovementCarrier
 
 C.KIND_TEDDER = "TEDDER"
 C.KIND_WINDROWER = "WINDROWER"
+C.KIND_MOWER = "MOWER"
 C.ACCOUNT_KEY = "_sfGroundAccount"
 C.EPSILON = 1e-3
 -- A cell's observed litres may differ from the native return by the density map's
@@ -284,11 +299,14 @@ end
 ---@param system table        the SoilFertilitySystem (its ground coordinator, cells, admission)
 ---@param vehicle table
 ---@param workArea table
----@param kind string         C.KIND_TEDDER
----@param nativeRemainder function|nil  (workArea) -> the native remainder the account
+---@param kind string         C.KIND_TEDDER, C.KIND_WINDROWER or C.KIND_MOWER
+---@param nativeRemainder function|nil  (area) -> the native remainder the account
 ---       tracks across calls; nil for a carrier whose account lives for one call only
+---@param accountArea table|nil  where the account lives, when not on the calling work
+---       area itself: the Mower's shared drop area. The lease check still names the
+---       area actually calling.
 ---@return table|nil frame
-function C.begin(system, vehicle, workArea, kind, nativeRemainder)
+function C.begin(system, vehicle, workArea, kind, nativeRemainder, accountArea)
     if g_server == nil or type(system) ~= "table" or type(vehicle) ~= "table" or type(workArea) ~= "table" then return nil end
     if not vehicle.isServer then return nil end
     local coord, cells, admission = system.groundConditionCoordinator, system.groundConditionCells, system.groundConditionAdmission
@@ -304,8 +322,9 @@ function C.begin(system, vehicle, workArea, kind, nativeRemainder)
     if not ok then C.stats.barrierRefused = C.stats.barrierRefused + 1 end
     local acc
     if nativeRemainder ~= nil then
-        acc = C.accountOf(workArea)
-        C.accountReconcile(acc, nativeRemainder(workArea), today)
+        local home = type(accountArea) == "table" and accountArea or workArea
+        acc = C.accountOf(home)
+        C.accountReconcile(acc, nativeRemainder(home), today)
     else
         acc = { components = {} }
     end
@@ -341,4 +360,46 @@ end
 --- The Tedder's native remainder (Tedder.lua:297, :304).
 function C.tedderRemainder(workArea)
     return tonumber(workArea.litersToDrop) or 0
+end
+
+--- The Mower's native remainder: the shared drop area's pending litres (Mower.lua:358,
+--- :367, :398).
+function C.mowerRemainder(dropArea)
+    return tonumber(dropArea.litersToDrop) or 0
+end
+
+--- The drop area a mower work area feeds, read as Mower:getDropArea does (:406-424)
+--- but without its warnings or its repair of a bad index, which stay the native's.
+--- WorkAreaType is read bare, as the engine reads it (Mower.lua:417): it cannot be
+--- absent in production, and a guard would turn its absence into a silently skipped
+--- carrier rather than a loud error (MAINTENANCE row 74).
+function C.mowerDropArea(vehicle, workArea)
+    if type(vehicle) ~= "table" or type(workArea) ~= "table" then return nil end
+    if not workArea.dropWindrow or workArea.dropAreaIndex == nil then return nil end
+    local spec = vehicle.spec_workArea
+    local dropArea = spec ~= nil and type(spec.workAreas) == "table" and spec.workAreas[workArea.dropAreaIndex] or nil
+    if type(dropArea) ~= "table" or dropArea.type ~= WorkAreaType.AUXILIARY then return nil end
+    return dropArea
+end
+
+--- After the native cut returned: the fresh converted output enters the drop area's
+--- account born today, with its wetness UNKNOWN until F212 supplies the fresh-grass
+--- profile (contract section 4). Under a refused barrier it is of unknown condition
+--- too, as every litre that call moved is.
+---
+--- THE CAP LOSS NEEDS NOTHING HERE. The native cap (:366-367) leaves the drop area
+--- holding less than the account; the next frame over that drop area (another work
+--- area's cut, or the drop) reconciles to the native remainder before any primitive
+--- reads the account, and a reconcile downward removes uniformly. So the loss discards
+--- condition in proportion and is never re-created.
+---@param frame table    the cut frame
+---@param fresh number   litres the cut produced (the rise in workArea.pickedUpLiters)
+function C.mowerCut(frame, fresh)
+    if frame == nil or frame.account == nil then return end
+    if type(fresh) ~= "number" or fresh <= C.EPSILON then return end
+    if frame.barrierOk then
+        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)
+    else
+        C.accountAdd(frame.account, fresh, nil, nil, frame.today)
+    end
 end

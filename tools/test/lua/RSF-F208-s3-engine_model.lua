@@ -208,8 +208,8 @@ end
 function DensityMapHeightUtil.tipToGroundAroundLine(vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, limitToLineHeight, occlusionAreas, useOcclusionAreas, applyChanges)
     if not g_densityMapHeightManager:getIsValid() then return 0, 0 end
     if g_densityMapHeightManager:getDensityMapHeightTypeByFillTypeIndex(fillTypeIndex) == nil then return 0, 0 end
-    if HEIGHT.throwNext then
-        HEIGHT.throwNext = false
+    if HEIGHT.throwNext or (HEIGHT.throwOnDrop and delta > 0) then
+        HEIGHT.throwNext, HEIGHT.throwOnDrop = false, false
         error("native tip failed")
     end
     if radius == nil then radius = DensityMapHeightUtil.getDefaultMaxRadius(fillTypeIndex) end
@@ -463,6 +463,184 @@ function ENGINE.newWindrower(opts)
     v.spec_workArea = { workAreas = { work, drop } }
     work.processingFunction = v[work.functionName]
     return v, work, drop
+end
+
+-- utils/Utils.lua:380-402 VERBATIM: the class-hook composers installAll's other hooks use.
+Utils = Utils or {}
+Utils.appendedFunction = Utils.appendedFunction or function(oldFunc, newFunc)
+    return oldFunc ~= nil and function(...) oldFunc(...) newFunc(...) end or newFunc
+end
+Utils.prependedFunction = Utils.prependedFunction or function(oldFunc, newFunc)
+    return oldFunc ~= nil and function(...) newFunc(...) oldFunc(...) end or newFunc
+end
+Utils.overwrittenFunction = Utils.overwrittenFunction or function(oldFunc, newFunc)
+    return oldFunc == nil and function(self, ...) return newFunc(self, nil, ...) end
+        or function(self, ...) return newFunc(self, oldFunc, ...) end
+end
+
+-- MODELED: the engine's mod event listener registry. A later installAll hook registers
+-- a listener; nothing a carrier does goes through it.
+addModEventListener = addModEventListener or function(_listener) end
+
+-- ── the Mower (vehicles/specializations/Mower.lua) ───────────────────────────
+WorkAreaType = WorkAreaType or { DEFAULT = 1, MOWER = 7, AUXILIARY = 9 }
+ToolType = ToolType or { UNDEFINED = 0 }
+g_time = g_time or 0
+ENGINE.FRUIT = { GRASS = 21 }
+-- MODELED: the fruit density map is C. updateMowerArea returns the pixels it cut this
+-- call from ENGINE.mowable[fruit] (set by a bar), and one cut pixel is one litre.
+ENGINE.mowable = {}
+FSDensityMapUtil = FSDensityMapUtil or {}
+function FSDensityMapUtil.updateMowerArea(fruitType, _xs, _zs, _xw, _zw, _xh, _zh, _limitToField)
+    local cut = ENGINE.mowable[fruitType] or 0
+    return cut, cut, 0, 0, 0, 0, 0, 0, 0, 1, nil
+end
+g_fruitTypeManager = g_fruitTypeManager or {}
+g_fruitTypeManager.getFruitTypeAreaLiters = function(_, _fruitType, area, _useWindrowed) return area end
+Mower = {}
+Mower.CLIENT_DM_UPDATE_RADIUS = 50
+-- :541-561: the per-frame reset VERBATIM; the server drop-effect block before it is
+-- presentation (dirty flags, effects) and abbreviated.
+function Mower:onStartWorkAreaProcessing(_)
+    local spec = self.spec_mower
+    local workAreas = self:getTypedWorkAreas(WorkAreaType.MOWER)
+    for _ = 1, #workAreas do
+        workAreas[_].pickedUpLiters = 0
+    end
+    spec.workAreaParameters.lastChangedArea = 0
+    spec.workAreaParameters.lastStatsArea = 0
+    spec.workAreaParameters.lastTotalArea = 0
+    spec.isWorking = false
+end
+-- :328-382 VERBATIM through the quantities: the per-converter cut, the direct-to-
+-- FillUnit branch, the shared drop area's pending litres, the type retarget, the old
+-- DRYGRASS pickup under a GRASS_WINDROW cut and the 1000 L cap. Abbreviated: the
+-- stone read and the statistics lines (not quantity), and getHarvestScaleMultiplier,
+-- held at 1. The decompile's `pickup` is an undeclared global; it is local here.
+function Mower:processMowerArea(workArea, _)
+    local spec = self.spec_mower
+    if not self.isServer and self.currentUpdateDistance > Mower.CLIENT_DM_UPDATE_RADIUS then
+        return 0, 0
+    end
+    local xs, _, zs = getWorldTranslation(workArea.start)
+    local xw, _, zw = getWorldTranslation(workArea.width)
+    local xh, _, zh = getWorldTranslation(workArea.height)
+    local workAreaChanged = 0
+    local workAreaTotal = 0
+    local limitToField = false
+    for inputFruitType, converterData in pairs(spec.fruitTypeConverters) do
+        local changedArea, totalArea = FSDensityMapUtil.updateMowerArea(inputFruitType, xs, zs, xw, zw, xh, zh, limitToField)
+        if changedArea > 0 then
+            local multiplier = 1
+            local litersToDrop = g_fruitTypeManager:getFruitTypeAreaLiters(inputFruitType, changedArea, true) * multiplier * converterData.conversionFactor
+            workArea.lastPickupLiters = litersToDrop
+            workArea.pickedUpLiters = litersToDrop
+            local dropArea = self:getDropArea(workArea)
+            if dropArea == nil then
+                if spec.fillUnitIndex ~= nil and self.isServer then
+                    self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, litersToDrop, converterData.fillTypeIndex, ToolType.UNDEFINED)
+                end
+            else
+                dropArea.litersToDrop = dropArea.litersToDrop + litersToDrop
+                dropArea.fillType = converterData.fillTypeIndex
+                dropArea.workAreaIndex = workArea.index
+                if dropArea.fillType == FillType.GRASS_WINDROW then
+                    local lsx, lsy, lsz, lex, ley, lez, radius = DensityMapHeightUtil.getLineByArea(workArea.start, workArea.width, workArea.height, true)
+                    local pickup
+                    pickup, workArea.lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, FillType.DRYGRASS_WINDROW, lsx, lsy, lsz, lex, ley, lez, radius, nil, workArea.lineOffset or 0, false, nil, false)
+                    dropArea.litersToDrop = dropArea.litersToDrop - pickup
+                end
+                local lsy = dropArea.litersToDrop
+                dropArea.litersToDrop = math.min(lsy, 1000)
+            end
+            workAreaTotal = totalArea
+        end
+    end
+    return workAreaChanged, workAreaTotal
+end
+-- :383-405 MODELED. The decompile collapses the second random into `ex`; kept: the
+-- server/distance gate, the minimum-valid gate, ONE tip of the whole pending amount on
+-- a line across the drop area, the actual dropped subtracted, the offset kept. The
+-- random line position is fixed at the drop area's own line.
+function Mower:processDropArea(dropArea, _)
+    if self.isServer or self.currentUpdateDistance <= Mower.CLIENT_DM_UPDATE_RADIUS then
+        if dropArea.litersToDrop > g_densityMapHeightManager:getMinValidLiterValue(dropArea.fillType) then
+            local sx, sy, sz, ex, ey, ez = DensityMapHeightUtil.getLineByArea(dropArea.start, dropArea.width, dropArea.height)
+            local dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, dropArea.litersToDrop, dropArea.fillType, sx, sy, sz, ex, ey, ez, 0, nil, dropArea.dropLineOffset, false, nil, false)
+            dropArea.litersToDrop = dropArea.litersToDrop - dropped
+            dropArea.dropLineOffset = lineOffset
+            if dropped ~= 0 then
+                self.spec_mower.lastDropTime = g_time
+            end
+        end
+    end
+end
+-- :406-424 VERBATIM without its two warnings.
+function Mower:getDropArea(workArea)
+    if not workArea.dropWindrow then
+        return nil
+    end
+    local dropArea = nil
+    if workArea.dropAreaIndex ~= nil then
+        dropArea = self.spec_workArea.workAreas[workArea.dropAreaIndex]
+        if dropArea ~= nil and dropArea.type ~= WorkAreaType.AUXILIARY then
+            workArea.dropAreaIndex = nil
+            dropArea = nil
+        end
+    end
+    return dropArea
+end
+-- :562-566 VERBATIM: every drop area drops through the INSTANCE copy. The effect and
+-- statistics lines after it are presentation and abbreviated.
+function Mower:onEndWorkAreaProcessing(dt, _)
+    local spec = self.spec_mower
+    for _, dropArea in ipairs(spec.dropAreas) do
+        self:processDropArea(dropArea, dt)
+    end
+end
+
+--- A mower as the engine builds it: functions copied into the instance, each mower
+--- work area's pointer captured (WorkArea.lua:266), its listeners on its class.
+--- opts.areas mower work areas side by side (x0 + (i-1)*width), each depth deep from
+--- z0, all feeding drop area opts.dropIndex (an AUXILIARY strip at z = dropZ), or
+--- no drop area at all with opts.noDrop (the direct-to-FillUnit branch).
+function ENGINE.newMower(opts)
+    local v = { isServer = true, isClient = false, currentUpdateDistance = 0, uniqueId = opts.uid or "mower",
+                fill = { level = 0, calls = 0 } }
+    v.processMowerArea = Mower.processMowerArea
+    v.processDropArea = Mower.processDropArea
+    v.getDropArea = Mower.getDropArea
+    v.specClasses = { Mower }
+    v.getOwnerFarmId = function() return 1 end
+    v.addFillUnitFillLevel = function(self, _farm, _i, delta) self.fill.level = self.fill.level + delta; self.fill.calls = self.fill.calls + 1 return delta end
+    v.spec_mower = {
+        fruitTypeConverters = { [ENGINE.FRUIT.GRASS] = { fillTypeIndex = ENGINE.FT.GRASS_WINDROW, conversionFactor = 1 } },
+        workAreaParameters = { lastChangedArea = 0, lastStatsArea = 0, lastTotalArea = 0 },
+        dropAreas = {}, fillUnitIndex = opts.noDrop and 1 or nil, lastDropTime = 0, isWorking = false,
+    }
+    local n, x0, z0, w, d = opts.areas or 1, opts.x0, opts.z0, opts.width, opts.depth
+    local areas, mowers = {}, {}
+    for i = 1, n do
+        local xa = x0 + (i - 1) * w
+        local wa = { index = i, type = WorkAreaType.MOWER, functionName = "processMowerArea",
+            start = { x = xa, z = z0 }, width = { x = xa + w, z = z0 }, height = { x = xa, z = z0 + d },
+            dropWindrow = not opts.noDrop, dropAreaIndex = n + 1, lastPickupLiters = 0, pickedUpLiters = 0 }
+        areas[#areas + 1] = wa
+        mowers[#mowers + 1] = wa
+    end
+    local drop = { index = n + 1, type = WorkAreaType.AUXILIARY, functionName = nil,
+        start = { x = x0, z = opts.dropZ }, width = { x = x0 + n * w, z = opts.dropZ }, height = { x = x0, z = opts.dropZ + (opts.dropDepth or 1) },
+        litersToDrop = 0, fillType = FillType.UNKNOWN }
+    areas[#areas + 1] = drop
+    v.spec_mower.dropAreas = { drop }
+    v.spec_workArea = { workAreas = areas }
+    v.getTypedWorkAreas = function(self, areaType)
+        local out = {}
+        for _, a in ipairs(self.spec_workArea.workAreas) do if a.type == areaType then out[#out + 1] = a end end
+        return out
+    end
+    for _, wa in ipairs(mowers) do wa.processingFunction = v[wa.functionName] end
+    return v, mowers, drop
 end
 
 -- ── world owners, built by SoilFertilitySystem.new through their own .new ────

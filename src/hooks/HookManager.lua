@@ -566,6 +566,10 @@ function HookManager:installAll(soilSystem)
     local windrowerOk = self:installWindrowerHook()
     if windrowerOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Mower carrier (RSF-F208 section 3): ground condition follows the mown windrow
+    local mowerCarrierOk = self:installMowerCarrierHook()
+    if mowerCarrierOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Combine swath hook (SF-43/SF-45): straw birth on the age layer
     local swathOk = self:installCombineSwathHook()
     if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -4604,6 +4608,143 @@ function HookManager:installWindrowerHook()
     SoilLogger.info(
         "[OK] Windrower hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
         .. "the ground-condition carrier logs its first observed pass separately.", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e2: Mower carrier (RSF-F208 section 3, the ground-condition carrier)
+-- =========================================================
+--- A mower spans TWO calls over one shared drop area (Mower.lua): each work area's cut
+--- (processMowerArea :328, the CAPTURED work-area pointer, mechanism 1) adds to
+--- dropArea.litersToDrop, and the end of processing drops each drop area through
+--- self:processDropArea (:565, the INSTANCE copy, mechanism 2). The carrier opens a
+--- frame around each: the cut frame records the old windrow picked up under the cut and
+--- the fresh output (GroundMovementCarrier.mowerCut), the drop frame projects the drop
+--- area's mixture where it lands.
+---
+--- WHY THE INSTANCE COPY AND NOT A CLASS FRAME AROUND onEndWorkAreaProcessing: the end
+--- drops EVERY drop area in one call, and a frame carries one account. Wrapping
+--- processDropArea gives each drop area its own frame over its own account. It is
+--- recognised by identity against Mower.processDropArea (the tedder and windrower copy
+--- functions of the same name), and a foreign replacement is left alone.
+---
+--- SF's existing mower birth (installMowerHook) is untouched: it appends to the class
+--- end, so it runs after the drop and writes only pixels with no record, never a cell
+--- this carrier projected. F212 suppresses it in admitted contexts (contract section 4).
+---@return boolean success
+function HookManager:installMowerCarrierHook()
+    if not Mower or type(Mower.processMowerArea) ~= "function" or type(Mower.processDropArea) ~= "function" then
+        SoilLogger.warning("[MowerCarrier] Mower.processMowerArea/processDropArea not available - skipping")
+        return false
+    end
+    local nativeDrop = Mower.processDropArea
+
+    -- One call, every return: the native call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- The same observer the tedder and windrower hooks install; whichever wraps the
+    -- primitive first owns its removal.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[MowerCarrier] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
+        end
+    end
+
+    local function carrierOn(vehicle)
+        return vehicle.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+            and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled
+    end
+    local function begin(vehicle, area, dropArea)
+        local ok, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem, vehicle, area,
+            GroundMovementCarrier.KIND_MOWER, GroundMovementCarrier.mowerRemainder, dropArea)
+        if ok then return frameOrErr end
+        SoilLogger.warning("[MowerCarrier] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+        return nil
+    end
+    local function finish(frame)
+        local ok, err = pcall(GroundMovementCarrier.finish, frame)
+        if not ok then SoilLogger.warning("[MowerCarrier] ground-condition carrier failed to finish (%s)", tostring(err)) end
+    end
+
+    -- The cut: the captured processMowerArea pointer.
+    local function makeCutWrapper(realFn)
+        return function(mowerSelf, workArea, dt)
+            local frame, dropArea, before = nil, nil, 0
+            if carrierOn(mowerSelf) then
+                dropArea = GroundMovementCarrier.mowerDropArea(mowerSelf, workArea)
+                -- No drop area: the direct-to-FillUnit branch, not a ground deposit.
+                if dropArea ~= nil then
+                    before = tonumber(workArea.pickedUpLiters) or 0
+                    frame = begin(mowerSelf, workArea, dropArea)
+                end
+            end
+            -- Protected ONLY so the frame closes whether the native call returned or
+            -- raised; a raised error is re-raised unchanged.
+            local packed = packAll(pcall(realFn, mowerSelf, workArea, dt))
+            if frame ~= nil then
+                if packed[1] then
+                    local fresh = (tonumber(workArea.pickedUpLiters) or 0) - before
+                    local okCut, errCut = pcall(GroundMovementCarrier.mowerCut, frame, fresh)
+                    if not okCut then SoilLogger.warning("[MowerCarrier] fresh output not recorded (%s)", tostring(errCut)) end
+                end
+                finish(frame)
+            end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+    end
+
+    -- The drop: the instance copy of processDropArea, one frame per drop area.
+    local function wrapDrop(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_mower == nil then return 0 end
+        if rawget(vehicle, "_sfMowerDropWrap") ~= nil then return 0 end
+        local real = rawget(vehicle, "processDropArea")
+        if real ~= nativeDrop then return 0 end
+        local wrapper = function(mowerSelf, dropArea, dt)
+            -- The end of processing drops every drop area every frame; one with nothing
+            -- pending drops nothing (:385), so it opens no frame and runs no barrier.
+            local frame = nil
+            if carrierOn(mowerSelf) and type(dropArea) == "table" and (tonumber(dropArea.litersToDrop) or 0) > 0 then
+                frame = begin(mowerSelf, dropArea, dropArea)
+            end
+            local packed = packAll(pcall(real, mowerSelf, dropArea, dt))
+            if frame ~= nil then finish(frame) end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+        rawset(vehicle, "processDropArea", wrapper)
+        rawset(vehicle, "_sfMowerDropWrap", { original = real, wrapper = wrapper })
+        return 1
+    end
+
+    local patchedCount, dropCount = 0, 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_mower", "processMowerArea", makeCutWrapper)
+            dropCount = dropCount + wrapDrop(vehicle)
+        end
+    end
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            HookManager.wrapWorkAreaProcessing(vehicle, "spec_mower", "processMowerArea", makeCutWrapper)
+            wrapDrop(vehicle)
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info(
+        "[OK] Mower carrier installed on %d work area(s) and %d drop call(s). This is an INSTALL count, not proof "
+        .. "it runs; the ground-condition carrier logs its first observed pass separately.", patchedCount, dropCount)
     return true
 end
 
