@@ -1,8 +1,10 @@
-# RSF-F208 section 3, slice S2a (the Tedder carrier) mutation battery: does the bar
-# catch the versions that would move ground condition wrong?
+# RSF-F208 section 3 mutation battery: the Tedder carrier (S2a), and the Windrower and
+# Mower carriers (S2b). Does the bar catch the versions that would move ground condition
+# wrong?
 #
-# Each mutation removes one clause of the carrier, the observer or the tedder wrapper
-# and must be KILLED by a named row of RSF-F208-s3-tedder_carrier_spec_test.lua. For
+# Each mutation removes one clause of the carrier, the observer or a hook and must be
+# KILLED by a named row of RSF-F208-s3-tedder_carrier_spec_test.lua,
+# RSF-F208-s3b-windrower_carrier_spec_test.lua or RSF-F208-s3b-mower_carrier_spec_test.lua. For
 # each: assert the edit LANDED (exact occurrence count), run the suite, record
 # KILLED/SURVIVED with the named rows, restore byte-for-byte and PROVE the restore with
 # a hash. "DID NOT APPLY" never counts as a kill.
@@ -15,6 +17,14 @@
 #   dropping the 1 m outer radius (3.83 m) still admits it. Equivalent at this grain.
 # - main.lua's two source lines: the bench loads modules directly, and SoilFertilizer has
 #   no load-path gate (it runs only on StockGuard). Checked by the in-game row instead.
+# - The mower hook's own client and spec checks (carrierOn's isServer, wrapDrop's
+#   spec_mower): each is masked by a stricter gate behind it, the carrier's begin
+#   refusing a client (pinned by B3/B7b) and wrapDrop's identity test against
+#   Mower.processDropArea (M10, D1-D2). Equivalent here by construction.
+# - The rise in pickedUpLiters rather than its value: the engine resets it at the start
+#   of every frame (Mower.lua:555) and each work area is cut once per frame, so the two
+#   are equal in every native order. Kept as a rise so a second cut in one frame could
+#   never be counted twice.
 #
 # Usage (from the repo root): py tools/test/mutate_rsf_f208_s3.py [id-prefix ...]
 import hashlib, os, re, subprocess, sys
@@ -97,7 +107,7 @@ MUTATIONS = [
     "        comp.ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today)\n        out[#out + 1] = { litres = comp.litres, ageRaw = comp.ageRaw, wetnessRaw = comp.wetnessRaw }", 1)],
   "resolving writes the aged value back without re-stamping, so the span is added again"),
  ("B9-no-reconcile-at-begin", CAR,
-  [("    if nativeRemainder ~= nil then C.accountReconcile(acc, nativeRemainder(workArea), today) end\n",
+  [("        C.accountReconcile(acc, nativeRemainder(home), today)\n",
     "", 1)],
   "a remainder another mod cleared still carries its old condition into the next drop"),
  ("B10-drop-keeps-the-account", CAR,
@@ -122,40 +132,160 @@ MUTATIONS = [
   "each contributor writes the cell separately instead of one combined update"),
 
  ("B13-first-pass-logged-every-pass", CAR,
-  [("    if not C.firstPassLogged and (frame.primitives or 0) > 0 then",
+  [("    if not C.firstPassLogged[frame.kind] and (frame.primitives or 0) > 0 then",
     "    if (frame.primitives or 0) > 0 then", 1)],
   "the in-game proof line repeats on every tedder pass"),
  ("B14-first-pass-never-logged", CAR,
-  [("    if not C.firstPassLogged and (frame.primitives or 0) > 0 then",
+  [("    if not C.firstPassLogged[frame.kind] and (frame.primitives or 0) > 0 then",
     "    if false then", 1)],
   "nothing in log.txt shows the carrier ever ran"),
 
  # --- the tedder wrapper ---
  ("H0-observer-cleanup-not-registered", HM,
-  [("            self:registerCleanup(\"DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)\", function()\n"
+  [("            -- uninstall restores the native function only while ours is current.\n"
+    "            self:registerCleanup(\"DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)\", function()\n"
     "                GroundNativeObserver.uninstall()\n"
     "            end)\n",
-    "", 1)],
+    "            -- uninstall restores the native function only while ours is current.\n", 1)],
   "the observer's wrap outlives the hook manager's teardown"),
  ("H1-observer-never-installed", HM,
-  [("        local okObs, whyObs = GroundNativeObserver.install()",
-    "        local okObs, whyObs = false, \"MUTANT\"", 1)],
+  [("        local okObs, whyObs = GroundNativeObserver.install()\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[TedderHook]",
+    "        local okObs, whyObs = false, \"MUTANT\"\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[TedderHook]", 1)],
   "the hook installs the carrier but not the observer it records through"),
  ("H2-carrier-never-begins", HM,
   [("            if tedderSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n",
     "            if false and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n", 1)],
   "the tedder wrapper never opens a carrier frame"),
  ("H3-carrier-ignores-settings", HM,
-  [("               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then",
+  [("            if tedderSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
+    "               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then",
+    "            if tedderSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
     "               and g_SoilFertilityManager.settings ~= nil then", 1)],
   "the carrier runs with the mod switched off"),
  ("H4-frame-not-closed", HM,
-  [("                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)",
-    "                local okFinish, errFinish = true, nil", 1)],
+  [("                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)\n"
+    "                if not okFinish then\n"
+    "                    SoilLogger.warning(\"[TedderHook] ground-condition carrier failed to finish",
+    "                local okFinish, errFinish = true, nil\n"
+    "                if not okFinish then\n"
+    "                    SoilLogger.warning(\"[TedderHook] ground-condition carrier failed to finish", 1)],
   "the carrier frame is left on the stack"),
  ("H5-wrapper-swallows-native-error", HM,
-  [("            if not packed[1] then error(packed[2], 0) end\n", "", 1)],
+  [("            if not packed[1] then error(packed[2], 0) end\n            local results = { unpack(packed, 2, packed.n) }",
+    "            local results = { unpack(packed, 2, packed.n) }", 1)],
   "a native error inside processTedderArea disappears"),
+
+ # --- the windrower (S2b) ---
+ ("W1-windrower-keeps-an-account", CAR,
+  [("    else\n        acc = { components = {} }\n    end",
+    "    else\n        acc = C.accountOf(workArea)\n    end", 1)],
+  "the windrower's undropped loss rides into a later drop"),
+ ("W2-windrower-carrier-never-begins", HM,
+  [("            if windrowerSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n",
+    "            if false and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n", 1)],
+  "the windrower wrapper never opens a carrier frame"),
+ ("W3-windrower-ignores-settings", HM,
+  [("            if windrowerSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
+    "               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then",
+    "            if windrowerSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
+    "               and g_SoilFertilityManager.settings ~= nil then", 1)],
+  "the windrower carrier runs with the mod switched off"),
+ ("W4-windrower-swallows-native-error", HM,
+  [("[WindrowerHook] ground-condition carrier failed to finish (%s)\", tostring(errFinish))\n                end\n            end\n"
+    "            if not packed[1] then error(packed[2], 0) end\n            return unpack(packed, 2, packed.n)",
+    "[WindrowerHook] ground-condition carrier failed to finish (%s)\", tostring(errFinish))\n                end\n            end\n"
+    "            return unpack(packed, 2, packed.n)", 1)],
+  "a native error inside processWindrowerArea disappears"),
+ ("W5-first-pass-flag-shared-across-kinds", CAR,
+  [("    if not C.firstPassLogged[frame.kind] and (frame.primitives or 0) > 0 then\n        C.firstPassLogged[frame.kind] = true",
+    "    if not C.firstPassLogged.any and (frame.primitives or 0) > 0 then\n        C.firstPassLogged.any = true", 1)],
+  "the windrower's first pass is silent because the tedder logged first"),
+ ("W6-windrower-observer-never-installed", HM,
+  [("        local okObs, whyObs = GroundNativeObserver.install()\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[WindrowerHook]",
+    "        local okObs, whyObs = false, \"MUTANT\"\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[WindrowerHook]", 1)],
+  "the windrower hook installs the carrier but not the observer"),
+ ("W7-windrower-observer-cleanup-not-registered", HM,
+  [("            SoilLogger.warning(\"[WindrowerHook] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif okObs and whyObs == nil then",
+    "            SoilLogger.warning(\"[WindrowerHook] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif false then", 1)],
+  "the observer the windrower hook wrapped outlives the hook manager's teardown"),
+
+ # --- the mower (S2b) ---
+ ("M1-fresh-output-not-recorded", CAR,
+  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)", "        local _ = AGE_BORN", 1)],
+  "the fresh cut lands as unknown instead of born today"),
+ ("M2-fresh-output-given-a-wetness", CAR,
+  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)",
+    "        C.accountAdd(frame.account, fresh, AGE_BORN, 100, frame.today)", 1)],
+  "the fresh cut is given a wetness before F212 supplies its profile"),
+ ("M3-fresh-output-a-day-old", CAR,
+  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)",
+    "        C.accountAdd(frame.account, fresh, AGE_BORN + 1, nil, frame.today)", 1)],
+  "the fresh cut is counted as a day old"),
+ ("M4-account-on-the-calling-area", CAR,
+  [("        local home = type(accountArea) == \"table\" and accountArea or workArea",
+    "        local home = workArea", 1)],
+  "the cut's account lives on the mower work area, not the drop area it feeds"),
+ ("M5-drop-area-of-any-type", CAR,
+  [(" or dropArea.type ~= WorkAreaType.AUXILIARY then return nil end",
+    " then return nil end", 1)],
+  "a work area the native gives no drop area is carried as if it had one"),
+ ("M6-cut-frame-never-opens", HM,
+  [("                    frame = begin(mowerSelf, workArea, dropArea)", "                    frame = nil", 1)],
+  "the cut is never observed: the old windrow's condition and the fresh birth are lost"),
+ ("M7-lease-checked-on-the-drop-area", HM,
+  [("                    frame = begin(mowerSelf, workArea, dropArea)", "                    frame = begin(mowerSelf, dropArea, dropArea)", 1)],
+  "a lease on the cutting work area is not seen"),
+ ("M8-drop-frame-never-opens", HM,
+  [("                frame = begin(mowerSelf, dropArea, dropArea)\n            end", "                frame = nil\n            end", 1)],
+  "the drop is never observed, so nothing is projected"),
+ ("M9-drop-frame-when-nothing-pending", HM,
+  [(" and (tonumber(dropArea.litersToDrop) or 0) > 0 then", " then", 1)],
+  "an idle drop area runs the barrier every frame"),
+ ("M10-drop-wrap-ignores-identity", HM,
+  [("        if real ~= nativeDrop then return 0 end\n", "", 1)],
+  "another mod's processDropArea is replaced"),
+ ("M11-drop-copy-never-wrapped", HM,
+  [("            dropCount = dropCount + wrapDrop(vehicle)\n", "", 1)],
+  "an existing mower's drop is not carried"),
+ ("M12-late-mower-drop-not-wrapped", HM,
+  [("            wrapDrop(vehicle)\n            return origAdd(self, vehicle, ...)", "            return origAdd(self, vehicle, ...)", 1)],
+  "a mower added later drops uncarried"),
+ ("M13-cut-wrapper-swallows-native-error", HM,
+  [("                finish(frame)\n            end\n            if not packed[1] then error(packed[2], 0) end",
+    "                finish(frame)\n            end", 1)],
+  "a native error inside the cut disappears"),
+ ("M14-drop-wrapper-swallows-native-error", HM,
+  [("            if frame ~= nil then finish(frame) end\n            if not packed[1] then error(packed[2], 0) end",
+    "            if frame ~= nil then finish(frame) end", 1)],
+  "a native error inside the drop disappears"),
+ ("M15-mower-ignores-settings", HM,
+  [("        return vehicle.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
+    "            and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled",
+    "        return vehicle.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil\n"
+    "            and g_SoilFertilityManager.settings ~= nil", 1)],
+  "the mower carrier runs with the mod switched off"),
+ ("M16-fresh-never-passed", HM,
+  [("                    local fresh = (tonumber(workArea.pickedUpLiters) or 0) - before", "                    local fresh = 0", 1)],
+  "the hook never hands the cut's output to the carrier"),
+ ("M17-mower-observer-never-installed", HM,
+  [("        local okObs, whyObs = GroundNativeObserver.install()\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[MowerCarrier]",
+    "        local okObs, whyObs = false, \"MUTANT\"\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[MowerCarrier]", 1)],
+  "the mower hook installs its wrappers but not the observer they record through"),
+ ("M18-mower-observer-cleanup-not-registered", HM,
+  [("            SoilLogger.warning(\"[MowerCarrier] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif okObs and whyObs == nil then",
+    "            SoilLogger.warning(\"[MowerCarrier] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif false then", 1)],
+  "the observer the mower hook wrapped outlives the hook manager's teardown"),
+
+ # --- production's installAll ---
+ ("A1-installAll-omits-the-mower", HM,
+  [("    local mowerCarrierOk = self:installMowerCarrierHook()\n", "    local mowerCarrierOk = true\n", 1)],
+  "production never installs the mower carrier"),
+ ("A2-installAll-omits-the-windrower", HM,
+  [("    local windrowerOk = self:installWindrowerHook()\n", "    local windrowerOk = true\n", 1)],
+  "production never installs the windrower carrier"),
+ ("A3-installAll-omits-the-tedder", HM,
+  [("    local tedderOk = self:installTedderHook()\n", "    local tedderOk = true\n", 1)],
+  "production never installs the tedder carrier"),
 ]
 
 
