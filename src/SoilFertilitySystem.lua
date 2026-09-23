@@ -3515,6 +3515,27 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     return self.fieldData[fieldId]
 end
 
+-- [SF-79 3.C] Route a re-rolled field's pH through the positional writer, shared by
+-- both re-rolls. A FIELD SET at the re-rolled scalar over the parcel union, then the
+-- scalar is republished from the derived report so it equals the quantised map value.
+-- The writer refuses off the server (UNAVAILABLE 'not-server'), matching the console
+-- commands that call the re-rolls. When PositionalPH is absent nothing is painted,
+-- which is what the re-roll did on this branch before (vmSeedField skips pH).
+-- _phSeedScalar and _phPending are deliberately left alone: after a FIELD SET no
+-- raw-zero ground is left in the union, and re-freezing the seed would change what
+-- "frozen" means, which is not this item's call.
+function SoilFertilitySystem:_phRerollField(fieldId, field)
+    if type(self._applyPHFootprint) ~= "function" or field == nil then return nil end
+    local result = self:_applyPHFootprint(fieldId, {
+        operation = PositionalPH.OP_SET, scope = PositionalPH.SCOPE_FIELD,
+        value = field.pH, source = 'reroll',
+    })
+    if type(self._phRefreshScalar) == "function" then
+        self:_phRefreshScalar(fieldId)
+    end
+    return result
+end
+
 -- Re-roll the starting soil profile of EVERY known field using the current variation
 -- logic (:_computeInitialSoil). Lets players on an existing save pick up the regional
 -- variation introduced in 2.4.2.6 without starting a new game (issue #632). Resets
@@ -3538,6 +3559,16 @@ function SoilFertilitySystem:rerollAllFields()
             self:_prePopulateZoneData(fieldId)
             -- REFINED: repaint the per-pixel value maps with the re-rolled profile
             self:vmSeedField(fieldId, true)
+            -- [SF-79 3.C] pH is not in vmSeedField's keys any more (the map is the
+            -- chemical authority), so the re-rolled pH goes through the positional
+            -- writer as a FIELD SET, the admin path's shape (:3766-3772). Without it
+            -- the map kept its old pixels, the report showed the OLD mean at once,
+            -- and the next pH write republished that old mean over the scalar: the
+            -- re-roll was invisible and then undone. SET's band is 0..RAW_MAX, so
+            -- raw-zero ground in the union is written too, which is the right
+            -- outcome for "re-roll the starting soil". The scalar is then refreshed
+            -- from the report so it equals the quantised map value.
+            self:_phRerollField(fieldId, field)
             count = count + 1
         end
     end
@@ -3585,6 +3616,8 @@ function SoilFertilitySystem:rerollUnownedFields()
                 self:_prePopulateZoneData(fieldId)
                 -- REFINED: repaint the per-pixel value maps with the re-rolled profile
                 self:vmSeedField(fieldId, true)
+                -- [SF-79 3.C] The re-rolled pH reaches the map (see rerollAllFields).
+                self:_phRerollField(fieldId, field)
                 rerolled = rerolled + 1
             end
         end
@@ -7938,6 +7971,10 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
     self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
+    -- [SF-79] The positional pH schema marker, read once. Its one reader is the
+    -- per-field seed freeze below (_phFreezeSeedFromLoad): an unmarked save proves
+    -- its #pH predates the contract. It gates nothing else.
+    local sf79Marked = (getXMLInt(xmlFile, key .. "#sf79PHSchema") or 0) == 1
 
     -- OM-213 organic premium provenance ledger (absent on older saves = empty).
     if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -8034,6 +8071,10 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- can never present as current local soil.
         if type(self._phLoadFieldXML) == "function" then
             self:_phLoadFieldXML(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+        -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED save, once.
+        if type(self._phFreezeSeedFromLoad) == "function" then
+            self:_phFreezeSeedFromLoad(self.fieldData[fieldId], sf79Marked)
         end
 
         -- Load daily application throttles
@@ -8216,7 +8257,9 @@ end
 -- save. StateLedger's serializer round-trips arbitrary nested tables.
 function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, fields = {} }
+    -- [SF-79] sf79PHSchema mirrors the XML root marker, so a ledger restore makes
+    -- the same seed-freeze decision an XML load makes.
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -8323,7 +8366,10 @@ end
 -- Apply a plain-table snapshot (from getSoilStateTable / StateLedger) back into
 -- fieldData. Mirrors loadFromXMLFile's raw read + clamps, then routes every
 -- field through the shared _finalizeLoadedField. Returns the field count.
-function SoilFertilitySystem:applySoilStateTable(data)
+---@param data table the ledger snapshot (getSoilStateTable's shape)
+---@param xmlRootMarked boolean|nil the root #sf79PHSchema of the soilData.xml
+--- safety copy, read by the caller. See the marker read below.
+function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
     local defaults = SoilConstants.FIELD_DEFAULTS
     self.fieldData = {}
     local _curDay = (g_currentMission and g_currentMission.environment
@@ -8335,6 +8381,22 @@ function SoilFertilitySystem:applySoilStateTable(data)
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
     self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
+    -- [SF-79] The schema marker, with the same one reader as the XML load: the
+    -- per-field seed freeze below. Two sources, either one marks:
+    --   1. data.sf79PHSchema, mirrored into the snapshot by getSoilStateTable
+    --      from #982 on;
+    --   2. xmlRootMarked, the root #sf79PHSchema of the soilData.xml safety copy,
+    --      read by loadSoilData's ledger branch.
+    -- The second exists because EVERY ledger snapshot written before #982 lacks
+    -- the key, dev and tester snapshots included, and with StateLedger delivering
+    -- a block this function is the only loader that runs (SoilFertilityManager
+    -- loadSoilData). On this path an absent key is not "unmarked": those builds
+    -- wrote the marker into the safety copy and their field.pH may already be
+    -- the later report, so freezing from the snapshot alone would persist a
+    -- forbidden seed at the next save. A missing safety copy counts as unmarked
+    -- (the caller passes false), which keeps the freeze for released players
+    -- whose saves predate the marker entirely.
+    local sf79Marked = (data.sf79PHSchema or 0) == 1 or xmlRootMarked == true
 
     local count = 0
     local fields = data.fields or {}
@@ -8434,6 +8496,11 @@ function SoilFertilitySystem:applySoilStateTable(data)
                         compaction      = cell.compaction or 0,
                     }
                 end
+            end
+            -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED snapshot,
+            -- once, after the seed restore above so a carried seed is never re-frozen.
+            if type(self._phFreezeSeedFromLoad) == "function" then
+                self:_phFreezeSeedFromLoad(f, sf79Marked)
             end
             self.fieldData[fieldId] = f
             self:_finalizeLoadedField(fieldId, f)

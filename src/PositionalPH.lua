@@ -673,6 +673,36 @@ function SoilFertilitySystem:_phSaveFieldXML(xmlFile, fieldKey, field)
     setXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount", idx)
 end
 
+--- Freeze the pre-migration pH scalar ONCE, from a save that provably predates the
+--- positional contract (brief 3.B: "seed only raw-zero supported ground from a
+--- frozen pre-migration scalar clamped to carrier bounds"). This is the one
+--- legitimate reader of the root `#sf79PHSchema` marker.
+---
+--- WHY THE MARKER DECIDES. `field.pH` is republished from the derived report by
+--- `_phRefreshScalar` after every positional write, so on a save written by a
+--- build with the contract the loaded scalar may already be "the later report",
+--- which 3.B forbids as a seed. Only an UNMARKED save proves its scalar came
+--- before SF-79. A marked save with no seed is left nil on purpose; the brief's
+--- named alternative, the existing genesis rule, belongs to the seeding item.
+---
+--- The marker gates ONLY this freeze. It never gates seeding or missing-carrier
+--- recovery: a schema marker never proves the carrier exists (see _migratePH).
+--- Same helper on both loaders (XML and the StateLedger table), so they cannot
+--- drift. Clamped to the carrier bounds, because the load clamps pH to 8.5.
+---@param field table the loaded field record
+---@param schemaMarked boolean true when the save carried #sf79PHSchema
+---@return boolean frozen true only when this call set the seed
+function SoilFertilitySystem:_phFreezeSeedFromLoad(field, schemaMarked)
+    if type(field) ~= 'table' or schemaMarked == true then return false end
+    if type(field._phSeedScalar) == 'number' then return false end
+    local pH = field.pH
+    if type(pH) ~= 'number' then return false end
+    local limits = SoilConstants and SoilConstants.NUTRIENT_LIMITS
+    if limits == nil then return false end
+    field._phSeedScalar = math.max(limits.PH_MIN, math.min(limits.PH_MAX, pH))
+    return true
+end
+
 --- Restore the SF-79 field metadata. The report stays absent until re-derived, so
 --- persisted placeholders can never present as current local soil.
 function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
