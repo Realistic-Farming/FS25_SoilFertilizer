@@ -31,7 +31,7 @@ ENGINE = {
     FT = { GRASS_WINDROW = 11, DRYGRASS_WINDROW = 12, STRAW = 13 },
 }
 local FT_NAME = {}
-for name, index in pairs(ENGINE.FT) do FT_NAME[index] = name end
+for name, index in pairs(ENGINE.FT) do FT_NAME[index] = name; FillType[name] = index end
 
 -- Nodes are tables carrying their world position.
 function getWorldTranslation(node)
@@ -337,17 +337,132 @@ function ENGINE.newTedder(opts)
     return v, work, drop
 end
 
---- WorkArea.lua:179-193: the per-area order the engine runs the captured pointers in.
+--- WorkArea:onUpdateTick's order: raise onStartWorkAreaProcessing (:126), run each
+--- area's captured pointers (:179-193), raise onEndWorkAreaProcessing (:206). Events
+--- dispatch through each spec CLASS at call time (SpecializationUtil.raiseEvent
+--- :17-26), so a class wrap installed later is the one that runs.
 function ENGINE.tick(vehicle, dt)
-    for _, workArea in ipairs(vehicle.spec_workArea.workAreas) do
+    local workAreas = vehicle.spec_workArea.workAreas
+    for _, class in ipairs(vehicle.specClasses or {}) do
+        if type(class.onStartWorkAreaProcessing) == "function" then class.onStartWorkAreaProcessing(vehicle, dt, workAreas) end
+    end
+    local hasProcessed = false
+    for _, workArea in ipairs(workAreas) do
         if workArea.preprocessingFunction ~= nil then
             workArea.preprocessingFunction(vehicle, workArea, dt)
         end
         if workArea.processingFunction ~= nil then
             local xs, _ = workArea.processingFunction(vehicle, workArea, dt)
             if xs > 0 then workArea.lastWorkedHectares = xs else workArea.lastWorkedHectares = 0 end
+            hasProcessed = true
         end
     end
+    for _, class in ipairs(vehicle.specClasses or {}) do
+        if type(class.onEndWorkAreaProcessing) == "function" then class.onEndWorkAreaProcessing(vehicle, dt, hasProcessed) end
+    end
+end
+
+-- ── the Windrower (vehicles/specializations/Windrower.lua) ───────────────────
+Windrower = {}
+Windrower.CLIENT_DM_UPDATE_RADIUS = 50
+-- :285-292 VERBATIM: the per-frame reset the engine raises before the areas.
+function Windrower:onStartWorkAreaProcessing(_, workAreas)
+    for _, workArea in pairs(workAreas) do
+        workArea.lastValidPickupFillType = FillType.UNKNOWN
+        workArea.lastPickupLiters = 0
+        workArea.lastDroppedLiters = 0
+    end
+    self.spec_windrower.isWorking = false
+end
+-- :309-384 VERBATIM through the drop; the dirty-flag and effect block inside
+-- `getLastSpeed(true) > 0.5` is abbreviated (presentation only; this bench's machines
+-- report speed 0, so it is never entered), and so is the stone read under isWorking.
+function Windrower:processWindrowerArea(workArea, _)
+    local spec = self.spec_windrower
+    if not self.isServer and self.currentUpdateDistance > Windrower.CLIENT_DM_UPDATE_RADIUS then
+        return 0, 0
+    end
+    local sx = self:getLastSpeed() > 0.5
+    spec.isWorking = sx
+    local sx, sy, sz = getWorldTranslation(workArea.start)
+    local wx, wy, wz = getWorldTranslation(workArea.width)
+    local hx, hy, hz = getWorldTranslation(workArea.height)
+    spec.stoneLastState = 0
+    local lsx, lsy, lsz, lex, ley, lez, radius = DensityMapHeightUtil.getLineByAreaDimensions(sx, sy, sz, wx, wy, wz, hx, hy, hz)
+    local pickupLiters = 0
+    local pickupFillType = FillType.UNKNOWN
+    if workArea.lastPickupLiters == 0 and (workArea.lastValidPickupFillType == FillType.UNKNOWN or workArea.litersToDrop < g_densityMapHeightManager:getMinValidLiterValue(workArea.lastValidPickupFillType)) then
+        for _, fillTypeIndex in ipairs(spec.supportedFillTypes) do
+            pickupLiters = -DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, fillTypeIndex, lsx, lsy, lsz, lex, ley, lez, radius, nil, nil, spec.limitToLineHeight, nil)
+            if pickupLiters > 0 then
+                pickupFillType = fillTypeIndex
+                break
+            end
+        end
+    else
+        pickupLiters = -DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, workArea.lastValidPickupFillType, lsx, lsy, lsz, lex, ley, lez, radius, nil, nil, false, nil)
+        if workArea.lastValidPickupFillType == FillType.GRASS_WINDROW then
+            pickupLiters = pickupLiters - DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, FillType.DRYGRASS_WINDROW, lsx, lsy, lsz, lex, ley, lez, radius, nil, nil, false, nil)
+        elseif workArea.lastValidPickupFillType == FillType.DRYGRASS_WINDROW then
+            pickupLiters = pickupLiters - DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, FillType.GRASS_WINDROW, lsx, lsy, lsz, lex, ley, lez, radius, nil, nil, false, nil)
+        end
+        if pickupLiters > 0 then
+            pickupFillType = workArea.lastValidPickupFillType
+        end
+    end
+    if pickupFillType ~= FillType.UNKNOWN then
+        workArea.lastValidPickupFillType = pickupFillType
+    end
+    workArea.lastPickupLiters = pickupLiters
+    workArea.litersToDrop = workArea.litersToDrop + pickupLiters
+    local area = MathUtil.vector3Length(lsx - lex, lsy - ley, lsz - lez) * self.lastMovedDistance
+    if workArea.lastPickupLiters > 0 then
+        local dropArea = self.spec_workArea.workAreas[workArea.dropWindrowWorkAreaIndex]
+        if dropArea ~= nil then
+            local _ = workArea.lastValidPickupFillType
+            local fillTypeIndex = self:processDropArea(dropArea, workArea.lastPickupLiters, _)
+            workArea.lastDroppedLiters = fillTypeIndex
+            workArea.litersToDrop = workArea.litersToDrop - fillTypeIndex
+        end
+    end
+    return workArea.lastDroppedLiters, area
+end
+-- :385-390 VERBATIM.
+function Windrower:processDropArea(dropArea, litersToDrop, fillType)
+    local lsx, lsy, lsz, lex, ley, lez, radius = DensityMapHeightUtil.getLineByArea(dropArea.start, dropArea.width, dropArea.height)
+    local dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, litersToDrop, fillType, lsx, lsy, lsz, lex, ley, lez, radius, nil, dropArea.lineOffset, false, nil, false)
+    dropArea.lineOffset = lineOffset
+    return dropped
+end
+
+--- A windrower as the engine builds it: functions copied into the instance, the
+--- work-area pointer captured (WorkArea.lua:266), the start listener on its class.
+--- Rakes x 0..8, z 0..2 onto a drop strip at z = dropZ.
+function ENGINE.newWindrower(opts)
+    local v = { isServer = true, isClient = false, currentUpdateDistance = 0, lastMovedDistance = 1, uniqueId = opts.uid or "windrower" }
+    v.processWindrowerArea = Windrower.processWindrowerArea
+    v.processDropArea = Windrower.processDropArea
+    v.getLastSpeed = function() return 0 end
+    v.specClasses = { Windrower }
+    v.spec_windrower = {
+        supportedFillTypes = { ENGINE.FT.GRASS_WINDROW, ENGINE.FT.DRYGRASS_WINDROW, ENGINE.FT.STRAW },
+        limitToLineHeight = false, windrowerWorkAreaFillTypes = {}, isWorking = false,
+    }
+    local x0, z0, w, d = opts.x0, opts.z0, opts.width, opts.depth
+    local work = {
+        index = 1, functionName = "processWindrowerArea",
+        start = { x = x0, z = z0 }, width = { x = x0 + w, z = z0 }, height = { x = x0, z = z0 + d },
+        litersToDrop = 0, lastPickupLiters = 0, lastValidPickupFillType = FillType.UNKNOWN, lastDroppedLiters = 0,
+        dropWindrowWorkAreaIndex = 2, windrowerWorkAreaIndex = 1,
+    }
+    local drop = {
+        index = 2, functionName = nil,
+        start = { x = x0, z = opts.dropZ }, width = { x = x0 + w, z = opts.dropZ }, height = { x = x0, z = opts.dropZ + (opts.dropDepth or 1) },
+        lineOffset = 0,
+    }
+    v.spec_workArea = { workAreas = { work, drop } }
+    work.processingFunction = v[work.functionName]
+    return v, work, drop
 end
 
 -- ── world owners, built by SoilFertilitySystem.new through their own .new ────

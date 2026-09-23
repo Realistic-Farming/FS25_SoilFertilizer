@@ -562,6 +562,10 @@ function HookManager:installAll(soilSystem)
     local tedderOk = self:installTedderHook()
     if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Windrower hook (RSF-F208 section 3): ground condition follows the windrowed material
+    local windrowerOk = self:installWindrowerHook()
+    if windrowerOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Combine swath hook (SF-43/SF-45): straw birth on the age layer
     local swathOk = self:installCombineSwathHook()
     if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -4514,6 +4518,86 @@ function HookManager:installTedderHook()
     SoilLogger.info(
         "[OK] Tedder hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
         .. "watch for the first-execution line during an actual tedder pass.", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e1: Windrower (RSF-F208 section 3, the ground-condition carrier)
+-- =========================================================
+--- The windrower rakes material into a windrow: it picks up along its work area and
+--- drops the CURRENT pickup on its drop line (Windrower.lua:309-384). The carrier's
+--- frame is open around the native call so the observer records both, in native
+--- order, and the moved material's age and wetness land where it landed. Nothing else
+--- runs in this wrapper; SF had no windrower hook before this one.
+---
+--- SAME SLOT AS THE TEDDER (RSF-F226): the captured work-area pointer the engine calls
+--- (WorkArea.lua:266), never the instance copy, swept over the existing vehicles and
+--- over every vehicle VehicleSystem.addVehicle registers later.
+---@return boolean success
+function HookManager:installWindrowerHook()
+    if not Windrower or type(Windrower.processWindrowerArea) ~= "function" then
+        SoilLogger.warning("[WindrowerHook] Windrower.processWindrowerArea not available - skipping")
+        return false
+    end
+
+    -- One call, every return: the native processing call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[WindrowerHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        end
+    end
+
+    local function makeWrapper(realFn)
+        return function(windrowerSelf, workArea, dt)
+            local carrierFrame = nil
+            if windrowerSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    windrowerSelf, workArea, GroundMovementCarrier.KIND_WINDROWER, nil)
+                if okBegin then
+                    carrierFrame = frameOrErr
+                else
+                    SoilLogger.warning("[WindrowerHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+                end
+            end
+            -- Protected ONLY so the carrier frame closes whether the native call
+            -- returned or raised; a raised error is re-raised unchanged.
+            local packed = packAll(pcall(realFn, windrowerSelf, workArea, dt))
+            if carrierFrame ~= nil then
+                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)
+                if not okFinish then
+                    SoilLogger.warning("[WindrowerHook] ground-condition carrier failed to finish (%s)", tostring(errFinish))
+                end
+            end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+    end
+
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
+                vehicle, "spec_windrower", "processWindrowerArea", makeWrapper)
+        end
+    end
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(self, vehicle, ...)
+            HookManager.wrapWorkAreaProcessing(vehicle, "spec_windrower", "processWindrowerArea", makeWrapper)
+            return origAdd(self, vehicle, ...)
+        end
+    end
+
+    SoilLogger.info(
+        "[OK] Windrower hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "the ground-condition carrier logs its first observed pass separately.", patchedCount)
     return true
 end
 

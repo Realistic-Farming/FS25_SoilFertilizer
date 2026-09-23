@@ -2,7 +2,7 @@
 -- GroundMovementCarrier
 --
 -- RSF-F208, section 3 of GROUND-CONDITION-CONTRACT v1.5: the Soil-alone movement
--- carriers. This slice (S2a) carries the TEDDER. The Mower and Windrower follow.
+-- carriers: the TEDDER (S2a) and the WINDROWER (S2b). The Mower follows.
 --
 -- WHAT A CARRIER DOES, per real processing call, in the contract's order:
 --   1. If a StockGuard lease is live for this vehicle and work area, do nothing: the
@@ -21,10 +21,17 @@
 --   5. Close the frame. The account is reconciled with the native remainder at the
 --      start of every call, before any primitive reads it.
 --
--- THE ACCOUNT IS NOT STOCK. It tracks the native workArea.litersToDrop only to know
--- what condition the remainder carries (Tedder.lua:296-304). The native number is the
--- truth: an account larger than it is scaled down, a native remainder larger than the
--- account is carried as unknown condition. Nothing here changes a native quantity.
+-- THE ACCOUNT IS NOT STOCK. For the Tedder it tracks the native workArea.litersToDrop
+-- only to know what condition the remainder carries (Tedder.lua:296-304). The native
+-- number is the truth: an account larger than it is scaled down, a native remainder
+-- larger than the account is carried as unknown condition.
+--
+-- THE WINDROWER KEEPS NO ACCOUNT ACROSS CALLS. Its drop request is the CURRENT call's
+-- pickup (lastPickupLiters, Windrower.lua:350-357); its accumulating litersToDrop
+-- (:351) is never dropped again and is not a physical stock (contract section 3). So
+-- its account lives for one call: only that call's pickups contribute, and whatever
+-- it picked up but did not drop is native loss, discarded with the frame. Nothing here
+-- changes a native quantity.
 --
 -- P-GROUND-1, PROVISIONAL (Tyson D1 2026-09-15, Arissani's ratification owed): off
 -- the ground, material keeps its captured wetness, and its age is the captured raw
@@ -39,6 +46,7 @@ GroundMovementCarrier = GroundMovementCarrier or {}
 local C = GroundMovementCarrier
 
 C.KIND_TEDDER = "TEDDER"
+C.KIND_WINDROWER = "WINDROWER"
 C.ACCOUNT_KEY = "_sfGroundAccount"
 C.EPSILON = 1e-3
 -- A cell's observed litres may differ from the native return by the density map's
@@ -48,6 +56,7 @@ C.TOLERANCE = 1
 local AGE_BORN, AGE_CEILING = 1, 255
 
 C.stats = C.stats or { frames = 0, skippedLease = 0, barrierRefused = 0, projected = 0, cleared = 0, unavailable = 0 }
+C.firstPassLogged = C.firstPassLogged or {}   -- kind -> true, once per session
 
 -- =========================================================
 -- The account (P-GROUND-1)
@@ -276,7 +285,8 @@ end
 ---@param vehicle table
 ---@param workArea table
 ---@param kind string         C.KIND_TEDDER
----@param nativeRemainder function|nil  (workArea) -> the native remainder the account tracks
+---@param nativeRemainder function|nil  (workArea) -> the native remainder the account
+---       tracks across calls; nil for a carrier whose account lives for one call only
 ---@return table|nil frame
 function C.begin(system, vehicle, workArea, kind, nativeRemainder)
     if g_server == nil or type(system) ~= "table" or type(vehicle) ~= "table" or type(workArea) ~= "table" then return nil end
@@ -292,8 +302,13 @@ function C.begin(system, vehicle, workArea, kind, nativeRemainder)
     local today = coord:currentMonotonicDay()
     local ok, reason = coord:runSettlementBarrier()
     if not ok then C.stats.barrierRefused = C.stats.barrierRefused + 1 end
-    local acc = C.accountOf(workArea)
-    if nativeRemainder ~= nil then C.accountReconcile(acc, nativeRemainder(workArea), today) end
+    local acc
+    if nativeRemainder ~= nil then
+        acc = C.accountOf(workArea)
+        C.accountReconcile(acc, nativeRemainder(workArea), today)
+    else
+        acc = { components = {} }
+    end
     C.stats.frames = C.stats.frames + 1
     return GroundNativeObserver.open({
         owner = vehicle, workArea = workArea, kind = kind, handler = C,
@@ -314,8 +329,8 @@ end
 function C.finish(frame)
     if frame == nil then return end
     GroundNativeObserver.close(frame)
-    if not C.firstPassLogged and (frame.primitives or 0) > 0 then
-        C.firstPassLogged = true
+    if not C.firstPassLogged[frame.kind] and (frame.primitives or 0) > 0 then
+        C.firstPassLogged[frame.kind] = true
         SoilLogger.info(
             "[GroundCarrier] FIRST %s PASS OBSERVED: %d primitive(s) in this call; so far %d cell(s) projected, " ..
             "%d cleared, %d marked unavailable. Ground age and wetness now follow the material this machine moves.",
