@@ -133,10 +133,11 @@ MUTATIONS = [
 
  # --- the tedder wrapper ---
  ("H0-observer-cleanup-not-registered", HM,
-  [("            self:registerCleanup(\"DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)\", function()\n"
+  [("            -- uninstall restores the native function only while ours is current.\n"
+    "            self:registerCleanup(\"DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)\", function()\n"
     "                GroundNativeObserver.uninstall()\n"
     "            end)\n",
-    "", 1)],
+    "            -- uninstall restores the native function only while ours is current.\n", 1)],
   "the observer's wrap outlives the hook manager's teardown"),
  ("H1-observer-never-installed", HM,
   [("        local okObs, whyObs = GroundNativeObserver.install()\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[TedderHook]",
@@ -192,6 +193,10 @@ MUTATIONS = [
   [("        local okObs, whyObs = GroundNativeObserver.install()\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[WindrowerHook]",
     "        local okObs, whyObs = false, \"MUTANT\"\n        if not okObs and whyObs ~= \"CLIENT\" then\n            SoilLogger.warning(\"[WindrowerHook]", 1)],
   "the windrower hook installs the carrier but not the observer"),
+ ("W7-windrower-observer-cleanup-not-registered", HM,
+  [("            SoilLogger.warning(\"[WindrowerHook] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif okObs and whyObs == nil then",
+    "            SoilLogger.warning(\"[WindrowerHook] ground-condition observer not installed (%s)\", tostring(whyObs))\n        elseif false then", 1)],
+  "the observer the windrower hook wrapped outlives the hook manager's teardown"),
 ]
 
 

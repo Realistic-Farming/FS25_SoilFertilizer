@@ -72,6 +72,19 @@ group("I", function()
     T.eq("I0 [world] nothing has wrapped the primitive yet in this process", rawget(DensityMapHeightUtil, O.MARKER), nil)
     W.sys.hookManager:installWindrowerHook()
     T.ok("I1 the windrower hook installs the observer on its own", rawget(DensityMapHeightUtil, O.MARKER) ~= nil)
+    local function observerCleanups(hm)
+        local n, entry = 0, nil
+        for _, h in ipairs(hm.hooks) do
+            if tostring(h.name):find("ground-condition observer", 1, true) then n, entry = n + 1, h end
+        end
+        return n, entry
+    end
+    local n, entry = observerCleanups(W.sys.hookManager)
+    T.ok("I2 and registers a cleanup for the observer it installed", n == 1 and entry ~= nil and type(entry.cleanup) == "function")
+    W.sys.hookManager:installTedderHook()
+    T.eq("I3 a tedder hook installed after it finds the observer in place and registers no second cleanup", (observerCleanups(W.sys.hookManager)), 1)
+    if entry ~= nil then entry.cleanup() end
+    T.eq("I4 the cleanup restores the native primitive", rawget(DensityMapHeightUtil, O.MARKER), nil)
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════

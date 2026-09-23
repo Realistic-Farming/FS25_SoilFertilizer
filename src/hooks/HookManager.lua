@@ -4545,10 +4545,16 @@ function HookManager:installWindrowerHook()
         return { n = select("#", ...), ... }
     end
 
+    -- The same observer the tedder hook installs. Whichever hook wraps the primitive
+    -- first owns its removal; the other finds it ALREADY installed and registers none.
     if GroundNativeObserver ~= nil then
         local okObs, whyObs = GroundNativeObserver.install()
         if not okObs and whyObs ~= "CLIENT" then
             SoilLogger.warning("[WindrowerHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
         end
     end
 
