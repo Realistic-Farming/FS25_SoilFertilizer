@@ -505,25 +505,6 @@ local LAYER_ABBREV = {
     [1] = "N", [2] = "P", [3] = "K", [4] = "pH", [5] = "OM", [11] = "Y",
 }
 
--- Safe localized text lookup (never crashes the HUD on a missing key).
-local function sfTr(key, fallback)
-    if key == nil then return fallback end
-    -- Gate on hasText, never on the returned string: getText never returns nil,
-    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
-    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
-    -- through to the player. Past hasText the return is opaque: check type and
-    -- non-empty, never inspect it.
-    local i18n = g_i18n
-    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
-        return fallback
-    end
-    local okHas, has = pcall(i18n.hasText, i18n, key)
-    if not okHas or has ~= true then return fallback end
-    local ok, text = pcall(i18n.getText, i18n, key)
-    if not ok or type(text) ~= "string" or text == "" then return fallback end
-    return text
-end
-
 -- Builds the minimap corner label, e.g. "Nitrogen [N]" / "Stickstoff [N]" (#622).
 -- The full name comes from the SAME l10n keys as the big-map Overview
 -- (SoilMapOverlay.LAYER_KEYS), so there is a single set of strings to translate.
