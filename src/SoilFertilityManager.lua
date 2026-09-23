@@ -1002,7 +1002,15 @@ function SoilFertilityManager:onScoutInput()
 
     -- The Scout hotkey is a deliberate scout: reveal the field's disease so the flash
     -- message and the Scout dialog it opens both show the identified infection.
-    local rep = self.soilSystem:scoutField(fieldId)
+    -- [RSF-F231] For the local player's own farm; a farm with no standing on this
+    -- land is told so and nothing is revealed, flashed or opened.
+    local rep, refused = self.soilSystem:scoutField(fieldId, SoilFertilitySystem.localScoutFarmId())
+    if refused ~= nil then
+        if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
+            g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_scout_no_standing"), 3000)
+        end
+        return
+    end
     if not rep or rep.enabled == false then return end
 
     local function disName(id)

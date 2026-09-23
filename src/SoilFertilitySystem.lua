@@ -2498,6 +2498,34 @@ function SoilFertilitySystem:getScoutReport(fieldId)
     return report
 end
 
+--- [RSF-F231] The farm acting from THIS machine: the local player's record, as the
+--- kneel reads it (SF-22: the player record, never getFarmId() and never a farm-1
+--- fallback). A dedicated server has no local player, so its console has no farm
+--- and every local scout door refuses there; the brief rejects an admin override
+--- for what is ordinary land standing.
+---@return number|nil
+function SoilFertilitySystem.localScoutFarmId()
+    local player = g_localPlayer
+    if type(player) ~= "table" then return nil end
+    return player.farmId
+end
+
+--- [RSF-F231] The one standing test every scout door runs: the walked-cell rule
+--- (SpatialScouting.isFieldScoutAuthorized) against the farmland owner at the field,
+--- contracting included. With SpatialScouting absent it fails closed.
+---@param actingFarmId any
+---@param fieldId any
+---@return boolean
+function SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId)
+    if SpatialScouting == nil or type(SpatialScouting.isFieldScoutAuthorized) ~= "function" then
+        return false
+    end
+    return SpatialScouting.isFieldScoutAuthorized(actingFarmId, fieldId) == true
+end
+
+--- The second return of scoutField when the acting farm has no standing.
+SoilFertilitySystem.SCOUT_REFUSED = "NO_STANDING"
+
 --- Deliberately scout a field: reveal its disease so getScoutReport returns the full
 --- truth from here on. The free bottom rung of the disease-intel economy - the player
 --- scouts each field one at a time (or buys a ProStaff report / gets a dog ping) to learn
@@ -2517,11 +2545,28 @@ end
 --- field delivery. A client whose field is already revealed but still lacks the bit (an
 --- optimistic mark that never round-tripped) re-asks the server, which performs the
 --- durable write and one field update.
+---
+--- [RSF-F231] THE STANDING TEST SITS HERE, on the writer, because this is where the
+--- durable fact and the discovery flip are set: every door (the network event, the
+--- hotkey, the console, the dialog) supplies the farm it is acting for, and a
+--- caller that reaches the writer another way cannot bypass the rule. The acting
+--- farm must own the farmland or be contracting its owner (the walked-cell rule).
+--- A refusal writes NOTHING, flips nothing, sends nothing and broadcasts nothing:
+--- it returns the report exactly as an unscouted caller already sees it (the
+--- discovery gate intact), plus SCOUT_REFUSED, so no door hands the asker the
+--- named disease for a field it has no standing on. On a client the same test runs
+--- against the synced farmland owner before the optimistic flip and the event; the
+--- server tests again from the sender's own player record.
 ---@param fieldId number
----@return table|nil report  the now-revealed scout report
-function SoilFertilitySystem:scoutField(fieldId)
+---@param actingFarmId number|nil  the farm this scout is made for; nil refuses
+---@return table|nil report  the now-revealed scout report, or the gated report on a refusal
+---@return string|nil refused  SoilFertilitySystem.SCOUT_REFUSED when the farm has no standing
+function SoilFertilitySystem:scoutField(fieldId, actingFarmId)
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return self:getScoutReport(fieldId) end
+    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then
+        return self:getScoutReport(fieldId), SoilFertilitySystem.SCOUT_REFUSED
+    end
 
     local changed = false
     if not field.diseaseDiscovered then

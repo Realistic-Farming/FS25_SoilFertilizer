@@ -127,8 +127,20 @@ function SoilScoutDialog:_populate()
     -- Opening the Scout dialog on a field IS the act of scouting it: reveal the disease
     -- (flips the discovery gate) so the report shows the name + recommendation. Every
     -- other surface stays gated until it too is scouted / reported / dog-flagged.
-    local rep = sfm.soilSystem:scoutField(self._fieldId)
+    -- [RSF-F231] For the local player's own farm. Refused: the panel says so and
+    -- offers no chemical, so Apply has nothing to send.
+    local rep, refused = sfm.soilSystem:scoutField(self._fieldId, SoilFertilitySystem.localScoutFarmId())
     if not rep then return end
+    if refused ~= nil then
+        setText(self.scoutDisease, tr("sf_scout_no_standing", "Your farm neither owns nor contracts this land. Nothing was scouted."))
+        setText(self.scoutSci, "")
+        setText(self.scoutPressure, "")
+        setText(self.scoutReco, "")
+        setText(self.scoutSelChem, "")
+        setText(self.scoutHint, "")
+        self._chemList, self._chemIdx = {}, 1
+        return
+    end
     if rep.enabled == false then
         setText(self.scoutDisease, tr("sf_scout_disabled", "Disease system disabled"))
         setText(self.scoutSci, "")

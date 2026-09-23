@@ -450,6 +450,22 @@ function SpatialScouting._isWalkAuthorized(playerFarmId, farmlandId)
     return SpatialScouting.isRevealAuthorized(playerFarmId, ownerFarmId, contractingForOwner)
 end
 
+--- [RSF-F231] The field scout's standing is this same rule, unchanged: the acting
+--- farm must own the farmland or be contracting its owner, both ordinary. Soil's
+--- field ids ARE farmland ids (SoilFertilityManager keys fieldData by farmland id
+--- and SoilFertilitySystem reads getFarmlandOwner(fieldId) on them), so the field
+--- path shares one test with the walk and the kneel rather than inventing a third.
+--- Fails closed: a farm that is not ordinary, a non-numeric field, unowned land or
+--- a manager that cannot answer all refuse.
+---@param actingFarmId any
+---@param farmlandId any
+---@return boolean
+function SpatialScouting.isFieldScoutAuthorized(actingFarmId, farmlandId)
+    if not SpatialScouting.isOrdinaryFarmId(actingFarmId) then return false end
+    if type(farmlandId) ~= "number" then return false end
+    return SpatialScouting._isWalkAuthorized(actingFarmId, farmlandId) == true
+end
+
 --- Sample the disease truth at a spot. The value map answers first; the field
 --- average stands in when the map has no value there (a sampled truth is better
 --- than none and the cell is still walked).
