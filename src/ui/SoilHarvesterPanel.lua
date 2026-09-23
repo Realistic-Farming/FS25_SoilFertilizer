@@ -663,9 +663,8 @@ function SoilHarvesterPanel:draw()
                         or (self.editMode and "Harvester Panel" or "")
     local fieldStr    = ""
     if self._fieldId then
-        local ok, fmtStr = pcall(function() return g_i18n:getText("sf_hud_field") end)
-        fieldStr = " · " .. ((ok and fmtStr and not fmtStr:find("^%$l10n_"))
-                   and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
+        local fmtStr = SoilL10n.tr("sf_hud_field")
+        fieldStr = " · " .. (fmtStr and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
     end
 
     setTextBold(true)
@@ -816,9 +815,8 @@ function SoilHarvesterPanel:draw()
         local thaY   = sbY + (sbH * 0.35 - thaSz) * 0.5
         setTextAlignment(RenderText.ALIGN_CENTER)
         if estTha then
-            local okT, fmtT = pcall(function() return g_i18n:getText("sf_hud_tha") end)
-            local thaStr = (okT and fmtT and not fmtT:find("^%$l10n_"))
-                           and string.format(fmtT, estTha)
+            local fmtT = SoilL10n.tr("sf_hud_tha")
+            local thaStr = fmtT and string.format(fmtT, estTha)
                            or  string.format("%.1f t/ha", estTha)
             setTextColor(unpack(C.C_VALUE))
             renderText(cell1X + cellW * 0.5, thaY, thaSz, thaStr)
@@ -831,8 +829,8 @@ function SoilHarvesterPanel:draw()
         -- The t/ha figure is estimated from the map's crop data, not measured from what
         -- the player actually took off the field. Say so plainly, in their language.
         local capSz = 0.0062 * sc
-        local okCap, capStr = pcall(function() return g_i18n:getText("sf_hud_yield_est_src") end)
-        if okCap and capStr and not capStr:find("^%$l10n_") then
+        local capStr = SoilL10n.tr("sf_hud_yield_est_src")
+        if capStr then
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(unpack(C.C_DIM))
             renderText(panelX + pad,

@@ -1092,7 +1092,7 @@ end
 
 local function showSensorMsg(name, on)
     local stateKey = on and "sf_sensor_state_on" or "sf_sensor_state_off"
-    local txt = name .. ": " .. (g_i18n and g_i18n:getText(stateKey) or (on and "ON" or "OFF"))
+    local txt = name .. ": " .. SoilL10n.tr(stateKey, on and "ON" or "OFF")
     if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
         g_currentMission.hud:showBlinkingWarning(txt, 2000)
     end
@@ -1104,7 +1104,7 @@ function SoilFertilityManager:onVariableRateInput()
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleVariableRate(vehicle.id)
-    showSensorMsg(g_i18n and g_i18n:getText("sf_var_rate_label") or "Variable Rate", newState)
+    showSensorMsg(SoilL10n.tr("sf_var_rate_label", "Variable Rate"), newState)
     SoilLogger.debug("[VariableRate] %s for vehicle %d", newState and "ON" or "OFF", vehicle.id)
 end
 

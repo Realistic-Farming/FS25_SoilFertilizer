@@ -30,7 +30,7 @@
 -- addFillUnitFillLevel, the dirty stream to clients, and the helper purchase reading
 -- the cleared last-valid. The TESTING row.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/hooks/HookManager.lua, src/settings/SoilSettingsGUI.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/hooks/HookManager.lua, src/settings/SoilSettingsGUI.lua
 --!text: src/settings/SoilSettingsGUI.lua, fillTypes.xml
 
 local saved = { FillType = FillType, ToolType = ToolType, MoneyType = MoneyType, UIHelper = UIHelper,

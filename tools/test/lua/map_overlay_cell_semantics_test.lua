@@ -18,7 +18,7 @@
 --      flow through _vmDisplayValues, so it needs its own gate or an unscouted
 --      field leaks its disease on exactly the maps the scouting economy sells.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/ui/SoilMapOverlay.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/ui/SoilMapOverlay.lua
 
 local getCellValue = SoilMapOverlay._getCellLayerValue
 

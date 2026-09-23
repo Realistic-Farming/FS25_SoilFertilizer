@@ -1764,7 +1764,7 @@ function SoilMapOverlay:onDrawHud(frame)
         end
 
         local key = SoilMapOverlay.LAYER_KEYS[i]
-        local name = (g_i18n and g_i18n:getText(key)) or key
+        local name = SoilL10n.tr(key, key)
         
         setTextBold(isActive)
         setTextColor(isActive and 1 or 0.8, isActive and 1 or 0.8, isActive and 1 or 0.8, 1)
@@ -1869,7 +1869,7 @@ function SoilMapOverlay:drawSummaryAt(frame, panelX, panelY, panelWidth, panelHe
     setTextBold(true)
     setTextColor(0.93, 0.93, 0.93, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
-    renderText(barX, headerY, titleSize, g_i18n:getText("sf_map_health_overall") or "Average Soil Health")
+    renderText(barX, headerY, titleSize, SoilL10n.tr("sf_map_health_overall", "Average Soil Health"))
 
     setTextAlignment(RenderText.ALIGN_RIGHT)
     renderText(barX + barWidth, headerY, titleSize, string.format("%d%%", healthPercent))

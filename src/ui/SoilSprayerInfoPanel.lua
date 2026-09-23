@@ -635,9 +635,8 @@ function SoilSprayerInfoPanel:draw()
     local fertTitle = (fillType and (fillType.title or fillType.name)) or "Sprayer Panel"
     local fieldStr  = ""
     if self._fieldId then
-        local ok2, fmtStr = pcall(function() return g_i18n:getText("sf_hud_field") end)
-        fieldStr = " · " .. ((ok2 and fmtStr and not fmtStr:find("^%$l10n_"))
-                   and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
+        local fmtStr = SoilL10n.tr("sf_hud_field")
+        fieldStr = " · " .. (fmtStr and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
     end
 
     setTextBold(true)
@@ -679,8 +678,7 @@ function SoilSprayerInfoPanel:draw()
 
     elseif not hasField then
         -- On field with sprayer but not yet detecting a field
-        local ok, msg = pcall(function() return g_i18n:getText("sf_sprayer_no_field") end)
-        local txt = (ok and msg and not msg:find("^%$l10n_")) and msg or "Drive onto a field"
+        local txt = SoilL10n.tr("sf_sprayer_no_field", "Drive onto a field")
         setTextAlignment(RenderText.ALIGN_LEFT)
         setTextColor(unpack(SoilSprayerInfoPanel.C_DIM))
         renderText(panelX + pad, cy - rowH + (rowH - lblSz) * 0.45, lblSz, txt)

@@ -16,7 +16,7 @@
 --
 -- All cell counts, shares and tick durations below are test fixtures, not
 -- transcribed agronomy and not live-map measurements.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/OrganicCertification.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/integrations/SoilNetworkSyncBridge.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilMerge.lua, src/ui/SoilTreatmentRates.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/OrganicCertification.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/integrations/SoilNetworkSyncBridge.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilMerge.lua, src/ui/SoilTreatmentRates.lua
 
 local EPS = 0.000000001 -- pure-Lua arithmetic tolerance, not a simulation tolerance
 

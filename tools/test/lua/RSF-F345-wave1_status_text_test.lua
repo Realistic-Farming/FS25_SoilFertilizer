@@ -1,6 +1,6 @@
 -- RSF-F345-wave1_status_text_test.lua - the HUD status tokens are translated at the
 -- render call and nowhere else (RSF-F345 wave 1, F346).
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/ui/SoilHUD.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/ui/SoilHUD.lua
 --
 -- Contract under test (brief v0.4, part B1):
 --   * "Good" / "Fair" / "Poor" / "Unknown" stay bare internal tokens; only the drawn

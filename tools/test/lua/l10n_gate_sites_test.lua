@@ -31,7 +31,7 @@
 --                               which the engine never does (I18N.lua:194 returns
 --                               texts[name] ~= nil).
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilMinimapLayer.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilMinimapLayer.lua
 
 local N_LAYER  = 1
 local N_KEY    = "sf_map_layer_n"

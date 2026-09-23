@@ -32,7 +32,7 @@
 -- driven as the call shape it makes on a BUY vehicle), and the constant-remap wrapper
 -- (group R models its swap around native). The TESTING row carries the rest.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
   Sprayer = Sprayer, Utils = Utils, FillType = FillType, ToolType = ToolType, FillUnit = FillUnit, MoneyType = MoneyType,

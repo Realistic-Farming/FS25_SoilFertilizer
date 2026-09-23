@@ -9,21 +9,10 @@
 
 SoilTreatmentRates = SoilTreatmentRates or {}
 
+-- The one gate (SoilL10n.tr, MAINTENANCE rows 59 and 60): hasText decides, the
+-- missing sentence is never compared. The fallback stays "fallback or key".
 local function tr(key, fallback)
-    if g_i18n ~= nil then
-        local ok, text = pcall(function() return g_i18n:getText(key) end)
-        if ok and type(text) == "string" and text ~= "" then
-            local lower = text:lower()
-            if lower ~= tostring(key):lower()
-                and text ~= ("$l10n_" .. key)
-                and not lower:find("^missing%s")
-                and not lower:find("^missing_")
-            then
-                return text
-            end
-        end
-    end
-    return fallback or key
+    return SoilL10n.tr(key, fallback or key)
 end
 
 local function fmt(key, fallback, ...)

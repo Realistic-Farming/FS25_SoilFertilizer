@@ -22,7 +22,7 @@
 --   RESET SKIPS THE ASK  - resetCurrentCategory runs in a loop a modal would
 --                         break, and only ever restores the LOCKED default.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/ui/SoilSettingsPanel.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/ui/SoilSettingsPanel.lua
 
 -- Force tr() down its fallback path so the assertions below read the English the
 -- player sees. The prelude's i18n would take this bar down the same path anyway,

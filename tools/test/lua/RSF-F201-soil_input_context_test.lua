@@ -1,4 +1,4 @@
---!load: tools/test/lua/f201_model_binding.lua, src/utils/SoilContextInput.lua, src/SoilFertilityManager.lua
+--!load: src/utils/SoilL10n.lua, tools/test/lua/f201_model_binding.lua, src/utils/SoilContextInput.lua, src/SoilFertilityManager.lua
 -- RSF-F201, SoilFertilizer input through the REAL SoilContextInput +
 -- SoilFertilityManager.installContextInput / registerPlayerContextInputEvents on
 -- a minimal manager instance. Witnesses: a complete set opens no begin/end;

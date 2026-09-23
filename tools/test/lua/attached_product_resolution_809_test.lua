@@ -12,7 +12,7 @@
 --   tank still wins; the implement walk stops at depth 3; a profiled product beats an
 --   unprofiled one regardless of order; resolveSprayerFillTypeIndex (#780) is untouched.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/ui/SoilHUD.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/ui/SoilHUD.lua
 
 FillType = FillType or { UNKNOWN = 0 }
 
