@@ -31,6 +31,7 @@
 -- the cleared last-valid. The TESTING row.
 --
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/hooks/HookManager.lua, src/settings/SoilSettingsGUI.lua
+--!text: src/settings/SoilSettingsGUI.lua
 
 local saved = { FillType = FillType, ToolType = ToolType, MoneyType = MoneyType, UIHelper = UIHelper,
                 g_currentMission = g_currentMission, g_fillTypeManager = g_fillTypeManager, g_sprayTypeManager = g_sprayTypeManager,
@@ -44,10 +45,14 @@ g_localPlayer = nil
 SoilLogger.info = function() end; SoilLogger.warning = function() end; SoilLogger.debug = function() end
 
 -- ── the fill-type world: GYPSUM declares a nonsense density, so R1a refuses it ────
-local declared = { UREA = 0.00077, AN = 0.0008, POLIFOSKA = 0.0009, GYPSUM = -0.001, STARTER = 0.001, FERTILIZER = 0.001, LIQUIDFERTILIZER = 0.001 }
+local declared = { UREA = 0.00077, AN = 0.0008, POLIFOSKA = 0.0009, GYPSUM = -0.001, STARTER = 0.001, LIQUID_UREA = 0.0011, FERTILIZER = 0.001, LIQUIDFERTILIZER = 0.001 }
+-- The fillTypes.xml economy price each fill type carries (FillTypeDesc.pricePerLiter,
+-- FillTypeDesc.lua:75); STARTER declares no economy, so it holds the engine default 0.
+local prices = { UREA = 0.55, AN = 0.50, POLIFOSKA = 0.60, GYPSUM = 0.10, STARTER = 0, LIQUID_UREA = 0.60, FERTILIZER = 0.30, LIQUIDFERTILIZER = 0.30 }
 local IDX, nextIdx = {}, 100
 local function indexOf(name) if IDX[name] == nil then IDX[name] = nextIdx; nextIdx = nextIdx + 1 end return IDX[name] end
-local function descOf(name) if declared[name] == nil then return nil end return { name = name, index = indexOf(name), massPerLiter = declared[name], title = name } end
+local function nameOf(idx) for n, i in pairs(IDX) do if i == idx then return n end end return nil end
+local function descOf(name) if declared[name] == nil then return nil end return { name = name, index = indexOf(name), massPerLiter = declared[name], title = name, pricePerLiter = prices[name] } end
 g_fillTypeManager = {
   getFillTypeByName      = function(_, n) return descOf(n) end,
   getFillTypeIndexByName = function(_, n) if declared[n] == nil then return nil end return indexOf(n) end,
@@ -64,6 +69,7 @@ g_sprayTypeManager = {
   getSprayTypeIndexByFillTypeIndex = function() return nil end,
 }
 local UREA, AN, POLI, GYP, STARTER, FERT = indexOf("UREA"), indexOf("AN"), indexOf("POLIFOSKA"), indexOf("GYPSUM"), indexOf("STARTER"), indexOf("FERTILIZER")
+local LUREA = indexOf("LIQUID_UREA")
 
 -- ── the vehicle, as FillUnit.lua has it ──────────────────────────────────────────
 local function newVehicle(units, opts)
@@ -111,9 +117,9 @@ local function run()
   if not ok then error(out, 0) end
   return out
 end
+--- Tyson's ruling 2026-09-23: refund = drained x the fill type's SHOP price x 0.5.
 local function refundFor(idx, liters)
-  local FALLBACK = { UREA = 1.65, AN = 1.55, POLIFOSKA = 1.35, GYPSUM = 0.80 }   -- the command's own table; AN and POLIFOSKA fall to 1.0 there
-  return liters * 0.5 * (idx == UREA and 1.65 or idx == GYP and 0.80 or 1.0)
+  return liters * 0.5 * (prices[nameOf(idx)] or 0)
 end
 
 -- =====================================================================
@@ -181,7 +187,9 @@ do
   run()
   T.eq("R7 D1: AN is drained", v.spec_fillUnit.fillUnits[1].fillLevel, 0)
   T.eq("R7 D2: POLIFOSKA is drained", v.spec_fillUnit.fillUnits[2].fillLevel, 0)
-  T.eq("R7 D3: both refunded (at the existing fallback rule, 1.0/L for names without a price entry)", #money, 2)
+  T.eq("R7 D3: both refunded", #money, 2)
+  T.near("R7 D3b: AN at its shop price (100 x 0.50 x 0.5), no fallback rule", money[1] and money[1].amount, refundFor(AN, 100), 1e-9)
+  T.near("R7 D3c: POLIFOSKA at its shop price (100 x 0.60 x 0.5)", money[2] and money[2].amount, refundFor(POLI, 100), 1e-9)
 end
 do
   local v = newVehicle({ [1] = unit(AN, 100, AN), [2] = unit(POLI, 100, POLI) })
@@ -248,6 +256,56 @@ do
   T.eq("R7 H2: client: no money", #money, 0)
   T.ok("R7 H3: client: nothing cleared on either unit", v.spec_fillUnit.fillUnits[1].lastValidFillType == GYP and v.spec_fillUnit.fillUnits[2].lastValidFillType == GYP and v._dirty == 0)
   T.ok("R7 H4: client: the report says not host", out:find("not host", 1, true) ~= nil)
+end
+
+-- =====================================================================
+-- GROUP I (Tyson's ruling 2026-09-23, a plain fix): the refund basis is the fillTypes.xml
+-- SHOP price read through the manager at call time, at the existing 50%; an unpriced
+-- product refunds 0 and says so; a redefined price is the one used; no price table of
+-- the command's own remains. Entry point: the real consoleCommandDrainVehicle, prices
+-- from the fill-type manager the way FillTypeDesc carries them.
+-- =====================================================================
+do
+  local v = newVehicle({ [1] = unit(UREA, 400, UREA), [2] = unit(LUREA, 250, LUREA) })
+  newWorld(v, true)
+  local out = run()
+  T.eq("DRAIN I1: a dry and a liquid product both drained", v.spec_fillUnit.fillUnits[1].fillLevel + v.spec_fillUnit.fillUnits[2].fillLevel, 0)
+  T.eq("DRAIN I2: two refunds", #money, 2)
+  T.near("DRAIN I3: the dry refund is drained x shop price x 0.5 (400 x 0.55 x 0.5)", money[1] and money[1].amount, 400 * 0.55 * 0.5, 1e-9)
+  T.near("DRAIN I4: the liquid refund likewise (250 x 0.60 x 0.5)", money[2] and money[2].amount, 250 * 0.60 * 0.5, 1e-9)
+  T.ok("DRAIN I5: the old table's UREA price (1.65) is gone from the sum", math.abs((money[1] and money[1].amount or 0) - 400 * 1.65 * 0.5) > 1)
+  T.ok("DRAIN I6: the summary names the basis", out:find("50% of shop price", 1, true) ~= nil)
+end
+do
+  local v = newVehicle({ [1] = unit(STARTER, 120, STARTER) })   -- STARTER declares no economy: engine default 0
+  newWorld(v, true)
+  local out = run()
+  T.eq("DRAIN I7: an unpriced product is still drained", v.spec_fillUnit.fillUnits[1].fillLevel, 0)
+  T.eq("DRAIN I8: it refunds nothing (no money moved, not 1.0/L)", #money, 0)
+  T.ok("DRAIN I9: and the report says so", out:find("no shop price, refund 0", 1, true) ~= nil)
+end
+do
+  local v = newVehicle({ [1] = unit(GYP, 300, GYP) })
+  newWorld(v, true)
+  run()
+  local first = money[1] and money[1].amount
+  prices.GYPSUM = 0.40                                       -- a map or mod redefines the product
+  local v2 = newVehicle({ [1] = unit(GYP, 300, GYP) })
+  newWorld(v2, true)
+  run()
+  prices.GYPSUM = 0.10
+  T.near("DRAIN I10: the first drain refunded at 0.10 (300 x 0.10 x 0.5)", first, 15, 1e-9)
+  T.near("DRAIN I11: after the redefinition the refund follows the manager, not a captured copy (300 x 0.40 x 0.5)", money[1] and money[1].amount, 60, 1e-9)
+end
+do
+  local src = SOURCE_TEXT and SOURCE_TEXT["src/settings/SoilSettingsGUI.lua"] or ""
+  local fnStart = src:find("function SoilSettingsGUI:consoleCommandDrainVehicle", 1, true) or 0
+  local body = src:sub(fnStart)
+  local fnEnd = body:find("\nend\n", 1, true) or #body
+  body = body:sub(1, fnEnd)
+  T.ok("DRAIN I12: source witness: the file was handed to the bar", #src > 1000 and fnStart > 0)
+  T.ok("DRAIN I13: source witness: the command has no price table of its own", src:find("fallbackPrices", 1, true) == nil and src:find("FALLBACK_PRICES in installPurchaseRefillHook", 1, true) == nil)
+  T.ok("DRAIN I14: source witness: the command reads pricePerLiter through the manager", body:find("getFillTypeByIndex", 1, true) ~= nil and body:find("pricePerLiter", 1, true) ~= nil)
 end
 
 FillType, ToolType, MoneyType, UIHelper = saved.FillType, saved.ToolType, saved.MoneyType, saved.UIHelper
