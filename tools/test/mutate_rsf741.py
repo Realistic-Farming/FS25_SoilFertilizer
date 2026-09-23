@@ -31,9 +31,12 @@ MUTATIONS = [
   [("    local sellCorrected = math.min(sellVanilla / appliedRatio, 1)\n",
     "    local sellCorrected = sellVanilla / appliedRatio\n", 1)],
   "the corrected delivery component can exceed 1"),
- ("M4-floor-at-vanilla-dropped", UW,
-  [("    if corrected < vanilla then corrected = vanilla end\n", "", 1)],
-  "nothing holds the result at or above vanilla (a ratio edge could lower completion)"),
+# M4 (the floor at vanilla dropped) is an EQUIVALENT mutant and is not run: with the ratio
+# guarded to (0, 1) and sellVanilla = min(..., 1) <= 1, sellCorrected = min(sellVanilla /
+# ratio, 1) >= sellVanilla, and harvestCompletionFactor is guarded to [0, 1], so
+# (1 - hcf) * (sellCorrected - sellVanilla) >= 0 and corrected >= vanilla by construction.
+# The floor stays as v1.13 item 15's clamp, a guard should a later edit loosen those guards.
+# Measured: the first battery run reported it SURVIVED, as this proof predicts.
  ("M5-yield-modifier-read-again", UW,
   [("    local appliedRatio = post / pre\n",
     "    local sfm = g_SoilFertilityManager; local ym = sfm and sfm.soilSystem and sfm.soilSystem.computeYieldModifier and sfm.soilSystem:computeYieldModifier(farmlandId, fruitTypeIndex)\n    local appliedRatio = type(ym) == \"number\" and ym or (post / pre)\n", 1)],
