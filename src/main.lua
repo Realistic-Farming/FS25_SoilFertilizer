@@ -161,6 +161,10 @@ source(modDirectory .. "src/MaterialWetness.lua")
 source(modDirectory .. "src/ground/GroundConditionCells.lua")
 source(modDirectory .. "src/ground/GroundConditionCoordinator.lua")
 source(modDirectory .. "src/ground/GroundConditionAdmission.lua")
+-- [RSF-F208 section 3] The native-cell observer and the Soil-alone movement carriers
+-- (the Tedder in this slice). HookManager's tedder wrapper calls into them.
+source(modDirectory .. "src/ground/GroundNativeObserver.lua")
+source(modDirectory .. "src/ground/GroundMovementCarrier.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")
 -- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer

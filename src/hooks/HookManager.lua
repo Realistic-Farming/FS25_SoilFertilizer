@@ -4323,6 +4323,21 @@ function HookManager:installTedderHook()
 
     local hookMgrRef = self
 
+    -- One call, every return: the native processing call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- RSF-F208 section 2: the native-cell observer the ground-condition carrier
+    -- records through. Idempotent, server only, and inert unless a carrier frame
+    -- for the calling vehicle is open.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[TedderHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        end
+    end
+
     --- Build a bounding-box polygon from a single work area's
     --- start/width/height nodes. Returns {minX,minZ, maxX,minZ,
     --- maxX,maxZ, minX,maxZ} or nil.
@@ -4392,8 +4407,37 @@ function HookManager:installTedderHook()
                         or "Drying will NOT be applied: the ground-material family is gated off. "
                            .. "Turn on Experimental Systems to see the drying effect.")
             end
-            -- DELEGATE fully: original processTedderArea first
-            local results = { realFn(tedderSelf, workArea, dt) }
+            -- RSF-F208 SECTION 3: THE GROUND-CONDITION CARRIER, BEFORE HAYBET. The
+            -- carrier's frame is open around the native call so the observer sees
+            -- this tedder's pickups and drops in native order and projects the moved
+            -- material's age and wetness onto the cells it landed on. It must finish
+            -- BEFORE the drying below: projecting old wetness after the tedding effect
+            -- would undo legitimate drying (contract section 2, F208 :101). Inert unless
+            -- the ground-material family is armed and no StockGuard lease owns the call.
+            local carrierFrame = nil
+            if tedderSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    tedderSelf, workArea, GroundMovementCarrier.KIND_TEDDER, GroundMovementCarrier.tedderRemainder)
+                if okBegin then
+                    carrierFrame = frameOrErr
+                else
+                    SoilLogger.warning("[TedderHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+                end
+            end
+
+            -- DELEGATE fully: original processTedderArea first. Protected ONLY so the
+            -- carrier frame closes whether the native call returned or raised; a raised
+            -- error is re-raised unchanged below.
+            local packed = packAll(pcall(realFn, tedderSelf, workArea, dt))
+            if carrierFrame ~= nil then
+                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)
+                if not okFinish then
+                    SoilLogger.warning("[TedderHook] ground-condition carrier failed to finish (%s)", tostring(errFinish))
+                end
+            end
+            if not packed[1] then error(packed[2], 0) end
+            local results = { unpack(packed, 2, packed.n) }
 
             -- HAY BET: apply drying delta + enqueue correction
             -- Server only - no client-side material logic
