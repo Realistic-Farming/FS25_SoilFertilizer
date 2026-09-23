@@ -33,7 +33,7 @@
 -- loadSoilData and passed alongside the block. Group I drives the REAL loadSoilData
 -- through its ledger branch with the real SoilStateLedgerBridge.applyState.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/integrations/SoilStateLedgerBridge.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/integrations/SoilStateLedgerBridge.lua
 
 -- The prelude's XML mock covers int, float and string; the field loader also reads
 -- one bool attribute, so the same shape is supplied here (a table keyed by path).

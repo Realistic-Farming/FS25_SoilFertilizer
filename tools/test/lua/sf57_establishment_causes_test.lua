@@ -5,7 +5,7 @@
 -- threshold-kill frame: no graded scale, no snap counter, a killed cell is
 -- killed. Absent WeatherGuard = no frost cause.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/EstablishmentFailure.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/EstablishmentFailure.lua
 
 g_currentMission = { _isServer = true, environment = { currentMonotonicDay = 10 } }
 function g_currentMission:getIsServer() return self._isServer end

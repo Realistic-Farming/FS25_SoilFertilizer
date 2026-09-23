@@ -485,8 +485,7 @@ end
 function EstablishmentFailure:_notify(key, fieldId, cause)
     local ss = self.manager and self.manager.soilSystem
     if ss ~= nil and ss.showNotification ~= nil then
-        local text = g_i18n and g_i18n:getText(key)
-            or ("Establishment failed: " .. tostring(cause))
+        local text = SoilL10n.tr(key, "Establishment failed: " .. tostring(cause))
         pcall(function() ss:showNotification(text) end)
     end
     SoilLogger.info("[SF-57] field %d establishment FAILED (%s): crop set to never-came-up",

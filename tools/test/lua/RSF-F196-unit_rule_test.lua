@@ -19,7 +19,7 @@
 -- (native does that from the registered LPS), density-map execution, rendering.
 -- Densities are fixtures in the engine's tonnes-per-litre unit (0.00077 = 0.77 kg/L).
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
 
 -- The engine global the catalogue rebuild reads: registration now builds the identity
 -- catalogue on every attempt (the #974 wiring hotfix), and group B drives the real registration.

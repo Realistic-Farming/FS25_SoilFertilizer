@@ -6486,7 +6486,7 @@ function HookManager:installNativeFieldInfoHook()
         -- row would just be confusing duplicate information. If the override could not
         -- find a native row to replace (e.g. unmatched language string), we still show
         -- this row as a fallback so the data is not lost entirely.
-        local yieldRowLabel = g_i18n:getText("sf_fieldinfo_yield") or "Yield"
+        local yieldRowLabel = SoilL10n.tr("sf_fieldinfo_yield", "Yield")
         -- Only add the subset of rows that belong at this insertion point -- the native box
         -- updates an existing label in place rather than re-inserting it, so a row's on-screen
         -- position is fixed by whichever call first creates it. "early" rows go right after

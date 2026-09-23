@@ -190,7 +190,7 @@ function SoilMapHooks:setupMapOverview()
         return
     end
 
-    local pageText = g_i18n:getText("sf_map_page_title") or "Soil Nutrients"
+    local pageText = SoilL10n.tr("sf_map_page_title", "Soil Nutrients")
 
     table.insert(self.mapSelectorTexts, pageText)
     self.soilMapPageIndex = #self.mapSelectorTexts

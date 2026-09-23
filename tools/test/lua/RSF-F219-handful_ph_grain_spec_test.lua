@@ -17,7 +17,7 @@
 --      dash, dim colour, empty bar) and recovers from a real sample
 --   7  (locale keys are checked by the shell gate; wording is not a Lua fact)
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/SpatialScouting.lua, src/HandfulRead.lua, src/ui/SoilHandfulDialog.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilSprayerInfoPanel.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/SpatialScouting.lua, src/HandfulRead.lua, src/ui/SoilHandfulDialog.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilSprayerInfoPanel.lua
 
 local READ_LOCAL = PositionalPH.READ_LOCAL
 local READ_APPROX = PositionalPH.READ_APPROXIMATE

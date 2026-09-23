@@ -7,7 +7,7 @@
 --   separately, that an inactive VWW section is excluded (partial width), and that
 --   the old array-end read was the RED case.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 -- ── Engine transform mocks: a consistent yaw-only world. The vehicle frame's
 -- local X is the lateral axis, the engine's own working-width convention.

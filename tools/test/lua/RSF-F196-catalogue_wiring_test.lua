@@ -19,7 +19,7 @@
 -- density on purpose: the shipped GYPSUM is 1.10 kg/L and valid; this is the
 -- synthetic refused product the refusal half of the bar needs.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
   Sprayer = Sprayer, Utils = Utils, FillType = FillType, ToolType = ToolType, FillUnit = FillUnit, MoneyType = MoneyType, UIHelper = UIHelper,

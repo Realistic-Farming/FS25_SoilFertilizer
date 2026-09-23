@@ -8,7 +8,7 @@
 --      (via _recordFullKill), so SF stops reporting a planted/growing crop the
 --      vanilla PDA correctly shows as absent (state 0 on the fruit plane).
 --      Partial kills keep the crop: surviving cells keep the window open.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/EstablishmentFailure.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/EstablishmentFailure.lua
 
 local EF = EstablishmentFailure
 

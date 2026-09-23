@@ -38,7 +38,7 @@
 -- EVERY CASE RUNS INSIDE group(), so a Lua error fails a named row and the cases
 -- after it still report, instead of the suite discarding the whole file.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
     Sprayer = Sprayer, Utils = Utils, FillType = FillType, ToolType = ToolType,

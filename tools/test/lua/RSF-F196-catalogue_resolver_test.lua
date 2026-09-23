@@ -30,7 +30,7 @@
 --                           nil rather than raising, because this runs inside the
 --                           engine's own call path.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/hooks/HookManager.lua
 
 FillType = FillType or {}
 FillType.UNKNOWN = 0

@@ -5,7 +5,7 @@
 -- green window-close, and the positional per-cell kill grouping.
 -- No engine: a stubbed moisture read + field record drive the real
 -- EstablishmentFailure module.
---!load: src/utils/Logger.lua, src/EstablishmentFailure.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/EstablishmentFailure.lua
 
 local function newSystem()
   local soilSystem = {}

@@ -28,7 +28,7 @@
 -- (soilSystem:computeYieldModifier), because the underwrite's job is to MEASURE what they
 -- did, not to compute it.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/HarvestContractUnderwrite.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/HarvestContractUnderwrite.lua
 
 getXMLBool = getXMLBool or function(handle, key) if handle then return handle[key] end end
 setXMLBool = setXMLBool or function(handle, key, value) if handle then handle[key] = value end end

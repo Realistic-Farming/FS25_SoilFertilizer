@@ -31,7 +31,7 @@
 -- What this bar does NOT prove: the install-time wrapper's captured copy (V12a's wrapper
 -- half, with V12c) and real engine timing. The TESTING row carries the dedicated server.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua
 
 FillType = FillType or { UNKNOWN = 0 }
 local saved = { g_fillTypeManager = g_fillTypeManager, g_sprayTypeManager = g_sprayTypeManager,

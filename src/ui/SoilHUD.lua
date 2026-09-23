@@ -1044,7 +1044,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- boxes could show e.g. 84% and -27% for the same field. Formatting
     -- yieldEfficiency directly here guarantees the FIELD INFO box and the
     -- Soil Monitor panel can never disagree again.
-    local yieldStr = g_i18n:getText("sf_hud_optimal") or g_i18n:getText("sf_report_rec_optimal") or "Optimal"
+    local yieldStr = SoilL10n.tr("sf_hud_optimal", SoilL10n.tr("sf_report_rec_optimal", "Optimal"))
     if info.yieldEfficiency ~= nil then
         local pct = math.floor(info.yieldEfficiency + 0.5)
         yieldStr = string.format("%d%%", pct)
@@ -1054,11 +1054,11 @@ function SoilHUD:buildFieldInfoLines(info)
     -- ── Crop rotation label ─────────────────────────────────
     local rotStr
     if info.rotationStatus then
-        if     info.rotationStatus == "Bonus"   then rotStr = g_i18n:getText("sf_report_rotation_bonus")   or "Bonus"
+        if     info.rotationStatus == "Bonus"   then rotStr = SoilL10n.tr("sf_report_rotation_bonus", "Bonus")
         elseif info.rotationStatus == "Fatigue" then
-            rotStr = g_i18n:getText("sf_report_rotation_fatigue") or "Fatigue"
+            rotStr = SoilL10n.tr("sf_report_rotation_fatigue", "Fatigue")
             if grade == "Good" then grade = "Fair" end
-        else                                         rotStr = g_i18n:getText("sf_report_rotation_ok")      or "OK"
+        else                                         rotStr = SoilL10n.tr("sf_report_rotation_ok", "OK")
         end
     end
 
@@ -1092,9 +1092,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- Only shown when actually asleep; active fields don't need a row saying so.
     local simStatusStr = nil
     if info.simDisabled then
-        simStatusStr = (info.simDisabledReasonKey and g_i18n:getText(info.simDisabledReasonKey))
-            or info.simDisabledReason
-            or g_i18n:getText("sf_fieldsentry_asleep") or "asleep"
+        simStatusStr = SoilL10n.tr(info.simDisabledReasonKey, info.simDisabledReason or SoilL10n.tr("sf_fieldsentry_asleep", "asleep"))
     end
 
     -- ── Needs summary (actionable issues list) ─────────────
@@ -1106,12 +1104,12 @@ function SoilHUD:buildFieldInfoLines(info)
     if     info.potassium.status  == "Poor" then table.insert(needs, "K!")
     elseif info.potassium.status  == "Fair" then table.insert(needs, "K")  end
     if info.pH and (info.pH < phGoodLow or info.pH > phGoodHigh) then table.insert(needs, "pH") end
-    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label")   or "Weed Risk")   end
-    if pestPct    >= pestMed    then table.insert(needs, g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label")   or "Pests")   end
-    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, g_i18n:getText("sf_hud_disease") or g_i18n:getText("sf_pda_disease_label") or "Disease") end
-    if compPct    > 10          then table.insert(needs, g_i18n:getText("sf_hud_compaction") or g_i18n:getText("sf_map_layer_compaction") or "Compaction") end
+    if weedPct    >= weedMed    then table.insert(needs, SoilL10n.tr("sf_hud_weeds", SoilL10n.tr("sf_pda_weed_label", "Weed Risk")))   end
+    if pestPct    >= pestMed    then table.insert(needs, SoilL10n.tr("sf_hud_pests", SoilL10n.tr("sf_pda_pest_label", "Pests")))   end
+    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, SoilL10n.tr("sf_hud_disease", SoilL10n.tr("sf_pda_disease_label", "Disease"))) end
+    if compPct    > 10          then table.insert(needs, SoilL10n.tr("sf_hud_compaction", SoilL10n.tr("sf_map_layer_compaction", "Compaction"))) end
 
-    local protected = g_i18n:getText("sf_hud_protected") or "(protected)"
+    local protected = SoilL10n.tr("sf_hud_protected", "(protected)")
     local function pressureLine(pct, active)
         if active then return string.format("%d%% (%s)", pct, protected) end
         return string.format("%d%%", pct)
@@ -1129,34 +1127,33 @@ function SoilHUD:buildFieldInfoLines(info)
     if simStatusStr then
         table.insert(lines, {
             group = "early",
-            label = g_i18n:getText("sf_fieldinfo_sim_status") or "Sim Status",
-            value = (g_i18n:getText("sf_fieldsentry_asleep") or "sim asleep") .. " (" .. simStatusStr .. ")"
+            label = SoilL10n.tr("sf_fieldinfo_sim_status", "Sim Status"),
+            value = SoilL10n.tr("sf_fieldsentry_asleep", "sim asleep") .. " (" .. simStatusStr .. ")"
         })
     end
-    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", value = SoilHUD.statusText(grade) })
-    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_yield") or "Yield",      value = yieldStr })
+    table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_grade", "Soil Grade"), value = SoilHUD.statusText(grade) })
+    table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_yield", "Yield"),      value = yieldStr })
     -- N/P/K (ppm) and Compaction are intentionally NOT duplicated here -- they're already
     -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
     -- numbers in this box was redundant. Compaction still feeds the "Needs" summary below
     -- via compPct even though its own row is gone.
     table.insert(lines, { group = "early", label = "pH",      value = info.pH and string.format("%.1f", info.pH) or "--" })
     table.insert(lines, { group = "early", label = "OM",      value = string.format("%.1f%%", info.organicMatter) })
-    if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label") or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
-    if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label") or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
+    if weedPct    > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_weeds", SoilL10n.tr("sf_pda_weed_label", "Weed Risk")), value = pressureLine(weedPct,    info.herbicideActive) }) end
+    if pestPct    > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_pests", SoilL10n.tr("sf_pda_pest_label", "Pests")),     value = pressureLine(pestPct,    info.insecticideActive) }) end
     if diseaseHidden then
-        local unknownStr = (g_i18n:hasText("sf_hud_disease_unknown") and g_i18n:getText("sf_hud_disease_unknown"))
-            or g_i18n:getText("sf_hud_disease") or "? (scout to identify)"
-        table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease", value = unknownStr })
+        local unknownStr = SoilL10n.tr("sf_hud_disease_unknown", SoilL10n.tr("sf_hud_disease", "? (scout to identify)"))
+        table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_disease", "Disease"), value = unknownStr })
     else
-        if diseasePct > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease",   value = pressureLine(diseasePct, info.fungicideActive) }) end
+        if diseasePct > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_disease", "Disease"),   value = pressureLine(diseasePct, info.fungicideActive) }) end
         if activeDiseaseStr then
-            table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_disease") or "Active Disease", value = activeDiseaseStr })
+            table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_disease", "Active Disease"), value = activeDiseaseStr })
         end
     end
     table.insert(lines, {
         group = "early",
-        label = g_i18n:getText("sf_fieldinfo_needs") or "Needs",
-        value = #needs > 0 and table.concat(needs, ", ") or (g_i18n:getText("sf_report_rec_optimal") or "All good")
+        label = SoilL10n.tr("sf_fieldinfo_needs", "Needs"),
+        value = #needs > 0 and table.concat(needs, ", ") or SoilL10n.tr("sf_report_rec_optimal", "All good")
     })
     -- Crop Rotation: always shown (Bonus/Fatigue/OK, or a neutral fallback when rotation
     -- tracking has no data for this field yet -- e.g. crop rotation setting disabled, or
@@ -1164,11 +1161,11 @@ function SoilHUD:buildFieldInfoLines(info)
     -- info.rotationStatus was set, which made it look "missing" rather than informative.
     table.insert(lines, {
         group = "early",
-        label = g_i18n:getText("sf_fieldinfo_rotation") or "Rotation",
-        value = rotStr or (g_i18n:getText("sf_report_rotation_na") or "N/A")
+        label = SoilL10n.tr("sf_fieldinfo_rotation", "Rotation"),
+        value = rotStr or SoilL10n.tr("sf_report_rotation_na", "N/A")
     })
     if showBurnRisk then
-        table.insert(lines, { group = "late", label = g_i18n:getText("sf_fieldinfo_burn_risk") or "Amend. burn risk", value = "Yes" })
+        table.insert(lines, { group = "late", label = SoilL10n.tr("sf_fieldinfo_burn_risk", "Amend. burn risk"), value = "Yes" })
     end
 
     -- The drilling-window advisory (SF-55-wave2 brief): whether the coming days
@@ -1182,8 +1179,8 @@ function SoilHUD:buildFieldInfoLines(info)
             if verdictKey ~= nil then
                 table.insert(lines, {
                     group = "late",
-                    label = g_i18n:getText("sf_fieldinfo_drilling") or "Drilling",
-                    value = g_i18n:getText(verdictKey) or verdictKey,
+                    label = SoilL10n.tr("sf_fieldinfo_drilling", "Drilling"),
+                    value = SoilL10n.tr(verdictKey, verdictKey),
                 })
             end
         end
@@ -1213,7 +1210,7 @@ function SoilHUD:updateFieldInfoBox()
     if not g_SoilFertilityManager or not g_SoilFertilityManager.settings.enabled then return end
 
     box:clear()
-    box:setTitle(g_i18n:getText("sf_fieldinfo_box_title") or "Soil Nutrients")
+    box:setTitle(SoilL10n.tr("sf_fieldinfo_box_title", "Soil Nutrients"))
 
     for _, line in ipairs(self:buildFieldInfoLines(info)) do
         box:addLine(line.label, line.value)

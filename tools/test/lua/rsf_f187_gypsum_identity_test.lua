@@ -11,7 +11,7 @@
 -- limeCompatNames sites are text-level facts checked in the PR, not here:
 -- fengari has no io.open.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local vanilla = {
   LIQUIDFERTILIZER = { litersPerSecond = 0.0081, sprayGroundType = 2 },

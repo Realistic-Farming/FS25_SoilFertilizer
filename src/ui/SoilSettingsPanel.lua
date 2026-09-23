@@ -1094,7 +1094,7 @@ function SoilSettingsPanel:drawSetStatePage()
 
     -- Title
     local titleY = CY_TOP - 0.040
-    local stateTitle = g_i18n and g_i18n:getText("sf_set_state_title") or "SET FIELD STATE"
+    local stateTitle = SoilL10n.tr("sf_set_state_title", "SET FIELD STATE")
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
         string.format("%s  -  Field #%s", stateTitle, tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
@@ -1102,11 +1102,11 @@ function SoilSettingsPanel:drawSetStatePage()
 
     -- Each nutrient row
     local params = {
-        { k = "N",  label = g_i18n and g_i18n:getText("sf_map_layer_n") or "Nitrogen (N)",      min = 0,   max = 100, step = 1,   fmt = "%.0f" },
-        { k = "P",  label = g_i18n and g_i18n:getText("sf_map_layer_p") or "Phosphorus (P)",    min = 0,   max = 100, step = 1,   fmt = "%.0f" },
-        { k = "K",  label = g_i18n and g_i18n:getText("sf_map_layer_k") or "Potassium (K)",     min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "N",  label = SoilL10n.tr("sf_map_layer_n", "Nitrogen (N)"),      min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "P",  label = SoilL10n.tr("sf_map_layer_p", "Phosphorus (P)"),    min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "K",  label = SoilL10n.tr("sf_map_layer_k", "Potassium (K)"),     min = 0,   max = 100, step = 1,   fmt = "%.0f" },
         { k = "pH", label = "pH",                                                            min = 4.0, max = 9.0, step = 0.1, fmt = "%.1f" },
-        { k = "OM", label = g_i18n and g_i18n:getText("sf_map_layer_om") or "Organic Matter (%)", min = 0.5, max = 15,  step = 0.5, fmt = "%.1f" },
+        { k = "OM", label = SoilL10n.tr("sf_map_layer_om", "Organic Matter (%)"), min = 0.5, max = 15,  step = 0.5, fmt = "%.1f" },
     }
 
     local rowH   = 0.040
@@ -1182,7 +1182,7 @@ function SoilSettingsPanel:drawSetDiseasePage()
 
     -- Title
     local titleY = CY_TOP - 0.040
-    local diseaseTitle = g_i18n and g_i18n:getText("sf_set_disease_title") or "SET FIELD DISEASE"
+    local diseaseTitle = SoilL10n.tr("sf_set_disease_title", "SET FIELD DISEASE")
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
         string.format("%s  -  Field #%s", diseaseTitle, tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
@@ -1198,7 +1198,7 @@ function SoilSettingsPanel:drawSetDiseasePage()
         self:drawRect(CX, curY, CW, rowH - 0.003, C.row_alt)
         self:drawRect(CX, curY, 0.003, rowH - 0.003, C.green_dim)
         self:drawText(CX + 0.012, curY + (rowH - 0.003) * 0.52, TS_BODY,
-            (g_i18n and g_i18n:getText("sf_map_disease_pressure") or "Disease"), C.white, RenderText.ALIGN_LEFT, false)
+            SoilL10n.tr("sf_map_disease_pressure", "Disease"), C.white, RenderText.ALIGN_LEFT, false)
 
         local list = self.setDiseaseList or { "" }
         local id   = list[self.setDiseaseIdx or 1] or ""
