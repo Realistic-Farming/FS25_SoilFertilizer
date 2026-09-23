@@ -630,9 +630,10 @@ end
 --- actually receives on any stressed field whenever SCS is installed.
 ---
 --- DISPLAY USE ONLY. computeYieldModifier must never include this: SCS applies its
---- own cut itself, and HarvestContractUnderwrite divides out exactly the value the
---- hopper hook applied. Folding it into the applied path would double-charge the
---- player and break the contract top-up in the same stroke.
+--- own cut itself, upstream of ours, and the harvest underwrite measures SF's OWN share
+--- from the healthy-versus-actual cutter pair around our scaling (RSF-741). Folding SCS
+--- into the applied path would double-charge the player and hand the contract top-up a
+--- share SF never took, in the same stroke.
 ---
 --- Pull-only, pcall-guarded, neutral when absent - mirrors the SCS-001 moisture read
 --- in _applyRainLeaching. The function-type guard also keeps us neutral against an
@@ -705,7 +706,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     -- field-average values, so SF's own share of the cut is identical on both paths.
     -- The monitor additionally multiplies in SeasonalCropStress's keep-factor
     -- (SCS-002) - deliberately NOT done here, because SCS applies that cut itself
-    -- upstream and HarvestContractUnderwrite inverts exactly what we return.
+    -- upstream, and the harvest underwrite measures only the cut this value causes (RSF-741).
     local modifier = self:_yieldModifierFromNutrients(
         field, cropName, field.nitrogen, field.phosphorus, field.potassium, fieldId)
 
@@ -1135,6 +1136,8 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
     field.frozenYieldModifier  = nil
     field.frozenYieldFruitType = nil
     field.zoneYieldCaptureReady = nil
+    -- RSF-741 item 10: a new crop cycle ends the harvest-underwrite record too.
+    field.harvestUnderwriteProvenance = nil
 
     -- SF-18: opening (or extending) the establishment window. Every sowing pass
     -- extends, making re-drilling and multi-day drilling the same case.
@@ -7944,6 +7947,11 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             if field.zoneYieldCaptureReady == true then
                 setXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady", true)
             end
+            -- RSF-741 item 10: the harvest-underwrite record (seven attributes), written
+            -- only while a valid armed record exists.
+            if HarvestContractUnderwrite ~= nil and type(HarvestContractUnderwrite.saveRecordXML) == "function" then
+                HarvestContractUnderwrite.saveRecordXML(xmlFile, fieldKey, field.harvestUnderwriteProvenance)
+            end
 
             -- [SF-79] Positional pH metadata: frozen seed + sub-step remainders.
             if type(self._phSaveFieldXML) == "function" then
@@ -8081,6 +8089,10 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             frozenYieldModifier  = getXMLFloat(xmlFile, fieldKey .. "#frozenYieldModifier") or nil,
             frozenYieldFruitType = getXMLInt(xmlFile, fieldKey .. "#frozenYieldFruitType") or nil,
             zoneYieldCaptureReady = (getXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady") == true) or nil,
+            -- RSF-741 item 10: absent or invalid keys load as no record (vanilla).
+            harvestUnderwriteProvenance = (HarvestContractUnderwrite ~= nil
+                and type(HarvestContractUnderwrite.loadRecordXML) == "function")
+                and HarvestContractUnderwrite.loadRecordXML(xmlFile, fieldKey) or nil,
             coverageFraction = getXMLFloat(xmlFile, fieldKey .. "#coverageFraction") or 0,
             lastAlertSeason = getXMLInt(xmlFile, fieldKey .. "#lastAlertSeason") or nil,
             compaction = 0,
@@ -8354,6 +8366,10 @@ function SoilFertilitySystem:getSoilStateTable()
             if field.zoneYieldCaptureReady == true then
                 e.zoneYieldCaptureReady = true
             end
+            -- RSF-741 item 10: the harvest-underwrite record (matches the XML save).
+            if HarvestContractUnderwrite ~= nil and type(HarvestContractUnderwrite.recordToFlat) == "function" then
+                HarvestContractUnderwrite.recordToFlat(field.harvestUnderwriteProvenance, e)
+            end
             -- [SF-79] Positional pH metadata (matches XML save).
             if type(field._phSeedScalar) == "number" then
                 e.sf79PHSeed = field._phSeedScalar
@@ -8478,6 +8494,10 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
                 frozenYieldModifier   = e.frozenYieldModifier,
                 frozenYieldFruitType  = e.frozenYieldFruitType,
                 zoneYieldCaptureReady = e.zoneYieldCaptureReady == true and true or nil,
+                -- RSF-741 item 10: absent keys (an older snapshot) or an invalid set is no record.
+                harvestUnderwriteProvenance = (HarvestContractUnderwrite ~= nil
+                    and type(HarvestContractUnderwrite.recordFromFlat) == "function")
+                    and HarvestContractUnderwrite.recordFromFlat(e) or nil,
                 -- [SF-79] Positional pH metadata (matches the XML save).
                 _phSeedScalar         = e.sf79PHSeed,
                 coverageFraction      = e.coverageFraction or 0,
