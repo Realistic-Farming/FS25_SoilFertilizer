@@ -1281,6 +1281,27 @@ function SoilFertilityManager:_genesisSeed()
     return seed
 end
 
+--- [SF-79] Read ONLY the root #sf79PHSchema marker from the soilData.xml safety
+--- copy, for the StateLedger load path. Every ledger snapshot written before #982
+--- lacks the key, so on that path the marker those same builds wrote into the
+--- safety copy is the only proof that a save already had the positional contract.
+--- A missing safety copy counts as UNMARKED (false): the only saves with a ledger
+--- block and no soilData.xml are hand-edited or pre-marker ones, and for a
+--- released player's pre-marker save the freeze is exactly what 3.B wants.
+---@return boolean marked
+function SoilFertilityManager:_readSoilXMLSchemaMarker()
+    local savegamePath = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory
+    if savegamePath == nil then return false end
+    local xmlPath = savegamePath .. "/soilData.xml"
+    if not fileExists(xmlPath) then return false end
+    local xmlFile = loadXMLFile("soilDataSchemaMarker", xmlPath)
+    if not xmlFile then return false end
+    local marked = (getXMLInt(xmlFile, "soilData#sf79PHSchema") or 0) == 1
+    delete(xmlFile)
+    return marked
+end
+
 --- Load soil data from XML file
 --- Reads from {savegame}/soilData.xml if exists
 --- Falls back to defaults if file not found
@@ -1299,7 +1320,10 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
     -- through and import the existing soilData.xml (which the ledger then carries
     -- forward). soilData.xml is still written every save as a safety copy.
     if SoilStateLedgerBridge and SoilStateLedgerBridge.hasLedgerState() then
-        SoilStateLedgerBridge.applyState(self)
+        -- [SF-79] The ledger block is the only loader on this path, so the schema
+        -- marker from the soilData.xml safety copy travels with it (see
+        -- _readSoilXMLSchemaMarker and applySoilStateTable).
+        SoilStateLedgerBridge.applyState(self, self:_readSoilXMLSchemaMarker())
         local fieldCount = 0
         if self.soilSystem.fieldData then
             for _ in pairs(self.soilSystem.fieldData) do fieldCount = fieldCount + 1 end
