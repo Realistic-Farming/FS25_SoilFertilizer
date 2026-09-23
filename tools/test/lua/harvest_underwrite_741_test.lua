@@ -117,6 +117,10 @@ do
   local onion = newMission({ cut = 0.49, deposited = 0.25 * 10000 * 0.93, hcf = 0.5 })
   local vOnion = 0.5 * 0.5 + 0.5 * 0.25
   T.near("C3 onion: the delivery weight is 0.5, so it adds 0.5 * 0.25", onion:getCompletion(), vOnion + 0.125, 1e-12)
+  -- heavy delivery on a half-cut field: the corrected delivery component is capped at 1
+  local heavy = newMission({ cut = 0.49, deposited = 0.9 * 10000 * 0.93 })
+  local vHeavy = 0.8 * 0.5 + 0.2 * 0.9
+  T.near("C4 sellCorrected is capped at 1: adds 0.2 * (1.0 - 0.9), never 0.2 * (1.8 - 0.9)", heavy:getCompletion(), vHeavy + 0.02, 1e-12)
 end
 
 -- ==============================================================================

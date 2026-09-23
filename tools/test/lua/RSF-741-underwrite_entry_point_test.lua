@@ -117,6 +117,7 @@ function HarvestMission:getCompletion()
   return math.min(1, w * harvestCompletion + (1 - w) * sellCompletion)
 end
 local HarvestMission_mt = { __index = HarvestMission }
+HM_FINISHED_PREPARING = HarvestMission.finishedPreparing
 
 -- The world: two fields as rectangles, standing crop and windrows per field.
 WORLD = {}
@@ -382,6 +383,14 @@ do
   local ptr = hv.spec_workArea.workAreas[1].processingFunction
   hm:installZoneYieldCutterHook(); hm:installUnderwriteCaptureHooks()
   T.ok("I7 a second install leaves the live pointer as it was (one tagged wrapper)", hv.spec_workArea.workAreas[1].processingFunction == ptr)
+  -- the arming half lost (restored by some other path) while the completion half stays:
+  -- a re-install puts the arming back instead of taking one half for the pair
+  local armWrapper = HarvestMission.finishedPreparing
+  HarvestMission.finishedPreparing = rawget(HarvestMission, "finishedPreparing") == armWrapper and HM_FINISHED_PREPARING or HarvestMission.finishedPreparing
+  T.ok("I10a (the arming half is gone)", HarvestMission.finishedPreparing ~= HCU._armWrapper)
+  T.eq("I10b a re-install reports the pair live", HCU.install(nil), true)
+  T.ok("I10c and the arming wrapper is back on finishedPreparing", HarvestMission.finishedPreparing == HCU._armWrapper)
+  HarvestMission.finishedPreparing = armWrapper
   uninstall(hm)
   T.eq("I8 teardown drops readiness", HCU.isReady(), false)
   T.ok("I9 teardown restores the class completion", HarvestMission.getCompletion ~= HCU._wrapper)
@@ -642,6 +651,56 @@ do
   m.depositedLiters = v.spec_combine.fill            -- 1200 L from a fully cut field at 0.6
   -- the native blend: 0.8 * min(1 / 0.98, 1) + 0.2 * min(1200 / 2000 / 0.93, 1)
   T.near("C33 and the completion is exactly the native blend", m:getCompletion(), 0.8 + 0.2 * (1200 / 2000 / 0.93), 1e-12)
+  uninstall(hm)
+end
+
+do
+  -- a PICKUP-only tick on the contract field (no standing crop, a windrow): the pickup
+  -- binding is the only binding, so it alone carries the material to the record
+  newWorld()
+  WORLD.fields[MISSION_FARMLAND].standing = 0
+  WORLD.fields[MISSION_FARMLAND].windrow = 500
+  local v = loadHarvester({ workAreas = { area("processPickupCutterArea", 60, 80) } })
+  local hm = install()
+  local m = newHarvestMission(); arm(m)
+  tick(v, 16)
+  local r = rec(MISSION_FARMLAND)
+  T.eq("C34 a pickup-only tick on the contract records one cut", r.cutCount, 1)
+  T.near("C35 its litres on BOTH sides (80, 80)", r.preTotal + r.postTotal, 160, 1e-9)
+  uninstall(hm)
+end
+do
+  -- cutting the contract while picking up the farm's OWN windrow in the same tick
+  newWorld()
+  WORLD.fields[OWN_FARMLAND].windrow = 500
+  local v = loadHarvester({ workAreas = { area("processCutterArea", 50, 100), area("processPickupCutterArea", 250, 80) } })
+  local hm = install()
+  local m = newHarvestMission(); arm(m)
+  tick(v, 16)
+  T.eq("C36 contract standing plus own-ground pickup in one tick faults (the pickup binding disagrees)", rec(MISSION_FARMLAND).captureFault, true)
+  uninstall(hm)
+end
+do
+  -- a CLIENT straddling the contract edge: only the server may fault a record
+  newWorld()
+  local client = loadHarvester({ isServer = false, workAreas = { area("processCutterArea", 50, 100), area("processCutterArea", 250, 100) } })
+  local hm = install()
+  local m = newHarvestMission(); arm(m)
+  tick(client, 16)
+  T.eq("C37 a client's straddling tick faults nothing", rec(MISSION_FARMLAND).captureFault, false)
+  uninstall(hm)
+end
+do
+  -- a foreign replacement of the combine's addCutterArea that never reaches our wrapper:
+  -- the token was made but not consumed, and must still die with the cutter end
+  newWorld()
+  local v = loadHarvester({ workAreas = { area("processCutterArea", 50, 100) } })
+  local hm = install()
+  local m = newHarvestMission(); arm(m)
+  v.addCutterArea = function() return 0 end
+  tick(v, 16)
+  T.eq("C38 an unconsumed token is cleared after the end all the same", HCU._token, nil)
+  T.eq("C39 and nothing was recorded", rec(MISSION_FARMLAND).cutCount, 0)
   uninstall(hm)
 end
 
