@@ -7778,9 +7778,10 @@ function HookManager:installPurchaseRefillHook()
     -- after this install never got a price at all (X1: the rebuild now runs on
     -- every registration attempt).
     --
-    -- customPrices[fillTypeIndex] = pricePerLiter. This is the install-time copy the
-    -- wrapper below captures; making the wrapper read the live map at call time is
-    -- V12a's wrapper half and rides with V12c.
+    -- customPrices[fillTypeIndex] = pricePerLiter, read here only to count and log
+    -- what this install saw. The owned layer below does NOT capture it: every wrapper
+    -- reads self.customFillTypePrices at CALL time (V12a's wrapper half, landed with
+    -- V12c in #987), so a product priced after this install is billed too.
     self:rebuildCustomPriceMap()
     local customPrices = self.customFillTypePrices
 
