@@ -1989,6 +1989,10 @@ local sfValueMapResyncInFlight = {}
 -- the layers actually streamed, not every syncable layer in LAYER_DEFS (#803).
 local sfValueMapSyncRoundLayers = {}
 local SF_VALUE_MAP_RESYNC_MAX = 2
+-- [#995] Per-layer "a FULL stream of this layer has landed here" (client). A PATCH
+-- for a layer whose FULL has not landed (a client mid-join) is ignored: applied
+-- over an empty map it would paint rows the next checksum then judges as drift.
+local sfValueMapFullLanded = {}
 
 -- [SF-79] Multi-part chunk assembler. Keyed by "<layerIdx>:<transferId>"; holds
 -- parts until the transfer is complete, then the caller applies them in order.
@@ -2110,6 +2114,8 @@ function SoilValueMapChunkEvent:run(connection)
     -- is a whole-map UNFILTERED executeSet(0), so a stray or malformed chunk must
     -- not be able to reach it. Refuse rather than trust the sender.
     if def.serverOnly == true then return end
+    -- [#995] A patch is only meaningful over a layer this client holds whole.
+    if self.mode == "PATCH" and not sfValueMapFullLanded[self.layerIdx] then return end
 
     -- [SF-79] Transport header validation. A malformed part is dropped, never applied.
     if type(self.partCount) ~= "number" or self.partCount < 1 or self.partCount > 4096 then return end
@@ -2156,6 +2162,15 @@ function SoilValueMapChunkEvent:run(connection)
         end
     end
 
+    -- [#995] A FULL chunk that carries the layer's last row completes its FULL
+    -- stream here; patches for the layer are admissible from now on.
+    if self.mode ~= "PATCH" then
+        local numRows = vm.getSyncRowCount and vm:getSyncRowCount() or 0
+        for _, part in ipairs(parts) do
+            if part.gyStart + #part.rows >= numRows then sfValueMapFullLanded[self.layerIdx] = true end
+        end
+    end
+
     -- Track this layer as streamed this round (deduped: a layer streams many
     -- chunks, and the round starts fresh on each send's final chunk).
     sfValueMapSyncRoundLayers[self.layerIdx] = true
@@ -2163,14 +2178,15 @@ function SoilValueMapChunkEvent:run(connection)
     if self.isLast then
         -- #803: this layer's repair round trip has landed, so a future checksum
         -- evaluation is a fresh comparison against the applied state, not a
-        -- re-charge of an in-flight repair.
-        sfValueMapResyncInFlight[self.layerIdx] = nil
+        -- re-charge of an in-flight repair. A PATCH round is not a repair: it
+        -- leaves a pending repair's flag alone.
+        if self.mode ~= "PATCH" then sfValueMapResyncInFlight[self.layerIdx] = nil end
         local syncedLayers = 0
         for layerIdx in pairs(sfValueMapSyncRoundLayers) do
             local d = SoilValueMaps.LAYER_DEFS[layerIdx]
             if d and d.serverOnly ~= true then syncedLayers = syncedLayers + 1 end
         end
-        SoilLogger.info("Client: value map sync complete (%d layers)", syncedLayers)
+        SoilLogger.info("Client: value map %s complete (%d layers)", self.mode == "PATCH" and "patch" or "sync", syncedLayers)
         sfValueMapSyncRoundLayers = {}
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
@@ -2180,23 +2196,50 @@ function SoilValueMapChunkEvent:run(connection)
 end
 
 -- ── Checksum verification ─────────────────────────────────
+--
+-- [#995] THE COST THAT DRIP-FEEDING DID NOT TOUCH. A layer's checksum was a full
+-- walk of the sync grid, getBitVectorMapPoint once per grid point: 512 x 512 =
+-- 262,144 engine calls per layer, 3.1 million for twelve layers, in ONE tick. It ran
+-- on the server at every 5-minute broadcast and again after every single-layer
+-- reply, and on every client for every checksum event it received. And because
+-- nothing carried a write to the clients between broadcasts, after five minutes
+-- most layers were past the 2% tolerance and were re-sent whole, 32 chunks each.
+--
+-- Now SoilValueMaps keeps per-row totals and marks the rows each write touched (its
+-- sync bookkeeping). A checksum is the cached totals, refreshed for stale rows only,
+-- at most SF_SYNC_ROWS_PER_TICK rows per tick on either side. On the 5-minute timer
+-- the server runs a ROUND: it takes the dirty rows, refreshes them, broadcasts them
+-- as PATCH chunks (drip-fed; a PATCH never clears, see the chunk apply above), then
+-- broadcasts the checksums. A client that still drifts requests the layer exactly as
+-- before: the cap, the in-flight guard and the 2% tolerance are the unchanged
+-- fallback. A single-layer reply's trailing checksum carries that layer only, from
+-- the cache the reply itself refreshed, so no reply walks anything. The join sync is
+-- unchanged in shape: FULL layers, then the checksums of every synced layer, the
+-- cache seeded by the rows the send read.
 
---- Per-layer checksum: sum of all sync-grid states + count of non-zero cells.
---- Cheap to compute on both sides (reads the coarse grid, not full resolution).
-local function sfComputeLayerChecksum(vm, layerKey)
-    local stride  = vm:getSyncStride()
-    local numRows = math.floor(vm.resolution / stride)
-    local sum, nonZero = 0, 0
-    for gy = 0, numRows - 1 do
-        local row = vm:readSyncRow(layerKey, gy)
-        if row then
-            for _, state in ipairs(row) do
-                sum = sum + state
-                if state > 0 then nonZero = nonZero + 1 end
-            end
+-- Rows refreshed (one engine read per grid column each) in any one tick, on either
+-- side. 64 rows of a 512-wide grid are 32,768 reads: under 1/95 of the old tick.
+local SF_SYNC_ROWS_PER_TICK  = 64
+local SF_SYNC_CHUNK_DELAY    = 40   -- ms between chunk events (52311815's drip-feed)
+local SF_SYNC_ROWS_PER_EVENT = 16
+-- Every SF_SYNC_AUDIT_EVERY rounds the server refreshes EVERY row rather than the
+-- stale ones, so a write that reached a layer without marking its rows (this file's
+-- enumeration found none, and the cache would hide one forever) is caught within
+-- half an hour rather than never.
+local SF_SYNC_AUDIT_EVERY = 6
+
+--- The synced layers' checksums from the row cache, or one layer's when
+--- onlyLayerIdx is given. Pure: the caller has refreshed what it wants current, and
+--- a checksum that describes exactly the rows a client was sent is the point.
+local function sfChecksumsFromCache(vm, onlyLayerIdx)
+    local checksums = {}
+    for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        if def.serverOnly ~= true and (onlyLayerIdx == nil or layerIdx == onlyLayerIdx) then
+            local sum, nonZero = vm:getSyncChecksum(def.key)
+            checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum or 0, nonZero = nonZero or 0 }
         end
     end
-    return sum, nonZero
+    return checksums
 end
 
 SoilValueMapChecksumEvent = SoilValueMapChecksumEvent or {}
@@ -2244,6 +2287,85 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     self:run(connection)
 end
 
+--- Judge one layer against the server's checksum (client): the unchanged rule.
+--- The local checksum is the row cache, current because the evaluator refreshed
+--- the layer's stale rows before calling.
+local function sfJudgeLayer(vm, layerIdx, def, cs)
+    local localSum = vm:getSyncChecksum(def.key) or 0
+    local sumDrift = math.abs(localSum - cs.sum)
+    local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
+    if sumDrift > tolerance then
+        -- A request for this layer is already on the wire and its chunk
+        -- stream has not been applied yet. The drift we are reading is
+        -- the pre-repair state; the fresh checksum the server sends
+        -- after finishing THIS layer's own reply is the one that judges
+        -- the round trip. Charging now would double-count against the
+        -- trailing checksums of other layers repaired in the same pass
+        -- (#803). Wait for our own stream to land.
+        if sfValueMapResyncInFlight[layerIdx] then
+            -- still awaiting the in-flight repair; skip re-charging
+        else
+            local attempts = sfValueMapResyncAttempts[layerIdx] or 0
+            if attempts >= SF_VALUE_MAP_RESYNC_MAX then
+                if attempts == SF_VALUE_MAP_RESYNC_MAX then
+                    SoilLogger.warning(
+                        "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
+                        def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
+                    sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
+                end
+            elseif g_client then
+                -- Charge the attempt ONLY on the branch that actually sends a
+                -- request, so a checksum that evaluates a layer but sends
+                -- nothing cannot burn the cap (#803, Claude(A)'s addition).
+                sfValueMapResyncAttempts[layerIdx] = attempts + 1
+                sfValueMapResyncInFlight[layerIdx] = true
+                SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
+                    def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
+                g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
+            end
+        end
+    else
+        sfValueMapResyncAttempts[layerIdx] = 0
+        sfValueMapResyncInFlight[layerIdx] = nil
+    end
+end
+
+-- The client's evaluator: the checksums being judged and the entry it is on. It
+-- refreshes stale rows at most SF_SYNC_ROWS_PER_TICK per tick and judges a layer
+-- once its cache is current, so a join's twelve freshly applied layers are read back
+-- over a few dozen ticks rather than three million reads in one.
+local sfClientEvaluator = nil
+
+--- One step of the evaluation under a row budget. Returns true when every entry
+--- has been judged.
+local function sfEvaluateStep(vm, budget)
+    local ev = sfClientEvaluator
+    while ev.cursor <= #ev.entries do
+        local cs = ev.entries[ev.cursor]
+        -- [SF-43 ask 4] Index comes from the entry, never from its position.
+        local layerIdx = cs.layerIdx
+        local def = layerIdx and SoilValueMaps.LAYER_DEFS[layerIdx]
+        -- A serverOnly layer was never allocated here, so it has nothing to compare
+        -- and must never be resynced. Defensive: the server does not send one.
+        if def and def.serverOnly == true then def = nil end
+        if def == nil then
+            ev.cursor = ev.cursor + 1
+        else
+            local stale = vm:getSyncStaleRows(def.key)
+            local i = 1
+            while i <= #stale and budget > 0 do
+                vm:refreshSyncRow(def.key, stale[i])
+                i = i + 1
+                budget = budget - 1
+            end
+            if i <= #stale then return false end   -- the budget is spent; next tick
+            sfJudgeLayer(vm, layerIdx, def, cs)
+            ev.cursor = ev.cursor + 1
+        end
+    end
+    return true
+end
+
 function SoilValueMapChecksumEvent:run(connection)
     -- CLIENT ONLY: compare against the local maps; request a resync when a
     -- layer has drifted (tolerance covers coarse-grid quantisation noise).
@@ -2251,53 +2373,27 @@ function SoilValueMapChecksumEvent:run(connection)
     local vm = sfGetValueMaps()
     if not vm then return end
 
-    for _, cs in ipairs(self.checksums) do
-        -- [SF-43 ask 4] Index comes from the entry, never from its position.
-        local layerIdx = cs.layerIdx
-        local def = layerIdx and SoilValueMaps.LAYER_DEFS[layerIdx]
-        -- A serverOnly layer was never allocated here, so it has nothing to compare
-        -- and must never be resynced. Defensive: the server does not send one.
-        if def and def.serverOnly == true then def = nil end
-        if def then
-            local localSum, localNonZero = sfComputeLayerChecksum(vm, def.key)
-            local sumDrift = math.abs(localSum - cs.sum)
-            local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
-            if sumDrift > tolerance then
-                -- A request for this layer is already on the wire and its chunk
-                -- stream has not been applied yet. The drift we are reading is
-                -- the pre-repair state; the fresh full checksum the server sends
-                -- after finishing THIS layer's own reply is the one that judges
-                -- the round trip. Charging now would double-count against the
-                -- trailing checksums of other layers repaired in the same pass
-                -- (#803). Wait for our own stream to land.
-                if sfValueMapResyncInFlight[layerIdx] then
-                    -- still awaiting the in-flight repair; skip re-charging
-                else
-                    local attempts = sfValueMapResyncAttempts[layerIdx] or 0
-                    if attempts >= SF_VALUE_MAP_RESYNC_MAX then
-                        if attempts == SF_VALUE_MAP_RESYNC_MAX then
-                            SoilLogger.warning(
-                                "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
-                                def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
-                            sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
-                        end
-                    elseif g_client then
-                        -- Charge the attempt ONLY on the branch that actually sends a
-                        -- request, so a checksum that evaluates a layer but sends
-                        -- nothing cannot burn the cap (#803, Claude(A)'s addition).
-                        sfValueMapResyncAttempts[layerIdx] = attempts + 1
-                        sfValueMapResyncInFlight[layerIdx] = true
-                        SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
-                            def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
-                        g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
-                    end
-                end
-            else
-                sfValueMapResyncAttempts[layerIdx] = 0
-                sfValueMapResyncInFlight[layerIdx] = nil
-            end
-        end
+    -- A newer checksum supersedes one still being evaluated.
+    if sfClientEvaluator ~= nil then
+        sfClientEvaluator.entries, sfClientEvaluator.cursor = self.checksums, 1
+        return
     end
+    sfClientEvaluator = { entries = self.checksums, cursor = 1 }
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
+        sfEvaluateStep(vm, math.huge)
+        sfClientEvaluator = nil
+        return
+    end
+    local evaluator = {
+        update = function(dsp, dt)
+            local vmNow = sfGetValueMaps()
+            if vmNow == nil or sfEvaluateStep(vmNow, SF_SYNC_ROWS_PER_TICK) then
+                sfClientEvaluator = nil
+                g_currentMission:removeUpdateable(dsp)
+            end
+        end,
+    }
+    g_currentMission:addUpdateable(evaluator)
 end
 
 -- ── Layer resync request (Client -> Server) ───────────────
@@ -2334,20 +2430,19 @@ end
 
 -- ── Server-side dispatch ──────────────────────────────────
 
---- Stream the value map layers to one client connection.
---- onlyLayerIdx: optional 1-based LAYER_DEFS index to resend a single layer.
---- Mirrors the field-batch strategy: synchronous on dedicated servers,
---- drip-fed via addUpdateable on listen servers to protect the render thread.
+--- Stream the value map layers FULL to one client connection (the join sync, or a
+--- single-layer repair when onlyLayerIdx is given). Drip-fed via addUpdateable
+--- (BaseMission.lua:534, so on a dedicated server too); synchronous only where
+--- addUpdateable is absent. Each chunk's rows are read through refreshSyncRow, so
+--- the send seeds the row cache with exactly what it sent, and the trailing
+--- checksum comes from that cache: no walk after the send.
 function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
     if g_server == nil or not connection then return end
     local vm = sfGetValueMaps()
     if not vm then return end
 
-    local stride  = vm:getSyncStride()
-    local numRows = math.floor(vm.resolution / stride)
+    local numRows = vm:getSyncRowCount()
     if numRows <= 0 then return end
-
-    local ROWS_PER_EVENT = 16
 
     -- Build the (layerIdx, gyStart) work list
     local work = {}
@@ -2358,7 +2453,7 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
             local gy = 0
             while gy < numRows do
                 work[#work + 1] = { layerIdx = layerIdx, key = def.key, gyStart = gy }
-                gy = gy + ROWS_PER_EVENT
+                gy = gy + SF_SYNC_ROWS_PER_EVENT
             end
         end
     end
@@ -2366,38 +2461,31 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
 
     local function buildChunk(item, isLast)
         local rows = {}
-        local gyEnd = math.min(item.gyStart + ROWS_PER_EVENT - 1, numRows - 1)
+        local gyEnd = math.min(item.gyStart + SF_SYNC_ROWS_PER_EVENT - 1, numRows - 1)
         for gy = item.gyStart, gyEnd do
-            rows[#rows + 1] = vm:readSyncRow(item.key, gy) or {}
+            rows[#rows + 1] = vm:refreshSyncRow(item.key, gy) or {}
         end
         return SoilValueMapChunkEvent.new(item.layerIdx, item.gyStart, rows, isLast)
     end
 
-    -- [SF-43 ask 4] SKIP serverOnly layers entirely rather than sending a sentinel:
-    -- sfComputeLayerChecksum walks the whole sync grid, so a sentinel would still
-    -- pay the full cost per unsynced layer for a number nobody may act on.
-    local function buildChecksums()
-        local checksums = {}
-        for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
-            if def.serverOnly ~= true then
-                local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-                checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
-            end
-        end
-        return checksums
+    -- [SF-43 ask 4] serverOnly layers are skipped entirely rather than sent as a
+    -- sentinel; the trailing checksum names the layers it carries by index. A
+    -- single-layer repair is judged by its own layer's checksum alone.
+    local function trailingChecksum()
+        return SoilValueMapChecksumEvent.new(sfChecksumsFromCache(vm, onlyLayerIdx))
     end
 
     if g_currentMission == nil or g_currentMission.addUpdateable == nil then
         for i, item in ipairs(work) do
             connection:sendEvent(buildChunk(item, i == #work))
         end
-        connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+        connection:sendEvent(trailingChecksum())
         SoilLogger.info("Server: value maps sent synchronously (%d chunks)", #work)
     else
         local dispatcher = {
             index      = 1,
             timer      = 0,
-            delay      = 40,   -- ms between chunks
+            delay      = SF_SYNC_CHUNK_DELAY,
             work       = work,
             connection = connection,
             update = function(dsp, dt)
@@ -2418,7 +2506,7 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
                 dsp.index = dsp.index + 1
 
                 if isLast then
-                    dsp.connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+                    dsp.connection:sendEvent(trailingChecksum())
                     g_currentMission:removeUpdateable(dsp)
                 end
             end,
@@ -2428,22 +2516,119 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
     end
 end
 
---- Broadcast checksums to all clients (periodic drift detection).
+-- ── The server's sync round (timer) ───────────────────────
+
+-- One round per timer firing: REFRESH (per tick up to SF_SYNC_ROWS_PER_TICK rows of
+-- the layer at the cursor: its stale rows for the checksum and its dirty rows for
+-- the patch, taken at round start), SEND (the PATCH chunks to every client at
+-- SF_SYNC_CHUNK_DELAY ms, the last one flagged), CHECKSUM (every synced layer, from
+-- the cache). A round still running when the timer fires again is left to finish;
+-- that firing is skipped, the next one starts a fresh round.
+local sfSyncRound = nil
+local sfSyncRoundCount = 0
+
+--- Group a layer's dirty rows into PATCH chunks of consecutive rows.
+local function sfRoundBuildChunks(round, layerIdx, rowsByGy, dirtyRows)
+    local i, n = 1, #dirtyRows
+    while i <= n do
+        local gyStart = dirtyRows[i]
+        local rows = { rowsByGy[gyStart] }
+        local j = i
+        while j + 1 <= n and dirtyRows[j + 1] == dirtyRows[j] + 1 and #rows < SF_SYNC_ROWS_PER_EVENT do
+            j = j + 1
+            rows[#rows + 1] = rowsByGy[dirtyRows[j]]
+        end
+        round.chunks[#round.chunks + 1] = SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, false, { mode = "PATCH" })
+        i = j + 1
+    end
+end
+
+--- One tick of a round. Returns true when the round is complete.
+local function sfRoundStep(round, vm, dt)
+    if round.phase == "refresh" then
+        local budget = SF_SYNC_ROWS_PER_TICK
+        while budget > 0 and round.cursor <= #round.layers do
+            local layer = round.layers[round.cursor]
+            if layer.todo == nil then
+                local set = {}
+                if round.audit then
+                    for gy = 0, vm:getSyncRowCount() - 1 do set[gy] = true end
+                else
+                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end
+                end
+                for _, gy in ipairs(layer.dirty) do set[gy] = true end
+                local list = {}
+                for gy in pairs(set) do list[#list + 1] = gy end
+                table.sort(list)
+                layer.todo, layer.next, layer.rows = list, 1, {}
+            end
+            while budget > 0 and layer.next <= #layer.todo do
+                local gy = layer.todo[layer.next]
+                layer.rows[gy] = vm:refreshSyncRow(layer.key, gy) or {}
+                layer.next = layer.next + 1
+                budget = budget - 1
+            end
+            if layer.next > #layer.todo then
+                sfRoundBuildChunks(round, layer.layerIdx, layer.rows, layer.dirty)
+                layer.rows = nil
+                round.cursor = round.cursor + 1
+            end
+        end
+        if round.cursor > #round.layers then
+            round.phase = "send"
+            round.timer = SF_SYNC_CHUNK_DELAY   -- the first chunk goes out on the next step
+        end
+        return false
+    end
+    if round.phase == "send" then
+        if round.index > #round.chunks then
+            round.phase = "checksum"
+        else
+            round.timer = round.timer + dt
+            if round.timer < SF_SYNC_CHUNK_DELAY then return false end
+            round.timer = 0
+            local chunk = round.chunks[round.index]
+            chunk.isLast = (round.index == #round.chunks)
+            g_server:broadcastEvent(chunk)
+            round.index = round.index + 1
+            return false
+        end
+    end
+    g_server:broadcastEvent(SoilValueMapChecksumEvent.new(sfChecksumsFromCache(vm)))
+    SoilLogger.info("Server: value map round %d: %d patch chunk(s), checksums from the row cache%s",
+        round.number, #round.chunks, round.audit and " (audit round, every row refreshed)" or "")
+    return true
+end
+
+--- The 5-minute timer's entry (SoilFertilityManager:update): start a sync round.
 function SoilNetworkEvents_BroadcastValueMapChecksums()
     if g_server == nil then return end
     local vm = sfGetValueMaps()
     if not vm then return end
-    -- [SF-43 ask 4] The broadcast twin of buildChecksums above: same skip, same
-    -- explicit layerIdx. These two must stay in lockstep - a divergence here is
-    -- exactly the positional bug the carried index was added to make impossible.
-    local checksums = {}
+    if sfSyncRound ~= nil then return end
+    sfSyncRoundCount = sfSyncRoundCount + 1
+    local round = { number = sfSyncRoundCount, audit = (sfSyncRoundCount % SF_SYNC_AUDIT_EVERY == 0),
+                    phase = "refresh", layers = {}, cursor = 1, chunks = {}, index = 1, timer = 0 }
+    -- The dirty sets are taken now: a write that lands during the round goes to the next.
     for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
         if def.serverOnly ~= true then
-            local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-            checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
+            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = vm:takeSyncDirtyRows(def.key) }
         end
     end
-    g_server:broadcastEvent(SoilValueMapChecksumEvent.new(checksums))
+    sfSyncRound = round
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
+        while not sfRoundStep(round, vm, SF_SYNC_CHUNK_DELAY) do end
+        sfSyncRound = nil
+        return
+    end
+    round.update = function(dsp, dt)
+        local vmNow = sfGetValueMaps()
+        if vmNow == nil or g_server == nil or sfRoundStep(dsp, vmNow, dt) then
+            sfSyncRound = nil
+            g_currentMission:removeUpdateable(dsp)
+        end
+    end
+    g_currentMission:addUpdateable(round)
 end
 
 -- ==========================================================================
