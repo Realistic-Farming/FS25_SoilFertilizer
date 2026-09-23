@@ -230,7 +230,14 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
     local urgent = (entry.urgency or 0) >= 60
     local okStatus = (entry.urgency or 0) < 25 and not info.needsFertilization
     if statusEl then
-        if urgent then
+        if info.simDisabled then
+            -- Field Sentry (#651): a slept field's soil is frozen by intent, so its row
+            -- says so instead of an urgency it cannot act on (tester xrhec, Field 33).
+            -- The same word the field detail dialog and the HUD use, read through the
+            -- page's translator like every other cell here; N/P/K/pH stay as they are.
+            statusEl:setText(tr("sf_fieldsentry_asleep", "sim asleep"))
+            statusEl:setTextColor(unpack(COLOR_DIM))
+        elseif urgent then
             statusEl:setText(tr("rf_pda_status_urgent", "URGENT"))
             statusEl:setTextColor(unpack(COLOR_POOR))
         elseif okStatus then
@@ -943,6 +950,16 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
             local tpl = tr("rf_pda_treatment_selected", "Selected field: Field %s")
             local okFmt, formatted = pcall(string.format, tpl, tostring(fieldId))
             local text = okFmt and formatted or ("Field " .. tostring(fieldId))
+            -- Field Sentry (#651): a slept field carries its state and reason on the
+            -- selected line, the way SoilFieldDetailDialog shows it, so a plan drawn
+            -- for frozen soil is never read as live advice.
+            local info = entry and entry.info or nil
+            if info ~= nil and info.simDisabled then
+                local reasonText = info.simDisabledReasonKey
+                    and tr(info.simDisabledReasonKey, info.simDisabledReason)
+                    or tostring(info.simDisabledReason)
+                text = text .. "  (" .. tr("sf_fieldsentry_asleep", "sim asleep") .. ": " .. reasonText .. ")"
+            end
             page.treatSelectedLabel:setText(text)
             if page.treatSelectedLabel.setTextColor then
                 page.treatSelectedLabel:setTextColor(unpack(COLOR_LIME_BRIGHT))
