@@ -144,9 +144,10 @@ do
   local okEmpty = s:_phAddPending(3, '', PositionalPH.OP_NORMALIZE, 0.1 * UPR, KEY)
   local okNan = s:_phAddPending(3, 'rain', PositionalPH.OP_DELTA, 0 / 0, KEY)
   local okZero = s:_phAddPending(3, 'rain', PositionalPH.OP_DELTA, 0, KEY)
+  local okStep = s:_phAddPending(3, 'rain', PositionalPH.OP_DELTA, -1.5 * UPR, KEY)   -- a whole step is applied, never banked
   print = realPrint
-  T.eq("BANK B6 a remainder with no cause, a kind that is not an operation, an empty cause, a NaN amount or a zero amount is never banked",
-    tostring(okNil) .. tostring(okKind) .. tostring(okEmpty) .. tostring(okNan) .. tostring(okZero) .. "/" .. tostring(bank(s, 3) == before), "falsefalsefalsefalsefalse/true")
+  T.eq("BANK B6 a remainder with no cause, a kind that is not an operation, an empty cause, a NaN amount, a zero amount or an amount of a step or more is never banked",
+    tostring(okNil) .. tostring(okKind) .. tostring(okEmpty) .. tostring(okNan) .. tostring(okZero) .. tostring(okStep) .. "/" .. tostring(bank(s, 3) == before), "falsefalsefalsefalsefalsefalse/true")
   local warned = 0
   for _, l in ipairs(lines) do if l:find("was not banked", 1, true) then warned = warned + 1 end end
   T.eq("BANK B7 the refusal of a cause-less remainder is said once, not per call", warned, 1)
@@ -168,7 +169,11 @@ end
 do
   -- An older save: entries written before the bank had a cause on every remainder.
   local old, fk = {}, "soilData.field(0)"
-  old[fk .. "#sf79PHPendingCount"] = 3
+  old[fk .. "#sf79PHPendingCount"] = 4
+  old[fk .. ".sf79PHPending(3)#cause"] = 'rain'
+  old[fk .. ".sf79PHPending(3)#kind"] = PositionalPH.OP_DELTA
+  old[fk .. ".sf79PHPending(3)#amount"] = -1.5 * UPR     -- a whole step: not a remainder
+  old[fk .. ".sf79PHPending(3)#domainKey"] = KEY
   old[fk .. ".sf79PHPending(0)#cause"] = ''
   old[fk .. ".sf79PHPending(0)#kind"] = ''
   old[fk .. ".sf79PHPending(0)#amount"] = 0.4 * UPR
@@ -187,9 +192,9 @@ do
   local s3 = newRoutedSys(7.3)
   s3:_phLoadFieldXML(old, fk, s3.fieldData[3])
   print = realPrint
-  T.eq("BANK C4 an older save's remainders without a cause or a kind are dropped; the complete one is kept", bank(s3, 3), "rain:DELTA:-0.2")
+  T.eq("BANK C4 an older save's remainders without a cause or a kind, and one of a whole step, are dropped; the complete sub-step one is kept", bank(s3, 3), "rain:DELTA:-0.2")
   local said = 0
-  for _, l in ipairs(lines) do if l:find("2 banked remainder(s) in the xml save", 1, true) and l:find("dropped", 1, true) then said = said + 1 end end
+  for _, l in ipairs(lines) do if l:find("3 banked remainder(s) in the xml save", 1, true) and l:find("dropped", 1, true) then said = said + 1 end end
   T.eq("BANK C5 and the drop is said once for the field, with the count and the save path", said, 1)
 end
 
@@ -211,11 +216,12 @@ do
     { cause = 'rain', kind = PositionalPH.OP_DELTA, amount = -0.2 * UPR, domainKey = KEY },
     { cause = 'plow', kind = '', amount = 0.3 * UPR, domainKey = KEY },
     { cause = 'daily', kind = PositionalPH.OP_NORMALIZE, amount = 0.1 * UPR },
+    { cause = 'scorch', kind = PositionalPH.OP_DELTA, amount = -2 * UPR, domainKey = KEY },
   } } } })
   print = realPrint
-  T.eq("BANK D3 an older mirror's entries without a cause, a kind or a domain are dropped; the complete one is kept", bank(d2, 3), "rain:DELTA:-0.2")
+  T.eq("BANK D3 an older mirror's entries without a cause, a kind or a domain, and one of two steps, are dropped; the complete sub-step one is kept", bank(d2, 3), "rain:DELTA:-0.2")
   local said = 0
-  for _, l in ipairs(lines) do if l:find("3 banked remainder(s) in the ledger save", 1, true) and l:find("dropped", 1, true) then said = said + 1 end end
+  for _, l in ipairs(lines) do if l:find("4 banked remainder(s) in the ledger save", 1, true) and l:find("dropped", 1, true) then said = said + 1 end end
   T.eq("BANK D4 said once for the field, with the count and the save path", said, 1)
 end
 

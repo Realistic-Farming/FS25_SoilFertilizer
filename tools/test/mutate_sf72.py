@@ -79,6 +79,12 @@ MUTATIONS = [
  ("V4-nan-amount-accepted", PH,
   [("    if type(a) ~= 'number' or a ~= a or a == math.huge or a == -math.huge then return false end", "    if type(a) ~= 'number' then return false end", 1)],
   "a NaN remainder is banked (B6)"),
+ ("V5-step-bound-removed", PH,
+  [("    if upr > 0 and math.abs(a) >= upr then return false end\n", "", 1)],
+  "an amount of a whole step or more is banked and restored as a remainder (B6, C4, D3)"),
+ ("A4-zero-amount-banked", PH,
+  [("    if amount == 0 then return false end\n", "", 1)],
+  "a zero amount is banked as an entry (B6)"),
 
  # ── the two restores ───────────────────────────────────────────────────────
  ("R1-restore-keeps-everything", PH,

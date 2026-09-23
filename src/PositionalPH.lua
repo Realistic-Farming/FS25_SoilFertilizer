@@ -71,13 +71,11 @@ function PositionalPH.unitsPerRaw()
     return (limits.PH_MAX - limits.PH_MIN) / span
 end
 
---- The raw step count for a semantic pH delta, TRUNCATED TOWARD ZERO to
---- match the current quantizer. Zero means a sub-step change.
---- @return number
 --- A banked remainder is usable only with its cause, its kind and its domain all
---- known (brief 3.B: remainders stay separate per cause/kind/domain). An entry
---- missing any of them could only ever be applied as some other operation's amount,
---- which is the mixing MAINTENANCE row 72 records, so it is not a remainder at all.
+--- known (brief 3.B: remainders stay separate per cause/kind/domain) and its amount
+--- below one raw step: a whole step is applied, never banked, so a larger entry is
+--- not a remainder. An entry missing any of these could only ever be applied as
+--- some other operation's amount, which is the mixing MAINTENANCE row 72 records.
 --- The domain may be the empty string (a field with no geometry banks under '').
 function PositionalPH.isValidPending(p)
     if type(p) ~= 'table' then return false end
@@ -85,10 +83,15 @@ function PositionalPH.isValidPending(p)
     if p.kind ~= PositionalPH.OP_DELTA and p.kind ~= PositionalPH.OP_NORMALIZE then return false end
     local a = p.amount
     if type(a) ~= 'number' or a ~= a or a == math.huge or a == -math.huge then return false end
+    local upr = PositionalPH.unitsPerRaw()
+    if upr > 0 and math.abs(a) >= upr then return false end
     if type(p.domainKey) ~= 'string' then return false end
     return true
 end
 
+--- The raw step count for a semantic pH delta, TRUNCATED TOWARD ZERO to
+--- match the current quantizer. Zero means a sub-step change.
+--- @return number
 function PositionalPH.rawDeltaFor(delta)
     local upr = PositionalPH.unitsPerRaw()
     if upr <= 0 or type(delta) ~= 'number' then return 0 end
@@ -678,12 +681,13 @@ function SoilFertilitySystem:_phAddPending(fieldId, cause, kind, amount, domainK
     if field == nil then return false end
     local entry = { cause = cause, kind = kind, amount = amount, domainKey = domainKey }
     if not PositionalPH.isValidPending(entry) then
-        -- Nothing can ever take such an entry back under its own operation, so it
-        -- is not banked; said once, since a caller without a cause is a code defect.
+        -- Nothing can ever take such an entry back under its own operation, or it
+        -- is a whole step that should have been applied; not banked, said once,
+        -- since a caller that produces one is a code defect.
         if not PositionalPH._pendingRefusedLogged and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
             PositionalPH._pendingRefusedLogged = true
-            SoilLogger.warning("[SF-79] pH bank: a sub-step remainder with no cause or kind was not banked (field %s, cause %s, kind %s)",
-                tostring(fieldId), tostring(cause), tostring(kind))
+            SoilLogger.warning("[SF-79] pH bank: a remainder with no cause or kind, or not below one raw step, was not banked (field %s, cause %s, kind %s, amount %s)",
+                tostring(fieldId), tostring(cause), tostring(kind), tostring(amount))
         end
         return false
     end
@@ -712,10 +716,10 @@ function SoilFertilitySystem:_phTakePending(fieldId, domainKey, cause, kind)
 end
 
 --- Restore a field's banked remainders from a save (XML or the StateLedger mirror),
---- keeping only entries that name their cause and kind. An older save wrote a
---- remainder without them (the XML defaulted both to ''); such an entry could only
---- be applied as some other operation's amount, so it is dropped and said once per
---- field per load. Each dropped amount is below one raw step by construction.
+--- keeping only usable entries: a cause, a kind, a domain and an amount below one raw
+--- step (isValidPending). An older save wrote a remainder without a cause or kind
+--- (the XML defaulted both to ''); such an entry could only be applied as some other
+--- operation's amount, so it is dropped and said once per field per load.
 --- @return number kept
 --- @return number dropped
 function SoilFertilitySystem:_phRestorePending(fieldId, field, list, origin)
@@ -733,7 +737,7 @@ function SoilFertilitySystem:_phRestorePending(fieldId, field, list, origin)
         end
     end
     if dropped > 0 and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
-        SoilLogger.warning("[SF-79] pH bank: field %s, %d banked remainder(s) in the %s save carried no cause or kind (an older save) and were dropped; each is below one raw step (%.4f pH)",
+        SoilLogger.warning("[SF-79] pH bank: field %s, %d banked remainder(s) in the %s save were dropped: a usable remainder names its cause and kind and is below one raw step (%.4f pH), and these did not (an older save)",
             tostring(fieldId), dropped, tostring(origin), PositionalPH.unitsPerRaw())
     end
     return kept, dropped
