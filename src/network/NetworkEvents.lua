@@ -2550,31 +2550,33 @@ local function sfRoundStep(round, vm, dt)
         while budget > 0 and round.cursor <= #round.layers do
             local layer = round.layers[round.cursor]
             if layer.todo == nil then
-                -- A row written after the take is dirty in the LIVE set and not in the
-                -- taken one: this round patches nothing for it, so it is not refreshed
-                -- either (the cache would checksum a value no client has, and the client
-                -- would drift into a FULL resend). It stays stale and dirty for the next
-                -- round, which patches and refreshes it together.
-                local taken, late = {}, {}
-                for _, gy in ipairs(layer.dirty) do taken[gy] = true end
-                for _, gy in ipairs(vm:getSyncDirtyRows(layer.key)) do if not taken[gy] then late[gy] = true end end
-                local set = {}
+                local set, taken = {}, {}
                 if round.audit then
-                    for gy = 0, vm:getSyncRowCount() - 1 do if not late[gy] then set[gy] = true end end
+                    for gy = 0, vm:getSyncRowCount() - 1 do set[gy] = true end
                 else
-                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do if not late[gy] then set[gy] = true end end
+                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end
                 end
-                for _, gy in ipairs(layer.dirty) do set[gy] = true end
+                for _, gy in ipairs(layer.dirty) do set[gy] = true; taken[gy] = true end
                 local list = {}
                 for gy in pairs(set) do list[#list + 1] = gy end
                 table.sort(list)
-                layer.todo, layer.next, layer.rows = list, 1, {}
+                layer.todo, layer.next, layer.rows, layer.taken = list, 1, {}, taken
             end
+            -- The list is refreshed over several ticks, so each row is judged at its own
+            -- refresh, not when the list is built: a row dirty in the LIVE set and not in
+            -- the taken one was written after the take (before or after the build), this
+            -- round patches nothing for it, so it is not refreshed either (the cache would
+            -- checksum a value no client has, and the client would drift into a FULL
+            -- resend). It stays stale and dirty for the next round, which patches and
+            -- refreshes it together. A taken row written again is refreshed and patched
+            -- at its newest value.
             while budget > 0 and layer.next <= #layer.todo do
                 local gy = layer.todo[layer.next]
-                layer.rows[gy] = vm:refreshSyncRow(layer.key, gy) or {}
                 layer.next = layer.next + 1
-                budget = budget - 1
+                if layer.taken[gy] or not vm:isSyncRowDirty(layer.key, gy) then
+                    layer.rows[gy] = vm:refreshSyncRow(layer.key, gy) or {}
+                    budget = budget - 1
+                end
             end
             if layer.next > #layer.todo then
                 sfRoundBuildChunks(round, layer.layerIdx, layer.rows, layer.dirty)

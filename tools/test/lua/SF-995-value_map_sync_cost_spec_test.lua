@@ -31,6 +31,9 @@
 --   E  the running checksum equals a fresh full walk after any write sequence
 --   D  a dedicated server still drip-feeds
 --   R  a timer firing during a round is skipped; the audit round refreshes every row
+--   M  a layer's list bigger than the budget (both maps rebuilt at 128 px): a row not
+--      taken, written after the list is built and before its refresh tick, is left
+--      alone that round and patched by the next
 --
 --!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/network/NetworkEvents.lua
 
@@ -492,6 +495,81 @@ group("R", function()
     T.ok("R2 an audit round refreshes every row of every synced layer", found and TOTAL.server == #SYNCED * ROWS * COLS)
     T.ok("R3 spread at the row budget: the largest tick read " .. MAX.server .. " (at most " .. ROWS_PER_TICK * COLS .. ")", MAX.server <= ROWS_PER_TICK * COLS and MAX.server > 0)
     T.eq("R4 stream faults over the whole file", WIRE.faults, 0)
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- M. A LIST BIGGER THAN THE BUDGET: THE WRITE BETWEEN ITS BUILD AND ITS REFRESH
+-- ══════════════════════════════════════════════════════════════════════════
+-- Bob's re-look on #1001 at efe143b2: a layer's list is refreshed over several ticks,
+-- so a row on it that was not taken (in an audit round, every row) and is written after
+-- the list is built but before its own refresh tick must be left alone too, or the
+-- checksum carries a value no client has. At 64 rows one budget is one layer, so both
+-- maps are rebuilt at 128 px here (a 128-row grid, stride 1): an audit list spans two
+-- ticks, and the write lands between them.
+group("M", function()
+    local N = 128
+    ENGINE.RESOLUTION = N
+    asServer(function() serverVm = SoilValueMaps.new(); serverVm:initialize("/save128") end)
+    asClient(function() clientVm = SoilValueMaps.new(); clientVm:initialize("/save128") end)
+    ENGINE.RESOLUTION = 64
+    SMGR.soilSystem.valueMaps, CMGR.soilSystem.valueMaps = serverVm, clientVm
+    T.eq("M0 [world] both maps adopted the 128 px files: a 128-row sync grid", serverVm:getSyncRowCount() .. "/" .. clientVm:getSyncRowCount(), N .. "/" .. N)
+    local function mism(key, gy0, gy1)
+        local s, c = serverVm.layers[key], clientVm.layers[key]
+        local n = 0
+        for gy = gy0, gy1 do
+            for gx = 0, N - 1 do
+                if math.floor(ENGINE.pixel(s.bvm, gx, gy) / 16) ~= math.floor(ENGINE.pixel(c.bvm, gx, gy) / 16) then n = n + 1 end
+            end
+        end
+        return n
+    end
+    -- Bounded on purpose: at 128 px a mutation that keeps a side busy for good (a stale
+    -- mark never clearing, a checksum never matching) would crawl through settle()'s and
+    -- advance()'s caps for minutes, so the settles are capped and the timer is fired
+    -- directly, as group R does; when the world is not the one the later rows judge (M1,
+    -- M2), the group ends there with that row's FAIL.
+    local function settleM() return settle(600) end
+    local function fire() SMGR._vmChecksumTimer = TIMER; tick(FRAME) end   -- the round starts on this frame
+    -- The join, then a quiet round: every row fresh on both sides.
+    local c0, s0 = #WIRE.client, #WIRE.server
+    asServer(function() serverVm:paintPolygon("nitrogen", field(-30, -30, 30, 30), 90) end)
+    asServer(function() SoilNetworkEvents_SendValueMaps(CONN) end)
+    settleM()
+    fire(); settleM()
+    local m1 = mism("nitrogen", 0, N - 1) .. "/" .. #requests(since(WIRE.server, s0))
+    T.eq("M1 [world] after the join and one round the client matches on nitrogen and asked for nothing", m1, "0/0")
+    if m1 ~= "0/0" then return end
+    -- Rounds until the audit round, each caught after its first step (the timer's own
+    -- frame): the first layer's list (every row) is built and its first 64 rows refreshed;
+    -- the other 64 wait for the next tick.
+    local round
+    for _ = 1, 6 do
+        settleM()
+        fire()
+        round = serverMission.updateables[1]
+        if round ~= nil and round.audit then break end
+        round = nil
+    end
+    local L = round and round.layers[1]
+    local ok2 = L ~= nil and #L.todo == N and L.next == 65 and #L.dirty == 0
+    T.ok("M2 [world] an audit round is running after its first step: the first layer's list of " .. N .. " rows, 64 refreshed, none taken", ok2)
+    if not ok2 then return end
+    local key = L and L.key or "nitrogen"
+    c0, s0 = #WIRE.client, #WIRE.server
+    -- The write, after the build and before its rows' refresh: z 18..23 at 0.5 m/px is rows 100..110.
+    asServer(function() serverVm:paintPolygon(key, field(-20, 18, 20, 23), 200) end)
+    local written = serverVm:getSyncDirtyRows(key)
+    T.ok("M3 [world] the write marked rows in the unrefreshed half only (" .. tostring(written[1]) .. ".." .. tostring(written[#written]) .. " of " .. key .. ")", #written > 0 and written[1] >= 65)
+    settleM()
+    local mine = since(WIRE.client, c0)
+    T.eq("M4 the round patched nothing (nothing was taken) and the client's checksum matched: no request, no FULL", #chunks(mine, "PATCH") .. "/" .. #requests(since(WIRE.server, s0)) .. "/" .. #chunks(mine, "FULL"), "0/0/0")
+    T.eq("M5 the client still lacks the written rows, which stay dirty and stale on the server for the next round",
+        tostring(mism(key, written[1], written[#written]) > 0) .. "/" .. #serverVm:getSyncDirtyRows(key) .. "/" .. tostring(#serverVm:getSyncStaleRows(key) >= #written), "true/" .. #written .. "/true")
+    c0, s0 = #WIRE.client, #WIRE.server
+    fire(); settleM()
+    T.eq("M6 the next round patches them and the client matches on the whole layer, no request, no FULL", mism(key, 0, N - 1) .. "/" .. #requests(since(WIRE.server, s0)) .. "/" .. #chunks(since(WIRE.client, c0), "FULL"), "0/0/0")
+    T.eq("M7 wire faults", WIRE.faults, 0)
 end)
 
 print = realPrint

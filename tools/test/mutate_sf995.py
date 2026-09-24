@@ -112,9 +112,15 @@ MUTATIONS = [
 
  # ── the round ───────────────────────────────────────────────────────────────
  ("R7-late-rows-refreshed", NE,
-  [("                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do if not late[gy] then set[gy] = true end end",
-    "                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end", 1)],
-  "a row written after the take is refreshed but not patched: the checksum carries a value no client has"),
+  [("                if layer.taken[gy] or not vm:isSyncRowDirty(layer.key, gy) then",
+    "                if true then", 1)],
+  "the refresh loop takes a row written after the take: refreshed, not patched, the checksum carries a value no client has"),
+ ("R7b-late-check-at-build-only", NE,
+  [("                if layer.taken[gy] or not vm:isSyncRowDirty(layer.key, gy) then",
+    "                if true then", 1),
+   ("                for _, gy in ipairs(layer.dirty) do set[gy] = true; taken[gy] = true end",
+    "                for _, gy in ipairs(layer.dirty) do set[gy] = true; taken[gy] = true end for _, gy in ipairs(vm:getSyncDirtyRows(layer.key)) do if not taken[gy] then set[gy] = nil end end", 1)],
+  "the efe143b2 shape: late rows dropped when the list is built, none judged at its refresh; a write between the build and the refresh tick is refreshed (group M)"),
  ("R1-round-patches-nothing", NE,
   [("            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = vm:takeSyncDirtyRows(def.key) }",
     "            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = {} }", 1)],

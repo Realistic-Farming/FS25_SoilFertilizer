@@ -1717,6 +1717,13 @@ function SoilValueMaps:getSyncDirtyRows(key)
     return out
 end
 
+--- Whether row gy of `key` has been written since the last take: the live mark, read
+--- in place (the round's refresh loop, judging a row on its list at its own refresh).
+function SoilValueMaps:isSyncRowDirty(key, gy)
+    if self.layers[key] == nil then return false end
+    return syncState(self, key).dirty[gy] == true
+end
+
 --- Take (and clear) the rows written since the last take, ascending: what a patch
 --- round sends. A write that lands after the take goes to the next round.
 function SoilValueMaps:takeSyncDirtyRows(key)
