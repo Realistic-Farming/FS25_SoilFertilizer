@@ -1515,8 +1515,10 @@ function SoilFertilityManager:update(dt)
     -- before the #677 one-shot below, so its attempt marks survive the interval.
     SoilContextInput.resetAdmission(SoilContextInput.record(SoilFertilityManager, "_f201Input"))
 
-    -- REFINED: periodic value-map checksum broadcast (MP drift detection).
-    -- Server-only, every 5 real minutes, only when clients are connected.
+    -- REFINED: periodic value-map sync round (MP drift detection). Server-only,
+    -- every 5 real minutes. [#995] The round patches the rows written since the
+    -- last one to every client, drip-fed, then broadcasts the checksums from the
+    -- row cache; nothing walks a whole layer in one tick any more.
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo
        and g_currentMission.missionDynamicInfo.isMultiplayer then
         self._vmChecksumTimer = (self._vmChecksumTimer or 0) + dt

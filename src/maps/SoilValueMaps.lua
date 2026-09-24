@@ -654,6 +654,7 @@ function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius, gro
         worldX - r, worldZ + r,   -- height point
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_markSyncDirtyZ(key, worldZ - r, worldZ + r)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
@@ -722,6 +723,8 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value, gro
         ax + ux * h, az + uz * h,   -- height point (along travel)
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_markSyncDirtyZ(key, math.min(az - uz * h, bz - uz * h, az + uz * h, bz + uz * h),
+                              math.max(az - uz * h, bz - uz * h, az + uz * h, bz + uz * h))
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
@@ -799,6 +802,7 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta, growthD
         end
     end
 
+    self:_markSyncDirtyZ(key, math.min(sz, wz, hz, wz + hz - sz), math.max(sz, wz, hz, wz + hz - sz))
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta * upr
 end
@@ -930,6 +934,7 @@ function SoilValueMaps:paintPolygon(key, verts, value, growthDomain)
             m:executeSet(raw)
         end)
     end
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
@@ -951,6 +956,7 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread, growthDomain)
         m:executeSet(encode(baseValue, def))
         m:executeSet(encode(baseValue + spread, def), self.noiseFilterA)
         m:executeSet(encode(baseValue - spread, def), self.noiseFilterB)
+        self:_markSyncDirtyVerts(key, verts)
         self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return
     end
@@ -968,6 +974,7 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread, growthDomain)
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(v, def))
     end)
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
@@ -1082,6 +1089,7 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude, gro
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(baseValue + dev[i], def))
     end
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
@@ -1139,6 +1147,7 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta, growthDomain)
                 return 0
             end
         end
+        self:_markSyncDirtyVerts(key, verts)
         self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return applied
     end
@@ -1154,6 +1163,7 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta, growthDomain)
             m:executeSet(encode(current + applied, def))
         end
     end)
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return applied
 end
@@ -1278,6 +1288,7 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh, grow
         end
     end
 
+    self:markSyncLayerDirty(key)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
@@ -1354,6 +1365,7 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
         end
     end
 
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
@@ -1416,6 +1428,7 @@ function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh, gr
         SoilLogger.warning("SoilValueMaps: aimed write failed on '%s' (%s)", key, tostring(err))
         return false
     end
+    self:_markSyncDirtyVerts(key, verts)
     self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
@@ -1555,12 +1568,197 @@ end
 -- Multiplayer sync support
 -- Reads/writes coarse 4-bit state grids (top 4 bits) at a stride
 -- so a join sync stays small; see NetworkEvents SoilValueMapChunkEvent.
+--
+-- [#995] SYNC BOOKKEEPING. A layer's checksum used to be a full walk of the sync
+-- grid, getBitVectorMapPoint once per grid point: 512 x 512 = 262,144 engine calls
+-- per layer, 3.1 million for twelve layers, in ONE tick, on the server at every
+-- broadcast and on every client for every checksum event. And nothing carried a
+-- write to the clients between broadcasts, so a drifted layer was re-sent whole.
+-- Every engine write of a layer goes through this file (the writers above, the
+-- seeders, and the client's own apply below), so each one marks the sync rows it
+-- touched: DIRTY rows are what the clients are missing (NetworkEvents sends them as
+-- PATCH chunks on the timer), STALE rows are what this side's cached per-row totals
+-- no longer describe. The checksum is the sum of the cached row totals, refreshed
+-- for stale rows only, a bounded number of rows per tick.
 -- ─────────────────────────────────────────────────────────
 
 SoilValueMaps.SYNC_GRID = 512   -- synced grid is at most SYNC_GRID x SYNC_GRID
 
 function SoilValueMaps:getSyncStride()
     return math.max(1, math.floor(self.resolution / SoilValueMaps.SYNC_GRID))
+end
+
+--- Number of sync-grid rows (and columns) at this resolution.
+function SoilValueMaps:getSyncRowCount()
+    return math.floor(self.resolution / self:getSyncStride())
+end
+
+--- One layer's sync state, created on first use with every row stale (unread).
+local function syncState(self, key)
+    self._sync = self._sync or {}
+    local st = self._sync[key]
+    if st == nil then
+        local n = self:getSyncRowCount()
+        st = { rowSum = {}, rowNonZero = {}, sum = 0, nonZero = 0,
+               stale = {}, staleCount = n, dirty = {}, dirtyCount = 0 }
+        for gy = 0, n - 1 do st.stale[gy] = true end
+        self._sync[key] = st
+    end
+    return st
+end
+
+--- Mark sync rows gy0..gy1 (0-based, clamped to the grid) of `key` as written:
+--- dirty for the next patch round and stale for the next checksum.
+function SoilValueMaps:markSyncRowsDirty(key, gy0, gy1)
+    if self.layers[key] == nil then return end
+    local n = self:getSyncRowCount()
+    if n <= 0 then return end
+    local a = math.max(0, math.floor(math.min(gy0, gy1)))
+    local b = math.min(n - 1, math.floor(math.max(gy0, gy1)))
+    if a > b then return end
+    local st = syncState(self, key)
+    for gy = a, b do
+        if not st.dirty[gy] then st.dirty[gy] = true; st.dirtyCount = st.dirtyCount + 1 end
+        if not st.stale[gy] then st.stale[gy] = true; st.staleCount = st.staleCount + 1 end
+    end
+end
+
+--- Mark rows STALE only: this side's cached totals no longer describe them, but no
+--- client is owed them (the receiving side's own apply of a chunk).
+function SoilValueMaps:markSyncRowsStale(key, gy0, gy1)
+    if self.layers[key] == nil then return end
+    local n = self:getSyncRowCount()
+    if n <= 0 then return end
+    local a = math.max(0, math.floor(math.min(gy0, gy1)))
+    local b = math.min(n - 1, math.floor(math.max(gy0, gy1)))
+    if a > b then return end
+    local st = syncState(self, key)
+    for gy = a, b do
+        if not st.stale[gy] then st.stale[gy] = true; st.staleCount = st.staleCount + 1 end
+    end
+end
+
+--- Mark every sync row of `key` (a whole-layer write).
+function SoilValueMaps:markSyncLayerDirty(key)
+    self:markSyncRowsDirty(key, 0, self:getSyncRowCount() - 1)
+end
+
+--- A world z range touches the sync rows whose sampled pixel line pz = gy * stride
+--- lies in the written pixel lines [pz0, pz1]: floor(pz0 / stride) .. floor(pz1 / stride),
+--- with pz mapped as worldToPixel maps it.
+function SoilValueMaps:_markSyncDirtyZ(key, z0, z1)
+    -- No terrain yet (terrainSize is 0 from the constructor until the load at
+    -- getTerrainSize): there are no pixels to mark, and nothing to sync.
+    if type(self.terrainSize) ~= "number" or self.terrainSize <= 0 then return end
+    if not self.available or self.layers[key] == nil then return end
+    local half = self.terrainSize * 0.5
+    local res  = self.resolution
+    local lo, hi = math.min(z0, z1), math.max(z0, z1)
+    local pz0 = math.max(0, math.min(res - 1, math.floor((lo + half) / self.terrainSize * res)))
+    local pz1 = math.max(0, math.min(res - 1, math.floor((hi + half) / self.terrainSize * res)))
+    local stride = self:getSyncStride()
+    self:markSyncRowsDirty(key, math.floor(pz0 / stride), math.floor(pz1 / stride))
+end
+
+--- The z extent of a polygon's vertices.
+function SoilValueMaps:_markSyncDirtyVerts(key, verts)
+    if type(verts) ~= "table" then return end
+    local lo, hi
+    for _, v in ipairs(verts) do
+        if type(v) == "table" and type(v.z) == "number" then
+            if lo == nil or v.z < lo then lo = v.z end
+            if hi == nil or v.z > hi then hi = v.z end
+        end
+    end
+    if lo ~= nil then self:_markSyncDirtyZ(key, lo, hi) end
+end
+
+--- Re-read one sync row from the engine, fold it into the cached totals and clear
+--- it from the stale set. Returns the row, or nil when the layer is absent.
+function SoilValueMaps:refreshSyncRow(key, gy)
+    local row = self:readSyncRow(key, gy)
+    if row == nil then return nil end
+    local st = syncState(self, key)
+    local sum, nonZero = 0, 0
+    for _, state in ipairs(row) do
+        sum = sum + state
+        if state > 0 then nonZero = nonZero + 1 end
+    end
+    if st.rowSum[gy] ~= nil then
+        st.sum     = st.sum - st.rowSum[gy]
+        st.nonZero = st.nonZero - st.rowNonZero[gy]
+    end
+    st.rowSum[gy], st.rowNonZero[gy] = sum, nonZero
+    st.sum, st.nonZero = st.sum + sum, st.nonZero + nonZero
+    if st.stale[gy] then st.stale[gy] = nil; st.staleCount = st.staleCount - 1 end
+    return row
+end
+
+--- The rows whose cached totals cannot be trusted (never read, or written since),
+--- ascending.
+function SoilValueMaps:getSyncStaleRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy = 0, self:getSyncRowCount() - 1 do
+        if st.stale[gy] then out[#out + 1] = gy end
+    end
+    return out
+end
+
+--- The rows written since the last take, ascending, left in place (a read for the
+--- bench and the debug stats; production takes them).
+function SoilValueMaps:getSyncDirtyRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy in pairs(st.dirty) do out[#out + 1] = gy end
+    table.sort(out)
+    return out
+end
+
+--- Whether row gy of `key` has been written since the last take: the live mark, read
+--- in place (the round's refresh loop, judging a row on its list at its own refresh).
+function SoilValueMaps:isSyncRowDirty(key, gy)
+    if self.layers[key] == nil then return false end
+    return syncState(self, key).dirty[gy] == true
+end
+
+--- Take (and clear) the rows written since the last take, ascending: what a patch
+--- round sends. A write that lands after the take goes to the next round.
+function SoilValueMaps:takeSyncDirtyRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy in pairs(st.dirty) do out[#out + 1] = gy end
+    table.sort(out)
+    st.dirty, st.dirtyCount = {}, 0
+    return out
+end
+
+--- The cached checksum: the sum of states and the non-zero count over the cached
+--- rows, and how many rows are stale (0 means the pair describes the map as last
+--- read). A caller that needs the current map refreshes the stale rows first.
+function SoilValueMaps:getSyncChecksum(key)
+    if self.layers[key] == nil then return nil end
+    local st = syncState(self, key)
+    return st.sum, st.nonZero, st.staleCount
+end
+
+--- The full walk (the old sfComputeLayerChecksum): every grid point read once. The
+--- reference the bench holds the cache against; production never calls it.
+function SoilValueMaps:computeSyncChecksumFullWalk(key)
+    local sum, nonZero = 0, 0
+    for gy = 0, self:getSyncRowCount() - 1 do
+        local row = self:readSyncRow(key, gy)
+        if row then
+            for _, state in ipairs(row) do
+                sum = sum + state
+                if state > 0 then nonZero = nonZero + 1 end
+            end
+        end
+    end
+    return sum, nonZero
 end
 
 --- Read one sync row (grid row `gy`, 0-based) as an array of 4-bit states.
@@ -1591,6 +1789,7 @@ function SoilValueMaps:clearLayer(key)
         -half, -half, half, -half, -half, half,
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(0)
+    self:markSyncLayerDirty(key)
 end
 
 --- Apply one received sync row: paints stride-sized blocks with the state's
@@ -1625,6 +1824,8 @@ function SoilValueMaps:applySyncRow(key, gy, row)
         m:executeSet(raw)
         gx = gx + 1
     end
+    -- The receiving side's cache no longer describes this row; it owes no client a patch.
+    self:markSyncRowsStale(key, gy, gy)
 end
 
 -- ─────────────────────────────────────────────────────────

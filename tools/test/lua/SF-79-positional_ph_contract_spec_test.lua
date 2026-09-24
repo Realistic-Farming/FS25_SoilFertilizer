@@ -322,6 +322,7 @@ local fakeVM={available=true,hasExecuteAdd=true,layers={pH={def=phDef,modifier=f
 -- The shipped addPaintStrip reports one growth-write observation at its mutator
 -- boundary; the fixture is a pure stand-in for the engine write, so it no-ops.
 function fakeVM:_observeGrowthWrite() end
+function fakeVM:_markSyncDirtyZ() end -- the sync-cost marking (#995) is not this bar's
 -- These enum sentinels are consumed only by the fake modifier/filter above;
 -- geometry/raster execution is explicitly outside this source-order witness.
 local savedCoordType,savedCompareType=DensityCoordType,DensityValueCompareType
