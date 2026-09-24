@@ -12,7 +12,9 @@
 -- connection, created with isServer = true (Client.lua:152); the host's own local
 -- delivery is the loopback on stream 0 with the reversed flag (Connection.lua:47).
 -- The sender's farm is the mission's player record for the connection
--- (FSBaseMission:getFarmId, FSBaseMission.lua:1067-1085, modelled line for line).
+-- (FSBaseMission:getFarmId, FSBaseMission.lua:1067-1085, modelled line for line), and
+-- a vehicle's access is the engine's AccessHandler:canFarmAccess (AccessHandler.lua
+-- :19-49, modelled line for line over a farm manager with contracting).
 --
 -- THE ENTRY-POINT BAR IS EVERY ROW: production enters these events at readStream,
 -- and nothing a row asserts on is populated by hand: the organic state is written by
@@ -77,6 +79,35 @@ local function sampleField(nitrogen)
     }
 end
 local Settings_mt = { __index = { save = function(self) self.saves = (self.saves or 0) + 1 end } }
+-- ── the engine's access rule (AccessHandler.lua:2-3, :19-49; Farm.lua:476-478) ──
+AccessHandler = { EVERYONE = 0, NOBODY = 2 ^ 4 - 1 }
+local function farm(id)
+    return { farmId = id, contractingFor = {},
+        getIsContractingFor = function(self, other) return self.contractingFor[other] or false end,
+        setIsContractingFor = function(self, other, on) self.contractingFor[other] = on or nil end }
+end
+local function accessHandler()
+    return {
+        canFarmAccess = function(self, farmId, object, allowEqualAlways)
+            if object == nil then return false end
+            local ownerFarmId = object:getOwnerFarmId()
+            if farmId == 0 and (not allowEqualAlways or farmId ~= ownerFarmId) then return false end
+            if ownerFarmId == nil or ownerFarmId == AccessHandler.EVERYONE then return true end
+            if farmId ~= nil then return self:canFarmAccessOtherId(farmId, ownerFarmId) end
+            return ownerFarmId == AccessHandler.EVERYONE
+        end,
+        canFarmAccessOtherId = function(_, farmId, objectFarmId)
+            if objectFarmId == AccessHandler.EVERYONE then return true
+            elseif objectFarmId == AccessHandler.NOBODY then return false
+            elseif objectFarmId == farmId then return true
+            else
+                local f = g_farmManager:getFarmById(farmId)
+                if f == nil then return false end
+                return f:getIsContractingFor(objectFarmId)
+            end
+        end,
+    }
+end
 --- side: "host" (a listen host), "client" (a pure client) or "dedi" (a dedicated
 --- server). The mission's player records: the farm-1 and farm-2 connections; the
 --- local player is farm 1 unless opts.noLocalPlayer. Farmland 7 belongs to farm 1,
@@ -98,7 +129,9 @@ local function world(side, opts)
         hud = { warnings = 0, showBlinkingWarning = function(self) self.warnings = self.warnings + 1 end },
         getIsServer = function() return g_server ~= nil end,
         getPlayerByConnection = function(self, c) return self.connectionsToPlayer[c] end,   -- FSBaseMission.lua:1098
+        accessHandler = accessHandler(),   -- FSBaseMission.lua:159
     }
+    g_farmManager = { farms = { [1] = farm(1), [2] = farm(2) }, getFarmById = function(self, id) return self.farms[id] end }
     -- FSBaseMission.lua:1067-1085, as decompiled.
     mission.getFarmId = function(self, connection)
         if self:getIsServer() then
@@ -125,6 +158,7 @@ local function world(side, opts)
     W.vehicles = {
         [500] = { id = 5000, ownerFarmId = 1, getOwnerFarmId = function(self) return self.ownerFarmId end },   -- Object.lua:132
         [501] = { id = 5001, ownerFarmId = 2, getOwnerFarmId = function(self) return self.ownerFarmId end },
+        [502] = { id = 5002, ownerFarmId = 0, getOwnerFarmId = function(self) return self.ownerFarmId end },   -- EVERYONE's
     }
     NetworkUtil = { getObject = function(id) return W.vehicles[id] end }
     local settings = setmetatable({ enabled = true, difficulty = 2 }, Settings_mt)
@@ -297,18 +331,29 @@ group("S", function()
     T.eq("S2 the owner's change applies and is rebroadcast to every other client, the sender skipped",
         tostring(W.rm.vehicleRates[v1.id]) .. "/" .. #W.broadcasts .. "/" .. tostring(b and b.ev.vehicleNetId) .. "/" .. tostring(b and b.ev.rateIndex) .. "/" .. tostring(b and b.ignore == AT_HOST_FROM_FARM1), "3/1/500/3/true")
 
+    -- A contractor is admitted by the engine's own rule, and refused again when the
+    -- contract ends; a vehicle owned by EVERYONE takes any player's change.
+    g_farmManager.farms[2]:setIsContractingFor(1, true)
+    deliver(SoilSprayerRateEvent.new(500, 5), SoilSprayerRateEvent, AT_HOST_FROM_FARM2)
+    T.eq("S2b farm 2's client, contracting for farm 1, sets the rate on farm 1's sprayer: applied and rebroadcast (the engine's access rule)",
+        tostring(W.rm.vehicleRates[v1.id]) .. "/" .. #W.broadcasts, "5/2")
+    g_farmManager.farms[2]:setIsContractingFor(1, false)
+    deliver(SoilSprayerRateEvent.new(500, 6), SoilSprayerRateEvent, AT_HOST_FROM_FARM2)
+    T.eq("S2c with the contract ended the same client is refused again", tostring(W.rm.vehicleRates[v1.id]) .. "/" .. #W.broadcasts, "5/2")
+    deliver(SoilSprayerRateEvent.new(502, 7), SoilSprayerRateEvent, AT_HOST_FROM_FARM2)
+    T.eq("S2d a vehicle owned by EVERYONE takes any player's change", tostring(W.rm.vehicleRates[W.vehicles[502].id]) .. "/" .. #W.broadcasts, "7/3")
     deliver(SoilSprayerAutoModeEvent.new(501, true), SoilSprayerAutoModeEvent, AT_HOST_FROM_FARM1)
     local autoOther = W.rm:getAutoMode(v2.id)
     deliver(SoilSprayerAutoModeEvent.new(500, true), SoilSprayerAutoModeEvent, AT_HOST_FROM_FARM1)
     T.eq("S3 auto mode: refused on farm 2's sprayer, applied on the owner's, rebroadcast once",
-        tostring(autoOther) .. "/" .. tostring(W.rm:getAutoMode(v1.id)) .. "/" .. #W.broadcasts, "false/true/2")
+        tostring(autoOther) .. "/" .. tostring(W.rm:getAutoMode(v1.id)) .. "/" .. #W.broadcasts, "false/true/4")
 
     deliver(SoilSprayerRateEvent.new(501, 2), SoilSprayerRateEvent, LOOPBACK)
     T.eq("S4 the host's own local delivery (the loopback) still controls any sprayer, as before",
-        tostring(W.rm.vehicleRates[v2.id]) .. "/" .. #W.broadcasts, "2/3")
+        tostring(W.rm.vehicleRates[v2.id]) .. "/" .. #W.broadcasts, "2/5")
 
     deliver(SoilSprayerRateEvent.new(500, 4), SoilSprayerRateEvent, AT_HOST_UNPLAYERED)
-    T.eq("S5 a connection with no player record is refused", tostring(W.rm.vehicleRates[v1.id]), "3")
+    T.eq("S5 a connection with no player record is refused", tostring(W.rm.vehicleRates[v1.id]), "5")
 
     world("client")
     deliver(SoilSprayerRateEvent.new(501, 4), SoilSprayerRateEvent, AT_CLIENT_FROM_SERVER)

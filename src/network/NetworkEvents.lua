@@ -162,16 +162,22 @@ end
 
 --- On the server: may the sender on connection act on vehicle? The host's own local
 --- delivery (the loopback, Connection.lua:47) is its own hand and stands as before; a
---- remote client must be a player whose farm owns the vehicle (Object:getOwnerFarmId,
---- network/Object.lua:132). Anything the engine cannot vouch for is refused.
+--- remote client must be a player whose farm the ENGINE'S OWN access rule admits to
+--- the vehicle: AccessHandler:canFarmAccess (farms/AccessHandler.lua:19-34): the
+--- owner's farm, a vehicle owned by EVERYONE, or a farm contracting for the owner
+--- (canFarmAccessOtherId :35-49 through Farm:getIsContractingFor, farms/Farm.lua:476),
+--- as the engine's AnimalMoveEvent tests its own objects (:78). Owner equality alone
+--- refused contractors (Bob's blocker on #1006). Anything the engine cannot vouch
+--- for is refused.
 function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
     if connection == nil then return true end
     if type(connection.getIsLocal) == "function" and connection:getIsLocal() then return true end
     local farmId = SoilNetworkEvents_ActingFarmId(connection)
     if farmId == nil or farmId <= 0 then return false end
-    if type(vehicle) ~= "table" or type(vehicle.getOwnerFarmId) ~= "function" then return false end
-    local ok, owner = pcall(vehicle.getOwnerFarmId, vehicle)
-    return ok and type(owner) == "number" and owner == farmId
+    local handler = g_currentMission and g_currentMission.accessHandler
+    if handler == nil or type(handler.canFarmAccess) ~= "function" then return false end
+    local ok, allowed = pcall(handler.canFarmAccess, handler, farmId, vehicle)
+    return ok and allowed == true
 end
 
 -- ========================================
