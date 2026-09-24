@@ -19,6 +19,8 @@
 #   (the TESTING row's load-and-save check).
 # - the row-level native occupancy split's recursion base (gx0 == gx1): removing it recurses
 #   forever; a hang is not a verdict.
+# - the rain add lifting a sentinel (max(RAW_FLOOR, raw) + delta): equivalent by construction,
+#   settleRun hands valueFor only cells at or above RAW_FLOOR (mutation S6 pins that guard).
 #
 # Anchors are written with "\n"; in a CRLF file they are matched as "\r\n".
 #
@@ -140,10 +142,6 @@ MUTATIONS = [
  ("W4-shelter-cache-never-refreshed", MW,
   [("    self.shelterCells = {}\n    self.shelterEpoch = (self.shelterEpoch or 0) + 1\nend", "end", 1)],
   "the per-cell shelter cache survives the daily invalidation and the placeable lifecycle"),
- ("W5-rain-initialises-unknown", MW,
-  [("                    if rawDelta <= 0 then return raw end\n                    return math.min(SoilValueMaps.RAW_MAX, raw + rawDelta)",
-    "                    if rawDelta <= 0 then return raw end\n                    return math.min(SoilValueMaps.RAW_MAX, math.max(RAW_FLOOR, raw) + rawDelta)", 1)],
-  "rain would lift a sentinel into a value (guarded elsewhere too; the read guard is S6's)"),
  # ── the lifecycle wrap ─────────────────────────────────────────────────────
  ("L1-paint-does-not-invalidate", HM,
   [("        if mw ~= nil and type(mw.onIndoorMaskChanged) == \"function\" then\n            local okInv, errInv = pcall(mw.onIndoorMaskChanged, mw, area, indoor, packed[1] == true)",

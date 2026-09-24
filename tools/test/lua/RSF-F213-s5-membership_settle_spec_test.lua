@@ -63,7 +63,9 @@ local SKY = { humidity = 0.65, temperature = 15, cloudCoverage = 0.5 }
 --- owner to the index), a Time Guard that records the registration, a WeatherGuard
 --- (opts.weather: { sky, rain, climate } or nil for none), the mission's indoor mask
 --- (opts.noMask for a map without the layer), and a field lookup answering field 7
---- for x < 32 and no field east of it. opts.valueMaps shapes the store.
+--- west of x 0 and no field east of it. opts.valueMaps shapes the store. The owner's
+--- field-pass entry points are recorded (W.fieldPassEntered) so a bar can say they
+--- were never entered while the membership is bound.
 local function world(today, opts)
     opts = opts or {}
     HEIGHT.pixels = {}
@@ -84,8 +86,12 @@ local function world(today, opts)
     }
     g_currentMission.vehicleSystem.addVehicle = function(self, v) self.vehicles[#self.vehicles + 1] = v return true end
     g_SoilFertilityManager = { settings = settings, soilSystem = sys }
-    sys.hookManager.getFieldIdAtWorldPosition = function(_, x, _z) if x < 32 then return 7 end return nil end
+    sys.hookManager.getFieldIdAtWorldPosition = function(_, x, _z) if x < 0 then return 7 end return nil end
     sys.materialDown.ageAppliedThroughDay = today
+    W.fieldPassEntered = 0
+    local realDry, realWet = MaterialWetness.dryPass, MaterialWetness.wetPass
+    sys.materialWetness.dryPass = function(self, ...) W.fieldPassEntered = W.fieldPassEntered + 1 return realDry(self, ...) end
+    sys.materialWetness.wetPass = function(self, ...) W.fieldPassEntered = W.fieldPassEntered + 1 return realWet(self, ...) end
     -- Production's arm of the wetness owner (SoilFertilitySystem.lua:322), then the
     -- cursor a save carried, then the family in production's order.
     local armedWet = sys.materialWetness:arm(vm, sys.materialDown, sys)
@@ -214,37 +220,41 @@ end)
 -- S. THE SETTLE WALKS THE MEMBERS (the entry-point bar)
 -- ══════════════════════════════════════════════════════════════════════════
 group("S", function()
-    -- Members from the arm-time rebuild: a fresh windrow at 80% (204) in field 7, a
-    -- damp one at 140 outside any field, a curing one at 100, an unknown one (24), an
-    -- unavailable one, and a record the index would list but which is NOT a member
-    -- (set after arm, so the bar can prove only members are settled).
+    -- Members from the arm-time rebuild: two fresh windrows at 80% (204) in field 7,
+    -- a damp one at 140 and a curing one at 100 east of any field, one already at the
+    -- EMC floor (38), one below it (35, dry hay), an unknown one (24), an unavailable
+    -- one, and a record the index would list but which is NOT a member (set after
+    -- arm, so the bar can prove only members are settled).
     T.ok("S0 [world] armed", world(100, { beforeArm = function()
         setCell(4, 4, 1, 204)    -- field 7 (x = -16..-12)
         setCell(5, 4, 1, 204)
-        setCell(12, 4, 3, 140)   -- east of x 32? gx 12 -> x 16..20: field 7 too; use gz 4
+        setCell(12, 4, 3, 140)   -- gx 12 -> x 16..20: no field
         setCell(13, 4, 3, 100)
+        setCell(14, 4, 3, 38)    -- at the floor already
+        setCell(15, 4, 3, 35)    -- below the EMC ceiling: dry hay, outside every phase band
         setCell(6, 6, 3, 24)     -- unknown wetness
         setCell(7, 6, 3, 150)    -- will be marked unavailable below
     end }) == true)
     coord():markUnavailable(7, 6, "TEST")
     setCell(9, 9, 3, 200)        -- a record with no membership (set after the arm)
     installAll()
-    T.eq("S1 [world] six members in three runs; the late record is not one", runs() .. "/" .. tostring(coord():isMember(9, 9)), "4:4-5 4:12-13 6:6-7/false")
-    local vmCalls = W.vm.fieldPassCalls
+    T.eq("S1 [world] eight members in three runs; the late record is not one", runs() .. "/" .. tostring(coord():isMember(9, 9)), "4:4-5 4:12-15 6:6-7/false")
     settleDay(101)
-    -- Drivers: sky 65% humidity at 15 C gives an EMC of 14.6% (raw 38); outside a
-    -- field the neutral loamy 1.0 and the mid weather multiplier 1.0: rapid 25 points
-    -- (raw 64), transitional 18 (46), bound 6 (15); the sequential phases cascade as
-    -- the layer passes do. 204 -> 140 -> 94 -> 79. 140 -> 94 -> 79. 100 -> 85.
-    T.eq("S2 the settle dried every member once through the phase table, in order, with the floor at the EMC ceiling",
-        wet(4, 4) .. "/" .. wet(5, 4) .. "/" .. wet(12, 4) .. "/" .. wet(13, 4), "79/79/79/85")
+    -- Drivers: sky 65% humidity at 15 C gives an EMC of 14.6% (raw 38); the neutral
+    -- loamy 1.0 and the mid weather multiplier 1.0 everywhere on this dry day: rapid
+    -- 25 points (raw 64), transitional 18 (46), bound 6 (15); the sequential phases
+    -- cascade as the layer passes do. 204 -> 140 -> 94 -> 79. 140 -> 94 -> 79.
+    -- 100 -> 85. 38 stays at the floor. 35 lies under the bound band's EMC edge and
+    -- is not touched.
+    T.eq("S2 the settle dried every member once through the phase table, in order, with the floor at the EMC ceiling; a member at the floor stays, one below the ceiling is outside every band",
+        wet(4, 4) .. "/" .. wet(5, 4) .. "/" .. wet(12, 4) .. "/" .. wet(13, 4) .. "/" .. wet(14, 4) .. "/" .. wet(15, 4), "79/79/79/85/38/35")
     T.eq("S3 the unknown member kept its sentinel, the unavailable member its bytes, and the non-member record was not touched",
         wet(6, 6) .. "/" .. wet(7, 6) .. "/" .. wet(9, 9), "24/150/200")
-    T.eq("S4 the field pass was not run: the store's polygon delta was never called", W.vm.fieldPassCalls - vmCalls, 0)
+    T.eq("S4 the field pass was never entered: neither its dry nor its wet function ran while the membership is bound", W.fieldPassEntered, 0)
     T.eq("S5 the cursor advanced and the day was recorded dry", tostring(W.sys.materialWetness.appliedThroughDay) .. "/" .. tostring(W.sys.materialWetness.waterRecord[101].water), "101/false")
     local ls = W.sys.materialWetness.lastSettle
-    T.eq("S6 [cost] six members: five reads (the unavailable one is skipped unread) and three coalesced writes (79 over 4-5; 79 then 85 over 12-13; the unknown and unavailable cells break the third run and take no write)",
-        ls.cells .. "/" .. ls.dryReads .. "/" .. ls.dryWrites, "6/5/3")
+    T.eq("S6 [cost] eight members: seven reads (the unavailable one is skipped unread) and three coalesced writes (79 over 4-5; 79 then 85 over 12-13; the two unchanged cells, the unknown and the unavailable take no write)",
+        ls.cells .. "/" .. ls.dryReads .. "/" .. ls.dryWrites, "8/7/3")
 
     -- The same settle through the real barrier: a machine's pass on a new day settles
     -- the members before its primitive.
@@ -254,16 +264,17 @@ group("S", function()
     local ok, reason = coord():runSettlementBarrier()
     T.eq("S7 the settlement barrier walks the same membership settle: settled, and the member dried", tostring(ok) .. "/" .. reason .. "/" .. wet(4, 4), "true/OK/79")
 
-    -- Per-field drivers: sandy soil through the existing SCS contract dries faster;
-    -- outside a field the neutral defaults.
+    -- Per-field drivers: sandy soil through the existing SCS contract dries faster
+    -- under field 7 (west of x 0); east of it there is no field and the neutral
+    -- defaults apply, whatever SCS would say for a field.
     world(100, { cropStress = { getFieldSoilType = function(_, id) if id == 7 then return "sandy" end return nil end, getMoisture = function() return 0.5 end },
-        beforeArm = function() setCell(4, 4, 1, 204) setCell(14, 4, 1, 204) end })   -- gx 14 -> x 24..28: field 7 as well; use gz with x >= 32: none on this map (max x 32)
+        beforeArm = function() setCell(4, 4, 1, 204) setCell(14, 4, 1, 204) end })   -- gx 4 -> x -16..-12 (field 7); gx 14 -> x 24..28 (no field)
     installAll()
     settleDay(101)
     -- sandy 1.4: rapid 35 points (89), transitional 25.2 (64), bound 8.4 (21):
-    -- 204 -> 115 -> 51 -> 30, floored at 38.
+    -- 204 -> 115 -> 51 -> 30, floored at 38. Neutral: 204 -> 79.
     T.eq("S8 a member in a sandy field dries by the field's own modifiers, to the EMC floor", wet(4, 4), 38)
-    T.eq("S9 a member in the same field, same drivers, same answer", wet(14, 4), 38)
+    T.eq("S9 a member outside any field dries by the neutral defaults, not by an invented field", wet(14, 4), 79)
 
     -- A held day: no sky and no climate, the cursor stays and nothing is written.
     world(100, { weather = false, beforeArm = function() setCell(4, 4, 1, 204) end })
@@ -295,11 +306,13 @@ group("W", function()
     local ls = W.sys.materialWetness.lastSettle
     T.eq("W3 [cost] the rain pass counted the sheltered cells it read", ls.shelteredCells, 2)
 
-    -- No usable mask (the map's layer missing, handle 0): exposed everywhere.
+    -- No usable mask (the map's layer missing, handle 0, but a modifier built over it
+    -- that would answer "indoor" if asked): exposed everywhere, never asked.
     world(100, { noMask = true, weather = { sky = SKY, rain = { rainScale = 1 } }, beforeArm = function() setCell(6, 4, 3, 100) end })
     installAll()
+    T.eq("W3b [world] the zero-handle mask carries a modifier that would call the cell indoor", (select(2, g_currentMission.indoorMask.modifierValue:executeGet(nil))), 16)
     settleDay(101)
-    T.eq("W4 a mask with a zero handle is no shelter evidence: the cell wets in full", wet(6, 4), 123)
+    T.eq("W4 a mask with a zero handle is no shelter evidence: the cell wets in full, the modifier never asked", wet(6, 4), 123)
 
     -- Rain never initialises: an unknown member stays unknown, a record-less cell stays absent.
     world(100, { weather = { sky = SKY, rain = { rainScale = 1 } }, beforeArm = function() setCell(6, 4, 3, 24) end })
@@ -369,6 +382,32 @@ group("H", function()
     st = coord():getMembershipStats()
     T.eq("H3 once bits can be written the settle reconciles the index from the condition bytes and native occupancy, and the day settles",
         tostring(st.ready) .. "/" .. st.source .. "/" .. tostring(coord():isMember(9, 9)) .. "/" .. tostring(W.sys.materialWetness.appliedThroughDay), "true/REBUILT/true/101")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- C. A RUN WRITE THE ENGINE REFUSES
+-- ══════════════════════════════════════════════════════════════════════════
+group("C", function()
+    -- The preflight: the aimed box takes in a neighbour, so the run is not the run we
+    -- mean; nothing is written and the run's cells go unavailable.
+    world(100, { beforeArm = function() setCell(4, 4, 1, 204) setCell(5, 4, 1, 204) end })
+    installAll()
+    W.wet.extraPixels = 1
+    settleDay(101)
+    W.wet.extraPixels = nil
+    T.eq("C1 a run whose preflight selects more than the run is not written: bytes kept, both cells marked unavailable with the refusal",
+        wet(4, 4) .. "/" .. wet(5, 4) .. "/" .. tostring(coord():unavailableReason(4, 4)) .. "/" .. tostring(coord():unavailableReason(5, 4)), "204/204/WEATHER:PREFLIGHT_NOT_ONE_PIXEL/WEATHER:PREFLIGHT_NOT_ONE_PIXEL")
+    T.eq("C1b the day still settled and was recorded (the refusal is the cells', not the day's)", tostring(W.sys.materialWetness.appliedThroughDay), "101")
+
+    -- The set itself raises: the same marks, the error swallowed into the refusal.
+    world(100, { beforeArm = function() setCell(4, 4, 1, 204) end })
+    installAll()
+    W.wet.throwOnSet = true
+    settleDay(101)
+    W.wet.throwOnSet = nil
+    T.eq("C2 a run write that raised leaves the bytes and marks the cell unavailable with WRITE_THREW", wet(4, 4) .. "/" .. tostring(coord():unavailableReason(4, 4)), "204/WEATHER:WRITE_THREW")
+    settleDay(102)
+    T.eq("C3 an unavailable member is skipped on the next day: unread, unwritten, still unavailable", wet(4, 4) .. "/" .. tostring(coord():isUnavailable(4, 4)) .. "/" .. W.sys.materialWetness.lastSettle.dryReads, "204/true/0")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════

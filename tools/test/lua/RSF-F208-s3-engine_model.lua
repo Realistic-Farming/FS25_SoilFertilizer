@@ -110,7 +110,10 @@ DensityMapModifier = {
                 local v = ENGINE.layerGet(layer, gx, gz)
                 if filterPasses(filter, v) then sum = sum + v; n = n + 1 end
             end)
-            return sum, n, total
+            -- A layer a bar marked extraPixels answers as a coarser map would: the aimed
+            -- box takes in that many neighbours (the cells' preflight must refuse).
+            local extra = BVMS[m.bvm].extraPixels or 0
+            return sum, n + extra, total + extra
         end
         m.executeSet = function(_self, value, filter)
             if m.u0 == nil then return end
@@ -961,7 +964,14 @@ function ENGINE.newIndoorMask(opts)
     mask.terrainSize = ENGINE.TERRAIN
     mask.terrainSizeHalf = ENGINE.TERRAIN / 2
     if opts.noHandle then
+        -- :35-46: a missing layer leaves handle 0 and the load goes on to build the
+        -- modifier and filter over it; what the engine answers for that handle is not
+        -- a mask (modeled here as every pixel indoor), so a reader must refuse to ask.
         mask.handle = 0
+        mask.maskSize = 64
+        mask.modifierValue = { setParallelogramUVCoords = function() end, executeGet = function() return 0, 16, 16 end, executeSet = function() end }
+        mask.filter = DensityMapFilter.new(mask.modifierValue)
+        mask.worldToDensityMap = mask.maskSize / mask.terrainSize
         return mask
     end
     local layer = ENGINE.newLayer(0, opts.maskRes or 64)
