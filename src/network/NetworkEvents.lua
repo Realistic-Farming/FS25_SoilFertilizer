@@ -2550,11 +2550,19 @@ local function sfRoundStep(round, vm, dt)
         while budget > 0 and round.cursor <= #round.layers do
             local layer = round.layers[round.cursor]
             if layer.todo == nil then
+                -- A row written after the take is dirty in the LIVE set and not in the
+                -- taken one: this round patches nothing for it, so it is not refreshed
+                -- either (the cache would checksum a value no client has, and the client
+                -- would drift into a FULL resend). It stays stale and dirty for the next
+                -- round, which patches and refreshes it together.
+                local taken, late = {}, {}
+                for _, gy in ipairs(layer.dirty) do taken[gy] = true end
+                for _, gy in ipairs(vm:getSyncDirtyRows(layer.key)) do if not taken[gy] then late[gy] = true end end
                 local set = {}
                 if round.audit then
-                    for gy = 0, vm:getSyncRowCount() - 1 do set[gy] = true end
+                    for gy = 0, vm:getSyncRowCount() - 1 do if not late[gy] then set[gy] = true end end
                 else
-                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end
+                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do if not late[gy] then set[gy] = true end end
                 end
                 for _, gy in ipairs(layer.dirty) do set[gy] = true end
                 local list = {}

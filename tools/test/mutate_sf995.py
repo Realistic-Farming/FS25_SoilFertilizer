@@ -74,7 +74,7 @@ MUTATIONS = [
   [("    table.sort(out)\n    st.dirty, st.dirtyCount = {}, 0\n    return out", "    table.sort(out)\n    return out", 1)],
   "every round re-patches everything ever written"),
  ("C6-client-apply-does-not-mark", VM,
-  [("    -- The receiving side's cache no longer describes this row.\n    self:markSyncRowsDirty(key, gy, gy)\n", "", 1)],
+  [("    -- The receiving side's cache no longer describes this row; it owes no client a patch.\n    self:markSyncRowsStale(key, gy, gy)\n", "", 1)],
   "the client's cache never follows a patched row: false drift, a request every round"),
 
  # ── the chunk apply ─────────────────────────────────────────────────────────
@@ -111,6 +111,10 @@ MUTATIONS = [
   "the join's chunks go out every tick, not every 40 ms"),
 
  # ── the round ───────────────────────────────────────────────────────────────
+ ("R7-late-rows-refreshed", NE,
+  [("                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do if not late[gy] then set[gy] = true end end",
+    "                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end", 1)],
+  "a row written after the take is refreshed but not patched: the checksum carries a value no client has"),
  ("R1-round-patches-nothing", NE,
   [("            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = vm:takeSyncDirtyRows(def.key) }",
     "            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = {} }", 1)],

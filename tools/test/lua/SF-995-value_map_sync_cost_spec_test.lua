@@ -341,6 +341,38 @@ group("P", function()
     T.eq("P8 a round with no writes sends no chunk and one checksum", #chunks(mine) .. "/" .. #checksums(mine), "0/1")
     T.eq("P9 and costs no engine read on either side", TOTAL.server .. "/" .. TOTAL.client, "0/0")
     T.eq("P10 no request", #requests(since(WIRE.server, s0)), 0)
+    -- A write that lands mid-round, after the dirty sets were taken and before that
+    -- layer's refresh: this round patches nothing for it, so it must not be checksummed
+    -- this round either (Bob's MAJOR on #1001); the next round carries it, patch and
+    -- checksum together. Nitrogen and phosphorus take a whole budget each, so the cursor
+    -- is two ticks short of potassium when the write lands.
+    local KIDX
+    for _, l in ipairs(SYNCED) do if l.key == "potassium" then KIDX = l.idx end end
+    c0, s0 = #WIRE.client, #WIRE.server
+    asServer(function()
+        serverVm:applyRawDeltaToLayer("nitrogen", 1, 1, 254)
+        serverVm:applyRawDeltaToLayer("phosphorus", 1, 1, 254)
+    end)
+    -- The timer's accumulator already holds the last settle()'s frames, so the round is
+    -- started by ticking until its updateable exists: that tick is the timer's own and
+    -- runs the first refresh step (nitrogen's 64 rows, one budget); phosphorus takes the
+    -- next tick, so potassium's list is built two ticks after the write below.
+    settle()
+    local guard = 0
+    while #serverMission.updateables == 0 and guard < 400 do tick(1000); guard = guard + 1 end
+    T.eq("P10b [world] the round is running and has taken the two whole-layer writes", #serverMission.updateables > 0 and #serverVm:getSyncDirtyRows("nitrogen") == 0 and #serverVm:getSyncDirtyRows("phosphorus") == 0, true)
+    asServer(function() serverVm:paintPolygon("potassium", field(8, 4, 24, 20), 60) end)   -- rows 36..52, after the take
+    settle()
+    mine = since(WIRE.client, c0)
+    local kChunks = 0
+    for _, ch in ipairs(chunks(mine, "PATCH")) do if ch.layerIdx == KIDX then kChunks = kChunks + 1 end end
+    T.eq("P11 the round patched the two taken layers and nothing of the mid-round write", tostring(#chunks(mine, "PATCH") >= 8) .. "/" .. kChunks, "true/0")
+    T.eq("P12 and its checksum did not carry the mid-round write either: the client matched, no request", #requests(since(WIRE.server, s0)), 0)
+    T.eq("P13 the client still lacks those rows, which stay dirty and stale on the server for the next round",
+        tostring(mismatches("potassium", 36, 52) > 0) .. "/" .. tostring(#serverVm:getSyncDirtyRows("potassium") > 0) .. "/" .. tostring(#serverVm:getSyncStaleRows("potassium") > 0), "true/true/true")
+    c0, s0 = #WIRE.client, #WIRE.server
+    period()
+    T.eq("P14 the next round patches them and the client matches, no request", mismatches("potassium", 36, 52) .. "/" .. #requests(since(WIRE.server, s0)), "0/0")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════

@@ -1623,6 +1623,21 @@ function SoilValueMaps:markSyncRowsDirty(key, gy0, gy1)
     end
 end
 
+--- Mark rows STALE only: this side's cached totals no longer describe them, but no
+--- client is owed them (the receiving side's own apply of a chunk).
+function SoilValueMaps:markSyncRowsStale(key, gy0, gy1)
+    if self.layers[key] == nil then return end
+    local n = self:getSyncRowCount()
+    if n <= 0 then return end
+    local a = math.max(0, math.floor(math.min(gy0, gy1)))
+    local b = math.min(n - 1, math.floor(math.max(gy0, gy1)))
+    if a > b then return end
+    local st = syncState(self, key)
+    for gy = a, b do
+        if not st.stale[gy] then st.stale[gy] = true; st.staleCount = st.staleCount + 1 end
+    end
+end
+
 --- Mark every sync row of `key` (a whole-layer write).
 function SoilValueMaps:markSyncLayerDirty(key)
     self:markSyncRowsDirty(key, 0, self:getSyncRowCount() - 1)
@@ -1802,8 +1817,8 @@ function SoilValueMaps:applySyncRow(key, gy, row)
         m:executeSet(raw)
         gx = gx + 1
     end
-    -- The receiving side's cache no longer describes this row.
-    self:markSyncRowsDirty(key, gy, gy)
+    -- The receiving side's cache no longer describes this row; it owes no client a patch.
+    self:markSyncRowsStale(key, gy, gy)
 end
 
 -- ─────────────────────────────────────────────────────────
