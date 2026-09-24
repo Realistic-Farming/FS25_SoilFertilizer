@@ -132,11 +132,14 @@ end
 
 --- The share of a mixture that `arrived` litres carry: each component scaled by
 --- arrived / total, plus an unknown component for litres the mixture cannot explain.
+--- A fresh birth's profile, revision and provenance (RSF-F212) ride its contribution:
+--- the layer holds bytes, so they end at the coordinator's combine and in the log.
 local function share(mixture, total, arrived)
     local contributions = {}
     if total > P.EPSILON then
         for _, m in ipairs(mixture) do
-            contributions[#contributions + 1] = { litres = m.litres * arrived / total, ageRaw = m.ageRaw, wetnessRaw = m.wetnessRaw }
+            contributions[#contributions + 1] = { litres = m.litres * arrived / total, ageRaw = m.ageRaw, wetnessRaw = m.wetnessRaw,
+                profile = m.profile, revision = m.revision, provenance = m.provenance }
         end
     else
         contributions[1] = { litres = arrived, ageRaw = nil, wetnessRaw = nil }

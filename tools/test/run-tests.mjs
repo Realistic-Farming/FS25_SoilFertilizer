@@ -8,6 +8,16 @@
 // A test declares which real src files to load with a header line:
 //   --!load: src/config/Constants.lua, src/SoilFertilitySystem.lua
 //
+// A test may ask for the MOD'S OWN ENVIRONMENT with a second header line:
+//   --!env: modenv
+// The engine loads every mod chunk in its own environment (mods.lua:436-442): a
+// table whose __index is the real global table and whose _G is ITSELF. An engine
+// global therefore reaches a mod only through __index; rawget(_G, name) from a mod
+// never sees one. With this header the prelude and the tools/test/lua/ models (the
+// engine side) load in the real global table, and every src/ file and the test
+// itself load under `local _ENV` shaped exactly like modEnv, so a source that reads
+// an engine global the wrong way fails on the bench the way it fails in a game.
+//
 // Usage:  node run-tests.mjs
 // Exit:   0 = all assertions passed, 1 = any failure or Lua load error.
 import { readFileSync, readdirSync } from "node:fs";
@@ -25,6 +35,19 @@ function parseDeps(src) {
   if (!m) return [];
   return m[1].split(",").map((s) => s.trim()).filter(Boolean);
 }
+
+function wantsModEnv(src) {
+  return /--!env:\s*modenv\b/.test(src);
+}
+
+// The mod's own environment, as mods.lua:436-442 builds it. `_G` on the right-hand
+// side is evaluated before the local takes effect, so it is the real global table.
+const MOD_ENV_SWITCH = [
+  "-- <<< modEnv: the mod's own environment (mods.lua:436-442) >>>",
+  "local _ENV = setmetatable({}, { __index = _G })",
+  "_ENV._G = _ENV",
+  "",
+].join("\n");
 
 // `--!text: path, path` hands a bar the TEXT of a repo file as
 // SOURCE_TEXT["path"], for source-witness rows that pin a call site's shape
@@ -74,15 +97,25 @@ for (const tf of testFiles) {
   const testSrc = readFileSync(testPath, "utf8");
   const deps = parseDeps(testSrc);
   const texts = parseTexts(testSrc);
+  const modEnv = wantsModEnv(testSrc);
 
   const parts = [prelude];
+  let switched = false;
   for (const d of deps) {
+    if (modEnv && !switched && !d.startsWith("tools/")) {
+      parts.push(MOD_ENV_SWITCH);
+      switched = true;
+    }
     try {
       parts.push(`-- <<< ${d} >>>\n` + readFileSync(join(REPO_ROOT, d), "utf8"));
     } catch {
       console.log(c.red(`✗ ${tf}: cannot read declared dependency '${d}'`));
       hadError = true;
     }
+  }
+  if (modEnv && !switched) {
+    parts.push(MOD_ENV_SWITCH);
+    switched = true;
   }
   for (const t of texts) {
     try {

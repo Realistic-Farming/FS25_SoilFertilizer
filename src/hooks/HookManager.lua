@@ -3888,9 +3888,20 @@ function HookManager:installMowerHook()
             -- of nutrientCycles: a player who turns nutrient cycling off should still
             -- get hay that remembers when it was cut (Arissani ruling 2026-07-30).
             -- The TRACKED_MATERIALS gate filters non-tracked crops automatically.
+            --
+            -- RSF-F212 (contract section 4): NOT while the ground-condition carrier
+            -- owns this mower's deposits this frame (GroundMovementCarrier.stampHandled,
+            -- set by the cut and drop frames' begin, and by a begin a StockGuard lease
+            -- then owned). The carrier projected the fresh material where it landed,
+            -- with its starting profile, or marked what it could not vouch for; this
+            -- generic no-record birth over the cut strip would invent material on bare
+            -- ground beside it. While the ground family is not armed it runs as it
+            -- always has.
             do
                 local md = g_SoilFertilityManager.soilSystem.materialDown
-                if md and md:isArmed() then
+                local carried = GroundMovementCarrier ~= nil and type(GroundMovementCarrier.handledThisFrame) == "function"
+                    and GroundMovementCarrier.handledThisFrame(mowerSelf)
+                if md and md:isArmed() and not carried then
                     local waPoly = buildWorkAreaPolygon(mowerSelf, WorkAreaType.MOWER)
                     if waPoly then
                         -- Polygon centre for field lookup (avoids header-vs-tractor offset)
@@ -4628,9 +4639,10 @@ end
 --- recognised by identity against Mower.processDropArea (the tedder and windrower copy
 --- functions of the same name), and a foreign replacement is left alone.
 ---
---- SF's existing mower birth (installMowerHook) is untouched: it appends to the class
---- end, so it runs after the drop and writes only pixels with no record, never a cell
---- this carrier projected. F212 suppresses it in admitted contexts (contract section 4).
+--- SF's existing mower birth (installMowerHook) appends to the class end, so it runs
+--- after the drop. RSF-F212 stands it down while this carrier owns the mower's
+--- deposits (GroundMovementCarrier.handledThisFrame, stamped by every begin), so it
+--- writes only when the ground family is not armed, exactly as before the family.
 ---@return boolean success
 function HookManager:installMowerCarrierHook()
     if not Mower or type(Mower.processMowerArea) ~= "function" or type(Mower.processDropArea) ~= "function" then
@@ -4691,7 +4703,9 @@ function HookManager:installMowerCarrierHook()
             if frame ~= nil then
                 if packed[1] then
                     local fresh = (tonumber(workArea.pickedUpLiters) or 0) - before
-                    local okCut, errCut = pcall(GroundMovementCarrier.mowerCut, frame, fresh)
+                    -- The converter's output type is the drop area's after the cut
+                    -- (Mower.lua:359): the fresh-grass profile only for GRASS_WINDROW.
+                    local okCut, errCut = pcall(GroundMovementCarrier.mowerCut, frame, fresh, dropArea.fillType)
                     if not okCut then SoilLogger.warning("[MowerCarrier] fresh output not recorded (%s)", tostring(errCut)) end
                 end
                 finish(frame)
@@ -4796,6 +4810,48 @@ function HookManager:installCombineSwathHook()
         return ft and ft.name or nil
     end
 
+    -- RSF-F212 (contract section 4): the straw's birth is the ground-condition
+    -- carrier's, through a STRAW frame around the native call: the settlement barrier
+    -- first, the observer recording the swath's own tipToGroundAroundLine, the produced
+    -- litres (the native tip request, Combine.lua:733) entering the one-call account
+    -- born at the deposit with the fresh-straw profile before the drop is handled, and
+    -- the drop projected where it landed, combined with what survived there. The
+    -- generic no-record birth below runs only while the carrier does not own this
+    -- combine's deposits this frame (the ground family not armed), as it always has.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[SwathHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
+        end
+    end
+    local function strawCarrierOn(combine)
+        local sfm = g_SoilFertilityManager
+        return combine.isServer and GroundMovementCarrier ~= nil and sfm ~= nil and sfm.settings ~= nil and sfm.settings.enabled
+    end
+    local function beginStraw(combineSelf, workArea)
+        local spec = combineSelf.spec_combine
+        local params = spec ~= nil and spec.workAreaParameters or nil
+        -- The native gate (Combine.lua:737): no active swath, or nothing to drop, is
+        -- no deposit and opens no frame.
+        if params == nil or not spec.isSwathActive or (tonumber(params.litersToDrop) or 0) <= 0 then return nil end
+        local ok, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem, combineSelf, workArea,
+            GroundMovementCarrier.KIND_STRAW, nil)
+        if ok then return frameOrErr end
+        SoilLogger.warning("[SwathHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+        return nil
+    end
+    local function finishStraw(frame)
+        local ok, err = pcall(GroundMovementCarrier.finish, frame)
+        if not ok then SoilLogger.warning("[SwathHook] ground-condition carrier failed to finish (%s)", tostring(err)) end
+    end
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
     -- ONE-SHOT PROOF THAT THE WRAPPER ACTUALLY RAN, with the armed state in the
     -- SAME LINE. The install count above was non-zero for this hook's entire life
     -- while this body never executed once, so "patched" can never be the
@@ -4812,9 +4868,16 @@ function HookManager:installCombineSwathHook()
 
     local function makeWrapper(realFn)
         return function(combineSelf, workArea, ...)
-            -- DELEGATE FIRST, always, and forward every return: the engine's own
-            -- caller reads the dropped-litres value.
-            local results = { realFn(combineSelf, workArea, ...) }
+            -- The STRAW frame opens before the native call (RSF-F212, above) and
+            -- closes whether that call returned or raised; a raised error is re-raised
+            -- unchanged and every return is forwarded to the engine's own caller.
+            local frame = nil
+            if strawCarrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end
+            local packed = packAll(pcall(realFn, combineSelf, workArea, ...))
+            if frame ~= nil then finishStraw(frame) end
+            if not packed[1] then error(packed[2], 0) end
+            -- The native returns, forwarded whole at the end of this wrapper.
+            local results = { unpack(packed, 2, packed.n) }
 
             if not firstRunLogged then
                 firstRunLogged = true
@@ -4844,6 +4907,14 @@ function HookManager:installCombineSwathHook()
                or not g_SoilFertilityManager.soilSystem
                or not g_SoilFertilityManager.settings
                or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            -- RSF-F212: while the ground-condition carrier owns this combine's deposits
+            -- this frame (the family armed, its frame above or a StockGuard lease), the
+            -- straw's birth is the carrier's and this generic no-record birth stands down.
+            if GroundMovementCarrier ~= nil and type(GroundMovementCarrier.handledThisFrame) == "function"
+               and GroundMovementCarrier.handledThisFrame(combineSelf) then
                 return unpack(results)
             end
 
