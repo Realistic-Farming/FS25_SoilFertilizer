@@ -250,7 +250,249 @@ function MaterialWetness.new()
     -- Shelter shape cache, invalidated on the placeable lifecycle.
     self.shelterDirty = true
     self.shelterCache = {}
+    -- RSF-F213 (contract section 5): the membership index the daily settle walks
+    -- once the ground family is armed (GroundConditionCoordinator binds itself), and
+    -- the per-cell exposed fraction cache the shelter read fills (P-GROUND-4).
+    self.membership   = nil
+    self.shelterCells = {}
+    self.shelterEpoch = 0
+    self.lastSettle   = nil
     return self
+end
+
+-- =========================================================
+-- RSF-F213 part 2: the membership settle (contract section 5)
+-- =========================================================
+-- With the ground family armed the daily weather walks the derived membership
+-- index at the Soil cell grain, fields and yards alike, instead of the fields'
+-- polygons: every admitted cell exactly once per settled day, the same phase order,
+-- encoded bounds, equilibrium floor and rounding as the field pass, and a rain dose
+-- scaled by the cell's EXPOSED fraction under the indoor mask, read at the mask's own
+-- grain. The field pass below stays as the path for a store without the index (the
+-- coordinator never binds then), never as a second pass over the same ground.
+
+--- The coordinator binds itself here at arm when its membership index exists.
+function MaterialWetness:bindMembership(coordinator)
+    self.membership   = coordinator
+    self.shelterCells = {}
+    self.shelterEpoch = self.shelterEpoch + 1
+end
+
+function MaterialWetness:membershipActive()
+    return self.membership ~= nil
+end
+
+--- The cell's exposed (uncovered) fraction under the indoor mask: 1 when there is
+--- no usable mask (neutral means it WETS, the existing conservative rule), else one
+--- minus the indoor pixel share of the cell's world box, read through the mask's
+--- own modifier at the mask's own grain. Cached until invalidation.
+function MaterialWetness:exposedFraction(gx, gz)
+    local key = gx .. ":" .. gz
+    local cached = self.shelterCells[key]
+    if cached ~= nil then return cached end
+    local frac = self:_readExposedFraction(gx, gz)
+    self.shelterCells[key] = frac
+    return frac
+end
+
+function MaterialWetness:_readExposedFraction(gx, gz)
+    local mission = g_currentMission
+    local mask = mission ~= nil and mission.indoorMask or nil
+    if mask == nil then return 1 end
+    -- Reject a nil or zero handle and an unusable mask geometry before asking:
+    -- hasMask alone is not enough (contract section 5).
+    if mask.handle == nil or mask.handle == 0 then return 1 end
+    if type(mask.maskSize) ~= "number" or mask.maskSize <= 0 then return 1 end
+    if type(mask.terrainSize) ~= "number" or mask.terrainSize <= 0 then return 1 end
+    if mask.modifierValue == nil or type(mask.getFilter) ~= "function" or type(mask.setParallelogramUVCoords) ~= "function" then return 1 end
+    if type(IndoorMask) ~= "table" or IndoorMask.INDOOR == nil then return 1 end
+    if self.membership == nil then return 1 end
+    local x0, z0, x1, z1 = self.membership:cellWorldBox(gx, gz)
+    if x0 == nil then return 1 end
+    local ok, indoor, total = pcall(function()
+        local filter = mask:getFilter(IndoorMask.INDOOR)
+        if filter == nil then return nil, nil end
+        mask:setParallelogramUVCoords(mask.modifierValue, x0, z0, x1, z0, x0, z1)
+        local _, n, tot = mask.modifierValue:executeGet(filter)
+        return n, tot
+    end)
+    if not ok or type(indoor) ~= "number" or type(total) ~= "number" or total <= 0 then return 1 end
+    local covered = math.max(0, math.min(1, indoor / total))
+    return 1 - covered
+end
+
+--- The placeable lifecycle wrap (HookManager:installIndoorMaskHook) reports a mask
+--- paint AFTER the original ran: the cells the painted area touches lose their
+--- cached fraction; a paint that raised, or an area we cannot place, drops the
+--- whole cache, conservatively.
+function MaterialWetness:onIndoorMaskChanged(area, _indoor, originalOk)
+    if not originalOk then self:invalidateShelterCache() return end
+    local placed = false
+    if self.membership ~= nil and type(area) == "table" and GroundNativeObserver ~= nil
+       and GroundNativeObserver.parallelogramCells ~= nil and self.membership.cells ~= nil then
+        local ok = pcall(function()
+            local x0, _, z0 = getWorldTranslation(area.start)
+            local x1, _, z1 = getWorldTranslation(area.width)
+            local x2, _, z2 = getWorldTranslation(area.height)
+            local geometry = self.membership.cells:getConditionGeometry()
+            local cells = GroundNativeObserver.parallelogramCells(geometry, x0, z0, x1, z1, x2, z2)
+            if cells == nil then return end
+            for _, c in ipairs(cells) do self.shelterCells[c.gx .. ":" .. c.gz] = nil end
+            placed = true
+        end)
+        if not ok then placed = false end
+    end
+    if not placed then self:invalidateShelterCache() end
+end
+
+--- The soil-class and soil-moisture modifiers for the field under a cell's centre,
+--- through the existing per-field contracts, neutral outside any field; cached per
+--- field for one pass.
+local function fieldOfCell(self, gx, gz)
+    local ss = self.soilSystem
+    local hm = ss ~= nil and ss.hookManager or nil
+    if hm == nil or type(hm.getFieldIdAtWorldPosition) ~= "function" then return nil end
+    local x0, z0, x1, z1 = self.membership:cellWorldBox(gx, gz)
+    if x0 == nil then return nil end
+    local ok, fieldId = pcall(hm.getFieldIdAtWorldPosition, hm, (x0 + x1) * 0.5, (z0 + z1) * 0.5)
+    if not ok or type(fieldId) ~= "number" or fieldId <= 0 then return nil end
+    return fieldId
+end
+
+local function driversFor(self, cache, fieldId, sky)
+    local key = fieldId or 0
+    local d = cache[key]
+    if d ~= nil then return d end
+    local soilClass, moisture = MaterialWetness.DEFAULT_SOIL_CLASS, nil
+    if fieldId ~= nil then
+        soilClass = self:soilClassFor(fieldId)
+        moisture  = self:readSoilMoisture(fieldId)
+    end
+    local evap    = MaterialWetness.SOIL_EVAP[soilClass] or 1.0
+    local weather = MaterialWetness.weatherMultiplier(sky and sky.cloudCoverage, moisture)
+    d = { evap = evap, weather = weather, deltas = {} }
+    for i, phase in ipairs(MaterialWetness.PHASES) do
+        d.deltas[i] = MaterialWetness.pointsToRawDelta(phase.dropPerDay * evap * weather)
+    end
+    cache[key] = d
+    return d
+end
+
+--- One cell's dried value under the phase table, the SAME sequence the field pass
+--- runs: each phase in order, a cell inside the phase's encoded band steps down by
+--- that phase's raw delta, never below the equilibrium floor (the EMC ceiling, and
+--- never into the reserved band). A cell that crosses into the next band is then
+--- eligible for that band's step, as the sequential layer passes make it.
+local function dryOneCell(raw, deltas, bandLows, bandHighs, floorRaw)
+    local v = raw
+    for i = 1, #deltas do
+        local d = deltas[i]
+        if d > 0 and v >= bandLows[i] and v <= bandHighs[i] then
+            v = v - d
+            if v < floorRaw then v = floorRaw end
+        end
+    end
+    return v
+end
+
+--- Walk a run: read each cell, compute its new value, write coalesced runs of an
+--- identical new value; unknown, absent and unavailable cells are skipped (an
+--- unavailable one unread) and break a run. Returns the engine reads and writes
+--- made, for the cost record.
+local function settleRun(self, gz, gx0, gx1, valueFor)
+    local coord = self.membership
+    local reads, writes = 0, 0
+    local runStart, runValue = nil, nil
+    local function flush(gxEnd)
+        if runStart ~= nil then
+            coord:writeWetnessRun(runStart, gxEnd, gz, runValue)
+            writes = writes + 1
+            runStart, runValue = nil, nil
+        end
+    end
+    for gx = gx0, gx1 do
+        local newValue = nil
+        if not coord:isUnavailable(gx, gz) then
+            local c = coord:readCell(gx, gz)
+            reads = reads + 1
+            local raw = c ~= nil and c.wetnessRaw or nil
+            if type(raw) == "number" and raw >= RAW_FLOOR then
+                local v = valueFor(gx, gz, raw)
+                if v ~= raw then newValue = v end
+            end
+        end
+        if newValue == nil then
+            flush(gx - 1)
+        elseif runStart == nil then
+            runStart, runValue = gx, newValue
+        elseif newValue ~= runValue then
+            flush(gx - 1)
+            runStart, runValue = gx, newValue
+        end
+    end
+    flush(gx1)
+    return reads, writes
+end
+
+--- DRY over the membership: the phase table per cell, the floor at the EMC ceiling.
+function MaterialWetness:dryPassMembers(sky)
+    local humidity = sky and sky.humidity or 0.65
+    if humidity <= 1 then humidity = humidity * 100 end
+    local emcPct  = MaterialWetness.emcFor(humidity, sky and sky.temperature or 15)
+    local emcRaw  = MaterialWetness.pctToRaw(emcPct)
+    local floorRaw = math.max(emcRaw, RAW_FLOOR)
+    local bandLows, bandHighs = {}, {}
+    for i, phase in ipairs(MaterialWetness.PHASES) do
+        bandLows[i]  = math.max(MaterialWetness.pctToRaw(phase.pctLow), emcRaw)
+        bandHighs[i] = MaterialWetness.pctToRaw(phase.pctHigh)
+    end
+    local drivers = {}
+    local reads, writes, cells = 0, 0, 0
+    self.membership:enumerateMemberRuns(function(gz, gx0, gx1)
+        cells = cells + (gx1 - gx0 + 1)
+        local r, w = settleRun(self, gz, gx0, gx1, function(gx, gz2, raw)
+            local d = driversFor(self, drivers, fieldOfCell(self, gx, gz2), sky)
+            return dryOneCell(raw, d.deltas, bandLows, bandHighs, floorRaw)
+        end)
+        reads, writes = reads + r, writes + w
+    end)
+    self.lastSettle = self.lastSettle or {}
+    self.lastSettle.cells, self.lastSettle.dryReads, self.lastSettle.dryWrites = cells, reads, writes
+    return reads + writes
+end
+
+--- WET over the membership: the rain dose times the cell's exposed fraction, only on
+--- cells that hold a known value (rain never initialises raw 0 or the sentinel).
+---@return boolean watered, string source
+function MaterialWetness:wetPassMembers(rain)
+    local watered, source = false, "none"
+    local fraction = 0
+    if rain ~= nil then
+        fraction = math.max(0, math.min(1, tonumber(rain.rainScale) or 0))
+    end
+    local reads, writes, sheltered = 0, 0, 0
+    if fraction > 0 then
+        local points = MaterialWetness.RAIN_SETBACK_PER_DAY * fraction
+        if MaterialWetness.pointsToRawDelta(points) > 0 then
+            self.membership:enumerateMemberRuns(function(gz, gx0, gx1)
+                local r, w = settleRun(self, gz, gx0, gx1, function(gx, gz2, raw)
+                    local exposed = self:exposedFraction(gx, gz2)
+                    if exposed < 1 then sheltered = sheltered + 1 end
+                    local rawDelta = MaterialWetness.pointsToRawDelta(points * exposed)
+                    if rawDelta <= 0 then return raw end
+                    return math.min(SoilValueMaps.RAW_MAX, raw + rawDelta)
+                end)
+                reads, writes = reads + r, writes + w
+            end)
+            watered, source = true, "rain"
+        end
+    end
+    self.lastSettle = self.lastSettle or {}
+    self.lastSettle.wetReads, self.lastSettle.wetWrites, self.lastSettle.shelteredCells = reads, writes, sheltered
+    if self:irrigationAvailable() then
+        SoilLogger.debug("[MaterialWetness] irrigation facade present but the arrival contract is unbuilt")
+    end
+    return watered, source
 end
 
 function MaterialWetness:isArmed()
@@ -435,6 +677,8 @@ end
 function MaterialWetness:invalidateShelterCache()
     self.shelterDirty = true
     self.shelterCache = {}
+    self.shelterCells = {}
+    self.shelterEpoch = (self.shelterEpoch or 0) + 1
 end
 
 --- Is this position under cover? nil when the mask is unavailable, which the caller
@@ -532,6 +776,21 @@ function MaterialWetness:settleOneDay(dayNumber, isToday)
             cloudCoverage = 0.5,
         }
         rain = { rainScale = climate.rainDayFraction or 0, isRaining = (climate.rainDayFraction or 0) > 0.5 }
+    end
+
+    -- RSF-F213: with the membership index bound, the settle walks members. An index
+    -- that is not ready (a bit write refused since the last build) is reconciled
+    -- first; if it cannot be, the day HOLDS: condition stays unavailable rather than
+    -- weathered over an index we cannot vouch for (contract section 5).
+    if self:membershipActive() then
+        if not self.membership:isMembershipReady() and not self.membership:reconcileMembership() then
+            SoilLogger.warning("[MaterialWetness] day %s: the membership index needs a rebuild that did not complete - holding", tostring(dayNumber))
+            return false
+        end
+        self:dryPassMembers(sky)
+        local wateredM, sourceM = self:wetPassMembers(rain)
+        self:recordDay(dayNumber, wateredM, sourceM, derived)
+        return true
     end
 
     self:dryPass(sky)

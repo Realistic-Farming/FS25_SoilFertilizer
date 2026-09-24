@@ -53,8 +53,10 @@ g_fillTypeManager = {
 
 -- ── the two condition layers (after RSF-F208-ground_condition_cells_spec_test) ──
 local BVMS = {}
-function ENGINE.newLayer(fill)
-    local layer = { cells = {}, fill = fill or 0, id = {} }
+--- A bit-vector layer: `res` cells a side (the condition grid's ENGINE.RESOLUTION
+--- unless a finer map, like the indoor mask, says otherwise).
+function ENGINE.newLayer(fill, res)
+    local layer = { cells = {}, fill = fill or 0, id = {}, res = res or ENGINE.RESOLUTION }
     BVMS[layer.id] = layer
     return layer
 end
@@ -71,7 +73,17 @@ getBitVectorMapPoint = function(bvm, gx, gz, _first, _num)
     return ENGINE.layerGet(layer, gx, gz)
 end
 getBitVectorMapSize = function(bvm)
-    return BVMS[bvm] ~= nil and ENGINE.RESOLUTION or nil
+    return BVMS[bvm] ~= nil and BVMS[bvm].res or nil
+end
+--- A value filter as the engine's: EQUAL a, GREATER a, BETWEEN a and b (inclusive).
+--- The engine's executeGet returns (sum, numPixels, totalPixels): the sum and count of
+--- the pixels the filter PASSES, and the total in the aimed box.
+local function filterPasses(filter, v)
+    if filter == nil or filter.mode == nil then return true end
+    if filter.mode == DensityValueCompareType.EQUAL then return v == filter.a end
+    if filter.mode == DensityValueCompareType.GREATER then return v > filter.a end
+    if filter.mode == DensityValueCompareType.BETWEEN then return v >= filter.a and v <= filter.b end
+    return true
 end
 DensityMapModifier = {
     new = function(bvm, _first, _num, _node)
@@ -79,39 +91,75 @@ DensityMapModifier = {
         m.setParallelogramUVCoords = function(_self, u0, v0, u1, _v1b, _u2, v2, _coordType)
             m.u0, m.v0, m.u1, m.v1 = u0, v0, u1, v2
         end
+        -- A pixel counts when its CENTRE lies in the aimed box, at the layer's own grain.
         local function each(fn)
-            for gx = 0, ENGINE.RESOLUTION - 1 do
-                for gz = 0, ENGINE.RESOLUTION - 1 do
-                    local cu, cv = (gx + 0.5) / ENGINE.RESOLUTION, (gz + 0.5) / ENGINE.RESOLUTION
-                    if cu >= m.u0 and cu <= m.u1 and cv >= m.v0 and cv <= m.v1 then fn(gx, gz) end
+            local layer = BVMS[m.bvm]
+            local res = layer.res
+            for gx = 0, res - 1 do
+                for gz = 0, res - 1 do
+                    local cu, cv = (gx + 0.5) / res, (gz + 0.5) / res
+                    if cu >= m.u0 and cu <= m.u1 and cv >= m.v0 and cv <= m.v1 then fn(layer, gx, gz) end
                 end
             end
         end
-        m.executeGet = function(_self, _filter)
+        m.executeGet = function(_self, filter)
             if m.u0 == nil then return 0, 0, 0 end
-            local sum, n = 0, 0
-            each(function(gx, gz) sum = sum + ENGINE.layerGet(BVMS[m.bvm], gx, gz); n = n + 1 end)
-            return sum, n, ENGINE.RESOLUTION * ENGINE.RESOLUTION
+            local sum, n, total = 0, 0, 0
+            each(function(layer, gx, gz)
+                total = total + 1
+                local v = ENGINE.layerGet(layer, gx, gz)
+                if filterPasses(filter, v) then sum = sum + v; n = n + 1 end
+            end)
+            return sum, n, total
         end
-        m.executeSet = function(_self, value, _filter)
+        m.executeSet = function(_self, value, filter)
             if m.u0 == nil then return end
-            each(function(gx, gz) ENGINE.layerSet(BVMS[m.bvm], gx, gz, value) end)
+            -- A layer a bar marked throwOnSet refuses every set, as an engine write can.
+            if BVMS[m.bvm].throwOnSet then error("engine refused the set") end
+            each(function(layer, gx, gz)
+                if filterPasses(filter, ENGINE.layerGet(layer, gx, gz)) then ENGINE.layerSet(layer, gx, gz, value) end
+            end)
+        end
+        m.executeAdd = function(_self, delta, filter)
+            if m.u0 == nil then return end
+            each(function(layer, gx, gz)
+                local v = ENGINE.layerGet(layer, gx, gz)
+                if filterPasses(filter, v) then ENGINE.layerSet(layer, gx, gz, math.max(0, math.min(255, v + delta))) end
+            end)
         end
         return m
     end,
 }
-DensityMapFilter = { new = function() return { setValueCompareParams = function() end } end }
+DensityMapFilter = {
+    new = function(modifier)
+        local f = { modifier = modifier, mode = nil, a = nil, b = nil }
+        f.setValueCompareParams = function(_self, mode, a, b) f.mode, f.a, f.b = mode, a, b end
+        return f
+    end,
+}
 
---- The value maps the condition cells arm over: resolution, terrain and the two
---- layer entries, as SoilValueMaps exposes them.
-function ENGINE.newValueMaps()
+--- The value maps the condition cells arm over: resolution, terrain and the layer
+--- entries as SoilValueMaps exposes them: the two condition layers and, since
+--- RSF-F213, the one-bit groundMembership index (opts.membershipLoaded says whether
+--- its file came from a save; opts.noMembership models a store without the layer).
+--- applyRawDeltaToPolygonBand is the FIELD pass's write, recorded: with the family
+--- armed it must never be called.
+function ENGINE.newValueMaps(opts)
+    opts = opts or {}
     local age, wet = ENGINE.newLayer(0), ENGINE.newLayer(0)
-    return {
+    local member = ENGINE.newLayer(0)
+    local vm = {
         available = true, resolution = ENGINE.RESOLUTION, terrainSize = ENGINE.TERRAIN,
-        layers = { materialAge = { bvm = age.id }, materialWetness = { bvm = wet.id } },
+        layers = { materialAge = { bvm = age.id, channels = 8 }, materialWetness = { bvm = wet.id, channels = 8 } },
+        fieldPassCalls = 0,
         getLayerEntry = function(self, key) return self.layers[key] end,
         readRawAtWorld = function() return nil end,
-    }, age, wet
+        applyRawDeltaToPolygonBand = function(self) self.fieldPassCalls = self.fieldPassCalls + 1 return 0 end,
+    }
+    if not opts.noMembership then
+        vm.layers.groundMembership = { bvm = member.id, channels = 1, loaded = opts.membershipLoaded == true }
+    end
+    return vm, age, wet, member
 end
 
 -- ── the native height map (MODELED) ─────────────────────────────────────────
@@ -862,4 +910,83 @@ HayBet = {
 -- engine-side function, compiled before the environment switch.
 function ENGINE.setFrameIndex(n)
     g_updateLoopIndex = n
+end
+
+-- ── the indoor mask (environment/IndoorMask.lua) ────────────────────────────
+-- :1-5 and :101-113 VERBATIM (the constants, setStateByArea, setParallelogramUVCoords,
+-- getIsIndoorAtWorldPosition, getFilter, hasMask); the terrain load MODELED: the info
+-- layer is a one-bit BVMS layer of `maskRes` pixels a side over the same terrain,
+-- finer than the condition grid so a roof can cover part of a Soil cell.
+IndoorMask = IndoorMask or {}
+IndoorMask.NUM_CHANNELS = 1
+IndoorMask.FIRST_CHANNEL = 0
+IndoorMask.INDOOR = 1
+IndoorMask.OUTDOOR = 0
+function IndoorMask:getIsIndoorAtWorldPosition(wx, wz)
+    if self.handle == nil then
+        return false
+    end
+    local x = math.floor((wx + self.terrainSizeHalf) * self.worldToDensityMap)
+    return getBitVectorMapPoint(self.handle, x, math.floor((wz + self.terrainSizeHalf) * self.worldToDensityMap), IndoorMask.FIRST_CHANNEL, IndoorMask.NUM_CHANNELS) == IndoorMask.INDOOR
+end
+function IndoorMask:setStateByArea(area, indoor)
+    if self.handle ~= nil then
+        local x, _, z = getWorldTranslation(area.start)
+        local x1, _, z1 = getWorldTranslation(area.width)
+        local x2, _, z2 = getWorldTranslation(area.height)
+        self:setParallelogramUVCoords(self.modifierValue, x, z, x1, z1, x2, z2)
+        self.modifierValue:executeSet(indoor)
+    end
+end
+function IndoorMask:setParallelogramUVCoords(modifier, startWorldX, startWorldZ, widthWorldX, widthWorldZ, heightWorldX, heightWorldZ)
+    local terrainSize = self.terrainSize
+    modifier:setParallelogramUVCoords(startWorldX / terrainSize + 0.5, startWorldZ / terrainSize + 0.5, widthWorldX / terrainSize + 0.5, widthWorldZ / terrainSize + 0.5, heightWorldX / terrainSize + 0.5, heightWorldZ / terrainSize + 0.5, DensityCoordType.POINT_POINT_POINT)
+end
+function IndoorMask:hasMask()
+    return self.handle ~= nil
+end
+function IndoorMask:getFilter(indoorOutdoor)
+    if self.handle == nil then
+        return nil
+    end
+    self.filter:setValueCompareParams(DensityValueCompareType.EQUAL, indoorOutdoor)
+    return self.filter
+end
+--- The mission's indoor mask after its terrain load (:34-46 modeled): `maskRes`
+--- pixels a side; opts.noHandle models a map whose layer is missing (handle 0).
+function ENGINE.newIndoorMask(opts)
+    opts = opts or {}
+    local mask = setmetatable({}, { __index = IndoorMask })
+    mask.layerName = "indoorMask"
+    mask.terrainSize = ENGINE.TERRAIN
+    mask.terrainSizeHalf = ENGINE.TERRAIN / 2
+    if opts.noHandle then
+        mask.handle = 0
+        return mask
+    end
+    local layer = ENGINE.newLayer(0, opts.maskRes or 64)
+    mask.handle = layer.id
+    mask.maskSize = layer.res
+    mask.modifierValue = DensityMapModifier.new(mask.handle, IndoorMask.FIRST_CHANNEL, IndoorMask.NUM_CHANNELS)
+    mask.filter = DensityMapFilter.new(mask.modifierValue)
+    mask.worldToDensityMap = mask.maskSize / mask.terrainSize
+    mask.densityToWorldMap = mask.terrainSize / mask.maskSize
+    mask._layer = layer
+    return mask
+end
+--- A placeable's indoor area as PlaceableIndoorAreas loads it: three nodes.
+function ENGINE.indoorArea(x0, z0, x1, z1)
+    return { start = { x = x0, z = z0 }, width = { x = x1, z = z0 }, height = { x = x0, z = z1 } }
+end
+
+-- ── WeatherGuard (MODELED: the three reads MaterialWetness makes) ────────────
+--- opts.sky { humidity, temperature, cloudCoverage }, opts.rain { rainScale, isRaining },
+--- opts.climate true for a season climate; nil opts means no WeatherGuard at all.
+function ENGINE.newWeatherGuard(opts)
+    if opts == nil then return nil end
+    return {
+        getCurrentSky    = function() return opts.sky end,
+        getEffectiveRain = function() return opts.rain or { rainScale = 0, isRaining = false } end,
+        getClimate       = function(_, _season) if opts.climate then return { meanTemp = 12, rainDayFraction = 0.2 } end return nil end,
+    }
 end

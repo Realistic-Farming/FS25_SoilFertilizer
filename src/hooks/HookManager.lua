@@ -574,6 +574,11 @@ function HookManager:installAll(soilSystem)
     local swathOk = self:installCombineSwathHook()
     if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Indoor mask lifecycle (RSF-F213 section 5): a roof painted or removed
+    -- invalidates the shelter read over the cells it touches
+    local indoorOk = self:installIndoorMaskHook()
+    if indoorOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Bale birth and death hooks (SF-46 "THE YARD LADDER"): per-bale condition rows
     local baleBirthOk = self:installBaleBirthHook()
     if baleBirthOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -4993,6 +4998,56 @@ function HookManager:installCombineSwathHook()
         "[OK] Combine swath hook installed on %d work area(s). This is an INSTALL count, not proof it "
         .. "runs; watch for the first-execution line during an actual combine pass with the swath on.",
         patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e3: Indoor mask lifecycle (RSF-F213, contract section 5)
+-- =========================================================
+-- The engine paints its indoor mask per placeable area through
+-- IndoorMask:setStateByArea (environment/IndoorMask.lua:101-109): INDOOR from
+-- PlaceableIndoorAreas:onFinalizePlacement (:67) after the placeable's own paint,
+-- OUTDOOR from onDelete (:39). The shelter read caches an exposed fraction per Soil
+-- cell, so a paint must drop the cells it touched. The wrap goes on the MISSION'S
+-- INSTANCE (the class is shared engine code and the instance field shadows it for
+-- exactly this mission), runs the original first and reports afterwards under
+-- pcall: a paint that raised, or an area we cannot place, drops the whole cache.
+-- Native PLACEABLE_ADDED/REMOVED messages fire BEFORE the paint and are not
+-- subscribed here; the daily invalidation stays as the backstop for writers this
+-- wrap does not see.
+---@return boolean success
+function HookManager:installIndoorMaskHook()
+    local mission = g_currentMission
+    local mask = mission ~= nil and mission.indoorMask or nil
+    if mask == nil or type(mask.setStateByArea) ~= "function" then
+        SoilLogger.warning("[IndoorMask] g_currentMission.indoorMask:setStateByArea not available - shelter invalidation relies on the daily backstop")
+        return false
+    end
+    if rawget(mask, "_sfShelterWrap") ~= nil then return true end
+    local original = mask.setStateByArea
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+    local wrapper = function(maskSelf, area, indoor, ...)
+        local packed = packAll(pcall(original, maskSelf, area, indoor, ...))
+        local sfm = g_SoilFertilityManager
+        local mw = sfm ~= nil and sfm.soilSystem ~= nil and sfm.soilSystem.materialWetness or nil
+        if mw ~= nil and type(mw.onIndoorMaskChanged) == "function" then
+            local okInv, errInv = pcall(mw.onIndoorMaskChanged, mw, area, indoor, packed[1] == true)
+            if not okInv then SoilLogger.warning("[IndoorMask] shelter invalidation failed (%s)", tostring(errInv)) end
+        end
+        if not packed[1] then error(packed[2], 0) end
+        return unpack(packed, 2, packed.n)
+    end
+    rawset(mask, "setStateByArea", wrapper)
+    rawset(mask, "_sfShelterWrap", { original = original, wrapper = wrapper })
+    self:registerCleanup("IndoorMask.setStateByArea (shelter invalidation)", function()
+        if rawget(mask, "setStateByArea") == wrapper then
+            rawset(mask, "setStateByArea", nil)
+        end
+        rawset(mask, "_sfShelterWrap", nil)
+    end)
+    SoilLogger.info("[OK] Indoor mask lifecycle hook installed on the mission's indoor mask")
     return true
 end
 

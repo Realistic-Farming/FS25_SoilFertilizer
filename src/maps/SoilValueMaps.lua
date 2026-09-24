@@ -145,6 +145,18 @@ SoilValueMaps.LAYER_DEFS = {
       minVal = 0, maxVal = 254, serverOnly = true },
     { key = "growthBlockFruit",  file = "sfSoilMap_GrowthBlockFruit.grle",
       minVal = 0, maxVal = 254, serverOnly = true },
+    -- [RSF-F213] GROUND MEMBERSHIP (GROUND-CONDITION-CONTRACT section 5, P-GROUND-3):
+    -- a ONE-BIT companion index at the exact condition geometry saying which Soil
+    -- cells the daily settle must consider, fields and yards alike. Derived, not a
+    -- truth: native height state is occupancy truth and the two condition layers
+    -- are the record; a bit here has no quantity meaning. Written and read only by
+    -- GroundConditionCoordinator through its own modifier, never through the value
+    -- helpers below (no encode, no radius, no polygon), so `channels = 1` is honest
+    -- and costs one bit a cell. serverOnly for the same reasons as the two
+    -- condition layers. Absent from an older save it is rebuilt at arm from the
+    -- condition bytes and native occupancy (the coordinator), never assumed empty.
+    { key = "groundMembership", file = "sfSoilMap_GMB.grle", channels = 1,
+      minVal = 0, maxVal = 1, serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel
@@ -268,6 +280,9 @@ function SoilValueMaps:initialize(savegameDir)
     local isServer = (g_server ~= nil)
     for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
         local skipOnClient = (def.serverOnly == true) and not isServer
+        -- [RSF-F213] a def may declare its own bit depth; the value layers keep the
+        -- store's eight.
+        local channels = def.channels or NUM_CHANNELS
         local bvm = nil
         if not skipOnClient then
             bvm = createBitVectorMap("SFVM_" .. def.key)
@@ -281,7 +296,7 @@ function SoilValueMaps:initialize(savegameDir)
             if savegameDir and fileExists ~= nil and def.file then
                 local path = savegameDir .. "/" .. def.file
                 if fileExists(path) then
-                    local ok = loadBitVectorMapFromFile(bvm, path, NUM_CHANNELS)
+                    local ok = loadBitVectorMapFromFile(bvm, path, channels)
                     if ok then
                         -- Adopt the persisted resolution (may differ if the cap changed).
                         -- [SF-43] FIRST loaded layer only. This was last-wins, which
@@ -310,12 +325,12 @@ function SoilValueMaps:initialize(savegameDir)
                 end
             end
             if not loaded then
-                loadBitVectorMapNew(bvm, self.resolution, self.resolution, NUM_CHANNELS, false)
+                loadBitVectorMapNew(bvm, self.resolution, self.resolution, channels, false)
             end
 
             -- World-coordinate modifier: passing g_terrainNode maps world XZ onto
             -- the full map extent (GDN FS25 weed-control sample pattern).
-            local modifier = DensityMapModifier.new(bvm, 0, NUM_CHANNELS, g_terrainNode)
+            local modifier = DensityMapModifier.new(bvm, 0, channels, g_terrainNode)
             local filter   = DensityMapFilter.new(modifier)
             self.layers[def.key] = {
                 bvm      = bvm,
@@ -323,6 +338,7 @@ function SoilValueMaps:initialize(savegameDir)
                 filter   = filter,
                 def      = def,
                 loaded   = loaded,
+                channels = channels,
             }
         end
     end
