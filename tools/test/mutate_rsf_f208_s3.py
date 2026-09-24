@@ -106,8 +106,8 @@ MUTATIONS = [
     "or type(captureAgeDay) ~= \"number\" then return nil end", 1)],
   "a clock running backwards subtracts age instead of making it unknown"),
  ("B8-ageing-persisted-twice", CAR,
-  [("        out[#out + 1] = { litres = comp.litres, ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today), wetnessRaw = comp.wetnessRaw }",
-    "        comp.ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today)\n        out[#out + 1] = { litres = comp.litres, ageRaw = comp.ageRaw, wetnessRaw = comp.wetnessRaw }", 1)],
+  [("            ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today)\n",
+    "            comp.ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today)\n            ageRaw = comp.ageRaw\n", 1)],
   "resolving writes the aged value back without re-stamping, so the span is added again"),
  ("B9-no-reconcile-at-begin", CAR,
   [("        C.accountReconcile(acc, nativeRemainder(home), today)\n",
@@ -216,16 +216,18 @@ MUTATIONS = [
   "the observer the windrower hook wrapped outlives the hook manager's teardown"),
 
  # --- the mower (S2b) ---
+ # RSF-F212 (S4) moved the fresh add into GroundMovementCarrier.freshBirth; M1 to M3 are the
+ # same mutations on their new home (M2 is now a wetness invented for an output no profile
+ # covers, pinned by the F212 bar's hay row).
  ("M1-fresh-output-not-recorded", CAR,
-  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)", "        local _ = AGE_BORN", 1)],
+  [("    C.accountAdd(frame.account, litres, AGE_BORN, wetnessRaw, frame.today, birth)", "    local _ = AGE_BORN", 1)],
   "the fresh cut lands as unknown instead of born today"),
  ("M2-fresh-output-given-a-wetness", CAR,
-  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)",
-    "        C.accountAdd(frame.account, fresh, AGE_BORN, 100, frame.today)", 1)],
-  "the fresh cut is given a wetness before F212 supplies its profile"),
+  [("    C.accountAdd(frame.account, litres, AGE_BORN, wetnessRaw, frame.today, birth)",
+    "    C.accountAdd(frame.account, litres, AGE_BORN, wetnessRaw or 100, frame.today, birth)", 1)],
+  "an output no profile covers is given a wetness anyway"),
  ("M3-fresh-output-a-day-old", CAR,
-  [("        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)",
-    "        C.accountAdd(frame.account, fresh, AGE_BORN + 1, nil, frame.today)", 1)],
+  [("            ageRaw = AGE_BORN\n", "            ageRaw = AGE_BORN + 1\n", 1)],
   "the fresh cut is counted as a day old"),
  ("M4-account-on-the-calling-area", CAR,
   [("        local home = type(accountArea) == \"table\" and accountArea or workArea",

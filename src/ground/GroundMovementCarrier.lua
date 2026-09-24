@@ -42,12 +42,33 @@
 -- drop area, from the end of processing (processDropArea, :383-405). So the account
 -- lives on the DROP AREA, and both calls open a frame over it:
 --   - the cut frame records the old windrow's pickup with its pre-removal condition,
---     adds the fresh output born today (age raw 1) with its wetness left UNKNOWN until
---     F212 supplies the fresh-grass profile, then reconciles to the native remainder,
---     so a cap loss discards condition uniformly and never re-creates it;
+--     adds the fresh output as a FRESH BIRTH (below), then reconciles to the native
+--     remainder, so a cap loss discards condition uniformly and never re-creates it;
 --   - the drop frame projects the mixture where the drop actually landed.
 -- The direct-to-FillUnit branch (no drop area, :353-355) is not a ground deposit and
 -- opens no frame. Each frame's lease check names the area actually calling.
+--
+-- THE STRAW FRAME SPANS ONE CALL (RSF-F212, contract section 4). A combine's swath
+-- produces and drops in the same call (Combine.lua:733, :747): the buffer's release
+-- this frame is the tip request, and the tip is the deposit. So the frame is the
+-- windrower's shape, a one-call account, and the fresh straw enters it from the
+-- observer's BEFORE handler, off the native request itself, before the drop is
+-- handled. What does not land is the native's loss and dies with the frame.
+--
+-- FRESH BIRTHS (RSF-F212, contract section 4, P-GROUND-2). A GENUINE fresh birth is
+-- output a native production observation proved this call: the rise in the mower's
+-- pickedUpLiters, the swath's own tip request. It is born AT THE DEPOSIT: age raw 1
+-- when it lands, whatever day the output entered the machine's buffer (section 4's
+-- last sentence; P-GROUND-1's ageing is for material captured from the ground). Its
+-- wetness is the Soil-owned starting profile when the pair (carrier kind, output
+-- type) is an accepted branch, a mower's GRASS_WINDROW or a swath's STRAW, and
+-- UNKNOWN for any other output: a fill-type name alone never earns a profile, so a
+-- converter that makes hay gets none and an import stays unknown. A refused barrier
+-- makes the output explicit unknown, never the profile and never the generic
+-- no-record birth. The profile's id, revision and provenance (estimated-at-birth)
+-- ride the component and the contribution; the layer holds bytes, so they end at the
+-- coordinator's combine and in the log. A redischarge never re-seeds: a component
+-- picked up from the ground carries its captured condition and no provenance.
 --
 -- P-GROUND-1, PROVISIONAL (Tyson D1 2026-09-15, Arissani's ratification owed): off
 -- the ground, material keeps its captured wetness, and its age is the captured raw
@@ -64,6 +85,9 @@ local C = GroundMovementCarrier
 C.KIND_TEDDER = "TEDDER"
 C.KIND_WINDROWER = "WINDROWER"
 C.KIND_MOWER = "MOWER"
+C.KIND_STRAW = "STRAW"
+-- The per-vehicle frame stamp (stampHandled / handledThisFrame below).
+C.HANDLED_KEY = "_sfGroundCarrierFrame"
 C.ACCOUNT_KEY = "_sfGroundAccount"
 C.EPSILON = GroundMovementProjector.EPSILON
 -- A cell's observed litres may differ from the native return by the density map's
@@ -72,8 +96,24 @@ C.TOLERANCE = GroundMovementProjector.TOLERANCE
 
 local AGE_BORN, AGE_CEILING = 1, 255
 
+-- RSF-F212, contract section 4 (P-GROUND-2, ratified 2026-09-14): the Soil-owned
+-- starting profiles, wet basis. A declared game starting value, not a measurement:
+-- each seeds the existing drying phases and changes no curve. Versioned Soil domain
+-- data: a later revision changes only what is born after it, because a component
+-- keeps the stamp it was born with and the account is never saved, so nothing is
+-- re-seeded on reload. `kind` and `fillType` name the one accepted branch each.
+C.PROFILES = {
+    FRESH_GRASS = { id = "FRESH_GRASS_V1", revision = 1, pct = 80, kind = C.KIND_MOWER, fillType = "GRASS_WINDROW" },
+    FRESH_STRAW = { id = "FRESH_STRAW_V1", revision = 1, pct = 25, kind = C.KIND_STRAW, fillType = "STRAW" },
+}
+-- What a birth contribution says about its wetness: an estimate made at birth,
+-- distinct from a condition later captured from the ground (provenance nil).
+C.PROVENANCE_ESTIMATED_AT_BIRTH = "ESTIMATED_AT_BIRTH"
+
 C.stats = C.stats or { frames = 0, skippedLease = 0, barrierRefused = 0, projected = 0, cleared = 0, unavailable = 0 }
+C.stats.births = C.stats.births or 0
 C.firstPassLogged = C.firstPassLogged or {}   -- kind -> true, once per session
+C.firstBirthLogged = C.firstBirthLogged or {} -- profile id -> true, once per session
 
 -- =========================================================
 -- The account (P-GROUND-1)
@@ -105,16 +145,26 @@ function C.accountTotal(acc)
 end
 
 --- Add material with its stamp. Components with the same stamp merge, so a long
---- pass does not grow the account without bound.
-function C.accountAdd(acc, litres, ageRaw, wetnessRaw, captureAgeDay)
+--- pass does not grow the account without bound. `birth` (RSF-F212) marks a fresh
+--- birth: { profile = id|nil, revision = n|nil, provenance = string|nil }. It is part
+--- of the stamp, so an estimate made at birth never merges with a condition captured
+--- from the ground, even when their bytes agree.
+function C.accountAdd(acc, litres, ageRaw, wetnessRaw, captureAgeDay, birth)
     if type(litres) ~= "number" or litres <= C.EPSILON then return end
+    local born = birth ~= nil
+    local profile = born and birth.profile or nil
+    local provenance = born and birth.provenance or nil
     for _, comp in ipairs(acc.components) do
-        if comp.ageRaw == ageRaw and comp.wetnessRaw == wetnessRaw and comp.captureAgeDay == captureAgeDay then
+        if comp.ageRaw == ageRaw and comp.wetnessRaw == wetnessRaw and comp.captureAgeDay == captureAgeDay
+           and (comp.born == true) == born and comp.profile == profile and comp.provenance == provenance then
             comp.litres = comp.litres + litres
             return
         end
     end
-    acc.components[#acc.components + 1] = { litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw, captureAgeDay = captureAgeDay }
+    acc.components[#acc.components + 1] = {
+        litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw, captureAgeDay = captureAgeDay,
+        born = born, profile = profile, revision = born and birth.revision or nil, provenance = provenance,
+    }
 end
 
 --- Take litres out uniformly: every component loses the same share, so what leaves
@@ -131,11 +181,21 @@ function C.accountRemove(acc, litres)
     acc.components = kept
 end
 
---- The account's components as they are NOW, aged once from their stamps.
+--- The account's components as they are NOW: a captured component aged once from
+--- its stamp (P-GROUND-1); a fresh birth born at THIS deposit (RSF-F212, contract
+--- section 4: birth day and weather eligibility are the accepted deposit's, not the
+--- day the output entered the machine's buffer), carrying its estimate's provenance.
 function C.accountResolve(acc, today)
     local out = {}
     for _, comp in ipairs(acc.components) do
-        out[#out + 1] = { litres = comp.litres, ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today), wetnessRaw = comp.wetnessRaw }
+        local ageRaw
+        if comp.born then
+            ageRaw = AGE_BORN
+        else
+            ageRaw = C.agedRaw(comp.ageRaw, comp.captureAgeDay, today)
+        end
+        out[#out + 1] = { litres = comp.litres, ageRaw = ageRaw, wetnessRaw = comp.wetnessRaw,
+            profile = comp.profile, revision = comp.revision, provenance = comp.provenance }
     end
     return out
 end
@@ -163,7 +223,13 @@ local function markUnavailable(frame, cell, reason)
 end
 
 --- Handler: before the native call, capture the condition of every cell it may touch.
+--- For the STRAW frame the drop request IS the production observation (header: the
+--- straw frame), so the fresh straw enters the one-call account here, before the
+--- drop is handled.
 function C.beforePrimitive(frame, prim)
+    if frame.kind == C.KIND_STRAW and not prim.pickup then
+        C.freshBirth(frame, prim.delta, prim.fillTypeIndex)
+    end
     if prim.cells == nil or prim.unobservable or not frame.barrierOk then return end
     P.captureCells(frame, prim.cells)
 end
@@ -264,6 +330,9 @@ function C.begin(system, vehicle, workArea, kind, nativeRemainder, accountArea)
     if not vehicle.isServer then return nil end
     local coord, cells, admission = system.groundConditionCoordinator, system.groundConditionCells, system.groundConditionAdmission
     if coord == nil or not coord:isArmed() or cells == nil then return nil end
+    -- The family is armed for this call: the carrier owns this machine's deposits this
+    -- frame, whether the standalone frame opens below or a lease owns the primitive.
+    C.stampHandled(vehicle)
     if admission ~= nil and admission:hasLiveLeaseFor(vehicle, workArea) then
         C.stats.skippedLease = C.stats.skippedLease + 1
         return nil
@@ -338,10 +407,109 @@ function C.mowerDropArea(vehicle, workArea)
     return dropArea
 end
 
+-- =========================================================
+-- Fresh births (RSF-F212, contract section 4)
+-- =========================================================
+
+--- The engine's update-loop index (main.lua:777-779, wrapped at 2^30), the same
+--- same-frame test the admission uses for its leases; nil when there is none.
+local function currentFrameIndex()
+    local n = rawget(_G, "g_updateLoopIndex")
+    return type(n) == "number" and n or nil
+end
+
+--- Record that the ground-condition carrier owns `vehicle`'s deposits this frame.
+--- Contract section 4: the generic no-record birth (noteMaterialAt over the work
+--- area) is suppressed in every admitted context, whether the standalone frame ran or
+--- a StockGuard lease owned the primitive, and whether or not condition capture then
+--- succeeded; the carrier's unknown and unavailable marks are the explicit answer.
+--- Stamped by begin as soon as the family is armed for the call, before its lease
+--- check, so both routes stamp.
+function C.stampHandled(vehicle)
+    local n = currentFrameIndex()
+    if n == nil or type(vehicle) ~= "table" then return end
+    rawset(vehicle, C.HANDLED_KEY, n)
+end
+
+--- Whether the carrier owns `vehicle`'s deposits this frame (stampHandled). With no
+--- frame index the answer is no, and the generic birth runs as it always has.
+function C.handledThisFrame(vehicle)
+    local n = currentFrameIndex()
+    if n == nil or type(vehicle) ~= "table" then return false end
+    return rawget(vehicle, C.HANDLED_KEY) == n
+end
+
+--- The profile a fresh birth from carrier `kind` earns for output of `fillTypeIndex`,
+--- or nil: the pair must be an accepted branch, named by the engine's own fill type
+--- name (FillTypeManager:getFillTypeNameByIndex, FillTypeManager.lua:292).
+function C.profileFor(kind, fillTypeIndex)
+    local ftm = g_fillTypeManager
+    if type(fillTypeIndex) ~= "number" or ftm == nil or type(ftm.getFillTypeNameByIndex) ~= "function" then return nil end
+    local ok, name = pcall(ftm.getFillTypeNameByIndex, ftm, fillTypeIndex)
+    if not ok or type(name) ~= "string" then return nil end
+    for _, profile in pairs(C.PROFILES) do
+        if profile.kind == kind and profile.fillType == name then return profile end
+    end
+    return nil
+end
+
+--- The profile's wetness in the layer's own encoding, through MaterialWetness's
+--- encoder (MaterialWetness.lua:144-150: 80 pct is raw 204, 25 pct is raw 65), or nil
+--- when the encoder is not loaded: then the birth is known in age and unknown in
+--- wetness, never a number invented here.
+function C.profileWetnessRaw(profile)
+    if type(MaterialWetness) ~= "table" or type(MaterialWetness.pctToRaw) ~= "function" then return nil end
+    local ok, raw = pcall(MaterialWetness.pctToRaw, profile.pct)
+    if ok and type(raw) == "number" then return raw end
+    return nil
+end
+
+--- A GENUINE fresh birth into the frame's account: `litres` this call produced, proved
+--- by the native production observation the caller made (header: fresh births). Born
+--- at the deposit; the profile's estimate when (frame.kind, fillTypeIndex) is an
+--- accepted branch, unknown wetness otherwise. Under a refused barrier the output is
+--- explicit unknown, as every litre that call moved is: never the profile, never the
+--- generic birth.
+---@param frame table          the carrier frame
+---@param litres number        the produced litres
+---@param fillTypeIndex number|nil  the output's fill type
+function C.freshBirth(frame, litres, fillTypeIndex)
+    if frame == nil or frame.account == nil then return end
+    if type(litres) ~= "number" or litres <= C.EPSILON then return end
+    if not frame.barrierOk then
+        C.accountAdd(frame.account, litres, nil, nil, frame.today)
+        return
+    end
+    local profile = C.profileFor(frame.kind, fillTypeIndex)
+    local wetnessRaw = nil
+    if profile ~= nil then
+        wetnessRaw = C.profileWetnessRaw(profile)
+        if wetnessRaw == nil and not C.firstBirthLogged[profile.id .. ":unencoded"] then
+            C.firstBirthLogged[profile.id .. ":unencoded"] = true
+            SoilLogger.warning("[GroundCarrier] profile %s cannot be encoded (MaterialWetness.pctToRaw not available): " ..
+                "fresh births carry a known age and an unknown wetness", profile.id)
+        end
+    end
+    local birth = {}
+    if profile ~= nil and wetnessRaw ~= nil then
+        birth.profile, birth.revision, birth.provenance = profile.id, profile.revision, C.PROVENANCE_ESTIMATED_AT_BIRTH
+    end
+    C.accountAdd(frame.account, litres, AGE_BORN, wetnessRaw, frame.today, birth)
+    C.stats.births = C.stats.births + 1
+    if birth.profile ~= nil and not C.firstBirthLogged[profile.id] then
+        C.firstBirthLogged[profile.id] = true
+        SoilLogger.info(
+            "[GroundCarrier] FIRST FRESH %s BIRTH: %.1f L born at the deposit with profile %s revision %d " ..
+            "(%d%% wet basis, raw %d), provenance estimated-at-birth. A fill type's name alone never earns a profile.",
+            tostring(profile.fillType), litres, profile.id, profile.revision, profile.pct, wetnessRaw)
+    end
+end
+
 --- After the native cut returned: the fresh converted output enters the drop area's
---- account born today, with its wetness UNKNOWN until F212 supplies the fresh-grass
---- profile (contract section 4). Under a refused barrier it is of unknown condition
---- too, as every litre that call moved is.
+--- account as a fresh birth (above): born at the deposit, the fresh-grass profile when
+--- the converter's output is GRASS_WINDROW and unknown wetness for any other output.
+--- Under a refused barrier it is of unknown condition, as every litre that call moved
+--- is: explicit unknown, never the generic birth (contract section 4).
 ---
 --- THE CAP LOSS NEEDS NOTHING HERE. The native cap (:366-367) leaves the drop area
 --- holding less than the account; the next frame over that drop area (another work
@@ -350,12 +518,7 @@ end
 --- condition in proportion and is never re-created.
 ---@param frame table    the cut frame
 ---@param fresh number   litres the cut produced (the rise in workArea.pickedUpLiters)
-function C.mowerCut(frame, fresh)
-    if frame == nil or frame.account == nil then return end
-    if type(fresh) ~= "number" or fresh <= C.EPSILON then return end
-    if frame.barrierOk then
-        C.accountAdd(frame.account, fresh, AGE_BORN, nil, frame.today)
-    else
-        C.accountAdd(frame.account, fresh, nil, nil, frame.today)
-    end
+---@param fillTypeIndex number|nil  the converter's output type (dropArea.fillType after the cut)
+function C.mowerCut(frame, fresh, fillTypeIndex)
+    C.freshBirth(frame, fresh, fillTypeIndex)
 end

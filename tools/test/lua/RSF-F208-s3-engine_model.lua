@@ -16,6 +16,10 @@
 
 g_server = g_server or {}
 g_terrainNode = 1
+-- main.lua:78-80 and :766-779: the frame clock and the update-loop index, advanced
+-- once per ENGINE.tick below (a tick is one frame's work-area processing).
+g_time = g_time or 0
+g_updateLoopIndex = g_updateLoopIndex or 0
 DensityCoordType = DensityCoordType or { POINT_POINT_POINT = 1 }
 MathUtil = MathUtil or {}
 MathUtil.vector3Length = MathUtil.vector3Length or function(x, y, z) return math.sqrt(x * x + y * y + z * z) end
@@ -28,7 +32,9 @@ ENGINE = {
     PIXEL = 1,             -- native height-map pixel, 1 m
     PIXEL_CAP = 400,       -- litres one pixel can hold before a drop spills short
     DEFAULT_RADIUS = 1,    -- the modeled getDefaultMaxRadius
-    FT = { GRASS_WINDROW = 11, DRYGRASS_WINDROW = 12, STRAW = 13 },
+    -- WHEAT and SUGARCANE are grain fill types (a combine's buffer holds them); the
+    -- windrow types are the three the observer reads.
+    FT = { GRASS_WINDROW = 11, DRYGRASS_WINDROW = 12, STRAW = 13, WHEAT = 14, SUGARCANE = 15 },
 }
 local FT_NAME = {}
 for name, index in pairs(ENGINE.FT) do FT_NAME[index] = name; FillType[name] = index end
@@ -42,6 +48,7 @@ end
 g_fillTypeManager = {
     getFillTypeIndexByName = function(_, name) return ENGINE.FT[name] end,
     getFillTypeNameByIndex = function(_, index) return FT_NAME[index] end,
+    getFillTypeByIndex = function(_, index) return FT_NAME[index] ~= nil and { name = FT_NAME[index], index = index } or nil end,
 }
 
 -- ── the two condition layers (after RSF-F208-ground_condition_cells_spec_test) ──
@@ -418,6 +425,12 @@ function ENGINE.tick(vehicle, dt)
     for _, class in ipairs(vehicle.specClasses or {}) do
         if type(class.onEndWorkAreaProcessing) == "function" then class.onEndWorkAreaProcessing(vehicle, dt, hasProcessed) end
     end
+    -- main.lua:766 and :777-779: the frame ends here, so what a bar did before the
+    -- tick (a lease admitted, a stamp read) belongs to the frame the tick processed,
+    -- as an admission inside the engine's own frame does.
+    g_time = g_time + dt
+    g_updateLoopIndex = g_updateLoopIndex + 1
+    if g_updateLoopIndex > 1073741824 then g_updateLoopIndex = 0 end
 end
 
 -- ── the Windrower (vehicles/specializations/Windrower.lua) ───────────────────
@@ -543,8 +556,16 @@ addModEventListener = addModEventListener or function(_listener) end
 -- ── the Mower (vehicles/specializations/Mower.lua) ───────────────────────────
 WorkAreaType = WorkAreaType or { DEFAULT = 1, MOWER = 7, AUXILIARY = 9 }
 ToolType = ToolType or { UNDEFINED = 0 }
-g_time = g_time or 0
-ENGINE.FRUIT = { GRASS = 21 }
+FruitType = FruitType or { UNKNOWN = 0 }
+-- Fruits: GRASS (the mower's input), WHEAT and SUGARCANE (a combine's buffer). The
+-- windrow each fruit lays is the engine's own table read (FruitTypeManager.lua:403).
+ENGINE.FRUIT = { GRASS = 21, WHEAT = 1, SUGARCANE = 9 }
+ENGINE.FRUIT_DESC = {
+    [21] = { index = 21, name = "GRASS", fillType = nil, windrowFillType = ENGINE.FT.GRASS_WINDROW, windrowLiterPerSqm = 1 },
+    [1] = { index = 1, name = "WHEAT", fillType = ENGINE.FT.WHEAT, windrowFillType = ENGINE.FT.STRAW, windrowLiterPerSqm = 1 },
+    -- A fruit whose swath is not straw: the combine drops a windrow of another type.
+    [9] = { index = 9, name = "SUGARCANE", fillType = ENGINE.FT.SUGARCANE, windrowFillType = ENGINE.FT.DRYGRASS_WINDROW, windrowLiterPerSqm = 1 },
+}
 -- MODELED: the fruit density map is C. updateMowerArea returns the pixels it cut this
 -- call from ENGINE.mowable[fruit] (set by a bar), and one cut pixel is one litre.
 ENGINE.mowable = {}
@@ -555,6 +576,15 @@ function FSDensityMapUtil.updateMowerArea(fruitType, _xs, _zs, _xw, _zw, _xh, _z
 end
 g_fruitTypeManager = g_fruitTypeManager or {}
 g_fruitTypeManager.getFruitTypeAreaLiters = function(_, _fruitType, area, _useWindrowed) return area end
+g_fruitTypeManager.getFruitTypeByIndex = function(_, index) return ENGINE.FRUIT_DESC[index] end
+g_fruitTypeManager.getFruitTypeByFillTypeIndex = function(_, fillTypeIndex)
+    for _, desc in pairs(ENGINE.FRUIT_DESC) do if desc.fillType == fillTypeIndex then return desc end end
+    return nil
+end
+g_fruitTypeManager.getWindrowFillTypeIndexByFruitTypeIndex = function(_, index)
+    local desc = ENGINE.FRUIT_DESC[index]
+    return desc ~= nil and desc.windrowFillType or nil
+end
 Mower = {}
 Mower.CLIENT_DM_UPDATE_RADIUS = 50
 -- :541-561: the per-frame reset VERBATIM; the server drop-effect block before it is
@@ -611,6 +641,11 @@ function Mower:processMowerArea(workArea, _)
                 local lsy = dropArea.litersToDrop
                 dropArea.litersToDrop = math.min(lsy, 1000)
             end
+            -- :369 and :372-374 VERBATIM: the statistics the class end's birth reads.
+            spec.workAreaParameters.lastInputFruitType = inputFruitType
+            spec.workAreaParameters.lastChangedArea = spec.workAreaParameters.lastChangedArea + changedArea
+            spec.workAreaParameters.lastStatsArea = spec.workAreaParameters.lastStatsArea + totalArea
+            spec.workAreaParameters.lastTotalArea = spec.workAreaParameters.lastTotalArea + totalArea
             workAreaTotal = totalArea
         end
     end
@@ -672,8 +707,8 @@ function ENGINE.newMower(opts)
     v.getOwnerFarmId = function() return 1 end
     v.addFillUnitFillLevel = function(self, _farm, _i, delta) self.fill.level = self.fill.level + delta; self.fill.calls = self.fill.calls + 1 return delta end
     v.spec_mower = {
-        fruitTypeConverters = { [ENGINE.FRUIT.GRASS] = { fillTypeIndex = ENGINE.FT.GRASS_WINDROW, conversionFactor = 1 } },
-        workAreaParameters = { lastChangedArea = 0, lastStatsArea = 0, lastTotalArea = 0 },
+        fruitTypeConverters = { [ENGINE.FRUIT.GRASS] = { fillTypeIndex = opts.outputFillType or ENGINE.FT.GRASS_WINDROW, conversionFactor = 1 } },
+        workAreaParameters = { lastChangedArea = 0, lastStatsArea = 0, lastTotalArea = 0, lastInputFruitType = FruitType.UNKNOWN },
         dropAreas = {}, fillUnitIndex = opts.noDrop and 1 or nil, lastDropTime = 0, isWorking = false,
     }
     local n, x0, z0, w, d = opts.areas or 1, opts.x0, opts.z0, opts.width, opts.depth
@@ -701,13 +736,95 @@ function ENGINE.newMower(opts)
     return v, mowers, drop
 end
 
+-- ── the Combine (vehicles/specializations/Combine.lua), the swath branch ────────
+Combine = {}
+Combine.CLIENT_DM_UPDATE_RADIUS = 50
+-- :731-758 VERBATIM. Note the return: 1, 1 when the swath was processed, never the
+-- litres; what actually landed is the primitive's own return, which the observer
+-- records. The straw effect line is presentation and abbreviated.
+function Combine:processCombineSwathArea(workArea)
+    local spec = self.spec_combine
+    local litersToDrop = spec.workAreaParameters.litersToDrop * (workArea.strawDropPercentage or 1)
+    if not self.isServer and self.currentUpdateDistance > Combine.CLIENT_DM_UPDATE_RADIUS then
+        return 0, 0
+    end
+    if not spec.isSwathActive or litersToDrop <= 0 then
+        return 0, 0
+    end
+    local droppedLiters = 0
+    local fruitDesc = g_fruitTypeManager:getFruitTypeByFillTypeIndex(spec.workAreaParameters.dropFillType)
+    if fruitDesc ~= nil and fruitDesc.windrowLiterPerSqm ~= nil then
+        local windrowFillType = g_fruitTypeManager:getWindrowFillTypeIndexByFruitTypeIndex(fruitDesc.index)
+        if windrowFillType ~= nil then
+            local sx, sy, sz, ex, ey, ez = DensityMapHeightUtil.getLineByArea(workArea.start, workArea.width, workArea.height, true)
+            local lineOffset
+            droppedLiters, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(self, litersToDrop, windrowFillType, sx, sy, sz, ex, ey, ez, 0, nil, workArea.lineOffset, false, nil, false)
+            workArea.lineOffset = lineOffset
+        end
+    end
+    if spec.workAreaParameters.minLitersToDrop <= litersToDrop then
+        spec.workAreaParameters.droppedLiters = spec.workAreaParameters.droppedLiters + litersToDrop
+    end
+    return 1, 1
+end
+-- :1322-1352 MODELED: the parameter resets and the drop type are verbatim; the input
+-- buffer's slot release (the litres the threshing put into the straw buffer this
+-- frame) is the vehicle's own `buffer` { fillType, liters }, released whole
+-- (slotDuration 0, :1331), and getFillUnitLastValidFillType is its fill type.
+function Combine:onStartWorkAreaProcessing(_)
+    local spec = self.spec_combine
+    spec.workAreaParameters.droppedLiters = 0
+    spec.workAreaParameters.strawRatio = 0
+    spec.workAreaParameters.dropFillType = FillType.UNKNOWN
+    local lastValidFillType = self.buffer.fillType
+    if lastValidFillType ~= FillType.UNKNOWN then
+        spec.workAreaParameters.litersToDrop = spec.workAreaParameters.litersToDrop + self.buffer.liters
+        spec.workAreaParameters.dropFillType = lastValidFillType
+    end
+end
+-- :1353-1358 VERBATIM through the quantities.
+function Combine:onEndWorkAreaProcessing(_, _)
+    local spec = self.spec_combine
+    self.buffer.liters = math.max(0, self.buffer.liters - spec.workAreaParameters.droppedLiters)
+    spec.workAreaParameters.litersToDrop = spec.workAreaParameters.litersToDrop - spec.workAreaParameters.droppedLiters
+end
+
+--- A combine as the engine builds it: the swath function copied into the instance
+--- (SpecializationUtil.registerFunction, Combine.lua:100), its swath work area's
+--- pointer captured (WorkArea.lua:266), the listeners on its class. The swath lands
+--- on the line x0..x0+width at z = swathZ. opts.crop is the fruit in the buffer.
+function ENGINE.newCombine(opts)
+    local desc = ENGINE.FRUIT_DESC[opts.crop or ENGINE.FRUIT.WHEAT]
+    local v = { isServer = true, isClient = false, currentUpdateDistance = 0, uniqueId = opts.uid or "combine",
+                buffer = { fillType = desc.fillType, liters = 0 } }
+    v.processCombineSwathArea = Combine.processCombineSwathArea
+    v.specClasses = { Combine }
+    v.spec_combine = {
+        isSwathActive = opts.swath ~= false,
+        workAreaParameters = { litersToDrop = 0, droppedLiters = 0, minLitersToDrop = 1, dropFillType = FillType.UNKNOWN, strawRatio = 0 },
+    }
+    local x0, w = opts.x0 or 0, opts.width or 8
+    local swath = { index = 1, type = WorkAreaType.DEFAULT, functionName = "processCombineSwathArea",
+        start = { x = x0, z = opts.swathZ or 6 }, width = { x = x0 + w, z = opts.swathZ or 6 }, height = { x = x0, z = (opts.swathZ or 6) + 1 },
+        lineOffset = 0, strawDropPercentage = 1 }
+    v.spec_workArea = { workAreas = { swath } }
+    swath.processingFunction = v[swath.functionName]
+    return v, swath
+end
+
 -- ── world owners, built by SoilFertilitySystem.new through their own .new ────
 MaterialDown = {
     LAYER_KEY = "materialAge",
     new = function()
-        return { armed = true, ageAppliedThroughDay = nil,
+        return { armed = true, ageAppliedThroughDay = nil, births = {},
                  isArmed = function(self) return self.armed end,
-                 onAgeTick = function(self, ctx) self.ageAppliedThroughDay = ctx.monotonicDay end }
+                 onAgeTick = function(self, ctx) self.ageAppliedThroughDay = ctx.monotonicDay end,
+                 -- A recorder for the generic no-record birth (MaterialDown.lua:353): the
+                 -- hooks' calls are what a bar counts; the write itself is MaterialDown's own bar.
+                 noteMaterialAt = function(self, verts, fieldId, fillTypeName)
+                     self.births[#self.births + 1] = { fieldId = fieldId, name = fillTypeName, verts = verts }
+                     return true
+                 end }
     end,
 }
 MaterialWetness = {
@@ -718,6 +835,18 @@ MaterialWetness = {
                  onConditionAccrual = function(self, ctx) if not self.hold then self.appliedThroughDay = ctx.monotonicDay end end }
     end,
 }
+-- MaterialWetness.lua:30-31 and :144-150 VERBATIM (SoilValueMaps.lua:151-153: RAW_MIN 1,
+-- RAW_SPAN 254): the layer's own encoder, which a fresh birth's profile goes through.
+-- 80 pct is raw 204; 25 pct is raw 65.
+MaterialWetness.RAW_FLOOR = 32
+function MaterialWetness.pctToRaw(pct)
+    local PCT_MIN, PCT_MAX, RAW_MIN, RAW_FLOOR = 0, 100, 1, 32
+    local span = 254
+    local clamped = math.max(PCT_MIN, math.min(PCT_MAX, tonumber(pct) or 0))
+    local raw = RAW_MIN + math.floor((clamped - PCT_MIN) / (PCT_MAX - PCT_MIN) * span + 0.5)
+    if raw < RAW_FLOOR then raw = RAW_FLOOR end
+    return raw
+end
 HayBet = {
     new = function()
         return { armed = true, seen = {},

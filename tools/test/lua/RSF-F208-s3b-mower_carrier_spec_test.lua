@@ -4,9 +4,10 @@
 -- any old dry windrow it picks up under the cut join ONE pending mixture on the shared
 -- auxiliary drop area (Mower.lua:358-367), capped at 1000 L, and land later when the
 -- end of processing drops that area (:562-566, :383-405). The ground's age and wetness
--- must follow: the old windrow's condition travels, the fresh cut is born today with
--- its wetness unknown until F212, a cap loss discards condition uniformly and never
--- re-creates it, and a remainder waits in the drop area and ages once.
+-- must follow: the old windrow's condition travels, the fresh cut is born at the
+-- deposit with the fresh-grass profile (RSF-F212, raw 204; its own bar is
+-- RSF-F212-fresh_birth_spec_test.lua), a cap loss discards condition uniformly and
+-- never re-creates it, and a captured remainder waits in the drop area and ages once.
 --
 -- THE ENTRY-POINT BAR IS GROUP M. Production enters through SoilFertilitySystem.new,
 -- the ground family armed in production's order (SoilFertilitySystem.lua:339-346) and
@@ -129,7 +130,7 @@ group("M", function()
     local windrow = DensityMapHeightUtil.getFillLevelAtArea(FT.GRASS_WINDROW, 0, 6, 8, 6, 0, 7)
     T.eq("M2 [native] the cut took the old windrow up and dropped 400 fresh + 400 old on the windrow line",
         num(under) .. "/" .. num(windrow) .. "/" .. num(drop.litersToDrop), "0/800/0")
-    T.eq("M3 the windrow carries the old windrow's age; the fresh cut's wetness is unknown until F212", condition(8, 9) .. " " .. condition(9, 9), "5/24 5/24")
+    T.eq("M3 the windrow carries the old windrow's age and the wettest band present, the fresh cut's profile (RSF-F212)", condition(8, 9) .. " " .. condition(9, 9), "5/204 5/204")
     T.eq("M4 the old windrow's cells under the cut are cleared", condition(8, 8) .. " " .. condition(9, 8), "0/0 0/0")
     T.eq("M5 every frame closed and the drop area's account emptied with the native remainder",
         tostring(O.isAtRest()) .. "/" .. num(C.accountTotal(C.accountOf(drop))), "true/0")
@@ -138,14 +139,14 @@ group("M", function()
     -- Fresh cut alone, dropped onto new ground.
     drop.start.z, drop.width.z, drop.height.z = 12, 12, 13
     ENGINE.tick(v, 16)
-    T.eq("M7 fresh cut alone lands born today (age raw 1) with its wetness unknown", condition(8, 11) .. " " .. condition(9, 11), "1/24 1/24")
+    T.eq("M7 fresh cut alone lands born today (age raw 1) with the fresh-grass profile (raw 204, RSF-F212)", condition(8, 11) .. " " .. condition(9, 11), "1/204 1/204")
     T.eq("M8 the log line does not repeat", firstLines("MOWER"), 1)
 
     -- A mower added later through VehicleSystem.addVehicle is carried too.
     local late = ENGINE.newMower({ uid = "late", x0 = 16, z0 = 0, width = 8, depth = 2, dropZ = 6 })
     g_currentMission.vehicleSystem:addVehicle(late)
     ENGINE.tick(late, 16)
-    T.eq("M9 a mower added later is carried by the same hook", condition(12, 9) .. "/" .. tostring(rawget(late, "processDropArea") ~= Mower.processDropArea), "1/24/true")
+    T.eq("M9 a mower added later is carried by the same hook", condition(12, 9) .. "/" .. tostring(rawget(late, "processDropArea") ~= Mower.processDropArea), "1/204/true")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
@@ -166,7 +167,7 @@ group("C", function()
     T.eq("C1 [native] two cuts of 600 L plus the old 400 L hit the 1000 L cap; 800 L dropped, 200 L remain", num(drop.litersToDrop), "200")
     local acc = C.accountOf(drop)
     T.eq("C2 both areas fed ONE account, and the cap loss and the short drop took condition uniformly: 3 fresh to 1 old",
-        accountShape(acc), "1:-:150 9:200:50")
+        accountShape(acc), "1:204:150 9:200:50")
     T.eq("C3 the account IS the native remainder: the 600 L cap loss was never re-created", num(C.accountTotal(acc)), "200")
 
     -- Two days later, with nothing cut, the remainder drops onto the freed line.
@@ -174,7 +175,7 @@ group("C", function()
     HEIGHT.fill(FT.GRASS_WINDROW, 0, 6, 16, 7, 0)
     ENGINE.mowable[GRASS] = 0
     ENGINE.tick(v, 16)
-    T.eq("C4 the remainder lands with its stamps aged ONCE: the oldest is 9 + 2 = 11, wetness still unknown", condition(8, 9) .. " " .. condition(11, 9), "11/24 11/24")
+    T.eq("C4 the remainder lands with its captured stamp aged ONCE: the oldest is 9 + 2 = 11; the wettest band is the fresh profile's", condition(8, 9) .. " " .. condition(11, 9), "11/204 11/204")
     T.eq("C5 and the account empties with the native remainder", num(drop.litersToDrop) .. "/" .. num(C.accountTotal(acc)), "0/0")
 end)
 
