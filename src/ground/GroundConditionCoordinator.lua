@@ -18,6 +18,18 @@
 -- Section 6 is the BOOKKEEPING: one owner revision, and an availability overlay
 -- that records the cells whose condition we know we cannot vouch for.
 --
+-- Section 5 (RSF-F213, P-GROUND-3) is the MEMBERSHIP INDEX: which Soil cells the
+-- daily settle must consider, fields and yards alike. A one-bit companion layer at
+-- the exact condition geometry (the store's groundMembership layer), marked after an
+-- actual birth, deposit or removal through the writes below, kept beside it as
+-- compressed row runs for enumeration. Positive tracked material with UNKNOWN
+-- condition is a member too (it must not be mistaken for bare ground; weather does
+-- not initialise it). The index is derived, never a truth: a bit has no quantity
+-- meaning, an index write failure sets rebuild-required and condition stays
+-- unavailable until the next arm reconciles it, and an absent or foreign index is
+-- rebuilt at arm from the condition bytes and native tracked occupancy by bounded
+-- row traversal, never assumed empty.
+--
 -- THE SINGLE MOST IMPORTANT RULE IN THIS FILE. Nothing here may block native work.
 -- A refused barrier, an unestablished clock, a missing geometry or a failed write
 -- all mean the same thing: the native game carries on exactly as it would without
@@ -35,6 +47,15 @@ local AGE_CEILING  = 255   -- the ceiling refusal
 local WET_ABSENT   = 0     -- uninitialised
 local WET_UNKNOWN  = 24    -- the reserved-band refusal marker
 local WET_FLOOR    = 32    -- lowest known encoded wetness
+
+-- Section 5: the membership layer and its bit.
+GroundConditionCoordinator.MEMBERSHIP_KEY = "groundMembership"
+GroundConditionCoordinator.MEMBER         = 1
+GroundConditionCoordinator.NOT_MEMBER     = 0
+-- How the run cache came to be: read from the saved index, or rebuilt from the
+-- condition bytes and native occupancy.
+GroundConditionCoordinator.MEMBERSHIP_FROM_INDEX   = "INDEX"
+GroundConditionCoordinator.MEMBERSHIP_REBUILT      = "REBUILT"
 
 GroundConditionCoordinator.BARRIER_OK            = "OK"
 GroundConditionCoordinator.BARRIER_NO_CLOCK      = "NO_TRUSTED_DAY"
@@ -73,6 +94,8 @@ function GroundConditionCoordinator.new()
     -- The last day the barrier confirmed settled, so repeated primitives inside
     -- one native call do not re-walk the owners.
     self.barrierThroughDay = nil
+    -- Section 5: the membership index, nil until arm resolves the layer.
+    self.membership = nil
     return self
 end
 
@@ -115,8 +138,383 @@ function GroundConditionCoordinator:arm(cells, materialDown, materialWetness, so
     self.inBarrier       = false
     self.armed           = true
 
+    -- Section 5: the membership index, and the wetness owner's binding to it so the
+    -- daily settle walks members instead of fields (MaterialWetness:bindMembership).
+    -- A store without the layer leaves the owner on its field pass.
+    self:_armMembership()
+    if self.membership ~= nil and materialWetness.bindMembership ~= nil then
+        materialWetness:bindMembership(self)
+    end
+
     SoilLogger.info("[OK] GroundConditionCoordinator armed (epoch %d)", self.epoch)
     return true
+end
+
+-- =========================================================
+-- Section 5: the membership index (RSF-F213, P-GROUND-3)
+-- =========================================================
+
+local MEMBERSHIP_CHANNELS = 1
+
+--- Insert cell gx into row gz's run list, merging with neighbours.
+local function runsInsert(rows, gx, gz)
+    local runs = rows[gz]
+    if runs == nil then rows[gz] = { { gx, gx } } return true end
+    for i, r in ipairs(runs) do
+        if gx >= r[1] and gx <= r[2] then return false end
+        if gx == r[2] + 1 then
+            r[2] = gx
+            local nxt = runs[i + 1]
+            if nxt ~= nil and nxt[1] == gx + 1 then r[2] = nxt[2] table.remove(runs, i + 1) end
+            return true
+        end
+        if gx == r[1] - 1 then r[1] = gx return true end
+        if gx < r[1] then table.insert(runs, i, { gx, gx }) return true end
+    end
+    runs[#runs + 1] = { gx, gx }
+    return true
+end
+
+--- Remove cell gx from row gz's run list, splitting a run when needed.
+local function runsRemove(rows, gx, gz)
+    local runs = rows[gz]
+    if runs == nil then return false end
+    for i, r in ipairs(runs) do
+        if gx >= r[1] and gx <= r[2] then
+            if r[1] == r[2] then table.remove(runs, i)
+            elseif gx == r[1] then r[1] = gx + 1
+            elseif gx == r[2] then r[2] = gx - 1
+            else
+                local tail = { gx + 1, r[2] }
+                r[2] = gx - 1
+                table.insert(runs, i + 1, tail)
+            end
+            if #runs == 0 then rows[gz] = nil end
+            return true
+        end
+    end
+    return false
+end
+
+local function runsContain(rows, gx, gz)
+    local runs = rows[gz]
+    if runs == nil then return false end
+    for _, r in ipairs(runs) do
+        if gx >= r[1] and gx <= r[2] then return true end
+    end
+    return false
+end
+
+--- Aim the membership modifier at one cell's middle half (the cells' inset rule).
+local function aimMembership(mod, gx, gz, resolution)
+    local u0, v0 = (gx + 0.25) / resolution, (gz + 0.25) / resolution
+    local u1, v1 = (gx + 0.75) / resolution, (gz + 0.75) / resolution
+    mod:setParallelogramUVCoords(u0, v0, u1, v0, u0, v1, DensityCoordType.POINT_POINT_POINT)
+end
+
+--- Aim a modifier at the middle band of a whole row (every cell's middle half).
+local function aimRow(mod, gz, resolution)
+    local u0, u1 = 0.25 / resolution, (resolution - 0.25) / resolution
+    local v0, v1 = (gz + 0.25) / resolution, (gz + 0.75) / resolution
+    mod:setParallelogramUVCoords(u0, v0, u1, v0, u0, v1, DensityCoordType.POINT_POINT_POINT)
+end
+
+--- Resolve the membership layer and build the run cache. Never refuses the arm:
+--- without the layer the coordinator is armed with no index, and the wetness owner
+--- keeps its field pass (said once in the log).
+function GroundConditionCoordinator:_armMembership()
+    self.membership = nil
+    local vm = self.cells ~= nil and self.cells.valueMaps or nil
+    local entry = vm ~= nil and vm.getLayerEntry ~= nil and vm:getLayerEntry(GroundConditionCoordinator.MEMBERSHIP_KEY) or nil
+    if entry == nil or entry.bvm == nil then
+        SoilLogger.warning("[GroundCoord] no groundMembership layer in the store - the daily settle keeps the field pass (no membership index)")
+        return false
+    end
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then return false end
+    local okW, width = pcall(getBitVectorMapSize, entry.bvm)
+    if okW and type(width) == "number" and width ~= geometry.resolution then
+        SoilLogger.warning("[GroundCoord] groundMembership layer width %d does not match the condition grid %d - no membership index",
+            width, geometry.resolution)
+        return false
+    end
+    local channels = entry.channels or MEMBERSHIP_CHANNELS
+    local okMods, mod, filter = pcall(function()
+        local m = DensityMapModifier.new(entry.bvm, 0, channels, g_terrainNode)
+        return m, DensityMapFilter.new(m)
+    end)
+    if not okMods then
+        SoilLogger.warning("[GroundCoord] could not build the membership modifier (%s) - no membership index", tostring(mod))
+        return false
+    end
+    self.membership = {
+        entry = entry, bvm = entry.bvm, mod = mod, filter = filter, channels = channels,
+        rows = {}, count = 0, ready = false, rebuildRequired = false, source = nil,
+        epoch = self.epoch,
+    }
+    local ok, err = pcall(function()
+        if entry.loaded then
+            self:_membershipFromIndex(geometry)
+            self.membership.source = GroundConditionCoordinator.MEMBERSHIP_FROM_INDEX
+        else
+            self:_membershipRebuild(geometry)
+            self.membership.source = GroundConditionCoordinator.MEMBERSHIP_REBUILT
+        end
+    end)
+    if not ok then
+        SoilLogger.warning("[GroundCoord] membership index build failed (%s) - rebuild required, condition unavailable until the next arm", tostring(err))
+        self.membership.rebuildRequired = true
+        self.membership.ready = false
+        return false
+    end
+    self.membership.ready = not self.membership.rebuildRequired
+    SoilLogger.info("[OK] ground membership index %s: %d member cell(s) in %d row(s)%s",
+        self.membership.source == GroundConditionCoordinator.MEMBERSHIP_FROM_INDEX and "read from the saved index" or "rebuilt from the condition bytes and native occupancy",
+        self.membership.count, self:membershipRowCount(),
+        self.membership.ready and "" or " - REBUILD REQUIRED, condition unavailable until the next arm")
+    return self.membership.ready
+end
+
+function GroundConditionCoordinator:membershipRowCount()
+    local n = 0
+    if self.membership ~= nil then for _ in pairs(self.membership.rows) do n = n + 1 end end
+    return n
+end
+
+--- Read one membership bit exactly.
+function GroundConditionCoordinator:_readMemberBit(gx, gz)
+    local m = self.membership
+    local ok, v = pcall(getBitVectorMapPoint, m.bvm, gx, gz, 0, m.channels)
+    if not ok or type(v) ~= "number" then return nil end
+    return v
+end
+
+--- Count the cells of row gz whose bit (or, for a condition layer, whose byte in
+--- [lo, hi]) the engine selects: one filtered executeGet over the row.
+local function rowCount(mod, filter, gz, resolution, lo, hi)
+    aimRow(mod, gz, resolution)
+    filter:setValueCompareParams(DensityValueCompareType.BETWEEN, lo, hi)
+    local _, n = mod:executeGet(filter)
+    return type(n) == "number" and n or 0
+end
+
+--- The run cache from a saved index: one filtered count per row, cells read only in
+--- rows that hold a member.
+function GroundConditionCoordinator:_membershipFromIndex(geometry)
+    local m = self.membership
+    local resolution = geometry.resolution
+    for gz = 0, resolution - 1 do
+        local n = rowCount(m.mod, m.filter, gz, resolution, GroundConditionCoordinator.MEMBER, GroundConditionCoordinator.MEMBER)
+        if n > 0 then
+            for gx = 0, resolution - 1 do
+                if self:_readMemberBit(gx, gz) == GroundConditionCoordinator.MEMBER then
+                    if runsInsert(m.rows, gx, gz) then m.count = m.count + 1 end
+                end
+            end
+        end
+    end
+end
+
+--- Native tracked occupancy over a world box, summed over the observer's types.
+local function occupancyIn(x0, z0, x1, z1)
+    if type(DensityMapHeightUtil) ~= "table" or type(DensityMapHeightUtil.getFillLevelAtArea) ~= "function" then return nil end
+    if GroundNativeObserver == nil or GroundNativeObserver.occupancyTypeIndices == nil then return nil end
+    local total = 0
+    for _, ft in ipairs(GroundNativeObserver.occupancyTypeIndices(nil)) do
+        local ok, litres = pcall(DensityMapHeightUtil.getFillLevelAtArea, ft, x0, z0, x1, z0, x0, z1)
+        if not ok or type(litres) ~= "number" then return nil end
+        total = total + litres
+    end
+    return total
+end
+
+--- Rebuild the index from the truth (an absent or foreign index): every cell with a
+--- condition record is a member, and so is every cell with positive tracked native
+--- material and no record (unknown condition). Rows are counted first and walked
+--- only when they hold something; native occupancy is asked per row and split in
+--- halves down to the cells that hold it, so the work is bounded by what is there.
+function GroundConditionCoordinator:_membershipRebuild(geometry)
+    local m = self.membership
+    local cells = self.cells
+    local resolution = geometry.resolution
+    local grain, ox, oz = geometry.grainMetres, geometry.originX, geometry.originZ
+    local function markCell(gx, gz)
+        if runsContain(m.rows, gx, gz) then return end
+        if not self:_writeMemberBit(gx, gz, GroundConditionCoordinator.MEMBER) then
+            m.rebuildRequired = true
+            return
+        end
+        runsInsert(m.rows, gx, gz)
+        m.count = m.count + 1
+    end
+    local function splitOccupied(gx0, gx1, gz)
+        local x0, x1 = ox + gx0 * grain, ox + (gx1 + 1) * grain
+        local z0, z1 = oz + gz * grain, oz + (gz + 1) * grain
+        local litres = occupancyIn(x0, z0, x1, z1)
+        if litres == nil or litres <= 0 then return end
+        if gx0 == gx1 then markCell(gx0, gz) return end
+        local mid = math.floor((gx0 + gx1) / 2)
+        splitOccupied(gx0, mid, gz)
+        splitOccupied(mid + 1, gx1, gz)
+    end
+    for gz = 0, resolution - 1 do
+        -- The condition bytes: any recorded age or any wetness byte at all.
+        local recorded = rowCount(cells.ageMod, cells.ageFilter, gz, resolution, 1, 255)
+                       + rowCount(cells.wetMod, cells.wetFilter, gz, resolution, 1, 255)
+        if recorded > 0 then
+            for gx = 0, resolution - 1 do
+                local c = cells:readConditionCell(geometry, gx, gz)
+                if (c.ageRaw ~= nil and c.ageRaw > 0) or (c.wetnessRaw ~= nil and c.wetnessRaw > 0) then
+                    markCell(gx, gz)
+                end
+            end
+        end
+        -- Native material with no record: a member of unknown condition.
+        splitOccupied(0, resolution - 1, gz)
+    end
+end
+
+--- Write one membership bit: aim, set, read back. False on any refusal.
+function GroundConditionCoordinator:_writeMemberBit(gx, gz, bit)
+    local m = self.membership
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then return false end
+    local ok = pcall(function()
+        aimMembership(m.mod, gx, gz, geometry.resolution)
+        m.mod:executeSet(bit)
+    end)
+    if not ok then return false end
+    return self:_readMemberBit(gx, gz) == bit
+end
+
+--- Mark a cell as a member after an actual birth, deposit or removal that left
+--- material, or a mark that positive material of unknown condition sits there. A
+--- write failure sets rebuild-required: the cell's condition is unavailable and the
+--- daily settle holds until the next arm reconciles the index.
+function GroundConditionCoordinator:markMember(gx, gz)
+    local m = self.membership
+    if m == nil then return false end
+    if runsContain(m.rows, gx, gz) then return true end
+    if not self:_writeMemberBit(gx, gz, GroundConditionCoordinator.MEMBER) then
+        m.rebuildRequired = true
+        m.ready = false
+        self:markUnavailable(gx, gz, "MEMBERSHIP_WRITE_FAILED", true)
+        SoilLogger.warning("[GroundCoord] membership bit for cell %d,%d could not be written - rebuild required, condition unavailable until the next arm", gx, gz)
+        return false
+    end
+    runsInsert(m.rows, gx, gz)
+    m.count = m.count + 1
+    return true
+end
+
+--- Unmark a cell whose whole-cell occupancy is known to be zero and whose record
+--- was cleared.
+function GroundConditionCoordinator:unmarkMember(gx, gz)
+    local m = self.membership
+    if m == nil then return false end
+    if not runsContain(m.rows, gx, gz) then return true end
+    if not self:_writeMemberBit(gx, gz, GroundConditionCoordinator.NOT_MEMBER) then
+        m.rebuildRequired = true
+        m.ready = false
+        SoilLogger.warning("[GroundCoord] membership bit for cell %d,%d could not be cleared - rebuild required, condition unavailable until the next arm", gx, gz)
+        return false
+    end
+    runsRemove(m.rows, gx, gz)
+    m.count = m.count - 1
+    return true
+end
+
+--- Reconcile an index that took a refused write: clear every cached member's bit
+--- and rebuild from the condition bytes and native occupancy. True when the index
+--- is ready again.
+function GroundConditionCoordinator:reconcileMembership()
+    local m = self.membership
+    if m == nil then return false end
+    if m.ready and not m.rebuildRequired then return true end
+    local geometry = self.cells ~= nil and self.cells:getConditionGeometry() or nil
+    if geometry == nil then return false end
+    local ok = pcall(function()
+        for gz, runs in pairs(m.rows) do
+            for _, r in ipairs(runs) do
+                for gx = r[1], r[2] do self:_writeMemberBit(gx, gz, GroundConditionCoordinator.NOT_MEMBER) end
+            end
+        end
+        m.rows, m.count, m.rebuildRequired = {}, 0, false
+        self:_membershipRebuild(geometry)
+        m.source = GroundConditionCoordinator.MEMBERSHIP_REBUILT
+    end)
+    if not ok then m.rebuildRequired = true end
+    m.ready = ok and not m.rebuildRequired
+    self:bumpRevision("membership-reconciled")
+    return m.ready
+end
+
+function GroundConditionCoordinator:isMember(gx, gz)
+    return self.membership ~= nil and runsContain(self.membership.rows, gx, gz)
+end
+
+--- True when the index exists, was built and has taken every write since.
+function GroundConditionCoordinator:isMembershipReady()
+    return self.membership ~= nil and self.membership.ready == true and not self.membership.rebuildRequired
+end
+
+function GroundConditionCoordinator:getMembershipStats()
+    local m = self.membership
+    if m == nil then return nil end
+    return { count = m.count, rows = self:membershipRowCount(), ready = self:isMembershipReady(), source = m.source, rebuildRequired = m.rebuildRequired }
+end
+
+--- Enumerate the member runs, row by row, run by run: fn(gz, gx0, gx1). Rows are
+--- visited in ascending order so a caller's work is deterministic; the runs of a
+--- row are kept sorted by the cache. The cache is a disposable enumeration aid:
+--- nothing here reads the native index.
+function GroundConditionCoordinator:enumerateMemberRuns(fn)
+    local m = self.membership
+    if m == nil or type(fn) ~= "function" then return 0 end
+    local gzs = {}
+    for gz in pairs(m.rows) do gzs[#gzs + 1] = gz end
+    table.sort(gzs)
+    local n = 0
+    for _, gz in ipairs(gzs) do
+        local runs = m.rows[gz]
+        for _, r in ipairs(runs) do
+            fn(gz, r[1], r[2])
+            n = n + 1
+        end
+    end
+    return n
+end
+
+--- The wetness owner's daily write: one value over a run of a row. The age layer is
+--- untouched. A refused write marks the run's cells unavailable (the bytes they hold
+--- can no longer be vouched for as settled).
+---@return boolean ok
+function GroundConditionCoordinator:writeWetnessRun(gx0, gx1, gz, wetnessRaw)
+    if not self.armed then return false end
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then return false end
+    local res = self.cells:writeWetnessRun(geometry, gx0, gx1, gz, self.cells.geometryRevision, wetnessRaw)
+    if res.ok then
+        self:bumpRevision("weather")
+        return true
+    end
+    for gx = gx0, gx1 do self:markUnavailable(gx, gz, "WEATHER:" .. tostring(res.refused)) end
+    return false
+end
+
+--- The wetness owner's read of one cell, and the cell's centre in the world.
+function GroundConditionCoordinator:readCell(gx, gz)
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then return nil end
+    return self.cells:readConditionCell(geometry, gx, gz)
+end
+
+function GroundConditionCoordinator:cellWorldBox(gx, gz)
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then return nil end
+    local g = geometry.grainMetres
+    local x0, z0 = geometry.originX + gx * g, geometry.originZ + gz * g
+    return x0, z0, x0 + g, z0 + g
 end
 
 function GroundConditionCoordinator:isArmed()
@@ -167,13 +565,16 @@ end
 
 GroundConditionCoordinator.cellKey = cellKey
 
-function GroundConditionCoordinator:markUnavailable(gx, gz, reason)
+function GroundConditionCoordinator:markUnavailable(gx, gz, reason, skipMembership)
     local key = cellKey(gx, gz)
     if self.unavailable[key] == nil then
         self.unavailableCount = self.unavailableCount + 1
     end
     self.unavailable[key] = reason or "UNKNOWN"
     self:bumpRevision("availability")
+    -- Section 5: a cell we cannot vouch for may hold material; it is a member, so
+    -- the settle considers it (unknown wetness is never initialised by weather).
+    if not skipMembership then self:markMember(gx, gz) end
 end
 
 function GroundConditionCoordinator:isUnavailable(gx, gz)
@@ -447,6 +848,8 @@ function GroundConditionCoordinator:applyProjection(geometry, gx, gz, projected)
     if res.ok then
         self:_clearUnavailable(gx, gz)
         self:bumpRevision("movement")
+        -- Section 5: material landed here; the cell is a member from this deposit.
+        self:markMember(gx, gz)
         return true, nil
     end
 
@@ -485,6 +888,8 @@ function GroundConditionCoordinator:clearCellIfEmpty(geometry, gx, gz, occupancy
     if res.ok then
         self:_clearUnavailable(gx, gz)
         self:bumpRevision("clear")
+        -- Section 5: a known whole-cell zero leaves the membership.
+        self:unmarkMember(gx, gz)
         return true, "CLEARED"
     end
 

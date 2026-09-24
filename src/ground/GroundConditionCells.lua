@@ -507,3 +507,72 @@ function GroundConditionCells:writeConditionCell(geometry, gx, gz, expectedRevis
     result.ok = true
     return result
 end
+
+-- =========================================================
+-- Wetness over a run of cells (RSF-F213, contract section 5)
+-- =========================================================
+
+--- Aim at the middle half of a RUN of cells gx0..gx1 in row gz: the same inset as
+--- aimAtCell along z, and along x from the first cell's inset start to the last
+--- cell's inset end, so the box lands strictly inside the run with a quarter-cell
+--- margin at both ends and touches no neighbour row.
+local function aimAtRun(modifier, gx0, gx1, gz, resolution)
+    local u0 = (gx0 + 0.25) / resolution
+    local u1 = (gx1 + 0.75) / resolution
+    local v0 = (gz + 0.25) / resolution
+    local v1 = (gz + 0.75) / resolution
+    modifier:setParallelogramUVCoords(u0, v0, u1, v0, u0, v1, DensityCoordType.POINT_POINT_POINT)
+end
+
+--- Write ONE wetness value over the cells gx0..gx1 of row gz: the daily settle's
+--- write, coalesced over adjacent cells whose result is identical (section 5). The
+--- age layer is untouched. The same discipline as the single-cell write: the engine
+--- must prove the aimed box selects exactly the run's cells before the set, and the
+--- run's first and last cells are read back afterwards.
+---@return table result { ok, refused }
+function GroundConditionCells:writeWetnessRun(geometry, gx0, gx1, gz, expectedRevision, wetnessRaw)
+    local result = { ok = false, refused = nil }
+    if not self.armed then result.refused = GroundConditionCells.REFUSE_NOT_ARMED return result end
+    if not self:isGeometryCurrent(geometry) then result.refused = GroundConditionCells.REFUSE_GEOMETRY return result end
+    local resolution = geometry.resolution
+    if not isCellIndex(gx0, resolution) or not isCellIndex(gx1, resolution) or not isCellIndex(gz, resolution) or gx1 < gx0 then
+        result.refused = GroundConditionCells.REFUSE_COORDS
+        return result
+    end
+    if expectedRevision ~= nil and expectedRevision ~= self.geometryRevision then
+        result.refused = GroundConditionCells.REFUSE_REVISION
+        return result
+    end
+    if not isWritableWetnessRaw(wetnessRaw) then
+        result.refused = GroundConditionCells.REFUSE_VALUE
+        return result
+    end
+
+    local want = gx1 - gx0 + 1
+    local okPre, numPixels = pcall(function()
+        aimAtRun(self.wetMod, gx0, gx1, gz, resolution)
+        self.wetFilter:setValueCompareParams(DensityValueCompareType.BETWEEN, RAW_MIN_VALUE, RAW_MAX_VALUE)
+        local _, n = self.wetMod:executeGet(self.wetFilter)
+        return n
+    end)
+    if not okPre then result.refused = GroundConditionCells.REFUSE_WRITE_THREW return result end
+    if type(numPixels) ~= "number" or numPixels ~= want then
+        result.refused = GroundConditionCells.REFUSE_PREFLIGHT
+        return result
+    end
+
+    local okSet = pcall(function()
+        aimAtRun(self.wetMod, gx0, gx1, gz, resolution)
+        self.wetMod:executeSet(wetnessRaw)
+    end)
+    if not okSet then result.refused = GroundConditionCells.REFUSE_WRITE_THREW return result end
+
+    local okA, a = pcall(getBitVectorMapPoint, self.wetEntry.bvm, gx0, gz, 0, NUM_CHANNELS)
+    local okB, b = pcall(getBitVectorMapPoint, self.wetEntry.bvm, gx1, gz, 0, NUM_CHANNELS)
+    if not okA or not okB or a ~= wetnessRaw or b ~= wetnessRaw then
+        result.refused = GroundConditionCells.REFUSE_READBACK
+        return result
+    end
+    result.ok = true
+    return result
+end
