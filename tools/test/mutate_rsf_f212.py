@@ -10,10 +10,10 @@
 # killed only by a Lua error: a weak kill, treated as a failure.
 #
 # Not run, and why:
-# - The swath hook's own client and settings checks (carrierOn's isServer and
+# - The swath hook's own client and settings checks (strawCarrierOn's isServer and
 #   settings.enabled): each is masked by the stricter gate behind it, the carrier's begin
 #   refusing a client (row S15 reaches it through begin) and the mower's M15 sibling
-#   already pinning the settings clause on the same helper shape.
+#   pinning the settings clause on the mower's helper of the same shape.
 # - The stamp's key string (C.HANDLED_KEY): any string is a working key.
 # - The profile table's iteration order: a (kind, fill type) pair matches at most one row.
 # - The per-vehicle stamp on a vehicle that is not a table: begin refuses it first.
@@ -125,7 +125,7 @@ MUTATIONS = [
   [("pcall(GroundMovementCarrier.mowerCut, frame, fresh, dropArea.fillType)", "pcall(GroundMovementCarrier.mowerCut, frame, fresh)", 1)],
   "the cut never says what it made: no output earns the grass profile"),
  ("H3-swath-frame-never-opens", HM,
-  [("            if carrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end\n", "", 1)],
+  [("            if strawCarrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end\n", "", 1)],
   "the swath runs with no carrier frame: no straw birth, the generic birth back"),
  ("H4-swath-frame-not-closed", HM,
   [("            if frame ~= nil then finishStraw(frame) end\n", "", 1)],

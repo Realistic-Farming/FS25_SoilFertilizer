@@ -4828,9 +4828,9 @@ function HookManager:installCombineSwathHook()
             end)
         end
     end
-    local function carrierOn(vehicle)
-        return vehicle.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
-            and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled
+    local function strawCarrierOn(combine)
+        local sfm = g_SoilFertilityManager
+        return combine.isServer and GroundMovementCarrier ~= nil and sfm ~= nil and sfm.settings ~= nil and sfm.settings.enabled
     end
     local function beginStraw(combineSelf, workArea)
         local spec = combineSelf.spec_combine
@@ -4872,10 +4872,11 @@ function HookManager:installCombineSwathHook()
             -- closes whether that call returned or raised; a raised error is re-raised
             -- unchanged and every return is forwarded to the engine's own caller.
             local frame = nil
-            if carrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end
+            if strawCarrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end
             local packed = packAll(pcall(realFn, combineSelf, workArea, ...))
             if frame ~= nil then finishStraw(frame) end
             if not packed[1] then error(packed[2], 0) end
+            -- The native returns, forwarded whole at the end of this wrapper.
             local results = { unpack(packed, 2, packed.n) }
 
             if not firstRunLogged then
