@@ -189,9 +189,14 @@ end
 -- readStream returns at once on the wrong side (the side test above), reading
 -- nothing. Every count is held to its WRITER'S own bound: a count above it, or a short
 -- stream (nil), is a forged stream and the event refuses: it reads no further, marks
--- itself (self.refused) and never runs. What that does to the rest of the sender's
--- packet is that sender's own loss: Server.lua:436-448 checks the bits read, prints an
--- error and returns from THAT packet only.
+-- itself (self.refused) and never runs. Reading short costs nobody but the sender: the
+-- server's event branch handles one message per packet with no loop (Server.lua
+-- :413-448), and a sender puts each event on its own stream (netSendStream right after
+-- writeStream, Connection.lua:99), so the unread rest is that one packet's and no
+-- other. The engine's own bit check (Server.lua:438-446) runs only when the SENDER wrote
+-- the debug flag (read at :427; written as g_networkDebug with the size word only when
+-- set, Connection.lua:85-90): a forged stream writes false, so a refused event leaves
+-- no error line.
 local SF_MAX_SYNC_FIELDS     = 4096   -- the legacy inline header; the join sends its fields in batches today (32 each). Farmland ids on shipped maps run in the low hundreds.
 local SF_MAX_BUFFER_TYPES    = 2 ^ ((FillTypeManager and FillTypeManager.SEND_NUM_BITS) or 8)   -- a nutrient buffer is keyed by fill type index (fillTypes/FillTypeManager.lua:6, 8 bits)
 local SF_ZONE_SYNC_MAX       = 500    -- the batch writer's own cap, hoisted from its local so the readers hold the same number
