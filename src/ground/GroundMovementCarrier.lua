@@ -17,7 +17,9 @@
 --      lost, and clears a source cell only when its whole-cell occupancy is known to
 --      be zero; a partial removal keeps its condition. A DROP projects the account's
 --      mixture onto each cell by the litres that cell actually gained, combined with
---      what survived there, through the coordinator's conservative combine.
+--      what survived there, through the coordinator's conservative combine. The
+--      per-cell work is GroundMovementProjector's, the ONE projector this carrier
+--      shares with the StockGuard lease path (Iris's answer 2, 2026-09-23).
 --   5. Close the frame. The account is reconciled with the native remainder at the
 --      start of every call, before any primitive reads it.
 --
@@ -63,10 +65,10 @@ C.KIND_TEDDER = "TEDDER"
 C.KIND_WINDROWER = "WINDROWER"
 C.KIND_MOWER = "MOWER"
 C.ACCOUNT_KEY = "_sfGroundAccount"
-C.EPSILON = 1e-3
+C.EPSILON = GroundMovementProjector.EPSILON
 -- A cell's observed litres may differ from the native return by the density map's
--- quantisation; below this the difference is treated as none.
-C.TOLERANCE = 1
+-- quantisation; below this the difference is treated as none (the projector's).
+C.TOLERANCE = GroundMovementProjector.TOLERANCE
 
 local AGE_BORN, AGE_CEILING = 1, 255
 
@@ -151,29 +153,19 @@ function C.accountReconcile(acc, nativeLitres, today)
 end
 
 -- =========================================================
--- Reading and projecting one cell
+-- Reading and projecting one cell: GroundMovementProjector's, over this frame
 -- =========================================================
 
---- The condition record a cell holds now, or nils when it cannot be vouched for.
-local function cellCondition(frame, gx, gz)
-    local coord = frame.coordinator
-    if coord:isUnavailable(gx, gz) then return nil, nil end
-    local rec = frame.cells:readConditionCell(frame.geometry, gx, gz)
-    if rec == nil or rec.refused ~= nil or not rec.ageAvailable or not rec.wetnessAvailable then return nil, nil end
-    return rec.ageRaw, rec.wetnessRaw
-end
+local P = GroundMovementProjector
 
 local function markUnavailable(frame, cell, reason)
-    frame.coordinator:markUnavailable(cell.gx, cell.gz, reason)
-    C.stats.unavailable = C.stats.unavailable + 1
+    P.markUnavailable(frame, cell, reason)
 end
 
 --- Handler: before the native call, capture the condition of every cell it may touch.
 function C.beforePrimitive(frame, prim)
     if prim.cells == nil or prim.unobservable or not frame.barrierOk then return end
-    for _, cell in ipairs(prim.cells) do
-        cell.ageRaw, cell.wetnessRaw = cellCondition(frame, cell.gx, cell.gz)
-    end
+    P.captureCells(frame, prim.cells)
 end
 
 --- Handler: the native primitive returned.
@@ -217,24 +209,12 @@ function C.onPrimitive(frame, prim)
     end
 
     if prim.pickup then
-        local picked, seen = -litres, 0
-        for _, cell in ipairs(prim.cells) do
-            local b, a = cell.before, cell.after
-            if b == nil or a == nil then
-                -- Unreadable occupancy: not permission to clear, not a source we can price.
-                markUnavailable(frame, cell, "OCCUPANCY_UNKNOWN")
-            else
-                local removed = (b[ft] or 0) - (a[ft] or 0)
-                if removed > C.EPSILON then
-                    seen = seen + removed
-                    C.accountAdd(acc, removed, cell.ageRaw, cell.wetnessRaw, frame.today)
-                    if (cell.afterWhole or 0) <= C.EPSILON then
-                        local cleared = frame.coordinator:clearCellIfEmpty(frame.geometry, cell.gx, cell.gz, { known = true, positive = false })
-                        if cleared then C.stats.cleared = C.stats.cleared + 1 end
-                    end
-                end
-            end
-        end
+        -- Each source cell's removal, with its captured condition, into the account;
+        -- the projector clears a cell only on a known whole-cell zero.
+        local picked = -litres
+        local seen = P.pickup(frame, prim.cells, ft, function(removed, ageRaw, wetnessRaw)
+            C.accountAdd(acc, removed, ageRaw, wetnessRaw, frame.today)
+        end)
         -- Litres the native call took that no cell accounts for carry no known history.
         if picked - seen > C.TOLERANCE then C.accountAdd(acc, picked - seen, nil, nil, frame.today) end
         return
@@ -251,34 +231,7 @@ function C.onPrimitive(frame, prim)
         mixture[#mixture + 1] = { litres = dropped - total, ageRaw = nil, wetnessRaw = nil }
         total = dropped
     end
-    for _, cell in ipairs(prim.cells) do
-        local b, a = cell.before, cell.after
-        if b == nil or a == nil then
-            markUnavailable(frame, cell, "OCCUPANCY_UNKNOWN")
-        else
-            local arrived = (a[ft] or 0) - (b[ft] or 0)
-            if arrived > C.EPSILON then
-                -- The parts must account for the native whole-cell occupancy, or the
-                -- projection cannot be vouched for (reference bar: "native positive
-                -- occupancy cannot be hidden by empty parts").
-                local surviving = cell.beforeWhole or 0
-                if math.abs(surviving + arrived - (cell.afterWhole or 0)) > C.TOLERANCE then
-                    markUnavailable(frame, cell, "OCCUPANCY_MISMATCH")
-                else
-                    local contributions = {}
-                    for _, m in ipairs(mixture) do
-                        contributions[#contributions + 1] = { litres = total > 0 and m.litres * arrived / total or 0, ageRaw = m.ageRaw, wetnessRaw = m.wetnessRaw }
-                    end
-                    local destination = { occupied = surviving > C.EPSILON, ageRaw = cell.ageRaw, wetnessRaw = cell.wetnessRaw }
-                    local combined = GroundConditionCoordinator.combine(destination, contributions)
-                    if not combined.empty then
-                        local ok = frame.coordinator:applyProjection(frame.geometry, cell.gx, cell.gz, combined)
-                        if ok then C.stats.projected = C.stats.projected + 1 end
-                    end
-                end
-            end
-        end
-    end
+    P.drop(frame, prim.cells, ft, mixture, total)
     C.accountRemove(acc, dropped)
 end
 
@@ -333,6 +286,9 @@ function C.begin(system, vehicle, workArea, kind, nativeRemainder, accountArea)
         owner = vehicle, workArea = workArea, kind = kind, handler = C,
         coordinator = coord, cells = cells, geometry = geometry, today = today,
         barrierOk = ok, barrierReason = reason, account = acc,
+        -- The projector's counters are this carrier's; the admission is watched for an
+        -- inner admission during the native call (GroundNativeObserver, standing aside).
+        stats = C.stats, admission = admission,
     })
 end
 

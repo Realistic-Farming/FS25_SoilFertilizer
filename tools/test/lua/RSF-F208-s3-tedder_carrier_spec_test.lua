@@ -24,7 +24,7 @@
 --   E  an envelope too large to read: every cell it covers goes unavailable
 --   Z  the observer's cleanup is registered and restores the native primitive
 --
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementCarrier.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
 local INFO = {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
@@ -252,7 +252,7 @@ group("B", function()
     grass()
     setCell(8, 8, 3, 60)
     W.sys.hookManager:installTedderHook()
-    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ cells = {} }, "TIP_LINE", t2, w2)
+    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ schemaVersion = 1, kind = "LINE", sx = 0, sz = 1, ex = 8, ez = 1, fillTypeIndex = FT.GRASS_WINDROW, innerRadius = 1, radius = 1 }, GroundConditionAdmission.KIND_TIP_LINE, t2, w2)
     T.eq("B4 [world] StockGuard holds a lease for this tedder's work area", lease.status, "ADMITTED")
     local frames = C.stats.frames
     ENGINE.tick(t2, 16)

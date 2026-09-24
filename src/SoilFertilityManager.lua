@@ -2409,14 +2409,14 @@ end
 --   local sfm = g_currentMission and g_currentMission.soilFertilityManager
 --   local caps = sfm and sfm:getCapabilities()
 --   local live = caps and caps.groundCondition
---                and caps.groundCondition.admissionRevision == 1
+--                and caps.groundCondition.admissionRevision == 2
 --
 -- Everything else is explicitly NOT proof, by the contract's own words:
 --   * a registered `soil.groundCondition` property is not proof;
 --   * StockGuard's own getCapabilities() is not proof;
 --   * the presence of the `groundCondition` table on this manager is not proof.
 --
--- Missing handle, missing or throwing getCapabilities, a revision other than 1,
+-- Missing handle, missing or throwing getCapabilities, a revision other than 2,
 -- or a call failure all mean the same thing: Soil is ABSENT for this join. The
 -- consumer then suppresses nothing, delivers nothing, keeps its own quantity
 -- observation running, and reports live ground condition unavailable. There is no

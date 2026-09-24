@@ -35,6 +35,17 @@
 -- A THROW INSIDE THE NATIVE CALL is re-raised unchanged after the handler is told
 -- the primitive failed; the frame is the carrier's to close, in its own finally.
 --
+-- STANDING ASIDE FOR AN INNER ADMISSION (SG2-4, Bob's intake item 3b). This wrap sits
+-- on the Lua util (the OUTER slot). The util calls the engine global
+-- addDensityMapHeightAtWorldLine at DensityMapHeightUtil.lua:290, and that is where
+-- StockGuard's SG2-4 observes and admits (the INNER slot): its lease is opened,
+-- delivered and closed INSIDE this wrapper's native call, so neither a pre-call nor a
+-- post-call hasLiveLeaseFor sees it. The frame therefore snapshots the admission's
+-- count of admitted leases before the native call and, when it moved during the
+-- call (the call is synchronous, so that lease is the inner slot's for this very
+-- primitive), discards its own record: no handler call, no projection, no marks.
+-- The pre-call stand-aside for a lease already live stays with the carrier.
+--
 
 GroundNativeObserver = GroundNativeObserver or {}
 local O = GroundNativeObserver
@@ -53,8 +64,9 @@ O.MAX_MARK_CELLS     = 16384
 
 O.frames = O.frames or {}
 O.nextOrdinal = O.nextOrdinal or 0
--- Diagnostics: how much reading one primitive costs (Bob's intake asked for a number).
-O.stats = O.stats or { primitives = 0, occupancyReads = 0, cellsRead = 0, refusedEnvelopes = 0 }
+-- Diagnostics: how much reading one primitive costs (Bob's intake asked for a number),
+-- and how often this wrap stood aside for an admission made inside its native call.
+O.stats = O.stats or { primitives = 0, occupancyReads = 0, cellsRead = 0, refusedEnvelopes = 0, stoodAside = 0 }
 
 local function packn(...)
     return select("#", ...), { ... }
@@ -152,6 +164,54 @@ function O.envelopeCells(geometry, sx, sz, ex, ez, reach, limit)
     return cells, nil
 end
 
+--- The Soil cells a world parallelogram (x0,z0 to x1,z1 and x2,z2, the density
+--- modifier's three points) can touch, by the same superset rule: a cell is in when
+--- its centre lies inside the parallelogram or within half its diagonal of an edge.
+---@return table|nil cells, string|nil reason
+function O.parallelogramCells(geometry, x0, z0, x1, z1, x2, z2, limit)
+    limit = limit or O.MAX_MARK_CELLS
+    if type(geometry) ~= "table" then return nil, "NO_GEOMETRY" end
+    if not (finite(x0) and finite(z0) and finite(x1) and finite(z1) and finite(x2) and finite(z2)) then
+        return nil, "NONFINITE_ENVELOPE"
+    end
+    local x3, z3 = x1 + x2 - x0, z1 + z2 - z0
+    local ux, uz, vx, vz = x1 - x0, z1 - z0, x2 - x0, z2 - z0
+    local det = ux * vz - uz * vx
+    local function inside(px, pz)
+        if math.abs(det) < 1e-9 then return false end
+        local dx, dz = px - x0, pz - z0
+        local a = (dx * vz - dz * vx) / det
+        local b = (ux * dz - uz * dx) / det
+        return a >= 0 and a <= 1 and b >= 0 and b <= 1
+    end
+    local function near(px, pz, pad)
+        if inside(px, pz) then return true end
+        return distanceToSegment(px, pz, x0, z0, x1, z1) <= pad or distanceToSegment(px, pz, x0, z0, x2, z2) <= pad
+            or distanceToSegment(px, pz, x1, z1, x3, z3) <= pad or distanceToSegment(px, pz, x2, z2, x3, z3) <= pad
+    end
+    local grain, n = geometry.grainMetres, geometry.resolution
+    local ox, oz = geometry.originX, geometry.originZ
+    local pad = grain * 0.7072
+    local minX, maxX = math.min(x0, x1, x2, x3), math.max(x0, x1, x2, x3)
+    local minZ, maxZ = math.min(z0, z1, z2, z3), math.max(z0, z1, z2, z3)
+    local gx0 = math.max(0, math.floor((minX - pad - ox) / grain))
+    local gx1 = math.min(n - 1, math.floor((maxX + pad - ox) / grain))
+    local gz0 = math.max(0, math.floor((minZ - pad - oz) / grain))
+    local gz1 = math.min(n - 1, math.floor((maxZ + pad - oz) / grain))
+    if gx1 < gx0 or gz1 < gz0 then return nil, "OFF_MAP" end
+    local cells = {}
+    for gx = gx0, gx1 do
+        for gz = gz0, gz1 do
+            local cx0, cz0 = ox + gx * grain, oz + gz * grain
+            if near(cx0 + grain * 0.5, cz0 + grain * 0.5, pad) then
+                if #cells >= limit then return nil, "ENVELOPE_UNBOUNDED" end
+                cells[#cells + 1] = { gx = gx, gz = gz, x0 = cx0, z0 = cz0, x1 = cx0 + grain, z1 = cz0, x2 = cx0, z2 = cz0 + grain }
+            end
+        end
+    end
+    return cells, nil
+end
+
 --- The fill type indices this observer reads, resolved once per call.
 function O.occupancyTypeIndices(extraIndex)
     local out, seen = {}, {}
@@ -169,20 +229,49 @@ function O.occupancyTypeIndices(extraIndex)
     return out
 end
 
+--- The type indices to read for a primitive of `fillTypeIndex` (nil for a primitive
+--- of no single type) and the set of windrow types whose sum is the whole cell.
+function O.occupancySets(fillTypeIndex)
+    local typeIndices = O.occupancyTypeIndices(fillTypeIndex)
+    local windrowSet = {}
+    for _, ft in ipairs(O.occupancyTypeIndices(nil)) do windrowSet[ft] = true end
+    return typeIndices, windrowSet
+end
+
+--- Whether the height map can be read at all: the native reads return zero for
+--- every area when it is not valid (DensityMapHeightUtil.lua:81-83), which is not an
+--- observation.
+function O.heightMapValid()
+    local hm = g_densityMapHeightManager
+    return hm ~= nil and type(hm.getIsValid) == "function" and hm:getIsValid() == true
+end
+
+--- The default outer radius the native call resolves for a nil radius
+--- (DensityMapHeightUtil.lua:167-169, :403), or 0 when it cannot be asked.
+function O.defaultRadius(fillTypeIndex)
+    if type(DensityMapHeightUtil) ~= "table" or type(DensityMapHeightUtil.getDefaultMaxRadius) ~= "function" then return 0 end
+    local ok, r = pcall(DensityMapHeightUtil.getDefaultMaxRadius, fillTypeIndex)
+    if ok and finite(r) and r >= 0 then return r end
+    return 0
+end
+
 --- Native occupancy of one Soil cell per type, plus the whole-cell sum over the
 --- windrow types. A read that fails makes that cell's occupancy unknown (nil),
 --- which the handler must never treat as bare ground.
 local function readCell(cell, typeIndices, windrowSet)
+    local read = type(DensityMapHeightUtil) == "table" and DensityMapHeightUtil.getFillLevelAtArea or nil
+    if type(read) ~= "function" then return nil, nil end
     local levels, whole = {}, 0
     for _, ft in ipairs(typeIndices) do
         O.stats.occupancyReads = O.stats.occupancyReads + 1
-        local ok, litres = pcall(DensityMapHeightUtil.getFillLevelAtArea, ft, cell.x0, cell.z0, cell.x1, cell.z1, cell.x2, cell.z2)
+        local ok, litres = pcall(read, ft, cell.x0, cell.z0, cell.x1, cell.z1, cell.x2, cell.z2)
         if not ok or not finite(litres) or litres < 0 then return nil, nil end
         levels[ft] = litres
         if windrowSet[ft] then whole = whole + litres end
     end
     return levels, whole
 end
+O.readCell = readCell
 
 -- =========================================================
 -- The wrap
@@ -216,9 +305,7 @@ local function prepare(frame, delta, fillTypeIndex, sx, sz, ex, ez, innerRadius,
         O.stats.refusedEnvelopes = O.stats.refusedEnvelopes + 1
         return rec
     end
-    local typeIndices = O.occupancyTypeIndices(fillTypeIndex)
-    local windrowSet = {}
-    for _, ft in ipairs(O.occupancyTypeIndices(nil)) do windrowSet[ft] = true end
+    local typeIndices, windrowSet = O.occupancySets(fillTypeIndex)
     rec.typeIndices, rec.windrowSet = typeIndices, windrowSet
     for _, cell in ipairs(cells) do
         cell.before, cell.beforeWhole = readCell(cell, typeIndices, windrowSet)
@@ -264,8 +351,20 @@ function O.install()
             local okB, errB = pcall(frame.handler.beforePrimitive, frame, prim)
             if not okB then SoilLogger.warning("[GroundObserver] beforePrimitive failed (%s)", tostring(errB)) end
         end
+        -- The admission count before the native call (header: standing aside).
+        local admission = frame.admission
+        local admittedBefore = (admission ~= nil and type(admission.admissionCount) == "function")
+            and admission:admissionCount() or nil
 
         local n, r = packn(pcall(native, vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, ...))
+
+        -- A lease admitted during the synchronous call means StockGuard observed and
+        -- delivered this movement at the inner slot: Soil's own record is discarded,
+        -- with no handler call, no projection and no marks.
+        if prim ~= nil and admittedBefore ~= nil and admission:admissionCount() ~= admittedBefore then
+            prim = nil
+            O.stats.stoodAside = O.stats.stoodAside + 1
+        end
 
         if prim ~= nil then
             if r[1] then

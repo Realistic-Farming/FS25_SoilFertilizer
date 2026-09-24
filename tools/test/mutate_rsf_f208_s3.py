@@ -34,6 +34,9 @@ def p(rel): return os.path.join(ROOT, rel)
 
 OBS = "src/ground/GroundNativeObserver.lua"
 CAR = "src/ground/GroundMovementCarrier.lua"
+# SG2-4 S3 moved the per-cell projection out of the carrier into the one projector both
+# observers share; B4, B5, B11 and B12 are the same mutations on their new home.
+PRJ = "src/ground/GroundMovementProjector.lua"
 HM = "src/hooks/HookManager.lua"
 
 MUTATIONS = [
@@ -86,13 +89,13 @@ MUTATIONS = [
  ("B3-carrier-runs-on-client", CAR,
   [("    if not vehicle.isServer then return nil end\n", "", 1)],
   "a client's tedder projects condition"),
- ("B4-partial-removal-clears", CAR,
-  [("                    if (cell.afterWhole or 0) <= C.EPSILON then",
-    "                    if true then", 1)],
+ ("B4-partial-removal-clears", PRJ,
+  [("    if (cell.afterWhole or 0) <= P.EPSILON then",
+    "    if true then", 1)],
   "a source cell still holding material is cleared"),
- ("B5-destination-ignores-survivors", CAR,
-  [("                    local destination = { occupied = surviving > C.EPSILON, ageRaw = cell.ageRaw, wetnessRaw = cell.wetnessRaw }",
-    "                    local destination = { occupied = false, ageRaw = cell.ageRaw, wetnessRaw = cell.wetnessRaw }", 1)],
+ ("B5-destination-ignores-survivors", PRJ,
+  [("    end\n    local destination = { occupied = surviving > P.EPSILON, ageRaw = cell.ageRaw, wetnessRaw = cell.wetnessRaw }",
+    "    end\n    local destination = { occupied = false, ageRaw = cell.ageRaw, wetnessRaw = cell.wetnessRaw }", 1)],
   "material already lying in the drop cell is washed out by the incoming condition"),
  ("B6-no-transit-ageing", CAR,
   [("    return math.min(AGE_CEILING, ageRaw + (today - captureAgeDay))",
@@ -113,22 +116,25 @@ MUTATIONS = [
  ("B10-drop-keeps-the-account", CAR,
   [("    C.accountRemove(acc, dropped)\n", "", 1)],
   "dropped material never leaves the account"),
- ("B11-pickup-forgets-source-condition", CAR,
-  [("                    C.accountAdd(acc, removed, cell.ageRaw, cell.wetnessRaw, frame.today)",
-    "                    C.accountAdd(acc, removed, nil, nil, frame.today)", 1)],
+ ("B11-pickup-forgets-source-condition", PRJ,
+  [("                if type(sink) == \"function\" then sink(removed, cell.ageRaw, cell.wetnessRaw) end",
+    "                if type(sink) == \"function\" then sink(removed, nil, nil) end", 1)],
   "picked-up material loses the condition its ground recorded"),
- ("B12-one-write-per-contributor", CAR,
-  [("                    local combined = GroundConditionCoordinator.combine(destination, contributions)\n"
-    "                    if not combined.empty then\n"
-    "                        local ok = frame.coordinator:applyProjection(frame.geometry, cell.gx, cell.gz, combined)\n"
-    "                        if ok then C.stats.projected = C.stats.projected + 1 end\n"
-    "                    end",
-    "                    for _, one in ipairs(contributions) do\n"
-    "                        local combined = GroundConditionCoordinator.combine(destination, { one })\n"
-    "                        if not combined.empty then\n"
-    "                            frame.coordinator:applyProjection(frame.geometry, cell.gx, cell.gz, combined)\n"
-    "                        end\n"
-    "                    end", 1)],
+ ("B12-one-write-per-contributor", PRJ,
+  [("    local combined = GroundConditionCoordinator.combine(destination, contributions)\n"
+    "    if combined.empty then return \"EMPTY\" end\n"
+    "    local ok = ctx.coordinator:applyProjection(ctx.geometry, cell.gx, cell.gz, combined)\n"
+    "    if ok then bump(ctx, \"projected\") return \"PROJECTED\" end\n"
+    "    return \"REFUSED\"",
+    "    local last = \"EMPTY\"\n"
+    "    for _, one in ipairs(contributions) do\n"
+    "        local combined = GroundConditionCoordinator.combine(destination, { one })\n"
+    "        if not combined.empty then\n"
+    "            local ok = ctx.coordinator:applyProjection(ctx.geometry, cell.gx, cell.gz, combined)\n"
+    "            last = ok and \"PROJECTED\" or \"REFUSED\"\n"
+    "        end\n"
+    "    end\n"
+    "    return last", 1)],
   "each contributor writes the cell separately instead of one combined update"),
 
  ("B13-first-pass-logged-every-pass", CAR,

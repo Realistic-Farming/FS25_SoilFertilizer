@@ -15,7 +15,7 @@
 -- native processWindrowerArea and processDropArea bodies. Nothing here opens a frame
 -- or places a projection by hand.
 --
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementCarrier.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
 local INFO = {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
@@ -160,7 +160,7 @@ group("R", function()
     hay()
     setCell(8, 8, 3, 60)
     W.sys.hookManager:installWindrowerHook()
-    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ cells = {} }, "TIP_LINE", v, work)
+    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ schemaVersion = 1, kind = "LINE", sx = 0, sz = 1, ex = 8, ez = 1, fillTypeIndex = FT.GRASS_WINDROW, innerRadius = 1, radius = 1 }, GroundConditionAdmission.KIND_TIP_LINE, v, work)
     local frames = C.stats.frames
     ENGINE.tick(v, 16)
     T.eq("R1 with a live StockGuard lease the windrower opens no frame and projects nothing", tostring(C.stats.frames - frames) .. "/" .. condition(8, 9), "0/0/0")
