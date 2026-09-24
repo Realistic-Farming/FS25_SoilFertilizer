@@ -112,6 +112,10 @@ MUTATIONS = [
  ("T4-handled-by-any-old-stamp", CAR,
   [("    return rawget(vehicle, C.HANDLED_KEY) == n", "    return rawget(vehicle, C.HANDLED_KEY) ~= nil", 1)],
   "a stamp from an earlier frame stands the generic birth down for the rest of the session"),
+ ("T5-frame-index-rawget-on-G", CAR,
+  [("    local n = g_updateLoopIndex\n    return type(n) == \"number\" and n or nil",
+    "    local n = rawget(_G, \"g_updateLoopIndex\")\n    return type(n) == \"number\" and n or nil", 1)],
+  "the frame index is read with rawget on _G, which a mod's environment never answers (Bob's BLOCKER on #1003)"),
  # ── the projector ───────────────────────────────────────────────────────────
  ("J1-contribution-drops-provenance", PRJ,
   [("                profile = m.profile, revision = m.revision, provenance = m.provenance }",

@@ -413,8 +413,14 @@ end
 
 --- The engine's update-loop index (main.lua:777-779, wrapped at 2^30), the same
 --- same-frame test the admission uses for its leases; nil when there is none.
+---
+--- READ THROUGH THE ENVIRONMENT, never rawget on _G. A mod runs in its own
+--- environment (mods.lua:436-442): modEnv's __index is the real global table and
+--- modEnv._G is modEnv itself, so rawget(_G, name) looks in the mod's table and
+--- never sees an engine global. A plain read resolves through __index, which is the
+--- only way an engine global reaches a mod. Bob's finding on #1003 at 043f11f1.
 local function currentFrameIndex()
-    local n = rawget(_G, "g_updateLoopIndex")
+    local n = g_updateLoopIndex
     return type(n) == "number" and n or nil
 end
 

@@ -23,6 +23,12 @@
 -- projection by hand; the contributions are read where production hands them to the
 -- coordinator's combine.
 --
+-- THE SOURCES RUN IN THE MOD'S OWN ENVIRONMENT (--!env: modenv, run-tests.mjs): the
+-- engine's globals reach them only through __index, as in a game (mods.lua:436-442).
+-- Bob's finding on #1003 at 043f11f1: a rawget on _G passed here and read nil in a
+-- game, so the stamp never landed. Row E3 pins the environment's shape.
+--
+--!env: modenv
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
 local INFO, WARN = {}, {}
@@ -575,6 +581,22 @@ group("E", function()
     MaterialWetness.pctToRaw = real
     T.eq("E2 with no encoder the fresh cut is born today with unknown wetness, no profile or provenance is claimed, and the log says so once",
         condition(8, 9) .. "/" .. stamps(seen) .. "/" .. (lines(WARN, "profile FRESH_GRASS_V1 cannot be encoded") - warnBefore), "1/24/-/-/-/1")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- V. THE ENVIRONMENT IS THE MOD'S OWN
+-- ══════════════════════════════════════════════════════════════════════════
+group("V", function()
+    world(100)
+    local v = mowerInWorld({ uid = "env" })
+    installAll()
+    ENGINE.tick(v, 16)
+    T.eq("V1 [world] the sources run in a mod-shaped environment: _G is the mod's own table, rawget(_G, 'g_updateLoopIndex') is nil, and the plain read reaches the engine's counter through __index",
+        tostring(_G ~= nil and rawget(_G, "g_updateLoopIndex") == nil) .. "/" .. type(g_updateLoopIndex) .. "/" .. tostring(getmetatable(_G) ~= nil and getmetatable(_G).__index ~= nil), "true/number/true")
+    -- The model advances the counter at the END of a tick (main.lua:777), so the
+    -- stamp the carrier set during the tick names the frame just processed.
+    T.eq("V2 and the carrier's stamp reads the counter the way a mod can: the mower carried in the frame just processed carries that frame's index",
+        tostring(rawget(v, C.HANDLED_KEY) == g_updateLoopIndex - 1), "true")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
