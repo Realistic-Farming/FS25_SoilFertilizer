@@ -396,13 +396,25 @@ function GroundConditionAdmission:_resolveLease(leaseToken)
     -- A lease closes with its primitive and is never held across frames. A delivery
     -- arriving in a later frame is a different operation against ground that may
     -- have moved on, so it is refused rather than projected onto stale cells.
-    local now = currentFrameIndex()
-    if lease.frameIndex ~= nil and now ~= nil and now ~= lease.frameIndex then
-        lease.open = false
-        self.openLeases = self.openLeases - 1
+    if self:_expireIfStale(lease) then
         return nil, GroundConditionAdmission.DELIVER_STALE_FRAME
     end
     return lease, nil
+end
+
+--- The frame rule: a lease from an earlier update frame is closed and its cells, if
+--- nothing was accepted for them, marked; it is then neither deliverable nor live.
+---@return boolean expired
+function GroundConditionAdmission:_expireIfStale(lease)
+    if not lease.open then return false end
+    local now = currentFrameIndex()
+    if lease.frameIndex ~= nil and now ~= nil and now ~= lease.frameIndex then
+        self:_markUndelivered(lease, "LEASE_CROSSED_A_FRAME")
+        lease.open = false
+        self.openLeases = self.openLeases - 1
+        return true
+    end
+    return false
 end
 
 --- Deliver one completed elementary movement.
@@ -478,12 +490,15 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
     if kind == GroundConditionAdmission.KIND_TIP_LINE then
         if obs.deltaRequested < 0 then
             -- A pickup: the source condition leaves with the material. StockGuard holds
-            -- the material and Soil registers no condition on it, so the removals are
-            -- kept on the lease for a reader (F211) and nothing else.
-            lease.collected = lease.collected or {}
+            -- the material and Soil registers no condition on it, so the removals go
+            -- back to the caller in this result (result.collected: litres with the
+            -- captured age and wetness per source cell), the evidence F211's reader
+            -- will take; the lease itself closes with the primitive and keeps nothing.
+            local collected = {}
             local _, c = P.pickup(lease, cells, obs.fillTypeIndex, function(litres, ageRaw, wetnessRaw)
-                lease.collected[#lease.collected + 1] = { litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw }
+                collected[#collected + 1] = { litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw }
             end)
+            result.collected = collected
             counts = c
         else
             -- A drop from carried stock: Soil captured nothing of it, so it arrives of
@@ -499,7 +514,20 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
     result.cleared     = counts.cleared or 0
     result.unavailable = counts.unavailable or 0
     result.refusedCells = (counts.unavailable or 0) + (counts.refused or 0)
+    lease.accepted = (lease.accepted or 0) + 1
     return result
+end
+
+--- A lease that ends with no accepted delivery leaves cells the native primitive may
+--- have changed with records nobody vouched for: the standalone observer stood aside
+--- for the admission (the count moved), so the only witness delivered nothing, or a
+--- refused observation, or one in a later frame. Every cell the lease named goes
+--- unavailable (Bob's verdict on #1002): bytes kept, never cleared or invented.
+function GroundConditionAdmission:_markUndelivered(lease, reason)
+    if (lease.accepted or 0) > 0 or lease.marked then return 0 end
+    lease.marked = true
+    if lease.derived == nil then return 0 end
+    return GroundMovementProjector.markAll(lease, lease.derived, reason)
 end
 
 --- Close the lease. The contract says the lease closes with the primitive; this is
@@ -510,22 +538,28 @@ function GroundConditionAdmission:_closePrimitive(leaseToken)
         return { status = GroundConditionAdmission.STATUS_REFUSED,
                  reason = GroundConditionAdmission.DELIVER_NO_LEASE }
     end
+    local marked = self:_markUndelivered(lease, "LEASE_CLOSED_UNDELIVERED")
     if lease.open then
         lease.open = false
         self.openLeases = self.openLeases - 1
     end
     self.leases[leaseToken] = nil
-    return { status = GroundConditionAdmission.STATUS_ADMITTED, deliveries = lease.deliveries }
+    return { status = GroundConditionAdmission.STATUS_ADMITTED, deliveries = lease.deliveries, unavailable = marked }
 end
 
 --- True while any lease is live for this primitive identity. Section 7 says Soil
 --- must not install, fire or post-delegate its STANDALONE observer for a primitive
 --- while a lease is live for it. Section 3's carriers are the caller; this is the
---- question they will ask before the call. During the call they watch the ordinal.
+--- question they will ask before the call. During the call they watch the count.
+--- Live means open AND of this frame: a lease a caller never closed expires by the
+--- frame rule here, so it cannot keep the standalone carrier standing aside for the
+--- rest of the mission (Bob's verdict on #1002).
 function GroundConditionAdmission:hasLiveLeaseFor(vehicleOrObject, workAreaIdentity)
     for _, lease in pairs(self.leases) do
         if lease.open and lease.owner == vehicleOrObject and lease.workArea == workAreaIdentity then
-            return true
+            if not self:_expireIfStale(lease) then
+                return true
+            end
         end
     end
     return false

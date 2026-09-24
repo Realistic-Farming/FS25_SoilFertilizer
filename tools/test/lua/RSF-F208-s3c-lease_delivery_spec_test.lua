@@ -26,6 +26,10 @@
 --      delivery; an envelope off the map projects nothing
 --   D  the inner admission (item 3b): the standalone carrier stands aside when
 --      StockGuard admits inside its native call, and projects when nobody does
+--   K  a lease that ends undelivered marks its cells (closed with no delivery, a
+--      refused observation then the close, a delivery in a later frame); a lease never
+--      closed expires by the frame rule and is not live; a pickup's removals come back
+--      in the result
 --
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
@@ -414,5 +418,83 @@ group("D", function()
     ENGINE.tick(t3, 16)
     addDensityMapHeightAtWorldLine = native
     T.eq("D8 a refused inner admission (no lease minted) leaves Soil's own projection standing", refused .. "/" .. (O.stats.stoodAside - stood2) .. "/" .. condition(8, 9), "2/0/5/100")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- K. A LEASE THAT ENDS UNDELIVERED (Bob's verdict on #1002)
+-- ══════════════════════════════════════════════════════════════════════════
+group("K", function()
+    -- Closed with no delivery: the primitive ran (the material moved) and nobody vouched
+    -- for the cells, so every cell the lease named goes unavailable, bytes kept.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    setCell(9, 8, 5, 100)
+    local t = gc()
+    local coord = W.sys.groundConditionCoordinator
+    local l1 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    local closed = t.closePrimitive(l1.leaseToken)
+    T.eq("K1 a lease closed with no delivery marks every cell it named unavailable, bytes kept, nothing cleared", tostring(closed.unavailable >= 2) .. "/" .. tostring(coord:isUnavailable(8, 8)) .. "/" .. tostring(coord:isUnavailable(9, 8)) .. "/" .. condition(8, 8), "true/true/true/3/60")
+    T.eq("K1b and the reason names it", tostring(coord:unavailableReason(8, 8)), "LEASE_CLOSED_UNDELIVERED")
+
+    -- A refused observation, then the close: the refusal accepted nothing, so the close marks.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local l2 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    local got2 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    local bad = t.deliverMovement(l2.leaseToken, { cells = {} })
+    local closed2 = t.closePrimitive(l2.leaseToken)
+    T.eq("K2 a refused observation followed by the close: refused, then every cell marked at the close", bad.reason .. "/" .. tostring(closed2.unavailable >= 2) .. "/" .. tostring(coord:isUnavailable(8, 8)) .. "/" .. condition(8, 8), A.DELIVER_BAD_OBS .. "/true/true/3/60")
+    -- [reached] twin: an accepted delivery, then the close: nothing more is marked.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local l3 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    local got3 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    local out3 = t.deliverMovement(l3.leaseToken, tipObs(true, FT.GRASS_WINDROW, -math.huge, got3, 0))
+    local closed3 = t.closePrimitive(l3.leaseToken)
+    T.eq("K3 [reached] twin: an accepted delivery then the close marks nothing and the pickup's removals came back in the result", closed3.unavailable .. "/" .. coord:getUnavailableCount() .. "/" .. #out3.collected .. "/" .. tostring(out3.collected[1].ageRaw), "0/0/2/3")
+
+    -- A delivery in a later frame: refused, the lease closed and its cells marked.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    g_updateLoopIndex = 700
+    local l4 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    local got4 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    g_updateLoopIndex = 701
+    local late = t.deliverMovement(l4.leaseToken, tipObs(true, FT.GRASS_WINDROW, -math.huge, got4, 0))
+    T.eq("K4 a delivery in a later frame is refused and the lease's cells are marked as crossed", late.reason .. "/" .. tostring(coord:isUnavailable(8, 8)) .. "/" .. tostring(coord:unavailableReason(8, 8)) .. "/" .. W.sys.groundConditionAdmission:getOpenLeaseCount(), A.DELIVER_STALE_FRAME .. "/true/LEASE_CROSSED_A_FRAME/0")
+    g_updateLoopIndex = nil
+
+    -- A lease never closed: live in its frame, expired by the frame rule in the next, so
+    -- the standalone carrier is not kept standing aside for the mission.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local adm = W.sys.groundConditionAdmission
+    g_updateLoopIndex = 800
+    local l5 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    T.eq("K5 [reached] a lease is live for its owner in its own frame", tostring(adm:hasLiveLeaseFor(TRUCK, "area1")) .. "/" .. adm:getOpenLeaseCount(), "true/1")
+    g_updateLoopIndex = 801
+    T.eq("K6 a lease nobody closed is not live in the next frame: expired, closed and its cells marked", tostring(adm:hasLiveLeaseFor(TRUCK, "area1")) .. "/" .. adm:getOpenLeaseCount() .. "/" .. tostring(coord:isUnavailable(8, 8)), "false/0/true")
+    T.eq("K7 and a tedder pass in that frame runs the standalone carrier again (no stand-aside on a leaked lease)", (function()
+        local tedder = tedderInWorld()
+        W.sys.hookManager:installTedderHook()
+        local frames = C.stats.frames
+        ENGINE.tick(tedder, 16)
+        return tostring(C.stats.frames - frames)
+    end)(), "1")
+    g_updateLoopIndex = nil
 end)
 
