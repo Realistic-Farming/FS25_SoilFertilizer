@@ -855,3 +855,11 @@ HayBet = {
                  enqueueCorrection = function() end }
     end,
 }
+
+-- main.lua:80 and :777-779: the engine's update-loop index lives in the REAL global
+-- table. A bar running under the mod's environment (--!env: modenv) cannot put it
+-- there by assignment (that lands in the mod's table), so it sets it through this
+-- engine-side function, compiled before the environment switch.
+function ENGINE.setFrameIndex(n)
+    g_updateLoopIndex = n
+end

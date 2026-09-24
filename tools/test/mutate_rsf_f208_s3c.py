@@ -52,6 +52,10 @@ MUTATIONS = [
  ("A5-schema-not-required", ADM,
   [("    if observation.schemaVersion ~= GroundConditionAdmission.OBSERVATION_SCHEMA then return nil end\n", "", 1)],
   "an observation of no schema is accepted"),
+ ("A6-frame-index-rawget-on-G", ADM,
+  [("    local n = g_updateLoopIndex\n    return type(n) == \"number\" and n or nil",
+    "    local n = rawget(_G, \"g_updateLoopIndex\")\n    return type(n) == \"number\" and n or nil", 1)],
+  "the frame index is read with rawget on _G, which a mod's environment never answers: the frame rule is inert (as shipped in #1002)"),
  # ── the footprint ───────────────────────────────────────────────────────────
  ("F1-footprint-schema-unchecked", ADM,
   [("    if footprint.schemaVersion ~= GroundConditionAdmission.FOOTPRINT_SCHEMA then return nil end\n", "", 1)],

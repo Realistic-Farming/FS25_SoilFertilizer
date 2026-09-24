@@ -260,7 +260,13 @@ local function currentFrameIndex()
     -- Real engine global, incremented once per update loop and wrapped at 2^30
     -- (engine main.lua:777-779). Equality is therefore a sound same-frame test for
     -- a lease that by contract cannot outlive one primitive.
-    local n = rawget(_G, "g_updateLoopIndex")
+    --
+    -- READ THROUGH THE ENVIRONMENT, never rawget on _G. A mod runs in its own
+    -- environment (mods.lua:436-442): modEnv's __index is the real global table
+    -- and modEnv._G is modEnv itself, so rawget(_G, name) looks in the mod's own
+    -- table and never sees an engine global. Shipped in #1002 as a rawget, which
+    -- read nil in a game and left the frame rule inert; Bob's finding on #1003.
+    local n = g_updateLoopIndex
     return type(n) == "number" and n or nil
 end
 

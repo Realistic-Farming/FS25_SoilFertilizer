@@ -31,6 +31,13 @@
 --      closed expires by the frame rule and is not live; a pickup's removals come back
 --      in the result
 --
+-- THE SOURCES RUN IN THE MOD'S OWN ENVIRONMENT (--!env: modenv, run-tests.mjs): the
+-- engine's globals reach them only through __index, as in a game (mods.lua:436-442),
+-- and the frame counter is set engine-side (ENGINE.setFrameIndex). Bob's finding on
+-- #1003: the admission's rawget on _G passed here and read nil in a game, so the
+-- frame rule (K4, K6) never fired. Row K0 pins the environment's shape.
+--
+--!env: modenv
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
 local INFO = {}
@@ -355,19 +362,32 @@ end)
 -- ══════════════════════════════════════════════════════════════════════════
 -- D. THE INNER ADMISSION (item 3b)
 -- ══════════════════════════════════════════════════════════════════════════
+--- The REAL global table, where the engine's own Lua (DensityMapHeightUtil.lua:290)
+--- resolves addDensityMapHeightAtWorldLine. Under the mod's environment a bare
+--- assignment, rawset(_G, ...) and getfenv(0) all land in the mod's own table
+--- (mods.lua:436-447), so an admitter that must be seen by the engine's util can only
+--- reach the real table through the environment's __index. StockGuard's SG2-4b
+--- bracket has the same constraint; noted for its intake.
+local function realGlobals()
+    local mt = getmetatable(_G)
+    return (mt ~= nil and mt.__index) or _G
+end
+
 group("D", function()
     -- StockGuard's SG2-4 admits at the engine global INSIDE Soil's wrap of the util:
     -- the stub admitter below does exactly that, admitting, running the inner native,
-    -- delivering and closing, for every primitive of the tedder's pass.
+    -- delivering and closing, for every primitive of the tedder's pass. It is
+    -- installed where the engine's util resolves the global (realGlobals above).
     world(100)
     local tedder, work = tedderInWorld()
     grass()
     setCell(8, 8, 3, 60)
     setCell(9, 8, 5, 100)
     W.sys.hookManager:installTedderHook()
-    local native = addDensityMapHeightAtWorldLine
+    local G = realGlobals()
+    local native = G.addDensityMapHeightAtWorldLine
     local admitted, delivered = 0, 0
-    addDensityMapHeightAtWorldLine = function(updater, sx, sy, sz, ex, ey, ez, delta, ft, inner, radius, limit, off, apply, tts)
+    G.addDensityMapHeightAtWorldLine = function(updater, sx, sy, sz, ex, ey, ez, delta, ft, inner, radius, limit, off, apply, tts)
         local t = gc()
         local lease = t.admitPrimitive(lineFP(sx, sz, ex, ez, ft, inner, radius), A.KIND_TIP_LINE, tedder, "sg-bracket")
         if lease.status == "ADMITTED" then admitted = admitted + 1 end
@@ -382,7 +402,7 @@ group("D", function()
     end
     local projected0, stood0, frames0 = C.stats.projected, O.stats.stoodAside, C.stats.frames
     ENGINE.tick(tedder, 16)
-    addDensityMapHeightAtWorldLine = native
+    G.addDensityMapHeightAtWorldLine = native
     T.eq("D1 [world] the inner admitter admitted and delivered both of the pass's primitives inside Soil's native call", admitted .. "/" .. delivered, "2/2")
     T.eq("D2 [world] Soil's carrier had opened its frame for the pass (the pre-call check saw no lease)", C.stats.frames - frames0, 1)
     T.eq("D3 the carrier stood aside for both primitives: no projection of its own", (C.stats.projected - projected0) .. "/" .. (O.stats.stoodAside - stood0), "0/2")
@@ -409,14 +429,14 @@ group("D", function()
     setCell(9, 8, 5, 100)
     W.sys.hookManager:installTedderHook()
     local refused = 0
-    addDensityMapHeightAtWorldLine = function(updater, sx, sy, sz, ex, ey, ez, delta, ft, inner, radius, limit, off, apply, tts)
+    G.addDensityMapHeightAtWorldLine = function(updater, sx, sy, sz, ex, ey, ez, delta, ft, inner, radius, limit, off, apply, tts)
         local lease = gc().admitPrimitive({ cells = {} }, A.KIND_TIP_LINE, t3, "sg-bracket")   -- the revision 1 shape: refused
         if lease.status == "REFUSED" then refused = refused + 1 end
         return native(updater, sx, sy, sz, ex, ey, ez, delta, ft, inner, radius, limit, off, apply, tts)
     end
     local stood2 = O.stats.stoodAside
     ENGINE.tick(t3, 16)
-    addDensityMapHeightAtWorldLine = native
+    G.addDensityMapHeightAtWorldLine = native
     T.eq("D8 a refused inner admission (no lease minted) leaves Soil's own projection standing", refused .. "/" .. (O.stats.stoodAside - stood2) .. "/" .. condition(8, 9), "2/0/5/100")
 end)
 
@@ -467,13 +487,15 @@ group("K", function()
     setCell(8, 8, 3, 60)
     t = gc()
     coord = W.sys.groundConditionCoordinator
-    g_updateLoopIndex = 700
+    ENGINE.setFrameIndex(700)
+    T.eq("K0 [world] the sources run in a mod-shaped environment: _G is the mod's own table, rawget(_G, 'g_updateLoopIndex') is nil, and the plain read reaches the engine's counter through __index",
+        tostring(rawget(_G, "g_updateLoopIndex") == nil) .. "/" .. tostring(g_updateLoopIndex) .. "/" .. tostring(getmetatable(_G) ~= nil and getmetatable(_G).__index ~= nil), "true/700/true")
     local l4 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
     local got4 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
-    g_updateLoopIndex = 701
+    ENGINE.setFrameIndex(701)
     local late = t.deliverMovement(l4.leaseToken, tipObs(true, FT.GRASS_WINDROW, -math.huge, got4, 0))
     T.eq("K4 a delivery in a later frame is refused and the lease's cells are marked as crossed", late.reason .. "/" .. tostring(coord:isUnavailable(8, 8)) .. "/" .. tostring(coord:unavailableReason(8, 8)) .. "/" .. W.sys.groundConditionAdmission:getOpenLeaseCount(), A.DELIVER_STALE_FRAME .. "/true/LEASE_CROSSED_A_FRAME/0")
-    g_updateLoopIndex = nil
+    ENGINE.setFrameIndex(nil)
 
     -- A lease never closed: live in its frame, expired by the frame rule in the next, so
     -- the standalone carrier is not kept standing aside for the mission.
@@ -483,10 +505,10 @@ group("K", function()
     t = gc()
     coord = W.sys.groundConditionCoordinator
     local adm = W.sys.groundConditionAdmission
-    g_updateLoopIndex = 800
+    ENGINE.setFrameIndex(800)
     local l5 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
     T.eq("K5 [reached] a lease is live for its owner in its own frame", tostring(adm:hasLiveLeaseFor(TRUCK, "area1")) .. "/" .. adm:getOpenLeaseCount(), "true/1")
-    g_updateLoopIndex = 801
+    ENGINE.setFrameIndex(801)
     T.eq("K6 a lease nobody closed is not live in the next frame: expired, closed and its cells marked", tostring(adm:hasLiveLeaseFor(TRUCK, "area1")) .. "/" .. adm:getOpenLeaseCount() .. "/" .. tostring(coord:isUnavailable(8, 8)), "false/0/true")
     T.eq("K7 and a tedder pass in that frame runs the standalone carrier again (no stand-aside on a leaked lease)", (function()
         local tedder = tedderInWorld()
@@ -495,6 +517,6 @@ group("K", function()
         ENGINE.tick(tedder, 16)
         return tostring(C.stats.frames - frames)
     end)(), "1")
-    g_updateLoopIndex = nil
+    ENGINE.setFrameIndex(nil)
 end)
 
