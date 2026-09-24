@@ -165,6 +165,9 @@ source(modDirectory .. "src/ground/GroundConditionAdmission.lua")
 -- [RSF-F208 section 3] The native-cell observer and the Soil-alone movement carriers
 -- (the Tedder in this slice). HookManager's tedder wrapper calls into them.
 source(modDirectory .. "src/ground/GroundNativeObserver.lua")
+-- [SG2-4 S3] The one projector both observers share; before the carrier, which reads
+-- its constants at source time.
+source(modDirectory .. "src/ground/GroundMovementProjector.lua")
 source(modDirectory .. "src/ground/GroundMovementCarrier.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")

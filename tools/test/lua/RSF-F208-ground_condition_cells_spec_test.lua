@@ -15,7 +15,7 @@
 -- false, because "refused" and "wrote it anyway and then said no" are the two
 -- outcomes that actually differ for a player's save.
 --
---!load: src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua
+--!load: src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundConditionAdmission.lua
 
 -- ── Substrate ────────────────────────────────────────────────────────────────
 
@@ -552,6 +552,17 @@ do
 end
 
 -- ── Section 7: the published admission interface ─────────────────────────────
+-- Revision 2 (SG2-4 S3): admitPrimitive takes the v1 FOOTPRINT and deliverMovement the
+-- v1 NATIVE OBSERVATION; Soil derives its own cells. This bench has no height map, so
+-- every occupancy read is unknown here and a delivery marks rather than projects; the
+-- projection itself is proved on the engine model in RSF-F208-s3c-lease_delivery_spec_test.
+local KIND_TIP = "TIP_TO_GROUND_AROUND_LINE"
+local function LINE()
+  return { schemaVersion = 1, kind = "LINE", sx = 0, sz = 0, ex = 4, ez = 0, fillTypeIndex = 11, innerRadius = 0.5, radius = 0.5 }
+end
+local function OBS(delta)
+  return { schemaVersion = 1, primitiveKind = KIND_TIP, ok = true, fillTypeIndex = 11, deltaRequested = delta or -math.huge, litresReturned = 0, lineOffset = 0 }
+end
 do
   local coord, cells = armedCoord(105, 105, nil, 105)
   local admit = GroundConditionAdmission.new()
@@ -559,47 +570,44 @@ do
 
   local caps = admit:getCapabilities()
   T.eq("caps: publishes groundCondition", caps.groundCondition ~= nil, true)
-  T.eq("caps: at admission revision 1", caps.groundCondition.admissionRevision, 1)
+  T.eq("caps: at admission revision 2", caps.groundCondition.admissionRevision, 2)
 
   local gc = admit.groundCondition
   T.eq("caps: the table carries admitPrimitive", type(gc.admitPrimitive), "function")
   T.eq("caps: and deliverMovement", type(gc.deliverMovement), "function")
 
   -- A dot call, as the contract specifies.
-  local lease = gc.admitPrimitive({ }, "TEDDER", {}, "area1")
+  local lease = gc.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
   T.eq("admit: a well-formed primitive is admitted", lease.status, "ADMITTED")
   T.eq("admit: and carries a lease token", type(lease.leaseToken), "string")
 
   -- A colon call would hand us the table as the footprint.
-  local colon = gc.admitPrimitive(gc, "TEDDER", {}, "area1")
+  local colon = gc.admitPrimitive(gc, KIND_TIP, {}, "area1")
   T.eq("admit: a colon call is refused, not read as a footprint", colon.status, "REFUSED")
   T.eq("admit: and says which mistake it was",
        colon.reason, GroundConditionAdmission.REFUSE_COLON_CALL)
   T.eq("admit: a colon call hands back no lease", colon.leaseToken, nil)
 
-  local bad = gc.admitPrimitive(nil, "TEDDER", {}, "area1")
+  local bad = gc.admitPrimitive(nil, KIND_TIP, {}, "area1")
   T.eq("admit: a missing footprint is refused", bad.status, "REFUSED")
   T.eq("admit: as a bad-arguments refusal", bad.reason, GroundConditionAdmission.REFUSE_ARGS)
 
-  -- Delivery projects into the cells.
-  local out = gc.deliverMovement(lease.leaseToken, {
-    cells = {
-      { gx = 1, gz = 1,
-        destination   = { occupied = false },
-        contributions = { { litres = 10, ageRaw = 60, wetnessRaw = 80 } },
-        occupancy     = { known = true, positive = true } },
-    },
-  })
-  T.eq("deliver: the movement is projected", out.projected, 1)
-  T.eq("deliver: nothing refused", out.refusedCells, 0)
-  T.eq("deliver: the age byte landed", layerGet(BVMS[cells.ageEntry.bvm], 1, 1), 60)
-  T.eq("deliver: the wetness byte landed", layerGet(BVMS[cells.wetEntry.bvm], 1, 1), 80)
+  -- Delivery takes the v1 native observation; the revision 1 cells shape is refused.
+  local out = gc.deliverMovement(lease.leaseToken, OBS(10))
+  T.eq("deliver: a v1 native observation is accepted", out.status .. "/" .. out.reason, "ADMITTED/OK")
+  T.eq("deliver: with no height map to read, its cells are marked, not projected", out.projected .. "/" .. tostring(out.unavailable > 0), "0/true")
+  local old = gc.deliverMovement(lease.leaseToken, { cells = { { gx = 1, gz = 1, destination = { occupied = false },
+    contributions = { { litres = 10, ageRaw = 60, wetnessRaw = 80 } }, occupancy = { known = true, positive = true } } } })
+  T.eq("deliver: a caller-supplied cells array is refused as a bad observation", old.status .. "/" .. old.reason, "REFUSED/" .. GroundConditionAdmission.DELIVER_BAD_OBS)
+  T.eq("deliver: and wrote nothing", layerGet(BVMS[cells.ageEntry.bvm], 1, 1) .. "/" .. layerGet(BVMS[cells.wetEntry.bvm], 1, 1), "0/0")
+  T.eq("admit: a footprint without the schema is refused as bad arguments", gc.admitPrimitive({}, KIND_TIP, {}, "area1").reason, GroundConditionAdmission.REFUSE_ARGS)
+  T.eq("admit: an unknown primitive kind is refused as bad arguments", gc.admitPrimitive(LINE(), "TEDDER", {}, "area1").reason, GroundConditionAdmission.REFUSE_ARGS)
 
   -- The lease closes with the primitive.
   T.eq("lease: a live lease is reported for its owner",
        admit:getOpenLeaseCount() >= 1, true)
   gc.closePrimitive(lease.leaseToken)
-  local afterClose = gc.deliverMovement(lease.leaseToken, { cells = {} })
+  local afterClose = gc.deliverMovement(lease.leaseToken, OBS())
   T.eq("lease: delivering on a closed lease is refused", afterClose.status, "REFUSED")
   T.eq("lease: and says the lease is gone",
        afterClose.reason, GroundConditionAdmission.DELIVER_NO_LEASE)
@@ -611,7 +619,7 @@ do
   local admit = GroundConditionAdmission.new()
   admit:arm(coord, cells)
   local gc = admit.groundCondition
-  local lease = gc.admitPrimitive({}, "MOWER", {}, "area1")
+  local lease = gc.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
   T.eq("admit: a refused barrier refuses the primitive", lease.status, "REFUSED")
   T.eq("admit: and hands back no lease token", lease.leaseToken, nil)
   T.eq("admit: no lease was opened", admit:getOpenLeaseCount(), 0)
@@ -624,11 +632,11 @@ do
   local admit = GroundConditionAdmission.new()
   admit:arm(coord, cells)
   local gc = admit.groundCondition
-  local lease = gc.admitPrimitive({}, "WINDROWER", {}, "area1")
+  local lease = gc.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
   T.eq("lease: admitted in this frame", lease.status, "ADMITTED")
 
   g_updateLoopIndex = 501
-  local late = gc.deliverMovement(lease.leaseToken, { cells = {} })
+  local late = gc.deliverMovement(lease.leaseToken, OBS())
   T.eq("lease: a delivery in a later frame is refused", late.status, "REFUSED")
   T.eq("lease: because the lease crossed a frame",
        late.reason, GroundConditionAdmission.DELIVER_STALE_FRAME)
@@ -661,7 +669,7 @@ end
 -- a fixture that falls out early reports "refused" exactly like a working guard.
 
 -- (1) THE SERVER-ONLY GUARDS. These are the multiplayer authority rule: a client
--- must never arm, because a published admissionRevision 1 tells a consumer it may
+-- must never arm, because a published admissionRevision tells a consumer it may
 -- lease and write. Both guards had zero coverage, so replacing either with
 -- `if false then` left the bench fully green.
 do
@@ -673,8 +681,8 @@ do
     T.eq("server: with a server the coordinator arms", coordOn:isArmed(), true)
     local admitOn = GroundConditionAdmission.new()
     T.eq("server: and the admission interface publishes", admitOn:arm(coordOn, cellsOn), true)
-    T.eq("server: at admission revision 1",
-         admitOn:getCapabilities().groundCondition.admissionRevision, 1)
+    T.eq("server: at admission revision 2",
+         admitOn:getCapabilities().groundCondition.admissionRevision, 2)
 
     -- A CLIENT MUST NOT ARM EITHER HALF.
     --
@@ -743,24 +751,24 @@ do
     admit:arm(coord, cells)
     local gc = admit.groundCondition
 
-    local lease = gc.admitPrimitive({}, "TEDDER", {}, "area1")
+    local lease = gc.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
     T.eq("rearm: a lease is admitted before the re-arm", lease.status, "ADMITTED")
 
     -- Positive twin: that token works right now. Without this, the refusal below
     -- could just mean the token was never valid.
-    local before = gc.deliverMovement(lease.leaseToken, { cells = {} })
+    local before = gc.deliverMovement(lease.leaseToken, OBS())
     T.eq("rearm: and it delivers while the epoch is live", before.status, "ADMITTED")
 
     -- Re-arm, as a reload or a geometry change would.
     admit:arm(coord, cells)
-    local after = admit.groundCondition.deliverMovement(lease.leaseToken, { cells = {} })
+    local after = admit.groundCondition.deliverMovement(lease.leaseToken, OBS())
     T.eq("rearm: THE OLD TOKEN IS DEAD after a re-arm", after.status, "REFUSED")
     T.eq("rearm: and it is reported as no such lease",
          after.reason, GroundConditionAdmission.DELIVER_NO_LEASE)
     T.eq("rearm: the open-lease count restarts from zero", admit:getOpenLeaseCount(), 0)
 
     -- And a token minted after the re-arm works, so the re-arm did not break admission.
-    local fresh = admit.groundCondition.admitPrimitive({}, "TEDDER", {}, "area1")
+    local fresh = admit.groundCondition.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
     T.eq("rearm: a freshly minted token still works", fresh.status, "ADMITTED")
 end
 
@@ -773,18 +781,18 @@ do
     local gc = admit.groundCondition
 
     -- Positive twin: a real string token is accepted.
-    local lease = gc.admitPrimitive({}, "MOWER", {}, "area1")
+    local lease = gc.admitPrimitive(LINE(), KIND_TIP, {}, "area1")
     T.eq("token: a real string token delivers",
-         gc.deliverMovement(lease.leaseToken, { cells = {} }).status, "ADMITTED")
+         gc.deliverMovement(lease.leaseToken, OBS()).status, "ADMITTED")
 
-    T.eq("token: nil is refused", gc.deliverMovement(nil, { cells = {} }).reason,
+    T.eq("token: nil is refused", gc.deliverMovement(nil, OBS()).reason,
          GroundConditionAdmission.DELIVER_NO_LEASE)
-    T.eq("token: a table is refused", gc.deliverMovement({}, { cells = {} }).reason,
+    T.eq("token: a table is refused", gc.deliverMovement({}, OBS()).reason,
          GroundConditionAdmission.DELIVER_NO_LEASE)
-    T.eq("token: a number is refused", gc.deliverMovement(7, { cells = {} }).reason,
+    T.eq("token: a number is refused", gc.deliverMovement(7, OBS()).reason,
          GroundConditionAdmission.DELIVER_NO_LEASE)
     T.eq("token: a string that is not a token is refused",
-         gc.deliverMovement("SFGC-not-real", { cells = {} }).reason,
+         gc.deliverMovement("SFGC-not-real", OBS()).reason,
          GroundConditionAdmission.DELIVER_NO_LEASE)
     T.eq("token: closePrimitive refuses a non-string too",
          gc.closePrimitive({}).reason, GroundConditionAdmission.DELIVER_NO_LEASE)

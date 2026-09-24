@@ -16,7 +16,7 @@
 -- captured pointer, then the class's onEndWorkAreaProcessing calling the instance copy.
 -- Nothing here opens a frame, writes an account or places a projection by hand.
 --
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementCarrier.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua
 
 local INFO = {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
@@ -234,7 +234,7 @@ group("R", function()
     setCell(8, 8, 5, 100)
     setCell(9, 8, 5, 100)
     W.sys.hookManager:installMowerCarrierHook()
-    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ cells = {} }, "TIP_LINE", v, mowers[1])
+    local lease = W.sys.groundConditionAdmission:_admitPrimitive({ schemaVersion = 1, kind = "LINE", sx = 0, sz = 1, ex = 8, ez = 1, fillTypeIndex = FT.GRASS_WINDROW, innerRadius = 1, radius = 1 }, GroundConditionAdmission.KIND_TIP_LINE, v, mowers[1])
     local frames = C.stats.frames
     ENGINE.tick(v, 16)
     T.eq("R1 with a live lease on the cut, the cut opens no frame: only the drop does, and what it drops is of unknown condition",

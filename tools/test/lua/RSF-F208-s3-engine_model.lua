@@ -201,20 +201,14 @@ function DensityMapHeightUtil.getFillLevelAtArea(fillTypeIndex, x0, z0, x1, z1, 
     end
     return sum, n, n
 end
--- :157-300 MODELED. The returns and early exits are the native's; the placement is
--- a pixel model. A pickup removes the type within inner radius plus radius of the
+-- THE INNER SLOT (MODELED): the engine global the util calls at :290, where
+-- StockGuard's SG2-4 observes and admits. The pixel work lives here so a bench can
+-- wrap this global as StockGuard does, inside Soil's wrap of the util. Signed like
+-- the util's own return: a pickup returns the negative litres it removed, a drop the
+-- litres it placed. A pickup removes the type within inner radius plus radius of the
 -- line; a drop spreads over the pixels within the inner radius (at least the line's
--- own pixels), each capped at PIXEL_CAP, and returns what it placed.
-function DensityMapHeightUtil.tipToGroundAroundLine(vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, limitToLineHeight, occlusionAreas, useOcclusionAreas, applyChanges)
-    if not g_densityMapHeightManager:getIsValid() then return 0, 0 end
-    if g_densityMapHeightManager:getDensityMapHeightTypeByFillTypeIndex(fillTypeIndex) == nil then return 0, 0 end
-    if HEIGHT.throwNext or (HEIGHT.throwOnDrop and delta > 0) then
-        HEIGHT.throwNext, HEIGHT.throwOnDrop = false, false
-        error("native tip failed")
-    end
-    if radius == nil then radius = DensityMapHeightUtil.getDefaultMaxRadius(fillTypeIndex) end
-    innerRadius = innerRadius == nil and 0 or innerRadius
-    lineOffset = lineOffset == nil and 0 or lineOffset
+-- own pixels), each capped at PIXEL_CAP.
+function addDensityMapHeightAtWorldLine(_updater, sx, _sy, sz, ex, _ez2, ez, delta, fillTypeIndex, innerRadius, radius, _limitToLineHeight, lineOffset, _applyChanges, _ttsId)
     if delta < 0 then
         local collected = 0
         for _, p in ipairs(pixelsNear(sx, sz, ex, ez, innerRadius + radius)) do
@@ -238,6 +232,70 @@ function DensityMapHeightUtil.tipToGroundAroundLine(vehicle, delta, fillTypeInde
         end
     end
     return placed, lineOffset + 1
+end
+-- :157-300 MODELED. The returns and early exits are the native's; the resolved
+-- arguments go to the inner slot above as the util's :290 call does.
+function DensityMapHeightUtil.tipToGroundAroundLine(vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, limitToLineHeight, occlusionAreas, useOcclusionAreas, applyChanges)
+    if not g_densityMapHeightManager:getIsValid() then return 0, 0 end
+    if g_densityMapHeightManager:getDensityMapHeightTypeByFillTypeIndex(fillTypeIndex) == nil then return 0, 0 end
+    if HEIGHT.throwNext or (HEIGHT.throwOnDrop and delta > 0) then
+        HEIGHT.throwNext, HEIGHT.throwOnDrop = false, false
+        error("native tip failed")
+    end
+    if radius == nil then radius = DensityMapHeightUtil.getDefaultMaxRadius(fillTypeIndex) end
+    innerRadius = innerRadius == nil and 0 or innerRadius
+    lineOffset = lineOffset == nil and 0 or lineOffset
+    return addDensityMapHeightAtWorldLine(1, sx, sy, sz, ex, ey, ez, delta, fillTypeIndex, innerRadius, radius, limitToLineHeight, lineOffset, applyChanges, 0)
+end
+-- The pixels whose centres lie in the bounding box of the modifier's three points,
+-- as getFillLevelAtArea above reads them.
+local function pixelsInArea(x0, z0, x1, z1, x2, z2)
+    local minX, maxX = math.min(x0, x1, x2), math.max(x0, x1, x2)
+    local minZ, maxZ = math.min(z0, z1, z2), math.max(z0, z1, z2)
+    local out = {}
+    for px = math.floor(minX / ENGINE.PIXEL), math.floor(maxX / ENGINE.PIXEL) do
+        for pz = math.floor(minZ / ENGINE.PIXEL), math.floor(maxZ / ENGINE.PIXEL) do
+            local cx, cz = pixelCentre(px, pz)
+            if cx >= minX and cx < maxX and cz >= minZ and cz < maxZ then out[#out + 1] = { px = px, pz = pz } end
+        end
+    end
+    return out
+end
+-- :362 MODELED: every type's height in the area goes to zero (the native sets the
+-- height and type channels to 0).
+function DensityMapHeightUtil.clearArea(x0, z0, x1, z1, x2, z2)
+    for ft, _ in pairs(HEIGHT.pixels) do
+        for _, p in ipairs(pixelsInArea(x0, z0, x1, z1, x2, z2)) do HEIGHT.set(ft, p.px, p.pz, 0) end
+    end
+end
+-- :335 MODELED: the type channel of the area's pixels holding `fillTypeIndex` becomes
+-- `newFillTypeIndex`; returns the litres changed.
+function DensityMapHeightUtil.changeFillTypeAtArea(x0, z0, x1, z1, x2, z2, fillTypeIndex, newFillTypeIndex)
+    if g_densityMapHeightManager:getDensityMapHeightTypeByFillTypeIndex(fillTypeIndex) == nil
+        or g_densityMapHeightManager:getDensityMapHeightTypeByFillTypeIndex(newFillTypeIndex) == nil then return 0 end
+    local changed = 0
+    for _, p in ipairs(pixelsInArea(x0, z0, x1, z1, x2, z2)) do
+        local v = HEIGHT.get(fillTypeIndex, p.px, p.pz)
+        if v > 0 then
+            HEIGHT.set(fillTypeIndex, p.px, p.pz, 0)
+            HEIGHT.set(newFillTypeIndex, p.px, p.pz, HEIGHT.get(newFillTypeIndex, p.px, p.pz) + v)
+            changed = changed + v
+        end
+    end
+    return changed
+end
+-- :491 MODELED as a stand-in: the native smoothAroundLine moves material within the
+-- ground through a C function (smoothDensityMapHeightAtWorldPos) on a node's line.
+-- Here the type's litres on the pixels within `reach` of the world line are spread
+-- evenly over them, the total preserved: the contract (material moves, nothing is
+-- created or lost), not the algorithm.
+function HEIGHT.smooth(fillTypeIndex, sx, sz, ex, ez, reach)
+    local pixels = pixelsNear(sx, sz, ex, ez, reach)
+    if #pixels == 0 then return 0 end
+    local total = 0
+    for _, p in ipairs(pixels) do total = total + HEIGHT.get(fillTypeIndex, p.px, p.pz) end
+    for _, p in ipairs(pixels) do HEIGHT.set(fillTypeIndex, p.px, p.pz, total / #pixels) end
+    return total
 end
 
 -- ── the Tedder (vehicles/specializations/Tedder.lua) ────────────────────────
