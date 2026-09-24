@@ -1175,8 +1175,13 @@ function SoilSettingsGUI:consoleCommandTreat(chemical, fieldId)
     local fid = resolveDiseaseFieldId(fieldId)
     if not fid then return "Usage: SoilTreat <chemical> <fieldId>  (or stand on a field)" end
 
-    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(fid, chemId, { charge = true })
+    -- The console acts for THIS machine's farm (row 116; nil on a dedicated server's
+    -- console, which the writer refuses), as the scout doors do.
+    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(fid, chemId, { charge = true, farmId = SoilFertilitySystem.localScoutFarmId() })
     if not ok then
+        if msgKey == "sf_treat_no_standing" then
+            return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land); nothing treated", fid)
+        end
         return string.format("Treatment failed (%s) on field %d", tostring(msgKey), fid)
     end
     detail = detail or {}
