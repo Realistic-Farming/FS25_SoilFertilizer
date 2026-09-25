@@ -5070,6 +5070,45 @@ local function getArmedYardLadder()
     return yl
 end
 
+--- One bale's birth into the yard ladder: its node, fill type, level, capacity and
+--- farm read off the live bale, and `birth` when a baler's creation frame supplies it
+--- (RSF-F211). Shared by the generic Bale.register door and BalerCollection.
+function HookManager.baleBirth(baleSelf, birth)
+    local yl = getArmedYardLadder()
+    if yl == nil or baleSelf == nil then return end
+    local nodeId = baleSelf.nodeId
+    if nodeId == nil then return end
+
+    local ftName = "UNKNOWN"
+    if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
+        local ftIdx = baleSelf:getFillType()
+        if ftIdx ~= nil and ftIdx > 0 then
+            local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+            if ft ~= nil then ftName = ft.name end
+        end
+    end
+
+    local fillLevel = 0
+    if baleSelf.getFillLevel ~= nil then
+        fillLevel = baleSelf:getFillLevel() or 0
+    end
+
+    -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is one third of
+    -- the re-attach heuristic key, so a fill-level stand-in would make the key drift
+    -- every time a bale was partly used.
+    local capacity = fillLevel
+    if baleSelf.getCapacity ~= nil then
+        capacity = baleSelf:getCapacity() or fillLevel
+    end
+
+    local farmId = 0
+    if baleSelf.getOwnerFarmId ~= nil then
+        farmId = baleSelf:getOwnerFarmId() or 0
+    end
+
+    yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity, birth)
+end
+
 --- Hooks Bale.register for the yard ladder's per-bale condition rows. Catches every
 --- door a bale enters the world through: baler spawn, packed-bale unpacking, console
 --- creation, PlaceableObjectStorage retrieval, and savegame load.
@@ -5085,44 +5124,16 @@ function HookManager:installBaleBirthHook()
         -- DELEGATE FIRST, always. The bale must be fully registered before we read a
         -- thing off it, and our failure must never be able to stop a bale existing.
         local results = { origRegister(baleSelf, ...) }
-
-        local yl = getArmedYardLadder()
-        if yl ~= nil then
-            pcall(function()
-                local nodeId = baleSelf.nodeId
-                if nodeId == nil then return end
-
-                local ftName = "UNKNOWN"
-                if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
-                    local ftIdx = baleSelf:getFillType()
-                    if ftIdx ~= nil and ftIdx > 0 then
-                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
-                        if ft ~= nil then ftName = ft.name end
-                    end
-                end
-
-                local fillLevel = 0
-                if baleSelf.getFillLevel ~= nil then
-                    fillLevel = baleSelf:getFillLevel() or 0
-                end
-
-                -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is
-                -- one third of the re-attach heuristic key, so a fill-level stand-in
-                -- would make the key drift every time a bale was partly used.
-                local capacity = fillLevel
-                if baleSelf.getCapacity ~= nil then
-                    capacity = baleSelf:getCapacity() or fillLevel
-                end
-
-                local farmId = 0
-                if baleSelf.getOwnerFarmId ~= nil then
-                    farmId = baleSelf:getOwnerFarmId() or 0
-                end
-
-                yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity)
-            end)
+        -- [RSF-F211] Inside a Baler's creation frame the frame binds this object when
+        -- createBale returns; the generic birth waits for it.
+        local deferred = false
+        if BalerCollection ~= nil and type(BalerCollection.deferRegistration) == "function" then
+            local okD, d = pcall(BalerCollection.deferRegistration, baleSelf)
+            deferred = okD and d == true
         end
-
+        if not deferred then
+            pcall(HookManager.baleBirth, baleSelf, nil)
+        end
         return unpack(results)
     end
 
@@ -5168,72 +5179,98 @@ end
 --- rule, and why the accumulator is ours rather than the engine's, is in YardLadder.
 ---@return boolean success
 function HookManager:installBalerPickupHook()
-    if Baler == nil or type(Baler.processBalerArea) ~= "function"
-        or type(Baler.createBale) ~= "function" then
-        SoilLogger.warning("[BalePickup] Baler.processBalerArea/createBale not available - birth sampling skipped")
+    -- [RSF-F211 part 2a] THE BALER COLLECTION. The old hook replaced Baler.processBalerArea
+    -- and Baler.createBale on the CLASS table: a work area captures its processing
+    -- pointer at load (WorkArea.lua:182-183) and every registered function is copied
+    -- into the instance (SpecializationUtil.copyTypeFunctionsInto, :141-145), so neither
+    -- replacement was ever reached. Now: the captured pickup pointer and the instance
+    -- finishBale/createBale on every existing and newly added baler, and the class
+    -- listeners the engine looks up at call time (SpecializationUtil.raiseEvent) for the
+    -- collection context, the active add and the fill-change acceptance.
+    if Baler == nil or type(Baler.processBalerArea) ~= "function" or BalerCollection == nil
+       or type(Baler.onStartWorkAreaProcessing) ~= "function" or type(Baler.onEndWorkAreaProcessing) ~= "function"
+       or type(Baler.onFillUnitFillLevelChanged) ~= "function" then
+        SoilLogger.warning("[BalerCollection] Baler listeners or the collection module not available - bale births stay unknown")
         return false
     end
 
-    -- readCondition takes litres ONLY as a sanity gate: it refuses a non-positive
-    -- quantity (MaterialWetness.lua:753-754), and the percent it returns is a
-    -- mass-weighted mean over the cells that carry material, independent of the number
-    -- passed (:767-774). A pass's real litres are not knowable until the delegate has
-    -- run and eaten the material, so a positive probe stands in for the gate and the
-    -- real litres do the weighting afterwards.
-    local PROBE_LITRES = 1
+    local function packAll(...) return { n = select("#", ...), ... } end
 
-    local origProcess = Baler.processBalerArea
-    Baler.processBalerArea = function(balerSelf, workArea, ...)
-        -- THE SAMPLE HAS TO HAPPEN FIRST. Once the delegate returns, the material this
-        -- pass measured has been eaten and the layer reads NO_MATERIAL, which is
-        -- exactly why every baled bale recorded an unknown wetness before this clause.
-        --
-        -- SERVER ONLY, and that gate is OURS: processBalerArea is not server-gated by
-        -- the engine. Its only early-out is a client DISTANCE check (Baler.lua:1865),
-        -- and the engine's own accumulation at :1908 sits outside any isServer branch.
-        local pct, sampled = nil, false
-        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
-        if yl ~= nil then
-            local mw = yl.materialWetness
-            if mw ~= nil and mw:isArmed() then
-                pcall(function()
-                    local verts = pickupPolygonFromWorkArea(workArea)
-                    if verts == nil then return end
-                    sampled = true
-                    local c = mw:readCondition(verts, PROBE_LITRES)
-                    if c ~= nil and c.status == MaterialWetness.RESULT.OK then
-                        pct = c.pct
-                    end
-                end)
+    -- The class listeners (the engine reads spec[eventName] at call time).
+    local origStart = Baler.onStartWorkAreaProcessing
+    local origEnd = Baler.onEndWorkAreaProcessing
+    local origFill = Baler.onFillUnitFillLevelChanged
+    Baler.onStartWorkAreaProcessing = function(balerSelf, ...)
+        local r = packAll(origStart(balerSelf, ...))
+        pcall(BalerCollection.onStart, balerSelf)
+        return unpack(r, 1, r.n)
+    end
+    Baler.onEndWorkAreaProcessing = function(balerSelf, ...)
+        return BalerCollection.aroundEnd(balerSelf, origEnd, ...)
+    end
+    Baler.onFillUnitFillLevelChanged = function(balerSelf, ...)
+        return BalerCollection.aroundFillChange(balerSelf, origFill, ...)
+    end
+    self:register(Baler, "onStartWorkAreaProcessing", origStart, "Baler.onStartWorkAreaProcessing (collection)")
+    self:register(Baler, "onEndWorkAreaProcessing", origEnd, "Baler.onEndWorkAreaProcessing (collection)")
+    self:register(Baler, "onFillUnitFillLevelChanged", origFill, "Baler.onFillUnitFillLevelChanged (collection)")
+
+    -- The captured pickup pointer: a carrier frame per call, the collection's handler.
+    local function makePickupWrapper(original)
+        return function(balerSelf, workArea, ...)
+            local ctx = (g_server ~= nil and balerSelf.isServer) and BalerCollection.currentContext(balerSelf) or nil
+            local frame = nil
+            if ctx ~= nil and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, f = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    balerSelf, workArea, GroundMovementCarrier.KIND_BALER)
+                if okBegin and f ~= nil then
+                    f.handler = BalerCollection.handler
+                    f.collection = { sources = {}, unexplained = 0, raw = 0 }
+                    frame = f
+                elseif not okBegin then
+                    SoilLogger.warning("[BalerCollection] pickup frame failed to begin (%s) - native work unaffected", tostring(f))
+                end
             end
+            local packed = packAll(pcall(original, balerSelf, workArea, ...))
+            if frame ~= nil then pcall(GroundMovementCarrier.finish, frame) end
+            if not packed[1] then error(packed[2], 0) end
+            if ctx ~= nil then
+                pcall(BalerCollection.closeCall, ctx, frame ~= nil and frame.collection or { sources = {}, unexplained = 0, raw = 0 }, packed[2])
+            end
+            return unpack(packed, 2, packed.n)
         end
-
-        local pickedUpLiters, second = origProcess(balerSelf, workArea, ...)
-
-        if sampled and type(pickedUpLiters) == "number" and pickedUpLiters > 0 then
-            -- pickedUpLiters carries the engine's additive bonus, up to 5%
-            -- (Baler.lua:1894). Left in deliberately: it is a per-pass scale factor
-            -- that all but cancels in a ratio, and taking it out would mean inventing
-            -- a correction nobody ruled.
-            pcall(function() yl:noteBalerPickup(balerSelf, pct, pickedUpLiters) end)
-        end
-
-        return pickedUpLiters, second
     end
 
-    local origCreate = Baler.createBale
-    Baler.createBale = function(balerSelf, ...)
-        -- Close the chamber BEFORE delegating. Bale.register fires SYNCHRONOUSLY
-        -- inside createBale (Baler.lua:1478-1490), and our Bale.register hook is what
-        -- consumes the pending sample.
-        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
-        if yl ~= nil then
-            pcall(function() yl:closeBalerChamber(balerSelf) end)
+    local function wrapBaler(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_baler == nil then return 0 end
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_baler", "processBalerArea", makePickupWrapper)
+        if rawget(vehicle, "_sfBalerWraps") == nil and type(vehicle.finishBale) == "function" and type(vehicle.createBale) == "function" then
+            local ownFinish, ownCreate = vehicle.finishBale, vehicle.createBale
+            vehicle.finishBale = function(v, ...) return BalerCollection.aroundFinish(v, ownFinish, ...) end
+            vehicle.createBale = function(v, ...) return BalerCollection.aroundCreate(v, ownCreate, ...) end
+            rawset(vehicle, "_sfBalerWraps", { finishBale = ownFinish, createBale = ownCreate })
+            n = n + 1
         end
-        return origCreate(balerSelf, ...)
+        return n
     end
 
-    SoilLogger.info("[OK] Baler pickup hook installed (birth wetness sampled at the pickup)")
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    local patched = 0
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapBaler(vehicle) end
+    end
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(vsSelf, vehicle, ...)
+            local r = packAll(origAdd(vsSelf, vehicle, ...))
+            pcall(wrapBaler, vehicle)
+            return unpack(r, 1, r.n)
+        end
+        self:register(vs, "addVehicle", origAdd, "VehicleSystem.addVehicle (baler collection)")
+    end
+
+    SoilLogger.info("[OK] Baler collection installed (captured pickup pointer, fill-change acceptance, bale binding; %d existing wrap(s))", patched)
     return true
 end
 

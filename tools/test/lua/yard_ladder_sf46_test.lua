@@ -143,15 +143,16 @@ T.eq("the fit line is 20 percent", YardLadder.fitPct(), 20)
 
 -- End to end through a birth: wetness is recorded in its own right AND drives the
 -- opening condition. Both, not either.
-yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.OK, pct = 25 } })
-yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100)
+-- [RSF-F211] A baler's birth arrives from its creation frame as a collected condition.
+yl, md = makeLadder()
+yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100, { wetnessPct = 25, collected = true })
 local row = md:getObjectRecord("yl_1")
-T.eq("the wetness read is kept as its own quantity", row.birthWetnessPct, 25)
+T.eq("the collected wetness is kept as its own quantity", row.birthWetnessPct, 25)
 T.eq("and it opens the ladder at the ruled handicap", row.condition, 30)
 
 -- A bale baled dry is born clean even though its wetness is recorded.
-yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.OK, pct = 14 } })
-yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100)
+yl, md = makeLadder()
+yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100, { wetnessPct = 14, collected = true })
 row = md:getObjectRecord("yl_1")
 T.eq("dry hay records its wetness", row.birthWetnessPct, 14)
 T.eq("and opens at zero", row.condition, 0)
@@ -162,8 +163,9 @@ T.eq("and opens at zero", row.condition, 0)
 -- a bought or pre-existing bale is not pre-condemned on a guess.
 
 g_currentMission.environment.currentSeason = 4   -- winter, the old stub's harshest cell
-yl, md = makeLadder({ read = { status = MaterialWetness.RESULT.REFUSAL } })
-yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "STRAW", 100, 1, 100)
+-- A chamber holding material of unknown or refused condition gives no confident wetness.
+yl, md = makeLadder()
+yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "STRAW", 100, 1, 100, { wetnessPct = nil, collected = true })
 row = md:getObjectRecord("yl_1")
 T.eq("an unreadable birth records no wetness at all", row.birthWetnessPct, nil)
 T.eq("and is NOT a wetness of zero either", row.birthWetnessPct, nil)
@@ -171,15 +173,23 @@ T.eq("and opens at zero condition", row.condition, 0)
 T.eq("the seasonal stub is gone, not merely unused", YardLadder.SEASONAL_BIRTH, nil)
 T.eq("an unknown wetness maps to zero condition", YardLadder.birthCondition(nil), 0)
 
--- ── 6. Litres is passed, and it is the bale's own ─────────
--- nil, zero or negative returns REFUSAL inside readCondition. Passing the wrong
--- quantity is a caller bug, so pin what the caller actually hands over.
+-- ── 6. [RSF-F211] Every other door is born unknown; the ground is never read ──
+-- A bale that no baler just made (unpacking, console, storage, a savegame load) has no
+-- collected history, and the ground under it is not its history (RSF-F211 :110).
 
 local skyOpts = { read = { status = MaterialWetness.RESULT.OK, pct = 20 } }
 yl, md = makeLadder(skyOpts)
 yl:onBaleCreated(1, { getFillLevel = function() return 3100 end }, "STRAW", 3100, 1, 4000)
-T.eq("the birth read is given the newborn bale's own fill level", skyOpts.sawLitres, 3100)
-T.ok("and a polygon it can actually read", skyOpts.sawVerts ~= nil and #skyOpts.sawVerts >= 3)
+T.eq("a bale from another door is born with no wetness", md:getObjectRecord("yl_1").birthWetnessPct, nil)
+T.eq("and the ground under it is never read", skyOpts.sawLitres, nil)
+-- A baler's new bale never re-attaches to an old row, even one that matches its key.
+yl, md = makeLadder()
+yl:onBaleCreated(10, {}, "STRAW", 100, 1, 100)
+yl._live, yl._byNode = {}, {}
+yl:onBaleCreated(11, {}, "STRAW", 100, 1, 100, { wetnessPct = 30, collected = true })
+local rows6 = 0
+md:enumerateObjects(function() rows6 = rows6 + 1 end)
+T.eq("a baler's new bale is a new row, not a re-attach", rows6 .. "/" .. tostring(yl._byNode[11]), "2/yl_2")
 
 -- ── 7. The re-attach heuristic, and accept-and-log ────────
 -- A reload is the common door a known bale comes back through, not storage.
@@ -385,94 +395,11 @@ T.ok("a dry day costs a fraction of a wet one", R.DRY_OUTDOOR * 5 < R.WET_OUTDOO
 T.eq("v1 ships two shelter rungs, outdoors and roof", R.ROOF_MULTIPLIER < 1 and 2 or 0, 2)
 
 -- ── THE BIRTH SAMPLE (RULED 2026-07-31) ───────────────────
--- A bale is what the pickup ate, so its birth wetness is the LITRES-WEIGHTED average
--- of everything that fed the chamber. These pin the two halves of the farmer's
--- sentence the ruling is written in, and the refusal that survives it.
-
-local BALER_A, BALER_B = {}, {}
-
-local function sample(yl, baler, passes)
-  for _, p in ipairs(passes) do yl:noteBalerPickup(baler, p[1], p[2]) end
-  yl:closeBalerChamber(baler)
-  return yl:_takePendingBirth()
-end
-
-do
-  local yl = makeLadder()
-  local got = sample(yl, BALER_A, { {20, 100}, {80, 300} })
-  T.near("litres weight the mean, not pass count", got.pct, 65, 0.01)
-end
-
--- ONE WET PATCH INSIDE A BIG DRY BALE IS NOT A WET BALE.
-do
-  local yl = makeLadder()
-  local got = sample(yl, BALER_A, { {90, 50}, {10, 950} })
-  T.near("a damp headland does not wet a dry bale", got.pct, 14.0, 0.01)
-end
-
--- A BALE THAT IS MOSTLY WET IS.
-do
-  local yl = makeLadder()
-  local got = sample(yl, BALER_A, { {90, 900}, {10, 100} })
-  T.near("a mostly wet bale reads wet", got.pct, 82.0, 0.01)
-end
-
--- REFUSAL HONESTY SURVIVES THE CLAUSE. An accumulator that read nothing hands over
--- NOTHING, so the bale is born at zero and records no wetness. Not a wetness of zero.
-do
-  local yl = makeLadder()
-  local got = sample(yl, BALER_A, { {nil, 400}, {nil, 600} })
-  T.eq("a chamber that read nothing yields no sample", got, nil)
-end
-
-do
-  local yl = makeLadder()
-  yl:closeBalerChamber(BALER_A)
-  T.eq("a chamber that ate nothing yields no sample", yl:_takePendingBirth(), nil)
-end
-
--- Unreadable litres are COUNTED but never averaged in: they must not drag the mean
--- toward zero, because "we could not read it" is not "it was dry".
-do
-  local yl = makeLadder()
-  local got = sample(yl, BALER_A, { {40, 100}, {nil, 900} })
-  T.near("unreadable litres do not dilute the mean", got.pct, 40, 0.01)
-  T.eq("and the bale knows how much it cannot vouch for", got.unknownLitres, 900)
-  T.eq("and how much it can", got.knownLitres, 100)
-end
-
--- Two balers in the same field do not pool into one bale.
-do
-  local yl = makeLadder()
-  yl:noteBalerPickup(BALER_A, 10, 100)
-  yl:noteBalerPickup(BALER_B, 90, 100)
-  yl:closeBalerChamber(BALER_A)
-  T.near("each baler keeps its own chamber", yl:_takePendingBirth().pct, 10, 0.01)
-  yl:closeBalerChamber(BALER_B)
-  T.near("and the second is untouched by the first", yl:_takePendingBirth().pct, 90, 0.01)
-end
-
--- The chamber RESETS at close, or every later bale inherits the whole run.
-do
-  local yl = makeLadder()
-  sample(yl, BALER_A, { {10, 1000} })
-  local second = sample(yl, BALER_A, { {90, 100} })
-  T.near("a second bale does not inherit the first chamber", second.pct, 90, 0.01)
-end
-
--- A non-zero pass with a non-positive quantity is not a pass.
-do
-  local yl = makeLadder()
-  yl:noteBalerPickup(BALER_A, 50, 0)
-  yl:noteBalerPickup(BALER_A, 50, -5)
-  yl:closeBalerChamber(BALER_A)
-  T.eq("zero and negative litres are ignored", yl:_takePendingBirth(), nil)
-end
-
--- SINGLE USE. A bale entering through any other door (unpacking, console, storage,
--- savegame load) must find nothing here and fall through to the ground read.
-do
-  local yl = makeLadder()
-  sample(yl, BALER_A, { {55, 100} })
-  T.eq("the pending sample is consumed exactly once", yl:_takePendingBirth(), nil)
-end
+-- A bale is what the pickup ate, weighted by litres. Since RSF-F211 part 2a the chamber
+-- is accounted by BalerCollection and the ruling's sentences are pinned there, on the
+-- real Baler (RSF-F211-s6b-baler_collection_spec_test.lua): litres weight the mean, a
+-- damp headland does not wet a dry bale, a mostly wet bale reads wet, two balers keep
+-- their own chambers, a second bale does not inherit the first. One sentence changed
+-- by the brief: unreadable litres no longer leave a known-only mean standing for the
+-- whole bale ("no known-only mean becomes a complete-bale claim", RSF-F211 :104).
+T.eq("the per-baler accumulator and the pending sample are retired", YardLadder.noteBalerPickup == nil and YardLadder._takePendingBirth == nil, true)

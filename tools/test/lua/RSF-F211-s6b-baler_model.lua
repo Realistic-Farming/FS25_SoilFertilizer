@@ -1,0 +1,313 @@
+-- RSF-F211-s6b-baler_model.lua - the Baler, FillUnit and Bale the part 2a bench runs.
+--
+-- NOT A TEST (no _test suffix). A bar lists it in --!load AFTER
+-- RSF-F208-s3-engine_model.lua, whose height map, line geometry and pickup primitive it
+-- uses. Bodies marked VERBATIM follow D:\FS25_Decoded\dataS\scripts_decompiled at the
+-- cited lines, server side; where the decompile lost a local (a name used but never
+-- declared) the local is restored and said so. Presentation (animations, sounds,
+-- effects, dummy bales, joints, consumables) is abbreviated and said so; nothing that
+-- decides a quantity is.
+
+-- ── the engine surface these bodies call ────────────────────────────────────
+ToolType = ToolType or { UNDEFINED = 0 }
+NetworkUtil = NetworkUtil or {}
+NetworkUtil.getObjectId = NetworkUtil.getObjectId or function(o) return o ~= nil and o.nodeId or nil end
+BalerCreateBaleEvent = BalerCreateBaleEvent or { new = function(...) return { ... } end }
+if g_server ~= nil and g_server.broadcastEvent == nil then g_server.broadcastEvent = function() end end
+Logging = Logging or {}
+Logging.error = Logging.error or function() end
+
+-- ── Bale (objects/Bale.lua), the parts createBale uses ───────────────────────
+-- A bale's node is a fresh number; register() is looked up on the Bale CLASS at call
+-- time, so Soil's Bale.register wrap is the one that runs, as in the engine.
+Bale = Bale or {}
+BALER_MODEL = { nextNode = 70000, registered = {}, failLoad = false, onRegister = nil }
+function Bale.new(isServer, isClient)
+    BALER_MODEL.nextNode = BALER_MODEL.nextNode + 1
+    return setmetatable({ isServer = isServer, isClient = isClient, nodeId = BALER_MODEL.nextNode, fillType = 0, fillLevel = 0, ownerFarmId = 0 }, { __index = Bale })
+end
+function Bale:loadFromConfigXML(filename, ...) if BALER_MODEL.failLoad then return false end self.filename = filename return true end
+function Bale:setFillType(ft) self.fillType = ft end
+function Bale:getFillType() return self.fillType end
+function Bale:setFillLevel(l) self.fillLevel = l end
+function Bale:getFillLevel() return self.fillLevel end
+function Bale:getCapacity() return self.fillLevel end
+function Bale:setVariationId(v) self.variationId = v end
+function Bale:setOwnerFarmId(f) self.ownerFarmId = f end
+function Bale:getOwnerFarmId() return self.ownerFarmId end
+function Bale:register()
+    BALER_MODEL.registered[#BALER_MODEL.registered + 1] = self
+    -- Another mod reacting to a registration (a stand-in): a bar sets it to register an
+    -- unrelated object inside createBale.
+    if BALER_MODEL.onRegister ~= nil then local cb = BALER_MODEL.onRegister BALER_MODEL.onRegister = nil cb(self) end
+end
+function Bale:mountKinematic() end
+function Bale:setCanBeSold() end
+function Bale:setNeedsSaving() end
+function Bale:delete() self.deleted = true end
+
+-- ── FillUnit:addFillUnitFillLevel (vehicles/specializations/FillUnit.lua:1103-1275) ──
+-- The quantity path VERBATIM in effect: the access and tool-type refusals collapse to
+-- `unit.refuse` (an early return 0 before any event, :1116-1141), the trailer mass limit
+-- to `unit.massLimit` (reduces the request before the capacity clamp, :1127-1133), the
+-- fill-type change and the empty reset as :1136-1165, the event raised with the reduced
+-- request and the applied delta (:1203) through each listener spec class at call time,
+-- and the applied delta returned (:1275). Presentation and sync are abbreviated.
+FILLUNIT = {}
+function FILLUNIT.add(self, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+    local unit = self.spec_fillUnit.fillUnits[fillUnitIndex]
+    if unit == nil or unit.refuse then return 0 end
+    if fillLevelDelta > 0 and unit.massLimit ~= nil then fillLevelDelta = math.min(fillLevelDelta, unit.massLimit) end
+    local oldLevel = unit.fillLevel
+    local capacity = unit.capacity == 0 and math.huge or unit.capacity
+    if unit.fillType == fillTypeIndex then
+        unit.fillLevel = math.max(0, math.min(capacity, oldLevel + fillLevelDelta))
+    elseif fillLevelDelta > 0 then
+        if oldLevel > 0 then FILLUNIT.add(self, farmId, fillUnitIndex, -math.huge, unit.fillType, toolType, fillPositionData) end
+        unit.fillLevel = math.max(0, math.min(capacity, fillLevelDelta))
+        unit.fillType = fillTypeIndex
+    end
+    if unit.fillLevel < 0.00001 then unit.fillLevel = 0 end
+    if unit.fillLevel <= 0 then unit.fillType = FillType.UNKNOWN end
+    local appliedDelta = unit.fillLevel - oldLevel
+    for _, class in ipairs(self.eventListeners.onFillUnitFillLevelChanged or {}) do
+        class.onFillUnitFillLevelChanged(self, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta)
+    end
+    return appliedDelta
+end
+
+-- ── the Baler (vehicles/specializations/Baler.lua) ──────────────────────────
+Baler = Baler or {}
+Baler.CLIENT_DM_UPDATE_RADIUS = 50
+
+-- :1863-1915 VERBATIM (the additive effect block's client half abbreviated).
+function Baler:processBalerArea(workArea, _)
+    local spec = self.spec_baler
+    if not self.isServer and self.currentUpdateDistance > Baler.CLIENT_DM_UPDATE_RADIUS then
+        return 0, 0
+    end
+    local lsx, lsy, lsz, lex, ley, lez, lineRadius = DensityMapHeightUtil.getLineByArea(workArea.start, workArea.width, workArea.height)
+    if self.isServer then
+        spec.fillEffectType = FillType.UNKNOWN
+    end
+    local mission = self:getMissionByWorkArea(workArea)
+    for fillTypeIndex, _ in pairs(spec.pickupFillTypes) do
+        local pickedUpLiters = -DensityMapHeightUtil.tipToGroundAroundLine(self, -math.huge, fillTypeIndex, lsx, lsy, lsz, lex, ley, lez, lineRadius, nil, nil, false, nil)
+        if pickedUpLiters > 0 then
+            if self.isServer then
+                spec.fillEffectType = fillTypeIndex
+                if spec.additives.available and not spec.additives.appliedByBufferOverloading then
+                    local fillTypeSupported = false
+                    for i = 1, #spec.additives.fillTypes do
+                        if fillTypeIndex == spec.additives.fillTypes[i] then
+                            fillTypeSupported = true
+                            break
+                        end
+                    end
+                    if fillTypeSupported then
+                        local additivesFillLevel = self:getFillUnitFillLevel(spec.additives.fillUnitIndex)
+                        if additivesFillLevel > 0 then
+                            local usage = spec.additives.usage * pickedUpLiters
+                            if usage > 0 then
+                                pickedUpLiters = pickedUpLiters * (1 + 0.05 * math.min(additivesFillLevel / usage, 1))
+                                self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+                            end
+                        end
+                    end
+                end
+            end
+            spec.pickupFillTypes[fillTypeIndex] = spec.pickupFillTypes[fillTypeIndex] + pickedUpLiters
+            spec.workAreaParameters.lastMissionUniqueId = mission ~= nil and mission:getUniqueId() or nil
+            spec.workAreaParameters.lastPickedUpLiters = spec.workAreaParameters.lastPickedUpLiters + pickedUpLiters
+            return pickedUpLiters, pickedUpLiters
+        end
+    end
+    return 0, 0
+end
+
+-- :1954-1959 VERBATIM, with the local the decompile lost (`spec`) restored.
+function Baler:onStartWorkAreaProcessing(_)
+    local spec = self.spec_baler
+    if self.isServer then
+        spec.lastAreaBiggerZero = false
+        spec.workAreaParameters.lastPickedUpLiters = 0
+    end
+end
+
+-- :1960-2010 VERBATIM for the quantity path (the decompile's reused locals renamed:
+-- the receiver is `fillUnitIndex`), the loading-state animation and dirty flags
+-- abbreviated.
+function Baler:onEndWorkAreaProcessing(_, _)
+    local spec = self.spec_baler
+    if self.isServer then
+        local maxFillType = FillType.UNKNOWN
+        local maxFillTypeFillLevel = 0
+        for fillTypeIndex, fillLevel in pairs(spec.pickupFillTypes) do
+            if maxFillTypeFillLevel < fillLevel then
+                maxFillType = fillTypeIndex
+                maxFillTypeFillLevel = fillLevel
+            end
+        end
+        local pickedUpLiters = spec.workAreaParameters.lastPickedUpLiters
+        if pickedUpLiters > 0 then
+            spec.lastAreaBiggerZero = true
+            local deltaLevel = pickedUpLiters * spec.fillScale
+            local fillUnitIndex = spec.fillUnitIndex
+            if spec.nonStopBaling then
+                if spec.buffer.fillMainUnitAfterOverload and spec.buffer.unloadingStarted then
+                    if self:getFillUnitFreeCapacity(spec.fillUnitIndex) <= 0 then
+                        fillUnitIndex = spec.buffer.fillUnitIndex
+                    end
+                else
+                    fillUnitIndex = spec.buffer.fillUnitIndex
+                end
+            end
+            self:setFillUnitFillType(fillUnitIndex, maxFillType)
+            self:addFillUnitFillLevel(self:getOwnerFarmId(), fillUnitIndex, deltaLevel, maxFillType, ToolType.UNDEFINED)
+        end
+    end
+end
+
+-- :1155-1184 VERBATIM for the main unit on the server (the dummy-bale and animation
+-- calls abbreviated; the buffer branch is part 2b's).
+function Baler:onFillUnitFillLevelChanged(fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, _, appliedDelta)
+    local spec = self.spec_baler
+    if fillUnitIndex == spec.fillUnitIndex then
+        if self.isServer and fillLevelDelta > 0 then
+            if self:getFillUnitFreeCapacity(spec.fillUnitIndex) <= 0 then
+                if self.isAddedToPhysics then
+                    self:finishBale()
+                else
+                    spec.createBaleNextFrame = true
+                end
+                spec.fillUnitOverflowFillLevel = fillLevelDelta - appliedDelta
+                return
+            end
+            if spec.fillUnitOverflowFillLevel > 0 and fillLevelDelta > 0 then
+                local overflow = spec.fillUnitOverflowFillLevel
+                spec.fillUnitOverflowFillLevel = 0
+                spec.fillUnitOverflowFillLevel = overflow - self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, overflow, fillTypeIndex, toolType)
+                return
+            end
+        end
+    end
+end
+
+-- :1427-1454 VERBATIM (Logging.error kept).
+function Baler:finishBale()
+    local spec = self.spec_baler
+    if spec.baleTypes ~= nil then
+        local fillTypeIndex = self:getFillUnitFillType(spec.fillUnitIndex)
+        if spec.hasUnloadingAnimation then
+            if self:createBale(fillTypeIndex, self:getFillUnitCapacity(spec.fillUnitIndex)) then
+                g_server:broadcastEvent(BalerCreateBaleEvent.new(self, fillTypeIndex, 0, NetworkUtil.getObjectId(spec.bales[#spec.bales].baleObject)), nil, nil, self)
+                return
+            end
+            Logging.error("Failed to create bale!")
+        else
+            self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, -math.huge, fillTypeIndex, ToolType.UNDEFINED)
+            spec.buffer.unloadingStarted = false
+            for fillType, _ in pairs(spec.pickupFillTypes) do
+                spec.pickupFillTypes[fillType] = 0
+            end
+            if not self:createBale(fillTypeIndex, self:getFillUnitCapacity(spec.fillUnitIndex)) then
+                Logging.error("Failed to create bale!")
+                return
+            end
+            g_server:broadcastEvent(BalerCreateBaleEvent.new(self, fillTypeIndex, spec.bales[#spec.bales].time), nil, nil, self)
+            if self:getFillUnitFillLevel(spec.fillUnitIndex) == 0 and spec.preSelectedBaleTypeIndex ~= spec.currentBaleTypeIndex then
+                self:setBaleTypeIndex(spec.preSelectedBaleTypeIndex, true)
+                return
+            end
+        end
+    end
+end
+
+-- :1455-1570, the SERVER path: the bale record, Bale.new, loadFromConfigXML, the fill,
+-- the owner, register(), the record appended when valid, isValid returned. The local
+-- the decompile lost (`baleTypeDef`, the current bale type) is restored. Knotting
+-- animation, consumables, the round mount and the square joint are abbreviated.
+function Baler:createBale(baleFillType, fillLevel, baleServerId, baleTime, xmlFilename, ownerFarmId, variationId, loadFromSavegame)
+    local spec = self.spec_baler
+    local baleTypeDef = spec.baleTypes[spec.currentBaleTypeIndex]
+    local isValid = false
+    local bale = { filename = xmlFilename or spec.currentBaleXMLFilename, time = baleTime }
+    bale.fillType = baleFillType
+    bale.fillLevel = fillLevel
+    if self.isServer then
+        local baleObject = Bale.new(self.isServer, self.isClient)
+        local x, y, z = getWorldTranslation(baleTypeDef.baleRootNode)
+        if baleObject:loadFromConfigXML(bale.filename, x, y, z, 0, 0, 0) then
+            baleObject:setFillType(baleFillType)
+            baleObject:setFillLevel(fillLevel)
+            baleObject:setVariationId(variationId or (spec.lastBaleVariationId or baleTypeDef.defaultBaleVariationId))
+            if ownerFarmId == nil then
+                baleObject:setOwnerFarmId(self:getBalerBaleOwnerFarmId(x, z), true)
+            else
+                baleObject:setOwnerFarmId(ownerFarmId, true)
+            end
+            baleObject:register()
+            if spec.hasUnloadingAnimation then
+                baleObject:mountKinematic(self, baleTypeDef.baleRootNode, 0, 0, 0, 0, 0, 0)
+            else
+                baleObject:setCanBeSold(false)
+                baleObject:setNeedsSaving(false)
+            end
+            bale.baleObject = baleObject
+            isValid = true
+        end
+    end
+    if isValid then
+        table.insert(spec.bales, bale)
+    end
+    return isValid
+end
+
+-- :928 in effect: the engine empties the round chamber when the bale leaves (dropBale /
+-- unloading); a bar calls it to model that step.
+function BALER_MODEL.clearChamber(v)
+    return v:addFillUnitFillLevel(v:getOwnerFarmId(), v.spec_baler.fillUnitIndex, -math.huge, v:getFillUnitFillType(v.spec_baler.fillUnitIndex), ToolType.UNDEFINED)
+end
+
+--- A Baler as the engine builds it: its registered functions COPIED into the instance
+--- (SpecializationUtil.copyTypeFunctionsInto, :141-145), the pickup work area's
+--- pointer CAPTURED from the instance (WorkArea.lua:182-183), listeners dispatched
+--- through the Baler class at call time. One pickup work area at x in [x0, x0 + width],
+--- z in [z0, z0 + depth]. opts: capacity, round, fillScale, massLimit, additives =
+--- { level, usage }, uid.
+function BALER_MODEL.new(opts)
+    local v = { isServer = true, isClient = false, currentUpdateDistance = 0, uniqueId = opts.uid or "baler", isAddedToPhysics = true }
+    v.specClasses = { Baler }
+    v.eventListeners = { onFillUnitFillLevelChanged = { Baler } }
+    v.processBalerArea, v.finishBale, v.createBale = Baler.processBalerArea, Baler.finishBale, Baler.createBale
+    local units = { [1] = { capacity = opts.capacity or 1000, fillLevel = 0, fillType = FillType.UNKNOWN, massLimit = opts.massLimit } }
+    local additives = { available = false, fillTypes = {}, usage = 0, fillUnitIndex = 2 }
+    if opts.additives ~= nil then
+        units[2] = { capacity = 100000, fillLevel = opts.additives.level or 0, fillType = 99 }
+        additives = { available = true, fillTypes = { ENGINE.FT.GRASS_WINDROW, ENGINE.FT.DRYGRASS_WINDROW }, usage = opts.additives.usage or 0.001, fillUnitIndex = 2 }
+    end
+    v.spec_fillUnit = { fillUnits = units }
+    v.addFillUnitFillLevel = FILLUNIT.add
+    v.getFillUnitFillLevel = function(self, i) local u = self.spec_fillUnit.fillUnits[i] return u and u.fillLevel or 0 end
+    v.getFillUnitCapacity = function(self, i) local u = self.spec_fillUnit.fillUnits[i] return u and u.capacity or 0 end
+    v.getFillUnitFreeCapacity = function(self, i) local u = self.spec_fillUnit.fillUnits[i] return u and (u.capacity - u.fillLevel) or 0 end
+    v.getFillUnitFillType = function(self, i) local u = self.spec_fillUnit.fillUnits[i] return u and u.fillType or FillType.UNKNOWN end
+    v.setFillUnitFillType = function(self, i, ft) local u = self.spec_fillUnit.fillUnits[i] if u and u.fillLevel <= 0 then u.fillType = ft end end
+    v.getOwnerFarmId = function() return 1 end
+    v.getMissionByWorkArea = function() return nil end
+    v.getBalerBaleOwnerFarmId = function() return 1 end
+    v.setBaleTypeIndex = function(self, i) self.spec_baler.currentBaleTypeIndex = i end
+    v.spec_baler = {
+        fillUnitIndex = 1, fillScale = opts.fillScale or 1, hasUnloadingAnimation = opts.round == true,
+        pickupFillTypes = { [ENGINE.FT.GRASS_WINDROW] = 0, [ENGINE.FT.DRYGRASS_WINDROW] = 0, [ENGINE.FT.STRAW] = 0 },
+        workAreaParameters = { lastPickedUpLiters = 0 }, additives = additives,
+        fillUnitOverflowFillLevel = 0, nonStopBaling = false, buffer = { fillUnitIndex = 3, unloadingStarted = false },
+        bales = {}, baleTypes = { { baleRootNode = { x = 0, y = 0, z = 0 }, defaultBaleVariationId = 1 } },
+        currentBaleTypeIndex = 1, preSelectedBaleTypeIndex = 1, currentBaleXMLFilename = "bale.xml",
+    }
+    local x0, z0, w, d = opts.x0 or 0, opts.z0 or 0, opts.width or 4, opts.depth or 2
+    local work = { index = 1, functionName = "processBalerArea", start = { x = x0, z = z0 }, width = { x = x0 + w, z = z0 }, height = { x = x0, z = z0 + d } }
+    v.spec_workArea = { workAreas = { work } }
+    work.processingFunction = v[work.functionName]
+    return v, work
+end
