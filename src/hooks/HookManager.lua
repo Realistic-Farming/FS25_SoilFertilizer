@@ -588,7 +588,9 @@ function HookManager:installAll(soilSystem)
 
     -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
     local balePickupOk = self:installBalerPickupHook()
+    local forageWagonOk = self:installForageWagonCollectionHook()
     if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    if forageWagonOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
@@ -5286,6 +5288,44 @@ function HookManager:installBalerPickupHook()
     end
 
     SoilLogger.info("[OK] Baler collection installed (captured pickup pointer, fill-change acceptance, bale binding; %d existing wrap(s))", patched)
+    return true
+end
+
+--- [RSF-F211 part 2b] THE FORAGE WAGON COLLECTION: the captured processForageWagonArea
+--- pointer and the instance fillForageWagon, on every existing and newly added wagon
+--- (both are registered functions copied into the instance, ForageWagon.lua:25-29).
+function HookManager:installForageWagonCollectionHook()
+    if ForageWagon == nil or type(ForageWagon.processForageWagonArea) ~= "function" or ForageWagonCollection == nil then
+        SoilLogger.warning("[ForageWagonCollection] ForageWagon or the collection module not available - wagon loads stay unknown")
+        return false
+    end
+    local function packAll(...) return { n = select("#", ...), ... } end
+    local function wrapWagon(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_forageWagon == nil then return 0 end
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_forageWagon", "processForageWagonArea", ForageWagonCollection.makePickupWrapper)
+        if rawget(vehicle, "_sfForageWagonWraps") == nil and type(vehicle.fillForageWagon) == "function" then
+            local ownFill = vehicle.fillForageWagon
+            vehicle.fillForageWagon = function(v, ...) return ForageWagonCollection.aroundFill(v, ownFill, ...) end
+            rawset(vehicle, "_sfForageWagonWraps", { fillForageWagon = ownFill })
+            n = n + 1
+        end
+        return n
+    end
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    local patched = 0
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapWagon(vehicle) end
+    end
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(vsSelf, vehicle, ...)
+            local r = packAll(origAdd(vsSelf, vehicle, ...))
+            pcall(wrapWagon, vehicle)
+            return unpack(r, 1, r.n)
+        end
+        self:register(vs, "addVehicle", origAdd, "VehicleSystem.addVehicle (forage wagon collection)")
+    end
+    SoilLogger.info("[OK] ForageWagon collection installed (captured pickup pointer, fill acceptance; %d existing wrap(s))", patched)
     return true
 end
 

@@ -278,7 +278,35 @@ function BC.closeCall(ctx, call, produced)
     if ctx == nil or call == nil then return end
     if not finite(produced) or produced <= BC.EPSILON then return end
     BC.stats.batches = BC.stats.batches + 1
-    ctx.batches[#ctx.batches + 1] = { P = produced, sources = call.sources, raw = call.raw, unexplained = call.unexplained }
+    -- One batch per capture: a call that removed twice (the ForageWagon's grass and hay,
+    -- ForageWagon.lua:155-160) has two snapshots, and a seal covers one. The produced
+    -- litres split by each capture's raw share; litres no capture explains are unknown.
+    local groups, order = {}, {}
+    for _, s in ipairs(call.sources) do
+        local g = groups[s.snapshot]
+        if g == nil then
+            g = { sources = {}, raw = 0 }
+            groups[s.snapshot] = g
+            order[#order + 1] = g
+        end
+        g.sources[#g.sources + 1] = s
+        g.raw = g.raw + s.raw
+    end
+    if #order <= 1 then
+        ctx.batches[#ctx.batches + 1] = { P = produced, sources = call.sources, raw = call.raw, unexplained = call.unexplained }
+        return
+    end
+    local total = call.raw
+    if not finite(total) or total <= BC.EPSILON then
+        ctx.batches[#ctx.batches + 1] = { P = produced, sources = {}, raw = 0, unexplained = 0 }
+        return
+    end
+    for _, g in ipairs(order) do
+        ctx.batches[#ctx.batches + 1] = { P = produced * g.raw / total, sources = g.sources, raw = g.raw, unexplained = 0 }
+    end
+    if (call.unexplained or 0) > BC.TOLERANCE then
+        ctx.batches[#ctx.batches + 1] = { P = produced * call.unexplained / total, sources = {}, raw = call.unexplained, unexplained = call.unexplained }
+    end
 end
 
 -- =========================================================

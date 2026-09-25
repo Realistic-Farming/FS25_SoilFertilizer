@@ -25,7 +25,7 @@
 -- writes through them.
 --
 --!env: modenv
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/RSF-F211-s6b-baler_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/PolygonClip.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/BalerCollection.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/RSF-F211-s6b-baler_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/PolygonClip.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/BalerCollection.lua, src/ground/ForageWagonCollection.lua
 
 local INFO, WARN = {}, {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
@@ -60,6 +60,7 @@ local SKY = { humidity = 0.65, temperature = 15, cloudCoverage = 0.5 }
 -- every world restores the Baler's listeners and Bale.register before installing.
 local PRISTINE = { register = Bale.register, start = Baler.onStartWorkAreaProcessing, finish = Baler.onEndWorkAreaProcessing,
                    fill = Baler.onFillUnitFillLevelChanged, delete = Bale.delete, tick = Baler.onUpdateTick }
+local FWC = ForageWagonCollection
 local function world(today)
     today = today or 100
     HEIGHT.pixels = {}
@@ -409,4 +410,71 @@ group("L", function()
     ENGINE.tick(v, 16)
     T.eq("L1 with a StockGuard lease live on the pickup the frame stands aside: StockGuard holds the material and seals it, Soil seals nothing and its chamber says unknown, never a parallel record",
         tostring(lease.status) .. "/" .. (BC.stats.sealed - sealedBefore) .. "/" .. #bales(v) .. "/" .. tostring(birthOf(lastBale(v))), "ADMITTED/0/1/nil")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- F. THE FORAGE WAGON (part 2b)
+-- ══════════════════════════════════════════════════════════════════════════
+local function wagon(opts)
+    local o = { x0 = BX.x0, z0 = BX.z0, width = BX.width, depth = BX.depth }
+    for k, v in pairs(opts or {}) do o[k] = v end
+    local v, work = BALER_MODEL.newWagon(o)
+    g_currentMission.vehicleSystem:addVehicle(v)
+    return v, work
+end
+local function hay(gx, perPixel)
+    local x0 = -32 + gx * 4 + (gx == 2 and 2 or 0)
+    HEIGHT.fill(FT.DRYGRASS_WINDROW, x0, 2, x0 + 2, 3, perPixel)
+end
+group("F", function()
+    world()
+    local w, work = wagon({ capacity = 1000 })
+    installAll()
+    T.eq("F1 installAll wraps the wagon's captured pickup pointer and its instance fillForageWagon",
+        tostring(work._sfWraps ~= nil and work._sfWraps.processForageWagonArea ~= nil) .. "/" .. tostring(w.fillForageWagon ~= ForageWagon.fillForageWagon), "true/true")
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(w, 16)
+    local pct = FWC.condition(w)
+    T.eq("F2 the wagon's load is the litres-weighted condition of what it took, and the buffer is empty after the fill",
+        num(w:getFillUnitFillLevel(1)) .. "/" .. num(pct) .. "/" .. num(w.spec_forageWagon.workAreaParameters.litersToFill), "100/26.063/0")
+    -- Two removals in one call (ForageWagon.lua:155-160): the forced grass and its hay twin.
+    setCell(2, 8, 1, 204) windrow(2, 12.5)
+    setCell(3, 8, 1, 52) hay(3, 12.5)
+    ENGINE.tick(w, 16)
+    T.eq("F3 a call that removes grass and hay seals each against its own capture; the load weighs both",
+        num(w:getFillUnitFillLevel(1)) .. "/" .. num(FWC.condition(w)), "150/" .. num((100 * 26.062992125984 + 25 * WET + 25 * DRY) / 150))
+    -- A full wagon: the fill unit takes 60 of the 100 L buffer; the rest stays in the buffer.
+    world()
+    w = wagon({ capacity = 60 })
+    installAll()
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(w, 16)
+    local st = FWC.state(w)
+    T.eq("F4 the fill unit takes A of the buffer's mixture and the remainder stays in the buffer with the same condition",
+        num(w:getFillUnitFillLevel(1)) .. "/" .. num(FWC.condition(w)) .. "/" .. num(w.spec_forageWagon.workAreaParameters.litersToFill) .. "/" .. num(BC.accountPct(st.buffer)),
+        "60/26.063/40/26.063")
+    -- The trim below 0.01 (:224-226) is a real discard.
+    world()
+    w = wagon({ capacity = 99.995 })
+    installAll()
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(w, 16)
+    st = FWC.state(w)
+    T.eq("F5 a remainder under 0.01 L is trimmed by the engine and leaves the buffer's account too",
+        num(w.spec_forageWagon.workAreaParameters.litersToFill) .. "/" .. num(st.buffer.carrier) .. "/" .. num(FWC.condition(w)), "0/0/26.063")
+    -- The start-fill delay (:269-293): the first call's litres wait in the buffer.
+    world()
+    w = wagon({ capacity = 1000, fillStartDelay = 20 })
+    installAll()
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(w, 16)
+    local waited = num(w:getFillUnitFillLevel(1)) .. "/" .. num(w.spec_forageWagon.workAreaParameters.litersToFill)
+    setCell(2, 8, 1, 204) setCell(3, 8, 1, 204) windrow(2, 12.5) windrow(3, 12.5)
+    ENGINE.tick(w, 16)
+    T.eq("F6 litres held back by the start-fill delay keep their condition in the buffer until the fill",
+        waited .. "/" .. num(w:getFillUnitFillLevel(1)) .. "/" .. num(FWC.condition(w)), "0/100/150/" .. num((100 * 26.062992125984 + 50 * WET) / 150))
 end)
