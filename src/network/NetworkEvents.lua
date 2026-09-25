@@ -181,6 +181,33 @@ function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
 end
 
 -- ========================================
+-- READ BOUNDS (MAINTENANCE row 112)
+-- ========================================
+-- The server reads every registered event a client sends (network/Server.lua:436)
+-- BEFORE any guard in run, so a forged count in a readStream loop is a hang vector on
+-- every host, dedicated servers included. Two rules. A server-to-client event's
+-- readStream returns at once on the wrong side (the side test above), reading
+-- nothing. Every count is held to its WRITER'S own bound: a count above it, or a short
+-- stream (nil), is a forged stream and the event refuses: it reads no further, marks
+-- itself (self.refused) and never runs. Reading short costs nobody but the sender: the
+-- server's event branch handles one message per packet with no loop (Server.lua
+-- :413-448), and a sender puts each event on its own stream (netSendStream right after
+-- writeStream, Connection.lua:99), so the unread rest is that one packet's and no
+-- other. The engine's own bit check (Server.lua:438-446) runs only when the SENDER wrote
+-- the debug flag (read at :427; written as g_networkDebug with the size word only when
+-- set, Connection.lua:85-90): a forged stream writes false, so a refused event leaves
+-- no error line.
+local SF_MAX_SYNC_FIELDS     = 4096   -- the legacy inline header; the join sends its fields in batches today (32 each). Farmland ids on shipped maps run in the low hundreds.
+local SF_MAX_BUFFER_TYPES    = 2 ^ ((FillTypeManager and FillTypeManager.SEND_NUM_BITS) or 8)   -- a nutrient buffer is keyed by fill type index (fillTypes/FillTypeManager.lua:6, 8 bits)
+local SF_ZONE_SYNC_MAX       = 500    -- the batch writer's own cap, hoisted from its local so the readers hold the same number
+local SF_SYNC_ROWS_PER_EVENT = 16     -- rows per value-map chunk, the dispatcher's bound (hoisted from below the reader)
+
+--- A count a writer could have written: a number from 0 to its bound.
+local function sfCountWithinBound(count, bound)
+    return type(count) == "number" and count >= 0 and count <= bound
+end
+
+-- ========================================
 -- SETTING SYNC EVENT (Server -> Clients)
 -- ========================================
 SoilSettingSyncEvent = SoilSettingSyncEvent or {}
@@ -200,6 +227,7 @@ function SoilSettingSyncEvent.new(settingName, settingValue)
 end
 
 function SoilSettingSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.settingName = streamReadString(streamId)
     local valueType = streamReadUInt8(streamId)
 
@@ -444,6 +472,7 @@ function SoilFullSyncEvent.new(settings, fieldData)
 end
 
 function SoilFullSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.settings = {}
 
     -- Read all non-local settings in schema order (matches writeStream iteration)
@@ -461,6 +490,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
     self.fieldData = {}
     local fieldCount = streamReadInt32(streamId)
     local corruptionDetected = false
+    if not sfCountWithinBound(fieldCount, SF_MAX_SYNC_FIELDS) then self.refused = "FIELD_COUNT" return end
 
     for i = 1, fieldCount do
         local fieldId = streamReadInt32(streamId)
@@ -497,6 +527,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         -- Read nutrient buffer (V1.7)
         local buffer = {}
         local bufferCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(bufferCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
         for j = 1, bufferCount do
             local ftIdx = streamReadInt32(streamId)
             local amount = streamReadFloat32(streamId)
@@ -805,20 +836,19 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         -- Zone cell data: per-cell soil state for the PDA cell-report overlay.
         -- Capped at 500 cells per field to prevent packet overflow on large fields.
         local zd = field.zoneData or {}
-        local ZONE_SYNC_MAX = 500
 
         -- Pass 1: count without building an intermediate table
         local zdCount = 0
         for _ in pairs(zd) do
             zdCount = zdCount + 1
-            if zdCount >= ZONE_SYNC_MAX then break end
+            if zdCount >= SF_ZONE_SYNC_MAX then break end
         end
         streamWriteInt32(streamId, zdCount)
 
         -- Pass 2: serialize directly into the stream
         local sent = 0
         for cellKey, cell in pairs(zd) do
-            if sent >= ZONE_SYNC_MAX then break end
+            if sent >= SF_ZONE_SYNC_MAX then break end
             sent = sent + 1
             streamWriteInt32(streamId,   tonumber(cellKey) or 0)
             streamWriteFloat32(streamId, cell.N  or 0)
@@ -851,9 +881,11 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
 end
 
 function SoilFieldBatchSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     local count  = streamReadInt32(streamId)
     self.isLast  = streamReadBool(streamId)
     self.batchFields = {}
+    if not sfCountWithinBound(count, SoilConstants.NETWORK.FULL_SYNC_BATCH_SIZE) then self.refused = "FIELD_COUNT" return end
 
     for _ = 1, count do
         local fieldId        = streamReadInt32(streamId)
@@ -887,6 +919,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
 
         local buffer = {}
         local bCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(bCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
         for _ = 1, bCount do
             local ftIdx  = streamReadInt32(streamId)
             local amount = streamReadFloat32(streamId)
@@ -896,6 +929,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         -- Zone cell data (added v2.1.6)
         local zd = {}
         local zdCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(zdCount, SF_ZONE_SYNC_MAX) then self.refused = "ZONE_COUNT" return end
         for _ = 1, zdCount do
             local keyInt = streamReadInt32(streamId)
             local zN  = streamReadFloat32(streamId)
@@ -1088,6 +1122,7 @@ function SoilFieldUpdateEvent.new(fieldId, fieldData)
 end
 
 function SoilFieldUpdateEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.fieldId = streamReadInt32(streamId)
 
     -- Read values with clamping to valid ranges (NPCFavor pattern)
@@ -1122,6 +1157,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     -- Read nutrient buffer (V1.7)
     local buffer = {}
     local bCount = streamReadInt32(streamId)
+    if not sfCountWithinBound(bCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
     for i = 1, bCount do
         local ftIdx = streamReadInt32(streamId)
         local amount = streamReadFloat32(streamId)
@@ -1131,6 +1167,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     -- Zone cell data (added v2.1.6)
     local zd = {}
     local zdCount = streamReadInt32(streamId)
+    if not sfCountWithinBound(zdCount, SF_ZONE_SYNC_MAX) then self.refused = "ZONE_COUNT" return end
     for _ = 1, zdCount do
         local keyInt = streamReadInt32(streamId)
         local zN  = streamReadFloat32(streamId)
@@ -2010,6 +2047,7 @@ function SoilFieldSentryStatusEvent.new(fieldId, reason, seq)
 end
 
 function SoilFieldSentryStatusEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.fieldId = streamReadInt32(streamId)
     self.reason  = streamReadUIntN(streamId, 3)   -- BLACKLIST enum 0..6 fits in 3 bits
     self.seq     = streamReadInt32(streamId)
@@ -2152,6 +2190,7 @@ function SoilValueMapChunkEvent:writeStream(streamId, connection)
 end
 
 function SoilValueMapChunkEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.layerIdx = streamReadUInt8(streamId)
     self.gyStart  = streamReadUInt16(streamId)
     local rowCount = streamReadUInt8(streamId)
@@ -2167,14 +2206,21 @@ function SoilValueMapChunkEvent:readStream(streamId, connection)
     self.sourceResolution = streamReadUInt16(streamId)
     self.transportStride  = streamReadUInt16(streamId)
     self.rows = {}
+    if not sfCountWithinBound(rowCount, SF_SYNC_ROWS_PER_EVENT) then self.refused = "ROW_COUNT" return end
+    local grid = SoilValueMaps and SoilValueMaps.SYNC_GRID
+    if grid == nil then self.refused = "NO_GRID" return end
     for r = 1, rowCount do
         local rowLen  = streamReadUInt16(streamId)
         local numRuns = streamReadUInt16(streamId)
+        -- A row is at most the synced grid wide, and has at most one run per pixel.
+        if not sfCountWithinBound(rowLen, grid) or not sfCountWithinBound(numRuns, rowLen) then self.refused = "ROW_SHAPE" return end
         local row = {}
         local idx = 1
         for _ = 1, numRuns do
             local state = streamReadUIntN(streamId, 4)
             local len   = streamReadUInt16(streamId)
+            -- A run never runs past the row's end; the writer's runs sum to the row.
+            if not sfCountWithinBound(len, rowLen - idx + 1) then self.refused = "RUN_LENGTH" return end
             for _ = 1, len do
                 if idx <= rowLen then
                     row[idx] = state
@@ -2306,7 +2352,6 @@ end
 -- side. 64 rows of a 512-wide grid are 32,768 reads: under 1/95 of the old tick.
 local SF_SYNC_ROWS_PER_TICK  = 64
 local SF_SYNC_CHUNK_DELAY    = 40   -- ms between chunk events (52311815's drip-feed)
-local SF_SYNC_ROWS_PER_EVENT = 16
 -- Every SF_SYNC_AUDIT_EVERY rounds the server refreshes EVERY row rather than the
 -- stale ones, so a write that reached a layer without marking its rows (this file's
 -- enumeration found none, and the cache would hide one forever) is caught within
@@ -2360,6 +2405,7 @@ function SoilValueMapChecksumEvent:writeStream(streamId, connection)
 end
 
 function SoilValueMapChecksumEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     local count = streamReadUInt8(streamId)
     self.checksums = {}
     for i = 1, count do
@@ -2793,6 +2839,7 @@ function SoilScoutingMaskSyncEvent:writeStream(streamId, connection)
 end
 
 function SoilScoutingMaskSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.schema     = streamReadUInt8(streamId)
     self.mode       = streamReadUInt8(streamId)
     self.farmId     = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
@@ -2800,6 +2847,7 @@ function SoilScoutingMaskSyncEvent:readStream(streamId, connection)
     self.chunkCount = streamReadUInt16(streamId)
     local n = streamReadUInt16(streamId)
     self.entries = {}
+    if not sfCountWithinBound(n, SoilScoutingMaskSyncEvent.MAX_ENTRIES) then self.refused = "ENTRY_COUNT" return end
     for i = 1, n do
         local e = {}
         e.fieldId = streamReadInt32(streamId)

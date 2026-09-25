@@ -8,9 +8,12 @@
 -- fills it; a fresh instance's readStream drains it. A correct pair leaves the FIFO
 -- exactly empty with zero type mismatches. run() is a no-op here (g_server/g_client
 -- are nil in the prelude), so readStream's trailing self:run() does not interfere.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/maps/SoilValueMaps.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
-local CONN = { getIsServer = function() return false end }
+-- The receiver here is a pure client (g_server nil), so the connection it reads on is
+-- its server connection, isServer = true (Client.lua:152): a server-to-client event's
+-- readStream returns at once on any other connection (MAINTENANCE row 112).
+local CONN = { getIsServer = function() return true end }
 
 -- Serialize src, deserialize into a fresh instance of `class`, assert wire integrity,
 -- and hand back the reconstructed instance for value-level assertions.

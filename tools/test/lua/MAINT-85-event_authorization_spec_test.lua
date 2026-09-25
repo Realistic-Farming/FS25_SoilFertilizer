@@ -215,8 +215,8 @@ group("H", function()
         tostring(W.settings.enabled) .. "/" .. tostring(W.settings.difficulty) .. "/" .. tostring(W.soilSystem.fieldData == beforeData) .. "/" .. tostring(W.soilSystem.fieldData[7] == before7) .. "/" .. W.fullSyncReceived,
         "true/2/true/true/0")
     deliver(SoilFullSyncEvent.new(forgedSettings(), { [7] = sampleField(0 / 0) }), SoilFullSyncEvent, AT_HOST_FROM_FARM2)
-    T.eq("H2b a corrupt full sync from a client does not blink the host's HUD (the corruption is still logged)",
-        W.mission.hud.warnings .. "/" .. tostring(lines(WARN, "Corrupt MP data") >= 1), "0/true")
+    T.eq("H2b a corrupt full sync from a client does not blink the host's HUD, and since row 112 the host reads none of it (no corruption line either)",
+        W.mission.hud.warnings .. "/" .. tostring(lines(WARN, "Corrupt MP data") >= 1), "0/false")
 
     deliver(SoilFieldBatchSyncEvent.new({ [7] = sampleField(99) }, true), SoilFieldBatchSyncEvent, AT_HOST_FROM_FARM2)
     T.eq("H3 a field batch from a client changes no field on the host and refreshes nothing",
