@@ -325,6 +325,7 @@ function GroundConditionAdmission:_admitPrimitive(footprint, primitiveKind, vehi
         return { status = GroundConditionAdmission.STATUS_REFUSED,
                  reason = GroundConditionAdmission.REFUSE_NOT_ARMED }
     end
+    self:_sweepStaleLeases()
 
     -- A colon call would land the published table itself in `footprint`.
     if footprint == self.groundCondition then
@@ -410,6 +411,9 @@ end
 
 --- The frame rule: a lease from an earlier update frame is closed and its cells, if
 --- nothing was accepted for them, marked; it is then neither deliverable nor live.
+--- MAINTENANCE row 101: the token is dead either way, so the record leaves the table
+--- here rather than waiting for a close that a leaking caller never sends; a later
+--- deliver or close on it is refused as NO_LEASE (declared on the PR).
 ---@return boolean expired
 function GroundConditionAdmission:_expireIfStale(lease)
     if not lease.open then return false end
@@ -418,9 +422,19 @@ function GroundConditionAdmission:_expireIfStale(lease)
         self:_markUndelivered(lease, "LEASE_CROSSED_A_FRAME")
         lease.open = false
         self.openLeases = self.openLeases - 1
+        self.leases[lease.token] = nil
         return true
     end
     return false
+end
+
+--- Row 101: every lease left over from an earlier frame is expired (closed, marked,
+--- removed) before a new one is minted, so the table holds only this frame's leases
+--- and a caller that leaks is bounded by its own frame, not by the mission.
+function GroundConditionAdmission:_sweepStaleLeases()
+    for _, lease in pairs(self.leases) do
+        self:_expireIfStale(lease)
+    end
 end
 
 --- Deliver one completed elementary movement.
@@ -470,6 +484,7 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
         -- The primitive threw: its cells may hold a partial native write, so they
         -- cannot be vouched for; nothing is projected.
         result.unavailable = P.markAll(lease, cells, "NATIVE_ERROR")
+        lease.marked = true   -- row 100: the close and the frame rule mark nothing more; this reason stands
         return result
     end
     if lease.unobservable then
@@ -478,12 +493,14 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
         -- bytes, project nothing.
         result.unavailable = P.markAll(lease, cells, "ENVELOPE:" .. tostring(lease.envelopeRefused))
         result.envelopeRefused = lease.envelopeRefused
+        lease.marked = true   -- row 100, as above
         return result
     end
     if not GroundNativeObserver.heightMapValid() then
         -- The height map went away between admit and delivery: an after read would be
         -- zero, not an observation.
         result.unavailable = P.markAll(lease, cells, "HEIGHT_MAP_INVALID")
+        lease.marked = true   -- row 100, as above
         return result
     end
 
