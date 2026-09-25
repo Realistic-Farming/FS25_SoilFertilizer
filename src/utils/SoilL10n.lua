@@ -8,6 +8,14 @@
 --                       "Missing '<name>' in l10n<suffix>.xml" (:186). Never nil, never
 --                       "", never the "$l10n_" XML attribute prefix.
 --   :194 hasText(name)  false for a nil name, otherwise texts[name] ~= nil.
+--   :149 addModI18N     gives a mod's own i18n a texts table whose __index is the GLOBAL
+--                       texts (:156-158), so a mod's getText and hasText answer from the
+--                       base game's table when the mod's own table lacks the key. The
+--                       gate inherits that: a key the base game ships counts as present
+--                       here, and its text is what tr() returns (MAINTENANCE row 92).
+--   mods.lua:788-793    loads ONE translation file per mod: the player's language, else
+--                       en, else de, the first file that exists. A key absent from that
+--                       one file is absent, with no per-key fallback to the English file.
 --
 -- So every one of these shapes reads as a guarded lookup and guards nothing:
 --   g_i18n:getText(key) or "English"              the `or` can never fire (row 59)

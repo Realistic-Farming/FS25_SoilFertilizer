@@ -35,6 +35,10 @@ const RULES = [
     // MAINTENANCE row 59: I18N.lua:186 returns "Missing '<key>' in l10n<suffix>.xml" for
     // an absent key, never nil, so an `or` after getText never fires and the player is
     // shown the engine's diagnostic. A hasText-gated ternary on the same line is fine.
+    // SHAPE CAUGHT (MAINTENANCE row 92): single-line only. The rule and its `unless` run
+    // one line at a time (the loop below), so it fires on a line holding
+    // `getText(...) or <not an i18n call>` with no hasText on THAT line. An `or` carried
+    // to the next line, or a hasText on the line above, is not seen by this rule.
     name: "l10n-dead-or-fallback",
     re: /getText\s*\([^()]*\)\s*\)*\s+or\s+(?!g?_?i18n[.:])/,
     unless: /hasText/,
@@ -48,6 +52,10 @@ const RULES = [
 // on nothing. File-level, because the defended helpers keep the prefix test as a
 // second line of defence AFTER hasText. The one allowed exception is the shared Esc
 // door page, byte-matched across ten door mods and repaired as one ten-mod item.
+// SHAPE CAUGHT (MAINTENANCE row 92): file-level, not per line. After the line rules, the
+// whole file (comments stripped) is tested for any "$l10n_" occurrence with no `hasText`
+// word anywhere in it. One hasText call anywhere in the file passes it, whichever site
+// that call guards; a per-site gate is the reviewer's to check, not this rule's.
 const PREFIX_RULE = {
   name: "l10n-prefix-without-hastext",
   allow: ["src/ui/RfPdaMenuPage.lua"],
