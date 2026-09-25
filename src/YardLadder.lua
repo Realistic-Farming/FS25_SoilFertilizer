@@ -216,7 +216,7 @@ function YardLadder:arm(materialDown, materialWetness, hayBet)
     -- StateLedger and the own file have delivered, so the first use after every delivery
     -- makes it (see _ensureLoaded).
     materialDown.rowValidator = YardLadder.validateRows
-    materialDown.loadObserver = function(state) self:_onLoadDecided(state) end
+    materialDown:addLoadObserver("yardLadder", function(state) self:_onLoadDecided(state) end)
 
     local R = YardLadder.RATES
     SoilLogger.info("[OK] YardLadder armed (wet=%d/d dry=%d/d roof=x%.2f goingOff=%d condemn=%d)",

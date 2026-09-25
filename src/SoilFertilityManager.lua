@@ -587,12 +587,7 @@ function SoilFertilityManager:onMissionStarted()
         end
     end
 
-    -- [RSF-F215] Every savegame item has loaded by now: the bale condition store's load is
-    -- decided (if no bale did it first) and a row whose bale never registered stops
-    -- reading as restoring.
-    if self.soilSystem.yardLadder ~= nil and type(self.soilSystem.yardLadder.onMissionStarted) == "function" then
-        pcall(self.soilSystem.yardLadder.onMissionStarted, self.soilSystem.yardLadder)
-    end
+    self:_groundMissionStarted()
 
     SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
 
@@ -1226,6 +1221,26 @@ function SoilFertilityManager:saveSoilData(missionInfo)
         for _ in pairs(self.soilSystem.fieldData) do fieldCount = fieldCount + 1 end
     end
 
+    -- [MAINTENANCE row 137] The value maps first: the ground index's stamp goes into
+    -- soilData.xml only after the membership, age and wetness layers all saved.
+    local savedByKey = nil
+    if self.soilSystem.valueMaps then
+        -- [MAINTENANCE row 107] A membership index that took a refused write is
+        -- reconciled from the truth before the layer files are written, so a save never
+        -- persists a partial index. A ready index returns at once.
+        local gcc = self.soilSystem.groundConditionCoordinator
+        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
+            pcall(gcc.reconcileMembership, gcc)
+        end
+        local _, byKey = self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+        savedByKey = byKey
+    end
+    local indexStamp = nil
+    if SoilMaterialDownBridge ~= nil and type(savedByKey) == "table" and MaterialDown ~= nil and MaterialWetness ~= nil
+       and savedByKey.groundMembership and savedByKey[MaterialDown.LAYER_KEY] and savedByKey[MaterialWetness.LAYER_KEY] then
+        indexStamp = SoilMaterialDownBridge.saveGenerationFor(self.soilSystem.materialDown)
+    end
+
     local xmlPath = savegamePath .. "/soilData.xml"
     local xmlFile = createXMLFile("soilData", xmlPath, "soilData")
 
@@ -1249,23 +1264,14 @@ function SoilFertilityManager:saveSoilData(missionInfo)
             self.zoneYield:saveToXMLFile(xmlFile, "soilData.zoneYield")
         end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
+        if indexStamp ~= nil then
+            setXMLString(xmlFile, SoilMaterialDownBridge.INDEX_STAMP_KEY, string.format("%.17g", indexStamp))
+        end
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
     else
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
-    end
-
-    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
-    if self.soilSystem.valueMaps then
-        -- [MAINTENANCE row 107] A membership index that took a refused write is
-        -- reconciled from the truth before the layer files are written, so a save never
-        -- persists a partial index. A ready index returns at once.
-        local gcc = self.soilSystem.groundConditionCoordinator
-        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
-            pcall(gcc.reconcileMembership, gcc)
-        end
-        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
     end
 
     -- [SF-43] MATERIAL DOWN's watermark + object sidecar. The age LAYER itself
@@ -2514,6 +2520,24 @@ function SoilFertilityManager:getConditionPortionsForNode(nodeId)
     local ok, result = pcall(yl.getConditionPortionsForNode, yl, nodeId)
     if not ok or type(result) ~= 'table' then return { state = "UNAVAILABLE", reason = "ERROR", portions = {} } end
     return result
+end
+
+--- [RSF-F215, MAINTENANCE row 137] The ground-material family's mission start. Every
+--- savegame item has loaded by now: the bale condition store's load is decided (if no bale
+--- did it first), a row whose bale never registered stops reading as restoring, and the
+--- ground coordinator's availability hold ends. EACH OWNER TRIGGERS ITS OWN decision: the
+--- coordinator arms on the condition owners alone, so it must not depend on the yard ladder
+--- being armed to leave its hold (Bob's MAJOR on #1022).
+function SoilFertilityManager:_groundMissionStarted()
+    local sys = self.soilSystem
+    if sys == nil then return end
+    if sys.yardLadder ~= nil and type(sys.yardLadder.onMissionStarted) == "function" then
+        pcall(sys.yardLadder.onMissionStarted, sys.yardLadder)
+    end
+    local gcc = sys.groundConditionCoordinator
+    if gcc ~= nil and type(gcc.onMissionStarted) == "function" then
+        pcall(gcc.onMissionStarted, gcc)
+    end
 end
 
 --- Per-cell growth judgement at a world position.

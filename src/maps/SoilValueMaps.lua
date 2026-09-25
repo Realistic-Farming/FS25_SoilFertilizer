@@ -441,22 +441,31 @@ end
 -- Persistence
 -- ─────────────────────────────────────────────────────────
 
+--- [MAINTENANCE row 137] Returns how many layers saved and which: key -> true for each
+--- layer whose save call completed. The engine's saveBitVectorMapToFile returns nothing
+--- any caller reads (DensityMapHeightManager.lua:527, InfoLayer.lua:104), so a call that
+--- did not throw is the only success there is to report.
+---@return number saved, table savedByKey
 function SoilValueMaps:saveToSavegame(savegameDir)
-    if not self.available or not savegameDir then return end
+    local savedByKey = {}
+    if not self.available or not savegameDir then return 0, savedByKey end
     if saveBitVectorMapToFile == nil then
         SoilLogger.warning("SoilValueMaps: saveBitVectorMapToFile unavailable - maps not persisted")
-        return
+        return 0, savedByKey
     end
     local saved = 0
-    for _, entry in pairs(self.layers) do
+    for key, entry in pairs(self.layers) do
         if entry.def.file then   -- ephemeral layers (organicStatus) are rebuilt, not saved
             local path = savegameDir .. "/" .. entry.def.file
             local ok, err = pcall(saveBitVectorMapToFile, entry.bvm, path)
-            if ok then saved = saved + 1
+            if ok then
+                saved = saved + 1
+                savedByKey[key] = true
             else SoilLogger.warning("SoilValueMaps: save failed for %s: %s", path, tostring(err)) end
         end
     end
     SoilLogger.info("SoilValueMaps: %d layer maps saved to %s", saved, savegameDir)
+    return saved, savedByKey
 end
 
 -- ─────────────────────────────────────────────────────────
