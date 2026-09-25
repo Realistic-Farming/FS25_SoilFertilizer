@@ -54,8 +54,22 @@ local SKY = { humidity = 0.65, temperature = 15, cloudCoverage = 0.5 }
 --- armed, the family armed in production's order. opts.valueMaps shapes the store
 --- (membershipLoaded, conditionLoaded, membershipRes); opts.beforeArm lays down what a
 --- save's files hold before the arm reads them.
+-- [MAINTENANCE row 137] A saved index is trusted only with its save's stamp: the career
+-- marker's generation equal to the stamp soilData.xml carries. This bench has no disk,
+-- so a world that loads a saved index supplies that save's two files through the two
+-- readers the coordinator asks (their own reads of real files are row 137's bench).
+local REAL_READERS = { marker = SoilMaterialDownBridge.readCareerMarker, stamp = SoilMaterialDownBridge.readIndexStamp }
+local function savedStamp(on)
+    if on then
+        SoilMaterialDownBridge.readCareerMarker = function() return { schema = 1, backend = "OWN_FILE", generation = 7, state = "EXPECTED" } end
+        SoilMaterialDownBridge.readIndexStamp = function() return 7 end
+    else
+        SoilMaterialDownBridge.readCareerMarker, SoilMaterialDownBridge.readIndexStamp = REAL_READERS.marker, REAL_READERS.stamp
+    end
+end
 local function world(today, opts)
     opts = opts or {}
+    savedStamp(opts.valueMaps ~= nil and opts.valueMaps.membershipLoaded == true)
     HEIGHT.pixels = {}
     ENGINE.mowable = {}
     Mower.onStartWorkAreaProcessing, Mower.onEndWorkAreaProcessing = PRISTINE.mowerStart, PRISTINE.mowerEnd

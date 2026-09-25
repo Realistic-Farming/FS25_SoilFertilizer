@@ -516,9 +516,51 @@ function SoilMaterialDownBridge.saveStore(materialDown, missionInfo)
         end
     else
         materialDown.lastSaveFailed = true
+        -- [MAINTENANCE row 137] The generation is in the marker in both states: the ground
+        -- index's stamp (soilData.xml) is compared with it at the next arm whatever this
+        -- backend's result, so a store that could not save does not cost the index a rebuild.
+        SoilMaterialDownBridge.writeMarker(careerXml, backend, envelope.saveGeneration, "UNAVAILABLE")
         SoilLogger.warning("[MaterialDown] save: the store was not saved as complete (%s, %s); the marker says UNAVAILABLE",
             tostring(envelope.saveStatus), tostring(why or envelope.reason))
     end
+end
+
+-- =========================================================
+-- [MAINTENANCE row 137] The ground membership index's stamp
+-- =========================================================
+-- The index (a value-map layer) is trusted at the next arm only when it carries the
+-- generation of the save it was written in. soilData.xml carries the stamp, written by the
+-- save only after the membership, age and wetness layers all saved; the career marker
+-- carries the generation. RSF-F213's reading of section 5's "epoch" as the store's file set
+-- (#1012) is replaced by this stamp.
+
+SoilMaterialDownBridge.INDEX_STAMP_KEY = "soilData.groundMembership#generation"
+
+--- This save's generation, frozen once per invocation (MaterialDown:freezeEnvelope), or
+--- nil when the store is not armed or its load not decided.
+function SoilMaterialDownBridge.saveGenerationFor(materialDown)
+    if materialDown == nil or type(materialDown.isArmed) ~= "function" or not materialDown:isArmed() then return nil end
+    if materialDown.loadState == nil or materialDown.loadState == MaterialDown.LOAD.PENDING then return nil end
+    local ok, envelope = pcall(materialDown.freezeEnvelope, materialDown)
+    if not ok or type(envelope) ~= "table" then return nil end
+    return envelope.saveGeneration
+end
+
+--- The index stamp the last save left in soilData.xml, or nil.
+function SoilMaterialDownBridge.readIndexStamp()
+    local mi = g_currentMission ~= nil and g_currentMission.missionInfo or nil
+    local dir = mi ~= nil and mi.savegameDirectory or nil
+    if dir == nil or loadXMLFile == nil or fileExists == nil then return nil end
+    local path = dir .. "/soilData.xml"
+    if not fileExists(path) then return nil end
+    local stamp = nil
+    pcall(function()
+        local xmlFile = loadXMLFile("sfIndexStamp", path)
+        if xmlFile == nil or xmlFile == 0 then return end
+        stamp = tonumber(getXMLString(xmlFile, SoilMaterialDownBridge.INDEX_STAMP_KEY))
+        delete(xmlFile)
+    end)
+    return stamp
 end
 
 --- Kept for callers of the pre-F215 name.

@@ -138,6 +138,22 @@ function GroundConditionCoordinator:arm(cells, materialDown, materialWetness, so
     self.inBarrier       = false
     self.armed           = true
 
+    -- [MAINTENANCE row 137] The availability overlay rides MaterialDown's envelope (one save
+    -- boundary, one generation; contract section 6) and comes back only when the store's
+    -- load decides MODERN. MaterialDown decides lazily, after every door has delivered, so
+    -- until then the overlay is on hold: every cell reads unavailable (section 5), never
+    -- the empty overlay a fresh arm starts with.
+    self.overlayPending = false
+    if MaterialDown ~= nil and type(materialDown.addEnvelopeContributor) == "function" then
+        materialDown:addEnvelopeContributor("groundAvailability", function() return self:serialize() end)
+        if materialDown.loadState == MaterialDown.LOAD.PENDING then
+            self.overlayPending = true
+            materialDown:addLoadObserver("groundCoordinator", function(state, _reason, payload)
+                self:_onStoreDecided(state, payload)
+            end)
+        end
+    end
+
     -- Section 5: the membership index, and the wetness owner's binding to it so the
     -- daily settle walks members instead of fields (MaterialWetness:bindMembership).
     -- A store without the layer leaves the owner on its field pass.
@@ -265,15 +281,25 @@ function GroundConditionCoordinator:_armMembership()
         rows = {}, count = 0, ready = false, rebuildRequired = false, source = nil,
         epoch = self.epoch,
     }
-    -- MAINTENANCE row 107: the saved index is read only when it came from the SAME
-    -- save as the condition bytes it indexes, the membership, age and wetness layers
-    -- all loaded from that save's files. The epoch section 5 names is read here as the
-    -- store's file set: no stamp is written beside the index today (P-GROUND-3 is
-    -- provisional; the full stamp rides F215's save hook), a reading declared on the
-    -- PR. Any other state rebuilds from the truth, and a loaded index that is not
-    -- trusted is cleared first so none of its stale bits is saved again.
+    -- MAINTENANCE rows 107 and 137: the saved index is read only when it came from the
+    -- SAME save as the condition bytes it indexes. The three layers loaded from that
+    -- save's files (row 107), AND the index stamp in soilData.xml equals the career
+    -- marker's generation (row 137, section 5's epoch). The save writes the stamp only
+    -- after all three layers saved, and the marker carries its generation whether or not
+    -- the store's backend succeeded. Both are on disk and read synchronously here, before
+    -- the store's own load decides. Any other state rebuilds from the truth, and a loaded
+    -- index that is not trusted is cleared first so none of its stale bits is saved again.
     local cellsRef = self.cells
-    local fromIndex = entry.loaded == true and not reinitialised
+    local stamped = false
+    if SoilMaterialDownBridge ~= nil and type(SoilMaterialDownBridge.readCareerMarker) == "function"
+       and type(SoilMaterialDownBridge.readIndexStamp) == "function" then
+        local okM, marker = pcall(SoilMaterialDownBridge.readCareerMarker)
+        local okS, stamp = pcall(SoilMaterialDownBridge.readIndexStamp)
+        stamped = okM and okS and type(marker) == "table" and type(marker.generation) == "number"
+            and marker.generation > 0 and stamp == marker.generation
+    end
+    self.membership.stamped = stamped
+    local fromIndex = entry.loaded == true and not reinitialised and stamped
         and cellsRef.ageEntry ~= nil and cellsRef.ageEntry.loaded == true
         and cellsRef.wetEntry ~= nil and cellsRef.wetEntry.loaded == true
     local ok, err = pcall(function()
@@ -646,11 +672,30 @@ function GroundConditionCoordinator:markUnavailable(gx, gz, reason, skipMembersh
 end
 
 function GroundConditionCoordinator:isUnavailable(gx, gz)
+    if self.overlayPending then return true end
     return self.unavailable[cellKey(gx, gz)] ~= nil
 end
 
 function GroundConditionCoordinator:unavailableReason(gx, gz)
+    if self.overlayPending then return "RESTORING" end
     return self.unavailable[cellKey(gx, gz)]
+end
+
+--- [MAINTENANCE row 137] The store's load decided: the hold ends, and a MODERN payload's
+--- overlay is restored (merged over any cell marked while the hold lasted). Every other
+--- decision restores nothing, even with a payload in hand (a legacy one is kept only as
+--- data): a save that did not pair cannot vouch for its overlay. This is the one place
+--- that rule lives.
+function GroundConditionCoordinator:_onStoreDecided(state, payload)
+    self.overlayPending = false
+    local restored = false
+    if MaterialDown ~= nil and state == MaterialDown.LOAD.MODERN and type(payload) == "table"
+       and type(payload.groundAvailability) == "table" then
+        restored = self:deserialize(payload.groundAvailability)
+    end
+    SoilLogger.info("[GroundCoord] availability overlay %s (%d cell(s) unavailable)",
+        restored and "restored from the save" or "not restored (" .. tostring(state) .. ")", self.unavailableCount)
+    self:bumpRevision("overlay-decided")
 end
 
 --- Clear the overlay for one cell. PRIVATE ON PURPOSE: the only caller is the
@@ -1000,8 +1045,8 @@ function GroundConditionCoordinator:deserialize(data)
         return false
     end
 
-    self.unavailable = {}
-    self.unavailableCount = 0
+    -- [MAINTENANCE row 137] MERGED over the live overlay, never replacing it: a cell marked
+    -- unavailable while the restore was on hold stays marked.
     if type(data.unavailable) == "table" then
         for _, row in ipairs(data.unavailable) do
             if type(row) == "table" and type(row.key) == "string" then

@@ -66,8 +66,22 @@ local SKY = { humidity = 0.65, temperature = 15, cloudCoverage = 0.5 }
 --- west of x 0 and no field east of it. opts.valueMaps shapes the store. The owner's
 --- field-pass entry points are recorded (W.fieldPassEntered) so a bar can say they
 --- were never entered while the membership is bound.
+-- [MAINTENANCE row 137] A saved index is trusted only with its save's stamp: the career
+-- marker's generation equal to the stamp soilData.xml carries. This bench has no disk,
+-- so a world that loads a saved index supplies that save's two files through the two
+-- readers the coordinator asks (their own reads of real files are row 137's bench).
+local REAL_READERS = { marker = SoilMaterialDownBridge.readCareerMarker, stamp = SoilMaterialDownBridge.readIndexStamp }
+local function savedStamp(on)
+    if on then
+        SoilMaterialDownBridge.readCareerMarker = function() return { schema = 1, backend = "OWN_FILE", generation = 7, state = "EXPECTED" } end
+        SoilMaterialDownBridge.readIndexStamp = function() return 7 end
+    else
+        SoilMaterialDownBridge.readCareerMarker, SoilMaterialDownBridge.readIndexStamp = REAL_READERS.marker, REAL_READERS.stamp
+    end
+end
 local function world(today, opts)
     opts = opts or {}
+    savedStamp(opts.valueMaps ~= nil and opts.valueMaps.membershipLoaded == true)
     HEIGHT.pixels = {}
     ENGINE.mowable = {}
     Mower.onStartWorkAreaProcessing, Mower.onEndWorkAreaProcessing = PRISTINE.mowerStart, PRISTINE.mowerEnd

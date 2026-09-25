@@ -96,6 +96,9 @@ local function world(today)
     local a = sys.groundConditionCells:arm(vm)
     local b = a and sys.groundConditionCoordinator:arm(sys.groundConditionCells, sys.materialDown, sys.materialWetness, sys)
     local c = b and sys.groundConditionAdmission:arm(sys.groundConditionCoordinator, sys.groundConditionCells)
+    -- The mission starts before any machine works (SoilFertilityManager:onMissionStarted):
+    -- the store's load is decided and the availability overlay's hold ends (row 137).
+    sys.yardLadder:onMissionStarted()
     return (okMd and okMw and okHb and okYl and a and b and c) == true
 end
 local function setCell(gx, gz, ageRaw, wetRaw) ENGINE.layerSet(W.age, gx, gz, ageRaw) ENGINE.layerSet(W.wet, gx, gz, wetRaw) end

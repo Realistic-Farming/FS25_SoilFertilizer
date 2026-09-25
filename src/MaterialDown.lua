@@ -163,7 +163,8 @@ function MaterialDown.new()
     self.newCareer         = false
     self.lastSaveFailed    = false   -- the last save's result; never invalidates RAM
     self.rowValidator      = nil     -- the row owner's schema-2 check (YardLadder)
-    self.loadObserver      = nil     -- the row owner's qualification, called once the load is decided
+    self.loadObservers     = {}      -- name -> fn(state, reason, takenPayload), called once the load is decided
+    self.envelopeContributors = {}   -- name -> fn() returning a plain table saved in the envelope (row 137)
     self._delivered        = {}
     self._retainedRaw      = nil
     self._invocation       = nil
@@ -705,6 +706,20 @@ function MaterialDown:allocateTokenSerial()
     return n
 end
 
+--- [MAINTENANCE row 137] Owners that ride this store's save boundary: an observer is told
+--- the load decision and the payload the decision took (the MODERN one, or the legacy one
+--- kept as data; nil when none was taken), and decides for itself what that allows. A
+--- contributor adds its own
+--- plain table to every complete envelope under its name, so it shares the envelope's
+--- backend and generation. Keyed by name, so a re-arm replaces instead of stacking.
+function MaterialDown:addLoadObserver(name, fn)
+    if type(name) == "string" and type(fn) == "function" then self.loadObservers[name] = fn end
+end
+
+function MaterialDown:addEnvelopeContributor(name, fn)
+    if type(name) == "string" and type(fn) == "function" then self.envelopeContributors[name] = fn end
+end
+
 --- Raise the allocator above a serial some surviving row already holds.
 function MaterialDown:reserveTokenSerial(n)
     local m = self.baleConditionMeta
@@ -820,7 +835,7 @@ function MaterialDown:finishLoad()
     if self.loadState ~= L.PENDING then return self.loadState, self.loadReason end
     local delivered = self._delivered or {}
     local marker = self.loadMarker
-    local state, reason, legacyPayload
+    local state, reason, legacyPayload, modernPayload
 
     if marker ~= nil and markerAgrees(marker) then
         local payload = delivered[marker.backend]
@@ -833,6 +848,7 @@ function MaterialDown:finishLoad()
             local ok, why = self:_validateModern(payload)
             if ok then
                 state = L.MODERN
+                modernPayload = payload
                 for token, record in pairs(payload.objects) do
                     if self.objects[token] == nil then self.objects[token] = deepCopy(record) end
                 end
@@ -885,9 +901,12 @@ function MaterialDown:finishLoad()
 
     self.loadState, self.loadReason = state, reason
     self._delivered = nil
-    if type(self.loadObserver) == "function" then
-        local okObs, errObs = pcall(self.loadObserver, state)
-        if not okObs then SoilLogger.warning("[MaterialDown] the row owner failed to qualify its rows: %s", tostring(errObs)) end
+    local names = {}
+    for name in pairs(self.loadObservers) do names[#names + 1] = name end
+    table.sort(names)
+    for _, name in ipairs(names) do
+        local okObs, errObs = pcall(self.loadObservers[name], state, reason, modernPayload or legacyPayload)
+        if not okObs then SoilLogger.warning("[MaterialDown] load observer '%s' failed: %s", name, tostring(errObs)) end
     end
     if state == L.UNAVAILABLE then
         SoilLogger.warning("[MaterialDown] bale condition store UNAVAILABLE this session (%s): bales keep their ladder, the condition provider answers UNAVAILABLE, and saves carry no live rows",
@@ -943,8 +962,20 @@ function MaterialDown:_buildEnvelope()
         local ok, whyR = self.rowValidator(objects, self.baleConditionMeta)
         if not ok then return self:_unavailableEnvelope("ROWS_" .. tostring(whyR)) end
     end
+    -- [MAINTENANCE row 137] Every contributor's table, detached and checked like the rows.
+    -- One that cannot give a plain table makes the whole save unavailable: the save is one
+    -- boundary (contract section 6), never a complete envelope with a part missing.
+    local parts = {}
+    for name, fn in pairs(self.envelopeContributors) do
+        local okC, part = pcall(fn)
+        local copy = (okC and type(part) == "table") and deepCopy(part) or nil
+        if copy == nil or (MaterialDownCodec ~= nil and not MaterialDownCodec.validate(copy)) then
+            return self:_unavailableEnvelope("CONTRIBUTOR_" .. name)
+        end
+        parts[name] = copy
+    end
     self.saveGeneration = (self.saveGeneration or 0) + 1
-    return {
+    local envelope = {
         schema               = MaterialDown.ENVELOPE_SCHEMA,
         saveGeneration       = self.saveGeneration,
         saveStatus           = MaterialDown.SAVE_STATUS.COMPLETE,
@@ -954,6 +985,10 @@ function MaterialDown:_buildEnvelope()
         baleConditionMeta    = { nextTokenSerial = self.baleConditionMeta.nextTokenSerial,
                                  sourceEpoch     = self.baleConditionMeta.sourceEpoch },
     }
+    for name, part in pairs(parts) do
+        if envelope[name] == nil then envelope[name] = part end
+    end
+    return envelope
 end
 
 --- The one shared private helper: the first caller in a save invocation freezes the

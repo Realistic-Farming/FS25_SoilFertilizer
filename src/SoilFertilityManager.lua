@@ -1226,6 +1226,26 @@ function SoilFertilityManager:saveSoilData(missionInfo)
         for _ in pairs(self.soilSystem.fieldData) do fieldCount = fieldCount + 1 end
     end
 
+    -- [MAINTENANCE row 137] The value maps first: the ground index's stamp goes into
+    -- soilData.xml only after the membership, age and wetness layers all saved.
+    local savedByKey = nil
+    if self.soilSystem.valueMaps then
+        -- [MAINTENANCE row 107] A membership index that took a refused write is
+        -- reconciled from the truth before the layer files are written, so a save never
+        -- persists a partial index. A ready index returns at once.
+        local gcc = self.soilSystem.groundConditionCoordinator
+        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
+            pcall(gcc.reconcileMembership, gcc)
+        end
+        local _, byKey = self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+        savedByKey = byKey
+    end
+    local indexStamp = nil
+    if SoilMaterialDownBridge ~= nil and type(savedByKey) == "table" and MaterialDown ~= nil and MaterialWetness ~= nil
+       and savedByKey.groundMembership and savedByKey[MaterialDown.LAYER_KEY] and savedByKey[MaterialWetness.LAYER_KEY] then
+        indexStamp = SoilMaterialDownBridge.saveGenerationFor(self.soilSystem.materialDown)
+    end
+
     local xmlPath = savegamePath .. "/soilData.xml"
     local xmlFile = createXMLFile("soilData", xmlPath, "soilData")
 
@@ -1249,23 +1269,14 @@ function SoilFertilityManager:saveSoilData(missionInfo)
             self.zoneYield:saveToXMLFile(xmlFile, "soilData.zoneYield")
         end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
+        if indexStamp ~= nil then
+            setXMLString(xmlFile, SoilMaterialDownBridge.INDEX_STAMP_KEY, string.format("%.17g", indexStamp))
+        end
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
     else
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
-    end
-
-    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
-    if self.soilSystem.valueMaps then
-        -- [MAINTENANCE row 107] A membership index that took a refused write is
-        -- reconciled from the truth before the layer files are written, so a save never
-        -- persists a partial index. A ready index returns at once.
-        local gcc = self.soilSystem.groundConditionCoordinator
-        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
-            pcall(gcc.reconcileMembership, gcc)
-        end
-        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
     end
 
     -- [SF-43] MATERIAL DOWN's watermark + object sidecar. The age LAYER itself

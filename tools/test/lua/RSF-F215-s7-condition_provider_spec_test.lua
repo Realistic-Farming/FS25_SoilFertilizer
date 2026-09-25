@@ -254,6 +254,7 @@ group("E", function()
     DISK = {}
     T.ok("E0 [world] a new career: the owners arm in production's order and the bridges open the load", world("career1", { valid = false }))
     local okI = installAll()
+    yl():onMissionStarted()   -- the mission starts before any machine works
     local v = baler({ capacity = 100 })
     setCell(2, 8, 1, 204) windrow(2, 5)
     setCell(3, 8, 1, 52)  windrow(3, 45)
@@ -269,7 +270,6 @@ group("E", function()
         tostring(yl()._byUid[uid]) .. "/" .. tostring(p.historyId) .. "/" .. tostring(p.sourceStreamId) .. "/" .. num(p.eventSequence) .. "/" .. num(p.portionRevision) .. "/" .. tostring(p.sourceEpoch == md():getBaleConditionMeta().sourceEpoch),
         "yl_1/yh_2/ys_3/1/1/true")
     local before = portionsKey(r)
-    yl():onMissionStarted()
     T.eq("E3 the load was decided NEW (a new career, nothing delivered), and the capabilities read ready once the mission started",
         tostring(md().loadState) .. "/" .. tostring((SFM.getBaleConditionCapabilities(W.mgr) or {}).ready) .. "/" .. tostring((SFM.getBaleConditionCapabilities(W.mgr) or {}).schema),
         "NEW/true/SG_SOIL_CONDITION_1")
