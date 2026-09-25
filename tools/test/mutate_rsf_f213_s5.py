@@ -21,9 +21,6 @@
 #   forever; a hang is not a verdict.
 # - the rain add lifting a sentinel (max(RAW_FLOOR, raw) + delta): equivalent by construction,
 #   settleRun hands valueFor only cells at or above RAW_FLOOR (mutation S6 pins that guard).
-# - MAINTENANCE row 108's refused-cell-read guard (c.refused, ageAvailable, wetnessAvailable in
-#   _membershipFromIndex): at arm the geometry is current and every index is in range, so the
-#   cells never refuse there; dropping the guard is equivalent in every reachable state.
 # - The N group (rows 107 and 108) runs as that PR's targeted battery: py ... N
 #
 # Anchors are written with "\n"; in a CRLF file they are matched as "\r\n".
@@ -118,6 +115,9 @@ MUTATIONS = [
  ("N10-save-does-not-reconcile", "src/SoilFertilityManager.lua",
   [("            pcall(gcc.reconcileMembership, gcc)\n", "", 1)],
   "the save writes the layer files without reconciling a rebuild-required index"),
+ ("N11-unknown-condition-read-as-empty", COORD,
+  [("                    if heightOk and c.refused == nil and c.ageAvailable and c.wetnessAvailable\n", "                    if heightOk\n", 1)],
+  "a member whose condition read failed leaves over a zero of material: unknown read as empty"),
  # ── the settle ─────────────────────────────────────────────────────────────
  ("S1-field-pass-runs-too", MW,
   [("        self:dryPassMembers(sky)\n        local wateredM, sourceM = self:wetPassMembers(rain)\n        self:recordDay(dayNumber, wateredM, sourceM, derived)\n        return true\n    end\n",

@@ -212,6 +212,22 @@ group("E", function()
     T.eq("E2c a refused clear keeps the empty cell a member and marks the index rebuild-required (condition held until reconciled)",
         runs() .. " | " .. stats() .. " | " .. bit(2, 2), "2:2-2 4:4-4 9:9-9 | 3/INDEX/false | 1")
 
+    -- The cell's own condition read failing (the wetness byte cannot be read, so the
+    -- cells report wetnessAvailable false, GroundConditionCells.lua readConditionCell):
+    -- whether it holds a record is unknown, so it stays, whatever the occupancy says.
+    local realPoint = getBitVectorMapPoint
+    world(100, { valueMaps = { membershipLoaded = true }, beforeArm = function()
+        saved()
+        local wetBvm = W.wet.id
+        getBitVectorMapPoint = function(bvm, gx, gz, first, num)
+            if bvm == wetBvm and gx == 2 and gz == 2 then error("wetness byte unreadable") end
+            return realPoint(bvm, gx, gz, first, num)
+        end
+    end })
+    getBitVectorMapPoint = nil
+    T.eq("E2d a member whose condition read fails stays, even over a known zero of material (unknown is never empty)",
+        runs() .. " | " .. bit(2, 2) .. " | " .. tostring(coord().membership.emptyLeft), "2:2-2 4:4-4 9:9-9 | 1 | nil")
+
     -- Bob's case end to end: a real mower whose drop throws inside the native call. The
     -- carrier marks every envelope cell unavailable, which marks it a member; straw lies
     -- in one envelope cell (9,9), the rest hold nothing. The save carries those bits.
