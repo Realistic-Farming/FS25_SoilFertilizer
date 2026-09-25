@@ -588,7 +588,9 @@ function HookManager:installAll(soilSystem)
 
     -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
     local balePickupOk = self:installBalerPickupHook()
+    local forageWagonOk = self:installForageWagonCollectionHook()
     if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    if forageWagonOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
@@ -5200,6 +5202,7 @@ function HookManager:installBalerPickupHook()
     local origStart = Baler.onStartWorkAreaProcessing
     local origEnd = Baler.onEndWorkAreaProcessing
     local origFill = Baler.onFillUnitFillLevelChanged
+    local origTick = Baler.onUpdateTick
     Baler.onStartWorkAreaProcessing = function(balerSelf, ...)
         local r = packAll(origStart(balerSelf, ...))
         pcall(BalerCollection.onStart, balerSelf)
@@ -5214,6 +5217,13 @@ function HookManager:installBalerPickupHook()
     self:register(Baler, "onStartWorkAreaProcessing", origStart, "Baler.onStartWorkAreaProcessing (collection)")
     self:register(Baler, "onEndWorkAreaProcessing", origEnd, "Baler.onEndWorkAreaProcessing (collection)")
     self:register(Baler, "onFillUnitFillLevelChanged", origFill, "Baler.onFillUnitFillLevelChanged (collection)")
+    -- [part 2b] The non-stop buffer's transfer into the chamber runs in onUpdateTick.
+    if type(origTick) == "function" then
+        Baler.onUpdateTick = function(balerSelf, ...)
+            return BalerCollection.aroundTick(balerSelf, origTick, ...)
+        end
+        self:register(Baler, "onUpdateTick", origTick, "Baler.onUpdateTick (collection transfer)")
+    end
 
     -- The captured pickup pointer: a carrier frame per call, the collection's handler.
     local function makePickupWrapper(original)
@@ -5249,7 +5259,14 @@ function HookManager:installBalerPickupHook()
             local ownFinish, ownCreate = vehicle.finishBale, vehicle.createBale
             vehicle.finishBale = function(v, ...) return BalerCollection.aroundFinish(v, ownFinish, ...) end
             vehicle.createBale = function(v, ...) return BalerCollection.aroundCreate(v, ownCreate, ...) end
-            rawset(vehicle, "_sfBalerWraps", { finishBale = ownFinish, createBale = ownCreate })
+            local wraps = { finishBale = ownFinish, createBale = ownCreate }
+            -- [part 2b] The partial round bale's pad scope.
+            if type(vehicle.setIsUnloadingBale) == "function" then
+                local ownUnloading = vehicle.setIsUnloadingBale
+                vehicle.setIsUnloadingBale = function(v, ...) return BalerCollection.aroundUnloading(v, ownUnloading, ...) end
+                wraps.setIsUnloadingBale = ownUnloading
+            end
+            rawset(vehicle, "_sfBalerWraps", wraps)
             n = n + 1
         end
         return n
@@ -5271,6 +5288,44 @@ function HookManager:installBalerPickupHook()
     end
 
     SoilLogger.info("[OK] Baler collection installed (captured pickup pointer, fill-change acceptance, bale binding; %d existing wrap(s))", patched)
+    return true
+end
+
+--- [RSF-F211 part 2b] THE FORAGE WAGON COLLECTION: the captured processForageWagonArea
+--- pointer and the instance fillForageWagon, on every existing and newly added wagon
+--- (both are registered functions copied into the instance, ForageWagon.lua:25-29).
+function HookManager:installForageWagonCollectionHook()
+    if ForageWagon == nil or type(ForageWagon.processForageWagonArea) ~= "function" or ForageWagonCollection == nil then
+        SoilLogger.warning("[ForageWagonCollection] ForageWagon or the collection module not available - wagon loads stay unknown")
+        return false
+    end
+    local function packAll(...) return { n = select("#", ...), ... } end
+    local function wrapWagon(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_forageWagon == nil then return 0 end
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_forageWagon", "processForageWagonArea", ForageWagonCollection.makePickupWrapper)
+        if rawget(vehicle, "_sfForageWagonWraps") == nil and type(vehicle.fillForageWagon) == "function" then
+            local ownFill = vehicle.fillForageWagon
+            vehicle.fillForageWagon = function(v, ...) return ForageWagonCollection.aroundFill(v, ownFill, ...) end
+            rawset(vehicle, "_sfForageWagonWraps", { fillForageWagon = ownFill })
+            n = n + 1
+        end
+        return n
+    end
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    local patched = 0
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapWagon(vehicle) end
+    end
+    if vs and type(vs.addVehicle) == "function" then
+        local origAdd = vs.addVehicle
+        vs.addVehicle = function(vsSelf, vehicle, ...)
+            local r = packAll(origAdd(vsSelf, vehicle, ...))
+            pcall(wrapWagon, vehicle)
+            return unpack(r, 1, r.n)
+        end
+        self:register(vs, "addVehicle", origAdd, "VehicleSystem.addVehicle (forage wagon collection)")
+    end
+    SoilLogger.info("[OK] ForageWagon collection installed (captured pickup pointer, fill acceptance; %d existing wrap(s))", patched)
     return true
 end
 

@@ -88,6 +88,8 @@ C.KIND_MOWER = "MOWER"
 C.KIND_STRAW = "STRAW"
 -- [RSF-F211 part 2a] The Baler pickup frame (BalerCollection extends the handler).
 C.KIND_BALER = "BALER"
+-- [RSF-F211 part 2b] The ForageWagon pickup frame (ForageWagonCollection).
+C.KIND_FORAGE_WAGON = "FORAGE_WAGON"
 -- The per-vehicle frame stamp (stampHandled / handledThisFrame below).
 C.HANDLED_KEY = "_sfGroundCarrierFrame"
 C.ACCOUNT_KEY = "_sfGroundAccount"

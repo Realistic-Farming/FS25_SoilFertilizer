@@ -1,5 +1,6 @@
-# RSF-F211 part 2a (the Baler core) mutation battery: the collection module
-# (src/ground/BalerCollection.lua), the Baler collection hook and the deferred bale birth
+# RSF-F211 part 2 (2a the Baler core; 2b the non-stop buffer, the unfinished round bale and the
+# ForageWagon) mutation battery: the collection modules (src/ground/BalerCollection.lua,
+# src/ground/ForageWagonCollection.lua), the Baler collection hook and the deferred bale birth
 # (src/hooks/HookManager.lua), the collected birth in the yard ladder (src/YardLadder.lua).
 # Rows live in RSF-F211-s6b-baler_collection_spec_test.lua and yard_ladder_sf46_test.lua.
 #
@@ -31,6 +32,7 @@ def p(rel): return os.path.join(ROOT, rel)
 BC = "src/ground/BalerCollection.lua"
 HM = "src/hooks/HookManager.lua"
 YL = "src/YardLadder.lua"
+FW = "src/ground/ForageWagonCollection.lua"
 
 MUTATIONS = [
  # ── the seal and the weights ────────────────────────────────────────────────
@@ -68,8 +70,8 @@ MUTATIONS = [
   "every baler shares one chamber account"),
  # ── the bale ────────────────────────────────────────────────────────────────
  ("F1-finish-holds-a-live-reference", BC,
-  [("        st.finishes[#st.finishes + 1] = { account = BC.copyAccount(st.main) }\n",
-    "        st.finishes[#st.finishes + 1] = { account = st.main }\n", 1)],
+  [("            account = BC.copyAccount(st.main)\n        end\n",
+    "            account = st.main\n        end\n", 1)],
   "the finish context holds the live chamber account, which the square clear empties before createBale"),
  ("F2-first-seen-object-bound", BC,
   [("        if obj == bound then\n", "        if obj == frame.seen[1] then\n", 1)],
@@ -96,6 +98,48 @@ MUTATIONS = [
  ("Y2-collected-wetness-dropped", YL,
   [("    local wetnessPct = collected and birth.wetnessPct or nil\n", "    local wetnessPct = nil\n", 1)],
   "the collected wetness never reaches the bale's row"),
+ # ── part 2b: the non-stop buffer and its transfer ──────────────────────────
+ ("B1-buffer-pickup-not-sealed", BC,
+  [("            BC.accountAddAccount(st.buffer, BC.sealTarget(st.add.ctx, st.add.W, appliedDelta))\n",
+    "            BC.accountAddUnknown(st.buffer, appliedDelta)\n", 1)],
+  "a non-stop baler's pickup enters its buffer as unknown"),
+ ("B2-transfer-not-carried", BC,
+  [("                BC.accountAddAccount(st.main, BC.accountScaled(st.tick.pending, appliedDelta))\n",
+    "                BC.accountAddUnknown(st.main, appliedDelta)\n", 1)],
+  "the buffer-to-chamber transfer loses the buffer's condition"),
+ ("B3-gain-not-scaled", BC,
+  [("                BC.accountAddAccount(st.main, BC.accountScaled(st.tick.pending, appliedDelta))\n",
+    "                BC.accountAddAccount(st.main, BC.accountTake(st.tick.pending, appliedDelta))\n", 1)],
+  "the overloading gain is not carried as the same mixture"),
+ ("B4-transfer-overflow-unknown", BC,
+  [("            elseif st.tick ~= nil and st.tick.consumed and st.tick.pending ~= nil then\n                BC.accountAddAccount(st.overflow, BC.accountScaled(st.tick.pending, overflowAfter))\n",
+    "", 1)],
+  "a full chamber's overflow from a transfer is unknown instead of the transfer's mixture"),
+ ("B5-no-tick-scope", BC,
+  [("    if st ~= nil then st.tick = {} end\n", "", 1)],
+  "the buffer debit outside a tick scope is retired, so the transfer arrives unknown"),
+ # ── part 2b: the unfinished round bale ─────────────────────────────────────
+ ("P1-pad-is-material", BC,
+  [("                st.pad.padded = (st.pad.padded or 0) + appliedDelta\n",
+    "                BC.accountAddUnknown(st.main, appliedDelta)\n", 1)],
+  "the pad to capacity is counted as unknown material in the bale"),
+ ("P2-buffer-share-dropped", BC,
+  [("            if st.pad.share ~= nil then BC.accountAddAccount(account, st.pad.share) end\n", "", 1)],
+  "the buffer's share of an unfinished round bale is left out of its condition"),
+ # ── part 2b: the forage wagon ──────────────────────────────────────────────
+ ("W3-one-batch-for-two-captures", BC,
+  [("    if #order <= 1 then\n", "    if true then\n", 1)],
+  "a call that removed twice is sealed as one batch across two captures"),
+ ("F1-fill-moves-the-whole-buffer", FW,
+  [("        BC.accountAddAccount(st.unit, BC.accountTake(st.buffer, accepted))\n",
+    "        BC.accountAddAccount(st.unit, BC.accountTake(st.buffer, st.buffer.carrier))\n", 1)],
+  "the fill moves the whole buffer's account instead of the accepted share"),
+ ("F2-trim-kept", FW,
+  [("    if ab ~= nil then BC.accountReconcile(st.buffer, ab) end   -- a trim below 0.01 is a real discard\n", "", 1)],
+  "the engine's trim below 0.01 L stays in the buffer's account"),
+ ("F3-acceptance-not-observed", FW,
+  [("    rawset(vehicle, \"addFillUnitFillLevel\", recorder)\n", "", 1)],
+  "the admitted FillUnit call is not observed, so the wagon's load is unknown"),
 ]
 
 def sha(b): return hashlib.sha256(b).hexdigest()

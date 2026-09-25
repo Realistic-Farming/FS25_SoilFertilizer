@@ -46,9 +46,27 @@
 -- to its unit's native level (an unseen increase is unknown, an unseen decrease is a
 -- uniform withdrawal).
 --
+-- THE NON-STOP BUFFER (part 2b). A non-stop baler's pickup goes into its buffer unit
+-- (Baler.lua:1983-1996): the same seal enters the buffer's account. Baler:onUpdateTick
+-- (:996-1060) moves buffer material into the chamber: the buffer debit takes that
+-- share of the buffer account, the optional additive gain scales it (the gain carries
+-- its source's condition), and the chamber's add accepts A of it; a full chamber's
+-- overflow D - A is the same mixture; what the completed tick leaves unrepresented is
+-- native loss.
+--
+-- THE PARTIAL ROUND BALE (part 2b). Baler:setIsUnloadingBale's unfinished-bale branch
+-- (:1327-1349) moves the buffer's share into the bale, stores the real amount in
+-- lastBaleFillLevel and pads the chamber to capacity to drive the animation. The pad
+-- is representation, not material: inside that call a chamber increase changes no
+-- account and no reconciliation runs, and the buffer's debited share joins the finish
+-- context, so the bale carries the chamber's material plus the buffer's.
+--
 -- SERVER ONLY. Standalone: with a StockGuard lease owning the pickup the frame stands
--- aside (GroundMovementCarrier.begin) and nothing is sealed here; the lease route
--- arrives with part 2b.
+-- aside (GroundMovementCarrier.begin) and nothing is sealed here: StockGuard holds the
+-- material and seals it (the lease's delivery returns each source's removal with its
+-- captured condition), and the collected reader resolves StockGuard's receipt
+-- (MaterialWetness:resolveAllocation). Soil's own chamber account then knows nothing of
+-- that pickup and says so (unknown), never a parallel record.
 --
 
 BalerCollection = BalerCollection or {}
@@ -113,6 +131,17 @@ function BC.accountTake(acc, litres)
     return out
 end
 
+--- The same mixture scaled to `litres` (every component by litres / carrier); the
+--- account itself is untouched. A native gain scales a mixture; it adds no dry material.
+function BC.accountScaled(acc, litres)
+    local out = BC.newAccount()
+    if acc == nil or not finite(litres) or litres <= 0 or acc.carrier <= BC.EPSILON then return out end
+    local f = litres / acc.carrier
+    out.carrier, out.known, out.unknown = acc.carrier * f, acc.known * f, acc.unknown * f
+    out.refused, out.weighted = acc.refused * f, acc.weighted * f
+    return out
+end
+
 --- The account's full-load percent: only when the whole positive carrier is known.
 ---@return number|nil pct
 function BC.accountPct(acc)
@@ -143,7 +172,8 @@ function BC.state(vehicle)
     if type(vehicle) ~= "table" then return nil end
     local st = rawget(vehicle, BC.STATE_KEY)
     if st == nil then
-        st = { contexts = {}, main = BC.newAccount(), overflow = BC.newAccount(), finishes = {}, transfer = nil, add = nil, seq = 0 }
+        st = { contexts = {}, main = BC.newAccount(), overflow = BC.newAccount(), buffer = BC.newAccount(),
+               finishes = {}, transfer = nil, add = nil, tick = nil, pad = nil, seq = 0 }
         rawset(vehicle, BC.STATE_KEY, st)
     end
     return st
@@ -248,7 +278,35 @@ function BC.closeCall(ctx, call, produced)
     if ctx == nil or call == nil then return end
     if not finite(produced) or produced <= BC.EPSILON then return end
     BC.stats.batches = BC.stats.batches + 1
-    ctx.batches[#ctx.batches + 1] = { P = produced, sources = call.sources, raw = call.raw, unexplained = call.unexplained }
+    -- One batch per capture: a call that removed twice (the ForageWagon's grass and hay,
+    -- ForageWagon.lua:155-160) has two snapshots, and a seal covers one. The produced
+    -- litres split by each capture's raw share; litres no capture explains are unknown.
+    local groups, order = {}, {}
+    for _, s in ipairs(call.sources) do
+        local g = groups[s.snapshot]
+        if g == nil then
+            g = { sources = {}, raw = 0 }
+            groups[s.snapshot] = g
+            order[#order + 1] = g
+        end
+        g.sources[#g.sources + 1] = s
+        g.raw = g.raw + s.raw
+    end
+    if #order <= 1 then
+        ctx.batches[#ctx.batches + 1] = { P = produced, sources = call.sources, raw = call.raw, unexplained = call.unexplained }
+        return
+    end
+    local total = call.raw
+    if not finite(total) or total <= BC.EPSILON then
+        ctx.batches[#ctx.batches + 1] = { P = produced, sources = {}, raw = 0, unexplained = 0 }
+        return
+    end
+    for _, g in ipairs(order) do
+        ctx.batches[#ctx.batches + 1] = { P = produced * g.raw / total, sources = g.sources, raw = g.raw, unexplained = 0 }
+    end
+    if (call.unexplained or 0) > BC.TOLERANCE then
+        ctx.batches[#ctx.batches + 1] = { P = produced * call.unexplained / total, sources = {}, raw = call.unexplained, unexplained = call.unexplained }
+    end
 end
 
 -- =========================================================
@@ -367,16 +425,33 @@ end
 --- bale and assigns or re-adds the overflow).
 function BC.aroundFillChange(vehicle, original, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta)
     local spec = vehicle.spec_baler
-    local st = (g_server ~= nil and vehicle.isServer and spec ~= nil and fillUnitIndex == spec.fillUnitIndex) and BC.state(vehicle) or nil
+    local server = g_server ~= nil and vehicle.isServer and spec ~= nil
+    if server and spec.nonStopBaling and spec.buffer ~= nil and fillUnitIndex == spec.buffer.fillUnitIndex
+       and fillUnitIndex ~= spec.fillUnitIndex then
+        local stB = BC.state(vehicle)
+        if finite(appliedDelta) then pcall(BC.bufferChange, vehicle, stB, appliedDelta) end
+        local packedB = { pcall(original, vehicle, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData, appliedDelta) }
+        if not packedB[1] then error(packedB[2], 0) end
+        return unpack(packedB, 2)
+    end
+    local st = (server and fillUnitIndex == spec.fillUnitIndex) and BC.state(vehicle) or nil
     local branch = nil
     if st ~= nil and finite(appliedDelta) then
         if appliedDelta > BC.EPSILON then
-            if st.transfer ~= nil then
+            if st.pad ~= nil then
+                -- The partial round bale's pad: representation, not material.
+                st.pad.padded = (st.pad.padded or 0) + appliedDelta
+            elseif st.transfer ~= nil then
                 -- The overflow re-add's nested add: this share of the old overflow moves.
                 BC.accountAddAccount(st.main, BC.accountTake(st.transfer.old, appliedDelta))
             elseif st.add ~= nil and not st.add.consumed then
                 st.add.consumed, st.add.A, st.add.D = true, appliedDelta, fillLevelDelta
                 BC.accountAddAccount(st.main, BC.sealTarget(st.add.ctx, st.add.W, appliedDelta))
+            elseif st.tick ~= nil and st.tick.pending ~= nil and not st.tick.consumed then
+                -- The buffer-to-chamber transfer (Baler.lua:1013-1052): the debited mixture,
+                -- scaled to the accepted litres (a gain carries its source's condition).
+                st.tick.consumed = true
+                BC.accountAddAccount(st.main, BC.accountScaled(st.tick.pending, appliedDelta))
             else
                 BC.accountAddUnknown(st.main, appliedDelta)
             end
@@ -415,6 +490,8 @@ function BC.afterFillChange(vehicle, st, spec, branch, overflowBefore)
         if overflowAfter > BC.EPSILON then
             if st.add ~= nil and st.add.consumed then
                 BC.accountAddAccount(st.overflow, BC.sealTarget(st.add.ctx, st.add.W, overflowAfter))
+            elseif st.tick ~= nil and st.tick.consumed and st.tick.pending ~= nil then
+                BC.accountAddAccount(st.overflow, BC.accountScaled(st.tick.pending, overflowAfter))
             else
                 BC.accountAddUnknown(st.overflow, overflowAfter)
             end
@@ -428,10 +505,60 @@ function BC.afterFillChange(vehicle, st, spec, branch, overflowBefore)
             BC.accountAddAccount(st.overflow, BC.accountTake(t.old, overflowAfter))
         end
     end
-    -- Native state owns the material.
-    local level = mainLevel(vehicle, spec)
-    if level ~= nil then BC.accountReconcile(st.main, level) end
+    -- Native state owns the material (not while the chamber holds a pad).
+    if st.pad == nil then
+        local level = mainLevel(vehicle, spec)
+        if level ~= nil then BC.accountReconcile(st.main, level) end
+    end
     BC.accountReconcile(st.overflow, spec.fillUnitOverflowFillLevel or 0)
+end
+
+--- A change on the non-stop buffer unit.
+function BC.bufferChange(vehicle, st, appliedDelta)
+    if appliedDelta > BC.EPSILON then
+        if st.add ~= nil and not st.add.consumed then
+            -- The pickup's add went to the buffer (Baler.lua:1983-1996).
+            st.add.consumed = true
+            BC.accountAddAccount(st.buffer, BC.sealTarget(st.add.ctx, st.add.W, appliedDelta))
+        else
+            BC.accountAddUnknown(st.buffer, appliedDelta)
+        end
+    elseif appliedDelta < -BC.EPSILON then
+        local taken = BC.accountTake(st.buffer, -appliedDelta)
+        if st.pad ~= nil then
+            st.pad.share = st.pad.share or BC.newAccount()
+            BC.accountAddAccount(st.pad.share, taken)
+        elseif st.tick ~= nil then
+            st.tick.pending = st.tick.pending or BC.newAccount()
+            BC.accountAddAccount(st.tick.pending, taken)
+        end
+        -- Otherwise a withdrawal the collection does not follow: retired.
+    end
+    local spec = vehicle.spec_baler
+    local okL, level = pcall(vehicle.getFillUnitFillLevel, vehicle, spec.buffer.fillUnitIndex)
+    if okL and finite(level) then BC.accountReconcile(st.buffer, level) end
+end
+
+--- Baler:onUpdateTick (class listener): the buffer-to-chamber transfer's scope.
+function BC.aroundTick(vehicle, original, ...)
+    local st = (g_server ~= nil and vehicle.isServer and vehicle.spec_baler ~= nil) and BC.state(vehicle) or nil
+    local outer = st ~= nil and st.tick or nil
+    if st ~= nil then st.tick = {} end
+    local packed = { pcall(original, vehicle, ...) }
+    if st ~= nil then st.tick = outer end
+    if not packed[1] then error(packed[2], 0) end
+    return unpack(packed, 2)
+end
+
+--- setIsUnloadingBale (instance): the partial round bale's pad scope.
+function BC.aroundUnloading(vehicle, original, ...)
+    local st = (g_server ~= nil and vehicle.isServer and vehicle.spec_baler ~= nil) and BC.state(vehicle) or nil
+    local outer = st ~= nil and st.pad or nil
+    if st ~= nil then st.pad = {} end
+    local packed = { pcall(original, vehicle, ...) }
+    if st ~= nil then st.pad = outer end
+    if not packed[1] then error(packed[2], 0) end
+    return unpack(packed, 2)
 end
 
 -- =========================================================
@@ -444,9 +571,18 @@ function BC.aroundFinish(vehicle, original, ...)
     local st = (g_server ~= nil and vehicle.isServer) and BC.state(vehicle) or nil
     local spec = vehicle.spec_baler
     if st ~= nil and spec ~= nil then
-        local level = mainLevel(vehicle, spec)
-        if level ~= nil then BC.accountReconcile(st.main, level) end
-        st.finishes[#st.finishes + 1] = { account = BC.copyAccount(st.main) }
+        local account
+        if st.pad ~= nil then
+            -- A partial round bale: the chamber's material plus the buffer's share; the
+            -- pad is not material, so the chamber is not reconciled to its padded level.
+            account = BC.copyAccount(st.main)
+            if st.pad.share ~= nil then BC.accountAddAccount(account, st.pad.share) end
+        else
+            local level = mainLevel(vehicle, spec)
+            if level ~= nil then BC.accountReconcile(st.main, level) end
+            account = BC.copyAccount(st.main)
+        end
+        st.finishes[#st.finishes + 1] = { account = account }
     end
     local packed = { pcall(original, vehicle, ...) }
     if st ~= nil then table.remove(st.finishes) end
