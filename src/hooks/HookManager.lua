@@ -4783,10 +4783,12 @@ end
 -- registration, so assigning `Combine.processCombineSwathArea` here would patch a
 -- table nobody reads and the hook would silently never run.
 --
--- THE RETURN VALUE IS THE EVIDENCE. The engine returns dropped litres
--- (Combine.md:2692-2714), so a birth is recorded only when material actually landed.
--- No litres, no record: that is a stronger gate than any flag, because it is the
--- outcome rather than an intention.
+-- THE RETURN VALUE IS A REQUEST, NOT THE LANDED LITRES (MAINTENANCE row 104). The engine
+-- returns 1, 1 whenever the swath is active with litres to drop and 0, 0 otherwise
+-- (Combine.lua:731-758); the tip's own droppedLiters stays local (:746) and is not
+-- forwarded. So the gate below is a request-level boolean: a birth is recorded when the
+-- combine ASKED to drop, even if the tip landed 0 L. Real landed litres need the observer
+-- (a litres-only observer mode is its own MAINTENANCE row).
 ---@return boolean success
 function HookManager:installCombineSwathHook()
     if not Combine or type(Combine.processCombineSwathArea) ~= "function" then
@@ -4903,7 +4905,8 @@ function HookManager:installCombineSwathHook()
 
             if not combineSelf.isServer then return unpack(results) end
 
-            -- Nothing landed on the ground, so there is nothing to remember.
+            -- Nothing was requested (the swath off, or no litres pending): nothing to remember.
+            -- results[1] is the engine's 1/0 request flag, not litres (see the header).
             local droppedLiters = results[1]
             if type(droppedLiters) ~= "number" or droppedLiters <= 0 then
                 return unpack(results)
@@ -4946,8 +4949,8 @@ function HookManager:installCombineSwathHook()
                 -- claim to check. A NAMED but untracked material is refused there.
                 local name = windrowFillTypeName(combineSelf)
                 if md:noteMaterialAt(poly, fieldId, name) then
-                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL dropped",
-                        fieldId, tostring(name), droppedLiters)
+                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, a drop requested (litres landed not observed)",
+                        fieldId, tostring(name))
                 end
             end)
 
