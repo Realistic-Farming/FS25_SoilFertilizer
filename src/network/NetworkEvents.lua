@@ -371,10 +371,17 @@ function SoilRequestFullSyncEvent:run(connection)
     -- approach is kept so the UI stays responsive during large syncs.
 
     local isDedicatedServer = (g_dedicatedServer ~= nil)
+    -- MAINTENANCE row 120: with no addUpdateable (unreachable today: BaseMission:addUpdateable
+    -- always exists, BaseMission.lua:534) the same synchronous batches go out. The old
+    -- fallback sent every field as ONE batch, which the reader refuses above
+    -- FULL_SYNC_BATCH_SIZE (row 112), so a map over 32 fields synced nothing. One writer, one
+    -- reader, one number.
+    local canDrip = g_currentMission ~= nil and g_currentMission.addUpdateable ~= nil
 
-    if isDedicatedServer then
-        -- Dedicated server path: send all batches immediately in a loop.
-        SoilLogger.info("Server: Dedicated server detected - sending %d fields in synchronous batches", fieldCount)
+    if isDedicatedServer or not canDrip then
+        -- Dedicated server path (and the no-addUpdateable case): send all batches immediately in a loop.
+        SoilLogger.info("Server: %s - sending %d fields in synchronous batches",
+            isDedicatedServer and "Dedicated server detected" or "addUpdateable unavailable", fieldCount)
         for batchIndex = 1, totalBatches do
             local startIdx = (batchIndex - 1) * batchSize + 1
             local endIdx   = math.min(batchIndex * batchSize, #fieldIds)
@@ -387,7 +394,7 @@ function SoilRequestFullSyncEvent:run(connection)
             connection:sendEvent(SoilFieldBatchSyncEvent.new(batch, isLast))
             SoilLogger.debug("Server: Field batch %d/%d sent (%d fields)", batchIndex, totalBatches, endIdx - startIdx + 1)
         end
-    elseif g_currentMission and g_currentMission.addUpdateable then
+    else
         -- Listen server / local host path: drip-feed batches via addUpdateable
         -- so the render thread is not blocked for large maps (issue #212).
         local batchDispatcher = {
@@ -435,14 +442,6 @@ function SoilRequestFullSyncEvent:run(connection)
         }
         g_currentMission:addUpdateable(batchDispatcher)
         SoilLogger.info("Server: Batch dispatcher registered (%d batches of %d fields)", totalBatches, batchSize)
-    else
-        -- Fallback for edge cases: send everything at once (old blocking behaviour)
-        SoilLogger.warning("Server: addUpdateable unavailable - sending all %d fields synchronously", fieldCount)
-        local allBatch = {}
-        for _, id in ipairs(fieldIds) do
-            allBatch[id] = fieldData[id]
-        end
-        connection:sendEvent(SoilFieldBatchSyncEvent.new(allBatch, true))
     end
 
     -- REFINED: stream the per-pixel value maps after the field data
