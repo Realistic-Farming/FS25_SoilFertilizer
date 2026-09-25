@@ -586,6 +586,10 @@ function HookManager:installAll(soilSystem)
     local baleDeleteOk = self:installBaleDeleteHook()
     if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- [RSF-F215] A bale deleted into an object storage keeps its row (STORED)
+    local baleStorageOk = self:installBaleStorageFrame()
+    if baleStorageOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
     local balePickupOk = self:installBalerPickupHook()
     local forageWagonOk = self:installForageWagonCollectionHook()
@@ -5347,13 +5351,43 @@ function HookManager:installBaleDeleteHook()
         local yl = getArmedYardLadder()
         if yl ~= nil then
             pcall(function()
-                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId) end
+                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId, baleSelf) end
             end)
         end
         return origDelete(baleSelf, ...)
     end
 
     SoilLogger.info("[OK] Bale delete hook installed (Bale.delete)")
+    return true
+end
+
+--- [RSF-F215] An object storage takes a bale in by deleting it (a bale that is not
+--- fermenting) or by deleting it and re-creating it unregistered (a fermenting one):
+--- AbstractBaleObject:addToStorage, PlaceableObjectStorage.lua:931-960. Either way the
+--- bale keeps its native unique id and comes back out with it (:961-985). The class is
+--- local there and reachable only as PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME
+--- ["Bale"] (:881-889); the storage calls addToStorage on an instance whose metatable is
+--- that class (:428-431), so patching the class reaches it. Inside it, the bale's delete
+--- is a move into storage (the yard ladder's REBIND to STORED), not a death.
+---@return boolean success
+function HookManager:installBaleStorageFrame()
+    local reg = PlaceableObjectStorage ~= nil and PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME or nil
+    local cls = reg ~= nil and reg["Bale"] or nil
+    if cls == nil or type(cls.addToStorage) ~= "function" then
+        SoilLogger.warning("[BaleStorage] the object storage's bale class is not available - a stored bale's row retires instead of waiting")
+        return false
+    end
+    local original = cls.addToStorage
+    cls.addToStorage = function(abstractObject, storage, object, loadedFromSavegame, ...)
+        local yl = getArmedYardLadder()
+        local framed = yl ~= nil and object ~= nil and not loadedFromSavegame
+        if framed then pcall(yl.beginStoring, yl, object) end
+        local packed = { pcall(original, abstractObject, storage, object, loadedFromSavegame, ...) }
+        if framed then pcall(yl.endStoring, yl, object) end
+        if not packed[1] then error(packed[2], 0) end
+        return unpack(packed, 2)
+    end
+    SoilLogger.info("[OK] Bale storage frame installed (the object storage's bale class)")
     return true
 end
 

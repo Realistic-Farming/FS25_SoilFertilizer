@@ -154,6 +154,20 @@ function MaterialDown.new()
     -- so it costs nothing extra and cannot drift from the writes it mirrors.
     self.activeFields = {}
     self.stoodDown = false   -- true once a fence refused; the layer is inert
+    -- [RSF-F215] The bale condition store's persistence state (see Persistence below).
+    self.baleConditionMeta = nil     -- { nextTokenSerial, sourceEpoch } once decided
+    self.saveGeneration    = 0
+    self.loadState         = MaterialDown.LOAD.PENDING
+    self.loadReason        = nil
+    self.loadMarker        = nil
+    self.newCareer         = false
+    self.lastSaveFailed    = false   -- the last save's result; never invalidates RAM
+    self.rowValidator      = nil     -- the row owner's schema-2 check (YardLadder)
+    self.loadObserver      = nil     -- the row owner's qualification, called once the load is decided
+    self._delivered        = {}
+    self._retainedRaw      = nil
+    self._invocation       = nil
+    self._frozen           = nil
     return self
 end
 
@@ -589,29 +603,149 @@ function MaterialDown:enumerateObjects(fn)
 end
 
 -- =========================================================
--- Persistence (StateLedger sidecar; merge-never-replace)
+-- Persistence (StateLedger sidecar or own file; RSF-F215 envelope)
 -- =========================================================
+-- [RSF-F215] THE ENVELOPE. One detached table, schema 1, carries everything this store
+-- persists: the age watermark, the active field set, every object row and the bale
+-- condition metadata { nextTokenSerial, sourceEpoch }:
+--
+--   { schema = 1, saveGeneration, saveStatus = "COMPLETE", ageAppliedThroughDay,
+--     objects, activeFields, baleConditionMeta = { nextTokenSerial, sourceEpoch } }
+--
+-- An UNAVAILABLE envelope (the store could not be trusted at load) carries no objects
+-- map at all, so a save never publishes an empty live map as complete; the raw rows it
+-- could not restore ride along as `retained`, recoverable and never live.
+--
+-- ONE SNAPSHOT PER SAVE. The bridge opens a save invocation before the native career
+-- save (a prepended FSCareerMissionInfo.saveToXMLFile); the first caller inside it
+-- freezes the envelope and every later caller in that invocation gets the same table
+-- and generation, whichever of StateLedger's callback and Soil's own hook runs first.
+--
+-- THE LOAD DECISION. Deliveries (StateLedger's callback, the own file) are held until
+-- finishLoad, which runs once every door has had its chance. Modern rows go live only
+-- when the career marker, the backend it names and the payload's generation agree. A
+-- save with no marker is a new career (nothing to load) or a pre-F215 save, whose rows
+-- are kept as data and qualified once. Anything else is UNAVAILABLE: never an empty
+-- store, never a fresh clean lineage.
 
-function MaterialDown:serialize()
-    local objects = {}
-    for token, record in pairs(self.objects) do objects[token] = record end
-    local active = {}
-    for fieldId in pairs(self.activeFields) do active[#active + 1] = fieldId end
-    return {
-        schema                = 1,
-        ageAppliedThroughDay  = self.ageAppliedThroughDay,
-        objects               = objects,
-        activeFields          = active,
-    }
+MaterialDown.ENVELOPE_SCHEMA = 1
+MaterialDown.SAVE_STATUS = { COMPLETE = "COMPLETE", UNAVAILABLE = "UNAVAILABLE" }
+MaterialDown.LOAD = {
+    PENDING     = "PENDING",       -- deliveries not decided yet
+    NEW         = "NEW",           -- a genuine new career: the store starts empty
+    LEGACY      = "LEGACY",        -- a pre-F215 save: its rows kept, qualified once
+    MODERN      = "MODERN",        -- marker, backend and generation agreed
+    UNAVAILABLE = "UNAVAILABLE",   -- the store cannot be trusted this session
+}
+MaterialDown.BACKEND = { STATELEDGER = "STATELEDGER", OWN_FILE = "OWN_FILE" }
+-- The largest exact integer a double holds. The allocator refuses past it, never wraps.
+MaterialDown.TOKEN_SERIAL_MAX = 9007199254740991
+
+local function finiteNumber(n)
+    return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
 end
 
---- MERGE, never replace.
+local function exactCounter(n)
+    return finiteNumber(n) and n >= 0 and n == math.floor(n) and n <= MaterialDown.TOKEN_SERIAL_MAX
+end
+
+--- A detached deep copy of plain data. Anything that is not a string, number, boolean
+--- or table (a function, a live object reached through userdata) refuses the copy.
+local function deepCopy(v, seen)
+    local t = type(v)
+    if t == "string" or t == "number" or t == "boolean" or t == "nil" then return v end
+    if t ~= "table" then return nil, "UNSUPPORTED_VALUE" end
+    seen = seen or {}
+    if seen[v] then return nil, "CYCLE" end
+    seen[v] = true
+    local out = {}
+    for k, x in pairs(v) do
+        local c, why = deepCopy(x, seen)
+        if c == nil and x ~= nil then seen[v] = nil return nil, why end
+        out[k] = c
+    end
+    seen[v] = nil
+    return out
+end
+MaterialDown.deepCopy = deepCopy
+
+function MaterialDown:getLoadState()
+    return self.loadState, self.loadReason
+end
+
+--- True when the bale condition store may be trusted and saved as complete.
+function MaterialDown:isConditionStoreValid()
+    local L = MaterialDown.LOAD
+    return self.loadState == L.NEW or self.loadState == L.LEGACY or self.loadState == L.MODERN
+end
+
+function MaterialDown:getBaleConditionMeta()
+    local m = self.baleConditionMeta
+    if m == nil then return nil end
+    return { nextTokenSerial = m.nextTokenSerial, sourceEpoch = m.sourceEpoch }
+end
+
+--- The one Soil token allocator: row, history and stream tokens all draw from it.
+---@return number|nil serial, string|nil reason
+function MaterialDown:allocateTokenSerial()
+    local m = self.baleConditionMeta
+    if m == nil or not self:isConditionStoreValid() then
+        if self.loadState == MaterialDown.LOAD.UNAVAILABLE then
+            -- Session-only serials: the store cannot be saved this session, so its rows
+            -- live for the session (the yard ladder keeps working) and are never written.
+            self._sessionSerial = (self._sessionSerial or 0) + 1
+            return self._sessionSerial
+        end
+        return nil, "STORE_UNAVAILABLE"
+    end
+    local n = m.nextTokenSerial
+    if not exactCounter(n) or n < 1 then return nil, "BAD_COUNTER" end
+    if n >= MaterialDown.TOKEN_SERIAL_MAX then return nil, "EXHAUSTED" end
+    m.nextTokenSerial = n + 1
+    return n
+end
+
+--- Raise the allocator above a serial some surviving row already holds.
+function MaterialDown:reserveTokenSerial(n)
+    local m = self.baleConditionMeta
+    if m == nil or not exactCounter(n) then return end
+    if n >= m.nextTokenSerial then m.nextTokenSerial = math.min(n + 1, MaterialDown.TOKEN_SERIAL_MAX) end
+end
+
+local function newEpoch(self)
+    if Utils ~= nil and type(Utils.getUniqueId) == "function" then
+        local ok, id = pcall(Utils.getUniqueId, self, nil, "sfse_", 16)
+        if ok and type(id) == "string" and id ~= "" then return id end
+    end
+    return nil
+end
+
+-- ---------------------------------------------------------
+-- Load
+-- ---------------------------------------------------------
+
+--- Open the load: the career marker read from careerSavegame.xml (nil when the save
+--- has none) and whether this is a genuine new career (the native missionInfo was not
+--- yet valid, so nothing was ever saved).
+---@param marker table|nil { schema, backend, generation, state }
+---@param newCareer boolean
+function MaterialDown:beginLoad(marker, newCareer)
+    self.loadMarker = marker
+    self.newCareer = newCareer == true
+    self.loadState, self.loadReason = MaterialDown.LOAD.PENDING, nil
+    self._delivered = {}
+end
+
+--- A delivery from one backend. The watermark and the active field set keep their
+--- merge meaning for every member at once (furthest-on watermark; a field the session
+--- already knows stays active). The rows wait for finishLoad.
 ---
---- StateLedger OMITS a block when serialize fails and cannot distinguish an omitted
---- block from a brand-new save (it decides resume-vs-defaults purely on data ~= nil).
---- A replace-on-nil would therefore wipe the watermark after ONE bad save, and a
---- lost watermark means the next tick re-ages the entire map.
-function MaterialDown:deserialize(data)
+--- MERGE, never replace: StateLedger omits a block when serialize fails and cannot tell
+--- an omitted block from a brand-new save, so a replace-on-nil would wipe the watermark
+--- after one bad save, and a lost watermark re-ages the entire map.
+---@param data table
+---@param backend string|nil  MaterialDown.BACKEND; nil is the StateLedger door of old callers
+function MaterialDown:deserialize(data, backend)
     if type(data) ~= "table" then return false end
 
     if type(data.ageAppliedThroughDay) == "number" then
@@ -621,20 +755,224 @@ function MaterialDown:deserialize(data)
         end
     end
 
-    if type(data.objects) == "table" then
-        for token, record in pairs(data.objects) do
-            if self.objects[token] == nil then self.objects[token] = record end
-        end
-    end
-
-    -- Merge, never replace: a field the running session already knows carries
-    -- material stays active even if the saved set predates it.
     if type(data.activeFields) == "table" then
         for _, fieldId in ipairs(data.activeFields) do
             self.activeFields[fieldId] = true
         end
     end
+
+    -- A delivery after the decision (a late door) never re-decides; the watermark and
+    -- the active fields above still merge.
+    if self.loadState ~= MaterialDown.LOAD.PENDING then return true end
+    self._delivered = self._delivered or {}
+    self._delivered[backend or MaterialDown.BACKEND.STATELEDGER] = data
     return true
+end
+
+local function markerAgrees(marker)
+    return type(marker) == "table" and marker.state == "EXPECTED" and marker.schema == MaterialDown.ENVELOPE_SCHEMA
+        and exactCounter(marker.generation) and type(marker.backend) == "string"
+end
+
+--- Check a modern payload's metadata and rows without making anything live.
+---@return boolean ok, string|nil reason
+function MaterialDown:_validateModern(payload)
+    if payload.schema ~= MaterialDown.ENVELOPE_SCHEMA then return false, "SCHEMA" end
+    if payload.saveStatus ~= MaterialDown.SAVE_STATUS.COMPLETE then return false, "NOT_COMPLETE" end
+    if type(payload.objects) ~= "table" then return false, "NO_OBJECTS" end
+    local meta = payload.baleConditionMeta
+    if type(meta) ~= "table" or not exactCounter(meta.nextTokenSerial) or meta.nextTokenSerial < 1
+       or type(meta.sourceEpoch) ~= "string" or meta.sourceEpoch == "" then
+        return false, "BAD_META"
+    end
+    if type(self.rowValidator) == "function" then
+        local ok, why = self.rowValidator(payload.objects, meta)
+        if not ok then return false, why end
+    end
+    return true
+end
+
+local function retainRaw(self, payload)
+    if type(payload) == "table" and type(payload.objects) == "table" then
+        self._retainedRaw = deepCopy(payload.objects)
+    elseif type(payload) == "table" and type(payload.retained) == "table" then
+        self._retainedRaw = deepCopy(payload.retained)
+    end
+end
+
+--- Decide the load, once every door had its chance (StateLedger delivers at its own
+--- parse, the own file at loadFallback). Idempotent: a second call does nothing.
+---
+--- MODERN      the marker EXPECTS a generation from a backend, and that backend's
+---             payload carries it, complete and valid: its rows go live.
+--- UNAVAILABLE the marker EXPECTS, but the payload is missing, of another generation or
+---             invalid: nothing goes live, nothing is invented; the raw rows are kept,
+---             never live, and this session's saves say UNAVAILABLE.
+--- LEGACY      qualified once, rows kept as data and never trusted as history: a save
+---             with no marker (pre-F215, or saved while the family was off), or the
+---             first load after an UNAVAILABLE session. Without this last door an
+---             UNAVAILABLE session's own marker would make every later load unavailable
+---             too, and the store could never recover.
+--- NEW         a genuine new career with nothing delivered.
+---@return string state, string|nil reason
+function MaterialDown:finishLoad()
+    local L = MaterialDown.LOAD
+    if self.loadState ~= L.PENDING then return self.loadState, self.loadReason end
+    local delivered = self._delivered or {}
+    local marker = self.loadMarker
+    local state, reason, legacyPayload
+
+    if marker ~= nil and markerAgrees(marker) then
+        local payload = delivered[marker.backend]
+        if payload == nil then
+            state, reason = L.UNAVAILABLE, "PAYLOAD_MISSING"
+        elseif payload.saveGeneration ~= marker.generation then
+            state, reason = L.UNAVAILABLE, "GENERATION_MISMATCH"
+            retainRaw(self, payload)
+        else
+            local ok, why = self:_validateModern(payload)
+            if ok then
+                state = L.MODERN
+                for token, record in pairs(payload.objects) do
+                    if self.objects[token] == nil then self.objects[token] = deepCopy(record) end
+                end
+                self.baleConditionMeta = { nextTokenSerial = payload.baleConditionMeta.nextTokenSerial,
+                                           sourceEpoch     = payload.baleConditionMeta.sourceEpoch }
+                self.saveGeneration = marker.generation
+            else
+                state, reason = L.UNAVAILABLE, "INVALID_" .. tostring(why)
+                retainRaw(self, payload)
+            end
+        end
+    elseif marker ~= nil then
+        -- The last session could not trust its store (or the marker is unreadable).
+        state, reason = L.LEGACY, "AFTER_UNAVAILABLE"
+        legacyPayload = delivered[type(marker) == "table" and marker.backend or ""]
+                        or delivered.STATELEDGER or delivered.OWN_FILE
+    else
+        local payload = delivered.STATELEDGER or delivered.OWN_FILE
+        if self.newCareer and payload == nil then
+            state = L.NEW
+        else
+            state = L.LEGACY
+            if payload == nil then reason = "NO_PAYLOAD"
+            elseif payload.saveStatus ~= nil then reason = "PAYLOAD_WITHOUT_MARKER"
+            else reason = "LEGACY_PAYLOAD" end
+            legacyPayload = payload
+        end
+    end
+
+    if state == L.LEGACY and type(legacyPayload) == "table" then
+        -- Kept as data only; the row owner marks every one of them unbound.
+        local rows = type(legacyPayload.objects) == "table" and legacyPayload.objects
+                     or (type(legacyPayload.retained) == "table" and legacyPayload.retained) or nil
+        if rows ~= nil then
+            for token, record in pairs(rows) do
+                if self.objects[token] == nil then self.objects[token] = deepCopy(record) end
+            end
+        end
+    end
+
+    if state == L.NEW or state == L.LEGACY then
+        local epoch = newEpoch(self)
+        if epoch == nil then
+            state, reason = L.UNAVAILABLE, "NO_EPOCH"
+        else
+            self.baleConditionMeta = { nextTokenSerial = 1, sourceEpoch = epoch }
+            self._retainedRaw = nil
+        end
+    end
+
+    self.loadState, self.loadReason = state, reason
+    self._delivered = nil
+    if type(self.loadObserver) == "function" then
+        local okObs, errObs = pcall(self.loadObserver, state)
+        if not okObs then SoilLogger.warning("[MaterialDown] the row owner failed to qualify its rows: %s", tostring(errObs)) end
+    end
+    if state == L.UNAVAILABLE then
+        SoilLogger.warning("[MaterialDown] bale condition store UNAVAILABLE this session (%s): bales keep their ladder, the condition provider answers UNAVAILABLE, and saves carry no live rows",
+            tostring(reason))
+    else
+        SoilLogger.info("[MaterialDown] bale condition store %s%s", state, reason and (" (" .. reason .. ")") or "")
+    end
+    return state, reason
+end
+
+-- ---------------------------------------------------------
+-- Save
+-- ---------------------------------------------------------
+
+--- Open a native save invocation (the bridge's prepended career-save wrapper). Every
+--- serialize inside it shares one frozen envelope.
+function MaterialDown:openSaveInvocation(invocationId)
+    self._invocation = invocationId
+    self._frozen = nil
+end
+
+function MaterialDown:_activeFieldList()
+    local active = {}
+    for fieldId in pairs(self.activeFields) do active[#active + 1] = fieldId end
+    table.sort(active, function(a, b) return tostring(a) < tostring(b) end)
+    return active
+end
+
+function MaterialDown:_unavailableEnvelope(reason)
+    self.saveGeneration = (self.saveGeneration or 0) + 1
+    return {
+        schema               = MaterialDown.ENVELOPE_SCHEMA,
+        saveGeneration       = self.saveGeneration,
+        saveStatus           = MaterialDown.SAVE_STATUS.UNAVAILABLE,
+        reason               = reason,
+        ageAppliedThroughDay = self.ageAppliedThroughDay,
+        activeFields         = self:_activeFieldList(),
+        retained             = self._retainedRaw ~= nil and deepCopy(self._retainedRaw) or nil,
+    }
+end
+
+function MaterialDown:_buildEnvelope()
+    if not self:isConditionStoreValid() or self.baleConditionMeta == nil then
+        return self:_unavailableEnvelope(self.loadReason or tostring(self.loadState))
+    end
+    local objects, why = deepCopy(self.objects)
+    if objects == nil then return self:_unavailableEnvelope("OBJECTS_" .. tostring(why)) end
+    if MaterialDownCodec ~= nil then
+        local ok, whyV = MaterialDownCodec.validate(objects)
+        if not ok then return self:_unavailableEnvelope("OBJECTS_" .. tostring(whyV)) end
+    end
+    if type(self.rowValidator) == "function" then
+        local ok, whyR = self.rowValidator(objects, self.baleConditionMeta)
+        if not ok then return self:_unavailableEnvelope("ROWS_" .. tostring(whyR)) end
+    end
+    self.saveGeneration = (self.saveGeneration or 0) + 1
+    return {
+        schema               = MaterialDown.ENVELOPE_SCHEMA,
+        saveGeneration       = self.saveGeneration,
+        saveStatus           = MaterialDown.SAVE_STATUS.COMPLETE,
+        ageAppliedThroughDay = self.ageAppliedThroughDay,
+        objects              = objects,
+        activeFields         = self:_activeFieldList(),
+        baleConditionMeta    = { nextTokenSerial = self.baleConditionMeta.nextTokenSerial,
+                                 sourceEpoch     = self.baleConditionMeta.sourceEpoch },
+    }
+end
+
+--- The one shared private helper: the first caller in a save invocation freezes the
+--- envelope, every later caller in it gets the same table. Outside an invocation each
+--- call builds its own (a console dump, a test).
+function MaterialDown:freezeEnvelope()
+    local inv = self._invocation
+    if inv ~= nil and self._frozen ~= nil and self._frozen.invocation == inv then
+        return self._frozen.envelope
+    end
+    local env = self:_buildEnvelope()
+    if inv ~= nil then self._frozen = { invocation = inv, envelope = env } end
+    return env
+end
+
+--- StateLedger's serialize and the own file both read the frozen envelope. A detached
+--- copy, so a caller that mutates what it was handed cannot reach the frozen snapshot.
+function MaterialDown:serialize()
+    return deepCopy(self:freezeEnvelope())
 end
 
 SoilLogger.info("MaterialDown (SF-43) loaded")

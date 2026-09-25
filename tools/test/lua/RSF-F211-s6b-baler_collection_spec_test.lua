@@ -112,7 +112,8 @@ local function birthOf(baleObject)
     if token == nil then return "no row" end
     local row = W.sys.materialDown:getObjectRecord(token)
     if row == nil then return "no row" end
-    return row.birthWetnessPct
+    -- [RSF-F215] the birth wetness lives in the row's portion
+    return row.portions ~= nil and row.portions[1] ~= nil and row.portions[1].birthWetnessPct or nil
 end
 local function bales(v) return v.spec_baler.bales end
 local function lastBale(v) local b = bales(v)[#bales(v)] return b and b.baleObject end

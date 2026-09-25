@@ -277,6 +277,10 @@ end
 --- watermark after ONE bad save, and a lost watermark re-ages the entire map on the
 --- next tick. MaterialDown:deserialize keeps the furthest-on watermark for the same
 --- reason, so the merge is enforced on both sides of this boundary.
+---
+--- [RSF-F215] The ledger is the active backend only when registerModule RETURNS true
+--- (StateLedger.lua:51-78 returns false for a malformed registration); a call that
+--- merely did not throw is not a registration.
 function SoilMaterialDownBridge.registerLedger(materialDown)
     SoilMaterialDownBridge.ledgerActive = false
     if materialDown == nil then return false end
@@ -289,21 +293,22 @@ function SoilMaterialDownBridge.registerLedger(materialDown)
         return false
     end
 
+    local registered = false
     local ok, err = pcall(function()
-        ledger:registerModule(SoilMaterialDownBridge.MODULE_ID, {
+        registered = ledger:registerModule(SoilMaterialDownBridge.MODULE_ID, {
             serialize = function()
                 return materialDown:serialize()
             end,
             deserialize = function(data)
                 -- nil on a brand-new save AND on an omitted block: merge handles both.
-                if data ~= nil then materialDown:deserialize(data) end
+                if data ~= nil then materialDown:deserialize(data, MaterialDown.BACKEND.STATELEDGER) end
             end,
-        })
+        }) == true
     end)
 
-    if not ok then
+    if not ok or not registered then
         SoilLogger.warning("[MaterialDown] StateLedger registration failed: %s (using %s)",
-            tostring(err), SoilMaterialDownBridge.XML_FILE)
+            ok and "registerModule returned false" or tostring(err), SoilMaterialDownBridge.XML_FILE)
         return false
     end
 
@@ -351,48 +356,206 @@ function SoilMaterialDownBridge.registerWaterLedger(materialWetness)
     return true
 end
 
---- Own-XML fallback save. Runs only when StateLedger is absent; the ledger owns the
---- state when present so nothing writes it twice.
-function SoilMaterialDownBridge.saveFallback(materialDown)
-    if materialDown == nil or SoilMaterialDownBridge.ledgerActive then return end
-    if g_server == nil then return end
-    local path = xmlPath()
-    if path == nil or createXMLFile == nil then return end
+-- =========================================================
+-- [RSF-F215] The career marker, the own file and the save invocation
+-- =========================================================
+-- THE MARKER. careerSavegame.soilFertilizer.materialDown in the career XML the native
+-- save builds (FSCareerMissionInfo:saveToXMLFile keeps it as missionInfo.xmlFile,
+-- FSCareerMissionInfo.lua:248-258, and SavegameController captures it after this hook,
+-- SavegameController.lua:646/:650): #schema, #backend (STATELEDGER | OWN_FILE),
+-- #generation, #state. Written UNAVAILABLE first, EXPECTED only once a complete
+-- snapshot is frozen and, on the own-file backend, written. A load trusts modern rows
+-- only when that marker, the backend it names and the payload's generation agree.
+--
+-- THE OWN FILE. sfMaterialDown.xml carries the whole envelope through MaterialDownCodec
+-- (tagged entries, exact numbers). A file from before F215 carries only #schema and
+-- #ageAppliedThroughDay and still loads as a legacy payload.
+--
+-- THE INVOCATION. A wrapper in front of FSCareerMissionInfo.saveToXMLFile opens one save
+-- invocation before the native body and every appended hook (Soil's and StateLedger's,
+-- in whichever order the mods loaded), so both freeze and read the same envelope.
 
-    local state = materialDown:serialize()
-    local ok, err = pcall(function()
-        local xmlFile = createXMLFile("sfMaterialDown", path, "materialDown")
-        if xmlFile == nil then return end
-        setXMLInt(xmlFile, "materialDown#schema", state.schema or 1)
-        if state.ageAppliedThroughDay ~= nil then
-            setXMLInt(xmlFile, "materialDown#ageAppliedThroughDay", state.ageAppliedThroughDay)
+SoilMaterialDownBridge.MARKER_KEY  = "careerSavegame.soilFertilizer.materialDown"
+SoilMaterialDownBridge.FILE_FORMAT = "tagged1"
+SoilMaterialDownBridge._saveInvocation = 0
+
+local function careerPath()
+    if g_currentMission == nil or g_currentMission.missionInfo == nil
+       or g_currentMission.missionInfo.savegameDirectory == nil then
+        return nil
+    end
+    return g_currentMission.missionInfo.savegameDirectory .. "/careerSavegame.xml"
+end
+
+local function exactString(n) return string.format("%.17g", n) end
+
+--- The marker as the last save left it, read from careerSavegame.xml on disk.
+---@return table|nil marker  { schema, backend, generation, state }; nil when absent
+function SoilMaterialDownBridge.readCareerMarker()
+    local path = careerPath()
+    if path == nil or loadXMLFile == nil or fileExists == nil or not fileExists(path) then return nil end
+    local marker = nil
+    local ok = pcall(function()
+        local xmlFile = loadXMLFile("sfCareerMarker", path)
+        if xmlFile == nil or xmlFile == 0 then return end
+        local key = SoilMaterialDownBridge.MARKER_KEY
+        if hasXMLProperty(xmlFile, key) then
+            marker = {
+                schema     = tonumber(getXMLString(xmlFile, key .. "#schema")),
+                backend    = getXMLString(xmlFile, key .. "#backend"),
+                generation = tonumber(getXMLString(xmlFile, key .. "#generation")),
+                state      = getXMLString(xmlFile, key .. "#state"),
+            }
         end
-        saveXMLFile(xmlFile)
         delete(xmlFile)
     end)
-    if not ok then
-        SoilLogger.warning("[MaterialDown] fallback save failed: %s", tostring(err))
+    if not ok then return { state = "UNREADABLE" } end
+    return marker
+end
+
+--- Open the load: the marker and whether this is a genuine new career. A new career's
+--- native missionInfo is not valid until its first save (FSCareerMissionInfo.lua:27,
+--- :117), so a valid missionInfo is a world that was saved before.
+function SoilMaterialDownBridge.beginLoad(materialDown)
+    if materialDown == nil or g_server == nil then return end
+    local mi = g_currentMission ~= nil and g_currentMission.missionInfo or nil
+    local newCareer = mi ~= nil and mi.isValid == false
+    local marker = nil
+    if not newCareer then marker = SoilMaterialDownBridge.readCareerMarker() end
+    materialDown:beginLoad(marker, newCareer)
+end
+
+function SoilMaterialDownBridge.writeMarker(xmlFile, backend, generation, state)
+    if xmlFile == nil or xmlFile == 0 then return false end
+    local key = SoilMaterialDownBridge.MARKER_KEY
+    local ok = pcall(function()
+        setXMLString(xmlFile, key .. "#schema", exactString(MaterialDown.ENVELOPE_SCHEMA))
+        setXMLString(xmlFile, key .. "#backend", tostring(backend))
+        setXMLString(xmlFile, key .. "#generation", exactString(generation or 0))
+        setXMLString(xmlFile, key .. "#state", state)
+    end)
+    return ok
+end
+
+--- Open one native save invocation (the wrapper in front of the career save).
+function SoilMaterialDownBridge.openSaveInvocation()
+    SoilMaterialDownBridge._saveInvocation = SoilMaterialDownBridge._saveInvocation + 1
+    local sfm = g_SoilFertilityManager
+    local md = sfm ~= nil and sfm.soilSystem ~= nil and sfm.soilSystem.materialDown or nil
+    if md ~= nil and type(md.openSaveInvocation) == "function" then
+        md:openSaveInvocation(SoilMaterialDownBridge._saveInvocation)
     end
 end
 
---- Own-XML fallback load. Also MERGES (through MaterialDown:deserialize), so a
---- missing or unreadable file leaves whatever the ledger already delivered intact.
+--- Install the invocation wrapper once. It keeps the native call's own returns.
+function SoilMaterialDownBridge.installSaveInvocation()
+    if SoilMaterialDownBridge._invocationInstalled then return true end
+    if FSCareerMissionInfo == nil or type(FSCareerMissionInfo.saveToXMLFile) ~= "function" then return false end
+    local original = FSCareerMissionInfo.saveToXMLFile
+    FSCareerMissionInfo.saveToXMLFile = function(missionInfo, ...)
+        pcall(SoilMaterialDownBridge.openSaveInvocation)
+        return original(missionInfo, ...)
+    end
+    SoilMaterialDownBridge._invocationInstalled = true
+    return true
+end
+
+--- Write the envelope to sfMaterialDown.xml through the codec. True only when the file
+--- was created (a nonzero handle), every entry encoded, and saveXMLFile returned true.
+---@return boolean ok, string|nil reason
+function SoilMaterialDownBridge.writeOwnFile(envelope)
+    local path = xmlPath()
+    if path == nil or createXMLFile == nil then return false, "NO_PATH" end
+    local result, reason = false, nil
+    local ok, err = pcall(function()
+        local xmlFile = createXMLFile("sfMaterialDown", path, "materialDown")
+        if xmlFile == nil or xmlFile == 0 then reason = "CREATE_FAILED" return end
+        setXMLString(xmlFile, "materialDown#format", SoilMaterialDownBridge.FILE_FORMAT)
+        -- The legacy reader's two attributes, so a downgraded Soil still finds its watermark.
+        setXMLInt(xmlFile, "materialDown#schema", MaterialDown.ENVELOPE_SCHEMA)
+        if envelope.ageAppliedThroughDay ~= nil then
+            setXMLInt(xmlFile, "materialDown#ageAppliedThroughDay", envelope.ageAppliedThroughDay)
+        end
+        local encoded, why = MaterialDownCodec.encode(xmlFile, "materialDown.envelope", envelope)
+        if encoded then
+            result = saveXMLFile(xmlFile) == true
+            if not result then reason = "SAVE_FAILED" end
+        else
+            reason = "ENCODE_" .. tostring(why)
+        end
+        delete(xmlFile)
+    end)
+    if not ok then return false, tostring(err) end
+    return result, reason
+end
+
+--- Save the store: marker UNAVAILABLE, freeze the one envelope, write the own file on
+--- that backend, then EXPECTED only for a complete snapshot that reached its backend.
+--- Runs only while the family is armed and its load was decided; a save from a session
+--- where the family is off writes nothing, and the next live load treats the world as
+--- legacy rather than trusting stale files.
+function SoilMaterialDownBridge.saveStore(materialDown, missionInfo)
+    if materialDown == nil or g_server == nil then return end
+    if type(materialDown.isArmed) ~= "function" or not materialDown:isArmed() then return end
+    if materialDown.loadState == nil or materialDown.loadState == MaterialDown.LOAD.PENDING then return end
+    missionInfo = missionInfo or (g_currentMission ~= nil and g_currentMission.missionInfo or nil)
+    local careerXml = missionInfo ~= nil and missionInfo.xmlFile or nil
+    local backend = SoilMaterialDownBridge.ledgerActive and MaterialDown.BACKEND.STATELEDGER or MaterialDown.BACKEND.OWN_FILE
+
+    SoilMaterialDownBridge.writeMarker(careerXml, backend, 0, "UNAVAILABLE")
+    local envelope = materialDown:freezeEnvelope()
+    local reached, why = true, nil
+    if backend == MaterialDown.BACKEND.OWN_FILE then
+        reached, why = SoilMaterialDownBridge.writeOwnFile(envelope)
+    end
+    if envelope.saveStatus == MaterialDown.SAVE_STATUS.COMPLETE and reached then
+        local marked = SoilMaterialDownBridge.writeMarker(careerXml, backend, envelope.saveGeneration, "EXPECTED")
+        materialDown.lastSaveFailed = not marked
+        if not marked then
+            SoilLogger.warning("[MaterialDown] save: the career marker could not be written; the next load treats the store as legacy")
+        end
+    else
+        materialDown.lastSaveFailed = true
+        SoilLogger.warning("[MaterialDown] save: the store was not saved as complete (%s, %s); the marker says UNAVAILABLE",
+            tostring(envelope.saveStatus), tostring(why or envelope.reason))
+    end
+end
+
+--- Kept for callers of the pre-F215 name.
+function SoilMaterialDownBridge.saveFallback(materialDown, missionInfo)
+    SoilMaterialDownBridge.saveStore(materialDown, missionInfo)
+end
+
+--- Read sfMaterialDown.xml and deliver it as the own-file backend's payload, whatever
+--- the active backend: the marker names which backend is authoritative, and finishLoad
+--- takes only that one. A file from before F215 delivers its watermark as a legacy
+--- payload; an unreadable file delivers an UNREADABLE payload, never nothing.
 function SoilMaterialDownBridge.loadFallback(materialDown)
-    if materialDown == nil or SoilMaterialDownBridge.ledgerActive then return end
+    if materialDown == nil then return end
     if g_server == nil then return end
     local path = xmlPath()
     if path == nil or loadXMLFile == nil or fileExists == nil or not fileExists(path) then return end
 
+    local payload = nil
     local ok, err = pcall(function()
         local xmlFile = loadXMLFile("sfMaterialDown", path)
-        if xmlFile == nil then return end
-        local day = getXMLInt(xmlFile, "materialDown#ageAppliedThroughDay")
-        delete(xmlFile)
-        if day ~= nil then
-            materialDown:deserialize({ ageAppliedThroughDay = day })
+        if xmlFile == nil or xmlFile == 0 then payload = { saveStatus = "UNREADABLE", reason = "LOAD_FAILED" } return end
+        local format = getXMLString(xmlFile, "materialDown#format")
+        if format == SoilMaterialDownBridge.FILE_FORMAT then
+            local envelope, why = MaterialDownCodec.decode(xmlFile, "materialDown.envelope")
+            if envelope ~= nil then payload = envelope
+            else payload = { saveStatus = "UNREADABLE", reason = why } end
+        elseif format == nil then
+            local day = getXMLInt(xmlFile, "materialDown#ageAppliedThroughDay")
+            payload = { ageAppliedThroughDay = day }
+        else
+            payload = { saveStatus = "UNREADABLE", reason = "UNKNOWN_FORMAT" }
         end
+        delete(xmlFile)
     end)
     if not ok then
         SoilLogger.warning("[MaterialDown] fallback load failed: %s", tostring(err))
+        payload = { saveStatus = "UNREADABLE", reason = "ERROR" }
     end
+    if payload ~= nil then materialDown:deserialize(payload, MaterialDown.BACKEND.OWN_FILE) end
 end

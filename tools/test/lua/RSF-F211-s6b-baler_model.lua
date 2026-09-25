@@ -26,7 +26,27 @@ function Bale.new(isServer, isClient)
     BALER_MODEL.nextNode = BALER_MODEL.nextNode + 1
     return setmetatable({ isServer = isServer, isClient = isClient, nodeId = BALER_MODEL.nextNode, fillType = 0, fillLevel = 0, ownerFarmId = 0 }, { __index = Bale })
 end
-function Bale:loadFromConfigXML(filename, ...) if BALER_MODEL.failLoad then return false end self.filename = filename return true end
+-- [RSF-F215] The native unique id: loadFromConfigXML sets a loaded one (Bale.lua:269-270)
+-- and the item system assigns one otherwise (ItemSystem.lua:209-213); getUniqueId :805.
+BALER_MODEL.nextUid = 1
+function Bale:loadFromConfigXML(filename, _x, _y, _z, _rx, _ry, _rz, uniqueId)
+    if BALER_MODEL.failLoad then return false end
+    self.filename = filename
+    if uniqueId ~= nil then
+        self.uniqueId = uniqueId
+    else
+        self.uniqueId = string.format("bale%d", BALER_MODEL.nextUid)
+        BALER_MODEL.nextUid = BALER_MODEL.nextUid + 1
+    end
+    return true
+end
+function Bale:getUniqueId() return self.uniqueId end
+function Bale:setUniqueId(uniqueId) self.uniqueId = uniqueId end
+-- :349 and the attributes object storage keeps (the fields this bench reads).
+function Bale:getBaleAttributes()
+    return { xmlFilename = self.filename, uniqueId = self.uniqueId, fillLevel = self.fillLevel, fillType = self.fillType, farmId = self.ownerFarmId }
+end
+function Bale:applyBaleAttributes(a) self.fillLevel, self.fillType, self.ownerFarmId = a.fillLevel, a.fillType, a.farmId end
 function Bale:setFillType(ft) self.fillType = ft end
 function Bale:getFillType() return self.fillType end
 function Bale:setFillLevel(l) self.fillLevel = l end
@@ -597,4 +617,36 @@ function BALER_MODEL.newWagon(opts)
     v.spec_workArea = { workAreas = { work } }
     work.processingFunction = v[work.functionName]
     return v, work
+end
+
+-- ── [RSF-F215] Object storage's bale class (placeables/specializations/PlaceableObjectStorage.lua) ──
+-- The class is local there (:898) and registered as ABSTRACT_OBJECTS_BY_CLASS_NAME["Bale"]
+-- (:881-889); the storage makes an instance with new() and calls addToStorage on it
+-- (:427-433), so a method patched on the class reaches the instance. The paths a bale
+-- that is not fermenting takes: in, its attributes kept and the bale deleted (:931-960,
+-- the else branch); out, a new Bale from the attributes with the SAME unique id,
+-- registered (:961-985).
+PlaceableObjectStorage = PlaceableObjectStorage or {}
+PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME = PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME or {}
+local AbstractBaleObject = {}
+AbstractBaleObject.REFERENCE_CLASS_NAME = "Bale"
+function AbstractBaleObject.new() return setmetatable({}, { __index = AbstractBaleObject }) end
+function AbstractBaleObject:addToStorage(storage, object, _loadedFromSavegame)
+    self.baleAttributes = object:getBaleAttributes()
+    object:delete()
+end
+function AbstractBaleObject:removeFromStorage(storage, x, y, z, rx, ry, rz)
+    local baleObject = Bale.new(storage.isServer, storage.isClient)
+    if baleObject:loadFromConfigXML(self.baleAttributes.xmlFilename, x, y, z, rx, ry, rz, self.baleAttributes.uniqueId) then
+        baleObject:applyBaleAttributes(self.baleAttributes)
+        baleObject:register()
+    end
+    return baleObject
+end
+PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME["Bale"] = AbstractBaleObject
+--- :427-433, addObjectToObjectStorage for a bale: the class's instance takes it in.
+function BALER_MODEL.storeBale(storage, object)
+    local abstract = PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME["Bale"].new()
+    abstract:addToStorage(storage, object, false)
+    return abstract
 end

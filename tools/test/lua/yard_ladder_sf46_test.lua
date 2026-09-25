@@ -30,6 +30,10 @@ function entityExists(_node) return true end
 
 -- ── Fixtures ──────────────────────────────────────────────
 
+-- [RSF-F215] The store names its epoch with the engine's id helper (Utils.lua:98).
+Utils = Utils or {}
+Utils.getUniqueId = Utils.getUniqueId or function(_, _, prefix) return (prefix or "") .. "benchepoch" end
+
 local function makeDown()
   local fake = {
     available = true,
@@ -86,6 +90,10 @@ MaterialWetness.isSheltered = function() return false end
 -- The bug this pins: a nodeId-derived token silently orphans every row on reload.
 
 local yl, md = makeLadder()
+-- [RSF-F215] A row's condition and birth wetness live in its portion.
+local function cond(token) return YardLadder.rowCondition(md:getObjectRecord(token)) end
+local function setCond(token, v) md:getObjectRecord(token).portions[1].condition = v end
+local function birthPct(row) return row ~= nil and row.portions ~= nil and row.portions[1].birthWetnessPct or nil end
 yl:onBaleCreated(4242, { getFillLevel = function() return 100 end }, "STRAW", 100, 1, 100)
 
 local seenToken, seenRow
@@ -147,15 +155,15 @@ T.eq("the fit line is 20 percent", YardLadder.fitPct(), 20)
 yl, md = makeLadder()
 yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100, { wetnessPct = 25, collected = true })
 local row = md:getObjectRecord("yl_1")
-T.eq("the collected wetness is kept as its own quantity", row.birthWetnessPct, 25)
-T.eq("and it opens the ladder at the ruled handicap", row.condition, 30)
+T.eq("the collected wetness is kept as its own quantity", birthPct(row), 25)
+T.eq("and it opens the ladder at the ruled handicap", YardLadder.rowCondition(row), 30)
 
 -- A bale baled dry is born clean even though its wetness is recorded.
 yl, md = makeLadder()
 yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "DRYGRASS_WINDROW", 100, 1, 100, { wetnessPct = 14, collected = true })
 row = md:getObjectRecord("yl_1")
-T.eq("dry hay records its wetness", row.birthWetnessPct, 14)
-T.eq("and opens at zero", row.condition, 0)
+T.eq("dry hay records its wetness", birthPct(row), 14)
+T.eq("and opens at zero", YardLadder.rowCondition(row), 0)
 
 -- ── 5. A bale we cannot vouch for opens at ZERO ───────────
 -- Refusal propagates all the way out as nil. The old seasonal stub (65/55/70/75) was
@@ -167,9 +175,9 @@ g_currentMission.environment.currentSeason = 4   -- winter, the old stub's harsh
 yl, md = makeLadder()
 yl:onBaleCreated(1, { getFillLevel = function() return 100 end }, "STRAW", 100, 1, 100, { wetnessPct = nil, collected = true })
 row = md:getObjectRecord("yl_1")
-T.eq("an unreadable birth records no wetness at all", row.birthWetnessPct, nil)
-T.eq("and is NOT a wetness of zero either", row.birthWetnessPct, nil)
-T.eq("and opens at zero condition", row.condition, 0)
+T.eq("an unreadable birth records no wetness at all", birthPct(row), nil)
+T.eq("and is NOT a wetness of zero either", birthPct(row), nil)
+T.eq("and opens at zero condition", YardLadder.rowCondition(row), 0)
 T.eq("the seasonal stub is gone, not merely unused", YardLadder.SEASONAL_BIRTH, nil)
 T.eq("an unknown wetness maps to zero condition", YardLadder.birthCondition(nil), 0)
 
@@ -180,7 +188,7 @@ T.eq("an unknown wetness maps to zero condition", YardLadder.birthCondition(nil)
 local skyOpts = { read = { status = MaterialWetness.RESULT.OK, pct = 20 } }
 yl, md = makeLadder(skyOpts)
 yl:onBaleCreated(1, { getFillLevel = function() return 3100 end }, "STRAW", 3100, 1, 4000)
-T.eq("a bale from another door is born with no wetness", md:getObjectRecord("yl_1").birthWetnessPct, nil)
+T.eq("a bale from another door is born with no wetness", birthPct(md:getObjectRecord("yl_1")), nil)
 T.eq("and the ground under it is never read", skyOpts.sawLitres, nil)
 -- A baler's new bale never re-attaches to an old row, even one that matches its key.
 yl, md = makeLadder()
@@ -189,30 +197,37 @@ yl._live, yl._byNode = {}, {}
 yl:onBaleCreated(11, {}, "STRAW", 100, 1, 100, { wetnessPct = 30, collected = true })
 local rows6 = 0
 md:enumerateObjects(function() rows6 = rows6 + 1 end)
-T.eq("a baler's new bale is a new row, not a re-attach", rows6 .. "/" .. tostring(yl._byNode[11]), "2/yl_2")
+T.eq("a baler's new bale is a new row, not a re-attach", rows6 .. "/" .. tostring(yl._byNode[11]), "2/yl_4")
 
--- ── 7. The re-attach heuristic, and accept-and-log ────────
--- A reload is the common door a known bale comes back through, not storage.
+-- ── 7. [RSF-F215] Binding is the native unique id, never a similarity ──
+-- A bale registering again (handed out by an object storage, or back after a load)
+-- finds its own row by its native unique id. A different bale that happens to share the
+-- farm, fill type and capacity is a different bale: the old heuristic that folded it
+-- into an unattached row is gone.
 
+local function baleWithId(uid) return { getUniqueId = function() return uid end, getFillLevel = function() return 100 end } end
 yl, md = makeLadder()
-yl:onBaleCreated(10, {}, "STRAW", 100, 1, 100)
-md:getObjectRecord("yl_1").condition = 55        -- weathered a while
-
-yl._live, yl._byNode = {}, {}                    -- the reload: transients are gone
-yl:onBaleCreated(999, {}, "STRAW", 100, 1, 100)  -- same farm, fill and capacity
+yl:onBaleCreated(10, baleWithId("b1"), "STRAW", 100, 1, 100)
+setCond("yl_1", 55)                                   -- weathered a while
+local b1 = yl._live["yl_1"].bale
+yl:beginStoring(b1)
+yl:onBaleRemoved(10, b1)                              -- deleted into an object storage
+yl:endStoring(b1)
+T.eq("a bale deleted into an object storage keeps its row, stored and unattached",
+     md:getObjectRecord("yl_1").carrierState .. "/" .. tostring(yl._byNode[10]), "STORED/nil")
+yl:onBaleCreated(999, baleWithId("b1"), "STRAW", 100, 1, 100)  -- handed out again, same id
 
 local rowCount = 0
 md:enumerateObjects(function() rowCount = rowCount + 1 end)
-T.eq("a matching bale re-attaches instead of making a second row", rowCount, 1)
-T.eq("and it keeps the condition it had earned", md:getObjectRecord("yl_1").condition, 55)
-T.eq("the new node now addresses the old row", yl._byNode[999], "yl_1")
+T.eq("the same bale comes back to its own row", rowCount .. "/" .. tostring(yl._byNode[999]), "1/yl_1")
+T.eq("and it keeps the condition it had earned", cond("yl_1"), 55)
 
--- A bale that matches nothing is accepted as new, never silently folded into a row
--- that is not its own.
-yl:onBaleCreated(1000, {}, "WHEAT", 100, 1, 100)
+-- A lookalike: same farm, fill type and capacity, another native id.
+yl:onBaleCreated(1000, baleWithId("b2"), "STRAW", 100, 1, 100)
 rowCount = 0
 md:enumerateObjects(function() rowCount = rowCount + 1 end)
-T.eq("a non-matching bale gets its own row", rowCount, 2)
+T.eq("a lookalike bale with another id gets its own row, never a re-attach",
+     rowCount .. "/" .. string.format("%g", cond(yl._byNode[1000])), "2/0")
 
 -- ── 8. The ladder: rates, shelter, dwell, wrap ────────────
 
@@ -224,40 +239,40 @@ end
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-T.eq("a wet outdoor day costs the ruled 6", md:getObjectRecord("yl_1").condition, 6)
+T.eq("a wet outdoor day costs the ruled 6", cond("yl_1"), 6)
 
 -- Dry outdoor day: the split the addendum corrected in, so a dry summer cannot
 -- condemn a yard falsely.
 yl, md = makeLadder({ wet = false })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-T.eq("a dry outdoor day costs the ruled 1", md:getObjectRecord("yl_1").condition, 1)
+T.eq("a dry outdoor day costs the ruled 1", cond("yl_1"), 1)
 
 -- Under a roof: the corrected 0.15, not the 0.4 placeholder.
 MaterialWetness.isSheltered = function() return true end
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-T.near("a roof multiplies the wet rate by the ruled 0.15", md:getObjectRecord("yl_1").condition, 0.9, 0.0001)
+T.near("a roof multiplies the wet rate by the ruled 0.15", cond("yl_1"), 0.9, 0.0001)
 
 -- No mask at all reads as outdoors: neutral when absent.
 MaterialWetness.isSheltered = function() return nil end
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-T.eq("an unavailable mask reads as outdoors, not as free shelter", md:getObjectRecord("yl_1").condition, 6)
+T.eq("an unavailable mask reads as outdoors, not as free shelter", cond("yl_1"), 6)
 MaterialWetness.isSheltered = function() return false end
 
 -- Dwell at day grain: a bale that moved was in transit and is not charged for it.
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-local afterFirst = md:getObjectRecord("yl_1").condition
+local afterFirst = cond("yl_1")
 getWorldTranslation = function() return 100, 0, 100 end   -- hauled overnight
 passOnce(yl, 11)
-T.eq("a bale that moved since yesterday accrues nothing", md:getObjectRecord("yl_1").condition, afterFirst)
+T.eq("a bale that moved since yesterday accrues nothing", cond("yl_1"), afterFirst)
 passOnce(yl, 12)                                          -- parked at the new spot
-T.eq("and a parked trailer starts accruing again", md:getObjectRecord("yl_1").condition, afterFirst + 6)
+T.eq("and a parked trailer starts accruing again", cond("yl_1"), afterFirst + 6)
 getWorldTranslation = function() return 0, 0, 0 end
 
 -- Wrap is absolute armour in v1: one clock per bale, and it is the engine's.
@@ -265,14 +280,14 @@ g_currentMission.baleManager = { getFermentationTime = function() return 5000 en
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "DRYGRASS_WINDROW", 100, 1, 100)
 passOnce(yl, 10)
-T.eq("a fermenting bale is untouched by the ladder", md:getObjectRecord("yl_1").condition, 0)
+T.eq("a fermenting bale is untouched by the ladder", cond("yl_1"), 0)
 g_currentMission.baleManager = nil
 
 -- A day the Water Record cannot reach is a refusal, and a refusal is not a wet day.
 yl, md = makeLadder({ known = 0 })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passOnce(yl, 10)
-T.eq("an unreachable day takes the dry rate, never the wet one", md:getObjectRecord("yl_1").condition, 1)
+T.eq("an unreachable day takes the dry rate, never the wet one", cond("yl_1"), 1)
 
 -- ── 8b. A time skip charges the SPAN, not one day ─────────
 -- Found in game 2026-07-31: two bales left outdoors across roughly a simulated year
@@ -289,14 +304,14 @@ end
 yl, md = makeLadder({ wet = false })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passSpan(yl, 110, 30)
-T.eq("thirty dry days cost thirty, not one", md:getObjectRecord("yl_1").condition, 30)
+T.eq("thirty dry days cost thirty, not one", cond("yl_1"), 30)
 
 -- The wet split comes from the Water Record over the whole span, in one read.
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passSpan(yl, 110, 10)
 T.eq("a ten day span of wet days costs the wet rate throughout",
-     md:getObjectRecord("yl_1").condition, 10 * YardLadder.RATES.WET_OUTDOOR)
+     cond("yl_1"), 10 * YardLadder.RATES.WET_OUTDOOR)
 
 -- Days the record cannot reach are DRY, never wet: neutral when absent, and the
 -- direction that cannot condemn a yard on evidence we do not have.
@@ -304,7 +319,7 @@ yl, md = makeLadder({ known = 0 })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 passSpan(yl, 110, 50)
 T.eq("an unreachable span takes the dry rate for every day",
-     md:getObjectRecord("yl_1").condition, 50 * YardLadder.RATES.DRY_OUTDOOR)
+     cond("yl_1"), 50 * YardLadder.RATES.DRY_OUTDOOR)
 
 -- The headline: a skipped year must actually kill an unsheltered bale.
 local killed = false
@@ -321,7 +336,7 @@ yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 yl:onLadderPass({ monotonicDay = 110 })
 T.eq("no boundary count still charges one day",
-     md:getObjectRecord("yl_1").condition, YardLadder.RATES.WET_OUTDOOR)
+     cond("yl_1"), YardLadder.RATES.WET_OUTDOOR)
 
 -- ── 9. Bands and condemnation ─────────────────────────────
 
@@ -329,13 +344,13 @@ yl, md = makeLadder()
 yl:onBaleCreated(1, {}, "STRAW", 100, 1, 100)
 row = md:getObjectRecord("yl_1")
 
-row.condition = 39.9
+row.portions[1].condition = 39.9
 T.eq("just under the going-off edge is still fresh", (yl:getConditionBand("yl_1")), YardLadder.BAND.FRESH)
-row.condition = 40
+row.portions[1].condition = 40
 T.eq("the ruled 40 opens the going-off band", (yl:getConditionBand("yl_1")), YardLadder.BAND.GOING_OFF)
-row.condition = 99.9
+row.portions[1].condition = 99.9
 T.eq("just under terminal is still only going off", (yl:getConditionBand("yl_1")), YardLadder.BAND.GOING_OFF)
-row.condition = 100
+row.portions[1].condition = 100
 T.eq("the ruled 100 is terminal", (yl:getConditionBand("yl_1")), YardLadder.BAND.CONDEMNED)
 
 T.eq("the band is reachable by the node a caller actually holds",
@@ -348,7 +363,7 @@ yl:onBaleCreated(1, {
   setFillLevel = function(_, v) emptied = (v == 0) end,
   delete       = function() deleted = true end,
 }, "STRAW", 100, 1, 100)
-md:getObjectRecord("yl_1").condition = 99
+setCond("yl_1", 99)
 passOnce(yl, 10)
 T.ok("terminal condition empties the bale first", emptied)
 T.ok("then deletes it", deleted)
@@ -358,7 +373,7 @@ T.eq("and the row dies with it", md:getObjectRecord("yl_1"), nil)
 -- goes and the warning is the only trace, which is what makes it findable.
 yl, md = makeLadder({ wet = true })
 yl:onBaleCreated(1, nil, "STRAW", 100, 1, 100)
-md:getObjectRecord("yl_1").condition = 99
+setCond("yl_1", 99)
 passOnce(yl, 10)
 T.eq("a terminal row with no bale reference is still dropped", md:getObjectRecord("yl_1"), nil)
 
