@@ -587,6 +587,13 @@ function SoilFertilityManager:onMissionStarted()
         end
     end
 
+    -- [RSF-F215] Every savegame item has loaded by now: the bale condition store's load is
+    -- decided (if no bale did it first) and a row whose bale never registered stops
+    -- reading as restoring.
+    if self.soilSystem.yardLadder ~= nil and type(self.soilSystem.yardLadder.onMissionStarted) == "function" then
+        pcall(self.soilSystem.yardLadder.onMissionStarted, self.soilSystem.yardLadder)
+    end
+
     SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
 
     local ok, err = pcall(function()
@@ -1195,7 +1202,9 @@ end
 --- Save soil data to XML file
 --- Only runs on server in multiplayer, always in singleplayer
 --- Saves to {savegame}/soilData.xml
-function SoilFertilityManager:saveSoilData()
+---@param missionInfo table|nil  the career mission info being saved (its xmlFile takes
+---       the MaterialDown marker, RSF-F215); defaults to the current mission's
+function SoilFertilityManager:saveSoilData(missionInfo)
     if not self.soilSystem then
         SoilLogger.error("saveSoilData: soilSystem is nil")
         return
@@ -1264,7 +1273,7 @@ function SoilFertilityManager:saveSoilData()
     -- sidecar needs a home. No-ops when StateLedger is present (the ledger owns the
     -- state then, so nothing writes it twice).
     if SoilMaterialDownBridge and self.soilSystem.materialDown then
-        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown)
+        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown, missionInfo)
     end
 end
 
@@ -2444,6 +2453,67 @@ function SoilFertilityManager:getCapabilities()
     local ok, caps = pcall(function() return admission:getCapabilities() end)
     if not ok or type(caps) ~= 'table' then return {} end
     return caps
+end
+
+-- ============================================================
+-- [RSF-F215] The limited bale condition provider (SG-3's read and notification join)
+-- ============================================================
+-- Server-local. Listeners register at trusted server initialization only and are never
+-- saved or supplied by a client. Every answer is detached data; exact native unique id
+-- binding, never farm, fill type or capacity similarity. With the ground-material family
+-- off (Experimental Systems) the capabilities are nil and every read is UNAVAILABLE.
+
+local function yardLadderOf(self)
+    local sys = self.soilSystem
+    local yl = sys ~= nil and sys.yardLadder or nil
+    if yl == nil or type(yl.isArmed) ~= 'function' or not yl:isArmed() then return nil end
+    return yl
+end
+
+--- @return table|nil  { schema = "SG_SOIL_CONDITION_1", version = 1, ready, portions = true, notifications = true }
+function SoilFertilityManager:getBaleConditionCapabilities()
+    local yl = yardLadderOf(self)
+    if yl == nil then return nil end
+    local ok, caps = pcall(yl.getCapabilities, yl)
+    if not ok then return nil end
+    return caps
+end
+
+--- @return table|nil lease, string|nil reason
+function SoilFertilityManager:registerBaleConditionListener(listenerId, callbacks)
+    local yl = yardLadderOf(self)
+    if yl == nil then return nil, "UNAVAILABLE" end
+    local ok, lease, why = pcall(yl.registerListener, yl, listenerId, callbacks)
+    if not ok then return nil, "ERROR" end
+    return lease, why
+end
+
+--- @return boolean removed
+function SoilFertilityManager:unregisterBaleConditionListener(lease)
+    local yl = yardLadderOf(self)
+    if yl == nil then return false end
+    local ok, removed = pcall(yl.unregisterListener, yl, lease)
+    return ok and removed == true
+end
+
+--- @return table  { state = READY | RESTORING | UNAVAILABLE, reason, carrierRevision, carrierEventSequence, nativeBaleUniqueId, nativeFillType, actualLitres, portions }
+function SoilFertilityManager:getBaleConditionPortions(nativeBaleUniqueId)
+    local yl = yardLadderOf(self)
+    if yl == nil then return { state = "UNAVAILABLE", reason = "NOT_ARMED", nativeBaleUniqueId = nativeBaleUniqueId, portions = {} } end
+    local ok, result = pcall(yl.getConditionPortions, yl, nativeBaleUniqueId)
+    if not ok or type(result) ~= 'table' then
+        return { state = "UNAVAILABLE", reason = "ERROR", nativeBaleUniqueId = nativeBaleUniqueId, portions = {} }
+    end
+    return result
+end
+
+--- The same-owner compatibility delegate: a bale node resolved to its exact unique id.
+function SoilFertilityManager:getConditionPortionsForNode(nodeId)
+    local yl = yardLadderOf(self)
+    if yl == nil then return { state = "UNAVAILABLE", reason = "NOT_ARMED", portions = {} } end
+    local ok, result = pcall(yl.getConditionPortionsForNode, yl, nodeId)
+    if not ok or type(result) ~= 'table' then return { state = "UNAVAILABLE", reason = "ERROR", portions = {} } end
+    return result
 end
 
 --- Per-cell growth judgement at a world position.

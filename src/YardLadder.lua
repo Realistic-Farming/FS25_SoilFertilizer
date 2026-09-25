@@ -121,6 +121,56 @@ YardLadder.BAND = {
 local TOKEN_PREFIX = "yl_"
 
 -- =========================================================
+-- [RSF-F215] Rows, portions, carrier states and events
+-- =========================================================
+-- A row is one bale's condition record in MaterialDown's object ledger, schema 2:
+--
+--   { schema = 2, token, nativeBaleUniqueId, nativeFillType, observedLitres, farmId,
+--     carrierState, rowRevision, nextCarrierEventSequence, portions,
+--     capacity, bornDay, fillTypeName }            -- the last three: compatibility only
+--
+-- and every portion (one per bale in this build; a pack of several is the held wider
+-- work) carries
+--
+--   { historyId, sourceStreamId, nextEventSequence, portionRevision, litres, profileId,
+--     profileVersion, historyKnowledge, condition, birthWetnessKnown, birthWetnessPct,
+--     observedFromDay, lastSettledDay, conditionGeneration }
+--
+-- BINDING IS THE NATIVE UNIQUE ID, never a similarity. A bale has its persistent id when
+-- it registers (Bale:loadFromConfigXML sets a loaded one, Bale.lua:269-270, and the item
+-- system assigns one otherwise, ItemSystem.lua:209-213); it keeps it through object
+-- storage (PlaceableObjectStorage.lua:947, :965, :1161) and a savegame. The old
+-- farm + fill type + capacity match is gone: a row nothing can prove is UNBOUND and
+-- stays unknown.
+--
+-- CARRIER STATES. WORLD: the bale is registered in the world. STORED: it is in an object
+-- storage (its native object may not exist). PENDING: loaded from a save, waiting for its
+-- bale to register. UNBOUND: no native id can be proved (a legacy row, or a row from a
+-- store the career did not vouch for).
+--
+-- EVENTS. BIRTH (a new row), ADVANCE (the daily condition increase), REBIND (into or out
+-- of storage), RETIRE (the bale left, condemnation included). RESET belongs to a proved
+-- unwrap, a physical policy that is held; nothing emits it in this build. Each event:
+-- every listener's beforeChange, the change once, the row and portion coordinates
+-- committed, then every listener's afterChange (or invalidate, when its before failed or
+-- its after throws). A listener error never blocks the change.
+
+YardLadder.ROW_SCHEMA = 2
+YardLadder.PROFILE_ID = "SOIL_BALE_CONDITION_V1"
+YardLadder.PROFILE_VERSION = 1
+YardLadder.CARRIER = { WORLD = "WORLD", STORED = "STORED", PENDING = "PENDING", UNBOUND = "UNBOUND" }
+YardLadder.KNOWLEDGE = { KNOWN = "KNOWN", UNKNOWN = "UNKNOWN" }
+YardLadder.EVENT = { BIRTH = "BIRTH", ADVANCE = "ADVANCE", RESET = "RESET", REBIND = "REBIND", RETIRE = "RETIRE" }
+YardLadder.RESULT = { APPLIED = "APPLIED", PARTIAL = "PARTIAL", FAILED = "FAILED", UNAVAILABLE = "UNAVAILABLE" }
+YardLadder.STATE = { READY = "READY", RESTORING = "RESTORING", UNAVAILABLE = "UNAVAILABLE" }
+YardLadder.CAPABILITY_SCHEMA = "SG_SOIL_CONDITION_1"
+-- Native fill levels are floats; a portion sum within this of the observed amount agrees.
+YardLadder.LITRE_EPSILON = 0.01
+
+local function finite(n) return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge end
+local function counter(n) return finite(n) and n >= 0 and n == math.floor(n) end
+
+-- =========================================================
 -- Construction
 -- =========================================================
 
@@ -132,14 +182,17 @@ function YardLadder.new()
     self.armed           = false
 
     -- TRANSIENT STATE, owned here and NEVER placed in a ledger record.
-    -- MaterialDown:serialize copies records wholesale into the StateLedger table, so
-    -- a live Bale reference parked on a record would be handed to the serializer. The
-    -- record carries data; everything that cannot survive a save lives in this table.
+    -- MaterialDown:serialize copies records wholesale, so a live Bale reference parked on
+    -- a record would be handed to the serializer. The record carries data; everything
+    -- that cannot survive a save lives in these tables.
     self._live    = {}   -- token -> { nodeId, bale, lastPosX, lastPosZ, lastCheckDay }
     self._byNode  = {}   -- nodeId -> token
-    self._nextId  = 1
-    self._orphanReported = false
-
+    self._byUid   = {}   -- nativeBaleUniqueId -> token (rebuilt, never saved)
+    self._conflict = {}  -- token -> reason, when a second live bale claimed its id
+    self._storing = {}   -- bale object -> true inside an object storage's addToStorage
+    self._listeners = {} -- ordered { id, lease, callbacks }
+    self._loaded = false
+    self._discoveryComplete = false
     return self
 end
 
@@ -157,9 +210,13 @@ function YardLadder:arm(materialDown, materialWetness, hayBet)
     self.hayBet          = hayBet           -- may be nil (SF-44 absent)
     self.armed           = true
 
-    -- The token counter must clear every token already in the ledger, or a reload
-    -- would mint a token that collides with a surviving row.
-    self:_seedTokenCounter()
+    -- [RSF-F215] The row owner validates rows before they go live and before a save, and
+    -- qualifies them once the store's load is decided. The decision itself waits: this
+    -- member arms inside the mission's load (SoilFertilityManager:onMissionLoaded), before
+    -- StateLedger and the own file have delivered, so the first use after every delivery
+    -- makes it (see _ensureLoaded).
+    materialDown.rowValidator = YardLadder.validateRows
+    materialDown.loadObserver = function(state) self:_onLoadDecided(state) end
 
     local R = YardLadder.RATES
     SoilLogger.info("[OK] YardLadder armed (wet=%d/d dry=%d/d roof=x%.2f goingOff=%d condemn=%d)",
@@ -178,144 +235,375 @@ function YardLadder:isArmed()
     return self.armed
 end
 
---- Walk the surviving rows so a fresh token can never collide with a loaded one.
-function YardLadder:_seedTokenCounter()
-    local highest = 0
-    self.materialDown:enumerateObjects(function(token)
-        local n = YardLadder._tokenSerial(token)
-        if n ~= nil and n > highest then highest = n end
+--- Decide the store's load if nobody has yet. Every door that reads or writes rows calls
+--- it first; bales register only after the mission's load has delivered everything
+--- (savegame items load in asynchronous steps after loadMission00Finished), so the first
+--- birth is late enough.
+function YardLadder:_ensureLoaded()
+    if self._loaded then return end
+    local md = self.materialDown
+    if md == nil then return end
+    md:finishLoad()
+    if not self._loaded then self:_onLoadDecided(md.loadState) end
+end
+
+--- Qualify the rows once the store's load is decided, and seed the allocator above every
+--- serial a surviving row holds.
+function YardLadder:_onLoadDecided(state)
+    if self._loaded then return end
+    self._loaded = true
+    local md = self.materialDown
+    local L = MaterialDown.LOAD
+    self._byUid = {}
+    md:enumerateObjects(function(token, row)
+        if not YardLadder._isOurToken(token) or type(row) ~= "table" then return end
+        if state == L.MODERN and row.schema == YardLadder.ROW_SCHEMA then
+            -- Loaded rows wait for their bale; a stored bale stays stored.
+            if row.carrierState == YardLadder.CARRIER.WORLD then row.carrierState = YardLadder.CARRIER.PENDING end
+            if row.carrierState ~= YardLadder.CARRIER.UNBOUND and type(row.nativeBaleUniqueId) == "string" then
+                self._byUid[row.nativeBaleUniqueId] = token
+            end
+        else
+            -- Legacy, or a store nobody vouched for: kept as data, never trusted.
+            row.carrierState = YardLadder.CARRIER.UNBOUND
+        end
+        md:reserveTokenSerial(YardLadder._tokenSerial(token))
+        if type(row.portions) == "table" then
+            for _, p in ipairs(row.portions) do
+                md:reserveTokenSerial(YardLadder._tokenSerial(p.historyId))
+                md:reserveTokenSerial(YardLadder._tokenSerial(p.sourceStreamId))
+            end
+        end
     end)
-    self._nextId = highest + 1
+end
+
+--- The mission has started: every savegame item has loaded, so a row still PENDING has
+--- no bale that registered, and the provider stops saying RESTORING for it.
+function YardLadder:onMissionStarted()
+    if not self:isArmed() then return end
+    self:_ensureLoaded()
+    self._discoveryComplete = true
 end
 
 -- =========================================================
 -- Tokens
 -- =========================================================
--- OPAQUE and MINTED, never derived from the bale.
---
--- The obvious key is the bale's nodeId, and it is wrong: scenegraph node ids are not
--- stable across a save and reload. A nodeId token would orphan every row the moment
--- the game restarted, hand each reloaded bale a fresh condition, and leave the dead
--- rows in the savegame forever. The token is minted here and the nodeId lives in the
--- transient index instead.
+-- OPAQUE and MINTED, never derived from the bale. The row, history and stream tokens all
+-- come from the one Soil token allocator (MaterialDown:allocateTokenSerial), which is
+-- persisted with the store and seeded above every surviving serial.
+
+local HISTORY_PREFIX, STREAM_PREFIX = "yh_", "ys_"
 
 function YardLadder._tokenSerial(token)
     if type(token) ~= "string" then return nil end
-    if token:sub(1, #TOKEN_PREFIX) ~= TOKEN_PREFIX then return nil end
-    return tonumber(token:sub(#TOKEN_PREFIX + 1))
+    for _, prefix in ipairs({ TOKEN_PREFIX, HISTORY_PREFIX, STREAM_PREFIX }) do
+        if token:sub(1, #prefix) == prefix then
+            local n = tonumber(token:sub(#prefix + 1))
+            if counter(n) and n >= 1 then return n end
+            return nil
+        end
+    end
+    return nil
 end
 
 function YardLadder._isOurToken(token)
-    return YardLadder._tokenSerial(token) ~= nil
+    return type(token) == "string" and token:sub(1, #TOKEN_PREFIX) == TOKEN_PREFIX and YardLadder._tokenSerial(token) ~= nil
 end
 
-function YardLadder:_mintToken()
-    local token = TOKEN_PREFIX .. tostring(self._nextId)
-    self._nextId = self._nextId + 1
-    return token
+function YardLadder:_mint(prefix)
+    local n, why = self.materialDown:allocateTokenSerial()
+    if n == nil then return nil, why end
+    return prefix .. string.format("%d", n)
 end
 
 -- =========================================================
--- Birth, and the re-attach that shares its door
+-- Portions: read, detached
 -- =========================================================
 
---- A bale entered the world. Either it is one of ours coming back (reload, or
---- PlaceableObjectStorage handing it out again) or it is new.
----
---- THE RE-ATTACH IS NOT STORAGE-SPECIFIC ON PURPOSE. The brief scopes the heuristic to
---- PlaceableObjectStorage, but storage is only one of the two doors a known bale comes
---- back through; a savegame reload is the other, and it is the common one. Both arrive
---- here as "a bale appeared and may already have a row", so both take the same path.
+--- The bale's condition across its portions, weighted by litres (one portion: its own).
+function YardLadder.rowCondition(row)
+    if type(row) ~= "table" then return nil end
+    if row.schema ~= YardLadder.ROW_SCHEMA then return tonumber(row.condition) or 0 end
+    local sum, litres = 0, 0
+    for _, p in ipairs(row.portions or {}) do
+        local q = tonumber(p.litres) or 0
+        sum, litres = sum + q * (tonumber(p.condition) or 0), litres + q
+    end
+    if litres > 0 then return sum / litres end
+    local p = row.portions and row.portions[1] or nil
+    return p ~= nil and (tonumber(p.condition) or 0) or 0
+end
+
+local function portionCoordinates(p, sourceEpoch)
+    return {
+        historyId           = p.historyId,
+        conditionGeneration = p.conditionGeneration,
+        profileId           = p.profileId,
+        profileVersion      = p.profileVersion,
+        historyKnowledge    = p.historyKnowledge,
+        condition           = p.condition,
+        condemned           = (tonumber(p.condition) or 0) >= YardLadder.RATES.CONDEMN_AT,
+        sourceStreamId      = p.sourceStreamId,
+        sourceEpoch         = sourceEpoch,
+        eventSequence       = (p.nextEventSequence or 1) - 1,
+        portionRevision     = p.portionRevision,
+        lastSettledDay      = p.lastSettledDay,
+        litres              = p.litres,
+    }
+end
+
+function YardLadder:_detachedPortions(row)
+    local out = {}
+    if type(row) ~= "table" or type(row.portions) ~= "table" then return out end
+    local meta = self.materialDown ~= nil and self.materialDown:getBaleConditionMeta() or nil
+    local epoch = meta ~= nil and meta.sourceEpoch or nil
+    for i, p in ipairs(row.portions) do out[i] = portionCoordinates(p, epoch) end
+    return out
+end
+
+-- =========================================================
+-- Listeners (trusted server initialization only; never saved)
+-- =========================================================
+
+---@return table|nil lease, string|nil reason
+function YardLadder:registerListener(listenerId, callbacks)
+    if g_server == nil then return nil, "NOT_SERVER" end
+    if type(listenerId) ~= "string" or listenerId == "" then return nil, "BAD_ID" end
+    if type(callbacks) ~= "table" or type(callbacks.beforeChange) ~= "function"
+       or type(callbacks.afterChange) ~= "function" or type(callbacks.invalidate) ~= "function" then
+        return nil, "BAD_CALLBACKS"
+    end
+    for _, l in ipairs(self._listeners) do
+        if l.id == listenerId then return nil, "DUPLICATE_LISTENER" end
+    end
+    local lease = setmetatable({}, { __tostring = function() return "BaleConditionListenerLease" end })
+    self._listeners[#self._listeners + 1] = {
+        id = listenerId, lease = lease,
+        beforeChange = callbacks.beforeChange, afterChange = callbacks.afterChange, invalidate = callbacks.invalidate,
+    }
+    return lease
+end
+
+function YardLadder:unregisterListener(lease)
+    for i, l in ipairs(self._listeners) do
+        if l.lease == lease then
+            table.remove(self._listeners, i)
+            return true
+        end
+    end
+    return false
+end
+
+--- One change, notified: every listener's before, the change once, the coordinates
+--- committed, every listener's after. `change(row)` performs the change on the live row
+--- and returns (resultRow, result): the row after (nil when retired) and the result.
+function YardLadder:_notifyChange(kind, row, change, operationId)
+    local before = {
+        schemaVersion        = 1,
+        kind                 = kind,
+        carrierEventSequence = row ~= nil and row.nextCarrierEventSequence or 1,
+        beforeCarrierRevision = row ~= nil and row.rowRevision or 0,
+        nativeIds            = { row ~= nil and row.nativeBaleUniqueId or nil },
+        portionsBefore       = self:_detachedPortions(row),
+        operationId          = operationId,
+    }
+    local tickets = {}
+    for i, l in ipairs(self._listeners) do
+        local ok, ticket = pcall(l.beforeChange, MaterialDown.deepCopy(before))
+        tickets[i] = { ok = ok, ticket = ticket }
+    end
+
+    local okChange, after, result = pcall(change, row)
+    if not okChange then
+        SoilLogger.warning("[YardLadder] %s failed: %s", kind, tostring(after))
+        after, result = row, YardLadder.RESULT.FAILED
+    end
+
+    local event = MaterialDown.deepCopy(before)
+    event.result = result or YardLadder.RESULT.APPLIED
+    if after ~= nil then
+        event.nativeIds = { after.nativeBaleUniqueId }
+        event.afterCarrierRevision = after.rowRevision
+        event.portionsAfter = self:_detachedPortions(after)
+    else
+        event.afterCarrierRevision = (before.beforeCarrierRevision or 0) + 1
+        event.portionsAfter = {}
+    end
+    local nativeId = before.nativeIds[1] or (after ~= nil and after.nativeBaleUniqueId) or nil
+    for i, l in ipairs(self._listeners) do
+        local t = tickets[i]
+        local delivered = false
+        if t ~= nil and t.ok then
+            delivered = pcall(l.afterChange, MaterialDown.deepCopy(event), t.ticket)
+        end
+        if not delivered then
+            pcall(l.invalidate, nativeId, t ~= nil and t.ok and "LISTENER_AFTER_FAILED" or "LISTENER_BEFORE_FAILED")
+        end
+    end
+    return after, event.result
+end
+
+--- Commit a row's coordinates after an actual change: the row revision and the carrier
+--- event sequence advance once per notified event.
+local function commitRow(row)
+    row.rowRevision = (row.rowRevision or 0) + 1
+    row.nextCarrierEventSequence = (row.nextCarrierEventSequence or 1) + 1
+end
+
+-- =========================================================
+-- Birth, and the rebind that shares its door
+-- =========================================================
+
+local function nativeUniqueId(bale)
+    if type(bale) ~= "table" or type(bale.getUniqueId) ~= "function" then return nil end
+    local ok, uid = pcall(bale.getUniqueId, bale)
+    if ok and type(uid) == "string" and uid ~= "" then return uid end
+    return nil
+end
+
+--- A bale entered the world: registered by a baler, unpacked, bought, spawned from the
+--- console, handed out by an object storage, or loaded with a savegame. Its native unique
+--- id finds its row if it has one; otherwise it is born.
 ---@param nodeId       number   bale scenegraph node
 ---@param bale         table    live bale object
 ---@param fillTypeName string
----@param fillLevel    number   litres, the newborn bale's own
+---@param fillLevel    number   litres, the bale's own
 ---@param farmId       number
 ---@param capacity     number
 ---@param birth        table|nil  [RSF-F211] a baler's collected birth from its creation
 ---       frame (BalerCollection): { wetnessPct = number|nil, collected = true }. A bale a
----       baler just made is new: it never re-attaches to an old row. Without a birth the
----       bale came through another door and is born unknown; the ground under it is
----       never read as its history.
+---       baler just made is new: it never rebinds to an old row. Without a birth the bale
+---       came through another door: its own row if its id has one, else born unknown.
 function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId, capacity, birth)
     if not self:isArmed() then return end
     if g_server == nil then return end
     if nodeId == nil then return end
     local md = self.materialDown
     if md == nil then return end
+    self:_ensureLoaded()
 
     -- Same node twice (a double register, or our own hook re-entered) is a no-op.
     if self._byNode[nodeId] ~= nil then return end
 
+    local uid = nativeUniqueId(bale)
     local collected = type(birth) == "table" and birth.collected == true
-    local existing = (not collected) and self:_findUnattachedMatch(farmId, fillTypeName, capacity) or nil
-    if existing ~= nil then
-        self:_attach(existing, nodeId, bale)
-        local row = md:getObjectRecord(existing)
-        SoilLogger.debug("[YardLadder] re-attached %s to node %s (condition %.1f)",
-            existing, tostring(nodeId), (row and row.condition) or 0)
+    local token = (uid ~= nil and not collected) and self._byUid[uid] or nil
+    if token ~= nil then
+        local row = md:getObjectRecord(token)
+        if type(row) == "table" and self._live[token] == nil then
+            self:_rebindArriving(token, row, nodeId, bale, fillLevel)
+            return
+        end
+        if self._live[token] ~= nil then
+            -- A second live bale with the same native id (the item system keeps a duplicate
+            -- id and warns, ItemSystem.lua:209-216): neither can be proved; the row stops
+            -- answering, and the newcomer gets no row.
+            self._conflict[token] = "DUPLICATE_NATIVE_ID"
+            SoilLogger.warning("[YardLadder] two live bales claim native id %s; its row %s is unavailable", tostring(uid), token)
+            return
+        end
+    end
+    if collected and uid ~= nil and self._byUid[uid] ~= nil then
+        -- A baler's new bale whose id an old row already holds: the old row cannot be this
+        -- bale's history; it is unbound, and the new bale is born.
+        local old = self._byUid[uid]
+        local oldRow = md:getObjectRecord(old)
+        if type(oldRow) == "table" then oldRow.carrierState = YardLadder.CARRIER.UNBOUND end
+        self._byUid[uid] = nil
+    end
+    self:_birth(nodeId, bale, uid, fillTypeName, fillLevel, farmId, capacity, collected and birth or nil)
+end
+
+--- An arriving bale whose id a row holds: out of storage (REBIND), or back after a
+--- savegame load (restored, not an event: nothing about the bale changed).
+function YardLadder:_rebindArriving(token, row, nodeId, bale, fillLevel)
+    if row.carrierState == YardLadder.CARRIER.PENDING then
+        row.carrierState = YardLadder.CARRIER.WORLD
+        self:_attach(token, nodeId, bale)
+        SoilLogger.debug("[YardLadder] restored %s to node %s", token, tostring(nodeId))
         return
     end
+    self:_notifyChange(YardLadder.EVENT.REBIND, row, function(r)
+        r.carrierState = YardLadder.CARRIER.WORLD
+        for _, p in ipairs(r.portions or {}) do p.portionRevision = (p.portionRevision or 0) + 1 end
+        commitRow(r)
+        self:_attach(token, nodeId, bale)
+        return r, YardLadder.RESULT.APPLIED
+    end)
+    SoilLogger.debug("[YardLadder] rebound %s out of storage to node %s", token, tostring(nodeId))
+end
 
-    -- No candidate. ACCEPT AND LOG, never silently fresh: if there were unattached
-    -- rows and none matched, the bale keeps its fresh row but the mismatch is said out
-    -- loud, because that is the line that tells us the heuristic key is too narrow.
-    local stranded = self:_countUnattached()
-    if stranded > 0 and not self._orphanReported then
-        self._orphanReported = true
-        SoilLogger.info("[YardLadder] no row matched an arriving bale (farm=%s fill=%s cap=%s); %d row(s) still unattached, accepting as new",
-            tostring(farmId), tostring(fillTypeName), tostring(capacity), stranded)
+function YardLadder:_birth(nodeId, bale, uid, fillTypeName, fillLevel, farmId, capacity, birth)
+    local md = self.materialDown
+    local wetnessPct = birth ~= nil and tonumber(birth.wetnessPct) or nil
+    local today = self:_today()
+    local token, whyT = self:_mint(TOKEN_PREFIX)
+    local historyId = token ~= nil and self:_mint(HISTORY_PREFIX) or nil
+    local streamId = historyId ~= nil and self:_mint(STREAM_PREFIX) or nil
+    if streamId == nil then
+        SoilLogger.debug("[YardLadder] no row for node %s: the token allocator refused (%s)", tostring(nodeId), tostring(whyT))
+        return
     end
-
-    local wetnessPct = collected and birth.wetnessPct or nil
-    local token = self:_mintToken()
+    local litres = finite(tonumber(fillLevel)) and tonumber(fillLevel) or 0
+    -- A collected bale's portion is the litres its chamber actually gave it (RSF-F211 :112).
+    -- An unfinished round bale registers padded to the chamber's capacity and dropBale
+    -- applies the real amount afterwards (Baler.lua:1590-1593), so the account's litres,
+    -- not the padded level, are this bale's; the provider reads UNAVAILABLE until the drop
+    -- confirms them, and for good if it does not. A finished bale's account was reconciled
+    -- to the chamber's level before the finish, so for it the two agree.
+    local account = birth ~= nil and birth.account or nil
+    if type(account) == "table" and finite(account.carrier) and account.carrier > 0 then litres = account.carrier end
 
     -- DATA ONLY. Nothing here may be a live reference or a scenegraph handle.
     local row = {
-        condition       = YardLadder.birthCondition(wetnessPct),
-        birthWetnessPct = wetnessPct,   -- published in its own right, never the ladder
-        farmId          = farmId or 0,
-        fillTypeName    = fillTypeName or "UNKNOWN",
-        capacity        = capacity or 0,
-        bornDay         = self:_today(),
+        schema                   = YardLadder.ROW_SCHEMA,
+        token                    = token,
+        nativeBaleUniqueId       = uid,
+        nativeFillType           = fillTypeName or "UNKNOWN",
+        observedLitres           = litres,
+        farmId                   = farmId or 0,
+        carrierState             = uid ~= nil and YardLadder.CARRIER.WORLD or YardLadder.CARRIER.UNBOUND,
+        rowRevision              = 0,
+        nextCarrierEventSequence = 1,
+        portions                 = {},
+        -- compatibility only; never overrides the portions
+        capacity                 = capacity or 0,
+        bornDay                  = today,
+        fillTypeName             = fillTypeName or "UNKNOWN",
     }
 
-    if not md:createObjectRecord(token, row) then return end
-    self:_attach(token, nodeId, bale)
+    local created = nil
+    self:_notifyChange(YardLadder.EVENT.BIRTH, nil, function()
+        row.portions[1] = {
+            historyId           = historyId,
+            sourceStreamId      = streamId,
+            nextEventSequence   = 2,   -- BIRTH consumed sequence 1
+            portionRevision     = 1,
+            litres              = litres,
+            profileId           = YardLadder.PROFILE_ID,
+            profileVersion      = YardLadder.PROFILE_VERSION,
+            historyKnowledge    = wetnessPct ~= nil and YardLadder.KNOWLEDGE.KNOWN or YardLadder.KNOWLEDGE.UNKNOWN,
+            condition           = YardLadder.birthCondition(wetnessPct),
+            birthWetnessKnown   = wetnessPct ~= nil,
+            birthWetnessPct     = wetnessPct,
+            observedFromDay     = today,
+            lastSettledDay      = today,
+            conditionGeneration = 1,
+        }
+        commitRow(row)
+        if not md:createObjectRecord(token, row) then error("token taken: " .. token) end
+        created = row
+        self:_attach(token, nodeId, bale)
+        if uid ~= nil then self._byUid[uid] = token end
+        return row, YardLadder.RESULT.APPLIED
+    end)
+    if created == nil then return end
 
     SoilLogger.debug("[YardLadder] birth %s node=%s farm=%s fill=%s cap=%s wetness=%s condition=%.1f",
         token, tostring(nodeId), tostring(farmId), tostring(fillTypeName), tostring(capacity),
-        wetnessPct ~= nil and string.format("%.1f", wetnessPct) or "unknown", row.condition)
+        wetnessPct ~= nil and string.format("%.1f", wetnessPct) or "unknown", created.portions[1].condition)
 
     self:publishWetnessAtBaling(token, fillTypeName, wetnessPct)
-end
-
---- Heuristic key: farm + fill type + capacity, oldest row first so the choice is
---- deterministic. Rows sharing all three are interchangeable except for condition, so
---- picking among them cannot be wrong in any way a player could observe.
-function YardLadder:_findUnattachedMatch(farmId, fillTypeName, capacity)
-    local best, bestBorn = nil, nil
-    self.materialDown:enumerateObjects(function(token, row)
-        if not YardLadder._isOurToken(token) then return end
-        if self._live[token] ~= nil then return end
-        if type(row) ~= "table" then return end
-        if row.farmId ~= (farmId or 0) then return end
-        if row.fillTypeName ~= (fillTypeName or "UNKNOWN") then return end
-        if math.abs((row.capacity or 0) - (capacity or 0)) > 1 then return end
-        local born = row.bornDay or 0
-        if bestBorn == nil or born < bestBorn then
-            best, bestBorn = token, born
-        end
-    end)
-    return best
-end
-
-function YardLadder:_countUnattached()
-    local n = 0
-    self.materialDown:enumerateObjects(function(token)
-        if YardLadder._isOurToken(token) and self._live[token] == nil then n = n + 1 end
-    end)
-    return n
 end
 
 function YardLadder:_attach(token, nodeId, bale)
@@ -346,10 +634,9 @@ end
 -- exact bale createBale appended, through its creation frame. Its birth reaches
 -- onBaleCreated as `birth`. A chamber holding any material of unknown or refused
 -- condition gives no confident wetness (no known-only mean becomes a whole-bale
--- claim), so that bale opens at zero condition, per the ruling. Every other door
--- (unpacking, console, storage, a savegame load) is born unknown: the ground under a
--- bale is never read as its collected history. The old per-baler accumulator, the
--- pending single-use sample and the ground probe are retired.
+-- claim), so that bale opens at zero condition, per the ruling, and its history is
+-- UNKNOWN. Every other door (unpacking, console, a purchase) is born unknown: the ground
+-- under a bale is never read as its collected history.
 
 --- Today, for stamping a birth. The accrual's ctx.monotonicDay is the authority on
 --- the pass itself; this is only for rows born between passes, so it reads the same
@@ -361,27 +648,64 @@ function YardLadder:_today()
     return tonumber(day) or 0
 end
 
--- The seasonal birth stub (spring 65 / summer 55 / autumn 70 / winter 75) is DELETED,
--- not disabled. Its brief said "deleted when the hay member lands", the hay member has
--- landed, and the birth-axis ruling settled what it was standing in for: those four
--- numbers were a WETNESS estimate and were never a condition. A bale with no record
--- opens at zero.
+-- =========================================================
+-- Storage, and death
+-- =========================================================
 
--- =========================================================
--- Death
--- =========================================================
+--- An object storage is taking this bale in (the wrapper on the storage's bale class,
+--- HookManager). The bale's delete inside it is a move into storage, not a death.
+function YardLadder:beginStoring(bale)
+    if bale ~= nil then self._storing[bale] = true end
+end
+
+function YardLadder:endStoring(bale)
+    if bale ~= nil then self._storing[bale] = nil end
+end
 
 --- A bale left the world: sold, fed out, mixed, condemned by us, condemned by
---- RealisticWeather, or taken by the engine's bale cap. One door for all of them.
-function YardLadder:onBaleRemoved(nodeId)
+--- RealisticWeather, taken by the engine's bale cap, or deleted into an object storage.
+--- One door for all of them.
+function YardLadder:onBaleRemoved(nodeId, bale)
     if not self:isArmed() then return end
     if g_server == nil then return end
     if nodeId == nil then return end
     local token = self._byNode[nodeId]
     if token == nil then return end
-    self:_detach(token)
-    if self.materialDown ~= nil then
-        self.materialDown:removeObjectRecord(token)
+    local md = self.materialDown
+    local row = md ~= nil and md:getObjectRecord(token) or nil
+    if bale ~= nil and self._storing[bale] and type(row) == "table" and row.schema == YardLadder.ROW_SCHEMA
+       and row.carrierState == YardLadder.CARRIER.WORLD then
+        self:_notifyChange(YardLadder.EVENT.REBIND, row, function(r)
+            r.carrierState = YardLadder.CARRIER.STORED
+            for _, p in ipairs(r.portions or {}) do p.portionRevision = (p.portionRevision or 0) + 1 end
+            commitRow(r)
+            self:_detach(token)
+            return r, YardLadder.RESULT.APPLIED
+        end)
+        return
+    end
+    self:_retire(token, row)
+end
+
+--- The row ends with its bale.
+function YardLadder:_retire(token, row)
+    local md = self.materialDown
+    local notify = type(row) == "table" and row.schema == YardLadder.ROW_SCHEMA
+    local function remove()
+        self:_detach(token)
+        if type(row) == "table" and row.nativeBaleUniqueId ~= nil and self._byUid[row.nativeBaleUniqueId] == token then
+            self._byUid[row.nativeBaleUniqueId] = nil
+        end
+        self._conflict[token] = nil
+        if md ~= nil then md:removeObjectRecord(token) end
+    end
+    if notify then
+        self:_notifyChange(YardLadder.EVENT.RETIRE, row, function()
+            remove()
+            return nil, YardLadder.RESULT.APPLIED
+        end)
+    else
+        remove()
     end
 end
 
@@ -397,6 +721,7 @@ function YardLadder:onLadderPass(ctx)
     if g_server == nil then return end
     local md = self.materialDown
     if md == nil then return end
+    self:_ensureLoaded()
 
     local day = ctx and tonumber(ctx.monotonicDay)
     if day == nil then return end
@@ -420,6 +745,7 @@ function YardLadder:onLadderPass(ctx)
             due[#due + 1] = { token = token, row = row }
         end
     end)
+    table.sort(due, function(a, b) return (YardLadder._tokenSerial(a.token) or 0) < (YardLadder._tokenSerial(b.token) or 0) end)
 
     -- Split the crossed span into wet and dry days ONCE, from the Water Record, rather
     -- than asking per bale. `waterDaysInLast` returns how many of the last N days
@@ -460,9 +786,9 @@ end
 function YardLadder:_processRow(token, row, day, wetDays, dryDays)
     local live = self._live[token]
 
-    -- Unattached: the row survived a save but no bale has claimed it back yet. It
-    -- cannot be located, so it cannot accrue. It is NOT deleted either, because the
-    -- bale may still be inside a PlaceableObjectStorage waiting to be handed out.
+    -- Unattached: stored, waiting for its bale after a load, or unbound. It cannot be
+    -- located, so it cannot accrue. It is NOT deleted either: a stored bale is handed out
+    -- again, and an unbound row is kept as data.
     if live == nil then return end
 
     -- The node may have gone without our delete hook seeing it. entityExists is the
@@ -499,13 +825,32 @@ function YardLadder:_processRow(token, row, day, wetDays, dryDays)
     -- makes, and the honest one, since a bale that had moved would have failed dwell.
     local rate = (wetDays or 0) * R.WET_OUTDOOR + (dryDays or 0) * R.DRY_OUTDOOR
     local shelter = self:_shelterMultiplier(x, z)
-    local before = row.condition or 0
-    row.condition = before + rate * shelter
+    local delta = rate * shelter
+    local before = YardLadder.rowCondition(row)
 
+    if row.schema == YardLadder.ROW_SCHEMA then
+        if delta > 0 then
+            -- The daily increase is notified before any consequent condemnation.
+            self:_notifyChange(YardLadder.EVENT.ADVANCE, row, function(r)
+                for _, p in ipairs(r.portions) do
+                    p.condition = (tonumber(p.condition) or 0) + delta
+                    p.lastSettledDay = day
+                    p.nextEventSequence = (p.nextEventSequence or 1) + 1
+                    p.portionRevision = (p.portionRevision or 0) + 1
+                end
+                commitRow(r)
+                return r, YardLadder.RESULT.APPLIED
+            end)
+        end
+    else
+        row.condition = before + delta
+    end
+
+    local after = YardLadder.rowCondition(row)
     SoilLogger.debug("[YardLadder] %s: %.1f -> %.1f (+%.1f, shelter x%.2f)",
-        token, before, row.condition, rate * shelter, shelter)
+        token, before, after, delta, shelter)
 
-    if row.condition >= R.CONDEMN_AT then
+    if after >= R.CONDEMN_AT then
         self:_condemn(token, row, live)
     end
 end
@@ -539,13 +884,12 @@ end
 --- can be told apart from theirs. It stays at info level for that reason.
 function YardLadder:_condemn(token, row, live)
     SoilLogger.info("[YardLadder] CONDEMN %s: farm=%s fill=%s cap=%s condition=%.1f (SoilFertilizer removed this bale)",
-        token, tostring(row.farmId), tostring(row.fillTypeName), tostring(row.capacity), row.condition or 0)
+        token, tostring(row.farmId), tostring(row.fillTypeName), tostring(row.capacity), YardLadder.rowCondition(row) or 0)
 
     local bale = live and live.bale
 
-    -- The row dies first so the delete hook cannot re-enter and act on a live row.
-    self:_detach(token)
-    self.materialDown:removeObjectRecord(token)
+    -- The row dies first (RETIRE) so the delete hook cannot re-enter and act on a live row.
+    self:_retire(token, row)
 
     if bale == nil or bale.delete == nil then
         -- Reached terminal condition with no object to act on. Say so rather than
@@ -571,7 +915,7 @@ function YardLadder:getConditionBand(token)
     if not self:isArmed() or self.materialDown == nil then return nil end
     local row = self.materialDown:getObjectRecord(token)
     if type(row) ~= "table" then return nil end
-    local c = row.condition or 0
+    local c = YardLadder.rowCondition(row) or 0
     local R = YardLadder.RATES
     if c >= R.CONDEMN_AT then return YardLadder.BAND.CONDEMNED, c end
     if c >= R.GOING_OFF_AT then return YardLadder.BAND.GOING_OFF, c end
@@ -586,12 +930,164 @@ function YardLadder:getConditionBandForNode(nodeId)
 end
 
 -- =========================================================
+-- [RSF-F215] The limited condition provider
+-- =========================================================
+
+function YardLadder:getCapabilities()
+    if not self:isArmed() or self.materialDown == nil then return nil end
+    self:_ensureLoaded()
+    return {
+        schema        = YardLadder.CAPABILITY_SCHEMA,
+        version       = 1,
+        ready         = self.materialDown:isConditionStoreValid() and self._discoveryComplete,
+        portions      = true,
+        notifications = true,
+    }
+end
+
+local function unavailable(uid, reason)
+    return { state = YardLadder.STATE.UNAVAILABLE, reason = reason, nativeBaleUniqueId = uid, portions = {} }
+end
+
+--- The exact bale's condition portions, detached. READY only for a row bound to that
+--- native id whose portions agree with the bale's actual litres.
+function YardLadder:getConditionPortions(nativeBaleUniqueId)
+    if not self:isArmed() or self.materialDown == nil then return unavailable(nativeBaleUniqueId, "NOT_ARMED") end
+    self:_ensureLoaded()
+    local md = self.materialDown
+    if not md:isConditionStoreValid() then return unavailable(nativeBaleUniqueId, "STORE_UNAVAILABLE") end
+    if type(nativeBaleUniqueId) ~= "string" then return unavailable(nativeBaleUniqueId, "BAD_ID") end
+    local token = self._byUid[nativeBaleUniqueId]
+    local row = token ~= nil and md:getObjectRecord(token) or nil
+    if type(row) ~= "table" or row.schema ~= YardLadder.ROW_SCHEMA then return unavailable(nativeBaleUniqueId, "NO_ROW") end
+    if self._conflict[token] ~= nil then return unavailable(nativeBaleUniqueId, self._conflict[token]) end
+    local C = YardLadder.CARRIER
+    if row.carrierState == C.UNBOUND then return unavailable(nativeBaleUniqueId, "UNBOUND") end
+    if row.carrierState == C.PENDING then
+        if self._discoveryComplete then return unavailable(nativeBaleUniqueId, "NOT_DISCOVERED") end
+        return { state = YardLadder.STATE.RESTORING, reason = "AWAITING_BALE", nativeBaleUniqueId = nativeBaleUniqueId, portions = {} }
+    end
+
+    local actual = row.observedLitres
+    if row.carrierState == C.WORLD then
+        local live = self._live[token]
+        local bale = live ~= nil and live.bale or nil
+        if bale == nil or type(bale.getFillLevel) ~= "function" then return unavailable(nativeBaleUniqueId, "NO_LIVE_BALE") end
+        local ok, level = pcall(bale.getFillLevel, bale)
+        if not ok or not finite(level) then return unavailable(nativeBaleUniqueId, "UNREADABLE_LEVEL") end
+        actual = level
+    end
+    local sum = 0
+    for _, p in ipairs(row.portions) do sum = sum + (tonumber(p.litres) or 0) end
+    if math.abs(sum - (actual or 0)) > YardLadder.LITRE_EPSILON then
+        -- A bale partly used since its row was written: the portions no longer describe
+        -- it, and are never rescaled into agreement.
+        return unavailable(nativeBaleUniqueId, "QUANTITY_MISMATCH")
+    end
+    return {
+        state                = YardLadder.STATE.READY,
+        reason               = nil,
+        carrierRevision      = row.rowRevision,
+        carrierEventSequence = (row.nextCarrierEventSequence or 1) - 1,
+        nativeBaleUniqueId   = nativeBaleUniqueId,
+        nativeFillType       = row.nativeFillType,
+        actualLitres         = actual,
+        portions             = self:_detachedPortions(row),
+    }
+end
+
+--- The same-owner compatibility delegate: a node resolves to its exact unique id, and the
+--- one store answers. Visual clones never resolve (no row holds their node).
+function YardLadder:getConditionPortionsForNode(nodeId)
+    local token = self._byNode[nodeId]
+    local row = token ~= nil and self.materialDown ~= nil and self.materialDown:getObjectRecord(token) or nil
+    if type(row) ~= "table" or type(row.nativeBaleUniqueId) ~= "string" then return unavailable(nil, "NO_ROW") end
+    return self:getConditionPortions(row.nativeBaleUniqueId)
+end
+
+-- =========================================================
+-- [RSF-F215] Row validation (before a row goes live, and before a save)
+-- =========================================================
+
+local VALID_CARRIER = { WORLD = true, STORED = true, PENDING = true, UNBOUND = true }
+local VALID_KNOWLEDGE = { KNOWN = true, UNKNOWN = true }
+
+local function validPortion(p, meta)
+    if type(p) ~= "table" then return false, "PORTION" end
+    for _, k in ipairs({ "historyId", "sourceStreamId", "profileId" }) do
+        if type(p[k]) ~= "string" or p[k] == "" then return false, "PORTION_" .. k end
+    end
+    for _, k in ipairs({ "nextEventSequence", "portionRevision", "profileVersion", "conditionGeneration" }) do
+        if not counter(p[k]) then return false, "PORTION_" .. k end
+    end
+    if not finite(p.litres) or p.litres < 0 then return false, "PORTION_litres" end
+    if not finite(p.condition) or p.condition < 0 then return false, "PORTION_condition" end
+    if not VALID_KNOWLEDGE[p.historyKnowledge] then return false, "PORTION_knowledge" end
+    if type(p.birthWetnessKnown) ~= "boolean" then return false, "PORTION_birthWetnessKnown" end
+    if p.birthWetnessKnown and not finite(p.birthWetnessPct) then return false, "PORTION_birthWetnessPct" end
+    if not finite(p.observedFromDay) or not finite(p.lastSettledDay) then return false, "PORTION_day" end
+    local next = meta ~= nil and meta.nextTokenSerial or nil
+    for _, t in ipairs({ p.historyId, p.sourceStreamId }) do
+        local n = YardLadder._tokenSerial(t)
+        if n == nil then return false, "PORTION_TOKEN" end
+        if next ~= nil and n >= next then return false, "PORTION_TOKEN_ABOVE_ALLOCATOR" end
+    end
+    return true
+end
+
+--- MaterialDown's row validator: every schema-2 row complete and consistent, native ids
+--- and stream tokens unique, every token below the saved allocator; a legacy row only as
+--- UNBOUND data. Other members' records pass untouched.
+---@return boolean ok, string|nil reason
+function YardLadder.validateRows(objects, meta)
+    if type(objects) ~= "table" then return false, "NO_OBJECTS" end
+    local uids, streams = {}, {}
+    local next = type(meta) == "table" and meta.nextTokenSerial or nil
+    for token, row in pairs(objects) do
+        if YardLadder._isOurToken(token) then
+            if type(row) ~= "table" then return false, "ROW_NOT_TABLE" end
+            local n = YardLadder._tokenSerial(token)
+            if next ~= nil and n >= next then return false, "TOKEN_ABOVE_ALLOCATOR" end
+            if row.schema == YardLadder.ROW_SCHEMA then
+                if row.token ~= token then return false, "TOKEN_MISMATCH" end
+                if not VALID_CARRIER[row.carrierState] then return false, "CARRIER" end
+                if row.carrierState ~= "UNBOUND" then
+                    if type(row.nativeBaleUniqueId) ~= "string" or row.nativeBaleUniqueId == "" then return false, "NO_NATIVE_ID" end
+                    if uids[row.nativeBaleUniqueId] then return false, "DUPLICATE_NATIVE_ID" end
+                    uids[row.nativeBaleUniqueId] = true
+                end
+                if not counter(row.rowRevision) or not counter(row.nextCarrierEventSequence) or row.nextCarrierEventSequence < 1 then
+                    return false, "ROW_COUNTERS"
+                end
+                if not finite(row.observedLitres) or row.observedLitres < 0 then return false, "OBSERVED_LITRES" end
+                if type(row.nativeFillType) ~= "string" then return false, "FILL_TYPE" end
+                if type(row.portions) ~= "table" or #row.portions < 1 then return false, "NO_PORTIONS" end
+                local sum = 0
+                for _, p in ipairs(row.portions) do
+                    local ok, why = validPortion(p, meta)
+                    if not ok then return false, why end
+                    if streams[p.sourceStreamId] then return false, "DUPLICATE_STREAM" end
+                    streams[p.sourceStreamId] = true
+                    sum = sum + p.litres
+                end
+                if math.abs(sum - row.observedLitres) > YardLadder.LITRE_EPSILON then return false, "PORTIONS_DISAGREE" end
+            elseif row.carrierState ~= "UNBOUND" then
+                return false, "LEGACY_ROW_BOUND"
+            end
+        end
+    end
+    return true
+end
+
+-- =========================================================
 -- Publications
 -- =========================================================
 -- PUBLISH ONLY. DairyCore is the sole writer of Feed Provenance and this member never
 -- writes it. The input-spec rider on this brief carries both of these onto the Feed
 -- Provenance brief; until that lands there is no consumer, so the publication is a
 -- message-centre emit plus a line, and the shape is what the rider will bind to.
+-- [RSF-F215] publishConditionAtFeed is the scalar clone the limited provider replaces as
+-- a contract; it stays for its existing consumer.
 
 YardLadder.MESSAGE_WETNESS_AT_BALING = "SoilFertilizer_YardLadder_wetnessAtBaling"
 YardLadder.MESSAGE_CONDITION_AT_FEED = "SoilFertilizer_YardLadder_conditionAtFeed"

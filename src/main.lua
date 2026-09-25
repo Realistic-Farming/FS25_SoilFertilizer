@@ -320,6 +320,7 @@ source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
 source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 source(modDirectory .. "src/integrations/SoilStateLedgerBridge.lua")
+source(modDirectory .. "src/integrations/MaterialDownCodec.lua")   -- [RSF-F215] before the bridge that writes with it
 source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
@@ -431,6 +432,9 @@ local function loadedMission(mission, node)
     if SoilMaterialDownBridge and groundLive then
         local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
         if md then
+            -- [RSF-F215] The career marker and the new-career flag first: the deliveries
+            -- that follow are held until the load is decided against them.
+            SoilMaterialDownBridge.beginLoad(md)
             SoilMaterialDownBridge.registerLedger(md)
             SoilMaterialDownBridge.loadFallback(md)
             SoilMaterialDownBridge.registerAccruals(md)
@@ -877,7 +881,7 @@ local function hookSaveLoadEvents()
                     if g_server == nil then return end
                 end
                 if g_SoilFertilityManager then
-                    g_SoilFertilityManager:saveSoilData()
+                    g_SoilFertilityManager:saveSoilData(missionInfo)
                     -- Persist settings here too, NOT only on-change (#637).
                     -- saveToXMLFile fires with savegameDirectory pointing at the tempsavegame
                     -- staging dir, whose contents FS25 then copies over the real savegame
@@ -907,6 +911,10 @@ local function hookSaveLoadEvents()
             end
         )
         SoilLogger.info("Save hook installed on FSCareerMissionInfo:saveToXMLFile")
+        -- [RSF-F215] One save invocation in front of the native save and every appended
+        -- hook (Soil's above, StateLedger's in whichever order the mods loaded), so the
+        -- MaterialDown envelope is frozen once and shared by both writers.
+        if SoilMaterialDownBridge ~= nil then SoilMaterialDownBridge.installSaveInvocation() end
     else
         SoilLogger.warning("FSCareerMissionInfo.saveToXMLFile not found - soil data will NOT be saved")
     end
