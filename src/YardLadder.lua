@@ -140,11 +140,6 @@ function YardLadder.new()
     self._nextId  = 1
     self._orphanReported = false
 
-    -- THE BIRTH SAMPLE (RULED 2026-07-31). Per-baler pickup accumulators, keyed by
-    -- the vehicle table itself under a WEAK key so a sold or deleted baler cannot
-    -- pin state here. Never serialized: this is transient by the same rule as _live.
-    self._balerAcc = setmetatable({}, { __mode = "k" })
-    self._pendingBirth = nil   -- set by createBale, consumed by the next Bale.register
     return self
 end
 
@@ -237,7 +232,12 @@ end
 ---@param fillLevel    number   litres, the newborn bale's own
 ---@param farmId       number
 ---@param capacity     number
-function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId, capacity)
+---@param birth        table|nil  [RSF-F211] a baler's collected birth from its creation
+---       frame (BalerCollection): { wetnessPct = number|nil, collected = true }. A bale a
+---       baler just made is new: it never re-attaches to an old row. Without a birth the
+---       bale came through another door and is born unknown; the ground under it is
+---       never read as its history.
+function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId, capacity, birth)
     if not self:isArmed() then return end
     if g_server == nil then return end
     if nodeId == nil then return end
@@ -247,7 +247,8 @@ function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId,
     -- Same node twice (a double register, or our own hook re-entered) is a no-op.
     if self._byNode[nodeId] ~= nil then return end
 
-    local existing = self:_findUnattachedMatch(farmId, fillTypeName, capacity)
+    local collected = type(birth) == "table" and birth.collected == true
+    local existing = (not collected) and self:_findUnattachedMatch(farmId, fillTypeName, capacity) or nil
     if existing ~= nil then
         self:_attach(existing, nodeId, bale)
         local row = md:getObjectRecord(existing)
@@ -266,7 +267,7 @@ function YardLadder:onBaleCreated(nodeId, bale, fillTypeName, fillLevel, farmId,
             tostring(farmId), tostring(fillTypeName), tostring(capacity), stranded)
     end
 
-    local wetnessPct = self:_birthWetness(nodeId, fillLevel)
+    local wetnessPct = collected and birth.wetnessPct or nil
     local token = self:_mintToken()
 
     -- DATA ONLY. Nothing here may be a live reference or a scenegraph handle.
@@ -337,133 +338,18 @@ function YardLadder:_detach(token)
 end
 
 -- =========================================================
--- THE BIRTH SAMPLE: sample at the pickup, weight by litres, stamp at birth
+-- THE BIRTH: what the chamber actually held
 -- =========================================================
--- RULED 2026-07-31. A bale is what the pickup ate, so its birth wetness is the
--- LITRES-WEIGHTED AVERAGE of everything that fed the chamber. A round bale fills
--- over a long run and a field is not one wetness: the headland sits shaded and damp
--- while the middle is baked. One wet patch inside a big dry bale is not a wet bale;
--- a bale that is mostly wet is.
---
--- This is NOT a new aggregation rule. SF-25's ratified positional integral is
--- area-weighted and this family already sharpened it to MASS-weighted, because
--- material lies in windrows and does not cover the ground. Litres picked up IS the
--- mass term, so the clause inherits rather than invents.
---
--- WHY WE KEEP OUR OWN ACCUMULATOR instead of riding the engine's, which is what the
--- clause originally proposed. Certified against dataS: Baler:finishBale FORKS.
--- A baler WITH an unloading animation calls createBale immediately (Baler.lua:1432)
--- and never touches spec.pickupFillTypes there; its reset happens later, at drop
--- (:930-932). A baler WITHOUT one zeroes the accumulator (:1440-1442) and THEN calls
--- createBale (:1443), so the engine's accumulator is ALREADY ZERO at the moment that
--- kind of bale is born. Riding it would silently produce no-wetness bales for half
--- the balers in the game, and by the refusal law that is indistinguishable from an
--- honest unknown. The RULE is untouched; only the site is ours.
-
---- One pickup pass. Called from the Baler hook, server side, with the wetness read
---- taken BEFORE the pass ate the material and the litres it actually took.
----@param baler table   the baler vehicle, used only as an identity key
----@param pct   number|nil  wetness percent over the pickup area, nil when unknown
----@param litres number     litres this pass took
-function YardLadder:noteBalerPickup(baler, pct, litres)
-    if not self:isArmed() then return end
-    if baler == nil then return end
-    local q = tonumber(litres)
-    if q == nil or q <= 0 then return end
-
-    local acc = self._balerAcc[baler]
-    if acc == nil then
-        acc = { weighted = 0, knownLitres = 0, unknownLitres = 0 }
-        self._balerAcc[baler] = acc
-    end
-
-    if pct == nil then
-        -- The pass took material we could not read. It is counted, so the bale can
-        -- say how much of itself it cannot vouch for, but it never enters the mean.
-        acc.unknownLitres = acc.unknownLitres + q
-        return
-    end
-    acc.weighted    = acc.weighted + pct * q
-    acc.knownLitres = acc.knownLitres + q
-end
-
---- Close the chamber. Called from the Baler hook the moment a bale is created, which
---- is where the engine's own accumulator lifecycle is unreliable and ours is not.
----@param baler table
-function YardLadder:closeBalerChamber(baler)
-    if baler == nil then return end
-    local acc = self._balerAcc[baler]
-    self._balerAcc[baler] = nil
-    if acc == nil then return end
-
-    -- REFUSAL HONESTY, unchanged by this clause: an accumulator that saw no readable
-    -- material hands over nothing at all. The bale is then born at zero and records
-    -- no wetness, exactly as before. It is NOT a wetness of zero.
-    if acc.knownLitres <= 0 then
-        self._pendingBirth = nil
-        return
-    end
-    self._pendingBirth = {
-        pct           = acc.weighted / acc.knownLitres,
-        knownLitres   = acc.knownLitres,
-        unknownLitres = acc.unknownLitres,
-    }
-end
-
---- Consume the pending sample. Single use: a bale entering the world through any
---- other door (unpacking, console, storage retrieval, savegame load) finds nothing
---- here and falls through to the ground read, which is the correct answer for it.
-function YardLadder:_takePendingBirth()
-    local p = self._pendingBirth
-    self._pendingBirth = nil
-    return p
-end
-
---- The birth read. The pickup sample when a baler just made this bale, otherwise the
---- ground band when the hay member and the sky member are both live.
----@return number|nil wetnessPct  nil means NO RECORD, which is not a wetness of zero
-function YardLadder:_birthWetness(nodeId, fillLevel)
-    -- THE PICKUP SAMPLE WINS when there is one, because it measured the material
-    -- while it still existed. The ground read below cannot: by the time a bale is
-    -- registered, the swath it was made from has already been eaten, which is why
-    -- every baled bale recorded an unknown wetness before this clause.
-    local pending = self:_takePendingBirth()
-    if pending ~= nil then
-        local total = pending.knownLitres + pending.unknownLitres
-        if pending.unknownLitres > 0 then
-            SoilLogger.debug("[YardLadder] birth sample: %.1f%% over %.0f of %.0f L (%.0f L unreadable)",
-                pending.pct, pending.knownLitres, total, pending.unknownLitres)
-        end
-        return pending.pct
-    end
-
-    local mw = self.materialWetness
-    if mw ~= nil and mw:isArmed()
-       and self.hayBet ~= nil and self.hayBet:isArmed()
-       and entityExists ~= nil and entityExists(nodeId) then
-        local ok, x, _, z = pcall(getWorldTranslation, nodeId)
-        if ok and x ~= nil then
-            -- A one-metre square under the bale. LITRES IS NON-OPTIONAL and the
-            -- newborn bale's own fill level is the quantity the brief names; a nil or
-            -- zero here is a caller bug and readCondition correctly refuses it.
-            local verts = {
-                { x = x - 0.5, z = z - 0.5 },
-                { x = x + 0.5, z = z - 0.5 },
-                { x = x + 0.5, z = z + 0.5 },
-                { x = x - 0.5, z = z + 0.5 },
-            }
-            local c = mw:readCondition(verts, fillLevel)
-            if c ~= nil and c.status == MaterialWetness.RESULT.OK then
-                return c.pct
-            end
-            -- REFUSAL PROPAGATES, and now it propagates all the way out as NIL.
-        end
-    end
-    -- NO RECORD. Not a wetness of zero, not a seasonal guess: unknown. The caller
-    -- opens such a bale at zero condition, per the ruling, because a bale we cannot
-    -- vouch for must not be pre-condemned on an estimate.
-    return nil
-end
+-- RULED 2026-07-31: a bale is what the pickup ate, weighted by litres. RSF-F211 makes
+-- that exact: the Baler's collection (BalerCollection) weights each source by the
+-- carrier litres the chamber actually retained from it, and binds the result to the
+-- exact bale createBale appended, through its creation frame. Its birth reaches
+-- onBaleCreated as `birth`. A chamber holding any material of unknown or refused
+-- condition gives no confident wetness (no known-only mean becomes a whole-bale
+-- claim), so that bale opens at zero condition, per the ruling. Every other door
+-- (unpacking, console, storage, a savegame load) is born unknown: the ground under a
+-- bale is never read as its collected history. The old per-baler accumulator, the
+-- pending single-use sample and the ground probe are retired.
 
 --- Today, for stamping a birth. The accrual's ctx.monotonicDay is the authority on
 --- the pass itself; this is only for rows born between passes, so it reads the same

@@ -86,6 +86,8 @@ C.KIND_TEDDER = "TEDDER"
 C.KIND_WINDROWER = "WINDROWER"
 C.KIND_MOWER = "MOWER"
 C.KIND_STRAW = "STRAW"
+-- [RSF-F211 part 2a] The Baler pickup frame (BalerCollection extends the handler).
+C.KIND_BALER = "BALER"
 -- The per-vehicle frame stamp (stampHandled / handledThisFrame below).
 C.HANDLED_KEY = "_sfGroundCarrierFrame"
 C.ACCOUNT_KEY = "_sfGroundAccount"

@@ -171,6 +171,9 @@ source(modDirectory .. "src/ground/GroundNativeObserver.lua")
 -- its constants at source time.
 source(modDirectory .. "src/ground/GroundMovementProjector.lua")
 source(modDirectory .. "src/ground/GroundMovementCarrier.lua")
+-- [RSF-F211 part 2a] The Baler collection: the pickup frame's producer, the chamber and
+-- overflow accounts, the bale binding. After the carrier, whose handler it extends.
+source(modDirectory .. "src/ground/BalerCollection.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")
 -- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
