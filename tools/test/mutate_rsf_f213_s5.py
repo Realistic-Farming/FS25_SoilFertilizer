@@ -21,6 +21,7 @@
 #   forever; a hang is not a verdict.
 # - the rain add lifting a sentinel (max(RAW_FLOOR, raw) + delta): equivalent by construction,
 #   settleRun hands valueFor only cells at or above RAW_FLOOR (mutation S6 pins that guard).
+# - The N group (rows 107 and 108) runs as that PR's targeted battery: py ... N
 #
 # Anchors are written with "\n"; in a CRLF file they are matched as "\r\n".
 #
@@ -63,7 +64,7 @@ MUTATIONS = [
   "a store without the layer still binds the owner to a nil index"),
  # ── the rebuild at arm ─────────────────────────────────────────────────────
  ("R1-saved-index-ignored", COORD,
-  [("        if entry.loaded then\n            self:_membershipFromIndex(geometry)", "        if false then\n            self:_membershipFromIndex(geometry)", 1)],
+  [("        if fromIndex then\n            self:_membershipFromIndex(geometry)", "        if false then\n            self:_membershipFromIndex(geometry)", 1)],
   "a saved index is discarded and rebuilt from the bytes (a record the index did not list becomes a member)"),
  ("R2-rebuild-skips-native-occupancy", COORD,
   [("        -- Native material with no record: a member of unknown condition.\n        splitOccupied(0, resolution - 1, gz)\n", "", 1)],
@@ -80,6 +81,43 @@ MUTATIONS = [
   [("        local n = rowCount(m.mod, m.filter, gz, resolution, GroundConditionCoordinator.MEMBER, GroundConditionCoordinator.MEMBER)\n        if n > 0 then",
     "        local n = rowCount(m.mod, m.filter, gz, resolution, GroundConditionCoordinator.MEMBER, GroundConditionCoordinator.MEMBER)\n        if n < 0 then", 1)],
   "reading a saved index skips every row: the index reads empty"),
+ # ── MAINTENANCE rows 107 and 108 (targeted battery of that PR: run with the prefix N) ──
+ ("N1-condition-files-not-checked", COORD,
+  [("        and cellsRef.ageEntry ~= nil and cellsRef.ageEntry.loaded == true\n        and cellsRef.wetEntry ~= nil and cellsRef.wetEntry.loaded == true\n", "", 1)],
+  "an index whose condition files did not load is read as it is (stale bits survive)"),
+ ("N2-stale-layer-not-cleared", COORD,
+  [("            if entry.loaded == true and not reinitialised then self:_clearMembershipLayer() end\n", "", 1)],
+  "an untrusted index is rebuilt without clearing its layer: its stale bits are saved again"),
+ ("N3-foreign-width-left-off", COORD,
+  [("        local okN, errN = pcall(loadBitVectorMapNew, entry.bvm, geometry.resolution, geometry.resolution, channels, false)\n",
+    "        local okN, errN = false, \"mutated\"\n", 1)],
+  "a layer of another width leaves the coordinator with no index (the old behaviour)"),
+ ("N4-foreign-width-read-as-index", COORD,
+  [("    local fromIndex = entry.loaded == true and not reinitialised\n", "    local fromIndex = entry.loaded == true\n", 1)],
+  "the re-initialised blank layer is read as a saved index: the index reads empty"),
+ ("N5-empty-member-kept", COORD,
+  [("                    if empty and self:_writeMemberBit(gx, gz, GroundConditionCoordinator.NOT_MEMBER) then\n",
+    "                    if false and self:_writeMemberBit(gx, gz, GroundConditionCoordinator.NOT_MEMBER) then\n", 1)],
+  "an empty record-less member read from the index stays a member for good"),
+ ("N6-invalid-height-map-read-as-empty", COORD,
+  [("    local heightOk = GroundNativeObserver ~= nil and type(GroundNativeObserver.heightMapValid) == \"function\"\n        and GroundNativeObserver.heightMapValid() == true\n",
+    "    local heightOk = true\n", 1)],
+  "the native read's zero for an invalid height map is taken as empty"),
+ ("N7-unreadable-occupancy-read-as-empty", COORD,
+  [("                        empty = litres ~= nil and litres <= 0\n", "                        empty = (litres or 0) <= 0\n", 1)],
+  "an occupancy that could not be read is taken as empty"),
+ ("N8-recorded-member-removed", COORD,
+  [("                       and (c.ageRaw or 0) == 0 and (c.wetnessRaw or 0) == 0 then\n", "                       then\n", 1)],
+  "a recorded member whose cell holds no native material leaves the index"),
+ ("N9-refused-clear-not-reported", COORD,
+  [("                        if empty then m.rebuildRequired = true end\n", "", 1)],
+  "a refused bit clear leaves the index claiming it is ready"),
+ ("N10-save-does-not-reconcile", "src/SoilFertilityManager.lua",
+  [("            pcall(gcc.reconcileMembership, gcc)\n", "", 1)],
+  "the save writes the layer files without reconciling a rebuild-required index"),
+ ("N11-unknown-condition-read-as-empty", COORD,
+  [("                    if heightOk and c.refused == nil and c.ageAvailable and c.wetnessAvailable\n", "                    if heightOk\n", 1)],
+  "a member whose condition read failed leaves over a zero of material: unknown read as empty"),
  # ── the settle ─────────────────────────────────────────────────────────────
  ("S1-field-pass-runs-too", MW,
   [("        self:dryPassMembers(sky)\n        local wateredM, sourceM = self:wetPassMembers(rain)\n        self:recordDay(dayNumber, wateredM, sourceM, derived)\n        return true\n    end\n",

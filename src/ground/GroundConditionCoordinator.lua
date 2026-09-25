@@ -232,13 +232,26 @@ function GroundConditionCoordinator:_armMembership()
     end
     local geometry = self.cells:getConditionGeometry()
     if geometry == nil then return false end
+    local channels = entry.channels or MEMBERSHIP_CHANNELS
+    -- MAINTENANCE row 107 (section 5, contract :80: a foreign index is rebuilt). A
+    -- layer of another width cannot index this grid, so it is re-initialised blank at
+    -- the condition grid's width (loadBitVectorMapNew, as SoilValueMaps does for a
+    -- layer with no file and PF's ExtendedWeedControl.lua:65 does), a fresh modifier
+    -- is built over it below, and the index is rebuilt from the truth. It used to be
+    -- left off, which put the daily settle back on the field pass.
+    local reinitialised = false
     local okW, width = pcall(getBitVectorMapSize, entry.bvm)
     if okW and type(width) == "number" and width ~= geometry.resolution then
-        SoilLogger.warning("[GroundCoord] groundMembership layer width %d does not match the condition grid %d - no membership index",
-            width, geometry.resolution)
-        return false
+        local okN, errN = pcall(loadBitVectorMapNew, entry.bvm, geometry.resolution, geometry.resolution, channels, false)
+        if not okN then
+            SoilLogger.warning("[GroundCoord] groundMembership layer width %d does not match the condition grid %d and could not be re-initialised (%s) - no membership index",
+                width, geometry.resolution, tostring(errN))
+            return false
+        end
+        SoilLogger.warning("[GroundCoord] groundMembership layer width %d did not match the condition grid %d - re-initialised at %d, the index is rebuilt from the condition bytes and native occupancy",
+            width, geometry.resolution, geometry.resolution)
+        reinitialised = true
     end
-    local channels = entry.channels or MEMBERSHIP_CHANNELS
     local okMods, mod, filter = pcall(function()
         local m = DensityMapModifier.new(entry.bvm, 0, channels, g_terrainNode)
         return m, DensityMapFilter.new(m)
@@ -252,11 +265,23 @@ function GroundConditionCoordinator:_armMembership()
         rows = {}, count = 0, ready = false, rebuildRequired = false, source = nil,
         epoch = self.epoch,
     }
+    -- MAINTENANCE row 107: the saved index is read only when it came from the SAME
+    -- save as the condition bytes it indexes, the membership, age and wetness layers
+    -- all loaded from that save's files. The epoch section 5 names is read here as the
+    -- store's file set: no stamp is written beside the index today (P-GROUND-3 is
+    -- provisional; the full stamp rides F215's save hook), a reading declared on the
+    -- PR. Any other state rebuilds from the truth, and a loaded index that is not
+    -- trusted is cleared first so none of its stale bits is saved again.
+    local cellsRef = self.cells
+    local fromIndex = entry.loaded == true and not reinitialised
+        and cellsRef.ageEntry ~= nil and cellsRef.ageEntry.loaded == true
+        and cellsRef.wetEntry ~= nil and cellsRef.wetEntry.loaded == true
     local ok, err = pcall(function()
-        if entry.loaded then
+        if fromIndex then
             self:_membershipFromIndex(geometry)
             self.membership.source = GroundConditionCoordinator.MEMBERSHIP_FROM_INDEX
         else
+            if entry.loaded == true and not reinitialised then self:_clearMembershipLayer() end
             self:_membershipRebuild(geometry)
             self.membership.source = GroundConditionCoordinator.MEMBERSHIP_REBUILT
         end
@@ -298,24 +323,9 @@ local function rowCount(mod, filter, gz, resolution, lo, hi)
     return type(n) == "number" and n or 0
 end
 
---- The run cache from a saved index: one filtered count per row, cells read only in
---- rows that hold a member.
-function GroundConditionCoordinator:_membershipFromIndex(geometry)
-    local m = self.membership
-    local resolution = geometry.resolution
-    for gz = 0, resolution - 1 do
-        local n = rowCount(m.mod, m.filter, gz, resolution, GroundConditionCoordinator.MEMBER, GroundConditionCoordinator.MEMBER)
-        if n > 0 then
-            for gx = 0, resolution - 1 do
-                if self:_readMemberBit(gx, gz) == GroundConditionCoordinator.MEMBER then
-                    if runsInsert(m.rows, gx, gz) then m.count = m.count + 1 end
-                end
-            end
-        end
-    end
-end
-
 --- Native tracked occupancy over a world box, summed over the observer's types.
+--- nil when it cannot be read (no util, no observer, a refused read): unknown, never
+--- zero.
 local function occupancyIn(x0, z0, x1, z1)
     if type(DensityMapHeightUtil) ~= "table" or type(DensityMapHeightUtil.getFillLevelAtArea) ~= "function" then return nil end
     if GroundNativeObserver == nil or GroundNativeObserver.occupancyTypeIndices == nil then return nil end
@@ -326,6 +336,64 @@ local function occupancyIn(x0, z0, x1, z1)
         total = total + litres
     end
     return total
+end
+
+--- The run cache from a saved index: one filtered count per row, cells read only in
+--- rows that hold a member.
+---
+--- MAINTENANCE row 108: a cell marked unavailable is marked a member (markUnavailable,
+--- section 5: positive material of unknown condition is a member), so a native
+--- throw's mark-all over an envelope (GroundMovementCarrier.onPrimitiveFailed) made
+--- cells holding nothing into members that were enumerated and saved from then on.
+--- A member read here with NO condition record whose whole cell holds a KNOWN ZERO of
+--- tracked native material leaves the index (its bit cleared). A nil occupancy (not
+--- readable), an invalid height map or a refused cell read keeps it: unknown is never
+--- read as empty. The
+--- rebuild and reconcile already leave such cells out; this is the one path that
+--- trusted a bit without asking.
+function GroundConditionCoordinator:_membershipFromIndex(geometry)
+    local m = self.membership
+    local cells = self.cells
+    local resolution = geometry.resolution
+    local grain, ox, oz = geometry.grainMetres, geometry.originX, geometry.originZ
+    -- The native fill read answers 0 for an invalid height map (DensityMapHeightUtil
+    -- .lua:81-83), which is not an observation: then no member leaves.
+    local heightOk = GroundNativeObserver ~= nil and type(GroundNativeObserver.heightMapValid) == "function"
+        and GroundNativeObserver.heightMapValid() == true
+    for gz = 0, resolution - 1 do
+        local n = rowCount(m.mod, m.filter, gz, resolution, GroundConditionCoordinator.MEMBER, GroundConditionCoordinator.MEMBER)
+        if n > 0 then
+            for gx = 0, resolution - 1 do
+                if self:_readMemberBit(gx, gz) == GroundConditionCoordinator.MEMBER then
+                    local empty = false
+                    local c = cells:readConditionCell(geometry, gx, gz)
+                    if heightOk and c.refused == nil and c.ageAvailable and c.wetnessAvailable
+                       and (c.ageRaw or 0) == 0 and (c.wetnessRaw or 0) == 0 then
+                        local x0, z0 = ox + gx * grain, oz + gz * grain
+                        local litres = occupancyIn(x0, z0, x0 + grain, z0 + grain)
+                        empty = litres ~= nil and litres <= 0
+                    end
+                    if empty and self:_writeMemberBit(gx, gz, GroundConditionCoordinator.NOT_MEMBER) then
+                        m.emptyLeft = (m.emptyLeft or 0) + 1
+                    else
+                        -- A refused clear keeps the cell a member in the cache, as its
+                        -- bit still is, and asks for a rebuild.
+                        if empty then m.rebuildRequired = true end
+                        if runsInsert(m.rows, gx, gz) then m.count = m.count + 1 end
+                    end
+                end
+            end
+        end
+    end
+end
+
+--- Clear the whole membership layer: one set over the layer's full extent, read back
+--- nowhere (the rebuild that follows writes and reads back each bit it sets). Raises
+--- on a refused set, so the caller's pcall marks the index rebuild-required.
+function GroundConditionCoordinator:_clearMembershipLayer()
+    local m = self.membership
+    m.mod:setParallelogramUVCoords(0, 0, 1, 0, 0, 1, DensityCoordType.POINT_POINT_POINT)
+    m.mod:executeSet(GroundConditionCoordinator.NOT_MEMBER)
 end
 
 --- Rebuild the index from the truth (an absent or foreign index): every cell with a

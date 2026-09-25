@@ -1249,6 +1249,13 @@ function SoilFertilityManager:saveSoilData()
 
     -- REFINED: persist the per-pixel soil value maps next to soilData.xml
     if self.soilSystem.valueMaps then
+        -- [MAINTENANCE row 107] A membership index that took a refused write is
+        -- reconciled from the truth before the layer files are written, so a save never
+        -- persists a partial index. A ready index returns at once.
+        local gcc = self.soilSystem.groundConditionCoordinator
+        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
+            pcall(gcc.reconcileMembership, gcc)
+        end
         self.soilSystem.valueMaps:saveToSavegame(savegamePath)
     end
 

@@ -204,11 +204,17 @@ group("R", function()
         runs() .. " | " .. st.count .. "/" .. st.source, "4:4-5 8:10-10 12:12-12 | 4/REBUILT")
     T.eq("R2 and the bits were written", bit(4, 4) .. bit(5, 4) .. bit(10, 8) .. bit(12, 12) .. bit(6, 4), "11110")
 
-    -- A saved index: the runs come from its bits, the condition bytes are not consulted.
+    -- A saved index: the runs come from its bits, and a record it does not list is not
+    -- added. Its members are real ones: two with a record, one holding native straw
+    -- with no record (since MAINTENANCE row 108 a listed cell with neither a record nor
+    -- material leaves the index at arm; that case is MAINT-107-108's bar).
     world(100, { valueMaps = { membershipLoaded = true }, beforeArm = function()
         ENGINE.layerSet(W.member, 2, 2, 1)
         ENGINE.layerSet(W.member, 3, 2, 1)
         ENGINE.layerSet(W.member, 9, 9, 1)
+        setCell(2, 2, 3, 100)
+        setCell(3, 2, 3, 100)
+        HEIGHT.fill(FT.STRAW, 4, 4, 8, 8, 25)   -- cell (9,9): x 4..8, z 4..8
         setCell(7, 7, 5, 100)   -- a record the saved index does not list: NOT a member
     end })
     st = coord():getMembershipStats()
