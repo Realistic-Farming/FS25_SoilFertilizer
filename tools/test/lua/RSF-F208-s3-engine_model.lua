@@ -75,6 +75,15 @@ end
 getBitVectorMapSize = function(bvm)
     return BVMS[bvm] ~= nil and BVMS[bvm].res or nil
 end
+--- MODELED (a C function): a blank map of the given width, every cell 0, as
+--- SoilValueMaps uses it for a layer with no file and the coordinator for a layer of
+--- the wrong width (MAINTENANCE row 107).
+loadBitVectorMapNew = function(bvm, w, _h, _channels, _unused)
+    local layer = BVMS[bvm]
+    if layer == nil then error("unknown bvm") end
+    layer.cells, layer.res, layer.fill = {}, w, 0
+    return true
+end
 --- A value filter as the engine's: EQUAL a, GREATER a, BETWEEN a and b (inclusive).
 --- The engine's executeGet returns (sum, numPixels, totalPixels): the sum and count of
 --- the pixels the filter PASSES, and the total in the aimed box.
@@ -150,10 +159,15 @@ DensityMapFilter = {
 function ENGINE.newValueMaps(opts)
     opts = opts or {}
     local age, wet = ENGINE.newLayer(0), ENGINE.newLayer(0)
-    local member = ENGINE.newLayer(0)
+    local member = ENGINE.newLayer(0, opts.membershipRes)
+    -- A save loads its layer files together: the two condition layers are loaded when
+    -- the index is, unless opts.conditionLoaded says otherwise (MAINTENANCE row 107).
+    local conditionLoaded = opts.conditionLoaded
+    if conditionLoaded == nil then conditionLoaded = opts.membershipLoaded == true end
     local vm = {
         available = true, resolution = ENGINE.RESOLUTION, terrainSize = ENGINE.TERRAIN,
-        layers = { materialAge = { bvm = age.id, channels = 8 }, materialWetness = { bvm = wet.id, channels = 8 } },
+        layers = { materialAge = { bvm = age.id, channels = 8, loaded = conditionLoaded },
+                   materialWetness = { bvm = wet.id, channels = 8, loaded = conditionLoaded } },
         fieldPassCalls = 0,
         getLayerEntry = function(self, key) return self.layers[key] end,
         readRawAtWorld = function() return nil end,
