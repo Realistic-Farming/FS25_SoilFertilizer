@@ -58,9 +58,13 @@ function parseTexts(src) {
   if (!m) return [];
   return m[1].split(",").map((s) => s.trim()).filter(Boolean);
 }
+// MAINTENANCE row 113 (row 87's defect, FertilizerDepot #80's line): the level is chosen
+// from the text WITH the closer's "]" appended, so a file whose last characters meet the
+// closing bracket (ending in "]" at level 0, or "]=" at level 1) cannot close the string
+// early. The bar is MAINT-113-long_string_boundary_test.lua.
 function luaLongString(text) {
   let level = 0;
-  while (text.includes("]" + "=".repeat(level) + "]")) level += 1;
+  while ((text + "]").includes("]" + "=".repeat(level) + "]")) level += 1;
   const eq = "=".repeat(level);
   return `[${eq}[\n${text}]${eq}]`;
 }
