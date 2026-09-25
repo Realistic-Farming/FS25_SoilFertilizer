@@ -36,7 +36,7 @@ local function newSoilSystem(over)
             end,
         },
         materialWetness = {
-            readCondition = function(_verts, _litres)
+            probeCondition = function(_self, _verts)
                 return { status = "ok", pct = 30, band = "damp" }
             end,
             goingOffVerdict = function(_ft, _window, _day)

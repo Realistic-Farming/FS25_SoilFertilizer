@@ -94,53 +94,73 @@ function HayBet:onSettle(ctx)
     local mw = self.materialWetness
     if not md:isArmed() or not mw:isArmed() then return end
 
-    -- [SF-49] The hay member reads the wetness layer to decide
-    -- whether material is fit. A sentinel or refused condition
-    -- always blocks conversion - the conservative direction.
-    md:enumerateActiveFields(function(fieldId)
-        if type(fieldId) ~= "number" then return end
+    -- [SF-49] The hay member reads the wetness layer to decide whether material is fit.
+    -- A sentinel, unknown or refused condition always blocks conversion - the
+    -- conservative direction.
+    for _, fieldId in ipairs(self:_settleFieldIds(md, mw)) do
         pcall(function()
             self:_settleField(fieldId, md, mw)
         end)
-    end)
+    end
+end
+
+--- [RSF-F211] The fields to settle, ascending and once each: MaterialDown's active set
+--- and the fields holding ground-membership cells. The active set is marked only by the
+--- combine's straw birth and a save load, so a mown grass field never entered it and
+--- the settle never reached one; the membership index (RSF-F213) is where the machines
+--- record the material they put down.
+function HayBet:_settleFieldIds(md, mw)
+    local out, seen = {}, {}
+    local function add(fieldId)
+        if type(fieldId) == "number" and fieldId > 0 and not seen[fieldId] then
+            seen[fieldId] = true
+            out[#out + 1] = fieldId
+        end
+    end
+    md:enumerateActiveFields(add)
+    if type(mw.memberFieldIds) == "function" then
+        for _, fieldId in ipairs(mw:memberFieldIds()) do add(fieldId) end
+    end
+    table.sort(out)
+    return out
 end
 
 --- Process one active field on the settle pass.
+---
+--- [RSF-F211] The decision is a STANDING read: the GRASS_WINDROW actually lying inside
+--- the field's polygons, each Soil cell weighted by its native volume and clipped to the
+--- field (MaterialWetness:standingSnapshot / readStandingCondition). The old read took
+--- a numeric getFillLevelAtArea over table entries (always an error) and an area mean
+--- that weighted a thin wet strip like a heavy dry swath.
 ---@param fieldId number
 ---@param md MaterialDown
 ---@param mw MaterialWetness
 function HayBet:_settleField(fieldId, md, mw)
-    -- Get the field polygon from the field manager.
-    local verts = self:_getFieldPolygon(fieldId)
-    if not verts then return end
+    local polygons = self:_getFieldPolygons(fieldId)
+    if not polygons then return end
 
-    -- [FIND] Check if material-age records exist in this field
-    local mdOk, hasAge = pcall(function()
-        return md.valueMaps:hasAnyInBand(
-            MaterialDown.LAYER_KEY, verts, 1, 254)
-    end)
-    if not mdOk or not hasAge then return end
-
-    -- Check if there is actual grass on the ground
-    local grassFT  = self:_fillTypeIndex("GRASS_WINDROW")
+    local grassFT = self:_fillTypeIndex("GRASS_WINDROW")
     if not grassFT then return end
-    local sx, sz = verts[1], verts[2]
-    local wx, wz = verts[3], verts[4]
-    local hx, hz = verts[5], verts[7]   -- third vertex = hx, fourth vertex Z = hz
-    -- Actually use the correct vertices: bounding box {minX,minZ, maxX,minZ, maxX,maxZ, minX,maxZ}
-    -- start = (minX, minZ), width = (maxX, minZ), height = (minX, maxZ)
-    sx, sz = verts[1], verts[2]
-    wx, wz = verts[3], verts[4]
-    hx, hz = verts[7], verts[8]   -- minX, maxZ
 
-    local fillOk, fillLevel = pcall(function()
-        return DensityMapHeightUtil.getFillLevelAtArea(grassFT, sx, sz, wx, wz, hx, hz)
-    end)
-    if not fillOk or not fillLevel or fillLevel <= 0 then return end
+    local snapshot, why = mw:standingSnapshot(grassFT, polygons)
+    if snapshot == nil then
+        SoilLogger.debug("[HayBet] settle: field %d standing read refused (%s)", fieldId, tostring(why))
+        return
+    end
 
-    -- [CONDITION READ] Check if the grass is fit enough to cure
-    local condition = mw:readCondition(verts, fillLevel)
-    if condition.status ~= "ok" then return end
+    -- [FIND] Tracked material only: at least one of the grass cells carries an age
+    -- record (the same materialAge layer the store's band read looked at, read on the
+    -- cells the decision covers).
+    local tracked = false
+    for _, id in ipairs(snapshot.order) do
+        local ageRaw = snapshot.parts[id].ageRaw
+        if type(ageRaw) == "number" and ageRaw > 0 then tracked = true break end
+    end
+    if not tracked then return end
+
+    -- [CONDITION READ] Only a complete, known, standing-basis answer can decide.
+    local condition = mw:readStandingCondition(snapshot)
+    if condition.status ~= MaterialWetness.RESULT.OK or condition.basis ~= MaterialWetness.BASIS.STANDING then return end
     if condition.pct > HayBet.FIT_PCT then return end
 
     -- [CONVERT] Gated on the bounced confirm
@@ -148,72 +168,62 @@ function HayBet:_settleField(fieldId, md, mw)
 
     local hayFT = self:_fillTypeIndex("DRYGRASS_WINDROW")
     if not hayFT then return end
+    local coord = mw:groundCoordinator()
+    if coord == nil then return end
 
-    local convOk = pcall(function()
-        DensityMapHeightUtil.changeFillTypeAtArea(
-            sx, sz, wx, wz, hx, hz, grassFT, hayFT)
-    end)
-    if convOk then
-        SoilLogger.debug("[HayBet] settle convert: field %d, grass -> hay (condition=%.1f%%)",
-            fieldId, condition.pct)
+    -- Over the cells the decision read, each through its own box (a general polygon is
+    -- never passed as six parallelogram numbers).
+    local changed = 0
+    for _, id in ipairs(snapshot.order) do
+        local p = snapshot.parts[id]
+        local x0, z0, x1, z1 = coord:cellWorldBox(p.gx, p.gz)
+        if x0 ~= nil then
+            local ok, n = pcall(DensityMapHeightUtil.changeFillTypeAtArea, x0, z0, x1, z0, x0, z1, grassFT, hayFT)
+            if ok and type(n) == "number" then changed = changed + n end
+        end
     end
+    SoilLogger.debug("[HayBet] settle convert: field %d, grass -> hay over %d cell(s), %.0f L (condition=%.1f%%)",
+        fieldId, #snapshot.order, changed, condition.pct)
 end
 
 -- =========================================================
--- Fill type index cache
+-- Fill type index (live, never cached)
 -- =========================================================
 
-local _fillTypeCache = {}
-
---- Resolve a fill type name to its numeric index, cached.
+--- [RSF-F211] Resolve a fill type name through the current mission's fill type manager
+--- (FillTypeManager:getFillTypeIndexByName, fillTypes/FillTypeManager.lua:305), never
+--- the fruit type manager, which has no such method. nil, UNKNOWN or a type the height
+--- map cannot hold is unavailable. Not cached: an index is only good for the fill
+--- registry it came from.
 ---@param name string  e.g. "GRASS_WINDROW"
 ---@return number|nil
 function HayBet:_fillTypeIndex(name)
-    if _fillTypeCache[name] ~= nil then return _fillTypeCache[name] end
-    local idx = g_fruitTypeManager and g_fruitTypeManager:getFillTypeIndexByName(name)
-    _fillTypeCache[name] = idx
+    local ftm = g_fillTypeManager
+    if ftm == nil or type(ftm.getFillTypeIndexByName) ~= "function" then return nil end
+    local ok, idx = pcall(ftm.getFillTypeIndexByName, ftm, name)
+    if not ok or type(idx) ~= "number" then return nil end
+    if not MaterialWetness.nativeTypeUsable(idx) then return nil end
     return idx
 end
 
 -- =========================================================
--- Field polygon (from the field manager)
+-- Field polygons (every field on the farmland)
 -- =========================================================
 
-function HayBet:_getFieldPolygon(fieldId)
-    if g_fieldManager == nil then return nil end
-    local ok, field = pcall(function()
-        return g_fieldManager:getFieldByFarmlandId(fieldId)
-    end)
-    if not ok or not field then return nil end
-    local poly = field.polygon or (field.fieldPolygon and field.fieldPolygon.points)
-    if not poly or #poly < 3 then return nil end
-
-    -- THE OUTPUT IS {{x=,z=}, ...}, NOT A FLAT ARRAY. Every store method reads v.x
-    -- and v.z; a flat array indexes a number inside the store's pcall, which used to
-    -- be mistaken for "the engine has no polygon ops" and latched every aimed write
-    -- in the mod off for the session. The store now refuses a malformed polygon
-    -- without latching, but the shape still has to be right for anything to be read
-    -- or written at all.
-    --
-    -- The source can arrive either way, so both are accepted and normalised here.
-    local verts = {}
-    if type(poly[1]) == "table" then
-        for _, p in ipairs(poly) do
-            if type(p.x) == "number" and type(p.z) == "number" then
-                verts[#verts + 1] = { x = p.x, z = p.z }
-            end
-        end
-    else
-        for i = 1, #poly - 1, 2 do
-            local x, z = poly[i], poly[i + 1]
-            if type(x) == "number" and type(z) == "number" then
-                verts[#verts + 1] = { x = x, z = z }
-            end
-        end
-    end
-
-    if #verts < 3 then return nil end
-    return verts
+--- [RSF-F211] The field's polygons as point tables, through the system's own farmland
+--- resolution (SoilFertilitySystem:_getFarmlandPolygons, SF-52: every engine field on
+--- the farmland, from g_fieldManager.fields and each field's polygon nodes). The old
+--- lookup called g_fieldManager:getFieldByFarmlandId, which the engine does not have
+--- (FieldManager.lua:387-396 offers getFieldById and getFields), and read field shapes
+--- the engine's Field does not carry.
+---@return table|nil polygons  { { {x=,z=}, ... }, ... }
+function HayBet:_getFieldPolygons(fieldId)
+    local mw = self.materialWetness
+    local ss = mw ~= nil and mw.soilSystem or nil
+    if ss == nil or type(ss._getFarmlandPolygons) ~= "function" then return nil end
+    local ok, polygons = pcall(ss._getFarmlandPolygons, ss, fieldId)
+    if not ok or type(polygons) ~= "table" or #polygons == 0 then return nil end
+    return polygons
 end
 
 -- =========================================================
@@ -233,8 +243,9 @@ function HayBet:applyTedderDelta(verts)
     local mw = self.materialWetness
     if not mw:isArmed() then return false end
 
-    -- Read the condition at the work area
-    local condition = mw:readCondition(verts, 1)
+    -- Read the condition at the work area: a PROBE (RSF-F211), the machine asking
+    -- what is under it; the delta it drives is not a material output.
+    local condition = mw:probeCondition(verts)
     if condition.status ~= "ok" then return false end
 
     -- Apply the drying delta via a raw delta add on the condition
@@ -295,8 +306,8 @@ function HayBet:drainCorrectionQueue()
 
     for _, verts in ipairs(queue) do
         pcall(function()
-            -- Read the condition for this correction area
-            local condition = mw:readCondition(verts, 1)
+            -- Read the condition for this correction area (a probe, RSF-F211)
+            local condition = mw:probeCondition(verts)
             if condition.status ~= "ok" then return end
             -- Only correct if still wet (above fit)
             if condition.pct <= HayBet.FIT_PCT then return end

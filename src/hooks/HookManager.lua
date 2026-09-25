@@ -4368,9 +4368,10 @@ function HookManager:installTedderHook()
         end
     end
 
-    --- Build a bounding-box polygon from a single work area's
-    --- start/width/height nodes. Returns {minX,minZ, maxX,minZ,
-    --- maxX,maxZ, minX,maxZ} or nil.
+    --- [RSF-F211] The work area's own parallelogram from its start/width/height
+    --- nodes: start, width, width + height - start, height. The old axis-aligned
+    --- box around those corners took in ground a turned tedder never touched.
+    --- {x=,z=} objects, the store contract; nil for a degenerate area.
     local function singleWAPoly(workArea)
         if not workArea
            or not workArea.start
@@ -4382,19 +4383,13 @@ function HookManager:installTedderHook()
         local xw, _, zw = getWorldTranslation(workArea.width)
         local xh, _, zh = getWorldTranslation(workArea.height)
         if not xs or not xw or not xh then return nil end
-        local x4 = xw + xh - xs
-        local z4 = zw + zh - zs
-        local minX = math.min(xs, xw, xh, x4)
-        local maxX = math.max(xs, xw, xh, x4)
-        local minZ = math.min(zs, zw, zh, z4)
-        local maxZ = math.max(zs, zw, zh, z4)
-        -- {x=,z=} objects, the store contract. See buildWorkAreaPolygon at the top of
-        -- this file for what a flat array costs.
+        local cross = (xw - xs) * (zh - zs) - (zw - zs) * (xh - xs)
+        if math.abs(cross) < 1e-9 then return nil end
         return {
-            { x = minX, z = minZ },
-            { x = maxX, z = minZ },
-            { x = maxX, z = maxZ },
-            { x = minX, z = maxZ },
+            { x = xs,           z = zs },
+            { x = xw,           z = zw },
+            { x = xw + xh - xs, z = zw + zh - zs },
+            { x = xh,           z = zh },
         }
     end
 

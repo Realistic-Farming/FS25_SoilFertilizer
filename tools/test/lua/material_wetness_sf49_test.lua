@@ -202,6 +202,22 @@ local empty = makeSystem({ present = false })
 T.eq("no material is its own answer, not a refusal",
      empty:readCondition(POLY, 1200).status, R.NO_MATERIAL)
 
+-- ── 13b. RSF-F211: the probe says what it measured; the alias serves only it ──
+-- A probe samples the layer over an area with no quantity (AREA_SAMPLE_V1). The old
+-- read survives as a deprecated alias: it still refuses a missing quantity, and a
+-- positive one weights nothing, so its answer is the probe's, basis and all.
+local probe = makeSystem({ avgRaw = 180 })
+local p1 = probe:probeCondition(POLY)
+T.eq("the probe reads the area with no quantity and says it is an AREA sample",
+     p1.status .. "/" .. p1.band .. "/" .. p1.basis, R.OK .. "/soaked/AREA_SAMPLE_V1")
+local a1 = probe:readCondition(POLY, 1200)
+T.eq("the alias gives the probe's answer with the probe's basis; the litres weight nothing",
+     a1.status .. "/" .. tostring(a1.pct == p1.pct) .. "/" .. a1.basis, R.OK .. "/true/AREA_SAMPLE_V1")
+T.eq("the alias still refuses a missing quantity, on the probe's basis",
+     probe:readCondition(POLY, nil).status .. "/" .. probe:readCondition(POLY, nil).basis, R.REFUSAL .. "/AREA_SAMPLE_V1")
+T.eq("a refusing cell refuses the probe too", makeSystem({ sentinel = true }):probeCondition(POLY).status, R.REFUSAL)
+T.eq("no material is the probe's own answer", makeSystem({ present = false }):probeCondition(POLY).status, R.NO_MATERIAL)
+
 -- ── 14. The Water Record freezes verdicts and stays bounded ─
 mw = makeSystem()
 mw:recordDay(5, true, "rain", false)

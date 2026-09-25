@@ -179,6 +179,26 @@ MaterialWetness.BANDS = {
     { name = "fit",    floor = 0  },
 }
 
+-- [RSF-F211] Every condition read says what it measured, and a caller demands the basis
+-- it needs. A PROBE samples the layer over an area (a pixel mean, no quantity): it can
+-- tell a machine what is under it, never what a pile of material is. A STANDING read
+-- weights each Soil cell by the native volume of the requested type lying in it, clipped
+-- to the field. A COLLECTED read weights each source portion by the carrier litres the
+-- producer sealed for it. A probe's OK never authorises a material output.
+MaterialWetness.BASIS = {
+    AREA_SAMPLE = "AREA_SAMPLE_V1",
+    STANDING    = "STANDING_NATIVE_VOLUME_V1",
+    COLLECTED   = "COLLECTED_NATIVE_VOLUME_V1",
+}
+-- A source cell's condition as the standing and collected readers classify it. Missing
+-- data is not dry: no record, and a read that cannot be vouched for, are UNKNOWN.
+MaterialWetness.SOURCE = { KNOWN = "KNOWN", UNKNOWN = "UNKNOWN", REFUSAL = "REFUSAL" }
+-- The candidate cells one standing snapshot may visit (the polygons' box at the condition
+-- grain), and the sealed allocations kept for their receipts (a transient causal binding,
+-- not a journal: the oldest leaves first).
+MaterialWetness.STANDING_MAX_CELLS = 65536
+MaterialWetness.MAX_ALLOCATIONS    = 256
+
 -- =========================================================
 -- Spoil counts (SF-45): a READER parameter, never a layer one
 -- =========================================================
@@ -257,6 +277,12 @@ function MaterialWetness.new()
     self.shelterCells = {}
     self.shelterEpoch = 0
     self.lastSettle   = nil
+    -- [RSF-F211] The producer-owned sealed allocations the collected reader resolves a
+    -- receipt against, and the sequence snapshots and allocations are numbered from.
+    self.allocations     = {}
+    self.allocationOrder = {}
+    self.allocationSeq   = 0
+    self.snapshotSeq     = 0
     return self
 end
 
@@ -357,6 +383,29 @@ local function fieldOfCell(self, gx, gz)
     local ok, fieldId = pcall(hm.getFieldIdAtWorldPosition, hm, (x0 + x1) * 0.5, (z0 + z1) * 0.5)
     if not ok or type(fieldId) ~= "number" or fieldId <= 0 then return nil end
     return fieldId
+end
+
+--- [RSF-F211] The fields that hold at least one ground-membership cell (the index the
+--- daily weather walks, RSF-F213), ascending and once each. The hay settle adds these to
+--- MaterialDown's active set, which only the combine's straw birth and a save load mark:
+--- a mown grass field never entered it, so the settle never reached one. Empty while the
+--- index is not bound or not ready.
+---@return table fieldIds
+function MaterialWetness:memberFieldIds()
+    local out, seen = {}, {}
+    local m = self.membership
+    if m == nil or type(m.isMembershipReady) ~= "function" or not m:isMembershipReady() then return out end
+    m:enumerateMemberRuns(function(gz, gx0, gx1)
+        for gx = gx0, gx1 do
+            local fieldId = fieldOfCell(self, gx, gz)
+            if fieldId ~= nil and not seen[fieldId] then
+                seen[fieldId] = true
+                out[#out + 1] = fieldId
+            end
+        end
+    end)
+    table.sort(out)
+    return out
 end
 
 local function driversFor(self, cache, fieldId, sky)
@@ -531,6 +580,7 @@ function MaterialWetness:arm(valueMaps, materialDown, soilSystem)
     self.valueMaps    = valueMaps
     self.materialDown = materialDown
     self.soilSystem   = soilSystem
+    self.allocations, self.allocationOrder = {}, {}   -- a fresh mission seals afresh
     self.armed        = true
     self.stoodDown    = false
     if MaterialWetness.EMC_TABLE_IS_PLACEHOLDER then
@@ -1003,49 +1053,450 @@ function MaterialWetness.bandForPct(pct)
     return MaterialWetness.BANDS[#MaterialWetness.BANDS].name
 end
 
---- Banded condition over a work area, taking the COLLECTED QUANTITY IN LITRES as a
---- NON-OPTIONAL parameter (the engine hands it back from tipToGroundAroundLine and
---- every base-game consumer keeps that return).
+--- [RSF-F211] THE PROBE (AREA_SAMPLE_V1): the banded condition the layer reads over an
+--- area, for a machine asking what is under it (the tedder's delta and correction, the
+--- handful read). A pixel mean over the cells that carry material: an AREA sample with
+--- no quantity in it, so its OK never authorises a material output.
 ---
 --- RULES, each a refusal path rather than a number:
----   * nil, zero or negative quantity returns the REFUSAL state, never a value.
 ---   * any refusing cell in the set makes the WHOLE answer a refusal.
 ---   * NEVER built on readAverageOfPolygon. Its written-pixels filter would sum the
 ---     sentinel raw into a confident average - and the sentinel decodes to roughly
----     nine percent, bone-dry - pulling a mixed pickup toward FIT. The filter here
+---     nine percent, bone-dry - pulling a mixed read toward FIT. The filter here
 ---     EXCLUDES the sentinel band using the same band parameter the new store method
 ---     takes, which is why that method has two uses rather than one.
----
---- The two windrow fill types are INSEPARABLE at pickup, so a mixed load is the
---- NORMAL case and a mass-weighted integral is the only honest answer.
----@return table { status, pct, band }
-function MaterialWetness:readCondition(verts, litres)
-    local R = MaterialWetness.RESULT
-    if not self:isArmed() then return { status = R.UNAVAILABLE } end
-    if verts == nil or #verts < 3 then return { status = R.UNAVAILABLE } end
-
-    local q = tonumber(litres)
-    if q == nil or q <= 0 then return { status = R.REFUSAL } end
+---@return table { status, pct, band, basis }
+function MaterialWetness:probeCondition(verts)
+    local R, AREA = MaterialWetness.RESULT, MaterialWetness.BASIS.AREA_SAMPLE
+    if not self:isArmed() then return { status = R.UNAVAILABLE, basis = AREA } end
+    if verts == nil or #verts < 3 then return { status = R.UNAVAILABLE, basis = AREA } end
 
     local vm = self.valueMaps
     -- Any pixel in the reserved sentinel band makes the whole answer a refusal:
     -- refusal propagates, it does not average away.
     local refusing = vm:hasAnyInBand(MaterialWetness.LAYER_KEY, verts, 1, RAW_FLOOR - 1)
-    if refusing == nil then return { status = R.UNAVAILABLE } end
-    if refusing then return { status = R.REFUSAL } end
+    if refusing == nil then return { status = R.UNAVAILABLE, basis = AREA } end
+    if refusing then return { status = R.REFUSAL, basis = AREA } end
 
     local present = vm:hasAnyInBand(MaterialWetness.LAYER_KEY, verts, RAW_FLOOR, SoilValueMaps.RAW_MAX)
-    if present == nil then return { status = R.UNAVAILABLE } end
-    if not present then return { status = R.NO_MATERIAL } end
+    if present == nil then return { status = R.UNAVAILABLE, basis = AREA } end
+    if not present then return { status = R.NO_MATERIAL, basis = AREA } end
 
-    -- Mass-weighted mean over the cells that actually carry material. The sentinel
-    -- band is excluded by the filter, so nothing bone-dry-looking can enter the sum.
+    -- The mean over the cells that carry material. The sentinel band is excluded by the
+    -- filter, so nothing bone-dry-looking can enter the sum.
     local avg = vm:readAverageRawInBand(MaterialWetness.LAYER_KEY, verts, RAW_FLOOR, SoilValueMaps.RAW_MAX)
-    if avg == nil then return { status = R.UNAVAILABLE } end
+    if avg == nil then return { status = R.UNAVAILABLE, basis = AREA } end
 
     local pct = MaterialWetness.rawToPct(avg)
-    if pct == nil then return { status = R.REFUSAL } end
-    return { status = R.OK, pct = pct, band = MaterialWetness.bandForPct(pct) }
+    if pct == nil then return { status = R.REFUSAL, basis = AREA } end
+    return { status = R.OK, pct = pct, band = MaterialWetness.bandForPct(pct), basis = AREA }
+end
+
+--- DEPRECATED (RSF-F211): the old read, kept as an alias that serves AREA_SAMPLE_V1 only.
+--- A nil, zero or negative quantity still refuses, as it always did; a positive one
+--- weights nothing (it never did: the percent was the probe's pixel mean). The two
+--- collection callers still on it (YardLadder's bale birth, the baler's pickup sample)
+--- move to the collected reader with the machines (RSF-F211 part 2).
+function MaterialWetness:readCondition(verts, litres)
+    local R, AREA = MaterialWetness.RESULT, MaterialWetness.BASIS.AREA_SAMPLE
+    if not self:isArmed() then return { status = R.UNAVAILABLE, basis = AREA } end
+    if verts == nil or #verts < 3 then return { status = R.UNAVAILABLE, basis = AREA } end
+    local q = tonumber(litres)
+    if q == nil or q <= 0 then return { status = R.REFUSAL, basis = AREA } end
+    return self:probeCondition(verts)
+end
+
+-- =========================================================
+-- [RSF-F211] Standing and collected condition
+-- =========================================================
+
+local function finiteNumber(n)
+    return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
+end
+
+--- The litres of `fillTypeIndex` lying in the world box [x0,x1] x [z0,z1], through the
+--- engine's own read: DensityMapHeightUtil.getFillLevelAtArea(fillType, start, width
+--- point, height point) returns the litres first (DensityMapHeightUtil.lua:80-109).
+--- nil when the read fails.
+local function nativeLitres(fillTypeIndex, x0, z0, x1, z1)
+    local ok, litres = pcall(DensityMapHeightUtil.getFillLevelAtArea, fillTypeIndex, x0, z0, x1, z0, x0, z1)
+    if not ok or not finiteNumber(litres) or litres < 0 then return nil end
+    return litres
+end
+
+--- A fill type the height map can hold: a number that is not UNKNOWN, a valid height
+--- map (DensityMapHeightManager:getIsValid :492) and a height type mapped to it
+--- (:280). Anything else is unavailable, never an arbitrary crop.
+---@return boolean usable, string|nil reason
+function MaterialWetness.nativeTypeUsable(fillTypeIndex)
+    if type(fillTypeIndex) ~= "number" then return false, "NO_FILL_TYPE" end
+    if FillType ~= nil and fillTypeIndex == FillType.UNKNOWN then return false, "NO_FILL_TYPE" end
+    local hm = g_densityMapHeightManager
+    if hm == nil or type(hm.getIsValid) ~= "function"
+       or type(hm.getDensityMapHeightTypeByFillTypeIndex) ~= "function" then
+        return false, "HEIGHT_MAP_UNAVAILABLE"
+    end
+    local okV, valid = pcall(hm.getIsValid, hm)
+    if not okV or not valid then return false, "HEIGHT_MAP_UNAVAILABLE" end
+    local okH, heightType = pcall(hm.getDensityMapHeightTypeByFillTypeIndex, hm, fillTypeIndex)
+    if not okH or heightType == nil then return false, "NO_FILL_TYPE" end
+    return true
+end
+
+--- The ground family's coordinator, owner of the condition cells; nil unless armed.
+function MaterialWetness:groundCoordinator()
+    local ss = self.soilSystem
+    local coord = ss ~= nil and ss.groundConditionCoordinator or nil
+    if coord == nil or type(coord.isArmed) ~= "function" or not coord:isArmed() then return nil end
+    return coord
+end
+
+--- One cell's condition as a source: KNOWN with its percent, REFUSAL for the reserved
+--- sentinel band, UNKNOWN for no record, a cell the availability overlay cannot vouch
+--- for, or a read the cells refused. Also returns the cell's age byte.
+---@return string status, number|nil pct, number|nil ageRaw
+function MaterialWetness:sourceCondition(coord, gx, gz)
+    local S = MaterialWetness.SOURCE
+    if type(coord.isUnavailable) == "function" and coord:isUnavailable(gx, gz) then return S.UNKNOWN end
+    local cell = coord:readCell(gx, gz)
+    if cell == nil or cell.refused ~= nil or not cell.wetnessAvailable then return S.UNKNOWN end
+    local ageRaw = cell.ageAvailable and cell.ageRaw or nil
+    local raw = cell.wetnessRaw
+    if type(raw) ~= "number" or raw <= 0 then return S.UNKNOWN, nil, ageRaw end
+    if raw < RAW_FLOOR then return S.REFUSAL, nil, ageRaw end
+    local pct = MaterialWetness.rawToPct(raw)
+    if pct == nil then return S.REFUSAL, nil, ageRaw end
+    return S.KNOWN, pct, ageRaw
+end
+
+--- An immutable snapshot of source portions, each a Soil cell with the litres of the
+--- type it holds and its condition at capture, stamped with the owner revision.
+--- `cells` is { { gx, gz, litres, fraction }, ... }, one entry per cell.
+---@return table|nil snapshot, string|nil reason
+function MaterialWetness:captureSnapshot(basis, fillTypeIndex, coord, cells)
+    local parts, order, total = {}, {}, 0
+    for _, c in ipairs(cells) do
+        local id = tostring(c.gx) .. ":" .. tostring(c.gz)
+        if parts[id] ~= nil then return nil, "DUPLICATE_CELL" end
+        if not finiteNumber(c.litres) or c.litres < 0 then return nil, "SOURCE_VALUE" end
+        local status, pct, ageRaw = self:sourceCondition(coord, c.gx, c.gz)
+        parts[id] = { available = c.litres, status = status, pct = pct, ageRaw = ageRaw,
+                      gx = c.gx, gz = c.gz, fraction = c.fraction }
+        order[#order + 1] = id
+        total = total + c.litres
+    end
+    self.snapshotSeq = (self.snapshotSeq or 0) + 1
+    return { id = basis .. "#" .. self.snapshotSeq, basis = basis, revision = coord:getOwnerRevision(),
+             fillTypeIndex = fillTypeIndex, parts = parts, order = order, availableLitres = total }
+end
+
+--- THE STANDING SNAPSHOT (STANDING_NATIVE_VOLUME_V1): the requested type lying inside
+--- the field, cell by cell. `polygons` is one polygon ({ {x=,z=}, ... }) or a list of
+--- them (every field on a farmland, SF-52). Each is triangulated (a concave field too);
+--- the candidate Soil cells come from the polygons' box only for lookup; each cell's
+--- native volume (the engine's own read over the cell's box) is allocated by the cell's
+--- actual overlap with the field, so a boundary cell counts only its inside share and a
+--- cell outside counts nothing. The native volume inside a Soil cell is taken as uniform
+--- there: the engine exposes no finer native grid to Lua.
+--- Refuses (nil, reason): NOT_ARMED, NO_FILL_TYPE, HEIGHT_MAP_UNAVAILABLE,
+--- NO_GROUND_FAMILY, NO_GEOMETRY, INVALID_POLYGON, TOO_MANY_CELLS (the box over
+--- STANDING_MAX_CELLS: about 512 m square at the 2 m grain the store picks for maps up to
+--- 8x). COST: one engine read per row of the box, one more per cell in a row that holds
+--- the type, and a clip only for a cell that holds some, against the triangles whose box
+--- meets it.
+---@return table|nil snapshot, string|nil reason
+function MaterialWetness:standingSnapshot(fillTypeIndex, polygons)
+    if not self:isArmed() then return nil, "NOT_ARMED" end
+    local usable, why = MaterialWetness.nativeTypeUsable(fillTypeIndex)
+    if not usable then return nil, why end
+    local coord = self:groundCoordinator()
+    if coord == nil then return nil, "NO_GROUND_FAMILY" end
+    local geometry = coord.cells ~= nil and coord.cells:getConditionGeometry() or nil
+    if geometry == nil then return nil, "NO_GEOMETRY" end
+    if PolygonClip == nil or type(polygons) ~= "table" or #polygons == 0 then return nil, "INVALID_POLYGON" end
+    if type(polygons[1]) == "table" and polygons[1].x ~= nil then polygons = { polygons } end
+
+    local triangles = {}
+    local minX, minZ, maxX, maxZ = math.huge, math.huge, -math.huge, -math.huge
+    for _, poly in ipairs(polygons) do
+        local tris = PolygonClip.triangulate(poly)
+        if tris == nil then return nil, "INVALID_POLYGON" end
+        for _, tri in ipairs(tris) do triangles[#triangles + 1] = tri end
+        local a, b, c, d = PolygonClip.bounds(poly)
+        minX, minZ = math.min(minX, a), math.min(minZ, b)
+        maxX, maxZ = math.max(maxX, c), math.max(maxZ, d)
+    end
+
+    local g, ox, oz, res = geometry.grainMetres, geometry.originX, geometry.originZ, geometry.resolution
+    local gx0 = math.max(0, math.floor((minX - ox) / g))
+    local gx1 = math.min(res - 1, math.floor((maxX - ox) / g))
+    local gz0 = math.max(0, math.floor((minZ - oz) / g))
+    local gz1 = math.min(res - 1, math.floor((maxZ - oz) / g))
+    local cells = {}
+    if gx1 >= gx0 and gz1 >= gz0 then
+        if (gx1 - gx0 + 1) * (gz1 - gz0 + 1) > MaterialWetness.STANDING_MAX_CELLS then return nil, "TOO_MANY_CELLS" end
+        for gz = gz0, gz1 do
+            local z0 = oz + gz * g
+            local z1 = z0 + g
+            -- One read for the row's strip first: a row with none of the type is skipped.
+            local rowLitres = nativeLitres(fillTypeIndex, ox + gx0 * g, z0, ox + (gx1 + 1) * g, z1)
+            if rowLitres == nil then return nil, "HEIGHT_MAP_UNAVAILABLE" end
+            if rowLitres > 0 then
+                for gx = gx0, gx1 do
+                    local x0 = ox + gx * g
+                    local x1 = x0 + g
+                    -- The engine's read first: only a cell that holds some of the type is
+                    -- clipped against the field.
+                    local litres = nativeLitres(fillTypeIndex, x0, z0, x1, z1)
+                    if litres == nil then return nil, "HEIGHT_MAP_UNAVAILABLE" end
+                    if litres > 0 then
+                        local fraction = PolygonClip.overlapFraction(x0, z0, x1, z1, triangles)
+                        local q = litres * fraction
+                        if q > 0 then cells[#cells + 1] = { gx = gx, gz = gz, litres = q, fraction = fraction } end
+                    end
+                end
+            end
+        end
+    end
+    return self:captureSnapshot(MaterialWetness.BASIS.STANDING, fillTypeIndex, coord, cells)
+end
+
+local function coverageResult(basis, status, reason)
+    return { status = status, reason = reason, basis = basis,
+             carrierLitres = 0, knownCarrierLitres = 0, unknownCarrierLitres = 0,
+             refusedCarrierLitres = 0, knownWeightedPctSum = 0 }
+end
+
+--- THE STANDING READ: the snapshot's cells weighted by their native volume. Always
+--- returns the coverage (carrier, known, unknown, refused litres; the known weighted
+--- percent sum), mutually exclusive and summing to the carrier litres. OK only when
+--- every positive portion is known: pct = knownWeightedPctSum / carrierLitres, banded
+--- afterwards. Positive unknown or refused content is REFUSAL, no material is
+--- NO_MATERIAL, and a snapshot of another basis, or taken before the owner last moved,
+--- is UNAVAILABLE.
+function MaterialWetness:readStandingCondition(snapshot)
+    local R, B, S = MaterialWetness.RESULT, MaterialWetness.BASIS, MaterialWetness.SOURCE
+    if not self:isArmed() then return coverageResult(B.STANDING, R.UNAVAILABLE, "NOT_ARMED") end
+    if type(snapshot) ~= "table" or type(snapshot.parts) ~= "table" or type(snapshot.order) ~= "table" then
+        return coverageResult(B.STANDING, R.UNAVAILABLE, "MALFORMED")
+    end
+    if snapshot.basis ~= B.STANDING then return coverageResult(B.STANDING, R.UNAVAILABLE, "BASIS_MISMATCH") end
+    local coord = self:groundCoordinator()
+    if coord == nil or GroundConditionCoordinator == nil
+       or not GroundConditionCoordinator.revisionsEqual(snapshot.revision, coord:getOwnerRevision()) then
+        return coverageResult(B.STANDING, R.UNAVAILABLE, "REVISION_MISMATCH")
+    end
+    local out = coverageResult(B.STANDING, nil, nil)
+    local seen = {}
+    for _, id in ipairs(snapshot.order) do
+        local p = snapshot.parts[id]
+        if seen[id] or type(p) ~= "table" or not finiteNumber(p.available) or p.available < 0 then
+            return coverageResult(B.STANDING, R.UNAVAILABLE, "SOURCE_VALUE")
+        end
+        seen[id] = true
+        local q = p.available
+        if q > 0 then
+            out.carrierLitres = out.carrierLitres + q
+            if p.status == S.KNOWN then
+                if not finiteNumber(p.pct) or p.pct < 0 or p.pct > 100 then
+                    return coverageResult(B.STANDING, R.UNAVAILABLE, "SOURCE_VALUE")
+                end
+                out.knownCarrierLitres = out.knownCarrierLitres + q
+                out.knownWeightedPctSum = out.knownWeightedPctSum + q * p.pct
+            elseif p.status == S.REFUSAL then
+                out.refusedCarrierLitres = out.refusedCarrierLitres + q
+            else
+                out.unknownCarrierLitres = out.unknownCarrierLitres + q
+            end
+        end
+    end
+    if out.carrierLitres <= 0 then
+        out.status, out.reason = R.NO_MATERIAL, "NO_MATERIAL"
+    elseif out.unknownCarrierLitres > 0 or out.refusedCarrierLitres > 0 then
+        out.status, out.reason = R.REFUSAL, "POSITIVE_UNKNOWN_OR_REFUSAL"
+    else
+        out.status, out.reason = R.OK, "COMPLETE_KNOWN_COVERAGE"
+        out.pct = out.knownWeightedPctSum / out.carrierLitres
+        out.band = MaterialWetness.bandForPct(out.pct)
+    end
+    return out
+end
+
+--- THE COLLECTED SNAPSHOT (COLLECTED_NATIVE_VOLUME_V1): the source cells a pickup is
+--- about to remove, captured immediately before the mutation. `cells` is
+--- { { gx, gz, litres }, ... } in RAW SOURCE litres, one entry per cell. The pickup
+--- bracket that calls this arrives with the machines (RSF-F211 part 2).
+---@return table|nil snapshot, string|nil reason
+function MaterialWetness:collectedSnapshot(fillTypeIndex, cells)
+    if not self:isArmed() then return nil, "NOT_ARMED" end
+    local usable, why = MaterialWetness.nativeTypeUsable(fillTypeIndex)
+    if not usable then return nil, why end
+    local coord = self:groundCoordinator()
+    if coord == nil then return nil, "NO_GROUND_FAMILY" end
+    if type(cells) ~= "table" then return nil, "SOURCE_VALUE" end
+    return self:captureSnapshot(MaterialWetness.BASIS.COLLECTED, fillTypeIndex, coord, cells)
+end
+
+--- THE PRODUCER'S SEAL. The producer hands the independently observed native accepted
+--- carrier amount A and the ENTIRE allocation, every unknown or refused portion
+--- included: { { id, carrierLitres, rawLitres }, ... }. Raw source litres are checked
+--- against the snapshot's availability in raw units; carrier litres are never compared
+--- with raw. Parts are put in canonical order (by id) before summing, and the sum must
+--- equal A exactly (the producer assigns the final remainder to the final positive
+--- canonical part). A zero A makes no material result. Returns the receipt, a
+--- reference to this sealed allocation; the facts stay here, not with the caller.
+---@return table|nil receipt, string|nil reason
+function MaterialWetness:sealAllocation(snapshot, acceptedCarrierLitres, parts)
+    local B = MaterialWetness.BASIS
+    if not self:isArmed() then return nil, "NOT_ARMED" end
+    if type(snapshot) ~= "table" or snapshot.basis ~= B.COLLECTED or type(snapshot.id) ~= "string"
+       or type(snapshot.parts) ~= "table" then
+        return nil, "BASIS_MISMATCH"
+    end
+    if not finiteNumber(acceptedCarrierLitres) or acceptedCarrierLitres <= 0 then return nil, "INVALID_PRODUCER_ACCEPTANCE" end
+    if type(parts) ~= "table" or #parts == 0 then return nil, "PARTS_MISSING" end
+    local sealed, seen = {}, {}
+    for _, part in ipairs(parts) do
+        if type(part) ~= "table" or type(part.id) ~= "string" or seen[part.id] then
+            return nil, "DUPLICATE_OR_MALFORMED_PRODUCER_PORTION"
+        end
+        seen[part.id] = true
+        if not finiteNumber(part.carrierLitres) or part.carrierLitres < 0 then return nil, "INVALID_PRODUCER_CARRIER_QUANTITY" end
+        if not finiteNumber(part.rawLitres) or part.rawLitres < 0 then return nil, "INVALID_RAW_SOURCE_QUANTITY" end
+        local source = snapshot.parts[part.id]
+        if type(source) ~= "table" or not finiteNumber(source.available) or part.rawLitres > source.available then
+            return nil, "SOURCE_AVAILABILITY"
+        end
+        sealed[#sealed + 1] = { id = part.id, carrierLitres = part.carrierLitres, rawLitres = part.rawLitres }
+    end
+    table.sort(sealed, function(a, b) return a.id < b.id end)
+    local sum = 0
+    for _, p in ipairs(sealed) do sum = sum + p.carrierLitres end
+    if sum ~= acceptedCarrierLitres then return nil, "RECEIPT_TOTAL_MISMATCH" end
+
+    self.allocationSeq = (self.allocationSeq or 0) + 1
+    local allocationId = "allocation#" .. self.allocationSeq
+    self.allocations[allocationId] = { sealed = true, snapshotId = snapshot.id,
+                                       acceptedCarrierLitres = acceptedCarrierLitres, parts = sealed }
+    self.allocationOrder[#self.allocationOrder + 1] = allocationId
+    while #self.allocationOrder > MaterialWetness.MAX_ALLOCATIONS do
+        self.allocations[table.remove(self.allocationOrder, 1)] = nil
+    end
+    local receiptParts = {}
+    for i, p in ipairs(sealed) do receiptParts[i] = { id = p.id, q = p.carrierLitres } end
+    return { allocationId = allocationId, snapshotId = snapshot.id, basis = B.COLLECTED,
+             revision = snapshot.revision, total = acceptedCarrierLitres, parts = receiptParts }
+end
+
+--- The producer's sealed allocation behind a receipt. With StockGuard present and
+--- publishing its receipt resolver (SG-2 build brief :60 and :358:
+--- g_currentMission.stockGuard.readCollectionReceipt(receiptRef) -> sealed allocation or
+--- UNAVAILABLE; its handle's functions are plain closures, StockGuard.lua:100-147),
+--- StockGuard is the producer and its answer is the only one. Without it, Soil's own
+--- seal. Never both: a second authority would be a parallel record.
+---@return table|nil allocation, string source  "STOCKGUARD" or "SOIL"
+function MaterialWetness:resolveAllocation(receipt)
+    local mission = g_currentMission
+    local sg = mission ~= nil and mission.stockGuard or nil
+    if sg ~= nil and type(sg.readCollectionReceipt) == "function" then
+        local ok, allocation = pcall(sg.readCollectionReceipt, receipt)
+        if ok and type(allocation) == "table" then return allocation, "STOCKGUARD" end
+        return nil, "STOCKGUARD"
+    end
+    if type(receipt) ~= "table" or type(receipt.allocationId) ~= "string" then return nil, "SOIL" end
+    return self.allocations[receipt.allocationId], "SOIL"
+end
+
+--- THE COLLECTED READ: the receipt resolved against the producer's sealed allocation
+--- (never the caller's own figures), each portion weighted by its sealed carrier litres
+--- and classified by its source's condition at capture. Always returns the coverage for
+--- a valid physical receipt. A malformed or unmatchable receipt is UNAVAILABLE: its
+--- caller accounts the independently observed accepted amount as unknown rather than
+--- dropping those litres. A caller cannot lower the total or delete a portion to hide
+--- material. RSF-F211's reference model, with the RESULT constants.
+function MaterialWetness:readCollectedCondition(snapshot, receipt)
+    local R, B, S = MaterialWetness.RESULT, MaterialWetness.BASIS, MaterialWetness.SOURCE
+    local function unavailable(reason) return coverageResult(B.COLLECTED, R.UNAVAILABLE, reason) end
+    local function refusal(reason) return coverageResult(B.COLLECTED, R.REFUSAL, reason) end
+    if not self:isArmed() then return unavailable("NOT_ARMED") end
+    if type(snapshot) ~= "table" or type(receipt) ~= "table" then return unavailable("MALFORMED") end
+    if type(snapshot.id) ~= "string" or snapshot.id == "" or type(receipt.snapshotId) ~= "string" or receipt.snapshotId == "" then
+        return unavailable("INVALID_SNAPSHOT_ID")
+    end
+    if snapshot.basis ~= B.COLLECTED or receipt.basis ~= B.COLLECTED then return unavailable("BASIS_MISMATCH") end
+    if snapshot.revision == nil or receipt.revision == nil then return unavailable("REVISION_MISMATCH") end
+    if snapshot.id ~= receipt.snapshotId then return unavailable("SNAPSHOT_MISMATCH") end
+    if GroundConditionCoordinator == nil or not GroundConditionCoordinator.revisionsEqual(snapshot.revision, receipt.revision) then
+        return unavailable("REVISION_MISMATCH")
+    end
+    if type(snapshot.parts) ~= "table" or type(receipt.parts) ~= "table" then return unavailable("PARTS_MISSING") end
+
+    local producer = self:resolveAllocation(receipt)
+    if type(producer) ~= "table" or producer.sealed ~= true then return unavailable("PRODUCER_SEAL_MISSING") end
+    if producer.snapshotId ~= nil and producer.snapshotId ~= snapshot.id then return unavailable("SNAPSHOT_MISMATCH") end
+    local accepted = producer.acceptedCarrierLitres
+    if not finiteNumber(accepted) or accepted <= 0 or type(producer.parts) ~= "table" then
+        return unavailable("INVALID_PRODUCER_ACCEPTANCE")
+    end
+    local total = receipt.total
+    if not finiteNumber(total) or total <= 0 then return refusal("INVALID_TOTAL") end
+    if total ~= accepted then return unavailable("CALLER_ACCEPTANCE_MISMATCH") end
+
+    local seen, claimed = {}, {}
+    for _, portion in ipairs(receipt.parts) do
+        if type(portion) ~= "table" or type(portion.id) ~= "string" or seen[portion.id] then
+            return unavailable("DUPLICATE_OR_MALFORMED_PORTION")
+        end
+        seen[portion.id] = true
+        if not finiteNumber(portion.q) or portion.q < 0 then return refusal("INVALID_PORTION_QUANTITY") end
+        claimed[portion.id] = portion.q
+    end
+
+    local out = coverageResult(B.COLLECTED, nil, nil)
+    local sealedSeen, rawTotal = {}, 0
+    for _, portion in ipairs(producer.parts) do
+        if type(portion) ~= "table" or type(portion.id) ~= "string" or sealedSeen[portion.id] then
+            return unavailable("DUPLICATE_OR_MALFORMED_PRODUCER_PORTION")
+        end
+        sealedSeen[portion.id] = true
+        local q, raw = portion.carrierLitres, portion.rawLitres
+        if not finiteNumber(q) or q < 0 then return unavailable("INVALID_PRODUCER_CARRIER_QUANTITY") end
+        if not finiteNumber(raw) or raw < 0 then return unavailable("INVALID_RAW_SOURCE_QUANTITY") end
+        local source = snapshot.parts[portion.id]
+        if type(source) ~= "table" or not finiteNumber(source.available) or source.available < 0 or raw > source.available then
+            return unavailable("SOURCE_AVAILABILITY")
+        end
+        if claimed[portion.id] == nil or claimed[portion.id] ~= q then return unavailable("CALLER_ALLOCATION_MISMATCH") end
+        if q > 0 then
+            out.carrierLitres = out.carrierLitres + q
+            rawTotal = rawTotal + raw
+            -- A positive carrier with no raw source is explicitly unknown produced material.
+            if raw == 0 or source.status == S.UNKNOWN then
+                out.unknownCarrierLitres = out.unknownCarrierLitres + q
+            elseif source.status == S.REFUSAL then
+                out.refusedCarrierLitres = out.refusedCarrierLitres + q
+            elseif source.status == S.KNOWN then
+                if not finiteNumber(source.pct) or source.pct < 0 or source.pct > 100 then return unavailable("SOURCE_VALUE") end
+                out.knownCarrierLitres = out.knownCarrierLitres + q
+                out.knownWeightedPctSum = out.knownWeightedPctSum + q * source.pct
+            else
+                out.unknownCarrierLitres = out.unknownCarrierLitres + q
+            end
+        end
+    end
+    for id in pairs(claimed) do
+        if not sealedSeen[id] then return unavailable("CALLER_ALLOCATION_MISMATCH") end
+    end
+    if out.carrierLitres ~= accepted or out.carrierLitres ~= total then return unavailable("RECEIPT_TOTAL_MISMATCH") end
+    out.rawSourceLitres = rawTotal
+    if out.unknownCarrierLitres > 0 or out.refusedCarrierLitres > 0 then
+        out.status, out.reason = R.REFUSAL, "POSITIVE_UNKNOWN_OR_REFUSAL"
+    else
+        out.status, out.reason = R.OK, "COMPLETE_KNOWN_COVERAGE"
+        out.pct = out.knownWeightedPctSum / out.carrierLitres
+        out.band = MaterialWetness.bandForPct(out.pct)
+    end
+    return out
 end
 
 --- MOWER / TEDDER INTERACTION. A mower dropping over existing material is a
