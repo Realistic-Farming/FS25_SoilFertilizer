@@ -4783,12 +4783,13 @@ end
 -- registration, so assigning `Combine.processCombineSwathArea` here would patch a
 -- table nobody reads and the hook would silently never run.
 --
--- THE RETURN VALUE IS A REQUEST, NOT THE LANDED LITRES (MAINTENANCE row 104). The engine
--- returns 1, 1 whenever the swath is active with litres to drop and 0, 0 otherwise
--- (Combine.lua:731-758); the tip's own droppedLiters stays local (:746) and is not
--- forwarded. So the gate below is a request-level boolean: a birth is recorded when the
--- combine ASKED to drop, even if the tip landed 0 L. Real landed litres need the observer
--- (a litres-only observer mode is its own MAINTENANCE row).
+-- THE LANDED LITRES ARE THE EVIDENCE (MAINTENANCE rows 104 and 145). The engine returns
+-- 1, 1 whenever the swath is active with litres to drop and 0, 0 otherwise
+-- (Combine.lua:731-758); the tip's own droppedLiters stays local (:746). So the generic
+-- birth opens a litres-only GroundNativeObserver frame around the native call and reads
+-- the litres the tip actually dropped: a birth is recorded only when material actually
+-- landed. No litres, no record; and no observer, no record (an unknown amount is not a
+-- request to guess from).
 ---@return boolean success
 function HookManager:installCombineSwathHook()
     if not Combine or type(Combine.processCombineSwathArea) ~= "function" then
@@ -4881,8 +4882,15 @@ function HookManager:installCombineSwathHook()
             -- unchanged and every return is forwarded to the engine's own caller.
             local frame = nil
             if strawCarrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end
+            -- MAINTENANCE row 145: with no STRAW frame, a litres-only observer frame learns
+            -- what the swath's tip actually dropped, for the generic birth below.
+            local light = nil
+            if frame == nil and combineSelf.isServer and GroundNativeObserver ~= nil and GroundNativeObserver.isInstalled() then
+                light = GroundNativeObserver.open({ owner = combineSelf, litresOnly = true, litres = 0 })
+            end
             local packed = packAll(pcall(realFn, combineSelf, workArea, ...))
             if frame ~= nil then finishStraw(frame) end
+            if light ~= nil then GroundNativeObserver.close(light) end
             if not packed[1] then error(packed[2], 0) end
             -- The native returns, forwarded whole at the end of this wrapper.
             local results = { unpack(packed, 2, packed.n) }
@@ -4893,21 +4901,24 @@ function HookManager:installCombineSwathHook()
                     and g_SoilFertilityManager.soilSystem
                     and g_SoilFertilityManager.soilSystem.materialDown
                 local armed = mdNow ~= nil and mdNow.isArmed ~= nil and mdNow:isArmed() or false
+                local observed = GroundNativeObserver ~= nil and GroundNativeObserver.isInstalled()
                 SoilLogger.info(
                     "[SwathHook] FIRST EXECUTION: the work-area wrapper ran on a real combine pass "
                     .. "(RSF-F226 combine half confirmed live). MaterialDown armed: %s. %s",
                     tostring(armed),
-                    armed
-                        and "A straw birth WILL be recorded when this pass drops litres on a field."
-                        or "No straw birth will be recorded: the ground-material family is gated off. "
-                           .. "Turn on Experimental Systems to see straw birth.")
+                    not armed
+                        and "No straw birth will be recorded: the ground-material family is gated off. "
+                           .. "Turn on Experimental Systems to see straw birth."
+                        or not observed
+                        and "No straw birth will be recorded: the ground observer is not installed, so the litres a pass lands cannot be read."
+                        or "A straw birth WILL be recorded when this pass lands litres on a field.")
             end
 
             if not combineSelf.isServer then return unpack(results) end
 
-            -- Nothing was requested (the swath off, or no litres pending): nothing to remember.
-            -- results[1] is the engine's 1/0 request flag, not litres (see the header).
-            local droppedLiters = results[1]
+            -- Nothing landed on the ground (or there was no light frame to learn it): nothing to
+            -- remember (MAINTENANCE row 145; results[1] is only the engine's request flag).
+            local droppedLiters = light ~= nil and light.litres or 0
             if type(droppedLiters) ~= "number" or droppedLiters <= 0 then
                 return unpack(results)
             end
@@ -4949,8 +4960,8 @@ function HookManager:installCombineSwathHook()
                 -- claim to check. A NAMED but untracked material is refused there.
                 local name = windrowFillTypeName(combineSelf)
                 if md:noteMaterialAt(poly, fieldId, name) then
-                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, a drop requested (litres landed not observed)",
-                        fieldId, tostring(name))
+                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL landed",
+                        fieldId, tostring(name), droppedLiters)
                 end
             end)
 

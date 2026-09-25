@@ -17,6 +17,13 @@
 -- lease owns it) goes straight to the native function with its arguments and
 -- returns untouched.
 --
+-- A LITRES-ONLY FRAME (MAINTENANCE row 145) asks for the returned litres and nothing
+-- else: while one for that vehicle is on top, each of its tips adds its positive first
+-- return (the litres actually dropped) to frame.litres. It records no primitive, reads
+-- no cells, calls no handler, takes no admission snapshot and projects no condition, so
+-- no condition rule of section 2 applies to it. The generic straw birth uses it to learn
+-- what really landed.
+--
 -- IN NATIVE ORDER, ONE AT A TIME. Each recorded primitive is handed to its frame's
 -- handler as soon as the native call returns, before the next one runs, so a later
 -- pickup in the same processing call sees the condition an earlier primitive
@@ -67,6 +74,7 @@ O.nextOrdinal = O.nextOrdinal or 0
 -- Diagnostics: how much reading one primitive costs (Bob's intake asked for a number),
 -- and how often this wrap stood aside for an admission made inside its native call.
 O.stats = O.stats or { primitives = 0, occupancyReads = 0, cellsRead = 0, refusedEnvelopes = 0, stoodAside = 0 }
+O.stats.litresOnly = O.stats.litresOnly or 0   -- tips served by a litres-only frame (row 145)
 
 local function packn(...)
     return select("#", ...), { ... }
@@ -339,6 +347,15 @@ function O.install()
     local native = DensityMapHeightUtil.tipToGroundAroundLine
     local wrapper = function(vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, ...)
         local frame = O.frames[#O.frames]
+        -- A litres-only frame (header): the native call, its dropped litres added, and
+        -- nothing else. A throw is re-raised unchanged and every return forwarded.
+        if frame ~= nil and not frame.closed and frame.litresOnly and frame.owner == vehicle then
+            O.stats.litresOnly = O.stats.litresOnly + 1
+            local ln, lr = packn(pcall(native, vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, ...))
+            if lr[1] and finite(lr[2]) and lr[2] > 0 then frame.litres = (frame.litres or 0) + lr[2] end
+            if not lr[1] then error(lr[2], 0) end
+            return unpack(lr, 2, ln)
+        end
         if frame == nil or frame.closed or frame.owner ~= vehicle or type(frame.handler) ~= "table" then
             return native(vehicle, delta, fillTypeIndex, sx, sy, sz, ex, ey, ez, innerRadius, radius, lineOffset, ...)
         end
@@ -385,6 +402,12 @@ function O.install()
     DensityMapHeightUtil.tipToGroundAroundLine = wrapper
     rawset(DensityMapHeightUtil, O.MARKER, { native = native, wrapper = wrapper })
     return true
+end
+
+--- Is our wrapper the one DensityMapHeightUtil.tipToGroundAroundLine holds now?
+function O.isInstalled()
+    local rec = DensityMapHeightUtil ~= nil and rawget(DensityMapHeightUtil, O.MARKER) or nil
+    return rec ~= nil and DensityMapHeightUtil.tipToGroundAroundLine == rec.wrapper
 end
 
 --- Restore the native function, only while ours is still the current one.
