@@ -1266,11 +1266,11 @@ function RfPdaMenuPage:_refreshDotLegend(panels, activeIndex)
         end
         table.insert(shorts, title)
     end
-    local joined = table.concat(shorts, " Â· ")
+    local joined = table.concat(shorts, " · ")
     if joined == "" then
         joined = tr("rf_pda_module_soil_short", "Soil")
     end
-    self.rfDotLegend:setText(string.format("%d/%d Â· %s", activeIndex or 1, n, joined))
+    self.rfDotLegend:setText(string.format("%d/%d · %s", activeIndex or 1, n, joined))
 end
 
 --- Match SoilMapHooks / Map: grow/shrink from first seed RoundCorner in the BoxLayout.
