@@ -50,15 +50,16 @@ const RULES = [
 // MAINTENANCE row 60: a file that tests a translation against the "$l10n_" attribute
 // prefix (a string getText cannot return) must gate on hasText as well, or it gates
 // on nothing. File-level, because the defended helpers keep the prefix test as a
-// second line of defence AFTER hasText. The one allowed exception is the shared Esc
-// door page, byte-matched across ten door mods and repaired as one ten-mod item.
+// second line of defence AFTER hasText. The shared Esc door page used to be the one
+// allowed exception; MAINTENANCE row 79 repaired it in all ten door mods at once (its tr
+// now gates on hasText), so the rule has no exception left.
 // SHAPE CAUGHT (MAINTENANCE row 92): file-level, not per line. After the line rules, the
 // whole file (comments stripped) is tested for any "$l10n_" occurrence with no `hasText`
 // word anywhere in it. One hasText call anywhere in the file passes it, whichever site
 // that call guards; a per-site gate is the reviewer's to check, not this rule's.
 const PREFIX_RULE = {
   name: "l10n-prefix-without-hastext",
-  allow: ["src/ui/RfPdaMenuPage.lua"],
+  allow: [],
   msg: "compares against \"$l10n_\" without calling hasText anywhere in the file. hasText is the gate; the prefix test guards nothing on its own.",
 };
 
