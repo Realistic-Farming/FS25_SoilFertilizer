@@ -263,6 +263,19 @@ group("O", function()
         held .. " " .. tostring(md().loadState) .. " " .. unav(3, 3) .. " " .. unav(8, 8),
         "true:RESTORING MODERN true:NATIVE_ERROR false:nil")
 
+    -- MAINTENANCE row 139: the coordinator's defensive release. The store decides but the
+    -- coordinator's load observer never runs (dropped here, as a store that lost it would);
+    -- the coordinator's own mission start still ends the hold, restoring nothing.
+    DISK = {}
+    savedCareer("o5")
+    world("o5", { valid = true, loaded = true })
+    md().loadObservers.groundCoordinator = nil
+    local heldO5 = unav(8, 8)
+    SoilFertilityManager._groundMissionStarted(W.mgr)
+    T.eq("O5 with the coordinator's load observer gone, the mission start still ends the hold and restores nothing",
+        heldO5 .. " " .. tostring(md().loadState) .. " " .. unav(3, 3) .. " " .. unav(8, 8),
+        "true:RESTORING MODERN false:nil false:nil")
+
     T.eq("O3 the envelope carries the overlay, detached, with its grid stamped",
         tostring(env.saveStatus) .. "/" .. #cells .. "/" .. tostring(cells[1] and cells[1].key) .. "/" .. tostring(env.groundAvailability and env.groundAvailability.resolution ~= nil),
         "COMPLETE/1/2:2/true")

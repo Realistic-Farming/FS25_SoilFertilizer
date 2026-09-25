@@ -31,6 +31,9 @@ def early(fn, first):
              "function " + fn + "(streamId, connection)\n" + first, 1)]
 
 MUTATIONS = [
+ ("S1-no-addupdateable-not-batched", NE,
+  [("    if isDedicatedServer or not canDrip then\n", "    if isDedicatedServer then\n", 1)],
+  "with no addUpdateable the full sync no longer takes the batched path (MAINTENANCE row 120)"),
  # ── the wrong side reads nothing, one event at a time ───────────────────────
  ("E1-setting-sync-reads-on-the-host", NE, early("SoilSettingSyncEvent:readStream", "    self.settingName = streamReadString(streamId)\n"), "the host reads a client's setting sync"),
  ("E2-full-sync-reads-on-the-host", NE, early("SoilFullSyncEvent:readStream", "    self.settings = {}\n"), "the host reads a client's full sync"),

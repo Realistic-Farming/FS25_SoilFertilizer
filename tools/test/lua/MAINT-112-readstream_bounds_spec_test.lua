@@ -283,4 +283,44 @@ group("B", function()
     T.eq("B8 a stream cut before its count refuses instead of looping or raising", tostring(dst.refused) .. "/" .. tostring(ok), "FIELD_COUNT/true")
 end)
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- S. THE FULL SYNC'S SENDER WITH NO addUpdateable (MAINTENANCE row 120)
+-- ══════════════════════════════════════════════════════════════════════════
+-- The real SoilRequestFullSyncEvent:run on a listen host whose mission has no
+-- addUpdateable (side("host") builds none). The old fallback sent every field as ONE batch,
+-- which the reader refuses above FULL_SYNC_BATCH_SIZE (B-group); the same synchronous
+-- batches the dedicated path sends go out instead.
+group("S", function()
+    side("host")
+    local fd = {}
+    for i = 1, 40 do fd[i] = field() end
+    W.soilSystem.fieldData = fd
+    g_dedicatedServer = nil
+    local realMaps, realMask = SoilNetworkEvents_SendValueMaps, SoilNetworkEvents_SendScoutingMaskFull
+    SoilNetworkEvents_SendValueMaps = function() end        -- other senders, not this row's
+    SoilNetworkEvents_SendScoutingMaskFull = function() end
+    local events = {}
+    local conn = { sendEvent = function(_, ev) events[#events + 1] = ev end }
+    local okRun = pcall(SoilRequestFullSyncEvent.run, SoilRequestFullSyncEvent.new(), conn)
+    SoilNetworkEvents_SendValueMaps, SoilNetworkEvents_SendScoutingMaskFull = realMaps, realMask
+    local B = SoilConstants.NETWORK.FULL_SYNC_BATCH_SIZE
+    local sizes, lasts, total, refused = {}, {}, 0, 0
+    for _, ev in ipairs(events) do
+        if getmetatable(ev) == SoilFieldBatchSyncEvent_mt then
+            sizes[#sizes + 1] = tostring(count(ev.batchFields))
+            lasts[#lasts + 1] = tostring(ev.isLast)
+            total = total + count(ev.batchFields)
+            side("client")
+            local s = written(ev)
+            local dst = read(s, SoilFieldBatchSyncEvent, AT_CLIENT_FROM_SERVER)
+            if dst.refused ~= nil then refused = refused + 1 end
+            side("host")
+        end
+    end
+    T.eq("S1 with no addUpdateable, 40 fields go out in batches of FULL_SYNC_BATCH_SIZE, the last flagged, every field once",
+        tostring(okRun) .. " " .. table.concat(sizes, ",") .. " " .. table.concat(lasts, ",") .. " " .. total,
+        "true " .. B .. "," .. (40 - B) .. " false,true 40")
+    T.eq("S2 and a client reads every one of them within the reader's bound", refused, 0)
+end)
+
 T.summary()
