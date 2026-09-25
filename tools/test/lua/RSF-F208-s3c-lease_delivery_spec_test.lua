@@ -30,6 +30,11 @@
 --      refused observation then the close, a delivery in a later frame); a lease never
 --      closed expires by the frame rule and is not live; a pickup's removals come back
 --      in the result
+--   Y  MAINTENANCE rows 100 and 101: a delivery that ends on an early return (a native
+--      error, an unobservable envelope, an invalid height map) keeps its own reason
+--      through the close and through the frame rule, and the close marks nothing more;
+--      an expired lease leaves the table, admit sweeps earlier frames, so leaked leases
+--      are bounded by the frame and a late deliver or close on a dead token is NO_LEASE
 --
 -- THE SOURCES RUN IN THE MOD'S OWN ENVIRONMENT (--!env: modenv, run-tests.mjs): the
 -- engine's globals reach them only through __index, as in a game (mods.lua:436-442),
@@ -517,6 +522,118 @@ group("K", function()
         ENGINE.tick(tedder, 16)
         return tostring(C.stats.frames - frames)
     end)(), "1")
+    ENGINE.setFrameIndex(nil)
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Y. ROWS 100 AND 101: THE REASON STANDS, THE DEAD TOKEN LEAVES
+-- ══════════════════════════════════════════════════════════════════════════
+group("Y", function()
+    -- Row 100. A native error at delivery: the cells are marked NATIVE_ERROR there, and
+    -- the close finds nothing left to mark, so the reason is not overwritten.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    setCell(9, 8, 5, 100)
+    local t = gc()
+    local coord = W.sys.groundConditionCoordinator
+    local l1 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    HEIGHT.throwNext = true
+    local okN = pcall(DensityMapHeightUtil.tipToGroundAroundLine, TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    local out1 = t.deliverMovement(l1.leaseToken, tipObs(okN, FT.GRASS_WINDROW, -math.huge, nil, nil))
+    local closed1 = t.closePrimitive(l1.leaseToken)
+    T.eq("Y1 a native error at delivery marks the cells once, and the close re-marks nothing: the reason stays NATIVE_ERROR",
+        tostring(okN) .. "/" .. tostring(out1.unavailable >= 2) .. "/" .. closed1.unavailable .. "/" .. tostring(coord:unavailableReason(8, 8)) .. "/" .. tostring(coord:unavailableReason(9, 8)),
+        "false/true/0/NATIVE_ERROR/NATIVE_ERROR")
+
+    -- An envelope over the read limit: marked ENVELOPE:<reason> at delivery, nothing at the close.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    setCell(9, 8, 5, 100)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local saved = O.MAX_CELLS
+    O.MAX_CELLS = 2
+    local l2 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    O.MAX_CELLS = saved
+    local got2 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    local out2 = t.deliverMovement(l2.leaseToken, tipObs(true, FT.GRASS_WINDROW, -math.huge, got2, 0))
+    local closed2 = t.closePrimitive(l2.leaseToken)
+    T.eq("Y2 an unobservable envelope keeps its ENVELOPE reason through the close",
+        tostring(out2.unavailable > 2) .. "/" .. closed2.unavailable .. "/" .. tostring(string.find(tostring(coord:unavailableReason(8, 8)), "^ENVELOPE:") ~= nil),
+        "true/0/true")
+
+    -- The height map gone between admit and delivery: HEIGHT_MAP_INVALID stands.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local l3 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    local got3 = DensityMapHeightUtil.tipToGroundAroundLine(TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    g_densityMapHeightManager.valid = false
+    local out3 = t.deliverMovement(l3.leaseToken, tipObs(true, FT.GRASS_WINDROW, -math.huge, got3, 0))
+    g_densityMapHeightManager.valid = true
+    local closed3 = t.closePrimitive(l3.leaseToken)
+    T.eq("Y3 a height map invalid at delivery keeps HEIGHT_MAP_INVALID through the close",
+        tostring(out3.unavailable >= 2) .. "/" .. closed3.unavailable .. "/" .. tostring(coord:unavailableReason(8, 8)),
+        "true/0/HEIGHT_MAP_INVALID")
+
+    -- The frame-cross variant: the early-return delivery in one frame, the lease never
+    -- closed, the frame rule in the next: the reason stands and the record is gone.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    local adm = W.sys.groundConditionAdmission
+    ENGINE.setFrameIndex(900)
+    local l4 = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area1")
+    HEIGHT.throwNext = true
+    local ok4 = pcall(DensityMapHeightUtil.tipToGroundAroundLine, TRUCK, -math.huge, FT.GRASS_WINDROW, 0, 0, 1, 8, 0, 1, 1, 1, 0, false, nil)
+    t.deliverMovement(l4.leaseToken, tipObs(ok4, FT.GRASS_WINDROW, -math.huge, nil, nil))
+    ENGINE.setFrameIndex(901)
+    local live4 = adm:hasLiveLeaseFor(TRUCK, "area1")
+    local n4 = 0
+    for _ in pairs(adm.leases) do n4 = n4 + 1 end
+    T.eq("Y4 the frame rule on a lease whose delivery ended on a native error keeps NATIVE_ERROR and removes the record",
+        tostring(live4) .. "/" .. tostring(coord:unavailableReason(8, 8)) .. "/" .. n4 .. "/" .. adm:getOpenLeaseCount(),
+        "false/NATIVE_ERROR/0/0")
+    ENGINE.setFrameIndex(nil)
+
+    -- Row 101. A caller that leaks a lease every frame: each admit sweeps the last
+    -- frame's, so the table never holds more than this frame's lease; when the caller
+    -- stops, the next question empties it.
+    world(100)
+    grass()
+    setCell(8, 8, 3, 60)
+    t = gc()
+    coord = W.sys.groundConditionCoordinator
+    adm = W.sys.groundConditionAdmission
+    local maxHeld, tokens = 0, {}
+    for i = 1, 6 do
+        ENGINE.setFrameIndex(1000 + i)
+        local li = t.admitPrimitive(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), A.KIND_TIP_LINE, TRUCK, "area" .. i)
+        tokens[i] = li.leaseToken
+        local n = 0
+        for _ in pairs(adm.leases) do n = n + 1 end
+        if n > maxHeld then maxHeld = n end
+    end
+    ENGINE.setFrameIndex(1007)
+    local live5 = adm:hasLiveLeaseFor(TRUCK, "area6")
+    local n5 = 0
+    for _ in pairs(adm.leases) do n5 = n5 + 1 end
+    T.eq("Y5 six leaked leases across six frames: the table never holds more than one, and the next frame's question empties it",
+        tostring(tokens[6] ~= nil) .. "/" .. maxHeld .. "/" .. tostring(live5) .. "/" .. n5 .. "/" .. adm:getOpenLeaseCount(),
+        "true/1/false/0/0")
+    -- A late deliver or close on a dead token: NO_LEASE (the declared change; the old
+    -- answers were STALE_FRAME for the deliver and an ADMITTED close of nothing).
+    local lateD = t.deliverMovement(tokens[3], tipObs(true, FT.GRASS_WINDROW, -math.huge, 0, 0))
+    local lateC = t.closePrimitive(tokens[3])
+    T.eq("Y6 a late deliver or close on a swept token is refused as NO_LEASE",
+        lateD.status .. "/" .. lateD.reason .. "/" .. lateC.status .. "/" .. lateC.reason,
+        "REFUSED/" .. A.DELIVER_NO_LEASE .. "/REFUSED/" .. A.DELIVER_NO_LEASE)
     ENGINE.setFrameIndex(nil)
 end)
 
