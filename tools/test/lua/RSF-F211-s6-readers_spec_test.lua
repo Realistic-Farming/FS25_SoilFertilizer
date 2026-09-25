@@ -418,3 +418,95 @@ group("T", function()
     T.eq("T1 the tedder hands the hay member its turned work area: start, width, width + height - start, height (not the square around it)",
         p ~= nil and (pt(p[1]) .. " " .. pt(p[2]) .. " " .. pt(p[3]) .. " " .. pt(p[4])) or "none", "-20,0 -14.8038,3 -15.8038,4.7321 -21,1.7321")
 end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- M. WHAT A SETTLED DAY COSTS (MAINTENANCE row 123)
+-- ══════════════════════════════════════════════════════════════════════════
+-- GROUND-CONDITION-CONTRACT section 5: the dense-map worst case is measured before the
+-- scheduling is settled. The settle says once per day what it cost. The world is group
+-- E's (production's registration, a real mower pass, the day through the registered
+-- accrual) with a second field, 8, east of x 0. The bench counts, independently of the
+-- counters under test, every native volume read the engine model answers and every
+-- cell condition read the reader makes, and its clock advances one millisecond per read,
+-- so the milliseconds the line reports are a count the bench can check.
+local FIELD8 = { { x = 0, z = 0 }, { x = 28, z = 0 }, { x = 28, z = 20 }, { x = 0, z = 20 } }
+local function costLines(from)
+    local out = {}
+    for i = from + 1, #INFO do
+        if INFO[i]:find("[HayBet] settle cost:", 1, true) then out[#out + 1] = INFO[i] end
+    end
+    return out
+end
+group("M", function()
+    T.ok("M0 [world] the family armed and registered in production's order", world(100))
+    g_fieldManager.fields[2] = { farmland = { id = 8 }, polygonPoints = nodes(FIELD8) }
+    W.sys.hookManager.getFieldIdAtWorldPosition = function(_, x, _z) if x < 0 then return 7 end return 8 end
+    local m7, m8 = mowerInWorld(-16, "f7"), mowerInWorld(0, "f8")
+    installAll()
+    ENGINE.mowable[GRASS] = 800
+    ENGINE.tick(m7, 16)
+    ENGINE.mowable[GRASS] = 400
+    ENGINE.tick(m8, 16)
+
+    local clockMs, volume, cells = 0, 0, 0
+    local perField, current = {}, nil
+    local origFill, origCell, origField = DensityMapHeightUtil.getFillLevelAtArea, MaterialWetness.sourceCondition, HayBet._settleField
+    local origClock = getTimeSec
+    getTimeSec = function() return clockMs / 1000 end
+    DensityMapHeightUtil.getFillLevelAtArea = function(...)
+        volume, clockMs = volume + 1, clockMs + 1
+        if current ~= nil then perField[current] = (perField[current] or 0) + 1 end
+        return origFill(...)
+    end
+    MaterialWetness.sourceCondition = function(...)
+        cells, clockMs = cells + 1, clockMs + 1
+        if current ~= nil then perField[current] = (perField[current] or 0) + 1 end
+        return origCell(...)
+    end
+    HayBet._settleField = function(self, fieldId, ...)
+        current = fieldId
+        local r = { pcall(origField, self, fieldId, ...) }
+        current = nil
+        if not r[1] then error(r[2], 0) end
+        return unpack(r, 2)
+    end
+    local from = #INFO
+    local okDay = pcall(hayDay, 101)
+    DensityMapHeightUtil.getFillLevelAtArea, MaterialWetness.sourceCondition, HayBet._settleField = origFill, origCell, origField
+    local lines = costLines(from)
+    local line = lines[1] or ""
+    T.eq("M1 [entry point] the settled day logs exactly one cost line, naming the day and both fields the membership reaches",
+        tostring(okDay) .. "/" .. #lines .. "/" .. tostring(line:find("day 101, 2 field(s),", 1, true) ~= nil), "true/1/true")
+    local total, vol, cel = line:match("(%d+) engine read%(s%) %((%d+) volume, (%d+) cell%)")
+    T.eq("M2 its reads are the engine's own count: every native volume read the engine answered, every cell condition read the reader made",
+        tostring(vol) .. "/" .. tostring(cel) .. "/" .. tostring(total), volume .. "/" .. cells .. "/" .. (volume + cells))
+    T.ok("M2b the count is not vacuous: both fields were read, row by row and cell by cell", volume >= 12 and cells >= 4)
+    T.eq("M3 its milliseconds are the engine clock's advance over the whole settle",
+        tostring(line:match("cell%), ([%d%.]+) ms;")), string.format("%.2f", clockMs))
+    local worst, worstReads = nil, -1
+    for fieldId, n in pairs(perField) do
+        if n > worstReads or (n == worstReads and fieldId < worst) then worst, worstReads = fieldId, n end
+    end
+    T.eq("M4 the costliest field is the one the settle spent most on, with its own reads and milliseconds (field 8's box is wider, so it reads more cells per row)",
+        tostring(line:match("costliest field (%S+): (%d+) read%(s%), ([%d%.]+) ms$")) .. "/" .. tostring(select(2, line:match("costliest field (%S+): (%d+) read%(s%), ([%d%.]+) ms$"))) .. "/" .. tostring(select(3, line:match("costliest field (%S+): (%d+) read%(s%), ([%d%.]+) ms$"))),
+        tostring(worst) .. "/" .. worstReads .. "/" .. string.format("%.2f", worstReads))
+    T.eq("M4b and it is field 8, not the first field visited", tostring(worst), "8")
+
+    -- A day with nothing tracked on the ground still says what it cost: nothing.
+    world(100)
+    from = #INFO
+    hayDay(101)
+    lines = costLines(from)
+    T.eq("M5 a day with no tracked material logs one line with no fields and no reads",
+        #lines .. "/" .. tostring((lines[1] or ""):find("day 101, 0 field(s), 0 engine read(s) (0 volume, 0 cell)", 1, true) ~= nil) .. "/" .. tostring((lines[1] or ""):find("costliest field none", 1, true) ~= nil),
+        "1/true/true")
+
+    -- The family off: the hay member never arms (Experimental Systems gates it), so the
+    -- day it would settle logs nothing.
+    world(100)
+    W.sys.hayBet.armed = false
+    from = #INFO
+    hayDay(101)
+    T.eq("M6 an unarmed hay member (the family off) logs no cost line", #costLines(from), 0)
+    getTimeSec = origClock
+end)

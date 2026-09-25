@@ -1118,7 +1118,14 @@ end
 --- engine's own read: DensityMapHeightUtil.getFillLevelAtArea(fillType, start, width
 --- point, height point) returns the litres first (DensityMapHeightUtil.lua:80-109).
 --- nil when the read fails.
+-- [MAINTENANCE row 123] Engine reads made by the standing and collected readers, counted
+-- so the hay settle can say what one day cost (HayBet:onSettle). Counters only; nothing
+-- reads them to decide anything.
+MaterialWetness.nativeReads = MaterialWetness.nativeReads or 0
+MaterialWetness.cellReads   = MaterialWetness.cellReads or 0
+
 local function nativeLitres(fillTypeIndex, x0, z0, x1, z1)
+    MaterialWetness.nativeReads = MaterialWetness.nativeReads + 1
     local ok, litres = pcall(DensityMapHeightUtil.getFillLevelAtArea, fillTypeIndex, x0, z0, x1, z0, x0, z1)
     if not ok or not finiteNumber(litres) or litres < 0 then return nil end
     return litres
@@ -1179,6 +1186,7 @@ function MaterialWetness:captureSnapshot(basis, fillTypeIndex, coord, cells)
         local id = tostring(c.gx) .. ":" .. tostring(c.gz)
         if parts[id] ~= nil then return nil, "DUPLICATE_CELL" end
         if not finiteNumber(c.litres) or c.litres < 0 then return nil, "SOURCE_VALUE" end
+        MaterialWetness.cellReads = MaterialWetness.cellReads + 1
         local status, pct, ageRaw = self:sourceCondition(coord, c.gx, c.gz)
         parts[id] = { available = c.litres, status = status, pct = pct, ageRaw = ageRaw,
                       gx = c.gx, gz = c.gz, fraction = c.fraction }
