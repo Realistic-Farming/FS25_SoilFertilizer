@@ -293,21 +293,29 @@ local function mdMoney2(value)
 end
 
 local function tr(key, fallback)
-    local function tryI18n(i18n)
-        if i18n == nil then
+    -- MAINTENANCE row 79, the SoilFertilizer #973 shape, one identical copy in all ten door
+    -- mods. Gate on hasText, never on the returned string: getText never returns nil, and
+    -- for an absent key it returns "Missing '<key>' in l10n<suffix>.xml" (I18N.lua:175-191).
+    -- Past hasText the return is opaque: type and non-empty, never inspected.
+    --
+    -- The probe order is kept (this door's host mod, then Soil, then the Refined fork, then
+    -- the host's own i18n), and a named mod is asked through the engine's customEnv
+    -- (I18N:hasText / getText(name, customEnv), :175-209), which reads that mod's texts from
+    -- I18N.modEnvironments. The old probe read g_modEnvironments[name].i18n, a field the
+    -- engine never sets (a mod's i18n is modEnv.g_i18n, mods.lua:453), so only the host's
+    -- own table ever resolved and Soil's chrome showed English on every non-Soil host.
+    -- Self-contained on purpose: nine of the ten door mods do not ship SoilL10n.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
+    end
+    local function probe(customEnv)
+        local okHas, has = pcall(i18n.hasText, i18n, key, customEnv)
+        if not okHas or has ~= true then
             return nil
         end
-        local ok, text = pcall(function() return i18n:getText(key) end)
+        local ok, text = pcall(i18n.getText, i18n, key, customEnv)
         if not ok or type(text) ~= "string" or text == "" then
-            return nil
-        end
-        local lower = text:lower()
-        -- Reject unresolved keys (engine often returns "MISSING KEY_NAME").
-        if lower == tostring(key):lower()
-            or text == ("$l10n_" .. key)
-            or lower:find("^missing%s")
-            or lower:find("^missing_")
-        then
             return nil
         end
         return text
@@ -315,18 +323,17 @@ local function tr(key, fallback)
 
     local tried = {}
     local function tryMod(name)
-        if name == nil or tried[name] or g_modEnvironments == nil then
+        if name == nil or tried[name] then
             return nil
         end
         tried[name] = true
-        local modEnv = g_modEnvironments[name]
-        return tryI18n(modEnv and modEnv.i18n)
+        return probe(name)
     end
 
     local text = tryMod(MOD_NAME)
         or tryMod("FS25_SoilFertilizer")
         or tryMod("FS25_SoilFertilizer_Refined")
-        or tryI18n(g_i18n)
+        or probe(nil)
     if text ~= nil then
         return text
     end
