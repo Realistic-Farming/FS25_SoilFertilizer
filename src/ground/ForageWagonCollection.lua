@@ -17,7 +17,7 @@
 -- That admitted call's return is A: A / buffer of the buffer's account moves to the
 -- fill unit's account, the rest stays with the buffer, and a trim is a real discard.
 -- The wagon's own fill-change listener is not an observer (the engine removes it at load
--- when there is no start-fill effect, :136-138), so A is read off the FillUnit call made
+-- when there is no start-fill effect, ForageWagon:onLoad :84-86), so A is read off the FillUnit call made
 -- inside fillForageWagon.
 --
 -- SERVER ONLY, and standalone as the Baler's: a StockGuard lease on the pickup stands
