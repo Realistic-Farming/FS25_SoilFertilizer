@@ -1364,7 +1364,7 @@
     <!-- BUILD 11:27 F155 Esc RF button labels -->
     <e k="wc_rf_pda_open_manager" v="작업자 관리자 열기" eh="1c6592d5" />
     <e k="sf_pda_btn_rotation_planner" v="윤작 계획기" eh="5404f1c2" />
-    <e k="sf_pda_btn_field_detail" v="밯 상세" eh="03b5acd7" />
+    <e k="sf_pda_btn_field_detail" v="필드 상세" eh="03b5acd7" />
     <e k="sf_exp_confirm_title" v="Experimental Systems" />
     <e k="sf_exp_confirm_yes" v="Confirm" />
     <e k="sf_exp_confirm_no" v="Abort" />
