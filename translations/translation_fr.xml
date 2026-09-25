@@ -1118,6 +1118,7 @@
     <e k="sf_scout_clean_hint" v="Le champ semble sain. Vous pouvez tout de même appliquer un traitement préventif." eh="b81cdbda" />
     <e k="sf_scout_disabled" v="Système de maladies désactivé" eh="a2ffd328" />
     <e k="sf_scout_no_standing" v="[EN] Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
+    <e k="sf_treat_no_standing" v="Votre ferme ne possède pas ce terrain et n'a aucun contrat dessus. Rien n'a été traité." eh="27d54bdd" />
     <e k="sf_admin_field_set_disease_label" v="Définir la maladie du champ" eh="faa773f5" />
     <e k="sf_admin_field_set_disease_desc" v="Définir manuellement la pression de maladie (et son type) du champ actuel" eh="d86eb3e1" />
     <e k="sf_propiconazole_title" v="Propiconazole" eh="920d7ec6" />

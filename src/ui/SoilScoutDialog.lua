@@ -248,8 +248,14 @@ function SoilScoutDialog:onClickApply()
         return
     end
 
-    local ok, _, detail = sfm.soilSystem:applyNamedFungicide(self._fieldId, id, { charge = true })
-    if not ok then return end
+    -- The dialog acts for THIS machine's farm (row 116), as its scout does.
+    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(self._fieldId, id, { charge = true, farmId = SoilFertilitySystem.localScoutFarmId() })
+    if not ok then
+        if msgKey == "sf_treat_no_standing" then
+            setText(self.scoutHint, tr("sf_treat_no_standing", "Your farm neither owns nor contracts this land. Nothing was treated."))
+        end
+        return
+    end
     detail = detail or {}
     if detail.control ~= nil then
         setText(self.scoutHint, string.format(

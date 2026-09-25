@@ -1436,12 +1436,12 @@ function SoilTreatFieldEvent:run(connection)
         return
     end
 
-    -- Charge the requesting player's farm.
-    local farmId = nil
-    if connection and not connection:getIsServer() and g_currentMission and g_currentMission.userManager then
-        local user = g_currentMission.userManager:getUserByConnection(connection)
-        if user then farmId = user.farmId end
-    end
+    -- THE ACTING FARM IS THE SENDER'S OWN (MAINTENANCE row 116): the server's player
+    -- record for this connection (FSBaseMission:getFarmId), never the wire and never
+    -- the host's farm. A sender with no record is refused here, silently; the writer
+    -- tests that farm's standing on the field and charges that farm alone.
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return end
 
     g_SoilFertilityManager.soilSystem:applyNamedFungicide(self.fieldId, self.chemId, {
         charge = true,

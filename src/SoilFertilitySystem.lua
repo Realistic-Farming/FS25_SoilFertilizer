@@ -2526,6 +2526,29 @@ end
 --- The second return of scoutField when the acting farm has no standing.
 SoilFertilitySystem.SCOUT_REFUSED = "NO_STANDING"
 
+--- [MAINTENANCE row 116] The standing every treatment door runs: the acting farm must
+--- own the field's farmland or be contracting its owner, the engine's own land rule
+--- (AccessHandler.canFarmAccessLand, farms/AccessHandler.lua:51-63: the owner, else
+--- Farm:getIsContractingFor, which canFarmAccessOtherId :35-49 asks). Unowned land
+--- (owner 0, economy/FarmlandManager.lua:275) is nobody's to treat, and a farm the
+--- engine does not name (nil or 0) is refused. Fails closed on a missing manager.
+---@param actingFarmId any
+---@param fieldId any
+---@return boolean
+function SoilFertilitySystem.isTreatAuthorized(actingFarmId, fieldId)
+    if type(actingFarmId) ~= "number" or actingFarmId <= 0 then return false end
+    if type(fieldId) ~= "number" then return false end
+    local fm = g_farmlandManager
+    if fm == nil or type(fm.getFarmlandOwner) ~= "function" then return false end
+    local ok, owner = pcall(fm.getFarmlandOwner, fm, fieldId)
+    if not ok or type(owner) ~= "number" or owner <= 0 then return false end
+    if owner == actingFarmId then return true end
+    local handler = g_currentMission and g_currentMission.accessHandler
+    if handler == nil or type(handler.canFarmAccessOtherId) ~= "function" then return false end
+    local ok2, allowed = pcall(handler.canFarmAccessOtherId, handler, actingFarmId, owner)
+    return ok2 and allowed == true
+end
+
 --- Deliberately scout a field: reveal its disease so getScoutReport returns the full
 --- truth from here on. The free bottom rung of the disease-intel economy - the player
 --- scouts each field one at a time (or buys a ProStaff report / gets a dog ping) to learn
@@ -2613,6 +2636,25 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
         return false, "sf_treat_no_field", {}
     end
 
+    -- STANDING (MAINTENANCE row 116). Every door supplies the farm it acts for in
+    -- opts.farmId: the network event from the sender's player record, the console and
+    -- the dialog from the local player. That farm must own the field's farmland or be
+    -- contracting its owner; a door with no farm (a dedicated server's console) is
+    -- refused. On a pure client the same test runs against the synced owner before the
+    -- request is sent; the server tests again from the sender's own record. A refusal
+    -- writes nothing, charges nobody and broadcasts nothing.
+    --
+    -- A caller that pays nothing (opts.charge == false) is not a player's door: it is
+    -- another mod's server-side treatment on land that mod admitted by its own rule
+    -- (NPCFavor's NPC treatment, NPCTreatment.lua:201, on land with no owner; ProStaff's
+    -- disease flush, ProStaffDiseaseFlush.lua:393, on the farm's own fields). Those keep
+    -- their behaviour. No client reaches this exemption: the event builds its own opts
+    -- with charge = true and the wire carries no opts, and a pure client's call is only
+    -- a request the server re-tests with charge = true.
+    if opts.charge ~= false and not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then
+        return false, "sf_treat_no_standing", {}
+    end
+
     -- Clients ask the server to perform the authoritative application (MP).
     if g_currentMission and g_currentMission.missionDynamicInfo
        and g_currentMission.missionDynamicInfo.isMultiplayer and not g_server then
@@ -2673,13 +2715,10 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
         local area = field.fieldArea or 1.0
         cost = (chem.costPerHa or 0) * area
         if cost > 0 then
+            -- THE ACTING FARM PAYS, and only it (row 116): the standing test above
+            -- admitted opts.farmId, so there is no fallback to the host's farm or to
+            -- farm 1 here; a treatment with no farm was refused before any write.
             local farmId = opts.farmId
-            if not farmId then
-                if g_localPlayer and g_localPlayer.farmId then farmId = g_localPlayer.farmId
-                elseif g_currentMission and g_currentMission.player and g_currentMission.player.farmId then
-                    farmId = g_currentMission.player.farmId
-                else farmId = 1 end
-            end
             if g_currentMission and g_currentMission.addMoney and farmId and farmId > 0 then
                 pcall(function()
                     g_currentMission:addMoney(-cost, farmId, MoneyType.PURCHASE_FERTILIZER, true, true)

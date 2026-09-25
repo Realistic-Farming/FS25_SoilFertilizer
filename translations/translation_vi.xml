@@ -1118,6 +1118,7 @@
 		<e k="sf_scout_clean_hint" v="[EN] Field looks healthy. You can still apply a preventative." eh="b81cdbda" />
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
 		<e k="sf_scout_no_standing" v="[EN] Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
+		<e k="sf_treat_no_standing" v="Nông trại của bạn không sở hữu và cũng không có hợp đồng trên mảnh đất này. Không có gì được xử lý." eh="27d54bdd" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
         <e k="sf_propiconazole_title" v="[EN] Propiconazole" eh="920d7ec6" />
