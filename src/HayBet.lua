@@ -97,11 +97,38 @@ function HayBet:onSettle(ctx)
     -- [SF-49] The hay member reads the wetness layer to decide whether material is fit.
     -- A sentinel, unknown or refused condition always blocks conversion - the
     -- conservative direction.
+    --
+    -- [MAINTENANCE row 123] WHAT THE DAY COST. GROUND-CONDITION-CONTRACT section 5 asks for
+    -- the dense-map worst case to be measured before the scheduling is settled, and this
+    -- settle reads every field that holds tracked material in one call. So each settled
+    -- day says, once, at info level: the fields visited, the engine reads the readers made
+    -- (native volume reads and cell condition reads, counted in MaterialWetness), the
+    -- whole settle's milliseconds by the engine's clock (getTimeSec, seconds, the clock
+    -- the engine's own frame budgets use) and the costliest single field. The family is
+    -- armed only with Experimental Systems on, so with the gate off nothing is logged.
+    local clock = type(getTimeSec) == "function" and getTimeSec or nil
+    local v0, c0 = MaterialWetness.nativeReads or 0, MaterialWetness.cellReads or 0
+    local t0 = clock ~= nil and clock() or nil
+    local fields, worst = 0, nil
     for _, fieldId in ipairs(self:_settleFieldIds(md, mw)) do
+        local fv, fc = MaterialWetness.nativeReads or 0, MaterialWetness.cellReads or 0
+        local ft = clock ~= nil and clock() or nil
         pcall(function()
             self:_settleField(fieldId, md, mw)
         end)
+        local reads = ((MaterialWetness.nativeReads or 0) - fv) + ((MaterialWetness.cellReads or 0) - fc)
+        local ms = ft ~= nil and (clock() - ft) * 1000 or 0
+        fields = fields + 1
+        if worst == nil or ms > worst.ms or (ms == worst.ms and reads > worst.reads) then
+            worst = { fieldId = fieldId, reads = reads, ms = ms }
+        end
     end
+    local volume = (MaterialWetness.nativeReads or 0) - v0
+    local cells = (MaterialWetness.cellReads or 0) - c0
+    local total = t0 ~= nil and (clock() - t0) * 1000 or 0
+    SoilLogger.info("[HayBet] settle cost: day %s, %d field(s), %d engine read(s) (%d volume, %d cell), %.2f ms; costliest field %s: %d read(s), %.2f ms",
+        tostring(ctx ~= nil and ctx.monotonicDay or "?"), fields, volume + cells, volume, cells, total,
+        worst ~= nil and tostring(worst.fieldId) or "none", worst ~= nil and worst.reads or 0, worst ~= nil and worst.ms or 0)
 end
 
 --- [RSF-F211] The fields to settle, ascending and once each: MaterialDown's active set
