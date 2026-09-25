@@ -228,6 +228,21 @@ group("N", function()
         tostring(ok) .. "/" .. tostring(key) .. "/" .. pressure(1) .. "/" .. #W.charges, "false/sf_treat_no_standing/40/0")
     ok, key = W.sys:applyNamedFungicide(1, "PROTHIOCONAZOLE", { charge = true, farmId = 0 })
     T.eq("N2 farm 0 (a spectator) is refused the same way", tostring(ok) .. "/" .. tostring(key) .. "/" .. #W.charges, "false/sf_treat_no_standing/0")
+
+    -- The two external no-charge callers, in their exact shapes, on the server. NPCFavor's
+    -- NPC treatment (NPCTreatment.lua:201): charge = false, no farm, on land with no owner
+    -- (field 4), the only land its admission rule allows. It still treats and charges nobody.
+    world("host")
+    local okN, keyN = W.sys:applyNamedFungicide(4, "PROTHIOCONAZOLE", { charge = false })
+    T.eq("N3 NPCFavor's no-charge NPC treatment on unowned land with no farm still treats, and nobody is charged",
+        tostring(okN) .. "/" .. tostring(keyN ~= "sf_treat_no_standing") .. "/" .. tostring(treated(4)) .. "/" .. #W.charges,
+        "true/true/true/0")
+    -- ProStaff's disease flush (ProStaffDiseaseFlush.lua:393): charge = false with its farm, on
+    -- that farm's field. Treated, nobody charged, as before this PR.
+    world("host")
+    local okP = W.sys:applyNamedFungicide(1, "PROTHIOCONAZOLE", { charge = false, farmId = 1 })
+    T.eq("N4 ProStaff's no-charge flush on its farm's own field treats, and nobody is charged",
+        tostring(okP) .. "/" .. tostring(treated(1)) .. "/" .. #W.charges, "true/true/0")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════

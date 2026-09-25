@@ -34,12 +34,16 @@ NE = "src/network/NetworkEvents.lua"
 GUI = "src/settings/SoilSettingsGUI.lua"
 DLG = "src/ui/SoilScoutDialog.lua"
 
-STANDING = "    if not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then\n        return false, \"sf_treat_no_standing\", {}\n    end\n"
+STANDING = "    if opts.charge ~= false and not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then\n        return false, \"sf_treat_no_standing\", {}\n    end\n"
 
 MUTATIONS = [
  # ── the writer ──────────────────────────────────────────────────────────────
  ("W1-standing-dropped", SFS, [(STANDING, "", 1)],
   "any farm treats any field, and a treatment with no farm charges nobody or the host"),
+ ("W7-no-charge-callers-take-the-standing", SFS,
+  [("    if opts.charge ~= false and not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then\n",
+    "    if not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then\n", 1)],
+  "NPCFavor's no-charge NPC treatment (no farm, unowned land) is refused and stops treating"),
  ("W2-unowned-land-is-everyones", SFS,
   [("    if not ok or type(owner) ~= \"number\" or owner <= 0 then return false end\n    if owner == actingFarmId then return true end",
     "    if not ok or type(owner) ~= \"number\" then return false end\n    if owner <= 0 or owner == actingFarmId then return true end", 1)],

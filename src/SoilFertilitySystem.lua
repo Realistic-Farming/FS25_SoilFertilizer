@@ -2643,7 +2643,15 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
     -- refused. On a pure client the same test runs against the synced owner before the
     -- request is sent; the server tests again from the sender's own record. A refusal
     -- writes nothing, charges nobody and broadcasts nothing.
-    if not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then
+    --
+    -- A caller that pays nothing (opts.charge == false) is not a player's door: it is
+    -- another mod's server-side treatment on land that mod admitted by its own rule
+    -- (NPCFavor's NPC treatment, NPCTreatment.lua:201, on land with no owner; ProStaff's
+    -- disease flush, ProStaffDiseaseFlush.lua:393, on the farm's own fields). Those keep
+    -- their behaviour. No client reaches this exemption: the event builds its own opts
+    -- with charge = true and the wire carries no opts, and a pure client's call is only
+    -- a request the server re-tests with charge = true.
+    if opts.charge ~= false and not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then
         return false, "sf_treat_no_standing", {}
     end
 
