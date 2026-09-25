@@ -208,6 +208,36 @@ function OrganicCertification:applyStateChange(fieldId)
     end
 end
 
+--- STANDING (MAINTENANCE row 110). Does farmId own the farmland fieldId? Soil keys
+--- fieldData by farmland id, and FarmlandManager:getFarmlandOwner
+--- (economy/FarmlandManager.lua:275) answers NO_OWNER_FARM_ID (0) for unowned or
+--- unknown land, so unowned land is nobody's. A missing manager, a non-numeric id
+--- or a farm the engine does not name (nil) all refuse.
+---@param farmId any
+---@param fieldId any
+---@return boolean
+function OrganicCertification.farmOwnsField(farmId, fieldId)
+    if type(farmId) ~= "number" or farmId <= 0 then return false end
+    if type(fieldId) ~= "number" then return false end
+    local fm = g_farmlandManager
+    if fm == nil or type(fm.getFarmlandOwner) ~= "function" then return false end
+    local ok, owner = pcall(fm.getFarmlandOwner, fm, fieldId)
+    return ok and type(owner) == "number" and owner > 0 and owner == farmId
+end
+
+--- The farm acting from THIS machine on its own doors (console, PDA): the local
+--- player's, as FSBaseMission:getFarmId answers with no connection
+--- (FSBaseMission.lua:1067). A dedicated server's console has no local player and
+--- gets nil, which every door then refuses. Never a farm-1 fallback.
+---@return number|nil
+function OrganicCertification.localActingFarmId()
+    local mission = g_currentMission
+    if mission == nil or type(mission.getFarmId) ~= "function" then return nil end
+    local ok, farmId = pcall(mission.getFarmId, mission, nil)
+    if not ok or type(farmId) ~= "number" then return nil end
+    return farmId
+end
+
 --- Route an opt-in through the single-writer discipline (server-authoritative).
 -- On a pure client this sends a request the server validates and applies; on the
 -- server or in singleplayer it applies directly. Callers (console, UI) use this,
@@ -233,14 +263,17 @@ function OrganicCertification:_requestOpt(fieldId, doOptIn)
         end
         return false, "Organic change unavailable (network not ready)"
     end
-    -- Server or singleplayer: apply directly (optIn/optOut self-broadcast on success).
-    if doOptIn then return self:optIn(fieldId) else return self:optOut(fieldId) end
+    -- Server or singleplayer: apply directly, for THIS machine's own farm (row 110;
+    -- nil on a dedicated server's console, which the writer refuses). optIn/optOut
+    -- self-broadcast on success.
+    local actingFarmId = OrganicCertification.localActingFarmId()
+    if doOptIn then return self:optIn(fieldId, actingFarmId) else return self:optOut(fieldId, actingFarmId) end
 end
 
 --- Opt a field into the organic transition (conventional -> in_transition).
 -- @param fieldId  field id
 -- @return boolean success, string message
-function OrganicCertification:optIn(fieldId)
+function OrganicCertification:optIn(fieldId, actingFarmId)
     -- Server-authoritative floor: a pure client must never mutate cert state
     -- locally (it desyncs the lobby). Callers route through requestOptIn.
     if g_server == nil and g_client ~= nil then
@@ -248,6 +281,13 @@ function OrganicCertification:optIn(fieldId)
     end
     local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
     if not field then return false, string.format("Field %s is not tracked yet", tostring(fieldId)) end
+    -- STANDING (MAINTENANCE row 110): the acting farm must own the field's farmland.
+    -- Every door supplies the farm it acts for (the network event from the sender's
+    -- player record, the local doors from the local player), so a caller that reaches
+    -- the writer another way cannot bypass the rule; nil fails closed.
+    if not OrganicCertification.farmOwnsField(actingFarmId, fieldId) then
+        return false, string.format("Field %s is not owned by your farm", tostring(fieldId))
+    end
     local o = self:ensureState(field)
 
     if o.state == SoilConstants.ORGANIC.STATE_CERTIFIED then
@@ -268,13 +308,20 @@ end
 --- Opt a field back out to conventional (loses transition/certification).
 -- @param fieldId  field id
 -- @return boolean success, string message
-function OrganicCertification:optOut(fieldId)
+function OrganicCertification:optOut(fieldId, actingFarmId)
     -- Server-authoritative floor (see optIn).
     if g_server == nil and g_client ~= nil then
         return false, "Organic changes are server-authoritative"
     end
     local field = self.soilSystem and self.soilSystem.fieldData and self.soilSystem.fieldData[fieldId]
     if not field then return false, string.format("Field %s is not tracked yet", tostring(fieldId)) end
+    -- STANDING (MAINTENANCE row 110): the acting farm must own the field's farmland.
+    -- Every door supplies the farm it acts for (the network event from the sender's
+    -- player record, the local doors from the local player), so a caller that reaches
+    -- the writer another way cannot bypass the rule; nil fails closed.
+    if not OrganicCertification.farmOwnsField(actingFarmId, fieldId) then
+        return false, string.format("Field %s is not owned by your farm", tostring(fieldId))
+    end
     local o = self:ensureState(field)
 
     if o.state == SoilConstants.ORGANIC.STATE_CONVENTIONAL then

@@ -119,6 +119,68 @@ function SoilSettingChangeEvent:run(connection)
 end
 
 -- ========================================
+-- AUTHORIZATION (MAINTENANCE rows 85, 110, 111)
+-- ========================================
+-- WHICH SIDE IS THIS, AND WHO SENT IT. Three engine facts every check below rests
+-- on, read from the decompiled scripts:
+--   * A listen host is BOTH g_server and g_client (gui/MPLoadingScreen.lua:436-437),
+--     so a "g_client == nil" test cannot tell a host from a pure client. A client's
+--     event reaches the host's readStream with that client's connection
+--     (network/Server.lua:436) and readStream calls run, so a guard on g_client alone
+--     let a modified client apply forged settings and field data to the host, which
+--     then saved and rebroadcast them. The side test is the SERVER'S presence.
+--   * A pure client reads with its server connection, created with isServer = true
+--     (network/Client.lua:152); the host's connections to its clients are created
+--     with isServer = false (network/Server.lua:454); Connection:getIsServer is that
+--     flag (network/Connection.lua:146-148). The local loopback runs on stream 0
+--     with the reversed flag (Connection.lua:47, :71-74; getIsLocal :149-151).
+--   * The sender's farm is the server's own player record for the connection
+--     (FSBaseMission:getFarmId, FSBaseMission.lua:1067: nil for a connection with no
+--     player, the local player's farm for a nil connection), never a wire value and
+--     never a farm-1 fallback.
+
+--- True when a server-to-client event may apply here: this side is not a server, and
+--- the event came in on this client's server connection. A nil connection is the
+--- engine's local delivery (Connection.lua:71-74), which never carries these events.
+local function sfAppliesOnClient(connection)
+    if g_server ~= nil then return false end
+    if connection ~= nil and type(connection.getIsServer) == "function" and not connection:getIsServer() then
+        return false
+    end
+    return true
+end
+
+--- The farm acting through connection, from the server's player record; nil when the
+--- engine cannot name one (no mission, no method, no player record). Fails closed.
+function SoilNetworkEvents_ActingFarmId(connection)
+    local mission = g_currentMission
+    if mission == nil or type(mission.getFarmId) ~= "function" then return nil end
+    local ok, farmId = pcall(mission.getFarmId, mission, connection)
+    if not ok or type(farmId) ~= "number" then return nil end
+    return farmId
+end
+
+--- On the server: may the sender on connection act on vehicle? The host's own local
+--- delivery (the loopback, Connection.lua:47) is its own hand and stands as before; a
+--- remote client must be a player whose farm the ENGINE'S OWN access rule admits to
+--- the vehicle: AccessHandler:canFarmAccess (farms/AccessHandler.lua:19-34): the
+--- owner's farm, a vehicle owned by EVERYONE, or a farm contracting for the owner
+--- (canFarmAccessOtherId :35-49 through Farm:getIsContractingFor, farms/Farm.lua:476),
+--- as the engine's AnimalMoveEvent tests its own objects (:78). Owner equality alone
+--- refused contractors (Bob's blocker on #1006). Anything the engine cannot vouch
+--- for is refused.
+function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
+    if connection == nil then return true end
+    if type(connection.getIsLocal) == "function" and connection:getIsLocal() then return true end
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return false end
+    local handler = g_currentMission and g_currentMission.accessHandler
+    if handler == nil or type(handler.canFarmAccess) ~= "function" then return false end
+    local ok, allowed = pcall(handler.canFarmAccess, handler, farmId, vehicle)
+    return ok and allowed == true
+end
+
+-- ========================================
 -- SETTING SYNC EVENT (Server -> Clients)
 -- ========================================
 SoilSettingSyncEvent = SoilSettingSyncEvent or {}
@@ -168,8 +230,11 @@ function SoilSettingSyncEvent:writeStream(streamId, connection)
 end
 
 function SoilSettingSyncEvent:run(connection)
-    -- CLIENT ONLY: Receive setting update from server
-    if g_client == nil then return end
+    -- CLIENT ONLY: receive a setting from the server. The side test is the server's
+    -- absence plus the server connection (MAINTENANCE row 85, the note at the top of
+    -- the file): a g_client test passed on a listen host too, and this write has no
+    -- schema check, so a forged name could even shadow the settings' own methods.
+    if not sfAppliesOnClient(connection) then return end
 
     -- Local-only settings are never synced from server; keep each player's own value
     local def = SettingsSchema and SettingsSchema.byId and SettingsSchema.byId[self.settingName]
@@ -529,8 +594,9 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         end
     end
 
-    -- Notify user if corruption was detected
-    if corruptionDetected and g_currentMission and g_currentMission.hud then
+    -- Notify user if corruption was detected: on the receiving CLIENT only (row 85).
+    -- A forged stream that reaches a listen host must not blink the host's HUD.
+    if corruptionDetected and sfAppliesOnClient(connection) and g_currentMission and g_currentMission.hud then
         g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_notify_sync_error"), 6000)
     end
 
@@ -619,7 +685,10 @@ function SoilFullSyncEvent:run(connection)
     -- CLIENT ONLY: Receive settings from server.
     -- Field data is no longer bundled here; it arrives via SoilFieldBatchSyncEvent
     -- packets sent immediately after this one (issue #212 chunked-sync fix).
-    if not g_client or not g_SoilFertilityManager then return end
+    -- The side test is the server's absence plus the server connection (row 85): a
+    -- g_client test passed on a listen host, where this event replaces every setting
+    -- and, on the legacy path, the whole fieldData table the host then saves.
+    if not sfAppliesOnClient(connection) or not g_SoilFertilityManager then return end
 
     SoilLogger.info("Client: Received full sync header from server (settings + %d legacy fields)", self:getFieldCount())
 
@@ -907,8 +976,9 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
 end
 
 function SoilFieldBatchSyncEvent:run(connection)
-    -- CLIENT ONLY: merge this batch into the local field table
-    if g_client == nil then return end
+    -- CLIENT ONLY: merge this batch into the local field table. The side test is the
+    -- server's absence plus the server connection (row 85), not g_client.
+    if not sfAppliesOnClient(connection) then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then return end
 
     local soilSystem = g_SoilFertilityManager.soilSystem
@@ -1225,8 +1295,9 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
 end
 
 function SoilFieldUpdateEvent:run(connection)
-    -- CLIENT ONLY: Apply server-authoritative field data
-    if g_client == nil then return end
+    -- CLIENT ONLY: apply server-authoritative field data. The side test is the
+    -- server's absence plus the server connection (row 85), not g_client.
+    if not sfAppliesOnClient(connection) then return end
 
     if g_SoilFertilityManager and g_SoilFertilityManager.soilSystem then
         local soilSys = g_SoilFertilityManager.soilSystem
@@ -1379,11 +1450,16 @@ function SoilOrganicOptEvent:run(connection)
     -- resulting field state, so every client converges without extra work here.
     if g_server == nil then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.organic then return end
+    -- THE ACTING FARM IS THE SENDER'S OWN (MAINTENANCE row 110): the server's player
+    -- record for this connection, never the wire. The writer refuses a farm that does
+    -- not own the field's farmland, so a client cannot opt another farm's field in or
+    -- out; a sender with no player record (nil) is refused there too, silently.
     local organic = g_SoilFertilityManager.organic
+    local actingFarmId = SoilNetworkEvents_ActingFarmId(connection)
     if self.doOptIn then
-        organic:optIn(self.fieldId)
+        organic:optIn(self.fieldId, actingFarmId)
     else
-        organic:optOut(self.fieldId)
+        organic:optOut(self.fieldId, actingFarmId)
     end
 end
 
@@ -1669,6 +1745,12 @@ function SoilSprayerRateEvent:run(connection)
     local vehicle = NetworkUtil.getObject(self.vehicleNetId)
     if not vehicle then return end
 
+    -- ON THE SERVER A CLIENT CHANGES ONLY ITS OWN FARM'S VEHICLE (MAINTENANCE row 111):
+    -- the sender's farm, from the server's player record, must own the vehicle. The
+    -- host's own local delivery stands; a pure client applying the server's
+    -- rebroadcast (a server connection, g_server nil) is unchanged.
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
+
     local steps = SoilConstants.SPRAYER_RATE.STEPS
     if self.rateIndex < 1 or self.rateIndex > #steps then return end
 
@@ -1737,6 +1819,9 @@ function SoilSprayerAutoModeEvent:run(connection)
 
     local vehicle = NetworkUtil.getObject(self.vehicleNetId)
     if not vehicle then return end
+
+    -- The same ownership test as the rate event (row 111).
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
 
     rm:setAutoMode(vehicle.id, self.enabled)
 
