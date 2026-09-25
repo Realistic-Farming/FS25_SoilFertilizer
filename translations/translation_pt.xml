@@ -1501,6 +1501,21 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="DEFINIR ESTADO DO CAMPO" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="DEFINIR DOENÇA DO CAMPO" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Última:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Bónus de rotação ativo. Mantenha a sequência." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="A mesma família há demasiado tempo. Mude de cultura na próxima estação." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Faça a rotação de culturas para evitar a fadiga do solo." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="ROTAÇÃO" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Campos %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Campo %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Desconhecido" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Cultura" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Efeito" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Estado" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Campo %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="N/D" eh="382b0f51" />
 </elements>
 
 

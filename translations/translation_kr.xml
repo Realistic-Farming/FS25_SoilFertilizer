@@ -1481,6 +1481,21 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="필드 상태 설정" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="필드 병해 설정" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="이전:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="윤작 보너스 적용 중. 순서를 유지하세요." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="같은 과를 너무 오래 재배했습니다. 다음 시즌에 작물을 바꾸세요." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="연작 피해를 피하려면 작물을 돌려 심으세요." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="윤작" eh="a2793909" />
+    <e k="sf_merge_label_list" v="필드 %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="필드 %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="알 수 없음" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="작물" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="효과" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="상태" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="필드 %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="해당 없음" eh="382b0f51" />
 </elements>
 
 
