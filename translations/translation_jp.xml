@@ -1479,6 +1479,21 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="フィールド状態の設定" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="フィールド病害の設定" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="前作:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="輪作ボーナス適用中。この順序を続けましょう。" eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="同じ科の作物が続きすぎています。次のシーズンは作物を変えましょう。" eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="連作障害を避けるため輪作しましょう。" eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="輪作" eh="a2793909" />
+    <e k="sf_merge_label_list" v="フィールド %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="フィールド %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="不明" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="作物" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="効果" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="状態" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="フィールド %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="該当なし" eh="382b0f51" />
 </elements>
 
 

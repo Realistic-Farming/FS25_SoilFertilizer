@@ -1481,6 +1481,21 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="SETT FELTTILSTAND" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="SETT FELTSYKDOM" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Sist:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Vekstskiftebonus aktiv. Hold rekkefølgen." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Samme familie for lenge. Bytt vekst neste sesong." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Bytt vekster for å unngå jordtretthet." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="VEKSTSKIFTE" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Felt %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Felt %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Ukjent" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Vekst" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Effekt" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Felt %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="I/T" eh="382b0f51" />
 </elements>
 
 

@@ -1463,6 +1463,61 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="NASTAVIT STAV POLE" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="NASTAVIT CHOROBU POLE" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Naposledy:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Bonus za střídání plodin je aktivní. Pokračujte v pořadí." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Stejná čeleď příliš dlouho. Příští sezónu změňte plodinu." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Střídejte plodiny, abyste předešli únavě půdy." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="STŘÍDÁNÍ" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Pole %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Pole %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Neznámý" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Plodina" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Účinek" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Stav" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Pole %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="Neuvedeno" eh="382b0f51" />
+    <e k="sf_map_active" v="Aktivní" eh="4d3d769b" />
+    <e k="sf_map_balanced" v="Vyvážené" eh="c6589f52" />
+    <e k="sf_map_compaction_ok" v="Zásah není potřeba" eh="f51a497f" />
+    <e k="sf_map_compaction_recommended" v="Doporučeno podrývání" eh="d01f0d65" />
+    <e k="sf_map_compaction_urgent" v="Podrývání naléhavé" eh="62a80ea4" />
+    <e k="sf_map_condition" v="Stav" eh="9e2941b3" />
+    <e k="sf_map_crop" v="Plodina" eh="d388632d" />
+    <e k="sf_map_disease_pressure" v="Tlak chorob" eh="2b805cc9" />
+    <e k="sf_map_fungicide" v="Fungicid" eh="e8512698" />
+    <e k="sf_map_gap" v="Mezera" eh="466b98ca" />
+    <e k="sf_map_herbicide" v="Herbicid" eh="1029736e" />
+    <e k="sf_map_insecticide" v="Insekticid" eh="5650eeef" />
+    <e k="sf_map_limiting" v="Limitující" eh="208ee821" />
+    <e k="sf_map_not_applied" v="Neaplikováno" eh="ac612def" />
+    <e k="sf_map_not_needed" v="Není potřeba" eh="3ec6d6a7" />
+    <e k="sf_map_om_fair" v="Zapravte slámu / hnůj" eh="caf68ba7" />
+    <e k="sf_map_om_healthy" v="Zdravé - udržujte slámou" eh="99d4efa2" />
+    <e k="sf_map_om_low" v="Nízké - přidejte hnůj nebo digestát" eh="85262077" />
+    <e k="sf_map_pest_pressure" v="Tlak škůdců" eh="18a7c2be" />
+    <e k="sf_map_ph_apply_lime" v="Aplikujte vápno" eh="5b3983de" />
+    <e k="sf_map_ph_apply_lime_urgent" v="Naléhavě aplikujte vápno" eh="b151ae45" />
+    <e k="sf_map_ph_apply_sulfur" v="Aplikujte síru" eh="73c513b6" />
+    <e k="sf_map_ph_none_needed" v="Není potřeba" eh="a01f2705" />
+    <e k="sf_map_ph_normalize" v="Nechte se ustálit" eh="9645480a" />
+    <e k="sf_map_ph_optimal" v="Optimální" eh="cb61fef1" />
+    <e k="sf_map_ph_over_limed" v="Převápněno" eh="b2a29851" />
+    <e k="sf_map_ph_severely_over_limed" v="Silně převápněno" eh="23897c47" />
+    <e k="sf_map_ph_slightly_acidic" v="Mírně kyselé" eh="908e5a88" />
+    <e k="sf_map_ph_very_acidic" v="Velmi kyselé" eh="5f032f0b" />
+    <e k="sf_map_target" v="Cíl" eh="c41a3189" />
+    <e k="sf_map_target_no_data" v="Žádná data" eh="42a7b262" />
+    <e k="sf_map_target_none" v="Nic nezaseto" eh="101c620c" />
+    <e k="sf_map_tip" v="Tip" eh="12ae2a12" />
+    <e k="sf_map_treatment" v="Ošetření" eh="4c4ac06f" />
+    <e k="sf_map_weed_pressure" v="Tlak plevele" eh="53f8b936" />
+    <e k="sf_release_dialog_title" v="Přístup k experimentálním funkcím" eh="74d19780" />
+    <e k="sf_report_rec_optimal" v="Zdraví půdy: optimální" eh="6ee9d19b" />
+    <e k="sf_report_rotation_bonus" v="Bonus" eh="3c0ee4ba" />
+    <e k="sf_report_rotation_fatigue" v="Únava: stejná plodina" eh="7b173595" />
+    <e k="sf_report_rotation_ok" v="OK" eh="e0aa021e" />
 </elements>
 
 

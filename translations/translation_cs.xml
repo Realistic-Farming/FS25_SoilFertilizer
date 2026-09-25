@@ -1474,5 +1474,25 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="设置田地状态" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="设置田地病害" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="上茬：" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="轮作增益生效中。请保持此顺序。" eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="同科作物连作过久。下季请更换作物。" eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="轮作以避免地力衰减。" eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="轮作" eh="a2793909" />
+    <e k="sf_merge_label_list" v="田地 %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="田地 %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="未知" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="作物" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="效果" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="状态" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="田地 %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="不适用" eh="382b0f51" />
+    <e k="sf_config_seeSpray" v="See &amp; Spray" eh="528cf03f" />
+    <e k="sf_sensor_disease" v="病害传感器" eh="37955f80" />
+    <e k="sf_sensor_pest" v="虫害传感器" eh="81192ad7" />
+    <e k="sf_sensor_state_off" v="关" eh="88559a0c" />
+    <e k="sf_sensor_state_on" v="开" eh="90651ebe" />
 </elements>
 </l10n>

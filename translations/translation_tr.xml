@@ -1453,6 +1453,21 @@
     <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
     <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
     <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="TARLA DURUMUNU AYARLA" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="TARLA HASTALIĞINI AYARLA" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Son:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Münavebe bonusu aktif. Sırayı koru." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Aynı familya çok uzun süredir. Gelecek sezon ürünü değiştir." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Toprak yorgunluğunu önlemek için münavebe uygula." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="MÜNAVEBE" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Tarlalar %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Tarla %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Bilinmiyor" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Ürün" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Etki" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Durum" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Tarla %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="Yok" eh="382b0f51" />
 </elements>
 
 
