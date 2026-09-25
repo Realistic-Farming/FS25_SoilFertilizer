@@ -59,14 +59,14 @@ local SKY = { humidity = 0.65, temperature = 15, cloudCoverage = 0.5 }
 -- Class hooks persist across worlds (installAll wraps the same class tables again), so
 -- every world restores the Baler's listeners and Bale.register before installing.
 local PRISTINE = { register = Bale.register, start = Baler.onStartWorkAreaProcessing, finish = Baler.onEndWorkAreaProcessing,
-                   fill = Baler.onFillUnitFillLevelChanged, delete = Bale.delete }
+                   fill = Baler.onFillUnitFillLevelChanged, delete = Bale.delete, tick = Baler.onUpdateTick }
 local function world(today)
     today = today or 100
     HEIGHT.pixels = {}
     BALER_MODEL.failLoad, BALER_MODEL.onRegister = false, nil
     Bale.register, Bale.delete = PRISTINE.register, PRISTINE.delete
     Baler.onStartWorkAreaProcessing, Baler.onEndWorkAreaProcessing = PRISTINE.start, PRISTINE.finish
-    Baler.onFillUnitFillLevelChanged = PRISTINE.fill
+    Baler.onFillUnitFillLevelChanged, Baler.onUpdateTick = PRISTINE.fill, PRISTINE.tick
     local settings = { enabled = true }
     local sys = SoilFertilitySystem.new(settings)
     local vm, age, wet, member = ENGINE.newValueMaps()
@@ -127,6 +127,13 @@ local function baler(extra)
     local o = { x0 = BX.x0, z0 = BX.z0, width = BX.width, depth = BX.depth }
     for k, v in pairs(extra or {}) do o[k] = v end
     return addBaler(o)
+end
+local function nonStop(extra)
+    local o = { x0 = BX.x0, z0 = BX.z0, width = BX.width, depth = BX.depth }
+    for k, v in pairs(extra or {}) do o[k] = v end
+    local v, work = BALER_MODEL.newNonStop(o)
+    g_currentMission.vehicleSystem:addVehicle(v)
+    return v, work
 end
 
 -- ══════════════════════════════════════════════════════════════════════════
@@ -335,4 +342,71 @@ group("B", function()
     local door = Bale.new(true, false)
     door:register()
     T.eq("B6 a bale registered outside every creation frame is born unknown", tostring(birthOf(door)), "nil")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- N. THE NON-STOP BUFFER AND ITS TRANSFER (part 2b)
+-- ══════════════════════════════════════════════════════════════════════════
+group("N", function()
+    world()
+    local v = nonStop({ capacity = 100 })
+    installAll()
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(v, 16)
+    local st = BC.state(v)
+    T.eq("N1 a non-stop baler's pickup goes into its buffer (Baler.lua:1983-1996) under the same seal",
+        num(v:getFillUnitFillLevel(3)) .. "/" .. num(st.buffer.carrier) .. "/" .. num(BC.accountPct(st.buffer)) .. "/" .. num(v:getFillUnitFillLevel(1)), "100/100/26.063/0")
+    BALER_MODEL.updateTick(v, 1000)
+    T.eq("N2 the buffer-to-chamber transfer (:1013-1052) carries the buffer's condition into the chamber and the bale",
+        #bales(v) .. "/" .. num(birthOf(lastBale(v))) .. "/" .. num(st.buffer.carrier), "1/26.063/0")
+    -- The additive applied at overloading: 100 L leave the buffer, 105 L are produced, the
+    -- chamber takes 100 and the listener stores 5 as overflow, all of the same mixture.
+    world()
+    v = nonStop({ capacity = 100, additives = { level = 1000, usage = 0.001 }, bufferAdditives = true })
+    installAll()
+    setCell(2, 8, 1, 204) windrow(2, 5)
+    setCell(3, 8, 1, 52)  windrow(3, 45)
+    ENGINE.tick(v, 16)
+    BALER_MODEL.updateTick(v, 1000)
+    st = BC.state(v)
+    T.eq("N3 the overloading gain carries its source's condition into the bale and the overflow",
+        #bales(v) .. "/" .. num(birthOf(lastBale(v))) .. "/" .. num(v.spec_baler.fillUnitOverflowFillLevel) .. "/" .. num(BC.accountPct(st.overflow)), "1/26.063/5/26.063")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- P. THE UNFINISHED ROUND BALE (part 2b)
+-- ══════════════════════════════════════════════════════════════════════════
+group("P", function()
+    world()
+    local v = nonStop({ capacity = 100, round = true, canUnloadUnfinishedBale = true })
+    installAll()
+    setCell(2, 8, 1, 204) setCell(3, 8, 1, 204) windrow(2, 15) windrow(3, 15)   -- 60 L wet
+    ENGINE.tick(v, 16)
+    BALER_MODEL.updateTick(v, 1000)                                               -- into the chamber
+    setCell(2, 8, 1, 52) setCell(3, 8, 1, 52) windrow(2, 5) windrow(3, 5)       -- 20 L dry, in the buffer
+    ENGINE.tick(v, 16)
+    v:setIsUnloadingBale(true)
+    local bale = lastBale(v)
+    T.eq("P1 an unfinished round bale (Baler.lua:1327-1349) carries the chamber's material and the buffer's share; the pad to capacity is not material",
+        #bales(v) .. "/" .. num(birthOf(bale)), "1/" .. num((60 * WET + 20 * DRY) / 80))
+    BALER_MODEL.dropBale(v)
+    T.eq("P2 dropped, the bale holds the real amount the chamber and buffer gave it", num(bale ~= nil and bale:getFillLevel()), "80")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- L. A STOCKGUARD LEASE ON THE PICKUP (part 2b)
+-- ══════════════════════════════════════════════════════════════════════════
+group("L", function()
+    world()
+    local v, work = baler({ capacity = 100 })
+    installAll()
+    setCell(2, 8, 1, 204) setCell(3, 8, 1, 204) windrow(2, 25) windrow(3, 25)
+    local sealedBefore = BC.stats.sealed
+    local lease = W.sys.groundConditionAdmission.groundCondition.admitPrimitive(
+        { schemaVersion = 1, kind = "LINE", sx = -21, sz = 2, ex = -19, ez = 2, fillTypeIndex = GR, innerRadius = 1, radius = 1 },
+        GroundConditionAdmission.KIND_TIP_LINE, v, work)
+    ENGINE.tick(v, 16)
+    T.eq("L1 with a StockGuard lease live on the pickup the frame stands aside: StockGuard holds the material and seals it, Soil seals nothing and its chamber says unknown, never a parallel record",
+        tostring(lease.status) .. "/" .. (BC.stats.sealed - sealedBefore) .. "/" .. #bales(v) .. "/" .. tostring(birthOf(lastBale(v))), "ADMITTED/0/1/nil")
 end)

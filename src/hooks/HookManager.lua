@@ -5200,6 +5200,7 @@ function HookManager:installBalerPickupHook()
     local origStart = Baler.onStartWorkAreaProcessing
     local origEnd = Baler.onEndWorkAreaProcessing
     local origFill = Baler.onFillUnitFillLevelChanged
+    local origTick = Baler.onUpdateTick
     Baler.onStartWorkAreaProcessing = function(balerSelf, ...)
         local r = packAll(origStart(balerSelf, ...))
         pcall(BalerCollection.onStart, balerSelf)
@@ -5214,6 +5215,13 @@ function HookManager:installBalerPickupHook()
     self:register(Baler, "onStartWorkAreaProcessing", origStart, "Baler.onStartWorkAreaProcessing (collection)")
     self:register(Baler, "onEndWorkAreaProcessing", origEnd, "Baler.onEndWorkAreaProcessing (collection)")
     self:register(Baler, "onFillUnitFillLevelChanged", origFill, "Baler.onFillUnitFillLevelChanged (collection)")
+    -- [part 2b] The non-stop buffer's transfer into the chamber runs in onUpdateTick.
+    if type(origTick) == "function" then
+        Baler.onUpdateTick = function(balerSelf, ...)
+            return BalerCollection.aroundTick(balerSelf, origTick, ...)
+        end
+        self:register(Baler, "onUpdateTick", origTick, "Baler.onUpdateTick (collection transfer)")
+    end
 
     -- The captured pickup pointer: a carrier frame per call, the collection's handler.
     local function makePickupWrapper(original)
@@ -5249,7 +5257,14 @@ function HookManager:installBalerPickupHook()
             local ownFinish, ownCreate = vehicle.finishBale, vehicle.createBale
             vehicle.finishBale = function(v, ...) return BalerCollection.aroundFinish(v, ownFinish, ...) end
             vehicle.createBale = function(v, ...) return BalerCollection.aroundCreate(v, ownCreate, ...) end
-            rawset(vehicle, "_sfBalerWraps", { finishBale = ownFinish, createBale = ownCreate })
+            local wraps = { finishBale = ownFinish, createBale = ownCreate }
+            -- [part 2b] The partial round bale's pad scope.
+            if type(vehicle.setIsUnloadingBale) == "function" then
+                local ownUnloading = vehicle.setIsUnloadingBale
+                vehicle.setIsUnloadingBale = function(v, ...) return BalerCollection.aroundUnloading(v, ownUnloading, ...) end
+                wraps.setIsUnloadingBale = ownUnloading
+            end
+            rawset(vehicle, "_sfBalerWraps", wraps)
             n = n + 1
         end
         return n

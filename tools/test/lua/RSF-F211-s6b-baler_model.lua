@@ -311,3 +311,146 @@ function BALER_MODEL.new(opts)
     work.processingFunction = v[work.functionName]
     return v, work
 end
+
+-- ── part 2b: the non-stop buffer, the partial round bale ────────────────────
+MathUtil.round = MathUtil.round or function(v, decimals)
+    local m = 10 ^ (decimals or 0)
+    return math.floor(v * m + 0.5) / m
+end
+Baler.UNLOADING_CLOSED = Baler.UNLOADING_CLOSED or 1
+Baler.UNLOADING_OPENING = Baler.UNLOADING_OPENING or 2
+BalerSetIsUnloadingBaleEvent = BalerSetIsUnloadingBaleEvent or { sendEvent = function() end }
+
+-- :996-1060 VERBATIM for the buffer-to-chamber transfer (the overload animation and the
+-- additive effect's client half abbreviated; the decompile's reused locals renamed:
+-- bufferLevel, bufferCapacity, mainCapacity, debited). The rest of onUpdateTick (bale
+-- movement, speed limits, the deferred createBaleNextFrame at :815) is not this
+-- bench's; a bar calls BALER_MODEL.updateTick, which looks the listener up on the Baler
+-- class at call time, as SpecializationUtil.raiseEvent does.
+function Baler:onUpdateTick(dt, _, _, _)
+    local spec = self.spec_baler
+    if not self.isServer or not spec.nonStopBaling then return end
+    local isTurnedOn = self:getIsTurnedOn()
+    local bufferLevel = self:getFillUnitFillLevel(spec.buffer.fillUnitIndex)
+    if bufferLevel > 0 then
+        local bufferCapacity = self:getFillUnitCapacity(spec.buffer.fillUnitIndex)
+        if isTurnedOn and MathUtil.round(bufferLevel / bufferCapacity, 2) >= spec.buffer.overloadingStartFillLevelPct then
+            local mainCapacity = self:getFillUnitCapacity(spec.fillUnitIndex)
+            if (mainCapacity == 0 or (mainCapacity == math.huge or self:getFillUnitFreeCapacity(spec.fillUnitIndex) > 0)) and (not spec.buffer.unloadingStarted and spec.unloadingState == Baler.UNLOADING_CLOSED) then
+                spec.buffer.unloadingStarted = true
+                spec.buffer.overloadingTimer = 0
+            end
+        end
+        if spec.buffer.unloadingStarted then
+            spec.buffer.overloadingTimer = spec.buffer.overloadingTimer + dt
+            if spec.buffer.overloadingTimer >= spec.buffer.overloadingDelay and self:getFillUnitFreeCapacity(spec.fillUnitIndex) > 0 then
+                local rate = self:getFillUnitCapacity(spec.buffer.fillUnitIndex) / spec.buffer.overloadingDuration * dt
+                local delta = math.min(rate, bufferLevel)
+                local sourceFillType = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
+                local debited = self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.buffer.fillUnitIndex, -delta, sourceFillType, ToolType.UNDEFINED, nil)
+                local mainType = self:getFillUnitFillType(spec.fillUnitIndex)
+                if mainType ~= FillType.UNKNOWN then
+                    sourceFillType = mainType
+                end
+                local overloadedLiters = -debited
+                if spec.additives.available and spec.additives.appliedByBufferOverloading then
+                    local fillTypeSupported = false
+                    for i = 1, #spec.additives.fillTypes do
+                        if sourceFillType == spec.additives.fillTypes[i] then
+                            fillTypeSupported = true
+                            break
+                        end
+                    end
+                    if fillTypeSupported then
+                        local additivesFillLevel = self:getFillUnitFillLevel(spec.additives.fillUnitIndex)
+                        if additivesFillLevel > 0 then
+                            local usage = spec.additives.usage * overloadedLiters
+                            if usage > 0 then
+                                overloadedLiters = overloadedLiters * (1 + 0.05 * math.min(additivesFillLevel / usage, 1))
+                                self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.additives.fillUnitIndex, -usage, self:getFillUnitFillType(spec.additives.fillUnitIndex), ToolType.UNDEFINED)
+                            end
+                        end
+                    end
+                end
+                self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, overloadedLiters, sourceFillType, ToolType.UNDEFINED, nil)
+                if spec.buffer.fillLevelToEmpty > 0 then
+                    spec.buffer.fillLevelToEmpty = math.max(spec.buffer.fillLevelToEmpty - delta, 0)
+                    if spec.buffer.fillLevelToEmpty == 0 then
+                        spec.platformDelayedDropping = true
+                        spec.buffer.unloadingStarted = false
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- :1322-1349, the unfinished round bale's branch, and the state change that follows.
+-- The decompile shadows a local in the buffer debit (it reads mainFillLevel minus
+-- mainFillLevel, a zero as written); read as its evident intent: the buffer gives up
+-- what the bale takes beyond the chamber, target minus the current chamber level.
+-- Sounds and animations abbreviated.
+function Baler:setIsUnloadingBale(isUnloadingBale, noEventSend)
+    local spec = self.spec_baler
+    if spec.hasUnloadingAnimation and isUnloadingBale and spec.unloadingState ~= Baler.UNLOADING_OPENING then
+        if #spec.bales == 0 and spec.canUnloadUnfinishedBale then
+            local fillTypeIndex = self:getFillUnitFillType(spec.fillUnitIndex)
+            local fillLevel = self:getFillUnitFillLevel(spec.fillUnitIndex)
+            if spec.buffer.fillUnitIndex ~= nil then
+                fillLevel = fillLevel + self:getFillUnitFillLevel(spec.buffer.fillUnitIndex)
+                if fillTypeIndex == FillType.UNKNOWN then
+                    fillTypeIndex = self:getFillUnitFillType(spec.buffer.fillUnitIndex)
+                end
+            end
+            if spec.unfinishedBaleThreshold < fillLevel then
+                local delta = self:getFillUnitFreeCapacity(spec.fillUnitIndex)
+                local mainFillLevel = math.min(fillLevel, self:getFillUnitCapacity(spec.fillUnitIndex))
+                if spec.buffer.fillUnitIndex ~= nil then
+                    local currentMain = self:getFillUnitFillLevel(spec.fillUnitIndex)
+                    self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.buffer.fillUnitIndex, -math.max(mainFillLevel - currentMain, 0), self:getFillUnitFillType(spec.buffer.fillUnitIndex), ToolType.UNDEFINED)
+                end
+                spec.lastBaleFillLevel = mainFillLevel
+                self:addFillUnitFillLevel(self:getOwnerFarmId(), spec.fillUnitIndex, delta, fillTypeIndex, ToolType.UNDEFINED)
+                spec.buffer.unloadingStarted = false
+            end
+        end
+        BalerSetIsUnloadingBaleEvent.sendEvent(self, isUnloadingBale, noEventSend)
+        spec.unloadingState = Baler.UNLOADING_OPENING
+    end
+end
+
+-- :1590-1593 in effect: dropping the only bale gives it the stored real amount.
+function BALER_MODEL.dropBale(v)
+    local spec = v.spec_baler
+    local bale = spec.bales[1]
+    if bale == nil then return end
+    if spec.lastBaleFillLevel ~= nil and #spec.bales == 1 then
+        bale.baleObject:setFillLevel(spec.lastBaleFillLevel)
+        spec.lastBaleFillLevel = nil
+    end
+    table.remove(spec.bales, 1)
+end
+
+--- The engine's onUpdateTick dispatch: the listener looked up on the class at call time.
+function BALER_MODEL.updateTick(v, dt)
+    Baler.onUpdateTick(v, dt)
+end
+
+--- A non-stop baler: BALER_MODEL.new plus the buffer unit (index 3), its transfer
+--- parameters, and for a round one the unfinished-bale unloading. Its setIsUnloadingBale
+--- is the registered function copied into the instance.
+function BALER_MODEL.newNonStop(opts)
+    local v, work = BALER_MODEL.new(opts)
+    local spec = v.spec_baler
+    v.spec_fillUnit.fillUnits[3] = { capacity = opts.bufferCapacity or 100, fillLevel = 0, fillType = FillType.UNKNOWN }
+    v.setIsUnloadingBale = Baler.setIsUnloadingBale
+    v.getIsTurnedOn = function() return true end
+    spec.nonStopBaling = true
+    spec.buffer = { fillUnitIndex = 3, unloadingStarted = false, overloadingStartFillLevelPct = opts.startPct or 0.5,
+                    overloadingTimer = 0, overloadingDelay = 0, overloadingDuration = opts.duration or 1000, fillLevelToEmpty = 0 }
+    spec.unloadingState = Baler.UNLOADING_CLOSED
+    spec.canUnloadUnfinishedBale = opts.canUnloadUnfinishedBale == true
+    spec.unfinishedBaleThreshold = opts.unfinishedBaleThreshold or 10
+    if opts.bufferAdditives then spec.additives.appliedByBufferOverloading = true end
+    return v, work
+end
