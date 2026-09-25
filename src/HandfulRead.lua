@@ -85,7 +85,7 @@ end
 ---@return table result  { status, pct, band } or { status } on refusal/unavailable
 local function readWetnessAt(ctx, soilSystem)
     local mw = soilSystem and soilSystem.materialWetness
-    if mw == nil or type(mw.readCondition) ~= "function" then
+    if mw == nil or type(mw.probeCondition) ~= "function" then
         return { status = "unavailable" }
     end
     local cs = SoilConstants.ZONE.CELL_SIZE
@@ -97,10 +97,9 @@ local function readWetnessAt(ctx, soilSystem)
         { x = x + half, z = z + half },
         { x = x - half, z = z + half },
     }
-    -- Litres is NON OPTIONAL on readCondition; a handful is a handful. The
-    -- value only gates nil/zero refusal; it does not bias the mass-weighted
-    -- mean, so 1.0 stands in for "some material under the hand".
-    return mw:readCondition(verts, 1.0)
+    -- A PROBE (RSF-F211, AREA_SAMPLE_V1): the hand asks what is under it. No
+    -- quantity enters it, and none is claimed.
+    return mw:probeCondition(verts)
 end
 
 --- Point read of the material age layer (days down) at (x, z).

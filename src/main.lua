@@ -156,6 +156,8 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
+-- [RSF-F211] Pure planar geometry the standing reader clips field polygons with.
+source(modDirectory .. "src/utils/PolygonClip.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
 -- [RSF-F208] Ground condition relocation. Loaded after both condition owners
 -- because arming asserts against their layer keys and their armed state.

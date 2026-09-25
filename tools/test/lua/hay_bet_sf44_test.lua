@@ -110,7 +110,7 @@ T.ok("raw 52 is above the sentinel floor", MaterialWetness.RAW_FLOOR < HayBet.FI
 do
   local hb, _, mw = makeHayBet()
   -- Override the condition read to return REFUSAL.
-  mw.readCondition = function(_self, verts, litres)
+  mw.probeCondition = function(_self, verts)
     return { status = MaterialWetness.RESULT.REFUSAL }
   end
 
@@ -268,21 +268,23 @@ do
 end
 
 -- =========================================================
--- 10. The fill-level read is non-optional
+-- 10. The tedder's read is a probe (RSF-F211)
 -- =========================================================
--- readCondition requires litres. nil, zero, or negative returns
--- REFUSAL. The hay member passes the bale's own fillLevel.
+-- The tedder asks what is under it: an AREA sample with no quantity,
+-- never the deprecated litres alias.
 
 do
   local hb, _, mw = makeHayBet()
-  local reads = {}
-  mw.readCondition = function(_self, verts, litres)
-    reads[#reads + 1] = litres
-    return { status = MaterialWetness.RESULT.OK, pct = 15 }
+  local probes, legacy = {}, 0
+  mw.probeCondition = function(_self, verts)
+    probes[#probes + 1] = verts
+    return { status = MaterialWetness.RESULT.OK, pct = 15, basis = MaterialWetness.BASIS.AREA_SAMPLE }
   end
+  mw.readCondition = function() legacy = legacy + 1 return { status = MaterialWetness.RESULT.OK, pct = 15 } end
 
   hb:applyTedderDelta(POLY)
-  T.eq("litres is passed to readCondition", reads[1], 1)
+  T.eq("the tedder delta reads through the probe, once, on its own work area", #probes .. "/" .. tostring(probes[1] == POLY), "1/true")
+  T.eq("the deprecated alias is not called", legacy, 0)
 end
 
 -- =========================================================
@@ -340,13 +342,10 @@ end
 do
   local hb = HayBet.new()
 
-  -- Flat array shape (the old format).
-  local flat = {0, 0, 10, 0, 10, 10, 0, 10}
-  local result = hb:_getFieldPolygon(1)
-  -- We cannot call _getFieldPolygon without a real fieldManager,
-  -- so we test the normalisation logic directly by checking the
-  -- method exists and the shape handling is in the source.
-  T.ok("_getFieldPolygon exists", type(hb._getFieldPolygon) == "function")
+  -- RSF-F211: the polygons come from the system's farmland resolution
+  -- (SF-52); an unarmed hay bet has no system and answers nil.
+  T.ok("_getFieldPolygons exists", type(hb._getFieldPolygons) == "function")
+  T.eq("an unarmed hay bet resolves no polygons", hb:_getFieldPolygons(1), nil)
 end
 
 -- =========================================================
