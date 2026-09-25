@@ -681,6 +681,22 @@ function GroundConditionCoordinator:unavailableReason(gx, gz)
     return self.unavailable[cellKey(gx, gz)]
 end
 
+--- [MAINTENANCE row 137] The mission started: every savegame item has loaded, so the store
+--- decides now if nothing did it first (MaterialDown:finishLoad is idempotent), and its
+--- observer ends the hold. The coordinator triggers this itself, never through the yard
+--- ladder, which it does not depend on (Bob's MAJOR on #1022): an armed coordinator with
+--- no armed ladder would otherwise hold every cell unavailable for the whole session. A
+--- decision that somehow did not reach the observer still ends the hold, restoring nothing.
+function GroundConditionCoordinator:onMissionStarted()
+    local md = self.materialDown
+    if md ~= nil and type(md.finishLoad) == "function" then
+        pcall(md.finishLoad, md)
+    end
+    if self.overlayPending and (md == nil or MaterialDown == nil or md.loadState ~= MaterialDown.LOAD.PENDING) then
+        self:_onStoreDecided(md ~= nil and md.loadState or nil, nil)
+    end
+end
+
 --- [MAINTENANCE row 137] The store's load decided: the hold ends, and a MODERN payload's
 --- overlay is restored (merged over any cell marked while the hold lasted). Every other
 --- decision restores nothing, even with a payload in hand (a legacy one is kept only as

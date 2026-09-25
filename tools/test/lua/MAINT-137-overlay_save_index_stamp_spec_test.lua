@@ -250,6 +250,19 @@ group("O", function()
     coord():markUnavailable(2, 2, "NATIVE_ERROR")
     local env = md():serialize()
     local cells = env.groundAvailability and env.groundAvailability.unavailable or {}
+    -- The coordinator arms on the condition owners alone; the yard ladder is not armed. The
+    -- manager's mission start (SoilFertilityManager:onMissionStarted's ground step) must end
+    -- the hold through the coordinator's own trigger (Bob's MAJOR on #1022).
+    DISK = {}
+    savedCareer("o4")
+    world("o4", { valid = true, loaded = true })
+    W.sys.yardLadder.armed = false
+    local held = unav(8, 8)
+    SoilFertilityManager._groundMissionStarted(W.mgr)
+    T.eq("O4 with the yard ladder not armed, the manager's mission start still ends the hold: the store decides MODERN and the saved cell comes back",
+        held .. " " .. tostring(md().loadState) .. " " .. unav(3, 3) .. " " .. unav(8, 8),
+        "true:RESTORING MODERN true:NATIVE_ERROR false:nil")
+
     T.eq("O3 the envelope carries the overlay, detached, with its grid stamped",
         tostring(env.saveStatus) .. "/" .. #cells .. "/" .. tostring(cells[1] and cells[1].key) .. "/" .. tostring(env.groundAvailability and env.groundAvailability.resolution ~= nil),
         "COMPLETE/1/2:2/true")

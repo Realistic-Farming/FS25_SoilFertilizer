@@ -587,12 +587,7 @@ function SoilFertilityManager:onMissionStarted()
         end
     end
 
-    -- [RSF-F215] Every savegame item has loaded by now: the bale condition store's load is
-    -- decided (if no bale did it first) and a row whose bale never registered stops
-    -- reading as restoring.
-    if self.soilSystem.yardLadder ~= nil and type(self.soilSystem.yardLadder.onMissionStarted) == "function" then
-        pcall(self.soilSystem.yardLadder.onMissionStarted, self.soilSystem.yardLadder)
-    end
+    self:_groundMissionStarted()
 
     SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
 
@@ -2525,6 +2520,24 @@ function SoilFertilityManager:getConditionPortionsForNode(nodeId)
     local ok, result = pcall(yl.getConditionPortionsForNode, yl, nodeId)
     if not ok or type(result) ~= 'table' then return { state = "UNAVAILABLE", reason = "ERROR", portions = {} } end
     return result
+end
+
+--- [RSF-F215, MAINTENANCE row 137] The ground-material family's mission start. Every
+--- savegame item has loaded by now: the bale condition store's load is decided (if no bale
+--- did it first), a row whose bale never registered stops reading as restoring, and the
+--- ground coordinator's availability hold ends. EACH OWNER TRIGGERS ITS OWN decision: the
+--- coordinator arms on the condition owners alone, so it must not depend on the yard ladder
+--- being armed to leave its hold (Bob's MAJOR on #1022).
+function SoilFertilityManager:_groundMissionStarted()
+    local sys = self.soilSystem
+    if sys == nil then return end
+    if sys.yardLadder ~= nil and type(sys.yardLadder.onMissionStarted) == "function" then
+        pcall(sys.yardLadder.onMissionStarted, sys.yardLadder)
+    end
+    local gcc = sys.groundConditionCoordinator
+    if gcc ~= nil and type(gcc.onMissionStarted) == "function" then
+        pcall(gcc.onMissionStarted, gcc)
+    end
 end
 
 --- Per-cell growth judgement at a world position.
