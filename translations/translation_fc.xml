@@ -2,14 +2,14 @@
 <l10n>
     <elements>
     <e k="sf_section" v="[EN] Soil &amp; Fertilizer" eh="f31197fb" />
-    <e k="sf_enabled_short" v="启用模组" eh="cf7fea13" />
+    <e k="sf_enabled_short" v="Activer le mod" eh="cf7fea13" />
     <e k="sf_enabled_long" v="[EN] Enable or disable the soil &amp; fertilizer mod" eh="a891399a" />
-    <e k="sf_debug_short" v="调试模式" eh="2ddcdc76" />
-    <e k="sf_debug_long" v="开启/关闭调试模式（额外日志输出）" eh="f6f20240" />
-    <e k="sf_seasonal_effects_short" v="季节影响" eh="c16ea608" />
-    <e k="sf_seasonal_effects_long" v="开启/关闭季节对土壤养分的影响（春季生长加成、秋季生长减缓）" eh="3eea94c7" />
-    <e k="sf_rain_effects_short" v="降雨影响" eh="a2a1758b" />
-    <e k="sf_rain_effects_long" v="开启/关闭降雨对土壤的影响（养分流失、酸碱度变化）" eh="de3b14b9" />
+    <e k="sf_debug_short" v="Mode débogage" eh="2ddcdc76" />
+    <e k="sf_debug_long" v="Activer/désactiver le mode débogage (logs supplémentaires)" eh="f6f20240" />
+    <e k="sf_seasonal_effects_short" v="Effets saisonniers" eh="c16ea608" />
+    <e k="sf_seasonal_effects_long" v="Activer/désactiver l'impact des saisons sur les nutriments du sol (croissance accélérée au printemps, ralentissement en automne)" eh="3eea94c7" />
+    <e k="sf_rain_effects_short" v="Effets de la pluie" eh="a2a1758b" />
+    <e k="sf_rain_effects_long" v="Activer/désactiver l'impact de la pluie sur le sol (lessivage des nutriments, variations de pH)" eh="de3b14b9" />
     <e k="sf_ws_short" v="[EN] World Climate" eh="59d3bec0" />
     <e k="sf_desc_weatherSource" v="[EN] Short-month rain fill climate. Real sky only skips the fill; Arid / Normal / Wet shape how wet soil feels when the calendar undersamples rain." eh="e143bba8" />
     <e k="sf_ws_long" v="[EN] Chooses the climate short months fill toward when the real sky is dry. Does not change the visual weather. Admin-only world setting in multiplayer." eh="e2f5fab8" />
@@ -22,102 +22,102 @@
     <e k="sf_ws_blurb_2" v="[EN] Arid: drier short-month fill. Nutrients hold longer; crops thirst sooner." eh="4c159062" />
     <e k="sf_ws_blurb_1" v="[EN] Real sky only: soil follows the forecast with no fill. Short months can feel sparse." eh="e36f0769" />
     <e k="sf_ws_world_note" v="[EN] World setting - admin only in multiplayer; changes soil for everyone." eh="9f78a319" />
-    <e k="sf_plowing_bonus_short" v="耕地增益" eh="541ec752" />
-    <e k="sf_plowing_bonus_long" v="开启/关闭耕地带来的土壤肥力加成（提升氮元素与有机质含量）" eh="fe701c1c" />
+    <e k="sf_plowing_bonus_short" v="Bonus de labour" eh="541ec752" />
+    <e k="sf_plowing_bonus_long" v="Activer/désactiver les effets du labour sur la fertilité du sol (amélioration de l'azote et de la matière organique)" eh="fe701c1c" />
     <e k="sf_residue_incorporation_short" v="Residue Incorporation" eh="f4352cb5" />
     <e k="sf_residue_incorporation_long" v="Enable/disable nutrient release from crop residue worked into soil by tillage tools (cultivators, plows, strip-till, direct drills)" eh="2e43448f" />
-    <e k="sf_weed_pressure_short" v="杂草压力" eh="53f8b936" />
-    <e k="sf_weed_pressure_long" v="开启/关闭动态杂草生长及产量影响" eh="ac99a865" />
-    <e k="sf_pest_pressure_short" v="虫害压力" eh="18a7c2be" />
-    <e k="sf_pest_pressure_long" v="开启/关闭昆虫及作物虫害系统" eh="2ba11abc" />
-    <e k="sf_disease_pressure_short" v="病害压力" eh="2b805cc9" />
-    <e k="sf_disease_pressure_long" v="开启/关闭真菌及作物病害系统" eh="9080edbc" />
-    <e k="sf_compaction_short" v="土壤板结" eh="68734a56" />
-    <e k="sf_compaction_long" v="开启/关闭重型车辆造成的土壤板结系统" eh="a0995ec5" />
-    <e k="sf_fertility_short" v="肥力系统" eh="f7e27d58" />
-    <e k="sf_fertility_long" v="开启/关闭动态土壤肥力系统" eh="ea074366" />
-    <e k="sf_nutrients_short" v="养分循环" eh="ffab595d" />
-    <e k="sf_nutrients_long" v="开启/关闭真实养分消耗与恢复机制" eh="dbe9c8ff" />
-    <e k="sf_difficulty_short" v="难度设置" eh="7b29ca96" />
-    <e k="sf_difficulty_long" v="选择难度：简单、写实、硬核" eh="cfb758a4" />
-    <e k="sf_diff_1" v="简单" eh="1fbb1e39" />
-    <e k="sf_diff_2" v="写实" eh="408c999f" />
-    <e k="sf_diff_3" v="硬核" eh="1c800aa9" />
-    <e k="sf_fertilizer_cost_short" v="肥料价格" eh="6870d88b" />
-    <e k="sf_fertilizer_cost_long" v="开启/关闭真实肥料购买价格" eh="12b03fbb" />
-    <e k="sf_notifications_short" v="通知提示" eh="a274f4d4" />
-    <e k="sf_notifications_long" v="开启/关闭土壤与肥料相关通知" eh="9a872f8f" />
-    <e k="sf_show_hud_short" v="显示悬浮窗" eh="c94fd4d7" />
-    <e k="sf_show_hud_long" v="显示/隐藏土壤信息悬浮窗（按F8临时切换）" eh="4e2e11b6" />
+    <e k="sf_weed_pressure_short" v="Pression des mauvaises herbes" eh="53f8b936" />
+    <e k="sf_weed_pressure_long" v="Activer/désactiver la croissance dynamique des mauvaises herbes et leur impact sur le rendement" eh="ac99a865" />
+    <e k="sf_pest_pressure_short" v="Pression des ravageurs" eh="18a7c2be" />
+    <e k="sf_pest_pressure_long" v="Activer/désactiver le système d'infestation d'insectes et de ravageurs" eh="2ba11abc" />
+    <e k="sf_disease_pressure_short" v="Pression des maladies" eh="2b805cc9" />
+    <e k="sf_disease_pressure_long" v="Activer/désactiver le système de maladies fongiques des cultures" eh="9080edbc" />
+    <e k="sf_compaction_short" v="Tassement du sol" eh="68734a56" />
+    <e k="sf_compaction_long" v="Activer/désactiver le système de compaction du sol par les véhicules lourds" eh="a0995ec5" />
+    <e k="sf_fertility_short" v="Système de fertilité" eh="f7e27d58" />
+    <e k="sf_fertility_long" v="Activer/désactiver le système dynamique de fertilité du sol" eh="ea074366" />
+    <e k="sf_nutrients_short" v="Cycles des nutriments" eh="ffab595d" />
+    <e k="sf_nutrients_long" v="Activer/désactiver l'épuisement et le renouvellement réalistes des nutriments" eh="dbe9c8ff" />
+    <e k="sf_difficulty_short" v="Difficulté" eh="7b29ca96" />
+    <e k="sf_difficulty_long" v="Définir le niveau de difficulté : Simple, Réaliste ou Extrême" eh="cfb758a4" />
+    <e k="sf_diff_1" v="Simple" eh="1fbb1e39" />
+    <e k="sf_diff_2" v="Réaliste" eh="408c999f" />
+    <e k="sf_diff_3" v="Extrême" eh="1c800aa9" />
+    <e k="sf_fertilizer_cost_short" v="Coût des engrais" eh="6870d88b" />
+    <e k="sf_fertilizer_cost_long" v="Activer/désactiver le coût réaliste des engrais" eh="12b03fbb" />
+    <e k="sf_notifications_short" v="Notifications" eh="a274f4d4" />
+    <e k="sf_notifications_long" v="Activer/désactiver les notifications sol et engrais" eh="9a872f8f" />
+    <e k="sf_show_hud_short" v="Afficher le HUD" eh="c94fd4d7" />
+    <e k="sf_show_hud_long" v="Afficher/masquer le HUD d'information du sol (F8 pour basculer temporairement)" eh="4e2e11b6" />
     <e k="sf_show_work_trail_short" v="[EN] Work Trail" eh="12a93dfa" />
     <e k="sf_show_work_trail_long" v="[EN] Show/hide spray and harvest trail dots in-world and on the minimap" eh="25c58f0e" />
     <e k="sf_show_sprayer_panel_short" v="[EN] Sprayer Panel" eh="0e8b3487" />
     <e k="sf_show_sprayer_panel_long" v="[EN] Show/hide the sprayer nutrient info panel when driving a sprayer" eh="125a6e27" />
     <e k="sf_show_harvester_panel_short" v="[EN] Harvester Panel" eh="e4fd0c77" />
     <e k="sf_show_harvester_panel_long" v="[EN] Show/hide the harvester grain tank status panel when harvesting" eh="977f32e8" />
-    <e k="sf_hud_position_short" v="悬浮窗位置" eh="5ac371f2" />
-    <e k="sf_hud_position_long" v="设置土壤信息悬浮窗在屏幕中的位置" eh="d7b9c109" />
-    <e k="sf_hud_pos_1" v="右上角" eh="5f9f6784" />
-    <e k="sf_hud_pos_2" v="左上角" eh="ac71274a" />
-    <e k="sf_hud_pos_3" v="右下角" eh="4d297f5d" />
-    <e k="sf_hud_pos_4" v="左下角" eh="7eb55425" />
-    <e k="sf_hud_pos_5" v="右侧居中" eh="d7afdc5a" />
-    <e k="sf_hud_pos_6" v="自定义" eh="90589c47" />
-    <e k="sf_hud_color_theme_short" v="悬浮窗配色" eh="4a73f95b" />
-    <e k="sf_hud_color_theme_long" v="选择土壤信息显示的配色方案" eh="3218bca6" />
-    <e k="sf_hud_color_1" v="绿色" eh="d382816a" />
-    <e k="sf_hud_color_2" v="蓝色" eh="9594eec9" />
-    <e k="sf_hud_color_3" v="琥珀色" eh="88068e33" />
-    <e k="sf_hud_color_4" v="单色" eh="5d9b47bd" />
-    <e k="sf_diff_short" v="难度设置" eh="7b29ca96" />
-    <e k="sf_diff_long" v="土壤管理难度等级" eh="d6f4560c" />
-    <e k="sf_rr_short" v="养分恢复速率" eh="b363b336" />
-    <e k="sf_rr_long" v="肥料补充田地养分的速度（0.25倍极慢 ~ 2.0倍极快）" eh="afe78a6d" />
+    <e k="sf_hud_position_short" v="Position du HUD" eh="5ac371f2" />
+    <e k="sf_hud_position_long" v="Choisir où afficher le HUD du sol à l'écran" eh="d7b9c109" />
+    <e k="sf_hud_pos_1" v="Haut droite" eh="5f9f6784" />
+    <e k="sf_hud_pos_2" v="Haut gauche" eh="ac71274a" />
+    <e k="sf_hud_pos_3" v="Bas droite" eh="4d297f5d" />
+    <e k="sf_hud_pos_4" v="Bas gauche" eh="7eb55425" />
+    <e k="sf_hud_pos_5" v="Centre droite" eh="d7afdc5a" />
+    <e k="sf_hud_pos_6" v="Personnalisé" eh="90589c47" />
+    <e k="sf_hud_color_theme_short" v="Thème du HUD" eh="4a73f95b" />
+    <e k="sf_hud_color_theme_long" v="Choisir le thème de couleur de l'affichage du sol" eh="3218bca6" />
+    <e k="sf_hud_color_1" v="Vert" eh="d382816a" />
+    <e k="sf_hud_color_2" v="Bleu" eh="9594eec9" />
+    <e k="sf_hud_color_3" v="Ambre" eh="88068e33" />
+    <e k="sf_hud_color_4" v="Monochrome" eh="5d9b47bd" />
+    <e k="sf_diff_short" v="Difficulté" eh="7b29ca96" />
+    <e k="sf_diff_long" v="Niveau de gestion du sol" eh="d6f4560c" />
+    <e k="sf_rr_short" v="Taux de restitution" eh="b363b336" />
+    <e k="sf_rr_long" v="Vitesse de restauration des nutriments par les engrais (0.25x Très lent à 2.0x Très rapide)" eh="afe78a6d" />
     <e k="sf_dm_short" v="Disease Climate" eh="86eac820" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" eh="23424d05" />
     <e k="sf_dm_1" v="Arid" eh="cf9aa4a8" />
     <e k="sf_dm_2" v="Temperate" eh="e8328062" />
     <e k="sf_dm_3" v="Humid" eh="ccb2fc34" />
     <e k="sf_dm_4" v="Wet" eh="ae789b86" />
-    <e k="sf_auto_rate_short" v="自动施肥量" eh="6f99137d" />
-    <e k="sf_auto_rate_long" v="根据田地需求自动调节施肥用量" eh="a9ca9f6b" />
-    <e k="sf_hud_theme_1" v="绿色" eh="d382816a" />
-    <e k="sf_hud_theme_2" v="蓝色" eh="9594eec9" />
-    <e k="sf_hud_theme_3" v="琥珀色" eh="88068e33" />
-    <e k="sf_hud_theme_4" v="单色" eh="5d9b47bd" />
-    <e k="sf_hud_font_size_short" v="悬浮窗字体大小" eh="fd6ca64a" />
-    <e k="sf_hud_font_size_long" v="调整文字大小以提升可读性" eh="c338854f" />
-    <e k="sf_hud_font_1" v="小" eh="2660064e" />
-    <e k="sf_hud_font_2" v="中" eh="87f8a6ab" />
-    <e k="sf_hud_font_3" v="大" eh="3a69b34c" />
-    <e k="sf_hud_transparency_short" v="悬浮窗透明度" eh="e8a009e4" />
-    <e k="sf_hud_transparency_long" v="设置背景透明度（透明=通透，实色=不透明）" eh="152e390a" />
-    <e k="sf_hud_trans_1" v="透明" eh="dc30bc0c" />
-    <e k="sf_hud_trans_2" v="浅透" eh="9914a0ce" />
-    <e k="sf_hud_trans_3" v="中等" eh="87f8a6ab" />
-    <e k="sf_hud_trans_4" v="深透" eh="a18366b2" />
-    <e k="sf_hud_trans_5" v="实色" eh="e41480b6" />
-    <e k="sf_use_imperial_short" v="英制单位" eh="ff2701ad" />
-    <e k="sf_use_imperial_long" v="施肥量显示为加仑/英亩、磅/英亩（关闭则为升/公顷、千克/公顷）" eh="17efa489" />
-    <e k="sf_active_map_layer_short" v="地图显示图层" eh="1861765f" />
-    <e k="sf_active_map_layer_long" v="在PDA地图中叠加显示养分图层" eh="d7755cc8" />
-    <e k="sf_overlay_density_short" v="地图细节" eh="a525859a" />
-    <e k="sf_overlay_density_long" v="PDA土壤采样点精度。低=帧率更高，高=大地图覆盖更完整。" eh="89215ce5" />
+    <e k="sf_auto_rate_short" v="Contrôle automatique du taux" eh="6f99137d" />
+    <e k="sf_auto_rate_long" v="Ajuste automatiquement le taux d'application des engrais selon les besoins du champ" eh="a9ca9f6b" />
+    <e k="sf_hud_theme_1" v="Vert" eh="d382816a" />
+    <e k="sf_hud_theme_2" v="Bleu" eh="9594eec9" />
+    <e k="sf_hud_theme_3" v="Ambre" eh="88068e33" />
+    <e k="sf_hud_theme_4" v="Monochrome" eh="5d9b47bd" />
+    <e k="sf_hud_font_size_short" v="Taille du HUD" eh="fd6ca64a" />
+    <e k="sf_hud_font_size_long" v="Ajuster la taille du texte pour une meilleure lisibilité" eh="c338854f" />
+    <e k="sf_hud_font_1" v="Petit" eh="2660064e" />
+    <e k="sf_hud_font_2" v="Moyen" eh="87f8a6ab" />
+    <e k="sf_hud_font_3" v="Grand" eh="3a69b34c" />
+    <e k="sf_hud_transparency_short" v="Transparence du HUD" eh="e8a009e4" />
+    <e k="sf_hud_transparency_long" v="Définir le niveau de transparence du fond (clair = transparent, solide = opaque)" eh="152e390a" />
+    <e k="sf_hud_trans_1" v="Transparent" eh="dc30bc0c" />
+    <e k="sf_hud_trans_2" v="Léger" eh="9914a0ce" />
+    <e k="sf_hud_trans_3" v="Moyen" eh="87f8a6ab" />
+    <e k="sf_hud_trans_4" v="Sombre" eh="a18366b2" />
+    <e k="sf_hud_trans_5" v="Solide" eh="e41480b6" />
+    <e k="sf_use_imperial_short" v="Unités impériales" eh="ff2701ad" />
+    <e k="sf_use_imperial_long" v="Afficher les doses en gal/ac et lb/ac (désactivé = L/ha et kg/ha)" eh="17efa489" />
+    <e k="sf_active_map_layer_short" v="Couche active de carte" eh="1861765f" />
+    <e k="sf_active_map_layer_long" v="Couche de nutriments affichée sur la carte PDA" eh="d7755cc8" />
+    <e k="sf_overlay_density_short" v="Détail de la carte" eh="a525859a" />
+    <e k="sf_overlay_density_long" v="Budget de points d'échantillonnage pour la carte du sol PDA. Faible = meilleures performances, Élevé = couverture plus complète sur grandes cartes." eh="89215ce5" />
     <e k="sf_colorblind_mode_short" v="Colorblind Mode" eh="d5a644f4" />
     <e k="sf_colorblind_mode_long" v="Replaces red/green status colors with orange/blue (Okabe-Ito palette) for deuteranopia and protanopia accessibility." eh="4de2f9fb" />
     <e k="sf_show_field_info_box_short" v="Field Info Box" eh="bf8bc5c7" />
     <e k="sf_show_field_info_box_long" v="Show soil nutrients in the native Field Info panel when standing on a field." eh="f7cd7156" />
-    <e k="input_SF_OPEN_SETTINGS" v="打开土壤设置" eh="2e31c0dd" />
-    <e k="sf_reset" v="重置土壤设置" eh="467bc2f5" />
-    <e k="input_SF_TOGGLE_HUD" v="切换土壤悬浮窗" eh="f0224a10" />
-    <e k="input_SF_HUD_DRAG" v="悬浮窗拖动模式" eh="cb2eb762" />
-    <e k="input_SF_SOIL_REPORT" v="土壤报告" eh="c33180ef" />
+    <e k="input_SF_OPEN_SETTINGS" v="Ouvrir les paramètres du sol" eh="2e31c0dd" />
+    <e k="sf_reset" v="Réinitialiser les paramètres du sol" eh="467bc2f5" />
+    <e k="input_SF_TOGGLE_HUD" v="Basculer le HUD du sol" eh="f0224a10" />
+    <e k="input_SF_HUD_DRAG" v="Mode déplacement du HUD" eh="cb2eb762" />
+    <e k="input_SF_SOIL_REPORT" v="Rapport de sol" eh="c33180ef" />
     <e k="input_SF_TOGGLE_CELL_MAP" v="Toggle Soil Cell Map" eh="3a7e9b9d" />
-    <e k="input_SF_RATE_UP" v="增加施肥量" eh="6e601ef5" />
-    <e k="input_SF_RATE_DOWN" v="减少施肥量" eh="30712026" />
-    <e k="input_SF_TOGGLE_AUTO" v="切换自动施肥" eh="a8642cf0" />
-        <e k="input_SF_CYCLE_MAP_LAYER" v="切换土壤地图图层" eh="8e4a716c" />
-        <e k="input_SF_SOIL_PDA" v="打开土壤PDA面板" eh="7d70f7b4" />
+    <e k="input_SF_RATE_UP" v="Augmenter le taux d'engrais" eh="6e601ef5" />
+    <e k="input_SF_RATE_DOWN" v="Diminuer le taux d'engrais" eh="30712026" />
+    <e k="input_SF_TOGGLE_AUTO" v="Basculer le mode automatique" eh="a8642cf0" />
+        <e k="input_SF_CYCLE_MAP_LAYER" v="Changer la couche de carte du sol" eh="8e4a716c" />
+        <e k="input_SF_SOIL_PDA" v="Ouvrir le PDA du sol" eh="7d70f7b4" />
     <e k="input_SF_SENSOR_PEST"       v="Toggle Pest Sensor" />
     <e k="input_SF_SENSOR_DISEASE"    v="Toggle Disease Sensor" />
     <e k="input_SF_SENSOR_NUTRIENT"   v="Toggle Nutrient Sensor" />
@@ -126,218 +126,218 @@
     <e k="input_SF_SEE_SPRAY_WEED"    v="See &amp; Spray: Weed" />
     <e k="input_SF_VARIABLE_RATE"     v="Toggle Variable Rate" />
     <e k="input_SF_MINIMAP_ZOOM"      v="Cycle Minimap Zoom" />
-    <e k="sf_uan32_title" v="UAN 32 氮肥（氮）" eh="90913bb8" />
-    <e k="sf_uan28_title" v="UAN 28 氮肥（氮）" eh="9d902cd7" />
-    <e k="sf_anhydrous_title" v="无水氨 肥料（氮）" eh="3fc85c02" />
-    <e k="sf_starter_title" v="启动肥 10-34-0（磷）" eh="8c1a1ddc" />
-    <e k="sf_urea_title" v="尿素 46-0-0（氮）" eh="659b3097" />
+    <e k="sf_uan32_title" v="Solution azotée 32 (N)" eh="90913bb8" />
+    <e k="sf_uan28_title" v="Solution azotée 28 (N)" eh="9d902cd7" />
+    <e k="sf_anhydrous_title" v="Ammoniac anhydre (N)" eh="3fc85c02" />
+    <e k="sf_starter_title" v="Engrais starter 10-34-0 (P)" eh="8c1a1ddc" />
+    <e k="sf_urea_title" v="Urée 46-0-0 (N)" eh="659b3097" />
     <e k="sf_an_title" v="Ammonium Nitrate 34.5-0-0 (N)" eh="29f6ee93" />
-    <e k="sf_ams_title" v="硫酸铵 21-0-0（氮）" eh="033d1845" />
-    <e k="sf_map_title" v="磷酸一铵 11-52-0（磷）" eh="31aa2534" />
-    <e k="sf_dap_title" v="磷酸二铵 18-46-0（磷）" eh="5030a80a" />
-    <e k="sf_potash_title" v="钾肥 0-0-60（钾）" eh="8db6c54c" />
+    <e k="sf_ams_title" v="Sulfate d'ammonium 21-0-0 (N)" eh="033d1845" />
+    <e k="sf_map_title" v="Engrais MAP 11-52-0 (P)" eh="31aa2534" />
+    <e k="sf_dap_title" v="Engrais DAP 18-46-0 (P)" eh="5030a80a" />
+    <e k="sf_potash_title" v="Potasse 0-0-60 (K)" eh="8db6c54c" />
     <e k="sf_polifoska_title" v="Polifoska 6-20-30 (NPK)" eh="6c3cba26" />
-    <e k="sf_liquid_urea_title" v="液态尿素（氮）" eh="7fee4f12" />
-    <e k="sf_liquid_ams_title" v="液态硫酸铵（氮）" eh="0daf3a6f" />
-    <e k="sf_liquid_map_title" v="液态磷酸一铵（磷）" eh="3ce7c8c9" />
-    <e k="sf_liquid_dap_title" v="液态磷酸二铵（磷）" eh="86bd893e" />
-    <e k="sf_liquid_potash_title" v="液态钾肥（钾）" eh="72ac9fd3" />
-    <e k="sf_insecticide_title" v="杀虫剂" eh="5650eeef" />
-    <e k="sf_fungicide_title" v="杀菌剂" eh="e8512698" />
-    <e k="sf_bigBag_uan32_name" v="集装桶 UAN 32-0-0" eh="574747ce" />
+    <e k="sf_liquid_urea_title" v="Urée liquide (N)" eh="7fee4f12" />
+    <e k="sf_liquid_ams_title" v="Sulfate d'ammonium liquide (N)" eh="0daf3a6f" />
+    <e k="sf_liquid_map_title" v="MAP liquide (P)" eh="3ce7c8c9" />
+    <e k="sf_liquid_dap_title" v="DAP liquide (P)" eh="86bd893e" />
+    <e k="sf_liquid_potash_title" v="Potasse liquide (K)" eh="72ac9fd3" />
+    <e k="sf_insecticide_title" v="Insecticide" eh="5650eeef" />
+    <e k="sf_fungicide_title" v="Fongicide" eh="e8512698" />
+    <e k="sf_bigBag_uan32_name" v="Cuve IBC de solution azotée 32-0-0" eh="574747ce" />
     <e k="sf_bigBag_uan32_function" v="[EN] Nitrogen Fertilizer (liquid) - +44N ppm/ha @ 60.8 L/ha" eh="db7dfc87" />
-    <e k="sf_bigBag_uan28_name" v="集装桶 UAN 28-0-0" eh="7eeec815" />
+    <e k="sf_bigBag_uan28_name" v="Cuve IBC de solution azotée 28-0-0" eh="7eeec815" />
     <e k="sf_bigBag_uan28_function" v="[EN] Nitrogen Fertilizer (liquid) - +38N ppm/ha @ 60.8 L/ha" eh="ceca3b39" />
-    <e k="sf_bigBag_anhydrous_name" v="集装桶 无水氨 82-0-0" eh="fb09e6ce" />
+    <e k="sf_bigBag_anhydrous_name" v="IBC Ammoniac anhydre 82-0-0" eh="fb09e6ce" />
     <e k="sf_bigBag_anhydrous_function" v="[EN] Nitrogen Fertilizer (liquid) - +67N ppm/ha @ 28 L/ha" eh="d8eec5de" />
-    <e k="sf_bigBag_urea_name" v="大袋装 尿素 46-0-0" eh="8e8cbaae" />
+    <e k="sf_bigBag_urea_name" v="Grand sac Urée 46-0-0" eh="8e8cbaae" />
     <e k="sf_bigBag_urea_function" v="[EN] Nitrogen Fertilizer (dry) - +78N ppm/ha @ 168 kg/ha" eh="a2d905dc" />
     <e k="sf_bigBag_an_name" v="Big Bag AN 34.5-0-0" eh="45f56f60" />
     <e k="sf_bigBag_an_function" v="[EN] Nitrogen Fertilizer (dry) - +68N ppm/ha @ 200 kg/ha" eh="d5f6bb4d" />
-    <e k="sf_bigBag_ams_name" v="大袋装 硫酸铵 21-0-0-24硫" eh="7f71ee68" />
+    <e k="sf_bigBag_ams_name" v="Grand sac Sulfate d'ammonium 21-0-0-24S" eh="7f71ee68" />
     <e k="sf_bigBag_ams_function" v="[EN] Nitrogen Fertilizer (dry) - +33N ppm/ha @ 168 kg/ha" eh="52cbe4bc" />
-    <e k="sf_bigBag_map_name" v="大袋装 磷酸一铵 11-52-0" eh="8a5a059b" />
+    <e k="sf_bigBag_map_name" v="Grand sac MAP 11-52-0" eh="8a5a059b" />
     <e k="sf_bigBag_map_function" v="[EN] Phosphorus Fertilizer (dry) - +8N +56P ppm/ha @ 225 kg/ha" eh="a8c90d06" />
-    <e k="sf_bigBag_dap_name" v="大袋装 磷酸二铵 18-46-0" eh="fb4e9987" />
+    <e k="sf_bigBag_dap_name" v="Grand sac DAP 18-46-0" eh="fb4e9987" />
     <e k="sf_bigBag_dap_function" v="[EN] Phosphorus Fertilizer (dry) - +11N +44P ppm/ha @ 225 kg/ha" eh="92bb6ecd" />
-    <e k="sf_bigBag_potash_name" v="大袋装 钾肥 0-0-60" eh="eb771556" />
+    <e k="sf_bigBag_potash_name" v="Grand sac Potasse 0-0-60" eh="eb771556" />
     <e k="sf_bigBag_potash_function" v="[EN] Potassium Fertilizer (dry) - +90K ppm/ha @ 225 kg/ha" eh="40e845e0" />
     <e k="sf_bigBag_polifoska_name" v="Big Bag Polifoska 6-20-30" eh="33366162" />
     <e k="sf_bigBag_polifoska_function" v="[EN] NPK Fertilizer (dry) - +4N +21P +50K ppm/ha @ 250 kg/ha" eh="be40f0f6" />
-    <e k="sf_bigBag_liquid_urea_name" v="集装桶 液态尿素" eh="c40b906f" />
+    <e k="sf_bigBag_liquid_urea_name" v="IBC Urée liquide" eh="c40b906f" />
     <e k="sf_bigBag_liquid_urea_function" v="[EN] Nitrogen Fertilizer (liquid) - +78N ppm/ha @ 168 L/ha" eh="2cb4eeeb" />
-    <e k="sf_bigBag_liquid_ams_name" v="集装桶 液态硫酸铵" eh="32e6c8bb" />
+    <e k="sf_bigBag_liquid_ams_name" v="IBC Sulfate d'ammonium liquide" eh="32e6c8bb" />
     <e k="sf_bigBag_liquid_ams_function" v="[EN] Nitrogen Fertilizer (liquid) - +33N ppm/ha @ 168 L/ha" eh="73a75155" />
-    <e k="sf_bigBag_liquid_map_name" v="集装桶 液态磷酸一铵" eh="4628addb" />
+    <e k="sf_bigBag_liquid_map_name" v="IBC MAP liquide" eh="4628addb" />
     <e k="sf_bigBag_liquid_map_function" v="[EN] Phosphorus Fertilizer (liquid) - +8N +56P ppm/ha @ 225 L/ha" eh="de3da62c" />
-    <e k="sf_bigBag_liquid_dap_name" v="集装桶 液态磷酸二铵" eh="82fb3c06" />
+    <e k="sf_bigBag_liquid_dap_name" v="IBC DAP liquide" eh="82fb3c06" />
     <e k="sf_bigBag_liquid_dap_function" v="[EN] Phosphorus Fertilizer (liquid) - +11N +44P ppm/ha @ 225 L/ha" eh="217bf779" />
-    <e k="sf_bigBag_liquid_potash_name" v="集装桶 液态钾肥" eh="7176856d" />
+    <e k="sf_bigBag_liquid_potash_name" v="IBC Potasse liquide" eh="7176856d" />
     <e k="sf_bigBag_liquid_potash_function" v="[EN] Potassium Fertilizer (liquid) - +90K ppm/ha @ 225 L/ha" eh="b58cc13c" />
-    <e k="sf_bigBag_starter_name" v="集装桶 启动肥 10-34-0" eh="62b13bd1" />
-    <e k="sf_bigBag_insecticide_name" v="集装桶 杀虫剂" eh="c8f0aabb" />
-    <e k="sf_bigBag_insecticide_function" v="杀虫剂（液态）" eh="09580f6b" />
-    <e k="sf_bigBag_fungicide_name" v="集装桶 杀菌剂" eh="2a1c78d4" />
-    <e k="sf_bigBag_fungicide_function" v="杀菌剂（液态）" eh="745c34cb" />
+    <e k="sf_bigBag_starter_name" v="Cuve IBC d’engrais de démarrage 10-34-0" eh="62b13bd1" />
+    <e k="sf_bigBag_insecticide_name" v="Cuve IBC d’insecticide" eh="c8f0aabb" />
+    <e k="sf_bigBag_insecticide_function" v="Insecticide (liquide)" eh="09580f6b" />
+    <e k="sf_bigBag_fungicide_name" v="IBC Fongicide" eh="2a1c78d4" />
+    <e k="sf_bigBag_fungicide_function" v="Fongicide (liquide)" eh="745c34cb" />
     <e k="sf_bigBag_starter_function" v="[EN] Starter Fertilizer (liquid) - +9N +17P ppm/ha @ 46.8 L/ha" eh="ab9c08be" />
-    <e k="sf_bigBag_gypsum_name" v="大袋装 石膏" eh="40fc8169" />
+    <e k="sf_bigBag_gypsum_name" v="Grand sac Gypse" eh="40fc8169" />
     <e k="sf_bigBag_gypsum_function" v="[EN] Soil Amendment (dry) - pH -0.15/pass @ 1500 kg/ha" eh="61a7adbd" />
-    <e k="sf_bigBag_compost_name" v="大袋装 堆肥" eh="14322c5d" />
+    <e k="sf_bigBag_compost_name" v="Grand sac de compost" eh="14322c5d" />
     <e k="sf_bigBag_compost_10k_name" v="Big Bag Compost 10000L" eh="760ccc30" />
     <e k="sf_bigBag_compost_function" v="[EN] Organic Soil Amendment (dry) - +11N +2P +11K ppm, +3.0% OM @ 5t/ha" eh="3d7d5d60" />
-    <e k="sf_bigBag_biosolids_name" v="大袋装 生物有机肥" eh="61a60ff3" />
+    <e k="sf_bigBag_biosolids_name" v="Grand sac Biosolides" eh="61a60ff3" />
     <e k="sf_bigBag_biosolids_10k_name" v="Big Bag Biosolids (10,000L)" eh="53b60563" />
     <e k="sf_bigBag_biosolids_function" v="[EN] Organic Fertilizer (dry) - +28N +3P +22K ppm, +2.0% OM @ 4.5t/ha" eh="97cb385e" />
-    <e k="sf_bigBag_chicken_manure_name" v="大袋装 鸡粪" eh="cb60fddc" />
+    <e k="sf_bigBag_chicken_manure_name" v="Grand sac Fumier de poules" eh="cb60fddc" />
     <e k="sf_bigBag_chicken_manure_10k_name" v="Big Bag Chicken Manure (10,000L)" eh="dd621023" />
     <e k="sf_bigBag_chicken_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +3P +22K ppm, +1.1% OM @ 2t/ha" eh="c85fd5c1" />
-    <e k="sf_bigBag_pelletized_manure_name" v="大袋装 颗粒粪肥" eh="064be7fa" />
+    <e k="sf_bigBag_pelletized_manure_name" v="Grand sac Fumier granulé" eh="064be7fa" />
     <e k="sf_bigBag_pelletized_manure_10k_name" v="Big Bag Pelletized Manure (10,000L)" eh="261ca096" />
     <e k="sf_bigBag_pelletized_manure_function" v="[EN] Organic Fertilizer (dry) - +22N +2P +33K ppm @ 450 kg/ha" eh="522ccf1e" />
-    <e k="sf_bigBag_liquidlime_name" v="液态石灰罐" eh="4f8caca1" />
+    <e k="sf_bigBag_liquidlime_name" v="Cuve de chaux liquide" eh="4f8caca1" />
     <e k="sf_bigBag_liquidlime_function" v="[EN] pH Raising Agent (liquid) - pH +0.40/pass @ 374 L/ha" eh="23f18783" />
-    <e k="sf_hud_title" v="土壤监测" eh="f8cda642" />
-    <e k="sf_hud_field" v="田地 %d" eh="08988997" />
-    <e k="sf_hud_noField" v="请进入任意田地" eh="62c55e9e" />
+    <e k="sf_hud_title" v="MONITEUR DU SOL" eh="f8cda642" />
+    <e k="sf_hud_field" v="Champ %d" eh="08988997" />
+    <e k="sf_hud_noField" v="Entrez dans un champ" eh="62c55e9e" />
     <e k="sf_sprayer_no_field" v="[EN] Drive onto a field" eh="f238e4b8" />
-    <e k="sf_hud_fallow" v="休耕" eh="eafe5913" />
+    <e k="sf_hud_fallow" v="Jachère" eh="eafe5913" />
 		<e k="sf_hud_meadow" v="[EN] Meadow" eh="f34c07d8" />
 		<e k="sf_hud_asleep" v="[EN] Field asleep (Field Sentry)" eh="0af05a4e" />
     <e k="sf_hud_weeds" v="[EN] Weed Risk" eh="0ec7e90d" />
-    <e k="sf_hud_pests" v="虫害" eh="2fed5101" />
-    <e k="sf_hud_disease" v="病害" eh="e7067a8c" />
+    <e k="sf_hud_pests" v="Ravageurs" eh="2fed5101" />
+    <e k="sf_hud_disease" v="Maladie" eh="e7067a8c" />
     <e k="sf_hud_disease_unknown" v="[EN] ? (scout to identify)" eh="a6fe3f43" />
-    <e k="sf_hud_protected" v="（已防护）" eh="8273211e" />
-    <e k="sf_hud_yield" v="产量" eh="97345487" />
-    <e k="sf_hud_estYield" v="预估产量" eh="32a4135e" />
-    <e k="sf_hud_optimal" v="最佳" eh="cb61fef1" />
+    <e k="sf_hud_protected" v="(protégé)" eh="8273211e" />
+    <e k="sf_hud_yield" v="Rendement" eh="97345487" />
+    <e k="sf_hud_estYield" v="Rendement estimé" eh="32a4135e" />
+    <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
     <e k="sf_hud_post_harvest" v="[EN] Post-harvest · Fertilize" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="[EN] Drag: move   Corner: resize   RMB/Shift+H: done" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="[EN] Shift+H: move/resize" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" eh="89dbfc90" />
-    <e k="sf_incompatibility_pf_text" v="由于 Precision Farming 已启用，Soil &amp; Fertilizer 已在此存档中停用。这两个模组都会管理土壤养分，无法同时运行。你不需要删除此模组。若要改用 Soil &amp; Fertilizer，只需在模组选择界面中为此存档停用 Precision Farming。" eh="91dbcf1b" />
+    <e k="sf_incompatibility_pf_text" v="Sol &amp; Fertilisation a été désactivé pour cette sauvegarde car Precision Farming est actif. Les deux mods gèrent les nutriments du sol et ne peuvent pas fonctionner en même temps. Vous n'avez pas besoin de supprimer ce mod. Pour utiliser Sol &amp; Fertilisation à la place, désactivez simplement Precision Farming pour cette sauvegarde dans l'écran de sélection des mods." eh="91dbcf1b" />
 
     <!-- ======================================================
          HELP LINES (ESC > Help > Realistic Soil & Fertilizer)
          ====================================================== -->
 
     <!-- Category titles -->
-    <e k="helpLine_sf_cat_overview" v="模组概述" eh="3b878279" />
-    <e k="helpLine_sf_cat_started" v="新手入门" eh="bf647454" />
-    <e k="helpLine_sf_cat_nutrients" v="土壤养分" eh="64377acf" />
-    <e k="helpLine_sf_cat_fertilizers" v="肥料种类" eh="754d59bd" />
+    <e k="helpLine_sf_cat_overview" v="Vue d'ensemble" eh="3b878279" />
+    <e k="helpLine_sf_cat_started" v="Premiers pas" eh="bf647454" />
+    <e k="helpLine_sf_cat_nutrients" v="Nutriments du sol" eh="64377acf" />
+    <e k="helpLine_sf_cat_fertilizers" v="Engrais" eh="754d59bd" />
     <e k="helpLine_sf_cat_hud" v="[EN] HUD &amp; Soil Report" eh="655b1b40" />
-    <e k="helpLine_sf_cat_settings" v="设置选项" eh="f4f70727" />
-    <e k="helpLine_sf_cat_multiplayer" v="多人游戏" eh="901a7320" />
+    <e k="helpLine_sf_cat_settings" v="Paramètres" eh="f4f70727" />
+    <e k="helpLine_sf_cat_multiplayer" v="Multijoueur" eh="901a7320" />
 
     <!-- Category 1: Overview -->
-    <e k="helpLine_sf_ov_p1_title" v="模组功能简介" eh="46cbb25b" />
-    <e k="helpLine_sf_ov_p1_intro_title" v="单块田地土壤监测" eh="8fe3248d" />
-    <e k="helpLine_sf_ov_p1_intro_text" v="每块田地独立监测五项指标：氮(N)、磷(P)、钾(K)、有机质(OM)、酸碱度(pH)。数据随存档保存，重启游戏不会重置。" eh="c30216e6" />
-    <e k="helpLine_sf_ov_p1_flow_title" v="养分循环机制" eh="15b0d408" />
-    <e k="helpLine_sf_ov_p1_flow_text" v="作物收获会带走土壤养分，肥料、粪肥、浆液、石灰可补充养分。模组采用真实养分平衡机制--作物消耗多少，就需要人工补回多少。" eh="418041f0" />
+    <e k="helpLine_sf_ov_p1_title" v="Fonctionnement du système" eh="46cbb25b" />
+    <e k="helpLine_sf_ov_p1_intro_title" v="Suivi du sol par champ" eh="8fe3248d" />
+    <e k="helpLine_sf_ov_p1_intro_text" v="Chaque champ suit indépendamment cinq paramètres : l'azote (N), le phosphore (P), le potassium (K), la matière organique (MO) et le pH. Les valeurs sont enregistrées avec votre sauvegarde et sont conservées entre les sessions." eh="c30216e6" />
+    <e k="helpLine_sf_ov_p1_flow_title" v="Le cycle des nutriments" eh="15b0d408" />
+    <e k="helpLine_sf_ov_p1_flow_text" v="Les cultures prélèvent des nutriments lors de la récolte. Les engrais, le fumier, le lisier et la chaux permettent de les restaurer. Le mod simule un bilan nutritif réaliste : ce que les cultures prélèvent, vous devez le restituer." eh="418041f0" />
 
-    <e k="helpLine_sf_ov_p2_title" v="环境影响因素" eh="e139e84f" />
-    <e k="helpLine_sf_ov_p2_rain_title" v="降雨与养分流失" eh="33e0d8ea" />
-    <e k="helpLine_sf_ov_p2_rain_text" v="降雨会大量流失氮元素，其次是钾、磷；同时会缓慢让土壤酸化。可在设置中关闭降雨影响功能。" eh="91e39cc6" />
-    <e k="helpLine_sf_ov_p2_season_title" v="季节与休耕恢复" eh="ad2009c8" />
-    <e k="helpLine_sf_ov_p2_season_text" v="春季每日增加0.03氮元素（生物活性提升），秋季每日流失0.02氮元素。闲置7天以上的田地会自动缓慢恢复全部养分。" eh="e5ebb3b2" />
+    <e k="helpLine_sf_ov_p2_title" v="Effets environnementaux" eh="e139e84f" />
+    <e k="helpLine_sf_ov_p2_rain_title" v="Pluie et lessivage" eh="33e0d8ea" />
+    <e k="helpLine_sf_ov_p2_rain_text" v="La pluie provoque principalement le lessivage de l'azote, puis du potassium et enfin du phosphore. Elle acidifie également progressivement le pH du sol. Les effets de la pluie peuvent être désactivés dans les paramètres." eh="91e39cc6" />
+    <e k="helpLine_sf_ov_p2_season_title" v="Saisons et récupération des jachères" eh="ad2009c8" />
+    <e k="helpLine_sf_ov_p2_season_text" v="Au printemps, l'activité biologique ajoute +0,03 N par jour. En automne, 0,02 N par jour sont perdus. Les champs laissés en jachère pendant plus de 7 jours récupèrent progressivement leurs nutriments de manière naturelle." eh="e5ebb3b2" />
 
     <!-- Category 2: Getting Started -->
-    <e k="helpLine_sf_gs_p1_title" v="上手第一步" eh="bdd0e0a7" />
-    <e k="helpLine_sf_gs_p1_hud_title" v="打开悬浮窗（按J键）" eh="e1bdea72" />
-    <e k="helpLine_sf_gs_p1_hud_text" v="按J键开启/关闭实时土壤悬浮窗，显示当前所在田地的氮、磷、钾、酸碱度、有机质。良好/一般/较差状态标签可直观查看需改良项目。" eh="53cef520" />
-    <e k="helpLine_sf_gs_p1_report_title" v="打开土壤报告（按K键）" eh="e71446cd" />
-    <e k="helpLine_sf_gs_p1_report_text" v="按K键打开农场完整土壤报告，所有田地按养分状态彩色标注、按紧急程度排序。点击列表箭头可查看详细数据与改良建议。" eh="9a0d32a6" />
+    <e k="helpLine_sf_gs_p1_title" v="Premiers pas" eh="bdd0e0a7" />
+    <e k="helpLine_sf_gs_p1_hud_title" v="Ouvrir le HUD (touche J)" eh="e1bdea72" />
+    <e k="helpLine_sf_gs_p1_hud_text" v="Appuyez sur J pour afficher ou masquer le HUD du sol en temps réel. Il affiche les niveaux d'azote (N), de phosphore (P), de potassium (K), de pH et de matière organique (MO) du champ où vous vous trouvez. Les états Bon / Moyen / Mauvais permettent d'évaluer rapidement la situation." eh="53cef520" />
+    <e k="helpLine_sf_gs_p1_report_title" v="Ouvrir le rapport du sol (touche K)" eh="e71446cd" />
+    <e k="helpLine_sf_gs_p1_report_text" v="Appuyez sur K pour ouvrir le rapport complet des sols de l'exploitation. Tous les champs y sont listés avec un code couleur indiquant leur état nutritif et classés par ordre de priorité. Cliquez sur la flèche d'une ligne pour afficher une vue détaillée avec des recommandations." eh="9a0d32a6" />
 
-    <e k="helpLine_sf_gs_p2_title" v="施肥与收获" eh="1a52ac04" />
-    <e k="helpLine_sf_gs_p2_fert_title" v="田地施肥操作" eh="ea52ec26" />
-    <e k="helpLine_sf_gs_p2_fert_text" v="可用任意原版喷洒机/撒肥机作业，模组兼容所有原版肥料及9种定制肥料（UAN-32、磷酸一铵、钾肥等）。不同肥料补充不同养分，详见肥料分类说明。" eh="fe906e29" />
-    <e k="helpLine_sf_gs_p2_harvest_title" v="收获养分消耗" eh="a67b6cb5" />
-    <e k="helpLine_sf_gs_p2_harvest_text" v="每次收获都会消耗田地养分；高耗肥作物（土豆、甜菜、大豆）消耗远大于低耗肥作物（大麦、燕麦）。每次收获后建议查看悬浮窗或土壤报告。" eh="63f90ed4" />
+    <e k="helpLine_sf_gs_p2_title" v="Fertilisation et récolte" eh="1a52ac04" />
+    <e k="helpLine_sf_gs_p2_fert_title" v="Fertiliser les champs" eh="ea52ec26" />
+    <e k="helpLine_sf_gs_p2_fert_text" v="Appliquez de l'engrais avec n'importe quel pulvérisateur ou épandeur standard. Le mod reconnaît tous les types du jeu de base ainsi que 9 types personnalisés (UAN-32, MAP, Potasse, etc.). Chaque produit restaure des nutriments différents. Consultez la catégorie « Engrais » pour obtenir les caractéristiques détaillées." eh="fe906e29" />
+    <e k="helpLine_sf_gs_p2_harvest_title" v="Épuisement après récolte" eh="a67b6cb5" />
+    <e k="helpLine_sf_gs_p2_harvest_text" v="Chaque récolte retire des nutriments du sol. Les cultures exigeantes (pommes de terre, betteraves sucrières, soja) épuisent beaucoup plus le sol que les cultures peu gourmandes (orge, avoine). Consultez de nouveau le HUD ou le rapport du sol après chaque récolte." eh="63f90ed4" />
 
-    <e k="helpLine_sf_gs_p3_title" v="难度设置" eh="7b29ca96" />
-    <e k="helpLine_sf_gs_p3_levels_title" v="三档难度等级" eh="52611188" />
-    <e k="helpLine_sf_gs_p3_levels_text" v="简单(0.7倍)：养分消耗减少30%，适合新手；写实(1.0倍)：真实农业标准平衡设定；硬核(1.5倍)：养分消耗增加50%，需要精细化土壤管理。" eh="f4f1ea30" />
-    <e k="helpLine_sf_gs_p3_access_title" v="修改设置方法" eh="b421c88f" />
+    <e k="helpLine_sf_gs_p3_title" v="Difficulté" eh="7b29ca96" />
+    <e k="helpLine_sf_gs_p3_levels_title" v="Trois niveaux de difficulté" eh="52611188" />
+    <e k="helpLine_sf_gs_p3_levels_text" v="Simple (0,7x) : 30 % d'épuisement en moins, idéal pour débuter. Réaliste (1,0x) : équilibre basé sur des valeurs agricoles réelles. Extrême (1,5x) : 50 % d'épuisement supplémentaire, nécessitant une gestion intensive de la fertilité des sols." eh="f4f1ea30" />
+    <e k="helpLine_sf_gs_p3_access_title" v="Modifier les paramètres" eh="b421c88f" />
     <e k="helpLine_sf_gs_p3_access_text" v="[EN] Open settings at ESC &gt; Settings &gt; Soil &amp; Fertilizer. In multiplayer, only the server admin can change simulation settings. All HUD display options are per-player and not shared." eh="4ba9d860" />
 
     <!-- Category 3: Soil Nutrients -->
-    <e k="helpLine_sf_nu_p1_title" v="氮元素与磷元素" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="氮(N) - 数值范围0~100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="流动性最强、消耗最快、最易被雨水流失。低于30为较差，高于50为良好。提升方式：液态肥、UAN-32、UAN-28、无水氨、尿素、硫酸铵、粪肥、浆液。" eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="磷(P) - 数值范围0~100" eh="979bba64" />
-    <e k="helpLine_sf_nu_p1_p_text" v="易被土壤固定、雨水流失极慢，主要随收获消耗。油菜磷需求量最高。低于25为较差，高于45为良好。提升方式：磷酸一铵、磷酸二铵、启动肥、液态肥。" eh="92c5ac66" />
+    <e k="helpLine_sf_nu_p1_title" v="Azote et Phosphore" eh="27d37372" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Azote (N) - Échelle 0 à 100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Nutriment le plus mobile - se dégrade le plus rapidement et se lessive fortement sous la pluie. Faible : en dessous de 30. Bon : au-dessus de 50. À augmenter avec : engrais liquide, UAN-32, UAN-28, ammoniac anhydre, urée, AMS, fumier ou lisier." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="Phosphore (P) - Échelle 0 à 100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_p_text" v="Se lie fortement au sol et se lessive très lentement. Principalement perdu lors des récoltes. Le colza a la plus forte demande en P. Faible : en dessous de 25. Bon : au-dessus de 45. À augmenter avec : MAP, DAP, engrais starter ou engrais liquide." eh="92c5ac66" />
 
-    <e k="helpLine_sf_nu_p2_title" v="钾元素与酸碱度" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="钾(K) - 数值范围0~100" eh="2a16e8bc" />
-    <e k="helpLine_sf_nu_p2_k_text" v="块根类作物刚需养分，土豆、甜菜收获会大量消耗钾。雨水会中度流失钾元素。低于20为较差，高于40为良好。提升方式：钾肥、浆液、沼渣、液态肥。" eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="酸碱度(pH) - 数值范围5.0~7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="多数作物适宜pH 6.5~7.0。降雨会持续让土壤酸化，酸碱度无法自动恢复，仅可通过石灰、液态石灰提升。低于5.5为较差，播种前酸碱度偏低需及时撒石灰改良。" eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_title" v="Potassium et pH" eh="6bd92f25" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Potassium (K) - Échelle 0 à 100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_text" v="Essentiel pour les cultures racines et tubercules. La pomme de terre et la betterave épuisent fortement le potassium à chaque récolte. Se lessive modérément sous la pluie. Faible : en dessous de 20. Bon : au-dessus de 40. À augmenter avec : potasse (0-0-60), lisier, digestat ou engrais liquide." eh="7230fee4" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Échelle 5.0 à 7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="La plupart des cultures se développent entre pH 6.5 et 7.0. La pluie acidifie lentement le sol au fil du temps. Le pH ne remonte pas naturellement - seule la chaux ou la chaux liquide permet de l’augmenter. Faible : en dessous de 5.5. Appliquer de la chaux si le pH baisse avant la prochaine plantation." eh="08e0aefd" />
 
-    <e k="helpLine_sf_nu_p3_title" v="有机质" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="有机质(OM) - 数值范围0~10" eh="58f490f3" />
-    <e k="helpLine_sf_nu_p3_om_text" v="提升速度极慢，收获不会消耗有机质。低于2.5为较差，高于4.0为良好。提升方式：粪肥、浆液、沼渣、堆肥、生物有机肥、鸡粪、颗粒粪肥、秸秆还田。" eh="f9a02359" />
-    <e k="helpLine_sf_nu_p3_fallow_title" v="休耕恢复机制" eh="14133b0b" />
-    <e k="helpLine_sf_nu_p3_fallow_text" v="田地闲置7天以上将自动恢复养分：每日氮+0.07、磷+0.03、钾+0.05、有机质+0.01。轮作与休耕在本模组中有实际种植价值。" eh="81fa82b3" />
+    <e k="helpLine_sf_nu_p3_title" v="Matière organique" eh="6305f4bb" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Matière organique (MO) - Échelle 0 à 10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_text" v="Se construit très lentement et n’est pas consommée par les récoltes. Faible : en dessous de 2.5. Bon : au-dessus de 4.0. À augmenter avec : fumier, lisier, digestat, compost, biosolides, fientes de poulet, fumier granulé ou en incorporant la paille dans le sol." eh="f9a02359" />
+    <e k="helpLine_sf_nu_p3_fallow_title" v="Repos du sol" eh="14133b0b" />
+    <e k="helpLine_sf_nu_p3_fallow_text" v="Un champ laissé sans culture pendant 7 jours ou plus récupère lentement ses nutriments. Par jour : N +0.07, P +0.03, K +0.05, MO +0.01. La rotation des cultures et les périodes de repos ont donc une vraie importance dans ce mod." eh="81fa82b3" />
 
     <!-- Category 4: Fertilizers -->
-    <e k="helpLine_sf_fe_p1_title" v="原版肥料类型" eh="fd941c0d" />
-    <e k="helpLine_sf_fe_p1_base_title" v="液态肥、固态肥、粪肥与浆液" eh="4668dca7" />
-    <e k="helpLine_sf_fe_p1_base_text" v="液态肥均衡补充氮磷钾；固态肥氮磷含量更高；粪肥与浆液可补充氮磷钾及有机质；沼渣（沼气副产物）钾含量高且增加有机质，均可使用常规农具施肥。" eh="64069a56" />
-    <e k="helpLine_sf_fe_p1_lime_title" v="石灰与酸碱度改良" eh="8933cce1" />
-    <e k="helpLine_sf_fe_p1_lime_text" v="原版石灰仅用于调节酸碱度，不补充任何养分。定制液态石灰、石膏同样可提升酸碱度（石膏还能小幅增加有机质）。pH低于6.0时建议撒石灰，维持作物适宜生长区间。" eh="833a967f" />
+    <e k="helpLine_sf_fe_p1_title" v="Types du jeu de base" eh="fd941c0d" />
+    <e k="helpLine_sf_fe_p1_base_title" v="Liquide, solide, fumier et lisier" eh="4668dca7" />
+    <e k="helpLine_sf_fe_p1_base_text" v="L’engrais liquide apporte un équilibre N+P+K. L’engrais solide est plus riche en N et P. Le fumier et le lisier apportent N, P, K ainsi que de la matière organique. Le digestat (sous-produit de méthanisation) est riche en K et ajoute également de la matière organique. Tous s’appliquent avec le matériel standard." eh="64069a56" />
+    <e k="helpLine_sf_fe_p1_lime_title" v="Chaux et correction du pH" eh="8933cce1" />
+    <e k="helpLine_sf_fe_p1_lime_text" v="La chaux est le seul produit de base pour corriger le pH - elle n’apporte aucun nutriment. Les produits personnalisés Chaux liquide et Gypse augmentent également le pH (le gypse ajoute aussi un peu de matière organique). Appliquer lorsque le pH descend sous 6.0 pour maintenir les cultures dans leur zone optimale." eh="833a967f" />
 
-    <e k="helpLine_sf_fe_p2_title" v="定制氮肥与磷钾肥" eh="1021f8c9" />
-    <e k="helpLine_sf_fe_p2_n_title" v="氮肥来源（定制大袋装）" eh="9dfe5a5a" />
-    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32(32-0-0)、UAN-28(28-0-0) 为液态氮肥；无水氨(82-0-0)单位含氮量最高；尿素(46-0-0)、硫酸铵(21-0-0-24硫) 为固态颗粒肥。仅补充氮元素，不影响磷、钾与酸碱度。" eh="6a100c25" />
-    <e k="helpLine_sf_fe_p2_pk_title" v="磷钾元素来源" eh="a2d4091b" />
-    <e k="helpLine_sf_fe_p2_pk_text" v="磷酸一铵(11-52-0)：单位含磷量最高；磷酸二铵(18-46-0)：高磷附带少量氮；钾肥(0-0-60)：纯钾肥料；启动肥(10-34-0)：高磷基肥并均衡补充氮钾。均可商店购买大袋装。" eh="75a86964" />
+    <e k="helpLine_sf_fe_p2_title" v="Sources d’azote et PK personnalisées" eh="1021f8c9" />
+    <e k="helpLine_sf_fe_p2_n_title" v="Sources d’azote (big bags personnalisés)" eh="9dfe5a5a" />
+    <e k="helpLine_sf_fe_p2_n_text" v="UAN-32 (32-0-0) et UAN-28 (28-0-0) sont des solutions liquides d’azote. L’ammoniac anhydre (82-0-0) est le produit le plus riche en azote par litre. L’urée (46-0-0) et l’AMS (21-0-0-24S) sont des granulés secs. Tous apportent uniquement de l’azote - aucun effet sur P, K ou le pH." eh="6a100c25" />
+    <e k="helpLine_sf_fe_p2_pk_title" v="Sources de phosphore et potassium" eh="a2d4091b" />
+    <e k="helpLine_sf_fe_p2_pk_text" v="MAP (11-52-0) : plus forte concentration en P. DAP (18-46-0) : riche en P avec un peu d’azote. Potasse (0-0-60) : potassium pur. Starter (10-34-0) : produit de démarrage riche en P avec un équilibre N+K. Tous disponibles en big bags dans le magasin." eh="75a86964" />
 
-    <e k="helpLine_sf_fe_p3_title" v="有机肥料与肥害风险" eh="7ab807d1" />
-    <e k="helpLine_sf_fe_p3_organic_title" v="有机肥与缓释肥料" eh="0199e6be" />
-    <e k="helpLine_sf_fe_p3_organic_text" v="堆肥提升有机质效果最强（每1000升+0.12）；生物有机肥、鸡粪补充氮磷与有机质；颗粒粪肥为浓缩均衡有机肥。安装适配农具模组后可解锁定制填充类型。" eh="3d16e4ee" />
-    <e k="helpLine_sf_fe_p3_burn_title" v="过量施肥肥害" eh="e986cc54" />
-    <e k="helpLine_sf_fe_p3_burn_text" v="施肥量超过标准1.25倍有概率引发肥害（酸碱度-0.15、氮-5）；达到1.50倍及以上必定触发肥害（酸碱度-0.30、氮-12）。可在作业车辆内使用增减施肥量按键控制作业比例。" eh="7bccc46a" />
+    <e k="helpLine_sf_fe_p3_title" v="Produits organiques et risque de brûlure" eh="7ab807d1" />
+    <e k="helpLine_sf_fe_p3_organic_title" v="Produits organiques et à libération lente" eh="0199e6be" />
+    <e k="helpLine_sf_fe_p3_organic_text" v="Le compost est le meilleur apport en matière organique (+0.12 par 1 000 L). Les biosolides et la fiente de poulet apportent N, P et matière organique. Le fumier granulé est un engrais organique équilibré concentré. Tous sont des types personnalisés disponibles avec les mods de matériel compatibles." eh="3d16e4ee" />
+    <e k="helpLine_sf_fe_p3_burn_title" v="Risque de brûlure par surdosage" eh="e986cc54" />
+    <e k="helpLine_sf_fe_p3_burn_text" v="Appliquer au-delà de 1.25x la dose de base entraîne un risque de brûlure (-0.15 pH et -5 N). À 1.50x ou plus, la brûlure est systématique à chaque passage (-0.30 pH et -12 N). Utilisez les touches SF Augmenter / Diminuer le débit pour contrôler le taux d’application." eh="7bccc46a" />
 
     <!-- Category 5: HUD and Soil Report -->
-    <e k="helpLine_sf_hu_p1_title" v="土壤悬浮窗" eh="6522879b" />
-    <e k="helpLine_sf_hu_p1_toggle_title" v="开启/关闭悬浮窗（J键）" eh="402283ba" />
-    <e k="helpLine_sf_hu_p1_toggle_text" v="按J键显示/隐藏实时土壤悬浮窗，自动识别当前所在田地并展示氮磷钾、酸碱度、有机质。开启杂草、虫害、病害功能后，相关状态会在面板底部显示。" eh="3dcb9bfe" />
-    <e k="helpLine_sf_hu_p1_status_title" v="状态标识说明" eh="291c3aac" />
-    <e k="helpLine_sf_hu_p1_status_text" v="每项养分标注：良好（无需处理）、一般（建议尽快改良）、较差（必须处理，已影响产量）。顶部综合状态取所有指标（杂草、虫害、病害）中的最差等级。" eh="3b8c2c6e" />
+    <e k="helpLine_sf_hu_p1_title" v="HUD du sol" eh="6522879b" />
+    <e k="helpLine_sf_hu_p1_toggle_title" v="Activation du HUD (touche J)" eh="402283ba" />
+    <e k="helpLine_sf_hu_p1_toggle_text" v="Appuyez sur J pour afficher ou masquer l’superposition du sol en temps réel. Il détecte le champ sur lequel vous vous trouvez et affiche N, P, K, pH et MO. Lorsque les options mauvaises herbes, ravageurs ou maladies sont activées, ces lignes apparaissent en bas du panneau." eh="3dcb9bfe" />
+    <e k="helpLine_sf_hu_p1_status_title" v="Lecture du statut" eh="291c3aac" />
+    <e k="helpLine_sf_hu_p1_status_text" v="Chaque nutriment affiche Bon (aucune action requise), Moyen (traitement conseillé prochainement) ou Mauvais (action nécessaire - impact sur le rendement). Le badge global dans la barre de titre reflète la pire valeur parmi toutes les dimensions suivies, y compris mauvaises herbes, ravageurs et maladies." eh="3b8c2c6e" />
 
-    <e k="helpLine_sf_hu_p2_title" v="田地生长压力" eh="b4d35b30" />
-    <e k="helpLine_sf_hu_p2_press_title" v="杂草、虫害、病害" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="每项压力值0~100，监测田地生物灾害；放任不管会降低收获产量：杂草最高-30%、虫害-20%、病害-25%。悬浮窗W/I/D标识用颜色区分严重程度：绿色低、黄色中、红色高。" eh="3fc3c400" />
-    <e k="helpLine_sf_hu_p2_treat_title" v="压力治理方式" eh="cb24bf50" />
-    <e k="helpLine_sf_hu_p2_treat_text" v="除草剂降低杂草压力，耕地可直接清零杂草；杀虫剂降低25点虫害值并抑制10天再生；杀菌剂降低20点病害值并抑制12天再生。可在设置中单独关闭任意灾害系统。" eh="4d65bdec" />
+    <e k="helpLine_sf_hu_p2_title" v="Pressions sur la santé des champs" eh="b4d35b30" />
+    <e k="helpLine_sf_hu_p2_press_title" v="Mauvaises herbes, ravageurs et maladies" eh="0a3fae00" />
+    <e k="helpLine_sf_hu_p2_press_text" v="Trois indicateurs de pression (0 à 100) suivent les menaces biologiques par champ. Sans intervention, ils réduisent le rendement à la récolte : mauvaises herbes jusqu’à -30%, ravageurs -20%, maladies -25%. Les lignes HUD W, I et D indiquent la gravité par couleur : vert (faible), jaune (moyen), rouge (élevé)." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_treat_title" v="Traitement des pressions" eh="cb24bf50" />
+    <e k="helpLine_sf_hu_p2_treat_text" v="Les herbicides réduisent les mauvaises herbes - tout travail du sol les remet également à zéro. Les insecticides réduisent les ravageurs de 25 points et bloquent leur réapparition pendant 10 jours. Les fongicides réduisent les maladies de 20 points et les bloquent pendant 12 jours. Chaque système peut être désactivé dans les paramètres." eh="4d65bdec" />
 
-    <e k="helpLine_sf_hu_p3_title" v="土壤报告面板" eh="35fcce6c" />
-    <e k="helpLine_sf_hu_p3_open_title" v="打开报告（K键）" eh="62e3f629" />
-    <e k="helpLine_sf_hu_p3_open_text" v="按K键打开农场整体土壤报告，顶部汇总已监测田地数量、需施肥田地数量、农场综合健康度百分比。田地按紧急程度排序，状态最差优先显示。" eh="38a5bd2e" />
-    <e k="helpLine_sf_hu_p3_detail_title" v="田地详情与改良建议" eh="c99d2b89" />
-    <e k="helpLine_sf_hu_p3_detail_text" v="点击列表箭头进入单田详情：养分数值、灾害压力、产量损失预估、逐条改良施肥建议。按返回或ESC回到列表页面。" eh="38dd2c6d" />
+    <e k="helpLine_sf_hu_p3_title" v="Le rapport des sols" eh="35fcce6c" />
+    <e k="helpLine_sf_hu_p3_open_title" v="Ouverture du rapport (touche K)" eh="62e3f629" />
+    <e k="helpLine_sf_hu_p3_open_text" v="Appuyez sur K pour ouvrir le rapport complet de la ferme. La barre de résumé affiche le nombre total de champs suivis, ceux nécessitant de l’engrais et un pourcentage global de santé de la ferme. Les champs sont classés par urgence - les pires en premier." eh="38a5bd2e" />
+    <e k="helpLine_sf_hu_p3_detail_title" v="Détail des champs et recommandations" eh="c99d2b89" />
+    <e k="helpLine_sf_hu_p3_detail_text" v="Cliquez sur la flèche d’une ligne pour ouvrir le détail du champ : valeurs nutritives, niveaux de pression, prévision de perte de rendement et liste de recommandations indiquant exactement quoi appliquer. Appuyez sur Retour ou Échap pour revenir au tableau." eh="38dd2c6d" />
 
     <!-- Category 6: Settings -->
-    <e k="helpLine_sf_se_p1_title" v="模拟核心设置" eh="cbf13e3c" />
-    <e k="helpLine_sf_se_p1_server_title" v="服务器设置（多人仅服主可改）" eh="49f37ed7" />
-    <e k="helpLine_sf_se_p1_server_text" v="肥力系统、养分循环、季节影响、降雨影响、耕地增益、杂草/虫害/病害压力、肥料价格、通知提示、轮作机制、自动施肥比例。多人模式仅服主可修改，改动立即同步所有玩家。" eh="abca5e43" />
-    <e k="helpLine_sf_se_p1_diff_title" v="难度等级" eh="7b29ca96" />
+    <e k="helpLine_sf_se_p1_title" v="Paramètres de simulation" eh="cbf13e3c" />
+    <e k="helpLine_sf_se_p1_server_title" v="Paramètres serveur (administrateur uniquement en multijoueur)" eh="49f37ed7" />
+    <e k="helpLine_sf_se_p1_server_text" v="Système de fertilité, cycles de nutriments, effets saisonniers, effets de la pluie, bonus de labour, pression des mauvaises herbes/ravageurs/maladies, coûts des engrais, notifications, rotation des cultures et contrôle automatique du débit. En multijoueur, seul l’administrateur du serveur peut modifier ces paramètres. Les changements sont synchronisés instantanément avec tous les clients." eh="abca5e43" />
+    <e k="helpLine_sf_se_p1_diff_title" v="Difficulté" eh="7b29ca96" />
     <e k="helpLine_sf_se_p1_diff_text" v="[EN] Simple (0.7x) reduces depletion by 30% for a relaxed experience. Realistic (1.0x) is the balanced default. Hardcore (1.5x) increases depletion by 50% for intensive soil management. Access via ESC &gt; Settings &gt; Soil &amp; Fertilizer." eh="ca93ca3e" />
 
-    <e k="helpLine_sf_se_p2_title" v="悬浮窗与施肥比例控制" eh="399f4910" />
-    <e k="helpLine_sf_se_p2_hud_title" v="玩家个人悬浮窗设置" eh="0df76500" />
-    <e k="helpLine_sf_se_p2_hud_text" v="悬浮窗为玩家独立设置，不同步服务器。可开关显示、选择位置（5个预设+自定义拖动）、配色（绿/蓝/琥珀/单色）、字体大小（小/中/大）、透明度（25%~100%）、英制单位开关。" eh="f3934884" />
-    <e k="helpLine_sf_se_p2_rate_title" v="喷洒机施肥比例" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="乘坐喷洒/撒肥机具时，可用自定义快捷键增减施肥比例0.10~2.00倍；开启自动比例，模组会自动匹配最佳养分标准，避免肥害。" eh="62c35b45" />
+    <e k="helpLine_sf_se_p2_title" v="HUD et contrôle du débit" eh="399f4910" />
+    <e k="helpLine_sf_se_p2_hud_title" v="Options HUD par joueur" eh="0df76500" />
+    <e k="helpLine_sf_se_p2_hud_text" v="Chaque joueur contrôle son propre HUD, sans synchronisation avec le serveur. Options : affichage du HUD (activé/désactivé), position (5 préréglages et déplacement manuel), thème de couleur (vert, bleu, ambre ou monochrome), taille de police (petite, moyenne ou grande), transparence (25 % à 100 %) et unités impériales (activées/désactivées)." eh="f3934884" />
+    <e k="helpLine_sf_se_p2_rate_title" v="Contrôle du débit du pulvérisateur" eh="5ecdfa23" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Dans un pulvérisateur ou épandeur, utilisez SF augmenter débit et SF diminuer débit pour ajuster le taux d’application de 0.10x à 2.00x. Activez le contrôle automatique du débit pour laisser le mod cibler automatiquement les niveaux optimaux de nutriments et éviter le risque de brûlure." eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
-    <e k="helpLine_sf_mp_p1_title" v="多人模式运行机制" eh="8a4ce30e" />
-    <e k="helpLine_sf_mp_p1_auth_title" v="服务器主导模拟运算" eh="8d324792" />
-    <e k="helpLine_sf_mp_p1_auth_text" v="所有土壤模拟运算在服务器端运行；玩家加入时自动接收完整田地数据与设置，服务器未加载完成会自动重试。悬浮窗位置、配色等个人设置仅本地生效，不同步服务器。" eh="db72a3f9" />
-    <e k="helpLine_sf_mp_p1_ded_title" v="专用服务器" eh="4d3a45ba" />
-    <e k="helpLine_sf_mp_p1_ded_text" v="专用服务器仅运行模拟运算，无悬浮窗和界面负载属于正常现象。可使用控制台指令（soilStatus、SoilSetDifficulty等）管理和查看模组设置。" eh="3df784d6" />
+    <e k="helpLine_sf_mp_p1_title" v="Comment fonctionne le multijoueur" eh="8a4ce30e" />
+    <e k="helpLine_sf_mp_p1_auth_title" v="Simulation côté serveur (server authoritative)" eh="8d324792" />
+    <e k="helpLine_sf_mp_p1_auth_text" v="Toute la simulation du sol s’exécute sur le serveur. Les clients reçoivent toutes les données des champs et les paramètres à la connexion, avec une nouvelle tentative automatique si le serveur est encore en cours de chargement. Les paramètres d’affichage du HUD (position, thème, taille) sont propres à chaque joueur et ne sont jamais synchronisés avec le serveur." eh="db72a3f9" />
+    <e k="helpLine_sf_mp_p1_ded_title" v="Serveurs dédiés" eh="4d3a45ba" />
+    <e k="helpLine_sf_mp_p1_ded_text" v="Les serveurs dédiés exécutent toute la simulation sans surcharge HUD ou interface graphique - c’est normal. Utilisez les commandes console (soilStatus, SoilSetDifficulty, SoilShowSettings, etc.) pour gérer et vérifier les paramètres sur un serveur dédié." eh="3df784d6" />
     <e k="helpLine_sf_mp_p2_title" v="[EN] Compatibility and Workflow" eh="b25d25e9" />
     <e k="helpLine_sf_mp_p2_compat_title" v="[EN] Mod Compatibility" eh="5581e454" />
     <e k="helpLine_sf_mp_p2_compat_text" v="[EN] Soil &amp; Fertilizer uses appended function hooks, so it runs alongside Courseplay, AutoDrive and most equipment mods without conflict. When Precision Farming is active in a savegame it detects it and stands down automatically, so the two never fight over the same fields." eh="54b87e0c" />
@@ -345,180 +345,180 @@
     <e k="helpLine_sf_mp_p2_workflow_text" v="[EN] In multiplayer only server admins can change settings. Change them from the panel or console on the host and every change is validated and pushed to all clients. On Realistic and Hardcore the tuning editors and challenge toggles are locked, so no one can soften the simulation mid-game." eh="42ace095" />
 
 
-    <e k="sf_crop_rotation_short" v="轮作机制" eh="def2c162" />
-    <e k="sf_crop_rotation_long" v="开启/关闭轮作增益与连作衰减；豆科作物可恢复氮元素，同作物连续种植会加快养分消耗" eh="958b4212" />
-    <e k="sf_gypsum_title" v="石膏（降酸碱度）" eh="d66da34c" />
-    <e k="sf_compost_title" v="堆肥（有机质）" eh="c3e2071a" />
-    <e k="sf_biosolids_title" v="生物有机肥（氮+磷）" eh="f0c901dc" />
-    <e k="sf_chicken_manure_title" v="鸡粪（氮+磷）" eh="338128e2" />
-    <e k="sf_pelletized_manure_title" v="颗粒粪肥（氮磷钾）" eh="c1b39b71" />
-    <e k="sf_liquidlime_title" v="液态石灰（升酸碱度）" eh="d4ec4bb9" />
-    <e k="helpLine_sf_nu_p4_title" v="作物轮作" eh="def2c162" />
-    <e k="helpLine_sf_nu_p4_bonus_title" v="轮作增益效果" eh="2831a7ac" />
-    <e k="helpLine_sf_nu_p4_bonus_text" v="非豆科作物后种植豆科作物（大豆、豌豆、菜豆），每年春季可额外获得3天氮元素自然增幅。" eh="e1fce95b" />
-    <e k="helpLine_sf_nu_p4_fatigue_title" v="连作土地衰减" eh="236a590c" />
-    <e k="helpLine_sf_nu_p4_fatigue_text" v="连续两季种植同一种作物，养分消耗增加15%。合理轮作可避免土地衰减。" eh="1613f3c6" />
+    <e k="sf_crop_rotation_short" v="Rotation des cultures" eh="def2c162" />
+    <e k="sf_crop_rotation_long" v="Activer/désactiver le bonus de rotation des cultures et la fatigue des monocultures (les légumineuses restaurent l’azote ; les cultures répétées augmentent la déplétion)" eh="958b4212" />
+    <e k="sf_gypsum_title" v="Gypse (pH-)" eh="d66da34c" />
+    <e k="sf_compost_title" v="Compost (organique)" eh="c3e2071a" />
+    <e k="sf_biosolids_title" v="Biosolides (N+P)" eh="f0c901dc" />
+    <e k="sf_chicken_manure_title" v="Fumier de poulet (N+P)" eh="338128e2" />
+    <e k="sf_pelletized_manure_title" v="Fumier granulé (NPK)" eh="c1b39b71" />
+    <e k="sf_liquidlime_title" v="Chaux liquide (pH+)" eh="d4ec4bb9" />
+    <e k="helpLine_sf_nu_p4_title" v="Rotation des cultures" eh="def2c162" />
+    <e k="helpLine_sf_nu_p4_bonus_title" v="Bonus de rotation" eh="2831a7ac" />
+    <e k="helpLine_sf_nu_p4_bonus_text" v="Planter une légumineuse (soja, pois, haricots) après une culture non légumineuse ajoute un apport gratuit d’azote chaque printemps pendant 3 jours." eh="e1fce95b" />
+    <e k="helpLine_sf_nu_p4_fatigue_title" v="Fatigue des cultures" eh="236a590c" />
+    <e k="helpLine_sf_nu_p4_fatigue_text" v="Planter la même culture deux saisons consécutives augmente l’extraction de nutriments de 15%. Alternez les cultures pour éviter la fatigue du sol." eh="1613f3c6" />
 
     <!-- Soil Map Overlay (SoilMapOverlay.lua) -->
-    <e k="sf_map_layer_off" v="土壤地图：关闭" eh="3e654ade" />
-    <e k="sf_map_layer_n" v="氮元素" eh="1e9ef3ba" />
+    <e k="sf_map_layer_off" v="Carte des sols : désactivée" eh="3e654ade" />
+    <e k="sf_map_layer_n" v="Azote" eh="1e9ef3ba" />
     <e k="sf_map_layer_desc_n" v="[EN] Nitrogen. Depletes fast, every harvest. Apply UAN, urea or manure." />
-    <e k="sf_map_layer_p" v="磷元素" eh="eb4f2688" />
+    <e k="sf_map_layer_p" v="Phosphore" eh="eb4f2688" />
     <e k="sf_map_layer_desc_p" v="[EN] Phosphorus. Slow depletion, root crops. Apply MAP or DAP." />
-    <e k="sf_map_layer_k" v="钾元素" eh="3a4edc67" />
+    <e k="sf_map_layer_k" v="Potassium" eh="3a4edc67" />
     <e k="sf_map_layer_desc_k" v="[EN] Potassium. Root crops deplete heavily. Apply Potash." />
-    <e k="sf_map_layer_ph" v="酸碱度" eh="397dff20" />
+    <e k="sf_map_layer_ph" v="pH" eh="397dff20" />
     <e k="sf_map_layer_desc_ph" v="[EN] Soil acidity. Target range 6.5 - 7.0." />
-    <e k="sf_map_layer_om" v="有机质" eh="6305f4bb" />
+    <e k="sf_map_layer_om" v="Matière organique" eh="6305f4bb" />
     <e k="sf_map_layer_desc_om" v="[EN] Organic matter. Builds slowly over many seasons." />
-    <e k="sf_map_layer_urgency" v="田地紧急度" eh="419ea5af" />
+    <e k="sf_map_layer_urgency" v="Urgence des champs" eh="419ea5af" />
     <e k="sf_map_layer_desc_urgency" v="[EN] Fields that need treatment soonest, highest first." />
-    <e k="sf_map_layer_weed" v="杂草压力" eh="53f8b936" />
+    <e k="sf_map_layer_weed" v="Pression des mauvaises herbes" eh="53f8b936" />
     <e k="sf_map_layer_desc_weed" v="[EN] Weed pressure per field." />
-    <e k="sf_map_layer_pest" v="虫害压力" eh="18a7c2be" />
+    <e k="sf_map_layer_pest" v="Pression des ravageurs" eh="18a7c2be" />
     <e k="sf_map_layer_desc_pest" v="[EN] Pest pressure per field." />
-    <e k="sf_map_layer_disease" v="病害压力" eh="2b805cc9" />
+    <e k="sf_map_layer_disease" v="Pression des maladies" eh="2b805cc9" />
     <e k="sf_map_layer_desc_disease" v="[EN] Disease pressure per field." />
-    <e k="sf_map_layer_compaction" v="土壤板结" eh="19cf3ee7" />
+    <e k="sf_map_layer_compaction" v="Compaction du sol" eh="19cf3ee7" />
     <e k="sf_map_layer_desc_compaction" v="[EN] Soil compaction from heavy machinery." />
     <e k="sf_map_layer_yield" v="[EN] Yield" eh="97345487" />
     <e k="sf_map_layer_desc_yield" v="[EN] Expected yield level." />
-    <e k="sf_map_overlay_cycle" v="Shift+M：切换土壤图层" eh="032fdac7" />
-    <e k="sf_map_page_title" v="土壤图层" eh="04a675fb" />
-    <e k="sf_map_sidebar_header" v="土壤地图图层" eh="81332549" />
-    <e k="sf_map_sidebar_label" v="当前图层" eh="f8a2c198" />
-    <e k="sf_map_sidebar_tooltip" v="选择要在地图上显示的土壤养分项目" eh="eb926e9a" />
-    <e k="sf_map_overlay_low" v="低" eh="28d0edd0" />
-    <e k="sf_map_overlay_med" v="中" eh="248c9511" />
-    <e k="sf_map_overlay_high" v="高" eh="655d20c1" />
+    <e k="sf_map_overlay_cycle" v="Maj+M : changer de couche de sol" eh="032fdac7" />
+    <e k="sf_map_page_title" v="Couches du sol" eh="04a675fb" />
+    <e k="sf_map_sidebar_header" v="Couche de carte des sols" eh="81332549" />
+    <e k="sf_map_sidebar_label" v="Couche active" eh="f8a2c198" />
+    <e k="sf_map_sidebar_tooltip" v="Sélectionnez le nutriment du sol à afficher sur la carte" eh="eb926e9a" />
+    <e k="sf_map_overlay_low" v="Faible" eh="28d0edd0" />
+    <e k="sf_map_overlay_med" v="Moyen" eh="248c9511" />
+    <e k="sf_map_overlay_high" v="Élevé" eh="655d20c1" />
 
     <!-- Soil PDA Screen (SoilPDAScreen.lua) -->
     <e k="sf_pda_screen_title" v="[EN] Soil &amp; Fertilizer" eh="f31197fb" />
-    <e k="sf_pda_tab_map" v="土壤地图" eh="59f988b2" />
-    <e k="sf_pda_tab_fields" v="田地列表" eh="a4ca5edd" />
-    <e k="sf_pda_tab_treatment" v="改良方案" eh="4ba012e2" />
-    <e k="sf_pda_section_farm_overview" v="农场总览" eh="47f2c19a" />
-    <e k="sf_pda_fields_tracked_label" v="已监测田地" eh="c763e26e" />
-    <e k="sf_pda_fields_owned_label" v="已拥有田地" eh="335f5f7e" />
-    <e k="sf_pda_section_avg_nutrients" v="平均养分" eh="f06b2704" />
-    <e k="sf_pda_avg_n_label" v="氮元素(N)" eh="25cee53b" />
-    <e k="sf_pda_avg_p_label" v="磷元素(P)" eh="75cb5cd6" />
-    <e k="sf_pda_avg_k_label" v="钾元素(K)" eh="39797137" />
-    <e k="sf_pda_avg_ph_label" v="酸碱度(pH)" eh="0c85daad" />
-    <e k="sf_pda_avg_om_label" v="有机质" eh="6305f4bb" />
-    <e k="sf_pda_section_pressure" v="作物灾害压力" eh="a73974d0" />
-    <e k="sf_pda_weed_label" v="杂草" eh="2b75024d" />
-    <e k="sf_pda_pest_label" v="虫害" eh="8f2aee79" />
-    <e k="sf_pda_disease_label" v="病害" eh="e7067a8c" />
-    <e k="sf_pda_section_attention" v="需关注项目" eh="80e48bc3" />
-    <e k="sf_pda_needs_fert_label" v="需施肥田地" eh="fa9ded5e" />
-    <e k="sf_pda_total_urgent_label" v="待处理田地总数" eh="b3ce2db9" />
-    <e k="sf_pda_no_data_left" v="暂无田地监测数据。" eh="ba71c6b1" />
+    <e k="sf_pda_tab_map" v="Carte des sols" eh="59f988b2" />
+    <e k="sf_pda_tab_fields" v="Champs" eh="a4ca5edd" />
+    <e k="sf_pda_tab_treatment" v="Plan de traitement" eh="4ba012e2" />
+    <e k="sf_pda_section_farm_overview" v="Aperçu de la ferme" eh="47f2c19a" />
+    <e k="sf_pda_fields_tracked_label" v="Champs suivis" eh="c763e26e" />
+    <e k="sf_pda_fields_owned_label" v="Champs possédés" eh="335f5f7e" />
+    <e k="sf_pda_section_avg_nutrients" v="Moyenne des nutriments" eh="f06b2704" />
+    <e k="sf_pda_avg_n_label" v="Azote (N)" eh="25cee53b" />
+    <e k="sf_pda_avg_p_label" v="Phosphore (P)" eh="75cb5cd6" />
+    <e k="sf_pda_avg_k_label" v="Potassium (K)" eh="39797137" />
+    <e k="sf_pda_avg_ph_label" v="Niveau de pH" eh="0c85daad" />
+    <e k="sf_pda_avg_om_label" v="Matière organique" eh="6305f4bb" />
+    <e k="sf_pda_section_pressure" v="Pression des cultures" eh="a73974d0" />
+    <e k="sf_pda_weed_label" v="Mauvaises herbes" eh="2b75024d" />
+    <e k="sf_pda_pest_label" v="Ravageurs" eh="8f2aee79" />
+    <e k="sf_pda_disease_label" v="Maladies" eh="e7067a8c" />
+    <e k="sf_pda_section_attention" v="À surveiller" eh="80e48bc3" />
+    <e k="sf_pda_needs_fert_label" v="Besoin d’engrais" eh="fa9ded5e" />
+    <e k="sf_pda_total_urgent_label" v="Total à traiter" eh="b3ce2db9" />
+    <e k="sf_pda_no_data_left" v="Aucune donnée de champ disponible." eh="ba71c6b1" />
     <!-- Map Tab -->
-    <e k="sf_pda_map_section_title" v="土壤地图图层" eh="85d63132" />
-    <e k="sf_pda_map_active_layer" v="当前图层" eh="f8a2c198" />
-    <e k="sf_pda_map_layer_off_desc" v="未启用土壤图层，请选择图层进行显示。" eh="3bd7e65a" />
-    <e k="sf_pda_map_layer_n_desc" v="全田地氮元素含量，绿色=良好，红色=匮乏" eh="60484ead" />
-    <e k="sf_pda_map_layer_p_desc" v="全田地磷元素含量，绿色=良好，红色=匮乏" eh="9fa2e72d" />
-    <e k="sf_pda_map_layer_k_desc" v="全田地钾元素含量，绿色=良好，红色=匮乏" eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="土壤酸碱度，最佳区间6.5-7.0（绿色）" eh="ce7009e7" />
-    <e k="sf_pda_map_layer_om_desc" v="土壤有机质含量，数值越高长期肥力越好" eh="f64c5706" />
-    <e k="sf_pda_map_layer_urgency_desc" v="综合改良紧急度，红色=需立即处理" eh="f29ddc2b" />
-    <e k="sf_pda_map_layer_weed_desc" v="杂草压力等级，红色=重度侵害，立即喷洒除草剂" eh="24009598" />
-    <e k="sf_pda_map_layer_pest_desc" v="虫害压力等级，红色=重度侵害，立即喷洒杀虫剂" eh="86ba29dc" />
-    <e k="sf_pda_map_layer_disease_desc" v="病害压力等级，红色=大规模爆发，立即喷洒杀菌剂" eh="5d32d30a" />
-    <e k="sf_pda_map_legend_title" v="地图图例" eh="86448402" />
-    <e k="sf_pda_map_legend_good" v="良好" eh="0c6ad70b" />
-    <e k="sf_pda_map_legend_fair" v="一般" eh="f7f20cf0" />
-    <e k="sf_pda_map_legend_poor" v="较差/偏低" eh="32aa75ff" />
-    <e k="sf_pda_map_legend_low" v="低" eh="28d0edd0" />
-    <e k="sf_pda_map_legend_medium" v="中" eh="87f8a6ab" />
-    <e k="sf_pda_map_legend_high" v="高" eh="655d20c1" />
-    <e k="sf_pda_map_legend_excess" v="过量" eh="d1d25b9f" />
-    <e k="sf_pda_map_instructions" v="在侧边栏选择图层，即可在地图上查看" eh="eee76c81" />
-    <e k="sf_pda_map_jump_hint" v="点击田地可在地图上快速定位" eh="006d5371" />
+    <e k="sf_pda_map_section_title" v="Couches du sol" eh="85d63132" />
+    <e k="sf_pda_map_active_layer" v="Couche active" eh="f8a2c198" />
+    <e k="sf_pda_map_layer_off_desc" v="Aucune couche de sol active. Veuillez sélectionner une couche à afficher." eh="3bd7e65a" />
+    <e k="sf_pda_map_layer_n_desc" v="Teneur en azote sur tous les champs. Vert = bon, rouge = appauvri." eh="60484ead" />
+    <e k="sf_pda_map_layer_p_desc" v="Teneur en phosphore sur tous les champs. Vert = bon, rouge = appauvri." eh="9fa2e72d" />
+    <e k="sf_pda_map_layer_k_desc" v="Teneur en potassium sur tous les champs. Vert = bon, rouge = appauvri." eh="a61d25b7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Niveau de pH du sol. Plage optimale 6.5-7.0 (vert)." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_om_desc" v="Teneur en matière organique. Plus elle est élevée, meilleure est la fertilité à long terme." eh="f64c5706" />
+    <e k="sf_pda_map_layer_urgency_desc" v="Urgence de traitement globale. Rouge = intervention immédiate nécessaire." eh="f29ddc2b" />
+    <e k="sf_pda_map_layer_weed_desc" v="Niveau de mauvaises herbes. Rouge = forte infestation, appliquer un herbicide." eh="24009598" />
+    <e k="sf_pda_map_layer_pest_desc" v="Niveau de ravageurs. Rouge = forte infestation, appliquer un insecticide." eh="86ba29dc" />
+    <e k="sf_pda_map_layer_disease_desc" v="Niveau de maladies. Rouge = épidémie active, appliquer un fongicide." eh="5d32d30a" />
+    <e k="sf_pda_map_legend_title" v="Légende de la carte" eh="86448402" />
+    <e k="sf_pda_map_legend_good" v="Bon" eh="0c6ad70b" />
+    <e k="sf_pda_map_legend_fair" v="Moyen" eh="f7f20cf0" />
+    <e k="sf_pda_map_legend_poor" v="Faible / Mauvais" eh="32aa75ff" />
+    <e k="sf_pda_map_legend_low" v="Faible" eh="28d0edd0" />
+    <e k="sf_pda_map_legend_medium" v="Moyen" eh="87f8a6ab" />
+    <e k="sf_pda_map_legend_high" v="Élevé" eh="655d20c1" />
+    <e k="sf_pda_map_legend_excess" v="Excès" eh="d1d25b9f" />
+    <e k="sf_pda_map_instructions" v="Sélectionnez une couche dans la barre latérale pour l’afficher sur la carte." eh="eee76c81" />
+    <e k="sf_pda_map_jump_hint" v="Cliquez sur un champ pour vous y déplacer sur la carte" eh="006d5371" />
     <e k="sf_pda_map_native_hint" v="[EN] The soil layer visualization has moved! You can now access and toggle all soil layers directly from the native PDA Map sidebar (ESC &gt; Map). Look for the 'Soil Layers' category in the sidebar dots." eh="3210d828" />
-    <e k="sf_pda_map_open_btn" v="开发备注" eh="ef40b93f" />
-    <e k="sf_pda_btn_help" v="帮助" eh="6a26f548" />
+    <e k="sf_pda_map_open_btn" v="NOTE DEV" eh="ef40b93f" />
+    <e k="sf_pda_btn_help" v="Aide" eh="6a26f548" />
     <e k="sf_pda_help_text" v="[EN] Hi there, it's me the developer! I've moved the soil map layers to the native PDA Map (ESC &gt; Map) for a more seamless experience. You can now select layers directly from the sidebar. The PDA page is still being polished, so stay tuned for more updates!" eh="67643ddd" />
-    <e k="sf_pda_help_github" v="你的反馈非常重要！如遇到BUG、有新功能建议或想参与代码开发，请访问项目GitHub。随时提交Issue或Pull Request，一起让模组变得更好，感谢你的测试！" eh="3a10b023" />
-    <e k="sf_pda_help_note" v="注意：地图页面的土壤图层标签页暂不可用。我已知晓该问题并正在修复（可能需要一些时间）。" eh="2d8f5dc7" />
-    <e k="sf_pda_map_unavailable" v="地图预览不可用" eh="43983f81" />
-    <e k="sf_map_health_overall" v="平均土壤健康度" eh="5533cbe3" />
-    <e k="sf_map_btn_report" v="打开农场总览" eh="6f0800e8" />
+    <e k="sf_pda_help_github" v="VOS RETOURS COMPTENT ! Si vous trouvez des bugs ou avez des suggestions, rendez-vous sur GitHub pour ouvrir une issue ou une pull request." eh="3a10b023" />
+    <e k="sf_pda_help_note" v="Note : l’onglet des couches de sol sur la carte ne fonctionne pas. Le problème est connu et en cours de correction." eh="2d8f5dc7" />
+    <e k="sf_pda_map_unavailable" v="Aperçu de la carte indisponible" eh="43983f81" />
+    <e k="sf_map_health_overall" v="Santé moyenne du sol" eh="5533cbe3" />
+    <e k="sf_map_btn_report" v="Ouvrir l’aperçu de la ferme" eh="6f0800e8" />
     <e k="sf_map_btn_help" v="[EN] Help" eh="6a26f548" />
-    <e k="sf_map_btn_cycle_layer" v="切换图层" eh="875dbf22" />
-    <e k="sf_map_btn_treatment" v="改良方案" eh="4ba012e2" />
-    <e k="sf_map_btn_disable" v="关闭图层叠加" eh="8e75dec5" />
-    <e k="sf_treat_action_ok" v="正常" eh="e0aa021e" />
-    <e k="sf_help_title" v="土壤快速参考" eh="8986bb6d" />
-    <e k="sf_help_nutrients_header" v="养分指标" eh="9aeb39bf" />
-    <e k="sf_help_n" v="氮(N)  - 消耗快，使用UAN、尿素或粪肥补充" eh="f2d0c792" />
-    <e k="sf_help_p" v="磷(P)  - 持久性强，使用磷酸一铵/二铵补充" eh="fdfbd91e" />
-    <e k="sf_help_k" v="钾(K)  - 使用钾肥补充，对根系作物至关重要" eh="e0217634" />
-    <e k="sf_help_om" v="有机质(OM) - 提升缓慢，可翻耕粪肥/堆肥增加" eh="a4e29617" />
-    <e k="sf_help_soil_header" v="土壤化学指标" eh="19c67ff5" />
-    <e k="sf_help_ph" v="酸碱度  6.5-7.0=最佳  ＜6.5用石灰  ＞7.5用石膏" eh="8929304d" />
-    <e k="sf_help_pressure_header" v="作物灾害压力" eh="132b0f66" />
-    <e k="sf_help_weed" v="杂草    ＞20% - 喷洒除草剂" eh="c8d890df" />
-    <e k="sf_help_pest" v="虫害    ＞20% - 喷洒杀虫剂" eh="f4932a05" />
-    <e k="sf_help_disease" v="病害    ＞20% - 喷洒杀菌剂" eh="1bfd0913" />
-    <e k="sf_help_status_header" v="状态等级" eh="b081c2c6" />
-    <e k="sf_help_good" v="良好 - 无需处理" eh="03910bec" />
-    <e k="sf_help_fair" v="一般 - 持续观察/预防性补充" eh="2922eb1c" />
-    <e k="sf_help_poor" v="较差 - 需立即处理" eh="b287d206" />
+    <e k="sf_map_btn_cycle_layer" v="Changer de couche" eh="875dbf22" />
+    <e k="sf_map_btn_treatment" v="Plan de traitement" eh="4ba012e2" />
+    <e k="sf_map_btn_disable" v="Désactiver l’superposition" eh="8e75dec5" />
+    <e k="sf_treat_action_ok" v="OK" eh="e0aa021e" />
+    <e k="sf_help_title" v="Guide rapide du sol" eh="8986bb6d" />
+    <e k="sf_help_nutrients_header" v="NUTRIMENTS" eh="9aeb39bf" />
+    <e k="sf_help_n" v="N (Azote) - Se déplete vite. Utiliser UAN, urée ou fumier." eh="f2d0c792" />
+    <e k="sf_help_p" v="P (Phosphore) - Durable. Utiliser MAP ou DAP." eh="fdfbd91e" />
+    <e k="sf_help_k" v="K (Potassium) - Utiliser potasse. Important pour les racines." eh="e0217634" />
+    <e k="sf_help_om" v="OM (matière org.) - Croissance lente. Incorporer fumier/compost." eh="a4e29617" />
+    <e k="sf_help_soil_header" v="CHIMIE DU SOL" eh="19c67ff5" />
+    <e k="sf_help_ph" v="pH  6.5-7.0 = idéal. &lt; 6.5 chaux. &gt; 7.5 gypse." eh="8929304d" />
+    <e k="sf_help_pressure_header" v="PRESSION CULTURALE" eh="132b0f66" />
+    <e k="sf_help_weed" v="Mauvaises herbes &gt; 20% - herbicide." eh="c8d890df" />
+    <e k="sf_help_pest" v="Ravageurs &gt; 20% - insecticide." eh="f4932a05" />
+    <e k="sf_help_disease" v="Maladies &gt; 20% - fongicide." eh="1bfd0913" />
+    <e k="sf_help_status_header" v="NIVEAUX DE STATUT" eh="b081c2c6" />
+    <e k="sf_help_good" v="Bon - aucune action." eh="03910bec" />
+    <e k="sf_help_fair" v="Moyen - surveillance." eh="2922eb1c" />
+    <e k="sf_help_poor" v="Mauvais - traitement urgent." eh="b287d206" />
     <!-- Fields Tab -->
-    <e k="sf_pda_fields_section_title" v="所有田地" eh="48729e0b" />
-    <e k="sf_pda_col_field" v="田地" eh="6f16a5f8" />
-    <e k="sf_pda_col_n" v="氮" eh="30740562" />
-    <e k="sf_pda_col_p" v="磷" eh="0a5e03bc" />
-    <e k="sf_pda_filter_all" v="筛选：全部田地" eh="a46a8cb2" />
-    <e k="sf_pda_filter_owned" v="筛选：仅自有田地" eh="258cb971" />
-    <e k="sf_pda_col_k" v="钾" eh="43e4d0bf" />
-    <e k="sf_pda_col_ph" v="酸碱度" eh="397dff20" />
-    <e k="sf_pda_col_om" v="有机质" eh="bfbebc07" />
-    <e k="sf_pda_col_status" v="状态" eh="ec53a8c4" />
+    <e k="sf_pda_fields_section_title" v="Tous les champs" eh="48729e0b" />
+    <e k="sf_pda_col_field" v="Champ" eh="6f16a5f8" />
+    <e k="sf_pda_col_n" v="N%" eh="30740562" />
+    <e k="sf_pda_col_p" v="P%" eh="0a5e03bc" />
+    <e k="sf_pda_filter_all" v="Filtre : Tous les champs" eh="a46a8cb2" />
+    <e k="sf_pda_filter_owned" v="Filtre : Champs possédés" eh="258cb971" />
+    <e k="sf_pda_col_k" v="K%" eh="43e4d0bf" />
+    <e k="sf_pda_col_ph" v="pH" eh="397dff20" />
+    <e k="sf_pda_col_om" v="MO" eh="bfbebc07" />
+    <e k="sf_pda_col_status" v="Statut" eh="ec53a8c4" />
 		<e k="sf_pda_col_weeds" v="[EN] Weeds" eh="324181de" />
-		<e k="sf_pda_col_pests" v="虫害" eh="2fed5101" />
-		<e k="sf_pda_col_disease" v="病害" eh="e7067a8c" />
-    <e k="sf_pda_no_fields" v="暂无田地数据记录" eh="72265670" />
-    <e k="sf_pda_status_good" v="良好" eh="0c6ad70b" />
-    <e k="sf_pda_status_fair" v="一般" eh="f7f20cf0" />
-    <e k="sf_pda_status_poor" v="较差" eh="0e94d017" />
+		<e k="sf_pda_col_pests" v="Ravageurs" eh="2fed5101" />
+		<e k="sf_pda_col_disease" v="Maladies" eh="e7067a8c" />
+    <e k="sf_pda_no_fields" v="Aucune donnée de champ enregistrée." eh="72265670" />
+    <e k="sf_pda_status_good" v="Bon" eh="0c6ad70b" />
+    <e k="sf_pda_status_fair" v="Moyen" eh="f7f20cf0" />
+    <e k="sf_pda_status_poor" v="Mauvais" eh="0e94d017" />
     <!-- Treatment Tab -->
-    <e k="sf_pda_treatment_section_title" v="改良方案" eh="4ba012e2" />
-    <e k="sf_pda_col_priority" v="紧急度" eh="c94e3850" />
-    <e k="sf_pda_col_needs" v="所需物资" eh="94d6125d" />
-    <e k="sf_pda_no_treatment" v="所有田地状态良好" eh="fa985166" />
+    <e k="sf_pda_treatment_section_title" v="Plan de traitement" eh="4ba012e2" />
+    <e k="sf_pda_col_priority" v="Urgence" eh="c94e3850" />
+    <e k="sf_pda_col_needs" v="Besoins" eh="94d6125d" />
+    <e k="sf_pda_no_treatment" v="Tous les champs sont en bon état." eh="fa985166" />
     <e k="sf_pda_treatment_hint" v="[EN] Fields listed on the right need treatment. Select a row to see the plan below." eh="8b708629" />
     <e k="sf_pda_treatment_select" v="[EN] Select a field above to see the treatment prescription." eh="c191c750" />
-    <e k="sf_pda_need_n" v="氮肥" eh="1e9ef3ba" />
-    <e k="sf_pda_need_p" v="磷肥" eh="eb4f2688" />
-    <e k="sf_pda_need_k" v="钾肥" eh="3a4edc67" />
-    <e k="sf_pda_need_ph" v="酸碱度调节" eh="0570e9d2" />
-    <e k="sf_pda_need_weed" v="除草剂" eh="1029736e" />
-    <e k="sf_pda_need_pest" v="杀虫剂" eh="5650eeef" />
-    <e k="sf_pda_need_disease" v="杀菌剂" eh="e8512698" />
-    <e k="sf_pda_need_multiple" v="多种物资" eh="a0bf169f" />
-    <e k="sf_pda_treatment_minor" v="轻度" eh="6fed0c37" />
+    <e k="sf_pda_need_n" v="Azote" eh="1e9ef3ba" />
+    <e k="sf_pda_need_p" v="Phosphore" eh="eb4f2688" />
+    <e k="sf_pda_need_k" v="Potassium" eh="3a4edc67" />
+    <e k="sf_pda_need_ph" v="Correction du pH" eh="0570e9d2" />
+    <e k="sf_pda_need_weed" v="Herbicide" eh="1029736e" />
+    <e k="sf_pda_need_pest" v="Insecticide" eh="5650eeef" />
+    <e k="sf_pda_need_disease" v="Fongicide" eh="e8512698" />
+    <e k="sf_pda_need_multiple" v="Multiple" eh="a0bf169f" />
+    <e k="sf_pda_treatment_minor" v="Mineur" eh="6fed0c37" />
     <!-- Field Detail Dialog (SoilFieldDetailDialog.lua) -->
-    <e k="sf_detail_title" v="田地详情" eh="03b5acd7" />
-    <e k="sf_detail_close" v="关闭" eh="d3d2e617" />
-    <e k="sf_detail_field_label" v="田地编号" eh="228118ab" />
-    <e k="sf_detail_urgency_label" v="紧急度：" eh="9a83237c" />
-    <e k="sf_detail_section_nutrients" v="土壤养分" eh="64377acf" />
-    <e k="sf_detail_section_pressure" v="作物灾害压力" eh="a73974d0" />
-    <e k="sf_detail_section_history" v="种植历史" eh="54c27499" />
-    <e k="sf_detail_n_label" v="氮元素(N)" eh="25cee53b" />
-    <e k="sf_detail_p_label" v="磷元素(P)" eh="75cb5cd6" />
-    <e k="sf_detail_k_label" v="钾元素(K)" eh="39797137" />
-    <e k="sf_detail_ph_label" v="酸碱度(pH)" eh="0c85daad" />
-    <e k="sf_detail_om_label" v="有机质" eh="6305f4bb" />
-    <e k="sf_detail_weed_label" v="杂草压力" eh="53f8b936" />
-    <e k="sf_detail_pest_label" v="虫害压力" eh="18a7c2be" />
-    <e k="sf_detail_disease_label" v="病害压力" eh="2b805cc9" />
-    <e k="sf_detail_last_crop_label" v="上季作物" eh="ff41e5eb" />
-    <e k="sf_detail_rotation_label" v="轮作状态" eh="83f7f522" />
+    <e k="sf_detail_title" v="Détail du champ" eh="03b5acd7" />
+    <e k="sf_detail_close" v="Fermer" eh="d3d2e617" />
+    <e k="sf_detail_field_label" v="Champ #" eh="228118ab" />
+    <e k="sf_detail_urgency_label" v="Urgence :" eh="9a83237c" />
+    <e k="sf_detail_section_nutrients" v="Nutriments du sol" eh="64377acf" />
+    <e k="sf_detail_section_pressure" v="Pression culturale" eh="a73974d0" />
+    <e k="sf_detail_section_history" v="Historique des cultures" eh="54c27499" />
+    <e k="sf_detail_n_label" v="Azote (N)" eh="25cee53b" />
+    <e k="sf_detail_p_label" v="Phosphore (P)" eh="75cb5cd6" />
+    <e k="sf_detail_k_label" v="Potassium (K)" eh="39797137" />
+    <e k="sf_detail_ph_label" v="pH" eh="0c85daad" />
+    <e k="sf_detail_om_label" v="Matière organique" eh="6305f4bb" />
+    <e k="sf_detail_weed_label" v="Mauvaises herbes" eh="53f8b936" />
+    <e k="sf_detail_pest_label" v="Ravageurs" eh="18a7c2be" />
+    <e k="sf_detail_disease_label" v="Maladies" eh="2b805cc9" />
+    <e k="sf_detail_last_crop_label" v="Dernière culture" eh="ff41e5eb" />
+    <e k="sf_detail_rotation_label" v="Statut de rotation" eh="83f7f522" />
 
     <!-- Rotation Foresight (pre-plant preview - SoilFieldDetailDialog.lua) -->
     <e k="sf_rf_section" v="[EN] Rotation Foresight" eh="6f977043" />
@@ -534,33 +534,33 @@
     <e k="sf_rf_effect_neutral" v="[EN] no change" eh="66d22a5d" />
 
     <!-- Treatment Prescription Dialog (SoilTreatmentDialog.lua) -->
-    <e k="sf_treat_title" v="改良方案建议" eh="0ccc3ee5" />
-    <e k="sf_treat_section_soil" v="土壤改良" eh="09e016e4" />
-    <e k="sf_treat_section_fert" v="养分施加" eh="76521e8e" />
-    <e k="sf_treat_section_prot" v="作物防护" eh="bd3fe9cd" />
-    <e k="sf_treat_hint" v="专用肥料可在商店「农资」分类购买" eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="状态最佳 - 无需处理" eh="4501a96b" />
-    <e k="sf_treat_action_lime" v="使用石灰/液态石灰提升酸碱度" eh="d1420b97" />
-    <e k="sf_treat_action_gypsum" v="使用石膏降低酸碱度/改良土壤结构" eh="4cb3f0dc" />
+    <e k="sf_treat_title" v="Prescription de traitement" eh="0ccc3ee5" />
+    <e k="sf_treat_section_soil" v="Amélioration du sol" eh="09e016e4" />
+    <e k="sf_treat_section_fert" v="Apport en nutriments" eh="76521e8e" />
+    <e k="sf_treat_section_prot" v="Protection des cultures" eh="bd3fe9cd" />
+    <e k="sf_treat_hint" v="Consultez la section 'Produits' de la boutique pour les engrais spécialisés." eh="540bff4d" />
+    <e k="sf_treat_action_optimal" v="Optimal - Aucune action requise." eh="4501a96b" />
+    <e k="sf_treat_action_lime" v="Appliquer de la CHAUX ou CHAUX LIQUIDE pour augmenter le pH." eh="d1420b97" />
+    <e k="sf_treat_action_gypsum" v="Appliquer du GYPSE pour réduire le pH / améliorer la structure." eh="4cb3f0dc" />
     <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
-    <e k="sf_treat_action_om_low" v="翻耕粪肥、堆肥或秸秆还田" eh="33ec544c" />
-    <e k="sf_treat_action_om_fair" v="持续观察，维持有机肥投入" eh="ae3af748" />
-    <e k="sf_treat_action_n_poor" v="使用UAN32、尿素或无水氨补充氮肥" eh="ebc225b0" />
-    <e k="sf_treat_action_n_fair" v="使用硫酸铵或启动肥补充氮肥" eh="dc8fbeba" />
-    <e k="sf_treat_action_p_poor" v="使用磷酸一铵/二铵补充磷肥" eh="ec2d9afa" />
+    <e k="sf_treat_action_om_low" v="Incorporer du FUMIER, COMPOST ou broyer les résidus de paille." eh="33ec544c" />
+    <e k="sf_treat_action_om_fair" v="Surveiller. Maintenir les apports organiques." eh="ae3af748" />
+    <e k="sf_treat_action_n_poor" v="Appliquer UAN32, URÉE ou AMMONIAC ANHYDRE." eh="ebc225b0" />
+    <e k="sf_treat_action_n_fair" v="Appliquer AMS ou engrais STARTER." eh="dc8fbeba" />
+    <e k="sf_treat_action_p_poor" v="Appliquer MAP ou DAP (Phosphore)." eh="ec2d9afa" />
     <e k="sf_treat_action_p_fair" v="[EN] Top-up with Liquid MAP, Liquid DAP, or DAP (P)." eh="0c99c3e8" />
-    <e k="sf_treat_action_k_poor" v="使用钾肥" eh="bb2960f3" />
+    <e k="sf_treat_action_k_poor" v="Appliquer de la POTASSE (Potassium)." eh="bb2960f3" />
     <e k="sf_treat_action_k_fair" v="[EN] Top-up with Liquid Potash or Potash (K)." eh="1e12fc32" />
-    <e k="sf_treat_action_weed" v="立即喷洒除草剂" eh="625551c5" />
-    <e k="sf_treat_action_pest" v="立即喷洒杀虫剂" eh="f4db9a03" />
-    <e k="sf_treat_action_disease" v="立即喷洒杀菌剂" eh="9228323a" />
-    <e k="sf_detail_rotation_ok" v="正常" eh="e0aa021e" />
+    <e k="sf_treat_action_weed" v="Appliquer un HERBICIDE immédiatement." eh="625551c5" />
+    <e k="sf_treat_action_pest" v="Appliquer un INSECTICIDE immédiatement." eh="f4db9a03" />
+    <e k="sf_treat_action_disease" v="Appliquer un FONGICIDE immédiatement." eh="9228323a" />
+    <e k="sf_detail_rotation_ok" v="OK" eh="e0aa021e" />
     <e k="sf_detail_yield_eff_label" v="Yield eff." eh="2aa6bf08" />
     <e k="sf_detail_yield_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_detail_rotation_bonus" v="豆科增益(+氮)" eh="8ab86f6a" />
-    <e k="sf_detail_rotation_fatigue" v="土地衰减(消耗×1.15)" eh="522a6d93" />
-    <e k="sf_detail_no_field" v="暂无可用数据" eh="c6d95d5e" />
-    <e k="sf_detail_no_crop" v="无记录" eh="a4b5a996" />
+    <e k="sf_detail_rotation_bonus" v="Bonus légumineuses (+N)" eh="8ab86f6a" />
+    <e k="sf_detail_rotation_fatigue" v="Fatigue (x1.15 déplétion)" eh="522a6d93" />
+    <e k="sf_detail_no_field" v="Aucune donnée disponible." eh="c6d95d5e" />
+    <e k="sf_detail_no_crop" v="Aucune culture enregistrée" eh="a4b5a996" />
 
     <!-- ======================================================
          HUD LABELS, UNITS & COVERAGE
@@ -1072,14 +1072,14 @@
     <e k="sf_guide_tab_3" v="WORKFLOW" eh="7337e059" />
     <e k="sf_guide_tab_4" v="PRODUCTS" eh="d71bd8a0" />
     <e k="sf_guide_tab_5" v="F.A.Q." eh="a922ea47" />
-    <e k="sf_report_fields_tracked"   v="已追踪田地：" />
-    <e k="sf_report_rotation_bonus"   v="轮作增益" />
+    <e k="sf_report_fields_tracked"   v="Champs suivis :" />
+    <e k="sf_report_rotation_bonus"   v="Bonus" />
     <e k="sf_report_rotation_fatigue" v="[EN] Fatigue: same crop" eh="7b173595" />
-    <e k="sf_report_rotation_ok"      v="轮作状态：正常" />
-    <e k="sf_report_rec_optimal"      v="土壤健康：最佳" />
-    <e k="sf_report_rec_good"         v="良好" />
-    <e k="sf_report_rec_fair"         v="一般" />
-    <e k="sf_report_rec_poor"         v="较差" />
+    <e k="sf_report_rotation_ok"      v="OK" />
+    <e k="sf_report_rec_optimal"      v="Santé du sol : optimale" />
+    <e k="sf_report_rec_good"         v="Bon" />
+    <e k="sf_report_rec_fair"         v="Moyen" />
+    <e k="sf_report_rec_poor"         v="Faible" />
     	<e k="sf_fieldsentry_asleep" v="sim asleep" eh="7d49241b" />
     	<e k="sf_fs_reason_manual" v="manual" eh="3c78b355" />
     	<e k="sf_fs_reason_npc" v="NPC contract" eh="2e1a268b" />
@@ -1355,7 +1355,7 @@
     <e k="rf_pda_status_urgent" v="[EN] URGENT" eh="e395eb26" />
     <e k="rf_pda_status_ok" v="[EN] OK" eh="e0aa021e" />
     <e k="rf_pda_fert_chip" v="[EN] FERT" eh="c7185b0b" />
-    <e k="rf_pda_fert_in_need" v="需施肥" eh="a7e4c912" />
+    <e k="rf_pda_fert_in_need" v="BESOIN" eh="a7e4c912" />
     <e k="rf_pda_treatment_selected" v="[EN] Selected field: Field %s" eh="0c01ba54" />
 		<e k="rf_pda_treatment_next" v="[EN] Next: %s" eh="6914fabe" />
 		<e k="rf_pda_treatment_selected_next" v="[EN] Field %s · Next: %s" eh="1bfc779c" />
@@ -1486,25 +1486,25 @@
     <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
     <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
     <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
-    <e k="sf_res_title" v="抗药性" eh="9db444f7" />
-    <e k="sf_res_state_unknown" v="地块 %d：抗药性尚未知晓。勘察此地块以了解其历史。" eh="ab16e14a" />
-    <e k="sf_res_state_waiting" v="地块 %d：正在等待服务器的抗药性数据。" eh="b3c62e5b" />
-    <e k="sf_res_state_known" v="地块 %d：抗药性历史已知。" eh="8717924c" />
-    <e k="sf_res_mode" v="模式 %s" eh="fdbc9304" />
-    <e k="sf_res_band_unknown" v="尚未知晓" eh="8f4a0706" />
-    <e k="sf_res_band_working" v="防效良好" eh="75eb95bf" />
-    <e k="sf_res_band_slipping" v="防效下降" eh="cc4d1243" />
-    <e k="sf_res_band_finished" v="无防效" eh="dd802b99" />
-    <e k="sf_res_note" v="用药罐喷施的杀菌剂会在此地块上积累抗药性。菜单中的处理不使用该抗药性模型，并按地块面积计费。" eh="effb087f" />
-    <e k="sf_res_pairs_btn" v="药罐配对" eh="fb0e4920" />
-    <e k="sf_res_pairs_title" v="地块 %d 的药罐配对" eh="d2e9272f" />
-    <e k="sf_res_pairs_intro" v="防效用语是此地块的当前等级。标记为有机的配对属于有机核准清单。此处不排名、不购买、不混配。" eh="efb73722" />
-    <e k="sf_res_pairs_line" v="%s（模式 %s）：%s。可与 %s 配对。" eh="2a537b39" />
-    <e k="sf_res_pairs_all" v="任何其他杀菌剂" eh="2eee400b" />
-    <e k="sf_res_pairs_organic" v="有机配对" eh="49f08add" />
-    <e k="sf_res_pairs_none" v="配对表未载入" eh="abbe2edb" />
-    <e k="sf_res_pairs_nothing" v="无列出的搭档" eh="06752d51" />
-    <e k="sf_res_pairs_no_field" v="请先选择你的一块地。" eh="dfc6d58d" />
+    <e k="sf_res_title" v="Résistance" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="Parcelle %d : résistance pas encore connue. Explorez cette parcelle pour connaître son historique." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="Parcelle %d : en attente du bilan de résistance du serveur." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="Parcelle %d : historique de résistance connu." eh="8717924c" />
+    <e k="sf_res_mode" v="Mode %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="Pas encore connu" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="Bon contrôle" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="Contrôle réduit" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="Aucun contrôle" eh="dd802b99" />
+    <e k="sf_res_note" v="Les fongicides appliqués à la cuve développent la résistance sur cette parcelle. Les traitements par menu n'utilisent pas ce modèle de résistance et sont facturés à la surface." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="Associations de cuve" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="Associations de cuve pour la parcelle %d" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="Les mentions de contrôle correspondent aux niveaux actuels de cette parcelle. Une association marquée biologique figure sur la liste bio autorisée. Rien ici ne classe, n'achète ni ne mélange." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s (mode %s) : %s. S'associe à %s." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="tout autre fongicide" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="association biologique" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="table des associations non chargée" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="aucun partenaire répertorié" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="Sélectionnez d'abord l'une de vos parcelles." eh="dfc6d58d" />
     <e k="sf_dog_field_warning" v="Votre chien sent que quelque chose ne va pas dans le champ n°%s." eh="405d8e87" />
     <e k="sf_dog_barn_warning" v="Votre chien sent que quelque chose ne va pas à l'étable %s." eh="15ea2c1a" />
     <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
