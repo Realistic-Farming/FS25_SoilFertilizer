@@ -6452,9 +6452,15 @@ end
 
 --- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
 --- field scalars without coordinates; strict LOCAL map truth with them.
+--- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target
+--- mode (TA:isGateOpen, fail-closed): the readers (SeasonalCropStress, DairyCore) keep
+--- their complete legacy paths and move to crop windows when SF-73 unlocks (Design, on
+--- #1029).
 function SoilFertilitySystem:getCropNutrientRelationship(fieldId, x, z)
     local ta = self.targetApplication
     if ta == nil then return nil end
+    local okGate, open = pcall(ta.isGateOpen, ta)
+    if not okGate or open ~= true then return nil end
     local ok, r = pcall(ta.getCropNutrientRelationship, ta, fieldId, x, z)
     if ok then return r end
     return nil
