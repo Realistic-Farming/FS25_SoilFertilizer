@@ -1470,6 +1470,10 @@
     <e k="sf_report_rotation_na" v="N/D" eh="382b0f51" />
     <e k="sf_config_seeSpray" v="See &amp; Spray" eh="528cf03f" />
     <e k="sf_report_rec_optimal" v="Santé du sol : optimale" eh="6ee9d19b" />
+    <e k="sf_report_fields_tracked" v="Champs suivis :" />
+    <e k="sf_report_rec_good" v="Bon" />
+    <e k="sf_report_rec_fair" v="Moyen" />
+    <e k="sf_report_rec_poor" v="Faible" />
     <e k="sf_report_rotation_bonus" v="Bonus" eh="3c0ee4ba" />
     <e k="sf_report_rotation_ok" v="OK" eh="e0aa021e" />
     <e k="sf_sensor_disease" v="Capteur de maladies" eh="37955f80" />
