@@ -292,11 +292,20 @@ function HayBet:applyTedderDelta(verts)
     -- every pixel on the map, so the tedder was drying every swath in the world by
     -- eight points each time it passed over one of them. The brief says "over the
     -- worked area" and the polygon-banded call is the one that means it.
+    -- THE EQUILIBRIUM FLOOR (SF-44: "clamps at the equilibrium floor; the sentinel
+    -- passes through untouched"; row 106): the drying passes' own rule, the live sky's
+    -- EMC ceiling and never inside the reserved band. A pixel the step would carry
+    -- below it parks there; one already drier is left as it is. With no sky there is
+    -- no EMC to read, and the floor is RAW_FLOOR, so the sentinel still stays untouched.
+    local floorTo = MaterialWetness.RAW_FLOOR
+    local sky = mw:readSky()
+    if sky ~= nil then floorTo = math.max(MaterialWetness.emcRawFor(sky), MaterialWetness.RAW_FLOOR) end
     local applied = nil
     local ok = pcall(function()
         applied = mw.valueMaps:applyRawDeltaToPolygonBand(
             MaterialWetness.LAYER_KEY, verts, -delta,
-            MaterialWetness.RAW_FLOOR, SoilValueMaps.RAW_MAX - 1)
+            MaterialWetness.RAW_FLOOR, SoilValueMaps.RAW_MAX - 1,
+            { floorTo = floorTo })
     end)
     return ok and applied ~= nil
 end
