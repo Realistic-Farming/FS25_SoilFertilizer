@@ -131,6 +131,17 @@ local function world(side, opts)
         getPlayerByConnection = function(self, c) return self.connectionsToPlayer[c] end,   -- FSBaseMission.lua:1098
         accessHandler = accessHandler(),   -- FSBaseMission.lua:159
     }
+    -- [SF-73] the user record behind a connection (FSBaseMission.lua:88, UserManager.lua:74-81):
+    -- the two player connections have a user, the unplayered one has none.
+    mission.userManager = {
+        users = { { connection = AT_HOST_FROM_FARM1 }, { connection = AT_HOST_FROM_FARM2 } },
+        getUserByConnection = function(self, connection)
+            for _, user in ipairs(self.users) do
+                if user.connection == connection then return user end
+            end
+            return nil
+        end,
+    }
     g_farmManager = { farms = { [1] = farm(1), [2] = farm(2) }, getFarmById = function(self, id) return self.farms[id] end }
     -- FSBaseMission.lua:1067-1085, as decompiled.
     mission.getFarmId = function(self, connection)
@@ -155,10 +166,12 @@ local function world(side, opts)
             return self.farmlandMapping[id]
         end,
     }
+    -- getActiveFarm is Vehicle.lua:1905 for a vehicle nobody is driving (the owner's farm).
+    local function activeFarm(self) return self:getOwnerFarmId() end
     W.vehicles = {
-        [500] = { id = 5000, ownerFarmId = 1, getOwnerFarmId = function(self) return self.ownerFarmId end },   -- Object.lua:132
-        [501] = { id = 5001, ownerFarmId = 2, getOwnerFarmId = function(self) return self.ownerFarmId end },
-        [502] = { id = 5002, ownerFarmId = 0, getOwnerFarmId = function(self) return self.ownerFarmId end },   -- EVERYONE's
+        [500] = { id = 5000, ownerFarmId = 1, getOwnerFarmId = function(self) return self.ownerFarmId end, getActiveFarm = activeFarm },   -- Object.lua:132
+        [501] = { id = 5001, ownerFarmId = 2, getOwnerFarmId = function(self) return self.ownerFarmId end, getActiveFarm = activeFarm },
+        [502] = { id = 5002, ownerFarmId = 0, getOwnerFarmId = function(self) return self.ownerFarmId end, getActiveFarm = activeFarm },   -- EVERYONE's
     }
     NetworkUtil = { getObject = function(id) return W.vehicles[id] end }
     local settings = setmetatable({ enabled = true, difficulty = 2 }, Settings_mt)

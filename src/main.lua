@@ -239,6 +239,11 @@ source(modDirectory .. "src/ZoneYield.lua")
 -- Neutral until a consumer wires in; its own StateLedger + NetworkSync
 -- registration sits beside the soil bridges.
 source(modDirectory .. "src/TopographyCache.lua")
+-- [SF-73] target-accurate N/P/K: the pure core, the footprint witness and the
+-- controller, loaded before the soil system that constructs the controller.
+source(modDirectory .. "src/target/TargetNutrientCore.lua")
+source(modDirectory .. "src/target/TargetFootprint.lua")
+source(modDirectory .. "src/target/TargetApplication.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- SF-79 POSITIONAL PH: the chemical-soil authority is the pH value map; the field
 -- number is a report derived from its written pixels. Hangs the private writer

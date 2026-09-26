@@ -589,6 +589,15 @@ function SoilFertilityManager:onMissionStarted()
 
     self:_groundMissionStarted()
 
+    -- [SF-73] Register the target boundary AI message on EVERY peer, here, after the
+    -- mission's AIMessageManager:loadMapData and before any job can stop: the engine
+    -- sends the message's class index (AIJobStopEvent), so the registration must
+    -- happen in the same place on each peer whether or not the soil sim initializes.
+    if self.soilSystem.targetApplication ~= nil then
+        local okAI, errAI = pcall(function() self.soilSystem.targetApplication:registerAIMessage() end)
+        if not okAI then SoilLogger.warning("[SF-73] AI message registration failed: %s", tostring(errAI)) end
+    end
+
     SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
 
     local ok, err = pcall(function()

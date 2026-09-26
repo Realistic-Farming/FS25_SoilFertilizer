@@ -519,6 +519,8 @@ function HookManager:installAll(soilSystem)
     local failCount = 0
 
     SoilLogger.info("Installing event hooks...")
+    -- [SF-73] the system this manager serves, for the target controller's handle
+    self._soilSystemRef = soilSystem
 
     -- AI fruit requirement guard: must run before any vehicle loads, because a
     -- mismatched custom density map aborts the process on the first AI field job.
@@ -677,6 +679,13 @@ function HookManager:installAll(soilSystem)
     local sprayUsageOk = self:installSprayerUsageHook()
     if sprayUsageOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- [SF-73] Target-accurate N/P/K: the cycle-start prepend and the owned OUTER
+    -- layer on getSprayerUsage, installed after the actual-speed replacement above so
+    -- that replacement is the captured predecessor every non-target quote delegates
+    -- to and every target plan measures its capacity with.
+    local targetOk = self:installTargetApplicationHooks()
+    if targetOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Opt custom fill types into the vanilla "external fill" skip-depletion path.
     -- This is the canonical BUY-mode fix (issue #205): by telling the base engine that
     -- our tank is externally filled when BUY mode is active, Sprayer:onStartWorkAreaProcessing
@@ -769,6 +778,11 @@ function HookManager:installAll(soilSystem)
     -- the only installs that follow it are prepends. Bob re-derived this in the
     -- #974 cold review; it lives here so nobody has to again.
     self:installDensityRefusalHook()
+    -- [SF-73] The target cycle's enforcement is appended AFTER R2, which makes it the
+    -- last start append: nothing later can re-arm a target cycle it zeroed or move a
+    -- target quantity it fixed. R2 still owns every refused product; a refused
+    -- product never becomes a target plan, so the two never act on one cycle.
+    self:installTargetStartEnforcement()
 
     -- System 4: Overlap Prevention - density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
     -- Runs after VariableRate so the rate computation still sees the original isActive states.
@@ -1757,6 +1771,10 @@ function HookManager:installSectionControlHook()
             -- Gate 1: SF must be initialised
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
+            -- [SF-73] one physical rate serves a target cycle's whole accepted width:
+            -- no late section shut-off may change the result after the plan is fixed
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
 
             -- Field Boundary Enforcement + Overlap Prevention:
             -- (1) Suppress boom sections whose outer tip extends outside the current field.
@@ -1995,6 +2013,10 @@ function HookManager:installSeeAndSprayHook()
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.soilSystem then return end
 
+            -- [SF-73] never on a target cycle (see the section sensor above)
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
+
             -- See & Spray is a purchased vehicle feature - read from SFNozzleEffects spec.
             local sfSpec = SFNozzleEffects and sprayerSelf[SFNozzleEffects.SPEC_TABLE_NAME]
             if not sfSpec then return end
@@ -2197,6 +2219,9 @@ function HookManager:installVariableRateHook()
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
             if sfm.settings and sfm.settings.variableRateEnabled == false then return end
+            -- [SF-73] never on a target cycle (see the section sensor above)
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
 
             local sensorMgr = sfm.sensorManager
             -- Resolve vehicleId via rootVehicle for rate consistency (#754).
@@ -3142,6 +3167,7 @@ function HookManager:installDrainTokenHook()
         SoilLogger.warning("[F196] V13 drain token: Sprayer.onEndWorkAreaProcessing not available - skipping")
         return false
     end
+    local hookMgrRef = self
     local original = Sprayer.onEndWorkAreaProcessing
     local function tokenFor(sprayerSelf)
         local spec = sprayerSelf and sprayerSelf.spec_sprayer
@@ -3156,7 +3182,13 @@ function HookManager:installDrainTokenHook()
     end
     local withPrepend = Utils.prependedFunction(original, function(sprayerSelf)
         local target, token = tokenFor(sprayerSelf)
-        if target ~= nil then target._sfF196DrainToken = token end
+        if target ~= nil then
+            -- [SF-73] a target dose cycle rides the token, so the applied delta FillUnit
+            -- returns for exactly native's call lands on the cycle's record
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil then token.sf73Cycle = ta:tokenCycle(sprayerSelf) end
+            target._sfF196DrainToken = token
+        end
     end)
     Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(withPrepend, function(sprayerSelf)
         local spec = sprayerSelf and sprayerSelf.spec_sprayer
@@ -5442,6 +5474,28 @@ function HookManager:installSprayerAreaHook()
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
 
+            -- [SF-73] Close the target cycle's record before anything touches the tank
+            -- (the #764 snap below included). A target cycle that put no target product
+            -- down (refused, priming, held, zero dose, or never processed by native)
+            -- finishes here: nothing is bought, drawn or credited by this hook.
+            local sf73TA = hookMgrRef:getTargetApplication()
+            local sf73Cycle = sf73TA ~= nil and sf73TA:endCycle(self) or nil
+            local sf73Plan = sf73Cycle ~= nil and sf73Cycle.committed or nil
+            if sf73Cycle ~= nil then
+                local spent = sf73Plan.dose == true and ((sf73Cycle.physical or 0) > 0 or sf73Cycle.short == true)
+                if not spent then
+                    local okF, errF = pcall(sf73TA.finishWithoutCredit, sf73TA, self, sf73Cycle)
+                    if not okF then SoilLogger.warning("[SF-73] cycle finish failed: %s", tostring(errF)) end
+                    return
+                end
+                if (sf73Cycle.physical or 0) <= 0 then
+                    -- a dose native processed that drew nothing: a short removal, no litres to enter
+                    local okC, errC = pcall(sf73TA.commit, sf73TA, self, sf73Cycle, false)
+                    if not okC then SoilLogger.warning("[SF-73] cycle commit failed: %s", tostring(errC)) end
+                    return
+                end
+            end
+
             -- Issue #764: after vanilla's drain the tank can sit at a tiny residual
             -- (0 < level < 0.0005) that displays as 0.000 but never crosses the
             -- engine's 0.00001 threshold, so the fill type never resets to UNKNOWN
@@ -5532,6 +5586,15 @@ function HookManager:installSprayerAreaHook()
             -- together. The tank only wins when it holds a valid non-UNKNOWN type, so
             -- external-fill BUY mode (empty tank → keep wap value) is preserved.
             fillTypeIndex = SoilUtils.resolveSprayerFillTypeIndex(self, fillTypeIndex)
+
+            -- [SF-73] A target dose enters the consequence path ONCE, with the actual
+            -- physical litres (the applied delta, the bought litres or the station's
+            -- removal), never the planned figure, and with the product it planned.
+            if sf73Cycle ~= nil then
+                fillTypeIndex  = sf73Plan.fillType
+                liters         = sf73Cycle.physical
+                sprayFillLevel = sf73Cycle.physical
+            end
 
             -- wap.isActive is vanilla's own "I painted terrain and drained product this
             -- frame" flag: reset to false at the end of every onStartWorkAreaProcessing and
@@ -5731,7 +5794,7 @@ function HookManager:installSprayerAreaHook()
                     if rootSpd > _spd then _spd = rootSpd end
                 end
             end
-            if _spd < 0.5 then
+            if _spd < 0.5 and sf73Cycle == nil then
                 _sfApplySkipLog(string.format("tooSlow spd=%.2f", _spd))
                 return
             end
@@ -5804,7 +5867,8 @@ function HookManager:installSprayerAreaHook()
                 -- (queried before the field was registered, e.g. freshly-purchased land),
                 -- fall through to the live g_fieldManager slow-path query rather than
                 -- returning nil and silently dropping the fertilizer application.
-                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
+                local fieldId = (sf73Cycle ~= nil) and sf73Plan.fieldId
+                    or hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
 
                 -- Fallback: try the midpoints of work areas on attached implements
                 if not fieldId or fieldId <= 0 then
@@ -5848,6 +5912,12 @@ function HookManager:installSprayerAreaHook()
                 local _root = self.rootVehicle
                 local _rateVehId = (_root and _root ~= self) and (_root.id or 0) or (self.id or 0)
                 local rateMultiplier = (rm ~= nil) and rm:getMultiplier(_rateVehId) or 1.0
+                if sf73Cycle ~= nil then
+                    -- [SF-73] the target dose is its own rate: physical litres over the
+                    -- machine's measured 1x capacity on the same footprint
+                    local cap = sf73Plan.capacity or 0
+                    rateMultiplier = (cap > 0) and (liters / cap) or 1.0
+                end
                 local effectiveLiters = liters
 
                 -- Section Control double-penalty fix (Issue #345):
@@ -5961,7 +6031,7 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
 
-                if vww and vww.sections and #vww.sections > 0 then
+                if sf73Cycle == nil and vww and vww.sections and #vww.sections > 0 then
                     SoilLogger.debug("SprayerHook: VWW path - %d total sections for %s", #vww.sections, fillType.name)
                     -- Collect active sections into pre-allocated scratch table (avoids per-tick allocation).
                     -- Assigns the hoisted vars (declared above) so the multi-tank block can reuse them.
@@ -6038,7 +6108,10 @@ function HookManager:installSprayerAreaHook()
                         soilSys._lastSprayX = rootX
                         soilSys._lastSprayZ = rootZ
                     end
+                    -- [SF-73] name the target field for applyFertilizer's N/P/K hand-off
+                    if sf73Cycle ~= nil and soilSys then soilSys._sf73TargetField = fieldId end
                     applySingle(fieldId, effectiveLiters, rootX, rootZ)
+                    if soilSys then soilSys._sf73TargetField = nil end
                 end
 
                 -- ── Multi-tank application (secondary fill units) ─────────────────
@@ -6051,7 +6124,8 @@ function HookManager:installSprayerAreaHook()
                 -- mod does not hand out free fertilizer.
                 do
                     local multiTankEnabled = hookMgrRef and hookMgrRef._settings and hookMgrRef._settings.multiTankApplication
-                    if multiTankEnabled ~= false then
+                    -- [SF-73] a target cycle's product is its one plan: no secondary replay
+                    if multiTankEnabled ~= false and sf73Cycle == nil then
                         local spraySpec = self.spec_sprayer
                         local fuSpec    = self.spec_fillUnit
                         if spraySpec and fuSpec and fuSpec.fillUnits then
@@ -6287,6 +6361,14 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
 
+                -- [SF-73] The target dose's consequences ran once above with its actual
+                -- litres; its N/P/K now goes down through the frozen polygon writer. The
+                -- backup refill below is a second money writer, never for a target cycle.
+                if sf73Cycle ~= nil then
+                    sf73TA:commit(self, sf73Cycle, fertResult == true)
+                    return
+                end
+
                 -- BUY mode backup refill (issue #125).
                 -- SpecializationUtil.registerFunction may cache function references before
                 -- our FillUnit.addFillUnitFillLevel hook installs, so the class-level hook
@@ -6422,6 +6504,14 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
             end)
+
+            local ssClear = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+            if ssClear then ssClear._sf73TargetField = nil end
+            if not success and sf73Cycle ~= nil and not sf73Cycle.commitStarted then
+                -- product was spent and the consequence path threw: record the failure
+                -- (target stops, anchor cleared) rather than let the next cycle re-dose
+                pcall(sf73TA.commit, sf73TA, self, sf73Cycle, false)
+            end
 
             if not success then
                 SoilLogger.error("Sprayer area hook failed: %s", tostring(errorMsg))
@@ -8633,6 +8723,9 @@ function HookManager:installPurchaseRefillHook()
             local token = type(vehicle) == "table" and vehicle._sfF196DrainToken or nil
             if token ~= nil and HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex) then
                 vehicle._sfF196DrainToken = nil   -- consumed, billed or not
+                -- [SF-73] the actual physical litres of a target dose are the magnitude of
+                -- what this call applies (FillUnit.lua addFillUnitFillLevel returns it)
+                local sf73Cycle = token.sf73Cycle
                 local prices = hookMgrRef.customFillTypePrices
                 local resolved = hookMgrRef:resolveCustomProductIntent(vehicle, fillTypeIndex)
                 local pricePerLiter = (resolved ~= nil and prices ~= nil) and prices[resolved] or nil
@@ -8654,8 +8747,16 @@ function HookManager:installPurchaseRefillHook()
                     hookMgrRef._f196LayerCharges = (hookMgrRef._f196LayerCharges or 0) + 1
                     SoilLogger.debug("BUY SUCCESS (F196 FillUnit layer): veh=%d, type=%d, liters=%.2f, cost=%.2f",
                         vehicle.id or 0, fillTypeIndex, litersConsumed, cost)
+                    if sf73Cycle ~= nil and TargetApplication ~= nil then
+                        TargetApplication.recordApplied(sf73Cycle, fillLevelDelta)
+                    end
                     return fillLevelDelta
                 end
+                local applied = predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+                if sf73Cycle ~= nil and TargetApplication ~= nil then
+                    TargetApplication.recordApplied(sf73Cycle, applied)
+                end
+                return applied
             end
             return predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
         end
@@ -8784,7 +8885,13 @@ function HookManager:installExternalFillHook()
         -- so consumption truly scales with area covered, not with the speed dial setting.
         -- Formula: scale × litersPerSecond × actualSpeed_km/h × workWidth_m × dt_ms × 0.001
         local usage
-        do
+        -- [SF-73] a target cycle buys exactly its one quantity, asked through the
+        -- vehicle's own usage slot; everything else keeps the formula below
+        local sf73Quote = nil
+        local sf73TA = hookMgr:getTargetApplication()
+        if sf73TA ~= nil then sf73Quote = sf73TA:externalQuote(sprayerSelf, customIdx, dt) end
+        if sf73Quote ~= nil then usage = sf73Quote end
+        if usage == nil then
             local actualSpeedKmh = math.abs(sprayerSelf.lastSpeed or 0) * 3600
             if actualSpeedKmh < 0.5 then
                 -- Sprayer not moving (headland pivot, stopped).  No area covered, no charge.
@@ -8946,15 +9053,125 @@ function HookManager:installExternalFillHook()
             if HookManager.isOverlapBlockedPass(sprayerSelf) then
                 return repeatedFill(sprayerSelf, fillType)
             end
+            -- [SF-73] A target cycle's station supply is one capped request to the first
+            -- accessible stocked storage, measured on the station's own side; its bought
+            -- litres are recorded as the cycle's actual physical litres.
+            local sf73TA = self:getTargetApplication()
+            local sf73Live = sf73TA ~= nil and sf73TA:cycleFor(sprayerSelf) ~= nil
+            if sf73Live then
+                local handled, ftS, uS = sf73TA:stationFill(sprayerSelf, fillType, dt)
+                if handled then
+                    sprayerSelf._sfLastExternalFillType = ftS
+                    sprayerSelf._sfLastExternalFillArg = fillType
+                    return ftS, uS
+                end
+            end
             local n, r = packn(billedExternalFill(original, sprayerSelf, fillType, dt))
             sprayerSelf._sfLastExternalFillType = r[1]
             sprayerSelf._sfLastExternalFillArg = fillType
+            if sf73Live and r[1] ~= nil and r[1] ~= FillType.UNKNOWN then
+                sf73TA:recordExternal(sprayerSelf, r[1], r[2])
+            end
             return unpack(r, 1, n)
         end
     end
     self:installOwnedRegisteredFunctionLayer(Sprayer, "getExternalFill", makeExternalFillWrapper, "sprayer",
         "Sprayer.getExternalFill (F196 owned layer)")
     SoilLogger.info("[OK] External fill hook installed (Sprayer.getExternalFill, owned layer)")
+    return true
+end
+
+-- =========================================================
+-- [SF-73] TARGET-ACCURATE N/P/K: the resolver's seams
+-- =========================================================
+-- One Soil-owned resolver answers a target cycle's quantity on the live
+-- getSprayerUsage path used by own, attached, helper-buy and station supply
+-- (Implementation v1.1 section 2). The seams, in the order a cycle meets them:
+--   * a PREPEND on Sprayer.onStartWorkAreaProcessing opens the cycle record;
+--   * the owned OUTER layer on getSprayerUsage (class, every sprayer type, every
+--     live instance and every later vehicle through ensureOwnedLayers) answers a
+--     target product's quote and delegates everything else to the captured
+--     predecessor, which is the actual-speed replacement installSprayerUsageHook
+--     put there (so non-target consumption is byte-identical);
+--   * the LAST start append (installTargetStartEnforcement) makes the work-area
+--     parameters say what the plan says;
+--   * the drain token, the external fill layer and the area hook record the
+--     actual litres and route the cycle (see those hooks).
+-- The controller is TargetApplication; nothing runs unless its release gate is
+-- open and the vehicle's AUTO is on.
+
+--- The target controller this manager serves, or nil.
+function HookManager:getTargetApplication()
+    local ss = self._soilSystemRef or (g_SoilFertilityManager and g_SoilFertilityManager.soilSystem)
+    return ss and ss.targetApplication or nil
+end
+
+--- The cycle-start prepend and the owned outer layer on getSprayerUsage.
+---@return boolean success
+function HookManager:installTargetApplicationHooks()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function"
+       or type(Sprayer.getSprayerUsage) ~= "function" then
+        SoilLogger.warning("[SF-73] Sprayer start/usage not available - target application not installed")
+        return false
+    end
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(origStart, function(sprayerSelf, dt)
+        local ta = hookMgrRef:getTargetApplication()
+        if ta == nil then return end
+        local ok, err = pcall(ta.onCycleStart, ta, sprayerSelf, dt)
+        if not ok then SoilLogger.warning("[SF-73] cycle start failed: %s", tostring(err)) end
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF-73 cycle start)")
+
+    local function makeTargetUsageWrapper(predecessor)
+        return function(sprayerSelf, fillType, dt)
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil and fillType ~= nil and fillType ~= FillType.UNKNOWN then
+                local ok, q = pcall(ta.quote, ta, sprayerSelf, fillType, dt, predecessor)
+                if ok and q ~= nil then return q end
+                -- a target cycle that cannot be quoted buys nothing, never the non-target rate
+                if not ok and ta:cycleFor(sprayerSelf) ~= nil then return 0 end
+            end
+            return predecessor(sprayerSelf, fillType, dt)
+        end
+    end
+    self:installOwnedRegisteredFunctionLayer(Sprayer, "getSprayerUsage", makeTargetUsageWrapper, "sprayer",
+        "Sprayer.getSprayerUsage (SF-73 owned target layer)")
+    SoilLogger.info("[OK] SF-73 target application installed (cycle start + owned usage layer; LOCKED by the release gate)")
+    return true
+end
+
+--- The last start append: a target cycle's work-area parameters say exactly what
+--- its plan says. A refused cycle keeps its resolved spray type but carries zero
+--- usage and zero fill level, so native neither paints nor raises out-of-fill
+--- (Sprayer.lua:314-321); the legacy multiplier already stood down for it.
+---@return boolean success
+function HookManager:installTargetStartEnforcement()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[SF-73] Sprayer.onStartWorkAreaProcessing not available - no target enforcement")
+        return false
+    end
+    local hookMgrRef = self
+    local original = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(original, function(sprayerSelf, dt)
+        if not sprayerSelf.isServer then return end
+        local ta = hookMgrRef:getTargetApplication()
+        if ta == nil or ta:cycleFor(sprayerSelf) == nil then return end
+        local ok, err = pcall(ta.enforceStart, ta, sprayerSelf, dt)
+        if not ok then
+            -- fail closed: a target cycle that cannot be enforced spends and paints nothing
+            local wap = sprayerSelf.spec_sprayer and sprayerSelf.spec_sprayer.workAreaParameters
+            if wap ~= nil and ta:isTargetCycle(sprayerSelf) then
+                wap.usage, wap.usagePerMin, wap.sprayFillLevel = 0, 0, 0
+            end
+            SoilLogger.warning("[SF-73] start enforcement failed: %s", tostring(err))
+        end
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", original,
+        "Sprayer.onStartWorkAreaProcessing (SF-73 enforcement)")
     return true
 end
 
@@ -8977,6 +9194,7 @@ function HookManager:installSprayerStartHook()
         return false
     end
 
+    local hookMgrRef = self
     local original = Sprayer.onStartWorkAreaProcessing
     Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         original,
@@ -8985,6 +9203,10 @@ function HookManager:installSprayerStartHook()
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
             if not g_SoilFertilityManager or not g_SoilFertilityManager.sprayerRateManager then return end
+            -- [SF-73] a target cycle's one quantity is never multiplied afterwards:
+            -- the pH factor was resolved inside its plan, before the minimum
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil and ta:isTargetCycle(self) then return end
 
             -- Resolve rate via rootVehicle.id so separate tanker + boom setups
             -- (where self is the boom but rate was stored on the tractor) match.

@@ -1469,6 +1469,10 @@
     <e k="sf_rp_col_status" v="Tila" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Pelto %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="Ei tietoa" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s pysähtyi: kohdelannoitus tauolla sekoitetulla, kielletyllä tai tuntemattomalla maalla. Manuaalinen levitys on yhä mahdollista." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Apulainen pysähtyi: kohdelannoitus tauolla sekoitetulla, kielletyllä tai tuntemattomalla maalla. Manuaalinen levitys on yhä mahdollista." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Kohdelannoitus" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Pelto %d: tuotetta kului, mutta paikallista N/P/K-tulosta ei ole vahvistettu. Kohdeautomatiikka on pysäytetty; manuaalinen levitys on yhä mahdollista." eh="29d18403" />
 </elements>
 
 

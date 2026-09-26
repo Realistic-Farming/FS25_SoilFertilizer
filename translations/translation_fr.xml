@@ -1481,5 +1481,9 @@
     <e k="sf_sensor_state_off" v="ARRÊT" eh="88559a0c" />
     <e k="sf_sensor_state_on" v="MARCHE" eh="90651ebe" />
     <e k="sf_var_rate_label" v="Taux var." eh="fa034ad0" />
+    <e k="sf_target_ai_boundary" v="%s arrêté : fertilisation ciblée en pause sur un sol mixte, interdit ou inconnu. L'épandage manuel reste disponible." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Un ouvrier s'est arrêté : fertilisation ciblée en pause sur un sol mixte, interdit ou inconnu. L'épandage manuel reste disponible." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Fertilisation ciblée" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Champ %d : le produit a été dépensé, mais le résultat N/P/K local n'est pas confirmé. L'automatique ciblé est arrêté ; l'épandage manuel reste disponible." eh="29d18403" />
 </elements>
 </l10n>

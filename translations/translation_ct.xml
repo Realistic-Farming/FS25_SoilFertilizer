@@ -1528,5 +1528,9 @@
     <e k="sf_rp_col_status" v="狀態" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="田地 %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="不適用" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s 已停止：在混合、禁止或未知的地塊上，目標施肥已暫停。仍可手動施用。" eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="一名幫手已停止：在混合、禁止或未知的地塊上，目標施肥已暫停。仍可手動施用。" eh="abf38208" />
+    <e k="sf_target_failed_title" v="目標施肥" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="田地 %d：產品已消耗，但本地 N/P/K 結果未確認。目標自動已停止；仍可手動施用。" eh="29d18403" />
 </elements>
 </l10n>

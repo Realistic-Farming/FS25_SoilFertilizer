@@ -1533,5 +1533,9 @@
     <e k="sf_rp_col_effect" v="Effect" eh="a62d2291" />
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Field %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_target_ai_boundary" v="%s stopped: target fertilizer paused on mixed, denied or unknown ground. Manual application is still available." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="A helper stopped: target fertilizer paused on mixed, denied or unknown ground. Manual application is still available." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Target fertilizer" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Field %d: product was spent, but the local N/P/K result is not confirmed. Target automatic has stopped; manual application is still available." eh="29d18403" />
 </elements>
 </l10n>

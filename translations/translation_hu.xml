@@ -1488,6 +1488,10 @@
     <e k="sf_rp_col_status" v="Állapot" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Mező %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="Nincs adat" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s leállt: a célzott trágyázás szünetel vegyes, tiltott vagy ismeretlen talajon. A kézi kijuttatás továbbra is elérhető." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Egy segítő leállt: a célzott trágyázás szünetel vegyes, tiltott vagy ismeretlen talajon. A kézi kijuttatás továbbra is elérhető." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Célzott trágyázás" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="%d. tábla: a termék elfogyott, de a helyi N/P/K eredmény nincs megerősítve. A célzott automatika leállt; a kézi kijuttatás továbbra is elérhető." eh="29d18403" />
 </elements>
 
 

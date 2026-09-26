@@ -1468,6 +1468,10 @@
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Fält %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="E/T" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s stoppade: målgödsling pausad på blandad, nekad eller okänd mark. Manuell spridning är fortfarande möjlig." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="En medhjälpare stoppade: målgödsling pausad på blandad, nekad eller okänd mark. Manuell spridning är fortfarande möjlig." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Målgödsling" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Fält %d: produkt förbrukades, men det lokala N/P/K-resultatet är inte bekräftat. Målautomatiken har stoppats; manuell spridning är fortfarande möjlig." eh="29d18403" />
 </elements>
 
 
