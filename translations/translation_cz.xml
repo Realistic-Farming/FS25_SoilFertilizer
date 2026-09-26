@@ -1516,6 +1516,10 @@
     <e k="sf_map_weed_pressure" v="Tlak plevele" eh="53f8b936" />
     <e k="sf_release_dialog_title" v="Přístup k experimentálním funkcím" eh="74d19780" />
     <e k="sf_report_rec_optimal" v="Zdraví půdy: optimální" eh="6ee9d19b" />
+    <e k="sf_report_fields_tracked" v="Sledovaná pole:" />
+    <e k="sf_report_rec_good" v="Dobrý" />
+    <e k="sf_report_rec_fair" v="Průměrný" />
+    <e k="sf_report_rec_poor" v="Špatný" />
     <e k="sf_report_rotation_bonus" v="Bonus" eh="3c0ee4ba" />
     <e k="sf_report_rotation_fatigue" v="Únava: stejná plodina" eh="7b173595" />
     <e k="sf_report_rotation_ok" v="OK" eh="e0aa021e" />

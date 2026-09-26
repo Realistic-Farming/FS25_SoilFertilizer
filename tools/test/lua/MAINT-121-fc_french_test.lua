@@ -11,7 +11,8 @@
 -- A TEXT BAR, READ FROM THE REAL FILES, and the lookup EXECUTED:
 --   C1  no fc value carries a Han, kana or Hangul character
 --   F1  every fc value keeps en's %d/%s sequence, in order
---   H1  the four hand-written keys read French: not empty, not English, not Chinese
+--   H1  the four hand-written keys read French: not empty, not English, not Chinese (row 151
+--       later added the same four keys to the fr file, so H1 no longer asks that fr lacks them)
 --   X1  the mod's own gate, SoilL10n.tr, run against an i18n answering from the real fc
 --       file, returns that file's text for every key, and none of it is Chinese; X0 is the
 --       same gate on a key the file lacks, returning the fallback
@@ -28,7 +29,6 @@ local function texts(lang)
 end
 local FC, NFC = texts("fc")
 local EN = texts("en")
-local FR = texts("fr")
 
 local function codepoints(s)
     local out, i = {}, 1
@@ -68,9 +68,9 @@ local HAND = { "sf_report_fields_tracked", "sf_report_rec_good", "sf_report_rec_
 local handBad = {}
 for _, k in ipairs(HAND) do
     local v = FC[k]
-    if v == nil or v == "" or v == EN[k] or cjk(v) or FR[k] ~= nil then handBad[#handBad + 1] = k end
+    if v == nil or v == "" or v == EN[k] or cjk(v) then handBad[#handBad + 1] = k end
 end
-T.eq("H1 the four keys the fr file lacks read French in fc (not empty, English or Chinese)", table.concat(handBad, " "), "")
+T.eq("H1 the four keys written by hand in fc (the fr file lacked them until row 151) read French (not empty, English or Chinese)", table.concat(handBad, " "), "")
 
 local savedI18n = g_i18n
 g_i18n = {
