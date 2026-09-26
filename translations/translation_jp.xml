@@ -1495,6 +1495,10 @@
     <e k="sf_rp_col_status" v="状態" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="フィールド %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="該当なし" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s が停止しました: 混在、立入不可、または不明な土地のため目標施肥を一時停止しました。手動散布は引き続き使用できます。" eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="ヘルパーが停止しました: 混在、立入不可、または不明な土地のため目標施肥を一時停止しました。手動散布は引き続き使用できます。" eh="abf38208" />
+    <e k="sf_target_failed_title" v="目標施肥" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="フィールド %d: 資材は消費されましたが、局所的な N/P/K の結果は確認されていません。目標自動は停止しました。手動散布は引き続き使用できます。" eh="29d18403" />
 </elements>
 
 

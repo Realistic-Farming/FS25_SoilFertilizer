@@ -1497,6 +1497,10 @@
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Pole %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="b.d." eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s zatrzymany: nawożenie docelowe wstrzymane na mieszanym, niedozwolonym lub nieznanym gruncie. Ręczna aplikacja nadal jest dostępna." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Pomocnik zatrzymał się: nawożenie docelowe wstrzymane na mieszanym, niedozwolonym lub nieznanym gruncie. Ręczna aplikacja nadal jest dostępna." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Nawożenie docelowe" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Pole %d: produkt został zużyty, ale lokalny wynik N/P/K nie jest potwierdzony. Automatyka docelowa została zatrzymana; ręczna aplikacja nadal jest dostępna." eh="29d18403" />
 </elements>
 
 

@@ -1616,6 +1616,44 @@ function SoilValueMaps:readAverageOfPolygon(key, verts, externalFilter)
     return decode(sum / pixels, entry.def), pixels
 end
 
+--- [SF-73] The STRICT polygon read of one layer: the engine's own count of written
+--- pixels against every pixel the polygon selects, on the exact polygon or not at
+--- all. readAverageOfPolygon above falls back to coarse 16 m blocks when polygon
+--- setup fails; a target dose must never be priced on that fallback, so this one
+--- refuses (nil) instead. executeGet returns (sum, pixels matching, pixels total),
+--- the order FSDensityMapUtil and DensityMapHeightUtil read (DensityMapHeightUtil.lua:107).
+---@return number|nil rawSum, number|nil written, number|nil total
+function SoilValueMaps:readPolygonStrict(key, verts)
+    if not self.available or type(verts) ~= "table" or #verts < 3 then return nil end
+    local entry = self.layers[key]
+    if not entry then return nil end
+    local m = entry.modifier
+    local filter = entry.filter
+    if not setPolygonRegion(self, m, verts) then return nil end
+    filter:setValueCompareParams(DensityValueCompareType.BETWEEN, RAW_MIN, RAW_MAX)
+    local ok, sum, written, total = pcall(function()
+        local a, n, t = m:executeGet(filter)
+        return a, n, t
+    end)
+    if not ok or type(written) ~= "number" or type(total) ~= "number" then return nil end
+    return sum or 0, written, total
+end
+
+--- [SF-73] The raw a semantic value encodes to on a layer, and back.
+---@return number|nil
+function SoilValueMaps:encodeForLayer(key, value)
+    local entry = self.layers[key]
+    if not entry or type(value) ~= "number" then return nil end
+    return encode(value, entry.def)
+end
+
+---@return number|nil
+function SoilValueMaps:decodeForLayer(key, raw)
+    local entry = self.layers[key]
+    if not entry then return nil end
+    return decode(raw, entry.def)
+end
+
 -- ─────────────────────────────────────────────────────────
 -- Multiplayer sync support
 -- Reads/writes coarse 4-bit state grids (top 4 bits) at a stride

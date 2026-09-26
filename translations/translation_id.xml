@@ -1515,6 +1515,10 @@
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Lahan %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="T/A" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s berhenti: pemupukan target dijeda di lahan campuran, terlarang, atau tidak dikenal. Aplikasi manual tetap tersedia." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Seorang pembantu berhenti: pemupukan target dijeda di lahan campuran, terlarang, atau tidak dikenal. Aplikasi manual tetap tersedia." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Pemupukan target" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Lahan %d: produk telah terpakai, tetapi hasil N/P/K lokal belum terkonfirmasi. Otomatis target telah dihentikan; aplikasi manual tetap tersedia." eh="29d18403" />
 </elements>
 
 

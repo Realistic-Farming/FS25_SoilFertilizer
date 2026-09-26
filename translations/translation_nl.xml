@@ -1499,6 +1499,10 @@
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Veld %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="n.v.t." eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s gestopt: doelbemesting gepauzeerd op gemengde, geweigerde of onbekende grond. Handmatig strooien blijft mogelijk." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Een helper is gestopt: doelbemesting gepauzeerd op gemengde, geweigerde of onbekende grond. Handmatig strooien blijft mogelijk." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Doelbemesting" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Veld %d: product is verbruikt, maar het lokale N/P/K-resultaat is niet bevestigd. De doelautomaat is gestopt; handmatig strooien blijft mogelijk." eh="29d18403" />
 </elements>
 
 

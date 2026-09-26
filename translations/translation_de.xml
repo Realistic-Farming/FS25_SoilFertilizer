@@ -1486,6 +1486,10 @@
     <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Feld %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="k. A." eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s angehalten: Zieldüngung pausiert auf gemischtem, gesperrtem oder unbekanntem Boden. Manuelles Ausbringen bleibt möglich." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Ein Helfer hat angehalten: Zieldüngung pausiert auf gemischtem, gesperrtem oder unbekanntem Boden. Manuelles Ausbringen bleibt möglich." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Zieldüngung" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Feld %d: Produkt wurde verbraucht, aber das lokale N/P/K-Ergebnis ist nicht bestätigt. Die Zielautomatik wurde beendet; manuelles Ausbringen bleibt möglich." eh="29d18403" />
 </elements>
 
 

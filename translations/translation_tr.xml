@@ -1469,6 +1469,10 @@
     <e k="sf_rp_col_status" v="Durum" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Tarla %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="Yok" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s durdu: hedef gübreleme karışık, izin verilmeyen veya bilinmeyen zeminde duraklatıldı. Manuel uygulama hâlâ kullanılabilir." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Bir yardımcı durdu: hedef gübreleme karışık, izin verilmeyen veya bilinmeyen zeminde duraklatıldı. Manuel uygulama hâlâ kullanılabilir." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Hedef gübreleme" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Tarla %d: ürün harcandı ancak yerel N/P/K sonucu doğrulanmadı. Hedef otomatik durduruldu; manuel uygulama hâlâ kullanılabilir." eh="29d18403" />
 </elements>
 
 
