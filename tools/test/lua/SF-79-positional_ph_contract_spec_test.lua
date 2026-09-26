@@ -330,7 +330,9 @@ DensityCoordType=DensityCoordType or {POINT_POINT_POINT="fixture"}
 DensityValueCompareType=DensityValueCompareType or {BETWEEN="fixture"}
 SoilValueMaps.addPaintStrip(fakeVM,"pH",0,0,1,0,0,1,(10+0.000001)*UPR)
 DensityCoordType,DensityValueCompareType=savedCoordType,savedCompareType
-T.eq("SF-79 F3: current source witness reselects an added interior value into saturation",fakeValues[1],255)
+-- MAINTENANCE row 149 moved addPaintStrip's clamp ahead of its add, so the witness that
+-- pinned the reselection (240 + 10 read back as 255) now reads the corrected 250 that F4 models.
+T.eq("SF-79 F3: the shipped addPaintStrip no longer reselects an added interior value into saturation (row 149)",fakeValues[1],250)
 local corrected={240}; rawCohortDelta(corrected,10)
 T.eq("SF-79 F4: proposed correct interior result remains 250",corrected[1],250)
 
