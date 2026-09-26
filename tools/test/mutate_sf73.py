@@ -7,7 +7,7 @@ requires one of the SF-73 bars to go RED with named FAIL rows. A bar that dies o
 Lua error instead is recorded CRASH, which is not a kill (a crash is unattributable).
 Every target is restored in a finally and proved by sha256.
 
-Run from tools/test:  py -u mutate_sf73.py
+Run from tools/test:  py -u mutate_sf73.py [id-prefix ...]
 """
 import hashlib
 import os
@@ -110,6 +110,19 @@ MUTATIONS = [
        "       or (HookManager ~= nil and HookManager.isOverlapBlockedPass ~= nil and HookManager.isOverlapBlockedPass(sprayer)) then\n",
        "    if not turnedOn or not anyWorkAreaActive(sprayer) then\n", 1)],
      "section 3: a pass Soil's overlap prevention blocked is read as a boundary, not native inactivity", "E11.15, E11.20"),
+
+    # Design on #1029 (ledger 932ac42): the readers do not switch before SF-73 unlocks.
+    ("reader-gate-dropped", "sys",
+     [("    local okGate, open = pcall(ta.isGateOpen, ta)\n    if not okGate or open ~= true then return nil end\n", "", 1)],
+     "Design on #1029: the crop-need reader answers while SF-73 is LOCKED, so the readers switch before the unlock",
+     "E13.2-E13.5"),
+
+    # Design's condition on #1029 (DESIGN-CHECK row 136): a lift or switch-off clears the held region.
+    ("inactive-keeps-held-anchor", "ta",
+     [("        return refusedPlan(fillTypeIndex, C.STATE.INACTIVE, {}, { clearAnchor = true, nativeInactive = true })\n    end\n    local suppressed",
+       "        return refusedPlan(fillTypeIndex, C.STATE.INACTIVE, {}, { nativeInactive = true })\n    end\n    local suppressed", 1)],
+     "Design's condition on #1029: a boom lift or switch-off keeps the held anchor, so the next pass charges ground it did not paint",
+     "E12.2 / E12.5 / E12.8 / E12.10"),
 ]
 
 
@@ -160,7 +173,10 @@ def main():
 
     results = []
     try:
+        only = sys.argv[1:]
         for mid, fkey, edits, clause, expect in MUTATIONS:
+            if only and not any(mid.startswith(o) for o in only):
+                continue
             mutated, landed = texts[fkey], True
             for old, new, want in edits:
                 pat = pattern(old)

@@ -947,4 +947,257 @@ do
   T.eq("E11.20 a blocked pass never counts toward the helper's boundary stop", #NATIVE.stops, 0)
 end
 
+-- =====================================================================
+-- E12. The held region clears on a stop, a boom lift and a headland turn (Design's
+-- condition on #1029, DESIGN-CHECK row 136): the unpaid native paint stays within
+-- the held cycles (no whole carrier pixel) and no cycle charges for ground it did
+-- not paint. The engine raises onStartWorkAreaProcessing, so getSprayerUsage, and
+-- onEndWorkAreaProcessing on every tick whatever the boom does (WorkArea.lua:124-206,
+-- Sprayer.lua:855-861), so a lifted or switched-off boom still reaches the plan.
+-- =====================================================================
+-- WorkArea:getIsWorkAreaActive (WorkArea.lua:298-306): an onlyActiveWhenLowered area
+-- is inactive while the boom is lifted, the sprayer still turned on
+local function liftable(v) v.getIsWorkAreaActive = function(self, a) return self.turnedOn and self.lifted ~= true end end
+local function shiftBoom(v, dx)
+  local wa = v.spec_workArea.workAreas[1]
+  wa.start.x, wa.width.x, wa.height.x = wa.start.x + dx, wa.width.x + dx, wa.height.x + dx
+  v.rootNode.x = v.rootNode.x + dx
+end
+local function tickAt(v, dz)
+  moveBoom(v, dz)
+  g_currentMission.time = g_currentMission.time + DT
+  tick(v)
+end
+local function heldAnchor()
+  local st = W.ss.targetApplication.states[W.v]
+  return st ~= nil and st.hold ~= nil
+end
+local function reason() local r = W.ss:getApplicationTargetResult(W.v); return r and r.reasons and r.reasons[1] end
+-- N pixels (1 m, pixel centres) over the old pass's width, from behind its priming
+-- line to ahead of where it stopped: ground the return pass never paints
+local function oldPassPixels()
+  local out = {}
+  for ix = -6, 5 do for iz = -23, -17 do out[#out + 1] = px("nitrogen", ix + 0.5, iz + 0.5) end end
+  return out
+end
+local function samePixels(a, b)
+  for i = 1, #a do if a[i] ~= b[i] then return false end end
+  return #a == #b
+end
+
+-- A boom lift at the headland, a U-turn into the next pass, the boom lowered again.
+do
+  newWorld()
+  liftable(W.v)
+  paintCarrier(40, 39.8, 39.8)
+  autoOn(W.v)
+  run(W.v, 1)
+  local level0 = tank(W.v)
+  local p0 = NATIVE.paints
+  run(W.v, 2)
+  T.ok("E12.1 two held cycles: the anchor is held, native paint went on, the tank is untouched",
+       heldAnchor() and NATIVE.paints > p0 and tank(W.v) == level0)
+  local before = oldPassPixels()
+  W.v.lifted = true
+  tickAt(W.v, travelPerTick(W.v))
+  T.eq("E12.2 the boom lift clears the held region", heldAnchor(), false)
+  T.eq("E12.3 the lifted tick draws nothing", tank(W.v), level0)
+  -- the headland turn: the boom lifted all the way round, then one boom width across
+  for _ = 1, 20 do tickAt(W.v, 0) end
+  shiftBoom(W.v, BOOM_HALF * 2)
+  T.eq("E12.4 through the turn nothing is held and nothing is drawn",
+       tostring(heldAnchor()) .. "/" .. tostring(tank(W.v) == level0), "false/true")
+  W.v.lifted = false
+  tickAt(W.v, -travelPerTick(W.v))
+  T.eq("E12.5 lowered in the next pass, the first line is observation only (FOOTPRINT_PRIMING)", reason(), "FOOTPRINT_PRIMING")
+  T.eq("E12.6 the priming line after the turn draws nothing", tank(W.v), level0)
+  local dosed = false
+  for _ = 1, 30 do
+    tickAt(W.v, -travelPerTick(W.v))
+    local r = W.ss:getApplicationTargetResult(W.v)
+    if r ~= nil and (r.physicalLitres or 0) > 0 then dosed = true; break end
+  end
+  T.ok("E12.7 the next pass closes its own pixels and doses", dosed)
+  T.ok("E12.8 no N pixel of the old pass, behind or ahead of where it stopped, was dosed from the next pass",
+       samePixels(before, oldPassPixels()))
+end
+
+-- Switched off at the headland with the boom still down.
+do
+  newWorld()
+  paintCarrier(40, 39.8, 39.8)
+  autoOn(W.v)
+  run(W.v, 3)
+  T.ok("E12.9 held before the switch-off", heldAnchor())
+  local level0 = tank(W.v)
+  W.v.turnedOn = false
+  tickAt(W.v, travelPerTick(W.v))
+  T.eq("E12.10 switching off clears the held region", heldAnchor(), false)
+  T.eq("E12.11 and draws nothing", tank(W.v), level0)
+end
+
+-- A normal stop: boom down, sprayer on, the vehicle standing still (reading A, Tyson's
+-- ruling via Desk 2026-09-26, awaiting Design's confirmation). The re-prime test measures
+-- travel from the held anchor, so a stand after held travel keeps the hold rather than
+-- re-priming. What must hold: nothing is drawn, the held region does not grow while
+-- standing, and moving on, the closing charge covers only ground swept from the anchor,
+-- all of it painted.
+do
+  newWorld()
+  paintCarrier(40, 39.8, 39.8)
+  autoOn(W.v)
+  run(W.v, 3)
+  local st = W.ss.targetApplication.states[W.v]
+  local function quadArea() local c = st.cycle; return c and c.committed and c.committed.quadArea end
+  local anchorZ = st.hold and st.hold.anchor.az
+  local area0 = quadArea()
+  local level0 = tank(W.v)
+  local band = {}
+  for ix = -6, 5 do for iz = -23, -14 do band[#band + 1] = { x = ix + 0.5, z = iz + 0.5 } end end
+  for _, p in ipairs(band) do p.n0 = px("nitrogen", p.x, p.z) end
+  local speed = W.v.lastSpeed
+  W.v.lastSpeed = 0
+  local steady = true
+  for _ = 1, 5 do
+    tickAt(W.v, 0)
+    if not heldAnchor() or st.hold.anchor.az ~= anchorZ or quadArea() ~= area0 then steady = false end
+  end
+  T.ok("E12.12 standing, the anchor stays held where it was and the held quad does not grow", anchorZ ~= nil and area0 ~= nil and steady)
+  T.eq("E12.13 the stand draws nothing", tank(W.v), level0)
+  W.v.lastSpeed = speed
+  local r, ticks = runToDose(W.v, 20)
+  T.ok("E12.14 moving on, the pass closes and doses", ticks ~= nil and r ~= nil and (r.physicalLitres or 0) > 0)
+  local closeZ = W.v.spec_workArea.workAreas[1].start.z
+  local outside, inside = 0, 0
+  for _, p in ipairs(band) do
+    local changed = px("nitrogen", p.x, p.z) ~= p.n0
+    if p.z < anchorZ or p.z > closeZ then
+      if changed then outside = outside + 1 end
+    elseif changed then
+      inside = inside + 1
+    end
+  end
+  T.eq("E12.15 the closing charge covers only ground swept from the anchor: no pixel behind it or ahead of the boom",
+       outside, 0)
+  T.ok("E12.16 and it doses the swept pixels", inside > 0)
+end
+
+-- A headland U-turn made with the boom DOWN and spraying (the lifted boom is E12.1-E12.8).
+-- Nothing clears: the plan keeps closing and dosing through the turn, and every pixel it
+-- doses is ground the boom swept. R is the turn radius at the boom's middle; at 3 m the
+-- turn centre lies inside the boom and its inner end runs backwards.
+local function boomAt(v, a, cx, cz, R)
+  -- heading (sin a, cos a); the turn centre lies to the right, r = (cos a, -sin a)
+  local hx, hz = math.sin(a), math.cos(a)
+  local rx, rz = math.cos(a), -math.sin(a)
+  local mx, mz = cx - R * rx, cz - R * rz
+  local wa = v.spec_workArea.workAreas[1]
+  wa.start.x, wa.start.z = mx - BOOM_HALF * rx, mz - BOOM_HALF * rz
+  wa.width.x, wa.width.z = mx + BOOM_HALF * rx, mz + BOOM_HALF * rz
+  wa.height.x, wa.height.z = wa.start.x - hx, wa.start.z - hz
+  v.rootNode.x, v.rootNode.z = mx, mz
+  return { ax = wa.start.x, az = wa.start.z, bx = wa.width.x, bz = wa.width.z }
+end
+local function segDist(x, z, s)
+  local dx, dz = s.bx - s.ax, s.bz - s.az
+  local L2 = dx * dx + dz * dz
+  local t = L2 > 0 and ((x - s.ax) * dx + (z - s.az) * dz) / L2 or 0
+  t = math.max(0, math.min(1, t))
+  local qx, qz = s.ax + t * dx, s.az + t * dz
+  return math.sqrt((x - qx) ^ 2 + (z - qz) ^ 2)
+end
+for _, R in ipairs({ 6, 3 }) do
+  newWorld()
+  paintCarrier(40, 39.8, 39.8)
+  autoOn(W.v)
+  run(W.v, 3)
+  local z0 = W.v.spec_workArea.workAreas[1].start.z
+  local band = {}
+  for ix = -12, 19 do for iz = -30, 0 do band[#band + 1] = { x = ix + 0.5, z = iz + 0.5, n = px("nitrogen", ix + 0.5, iz + 0.5) } end end
+  local level0 = tank(W.v)
+  local swept = { { ax = -BOOM_HALF, az = z0, bx = BOOM_HALF, bz = z0 } }
+  local steps = math.floor(math.pi * R / travelPerTick(W.v) + 0.5)
+  local doses = 0
+  for i = 1, steps do
+    swept[#swept + 1] = boomAt(W.v, math.pi * i / steps, R, z0, R)
+    g_currentMission.time = g_currentMission.time + DT
+    tick(W.v)
+    local r = W.ss:getApplicationTargetResult(W.v)
+    if r ~= nil and (r.physicalLitres or 0) > 0 then doses = doses + 1 end
+  end
+  local changed, outside = 0, 0
+  for _, p in ipairs(band) do
+    if px("nitrogen", p.x, p.z) ~= p.n then
+      changed = changed + 1
+      local d = math.huge
+      for _, s in ipairs(swept) do d = math.min(d, segDist(p.x, p.z, s)) end
+      -- a pixel whose centre is more than half a diagonal from every boom position was not swept
+      if d > 0.75 then outside = outside + 1 end
+    end
+  end
+  T.ok(string.format("E12.%d R=%d m, boom down through the turn: the plan keeps dosing (painted ground is paid)", R == 6 and 17 or 19, R),
+       doses > 0 and tank(W.v) < level0)
+  T.ok(string.format("E12.%d R=%d m: every dosed pixel is ground the boom swept (%d dosed, %d not swept)", R == 6 and 18 or 20, R, changed, outside),
+       changed > 0 and outside == 0)
+end
+
+-- =====================================================================
+-- E13. The crop-need reader behind SF-73's release lock (Design on #1029): while the
+-- lock is closed getCropNutrientRelationship answers unavailable (nil), so
+-- SeasonalCropStress #215 and DairyCore #69 keep their complete legacy paths; they
+-- move to crop windows when SF-73 unlocks. The same switch as target mode.
+-- =====================================================================
+-- The readers call the public contract through the mission's manager, without
+-- coordinates (production sets mission.soilFertilityManager, main.lua:770).
+local function read(fieldId, x, z)
+  local sfm = g_currentMission.soilFertilityManager
+  return sfm.soilSystem:getCropNutrientRelationship(fieldId, x, z)
+end
+-- Both readers' own acceptance of the answer, as merged: SeasonalCropStress
+-- CropStressModifier.relationshipAvailability and DairyCore
+-- DairyCoreManager:_getFieldRelationships take a FIELD_REPORT whose N, P and K each
+-- carry a determinate relationship; anything else sends them down the legacy path.
+local function readersSwitch(rel)
+  if type(rel) ~= "table" or rel.scope ~= "FIELD_REPORT" or type(rel.nutrients) ~= "table" then return false end
+  for _, n in ipairs({ "N", "P", "K" }) do
+    local x = rel.nutrients[n]
+    local k = type(x) == "table" and x.relationship or nil
+    if k ~= "BELOW" and k ~= "APPROACHING" and k ~= "IDEAL" and k ~= "ABOVE" then return false end
+  end
+  return true
+end
+-- a world with wheat sown on field 7 through the soil system's own sowing writer
+local function sownWorld(opts)
+  newWorld(opts)
+  g_currentMission.soilFertilityManager = g_SoilFertilityManager
+  W.ss:onSowing(7, 1.0, 1)
+  return W
+end
+do
+  sownWorld({ gate = false })
+  T.eq("E13.1 wheat is the field's sown crop (the sowing writer ran)", W.ss.fieldData[7].sownCrop, "WHEAT")
+  T.eq("E13.2 LOCKED: the field report is unavailable (nil)", read(7), nil)
+  T.eq("E13.3 LOCKED: the local form is unavailable too", read(7, 0.5, -19.5), nil)
+  T.eq("E13.4 LOCKED: both readers keep their legacy path", readersSwitch(read(7)), false)
+  W.settings.allowsExperimentalSystems = nil
+  T.eq("E13.5 LOCKED when the opt-in cannot be read (fail-closed, as target mode)", read(7), nil)
+end
+do
+  sownWorld()
+  local rel = read(7)
+  T.eq("E13.6 UNLOCKED by the player's opt-in: a FIELD_REPORT of wheat on field 7",
+       (rel and rel.scope or "nil") .. "/" .. tostring(rel and rel.cropKey) .. "/" .. tostring(rel and rel.fieldId), "FIELD_REPORT/wheat/7")
+  T.eq("E13.7 UNLOCKED: both readers move to crop windows", readersSwitch(rel), true)
+end
+do
+  local entry = ReleaseGate.EXPERIMENTAL.sf73_target
+  ReleaseGate.EXPERIMENTAL.sf73_target = nil
+  local ok, err = pcall(function()
+    sownWorld({ gate = false })
+    T.eq("E13.8 UNLOCKED by the release (no opt-in): both readers move to crop windows", readersSwitch(read(7)), true)
+  end)
+  ReleaseGate.EXPERIMENTAL.sf73_target = entry
+  if not ok then error(err, 0) end
+end
+
 T.summary()
