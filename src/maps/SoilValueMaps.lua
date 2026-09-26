@@ -785,28 +785,23 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta, growthD
     if not self.hasExecuteAdd then return 0 end
     local rawLow = def.rawFloor or RAW_MIN
     local filter = entry.filter
-    if rawDelta > 0 then
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, RAW_MAX - rawDelta)
-    else
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow - rawDelta, RAW_MAX)
-    end
-    local ok, err = pcall(function()
-        m:executeAdd(rawDelta, filter)
-    end)
-    if not ok then
-        SoilLogger.debug("SoilValueMaps: addPaintStrip executeAdd failed (%s) - disabling add path", tostring(err))
-        self.hasExecuteAdd = false
-        return 0
-    end
 
-    -- [SF-30] Saturation band: clamp the pixels the add had to skip.
+    -- Saturation band (commit c776536b; the old [SF-30] tag was a mislabel, SF-30 is the
+    -- drilling-window advisory): clamp the pixels the add has to skip.
     --
-    -- The filter above deliberately excludes any pixel that would overflow the
+    -- The add's filter below deliberately excludes any pixel that would overflow the
     -- raw range. That protects the no-data sentinel, but it means a LARGE dose
     -- silently does nothing to ground that is already moderately stocked, while
     -- addPaintStrip still returns the full semantic delta as if it had landed.
     -- A pixel that cannot take the whole delta should end up AT the ceiling, not
     -- refuse the paint. Same at the floor for a negative delta.
+    --
+    -- The clamp runs BEFORE the add (MAINTENANCE row 149; the order #1025 set in the
+    -- two aimed-delta paths). After the add it also took the pixels the add had just
+    -- carried into its window and parked them at the ceiling (or the floor), up to one
+    -- step less one past the dose. Run first, a parked pixel sits outside the add's
+    -- window and an added one lands inside the range, so no pixel is handled twice. If
+    -- the add then fails, the parked pixels are where the dose would have taken them.
     if type(m.executeSet) == "function" then
         local sok, serr = pcall(function()
             if rawDelta > 0 then
@@ -822,9 +817,23 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta, growthD
             end
         end)
         if not sok then
-            -- Non-fatal: the add already happened, this only tops up the band.
+            -- Non-fatal: the add below still lands; only the band's top-up is lost.
             SoilLogger.debug("SoilValueMaps: addPaintStrip saturation clamp failed (%s)", tostring(serr))
         end
+    end
+
+    if rawDelta > 0 then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, RAW_MAX - rawDelta)
+    else
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow - rawDelta, RAW_MAX)
+    end
+    local ok, err = pcall(function()
+        m:executeAdd(rawDelta, filter)
+    end)
+    if not ok then
+        SoilLogger.debug("SoilValueMaps: addPaintStrip executeAdd failed (%s) - disabling add path", tostring(err))
+        self.hasExecuteAdd = false
+        return 0
     end
 
     self:_markSyncDirtyZ(key, math.min(sz, wz, hz, wz + hz - sz), math.max(sz, wz, hz, wz + hz - sz))
