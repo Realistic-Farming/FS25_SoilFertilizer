@@ -6,7 +6,8 @@
 -- Sprayer.onEndWorkAreaProcessing, through the mod's OWN installers in installAll's
 -- order (the area hook, the FillUnit purchase layer, the external fill layer, the
 -- rate multiplier, the actual-speed usage replacement, the SF-73 cycle start and
--- owned usage layer, R2, the SF-73 enforcement, the drain token). The target plan,
+-- owned usage layer, R2, the SF-73 enforcement, the overlap prevention prepend, the
+-- section state preserver, the drain token). The target plan,
 -- the anchor, the footprint, the field baseline, the AI message registration and
 -- the result are all obtained by the code under test. Nothing in a row is a
 -- hand-filled plan.
@@ -16,8 +17,9 @@
 -- :855-957), FillUnit:addFillUnitFillLevel's applied-delta return (FillUnit.lua,
 -- "return allowFillType"), WorkArea's per-tick order (WorkArea.lua:124-206), the
 -- fruit plane reader (FSDensityMapUtil.lua:2849), the farmland map and access
--- (FarmlandManager.lua:267-293), AIMessageManager's index registry (:76-107) and the
--- value-map rasters (SF-995-engine_model.lua: 1 m pixels, pixel-centre polygons).
+-- (FarmlandManager.lua:267-293), AIMessageManager's index registry (:76-107), the
+-- field-id block cache (collections/MapDataGrid.lua:11-24) and the value-map rasters
+-- (SF-995-engine_model.lua: 1 m pixels, pixel-centre polygons).
 --
 -- What this bar does NOT prove: native pixel selection and fruit-plane rounding on
 -- real maps, frame cost, MP delivery, the HUD (Wizard's), or in-game money. The
@@ -53,6 +55,8 @@ MoneyType    = MoneyType or { PURCHASE_FERTILIZER = 1, OTHER = 2 }
 UIHelper     = UIHelper or { formatCurrencyValue = function(v) return tostring(v) end }
 WorkAreaType = { DEFAULT = 1, AUXILIARY = 2, SPRAYER = 3 }
 g_farmManager = { updateFarmStats = function() end }
+-- the effect manager the overlap hook stops and restarts nozzle effects through
+g_effectManager = { startEffects = function() end, stopEffects = function() end }
 g_i18n = { texts = {}, hasText = function() return false end,
            getText = function(_, k) return k end }
 
@@ -145,6 +149,17 @@ g_farmlandManager = {
   end,
   getFarmlandById = function(_, id) return { id = id, areaInHa = 30 } end,
   getFarmlandOwner = function(_, id) return FARMLAND_OWNER[id] or 0 end,
+}
+-- The engine's field-id block cache (collections/MapDataGrid.lua:11-24): one value per
+-- blockSize-metre block, read and written by world position.
+MapDataGrid = {
+  createFromBlockSize = function(_mapSize, blockSize)
+    local g = { cells = {} }
+    local function key(x, z) return math.floor(x / blockSize) .. ":" .. math.floor(z / blockSize) end
+    function g:getValueAtWorldPos(x, z) return self.cells[key(x, z)] end
+    function g:setValueAtWorldPos(x, z, value) self.cells[key(x, z)] = value end
+    return g
+  end,
 }
 g_fieldManager = { farmlandIdFieldMapping = { [7] = { farmland = { id = 7 }, posX = 0, posZ = 0 },
                                               [9] = { farmland = { id = 9 }, posX = 25, posZ = 0 } },
@@ -298,6 +313,13 @@ local function newSprayer(opts)
                start = { x = x0 - BOOM_HALF, z = z }, width = { x = x0 + BOOM_HALF, z = z }, height = { x = x0 - BOOM_HALF, z = z - 1 } }
   wa.processingFunction = v.processSprayerArea          -- WorkArea:onLoad captured the instance copy
   v.spec_workArea = { workAreas = { wa } }
+  v.rootNode = { x = x0, z = z }
+  if opts.vww then
+    -- VariableWorkWidth: the left section tips at the work area's start corner, the
+    -- right section at its width corner (the preserver's furthest-node rule)
+    v.spec_variableWorkWidth = { sections = { { isActive = true, maxWidthNode = wa.start },
+                                              { isActive = true, maxWidthNode = wa.width } } }
+  end
   v.getSprayerFillUnitIndex = function() return 1 end
   v.getFillUnitFillType = function(self, i) return self.spec_fillUnit.fillUnits[i].fillType end
   v.getFillUnitFillLevel = function(self, i) return self.spec_fillUnit.fillUnits[i].fillLevel end
@@ -320,6 +342,7 @@ end
 local function moveBoom(v, dz)
   local wa = v.spec_workArea.workAreas[1]
   wa.start.z, wa.width.z, wa.height.z = wa.start.z + dz, wa.width.z + dz, wa.height.z + dz
+  v.rootNode.z = v.rootNode.z + dz
 end
 local DT = 36
 local function tick(v)                                         -- WorkArea.lua:124-206
@@ -340,7 +363,7 @@ local function newWorld(opts)
   GROUND.fruitAt = nil
   ENGINE.disk = {}
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
-                     replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = false,
+                     replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = opts.overlap == true,
                      multiTankApplication = true }
   settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = {
@@ -377,7 +400,8 @@ local function newWorld(opts)
   local seq = { "installSprayerAreaHook", "installPurchaseRefillHook", "installExternalFillHook",
                 "installSprayerStartHook", "installSprayerUsageHook", "installTargetApplicationHooks",
                 "installExternalFillOptInHook", "registerCustomSprayTypes", "installDensityRefusalHook",
-                "installTargetStartEnforcement", "installDrainTokenHook" }
+                "installTargetStartEnforcement", "installOverlapPreventionHook", "installSectionStatePreserver",
+                "installDrainTokenHook" }
   local failed = {}
   for _, name in ipairs(seq) do
     local ok, err = pcall(HookManager[name], hm)
@@ -844,6 +868,83 @@ do
   T.eq("E10.5 a supply-capped pass says SHORT_SUPPLY", r and r.doseState, "SHORT_SUPPLY")
   DECL.LIQUIDMANURE = nil
   g_currentMission.liquidManureLoadingStations = nil
+end
+
+-- =====================================================================
+-- E11. Soil's own overlap prevention, installed and on: a part-suppressed boom
+--      refuses NOZZLE_PARTIAL, a fully blocked pass is native inactivity. Neither
+--      quotes, buys, draws or paints. The earlier passes are written by the real
+--      session-coverage writer (SoilFertilitySystem:markBoomCells), and the
+--      suppression is the real prepend's own verdict from them.
+-- =====================================================================
+local function stampPriorPass(points) W.ss:markBoomCells(7, points) end
+local function leftStripSprayedEarlier()
+  -- an earlier pass covered the strip under the LEFT section's tip (x = -6) only;
+  -- the right tip shares the root's cell, which stays unsprayed
+  stampPriorPass({ { x = -5, z = -15 }, { x = -5, z = -25 } })
+  g_currentMission.time = g_currentMission.time + 15000     -- older than the wing grace
+end
+local function bought() local n = 0 for _, m in ipairs(NATIVE.money) do if m < 0 then n = n - m end end return n end
+do
+  newWorld({ vww = true, overlap = true })
+  paintCarrier(40, 39.8, 39.8)
+  leftStripSprayedEarlier()
+  autoOn(W.v)
+  local level0, p0, d0 = tank(W.v), NATIVE.paints, nonZeroDraws()
+  run(W.v, 3)
+  local r = W.ss:getApplicationTargetResult(W.v)
+  local sup = W.v._sfOverlapSuppressedSections or {}
+  local buf = W.ss.fieldData[7].nutrientBuffer
+  T.ok("E11.1 the real overlap prepend suppressed the left section and not the right", sup[1] ~= nil and sup[2] == nil)
+  T.eq("E11.2 SF-73 refuses the part-suppressed boom with NOZZLE_PARTIAL", r and r.reasons[1], "NOZZLE_PARTIAL")
+  T.eq("E11.3 as an INACTIVE pause", r and r.doseState, "INACTIVE")
+  T.eq("E11.4 zero target litres", r and r.physicalLitres, 0)
+  T.eq("E11.5 zero native paint on the part-blocked boom", NATIVE.paints - p0, 0)
+  T.eq("E11.6 zero drain", nonZeroDraws() - d0, 0)
+  T.eq("E11.7 the tank is untouched", tank(W.v), level0)
+  T.eq("E11.8 no Soil nutrient credit", buf and buf[UREA] or 0, 0)
+end
+do
+  -- the same part-blocked boom in helper-buy mode, empty tank: nothing is bought
+  newWorld({ vww = true, overlap = true, buy = true })
+  paintCarrier(40, 39.8, 39.8)
+  local fu = W.v.spec_fillUnit.fillUnits[1]
+  fu.fillLevel, fu.fillType, fu.lastValidFillType = 0, FillType.UNKNOWN, UREA
+  W.v.getFillUnitLastValidFillType = function(self, i) return self.spec_fillUnit.fillUnits[i].lastValidFillType end
+  W.v._buyMode, W.v.ai = true, true
+  leftStripSprayedEarlier()
+  autoOn(W.v)
+  local p0 = NATIVE.paints
+  run(W.v, 3)
+  local r = W.ss:getApplicationTargetResult(W.v)
+  T.eq("E11.9 helper buy: the part-blocked boom refuses NOZZLE_PARTIAL", r and r.reasons[1], "NOZZLE_PARTIAL")
+  T.eq("E11.10 helper buy: zero litres bought", bought(), 0)
+  T.eq("E11.11 helper buy: zero native paint", NATIVE.paints - p0, 0)
+end
+do
+  -- a fully covered field: the prepend blocks the whole pass (coverage >= 99%)
+  newWorld({ vww = true, overlap = true })
+  paintCarrier(40, 39.8, 39.8)
+  local field = W.ss.fieldData[7]
+  local area = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
+  local pts = {}
+  for i = 0, math.ceil(area / 0.01) do pts[#pts + 1] = { x = 1000 + (i % 100) * 10 + 5, z = 1000 + math.floor(i / 100) * 10 + 5 } end
+  stampPriorPass(pts)
+  T.ok("E11.12 the earlier passes covered the field (the writer's own fraction)", (field.sessionCoverageFraction or 0) >= 0.99)
+  W.v.ai = true
+  autoOn(W.v)
+  local level0, p0, d0 = tank(W.v), NATIVE.paints, nonZeroDraws()
+  run(W.v, 6)
+  local r = W.ss:getApplicationTargetResult(W.v)
+  local buf = field.nutrientBuffer
+  T.ok("E11.13 the real prepend blocked the pass", W.v._sfOverlapBlockedPass == true)
+  T.eq("E11.14 SF-73 reads it as native inactivity: INACTIVE", r and r.doseState, "INACTIVE")
+  T.eq("E11.15 with no refusal reason (Soil blocked it, no boundary was met)", r and #r.reasons, 0)
+  T.eq("E11.16 zero target litres", r and r.physicalLitres, 0)
+  T.eq("E11.17 zero native paint", NATIVE.paints - p0, 0)
+  T.eq("E11.18 zero drain, the tank untouched", (nonZeroDraws() - d0) .. "/" .. tostring(tank(W.v) == level0), "0/true")
+  T.eq("E11.19 no Soil nutrient credit", buf and buf[UREA] or 0, 0)
+  T.eq("E11.20 a blocked pass never counts toward the helper's boundary stop", #NATIVE.stops, 0)
 end
 
 T.summary()

@@ -96,6 +96,20 @@ MUTATIONS = [
      [("                 contractBroken = not self:usageSlotOwned(sprayer) }\n",
        "                 contractBroken = false }\n", 1)],
      "section 2: a later occupant of the usage slot spends before target mode suspends", "E7.9"),
+
+    ("nozzle-partial-refusal-removed", "ta",
+     [("    local suppressed = sprayer._sfOverlapSuppressedSections\n"
+       "    if type(suppressed) == \"table\" and next(suppressed) ~= nil then\n"
+       "        -- a partial Soil nozzle shut-off: physical deposition no longer matches one width\n"
+       "        return refusedPlan(fillTypeIndex, C.STATE.INACTIVE, { C.REASON.NOZZLE_PARTIAL }, { clearAnchor = true })\n"
+       "    end\n", "", 1)],
+     "section 3: a boom Soil's overlap prevention part-suppressed is metered as one width", "E11.2, E11.5"),
+
+    ("overlap-blocked-pass-ignored", "ta",
+     [("    if not turnedOn or not anyWorkAreaActive(sprayer)\n"
+       "       or (HookManager ~= nil and HookManager.isOverlapBlockedPass ~= nil and HookManager.isOverlapBlockedPass(sprayer)) then\n",
+       "    if not turnedOn or not anyWorkAreaActive(sprayer) then\n", 1)],
+     "section 3: a pass Soil's overlap prevention blocked is read as a boundary, not native inactivity", "E11.15, E11.20"),
 ]
 
 
