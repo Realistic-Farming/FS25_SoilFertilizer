@@ -74,16 +74,19 @@ T.eq("6 points is 15 raw steps",  MaterialWetness.pointsToRawDelta(6),  15)
 -- ── 3. The guard is INTERSECTED, never replaced ───────────
 local vm, calls = makeStore()
 vm:applyRawDeltaToPolygonBand("materialWetness", POLY, 30, 100, 254)
-T.eq("the caller's LOW bound is preserved exactly", calls[1].low, 100)
+-- The edge pass runs before the add (MAINTENANCE row 106), so the add is found by op.
+local guardAdd
+for _, c in ipairs(calls) do if c.op == "add" then guardAdd = c end end
+T.eq("the caller's LOW bound is preserved exactly", guardAdd.low, 100)
 -- Silently widening the band back to the safe window would touch pixels the phase
 -- table deliberately excluded.
-T.eq("the HIGH bound shrinks to the safe bound", calls[1].high, 225)
+T.eq("the HIGH bound shrinks to the safe bound", guardAdd.high, 225)
 
 -- ── 4. The edge pass never writes outside the caller band ──
 vm, calls = makeStore()
 vm:applyRawDeltaToPolygonBand("materialWetness", POLY, 30, 100, 240)
-local edge = calls[2]
-T.eq("edge pass exists for an overflowing top", edge.op, "set")
+local edge = calls[1]
+T.eq("edge pass exists for an overflowing top, and runs first", edge.op, "set")
 T.ok("edge low is inside the caller band", edge.low >= 100)
 T.ok("edge high never exceeds the caller band", edge.high <= 240)
 

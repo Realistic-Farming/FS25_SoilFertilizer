@@ -1216,7 +1216,18 @@ end
 -- pass). The edge pass carries the pixels the add's guard had to exclude: they
 -- saturate at the top for a positive delta and floor at the bottom for a negative
 -- one, so a long step cannot leave a permanently frozen band at either end.
-local function aimedWindows(rawDelta, rawLow, rawHigh)
+--
+-- `floorRaw` (a negative delta only; RAW_MIN when nil) is where the edge pass parks a
+-- pixel that cannot take the whole step (MAINTENANCE row 106). The add starts at
+-- floorRaw + mag, so it never takes a pixel below the floor, and the edge pass takes
+-- only pixels at or above the floor: a pixel the caller's band holds below it (the
+-- reserved sentinel band) is left as it is, never raised to a value.
+--
+-- THE EDGE PASS RUNS BEFORE THE ADD, in both callers. Run after it, the edge window
+-- also catches the pixels the add has just moved into it, and parks them at the
+-- ceiling or the floor a second time: a wetting step over-wets, a catch-up over-ages
+-- and a drying step over-dries by up to one step less one.
+local function aimedWindows(rawDelta, rawLow, rawHigh, floorRaw)
     local addLow, addHigh, edgeLow, edgeHigh
     if rawDelta > 0 then
         addLow   = rawLow
@@ -1225,10 +1236,11 @@ local function aimedWindows(rawDelta, rawLow, rawHigh)
         edgeHigh = rawHigh
     else
         local mag = -rawDelta
-        addLow   = math.max(rawLow, RAW_MIN + mag)
+        floorRaw = floorRaw or RAW_MIN
+        addLow   = math.max(rawLow, floorRaw + mag)
         addHigh  = rawHigh
-        edgeLow  = rawLow
-        edgeHigh = math.min(rawHigh, RAW_MIN + mag - 1)
+        edgeLow  = math.max(rawLow, floorRaw)
+        edgeHigh = math.min(rawHigh, floorRaw + mag - 1)
     end
     if addLow  > addHigh  then addLow,  addHigh  = nil, nil end
     if edgeLow > edgeHigh then edgeLow, edgeHigh = nil, nil end
@@ -1283,7 +1295,26 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh, grow
 
     local addLow, addHigh, satLow, satHigh = aimedWindows(rawDelta, rawLow, rawHigh)
 
-    -- Pass 1: the add. Its window stops short of RAW_MAX - rawDelta so no pixel can
+    -- Pass 1: the saturating pass. Pixels the add's guard window has to exclude but
+    -- that rawDelta lived ticks WOULD have pushed to the ceiling are set there
+    -- directly. Without this a long sleep leaves a permanently frozen band just
+    -- below the ceiling: at rawDelta 30 a pixel sitting at 230 falls outside the add
+    -- window on this tick and on every tick after it, forever.
+    -- It runs FIRST (row 106): after the add it would also take the pixels the add
+    -- had just carried into its window, and a catch-up of d days would age them by
+    -- up to d - 1 days more than they lived.
+    -- At rawDelta 1 (the ordinary daily tick) this window is empty by construction,
+    -- so the normal path really is ONE engine call.
+    if satLow then
+        coverWholeMap()
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, satLow, satHigh)
+        local okSat, errSat = pcall(function() m:executeSet(RAW_MAX, filter) end)
+        if not okSat then
+            SoilLogger.warning("SoilValueMaps: saturating pass failed on '%s' (%s)", key, tostring(errSat))
+        end
+    end
+
+    -- Pass 2: the add. Its window stops short of RAW_MAX - rawDelta so no pixel can
     -- overflow past the ceiling and wrap into the raw-0 no-data sentinel.
     if addLow then
         coverWholeMap()
@@ -1294,22 +1325,6 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh, grow
             SoilLogger.warning("SoilValueMaps: executeAdd failed on '%s' (%s) - layer stands down",
                 key, tostring(err))
             return nil
-        end
-    end
-
-    -- Pass 2: the saturating pass. Pixels the add's guard window had to exclude but
-    -- that rawDelta lived ticks WOULD have pushed to the ceiling are set there
-    -- directly. Without this a long sleep leaves a permanently frozen band just
-    -- below the ceiling: at rawDelta 30 a pixel sitting at 230 falls outside the add
-    -- window on this tick and on every tick after it, forever.
-    -- At rawDelta 1 (the ordinary daily tick) this window is empty by construction,
-    -- so the normal path really is ONE engine call.
-    if satLow then
-        coverWholeMap()
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, satLow, satHigh)
-        local okSat, errSat = pcall(function() m:executeSet(RAW_MAX, filter) end)
-        if not okSat then
-            SoilLogger.warning("SoilValueMaps: saturating pass failed on '%s' (%s)", key, tostring(errSat))
         end
     end
 
@@ -1359,7 +1374,8 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
 
     local m      = entry.modifier
     local filter = entry.filter
-    local addLow, addHigh, edgeLow, edgeHigh = aimedWindows(rawDelta, rawLow, rawHigh)
+    local addLow, addHigh, edgeLow, edgeHigh =
+        aimedWindows(rawDelta, rawLow, rawHigh, rawDelta < 0 and edgeValue or nil)
 
     -- A caller band wholly outside the safe window is a NO-OP on both sides.
     if addLow == nil and edgeLow == nil then return 0 end
@@ -1371,6 +1387,16 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
         return nil
     end
 
+    -- The edge pass first (row 106): after the add it would also park the pixels the
+    -- add had just carried into its window.
+    if edgeLow then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, edgeLow, edgeHigh)
+        local okEdge, errEdge = pcall(function() m:executeSet(edgeValue, filter) end)
+        if not okEdge then
+            SoilLogger.warning("SoilValueMaps: edge pass failed on '%s' (%s)", key, tostring(errEdge))
+        end
+    end
+
     if addLow then
         filter:setValueCompareParams(DensityValueCompareType.BETWEEN, addLow, addHigh)
         local ok, err = pcall(function() m:executeAdd(rawDelta, filter) end)
@@ -1379,14 +1405,6 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
             SoilLogger.warning("SoilValueMaps: executeAdd failed on '%s' (%s) - layer stands down",
                 key, tostring(err))
             return nil
-        end
-    end
-
-    if edgeLow then
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, edgeLow, edgeHigh)
-        local okEdge, errEdge = pcall(function() m:executeSet(edgeValue, filter) end)
-        if not okEdge then
-            SoilLogger.warning("SoilValueMaps: edge pass failed on '%s' (%s)", key, tostring(errEdge))
         end
     end
 

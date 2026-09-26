@@ -157,6 +157,15 @@ function MaterialWetness.rawToPct(raw)
     return PCT_MIN + (raw - SoilValueMaps.RAW_MIN) / span * (PCT_MAX - PCT_MIN)
 end
 
+--- The EMC ceiling for a sky, encoded: the one computation the field pass, the member
+--- pass and the tedder share (row 106). A 0-1 humidity is read as a fraction; a missing
+--- field takes the passes' own defaults (65 percent, 15 C).
+function MaterialWetness.emcRawFor(sky)
+    local humidity = sky and sky.humidity or 0.65
+    if humidity <= 1 then humidity = humidity * 100 end   -- accept 0-1 or 0-100
+    return MaterialWetness.pctToRaw(MaterialWetness.emcFor(humidity, sky and sky.temperature or 15))
+end
+
 --- Points of moisture expressed as raw steps (a delta, so no floor applies).
 function MaterialWetness.pointsToRawDelta(points)
     local span = SoilValueMaps.RAW_SPAN
@@ -485,10 +494,7 @@ end
 
 --- DRY over the membership: the phase table per cell, the floor at the EMC ceiling.
 function MaterialWetness:dryPassMembers(sky)
-    local humidity = sky and sky.humidity or 0.65
-    if humidity <= 1 then humidity = humidity * 100 end
-    local emcPct  = MaterialWetness.emcFor(humidity, sky and sky.temperature or 15)
-    local emcRaw  = MaterialWetness.pctToRaw(emcPct)
+    local emcRaw  = MaterialWetness.emcRawFor(sky)
     local floorRaw = math.max(emcRaw, RAW_FLOOR)
     local bandLows, bandHighs = {}, {}
     for i, phase in ipairs(MaterialWetness.PHASES) do
@@ -857,10 +863,7 @@ function MaterialWetness:dryPass(sky)
     local md = self.materialDown
     if md == nil or md.enumerateActiveFields == nil then return 0 end
 
-    local humidity = sky and sky.humidity or 0.65
-    if humidity <= 1 then humidity = humidity * 100 end   -- accept 0-1 or 0-100
-    local emcPct  = MaterialWetness.emcFor(humidity, sky and sky.temperature or 15)
-    local emcRaw  = MaterialWetness.pctToRaw(emcPct)
+    local emcRaw  = MaterialWetness.emcRawFor(sky)
 
     local calls = 0
     md:enumerateActiveFields(function(fieldId)
