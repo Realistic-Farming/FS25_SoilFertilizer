@@ -36,6 +36,10 @@ ReleaseGate.EXPERIMENTAL = {
     -- SF-2M growth family (SF-53 credit + SF-78 block). LOCKED until the
     -- reading surface (SF-54) exists, per the ratified family ruling 2026-08-12.
     growth_modulation = { name = "Growth modulation", status = "awaiting its reading surface (SF-54)" },
+    -- SF-73 target-accurate N/P/K. LOCKED until target mode is built AND observed
+    -- live, clear to the player, free of HIGH defects and balance-safe (Implementation
+    -- v1.1 section 7). Manual application is untouched either way.
+    sf73_target = { name = "Target N/P/K", status = "awaiting in-game observation and its player surface" },
 }
 
 -- Console command -> systemId, so command refusals route through the same registry.

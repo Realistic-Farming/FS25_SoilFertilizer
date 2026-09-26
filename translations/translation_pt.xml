@@ -1516,6 +1516,10 @@
     <e k="sf_rp_col_status" v="Estado" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="Campo %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="N/D" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s parou: fertilização alvo em pausa em terreno misto, negado ou desconhecido. A aplicação manual continua disponível." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Um ajudante parou: fertilização alvo em pausa em terreno misto, negado ou desconhecido. A aplicação manual continua disponível." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Fertilização alvo" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Campo %d: o produto foi gasto, mas o resultado local de N/P/K não está confirmado. O automático alvo parou; a aplicação manual continua disponível." eh="29d18403" />
 </elements>
 
 

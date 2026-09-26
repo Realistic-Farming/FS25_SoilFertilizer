@@ -518,6 +518,17 @@ SoilConstants.PERENNIAL_FORAGE_NAMES = {
     clover     = true,
 }
 
+-- [SF-73] Shipped-fruit aliases onto the owning crop-target table below. Only a
+-- name the target table actually keys under another spelling: FS25 ships PEA and
+-- GREENBEAN, which the table carries as peas and beans (green beans are the field
+-- bean profile, as CROP_EXTRACTION already treats them). Perennial forage stays
+-- excluded (PERENNIAL_FORAGE_NAMES) and "default" is never a supported crop.
+SoilConstants.SF73_CROP_ALIASES = {
+    pea         = "peas",
+    greenbean   = "beans",
+    green_beans = "beans",
+}
+
 -- Default extraction for unknown crops (average cereal)
 SoilConstants.CROP_EXTRACTION_DEFAULT = { N=2.10, P=0.90, K=1.70 }
 

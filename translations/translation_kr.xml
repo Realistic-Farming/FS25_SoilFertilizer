@@ -1496,6 +1496,10 @@
     <e k="sf_rp_col_status" v="상태" eh="ec53a8c4" />
     <e k="sf_rp_field_header_block" v="필드 %s  (%d / %d)" eh="c6e1d8e4" />
     <e k="sf_report_rotation_na" v="해당 없음" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s 정지: 혼합, 접근 불가 또는 알 수 없는 토지에서 목표 시비가 일시 중지되었습니다. 수동 살포는 계속 사용할 수 있습니다." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="도우미가 정지했습니다: 혼합, 접근 불가 또는 알 수 없는 토지에서 목표 시비가 일시 중지되었습니다. 수동 살포는 계속 사용할 수 있습니다." eh="abf38208" />
+    <e k="sf_target_failed_title" v="목표 시비" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="%d번 필드: 제품이 소모되었지만 국소 N/P/K 결과가 확인되지 않았습니다. 목표 자동이 중지되었습니다. 수동 살포는 계속 사용할 수 있습니다." eh="29d18403" />
 </elements>
 
 

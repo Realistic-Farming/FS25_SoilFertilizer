@@ -1523,6 +1523,10 @@
     <e k="sf_report_rotation_bonus" v="Bonus" eh="3c0ee4ba" />
     <e k="sf_report_rotation_fatigue" v="Únava: stejná plodina" eh="7b173595" />
     <e k="sf_report_rotation_ok" v="OK" eh="e0aa021e" />
+    <e k="sf_target_ai_boundary" v="%s zastaven: cílené hnojení pozastaveno na smíšené, zakázané nebo neznámé půdě. Ruční aplikace zůstává dostupná." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Pomocník se zastavil: cílené hnojení pozastaveno na smíšené, zakázané nebo neznámé půdě. Ruční aplikace zůstává dostupná." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Cílené hnojení" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Pole %d: produkt byl spotřebován, ale místní výsledek N/P/K není potvrzen. Cílená automatika byla zastavena; ruční aplikace zůstává dostupná." eh="29d18403" />
 </elements>
 
 

@@ -1495,5 +1495,9 @@
     <e k="sf_sensor_pest" v="虫害传感器" eh="81192ad7" />
     <e k="sf_sensor_state_off" v="关" eh="88559a0c" />
     <e k="sf_sensor_state_on" v="开" eh="90651ebe" />
+    <e k="sf_target_ai_boundary" v="%s 已停止：在混合、禁止或未知的地块上，目标施肥已暂停。仍可手动施用。" eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="一名帮工已停止：在混合、禁止或未知的地块上，目标施肥已暂停。仍可手动施用。" eh="abf38208" />
+    <e k="sf_target_failed_title" v="目标施肥" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="%d号田地：产品已消耗，但本地 N/P/K 结果未确认。目标自动已停止；仍可手动施用。" eh="29d18403" />
 </elements>
 </l10n>

@@ -163,6 +163,10 @@ function SoilFertilitySystem.new(settings)
     self.scanRetryTimer    = 0
     self.scanRetryAttempts = 0
     self.hookManager = HookManager.new()
+    -- [SF-73] Target-accurate N/P/K: the resolver, the footprint and the results.
+    -- LOCKED behind ReleaseGate "sf73_target"; inert until a vehicle's AUTO is on
+    -- with the gate open and an N/P/K product in the cycle.
+    self.targetApplication = TargetApplication and TargetApplication.new(self) or nil
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
     self.hookManager:installFillUnitHookEarly()
@@ -2884,6 +2888,11 @@ function SoilFertilitySystem:update(dt)
         -- Periodic checks could go here
     end
 
+    -- [SF-73] result cadence and deleted-vehicle cleanup
+    if self.targetApplication then
+        self.targetApplication:update()
+    end
+
     -- Handle network sync retry for multiplayer clients
     if SoilNetworkEvents_UpdateSyncRetry then
         SoilNetworkEvents_UpdateSyncRetry(dt)
@@ -3595,6 +3604,12 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     self:log("Lazy-created field %d area=%.2f ha confirmed=%s",
         fieldId, self.fieldData[fieldId].fieldArea, tostring(confirmedArea))
 
+    -- [SF-73] A field born here freezes its N/P/K baseline at once, from its
+    -- genesis scalars, before any target write can change them.
+    if TargetApplication then
+        TargetApplication.freezeBaseline(self.fieldData[fieldId])
+    end
+
     -- Pre-populate zone tiles immediately so the overlay shows at full opacity
     -- as soon as a new field is created (e.g. on farmland purchase).
     self:_prePopulateZoneData(fieldId)
@@ -3668,6 +3683,12 @@ function SoilFertilitySystem:rerollAllFields()
             -- outcome for "re-roll the starting soil". The scalar is then refreshed
             -- from the report so it equals the quantised map value.
             self:_phRerollField(fieldId, field)
+            -- [SF-73] a re-roll is a new legitimate starting soil: the baseline
+            -- is established again from it (the ordinary recovery, section 6)
+            if TargetApplication then
+                field._sf73Baseline, field._sf73BaselineUnavailable = nil, nil
+                TargetApplication.freezeBaseline(field)
+            end
             count = count + 1
         end
     end
@@ -3717,6 +3738,11 @@ function SoilFertilitySystem:rerollUnownedFields()
                 self:vmSeedField(fieldId, true)
                 -- [SF-79 3.C] The re-rolled pH reaches the map (see rerollAllFields).
                 self:_phRerollField(fieldId, field)
+                -- [SF-73] the baseline follows the re-rolled starting soil
+                if TargetApplication then
+                    field._sf73Baseline, field._sf73BaselineUnavailable = nil, nil
+                    TargetApplication.freezeBaseline(field)
+                end
                 rerolled = rerolled + 1
             end
         end
@@ -5926,6 +5952,14 @@ end
 function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
     if not self.settings.enabled then return end
 
+    -- [SF-73] A target cycle enters this path ONCE with its actual physical litres.
+    -- Every independent physical consequence stays (nutrient buffer, the coarse
+    -- field N/P/K/OM scalars, positional pH/OM, burn, organic input, coverage);
+    -- only the legacy per-pixel N/P/K writes are replaced by the target's frozen
+    -- polygon writer, and the volume-based "fully treated" notice is not a crop
+    -- window outcome, so it is not shown. The area hook names the field.
+    local sf73 = self._sf73TargetField ~= nil and self._sf73TargetField == fieldId
+
     local field = self:getOrCreateField(fieldId, true)
     if not field then
         self:warning("Cannot apply fertilizer - field %d not found", fieldId)
@@ -6178,9 +6212,11 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         end
         local sd = field._sprayDose
         sd.area = areaInHa
-        if entry.N  then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
-        if entry.P  then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
-        if entry.K  then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
+        -- [SF-73] a target cycle's N/P/K reaches the map through its polygon writer,
+        -- so the boom strip carries only this product's pH and OM
+        if entry.N and not sf73 then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
+        if entry.P and not sf73 then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
+        if entry.K and not sf73 then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
         if entry.pH then sd.dPH = sd.dPH + entry.pH * factor * tunFert end
         if entry.OM then sd.dOM = sd.dOM + entry.OM * factor * tunFert end
 
@@ -6256,9 +6292,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
             local vm = self.valueMaps
             local r = 2.5
             local sx, sz, wx, wz, hx, hz = sprayX - r, sprayZ - r, sprayX + r, sprayZ - r, sprayX - r, sprayZ + r
-            local dotN  = (entry.N  or 0) * factor * tunFert
-            local dotP  = (entry.P  or 0) * factor * tunFert
-            local dotK  = (entry.K  or 0) * factor * tunFert
+            -- [SF-73] no legacy N/P/K dot on a target cycle
+            local dotN  = sf73 and 0 or (entry.N  or 0) * factor * tunFert
+            local dotP  = sf73 and 0 or (entry.P  or 0) * factor * tunFert
+            local dotK  = sf73 and 0 or (entry.K  or 0) * factor * tunFert
             local dotPH = (entry.pH or 0) * factor * tunFert
             local dotOM = (entry.OM or 0) * factor * tunFert
             if dotN ~= 0 then vm:addPaintStrip("nitrogen",   sx, sz, wx, wz, hx, hz, dotN) end
@@ -6285,9 +6322,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         if self.layerSystem and self.layerSystem.available then
             local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
-                if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
-                if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
-                if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
+                -- [SF-73] the legacy GRLE N/P/K point stamp is the dot's twin: not on a target cycle
+                if entry.N and not sf73 then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
+                if entry.P and not sf73 then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
+                if entry.K and not sf73 then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
                 if entry.pH then self.layerSystem:updatePixelForField("pH",           x, z, field.pH,            2.0) end
                 if entry.OM then self.layerSystem:updatePixelForField("organicMatter",x, z, field.organicMatter, 2.0) end
             end
@@ -6351,7 +6389,7 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         (SoilConstants.DISEASE_PRESSURE and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES   and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[fillType.name])    or
         (SoilConstants.WEED_PRESSURE    and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES      and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES[fillType.name])
     )
-    if not isCropProtection then
+    if not isCropProtection and not sf73 then
         local baseRateEntry = SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name] or
                              SoilConstants.SPRAYER_RATE.BASE_RATES.DEFAULT
         local targetVolume = areaInHa * baseRateEntry.value
@@ -6371,6 +6409,55 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
             end
         end
     end
+end
+
+-- =========================================================
+-- [SF-73] target-accurate N/P/K: the soil system's side
+-- =========================================================
+
+--- The three factors applyFertilizer's credit uses for a product, so the target
+--- inversion and the credit can never disagree: the declared kg/L mass equivalent
+--- (1 for passthrough products), the replenishment multiplier and the fertilizer
+--- tuning. Same expressions as the nutrient branch above.
+---@return number unitFactor, number rr, number tuning
+function SoilFertilitySystem:sf73CreditFactors(fillType)
+    local unitFactor = massEquivalent(fillType, 1)
+    local rrIdx  = self.settings.replenishmentRate or 3
+    local rr = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
+    local tuning = getTuningMult(self.settings, "tuningFertilizerEfficiency", "RATE_MULT")
+    return unitFactor, rr, tuning
+end
+
+--- The baseline a save writes for a field. A field never touched by SF-73 has had
+--- no SF-73 change, so its current scalars are still the legitimate pre-SF-73
+--- values and are frozen here rather than lost; a field marked unavailable stays so.
+---@return table|nil { N, P, K }
+function SoilFertilitySystem:sf73BaselineForSave(field)
+    if TargetApplication == nil or type(field) ~= "table" or field._sf73BaselineUnavailable then return nil end
+    if not TargetApplication.validBaseline(field._sf73Baseline) then TargetApplication.freezeBaseline(field) end
+    local b = field._sf73Baseline
+    if not TargetApplication.validBaseline(b) then return nil end
+    return b
+end
+
+--- Read contract 1 (SF-73 section 6): the machine-pass answer for a vehicle, a
+--- copy, or nil when there is none. Never a zero success for a missing plan.
+function SoilFertilitySystem:getApplicationTargetResult(vehicle)
+    local ta = self.targetApplication
+    if ta == nil then return nil end
+    local ok, r = pcall(ta.getApplicationTargetResult, ta, vehicle)
+    if ok then return r end
+    return nil
+end
+
+--- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
+--- field scalars without coordinates; strict LOCAL map truth with them.
+function SoilFertilitySystem:getCropNutrientRelationship(fieldId, x, z)
+    local ta = self.targetApplication
+    if ta == nil then return nil end
+    local ok, r = pcall(ta.getCropNutrientRelationship, ta, fieldId, x, z)
+    if ok then return r end
+    return nil
 end
 
 --- Incremental insecticide application (called every frame while spraying)
@@ -7949,6 +8036,9 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- the positional pH contract; it never proves the pH carrier exists (a missing
     -- map is an explicit recovery at load).
     setXMLInt(xmlFile, key .. "#sf79PHSchema", 1)
+    -- [SF-73] The unknown-N/P/K schema marker: this save carries the field-owned
+    -- N/P/K baselines, so a missing one on load is unavailable, never re-frozen.
+    setXMLInt(xmlFile, key .. "#sf73UnknownNPK", 1)
 
     -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
     -- safety copy, the same one StateLedger's block mirrors).
@@ -8041,6 +8131,13 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             if type(self._phSaveFieldXML) == "function" then
                 self:_phSaveFieldXML(xmlFile, fieldKey, field)
             end
+            -- [SF-73] The three frozen N/P/K baselines (only a valid set is written).
+            local b73 = self:sf73BaselineForSave(field)
+            if b73 ~= nil then
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseN", b73.N)
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseP", b73.P)
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseK", b73.K)
+            end
 
             -- Save daily application throttles
             setXMLInt(xmlFile, fieldKey .. "#herbicideAppliedDay", self.herbicideAppliedDay[fieldId] or 0)
@@ -8105,6 +8202,9 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     -- per-field seed freeze below (_phFreezeSeedFromLoad): an unmarked save proves
     -- its #pH predates the contract. It gates nothing else.
     local sf79Marked = (getXMLInt(xmlFile, key .. "#sf79PHSchema") or 0) == 1
+    -- [SF-73] The unknown-N/P/K marker, with one reader: the per-field baseline
+    -- rule below (TargetApplication.applyLoadedBaseline).
+    local sf73Marked = (getXMLInt(xmlFile, key .. "#sf73UnknownNPK") or 0) == 1
 
     -- OM-213 organic premium provenance ledger (absent on older saves = empty).
     if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -8209,6 +8309,15 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED save, once.
         if type(self._phFreezeSeedFromLoad) == "function" then
             self:_phFreezeSeedFromLoad(self.fieldData[fieldId], sf79Marked)
+        end
+        -- [SF-73] An unmarked save freezes its N/P/K baseline from these loaded
+        -- scalars; a marked one keeps only a valid stored set.
+        if TargetApplication then
+            TargetApplication.applyLoadedBaseline(self.fieldData[fieldId], sf73Marked, {
+                N = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseN"),
+                P = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseP"),
+                K = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseK"),
+            })
         end
 
         -- Load daily application throttles
@@ -8393,7 +8502,9 @@ function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
     -- [SF-79] sf79PHSchema mirrors the XML root marker, so a ledger restore makes
     -- the same seed-freeze decision an XML load makes.
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1, fields = {} }
+    -- [SF-73] sf73UnknownNPK mirrors the XML root marker the same way.
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1,
+                  sf73UnknownNPK = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -8457,6 +8568,11 @@ function SoilFertilitySystem:getSoilStateTable()
             -- [SF-79] Positional pH metadata (matches XML save).
             if type(field._phSeedScalar) == "number" then
                 e.sf79PHSeed = field._phSeedScalar
+            end
+            -- [SF-73] The frozen N/P/K baselines (matches XML save).
+            local b73 = self:sf73BaselineForSave(field)
+            if b73 ~= nil then
+                e.sf73BaseN, e.sf73BaseP, e.sf73BaseK = b73.N, b73.P, b73.K
             end
             if field._phPending and #field._phPending > 0 then
                 local pt = {}
@@ -8535,6 +8651,12 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
     -- (the caller passes false), which keeps the freeze for released players
     -- whose saves predate the marker entirely.
     local sf79Marked = (data.sf79PHSchema or 0) == 1 or xmlRootMarked == true
+    -- [SF-73] The unknown-N/P/K marker from the snapshot alone. Unlike the pH
+    -- marker of #982 there is no safety-copy fallback to carry: the XML marker and
+    -- this key ship in the same build, so no snapshot exists that lacks the key
+    -- while its save already had SF-73 baselines, and a snapshot without it is
+    -- from a build before SF-73, whose scalars are the legitimate pre-SF-73 values.
+    local sf73Marked = (data.sf73UnknownNPK or 0) == 1
 
     local count = 0
     local fields = data.fields or {}
@@ -8637,6 +8759,11 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
             -- once, after the seed restore above so a carried seed is never re-frozen.
             if type(self._phFreezeSeedFromLoad) == "function" then
                 self:_phFreezeSeedFromLoad(f, sf79Marked)
+            end
+            -- [SF-73] The same baseline rule as the XML load.
+            if TargetApplication then
+                TargetApplication.applyLoadedBaseline(f, sf73Marked,
+                    { N = e.sf73BaseN, P = e.sf73BaseP, K = e.sf73BaseK })
             end
             self.fieldData[fieldId] = f
             self:_finalizeLoadedField(fieldId, f)

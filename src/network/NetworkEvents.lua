@@ -180,6 +180,34 @@ function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
     return ok and allowed == true
 end
 
+--- [SF-73] On the server: may the sender on connection switch this vehicle's AUTO,
+--- which with the release gate open is target automatic, a money and tank mode?
+--- Beyond the access rule above (Implementation v1.1 section 6): the vehicle exists
+--- and is not being deleted (Vehicle.lua:1096, :1133), the connection resolves to a
+--- user (UserManager:getUserByConnection, users/UserManager.lua:74), the sender's
+--- farm is a real farm and not the spectator farm (FarmManager.SPECTATOR_FARM_ID = 0,
+--- farms/FarmManager.lua:5), and it is the farm ACTIVELY operating the vehicle
+--- combination (the root's getActiveFarm: Enterable's controller farm while someone
+--- drives, else the owner, Enterable.lua:1150-1157, Vehicle.lua:1905). A contractor
+--- driving the owner's machine is its active farm; another farm's player is not.
+--- The host's own hand (nil or local connection) stands as before.
+function SoilNetworkEvents_ConnectionMayToggleTarget(connection, vehicle)
+    if vehicle == nil or vehicle.isDeleted == true or vehicle.isDeleting == true then return false end
+    if connection == nil then return true end
+    if type(connection.getIsLocal) == "function" and connection:getIsLocal() then return true end
+    local mission = g_currentMission
+    local users = mission and mission.userManager
+    if users == nil or type(users.getUserByConnection) ~= "function" then return false end
+    local okU, user = pcall(users.getUserByConnection, users, connection)
+    if not okU or user == nil then return false end
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return false end
+    local root = vehicle.rootVehicle or vehicle
+    if type(root.getActiveFarm) ~= "function" then return false end
+    local okA, activeFarm = pcall(root.getActiveFarm, root)
+    return okA and activeFarm == farmId
+end
+
 -- ========================================
 -- READ BOUNDS (MAINTENANCE row 112)
 -- ========================================
@@ -1858,6 +1886,9 @@ function SoilSprayerAutoModeEvent:run(connection)
 
     -- The same ownership test as the rate event (row 111).
     if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
+    -- [SF-73] AUTO is target automatic behind the release gate: a resolved user of a
+    -- real farm that is actively operating the vehicle, never a spectator.
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayToggleTarget(connection, vehicle) then return end
 
     rm:setAutoMode(vehicle.id, self.enabled)
 
@@ -1867,6 +1898,163 @@ function SoilSprayerAutoModeEvent:run(connection)
             nil, connection
         )
     end
+end
+
+-- ========================================
+-- [SF-73] APPLICATION TARGET RESULT EVENT (Server -> Clients)
+-- ========================================
+-- The server's confirmed footprint result for one vehicle (Implementation v1.1
+-- section 6), schema 1, in this field order: schema, vehicle net id, epoch,
+-- sequence, active, scope, the product / crop / field identifiers, carrier grain
+-- and knowledge, the N then P then K records, the binding nutrient, the dose state
+-- and reason list, and the planned / physical / agronomic / continuation litres.
+-- Every optional number carries a presence flag, never an invented zero. A change
+-- of field order is a new schema. Server to client only: a client never publishes.
+SoilApplicationTargetResultEvent = SoilApplicationTargetResultEvent or {}
+SoilApplicationTargetResultEvent_mt = Class(SoilApplicationTargetResultEvent, Event)
+
+InitEventClass(SoilApplicationTargetResultEvent, "SoilApplicationTargetResultEvent")
+
+SoilApplicationTargetResultEvent.SCHEMA = 1
+local SF73_MAX_REASONS = 32   -- the writer's own cap: 14 refusal reasons plus the shortfall states
+
+function SoilApplicationTargetResultEvent.emptyNew()
+    return Event.new(SoilApplicationTargetResultEvent_mt)
+end
+
+function SoilApplicationTargetResultEvent.new(vehicleNetId, result)
+    local self = SoilApplicationTargetResultEvent.emptyNew()
+    self.vehicleNetId = vehicleNetId
+    self.result = result
+    return self
+end
+
+local function sf73Finite(v)
+    return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+local function sf73WriteOptFloat(streamId, v)
+    local present = sf73Finite(v)
+    streamWriteBool(streamId, present)
+    if present then streamWriteFloat32(streamId, v) end
+end
+local function sf73ReadOptFloat(streamId)
+    if streamReadBool(streamId) then return streamReadFloat32(streamId) end
+    return nil
+end
+local function sf73WriteOptInt(streamId, v)
+    local present = sf73Finite(v)
+    streamWriteBool(streamId, present)
+    if present then streamWriteInt32(streamId, v) end
+end
+local function sf73ReadOptInt(streamId)
+    if streamReadBool(streamId) then return streamReadInt32(streamId) end
+    return nil
+end
+local function sf73WriteOptString(streamId, v)
+    local present = type(v) == "string"
+    streamWriteBool(streamId, present)
+    if present then streamWriteString(streamId, v) end
+end
+local function sf73ReadOptString(streamId)
+    if streamReadBool(streamId) then return streamReadString(streamId) end
+    return nil
+end
+local SF73_NUTRIENTS = { "N", "P", "K" }
+
+function SoilApplicationTargetResultEvent:writeStream(streamId, connection)
+    local r = self.result or {}
+    streamWriteInt32(streamId, SoilApplicationTargetResultEvent.SCHEMA)
+    streamWriteInt32(streamId, self.vehicleNetId or 0)
+    streamWriteString(streamId, tostring(r.epoch or ""))
+    streamWriteString(streamId, tostring(r.sequence or "0"))
+    streamWriteBool(streamId, r.active ~= false)
+    streamWriteString(streamId, tostring(r.scope or "FOOTPRINT"))
+    sf73WriteOptInt(streamId, r.productFillType)
+    sf73WriteOptString(streamId, r.productName)
+    sf73WriteOptInt(streamId, r.cropFruitIndex)
+    sf73WriteOptString(streamId, r.cropKey)
+    sf73WriteOptInt(streamId, r.fieldId)
+    sf73WriteOptFloat(streamId, r.grainMetres)
+    streamWriteString(streamId, tostring(r.knowledgeState or "UNAVAILABLE"))
+    local nutrients = r.nutrients or {}
+    for _, n in ipairs(SF73_NUTRIENTS) do
+        local x = nutrients[n] or {}
+        sf73WriteOptFloat(streamId, x.reading)
+        sf73WriteOptFloat(streamId, x.after)
+        sf73WriteOptFloat(streamId, x.lower)
+        sf73WriteOptFloat(streamId, x.upper)
+        streamWriteString(streamId, tostring(x.relationship or "UNDETERMINED"))
+        sf73WriteOptFloat(streamId, x.approachingDistance)
+        sf73WriteOptFloat(streamId, x.approachingWidth)
+        streamWriteString(streamId, tostring(x.knowledgeState or "UNAVAILABLE"))
+        sf73WriteOptFloat(streamId, x.requestedDelta)
+        sf73WriteOptFloat(streamId, x.usefulDelta)
+    end
+    sf73WriteOptString(streamId, r.binding)
+    streamWriteString(streamId, tostring(r.doseState or "UNDETERMINED"))
+    local reasons = r.reasons or {}
+    local count = math.min(#reasons, SF73_MAX_REASONS)
+    streamWriteUInt8(streamId, count)
+    for i = 1, count do streamWriteString(streamId, tostring(reasons[i])) end
+    sf73WriteOptFloat(streamId, r.plannedLitres)
+    sf73WriteOptFloat(streamId, r.physicalLitres)
+    sf73WriteOptFloat(streamId, r.agronomicLitres)
+    sf73WriteOptFloat(streamId, r.continuationLitres)
+end
+
+function SoilApplicationTargetResultEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
+    local schema = streamReadInt32(streamId)
+    if schema ~= SoilApplicationTargetResultEvent.SCHEMA then self.refused = "SCHEMA" return end
+    local r = { schema = schema, nutrients = {}, reasons = {} }
+    self.vehicleNetId = streamReadInt32(streamId)
+    r.epoch = streamReadString(streamId)
+    r.sequence = streamReadString(streamId)
+    r.active = streamReadBool(streamId)
+    r.scope = streamReadString(streamId)
+    r.productFillType = sf73ReadOptInt(streamId)
+    r.productName = sf73ReadOptString(streamId)
+    r.cropFruitIndex = sf73ReadOptInt(streamId)
+    r.cropKey = sf73ReadOptString(streamId)
+    r.fieldId = sf73ReadOptInt(streamId)
+    r.grainMetres = sf73ReadOptFloat(streamId)
+    r.knowledgeState = streamReadString(streamId)
+    for _, n in ipairs(SF73_NUTRIENTS) do
+        local x = {}
+        x.reading = sf73ReadOptFloat(streamId)
+        x.after = sf73ReadOptFloat(streamId)
+        x.lower = sf73ReadOptFloat(streamId)
+        x.upper = sf73ReadOptFloat(streamId)
+        x.relationship = streamReadString(streamId)
+        x.approachingDistance = sf73ReadOptFloat(streamId)
+        x.approachingWidth = sf73ReadOptFloat(streamId)
+        x.knowledgeState = streamReadString(streamId)
+        x.requestedDelta = sf73ReadOptFloat(streamId)
+        x.usefulDelta = sf73ReadOptFloat(streamId)
+        r.nutrients[n] = x
+    end
+    r.binding = sf73ReadOptString(streamId)
+    r.doseState = streamReadString(streamId)
+    local count = streamReadUInt8(streamId)
+    if not sfCountWithinBound(count, SF73_MAX_REASONS) then self.refused = "COUNT" return end
+    for i = 1, count do r.reasons[i] = streamReadString(streamId) end
+    r.plannedLitres = sf73ReadOptFloat(streamId)
+    r.physicalLitres = sf73ReadOptFloat(streamId)
+    r.agronomicLitres = sf73ReadOptFloat(streamId)
+    r.continuationLitres = sf73ReadOptFloat(streamId)
+    self.result = r
+    self:run(connection)
+end
+
+function SoilApplicationTargetResultEvent:run(connection)
+    if self.refused ~= nil or not sfAppliesOnClient(connection) then return end
+    -- resolve the CURRENT object; a deleted or unknown one is dropped, never held
+    local vehicle = NetworkUtil.getObject(self.vehicleNetId)
+    if vehicle == nil or vehicle.isDeleted == true then return end
+    local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    local ta = ss and ss.targetApplication
+    if ta == nil then return end
+    ta:receive(vehicle, self.result)
 end
 
 ---@param vehicle table  The vehicle object (not vehicle.id)
