@@ -23,6 +23,10 @@ SoilVersionDialog.INSTANCE = nil
 -- Max 11 lines are visible in the box; if more exist we stop on a bullet boundary and add a "full changelog on GitHub" note.
 -- These are intentionally NOT translated, as they are always in English and often contain technical terms that don't translate well.
 SoilVersionDialog.CHANGELOG = {
+    "- Sprayed weeds stay dead (#1030). Weeds withered by herbicide no longer",
+    "    count as weed pressure, so a sprayed field stops climbing back to 50%",
+    "    and dead weeds no longer drain N/P/K. The game still applies its own",
+    "    harvest penalty for weeds sprayed late.",
     "- Wet ground now bruises a standing crop. A loaded wheel crossing a wet",
     "    field leaves the crop standing but quietly worse at harvest, up to a",
     "    gentle 30% penalty, once per field per day (traffic on wet ground).",
