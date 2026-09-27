@@ -44,4 +44,85 @@ do
   g_currentMission.weedSystem = nil
 end
 
+-- A custom map whose table targets a state that is itself a source (a living state other
+-- states turn into) must not have that state counted as withered.
+do
+  g_currentMission.weedSystem = { getHerbicideReplacements = function()
+    return { weed = { replacements = { [3] = 4, [4] = 8 } } } end }
+  local set = newSys():_getWitheredWeedStates()
+  T.ok("should not count a target that is also a source as withered", not set[4])
+  T.ok("should still count a pure target as withered", set[8])
+  g_currentMission.weedSystem = nil
+end
+
+-- ── Through the daily pass itself (_processOneDailyField) ─────────────────────
+-- Drives the real daily update, not the sampler, so skipping or reverting the withered
+-- handling anywhere on that path fails here. Uses vanilla maps_weed.xml's full herbicide
+-- table: 1->0, 2->0 (preventative), 3->7, 4->8, 5->9, 6->7.
+local VANILLA_HERBICIDE = { [1] = 0, [2] = 0, [3] = 7, [4] = 8, [5] = 9, [6] = 7 }
+
+local savedFieldMgr = g_fieldManager
+
+local function dailySys(weedState, weedFactor, field)
+  g_currentMission.weedSystem = { getHerbicideReplacements = function()
+    return { weed = { replacements = VANILLA_HERBICIDE } } end }
+  g_fieldManager = { fields = { [1] = { posX = 0, posZ = 0, farmland = { id = 1 } } } }
+  local sys = setmetatable({
+    fieldData           = { [1] = field },
+    settings            = { enabled = true, weedPressure = true },
+    herbicideAppliedDay = {},
+    _dailyBatchDay      = 100,
+    _dailyBatchSeason   = 1,
+    _fieldStateCache    = { [1] = fakeFieldState(weedState, weedFactor) },
+  }, { __index = SoilFertilitySystem })
+  return sys
+end
+
+local function newField(weedPressure, herbicideDaysLeft)
+  return { nitrogen = 50, phosphorus = 50, potassium = 50, organicMatter = 3.0, pH = 6.5,
+           lastHarvest = 99, lastCrop = "wheat", weedPressure = weedPressure,
+           herbicideDaysLeft = herbicideDaysLeft }
+end
+
+do  -- state 9 (vanilla factor 0.75): stays 0 while protection runs out and after it has expired
+  local field = newField(0, 2)
+  local sys = dailySys(9, 0.75, field)
+  local readings = {}
+  for day = 1, 4 do
+    sys._dailyBatchDay = 100 + day
+    sys:_processOneDailyField(1, field)
+    readings[day] = field.weedPressure
+  end
+  T.eq("daily pass: protection has run out by day 2", field.herbicideDaysLeft, 0)
+  T.eq("daily pass: withered state 9 reads 0 on day 1 (protected)", readings[1], 0)
+  T.eq("daily pass: withered state 9 reads 0 on day 2 (protection expires)", readings[2], 0)
+  T.eq("daily pass: withered state 9 reads 0 on day 3 (protection expired)", readings[3], 0)
+  T.eq("daily pass: withered state 9 still 0 on day 4", readings[4], 0)
+end
+
+do  -- live state 5 control (factor 1.0): climbs +20/day (MAX_DAILY_INCREASE)
+  local field = newField(0, 0)
+  local sys = dailySys(5, 1.0, field)
+  local readings = {}
+  for day = 1, 3 do
+    sys._dailyBatchDay = 100 + day
+    sys:_processOneDailyField(1, field)
+    readings[day] = field.weedPressure
+  end
+  T.eq("daily pass: live state 5 reads 20 after day 1", readings[1], 20)
+  T.eq("daily pass: live state 5 reads 40 after day 2", readings[2], 40)
+  T.eq("daily pass: live state 5 reads 60 after day 3", readings[3], 60)
+end
+
+do  -- the same daily pass derives exactly {7, 8, 9} from the full vanilla table
+  local sys = dailySys(9, 0.75, newField(0, 0))
+  local set = sys:_getWitheredWeedStates()
+  T.ok("vanilla table: 7, 8, 9 are withered", set[7] and set[8] and set[9])
+  T.ok("vanilla table: 0 (preventative clear) is not withered", not set[0])
+  T.ok("vanilla table: live and weeder-damaged states 1-6 are not withered",
+       not (set[1] or set[2] or set[3] or set[4] or set[5] or set[6]))
+end
+
+g_currentMission.weedSystem = nil
+g_fieldManager = savedFieldMgr
 g_fruitTypeManager = savedFruitMgr

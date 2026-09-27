@@ -4890,16 +4890,11 @@ local WEED_SAMPLE_OFFSETS = {
     { 0, 30 }, { 21, 21 }, { 30, 0 }, { 21, -21 }, { 0, -30 }, { -21, -21 }, { -30, 0 }, { -21, 21 },
 }
 
---- Average the game's weed factor across the field instead of reading a single centre
---- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
---- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
---- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
---- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
---- field where every ring point is rejected this collapses to the old centre-only read.
 --- Herbicide-withered weed states (dead, brown). Vanilla still gives states 8/9 a harvest
 --- factor (0.5 / 0.75 in maps_weed.xml) and they persist until tillage/harvest, so reading
 --- weedFactor raw turned dead weeds into 50-75% weed pressure (#1030). Built once from the
---- map's own herbicide replacement targets; falls back to WITHERED_STATES from Constants.
+--- map's own herbicide replacement targets (excluding targets that are themselves sources);
+--- falls back to WITHERED_STATES from Constants.
 ---@return table set of withered weed state integers
 function SoilFertilitySystem:_getWitheredWeedStates()
     if self._witheredWeedStates then return self._witheredWeedStates end
@@ -4908,8 +4903,13 @@ function SoilFertilitySystem:_getWitheredWeedStates()
     if weedSystem then
         local ok, repData = pcall(function() return weedSystem:getHerbicideReplacements() end)
         if ok and repData and repData.weed and repData.weed.replacements then
-            for _, target in pairs(repData.weed.replacements) do
-                if type(target) == "number" and target ~= 0 then set[target] = true end
+            -- A target that is also a source key is a living state some other state
+            -- turns into (possible on custom maps), not a dead one: skip it.
+            local reps = repData.weed.replacements
+            for _, target in pairs(reps) do
+                if type(target) == "number" and target ~= 0 and reps[target] == nil then
+                    set[target] = true
+                end
             end
         end
     end
@@ -4920,6 +4920,12 @@ function SoilFertilitySystem:_getWitheredWeedStates()
     return set
 end
 
+--- Average the game's weed factor across the field instead of reading a single centre
+--- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
+--- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
+--- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
+--- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
+--- field where every ring point is rejected this collapses to the old centre-only read.
 ---@param fsField table   g_fieldManager field (has posX/posZ, farmland)
 ---@param fieldId number
 function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
