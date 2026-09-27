@@ -4890,6 +4890,36 @@ local WEED_SAMPLE_OFFSETS = {
     { 0, 30 }, { 21, 21 }, { 30, 0 }, { 21, -21 }, { 0, -30 }, { -21, -21 }, { -30, 0 }, { -21, 21 },
 }
 
+--- Herbicide-withered weed states (dead, brown). Vanilla still gives states 8/9 a harvest
+--- factor (0.5 / 0.75 in maps_weed.xml) and they persist until tillage/harvest, so reading
+--- weedFactor raw turned dead weeds into 50-75% weed pressure (#1030). Built once from the
+--- map's own herbicide replacement targets (excluding targets that are themselves sources);
+--- falls back to WITHERED_STATES from Constants.
+---@return table set of withered weed state integers
+function SoilFertilitySystem:_getWitheredWeedStates()
+    if self._witheredWeedStates then return self._witheredWeedStates end
+    local set = {}
+    local weedSystem = g_currentMission and g_currentMission.weedSystem
+    if weedSystem then
+        local ok, repData = pcall(function() return weedSystem:getHerbicideReplacements() end)
+        if ok and repData and repData.weed and repData.weed.replacements then
+            -- A target that is also a source key is a living state some other state
+            -- turns into (possible on custom maps), not a dead one: skip it.
+            local reps = repData.weed.replacements
+            for _, target in pairs(reps) do
+                if type(target) == "number" and target ~= 0 and reps[target] == nil then
+                    set[target] = true
+                end
+            end
+        end
+    end
+    if next(set) == nil then
+        for _, st in ipairs(SoilConstants.WEED_PRESSURE.WITHERED_STATES or {}) do set[st] = true end
+    end
+    self._witheredWeedStates = set
+    return set
+end
+
 --- Average the game's weed factor across the field instead of reading a single centre
 --- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
 --- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
@@ -4922,7 +4952,15 @@ function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
     local fruitName   = (fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)) or ""
     if nonCrops[fruitName] then return 0 end
 
-    local sum   = fs.weedFactor or 0
+    -- Dead (herbicide-withered) weeds read as 0: vanilla already applies their harvest
+    -- factor, and they neither compete nor draw nutrients (#1030).
+    local withered = self:_getWitheredWeedStates()
+    local function liveWeedFactor()
+        if fs.weedState ~= nil and withered[fs.weedState] then return 0 end
+        return fs.weedFactor or 0
+    end
+
+    local sum   = liveWeedFactor()
     local count = 1
 
     for i = 2, #WEED_SAMPLE_OFFSETS do
@@ -4934,7 +4972,7 @@ function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
             -- accept" and only reject on a definite different-farmland reading.
             local farmOk = (fs.farmlandId == nil) or (fs.farmlandId == 0) or (fs.farmlandId == fieldId)
             if farmOk then
-                sum   = sum + (fs.weedFactor or 0)
+                sum   = sum + liveWeedFactor()
                 count = count + 1
             end
         end

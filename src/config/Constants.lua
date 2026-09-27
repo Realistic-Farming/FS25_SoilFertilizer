@@ -1214,6 +1214,9 @@ SoilConstants.WEED_PRESSURE = {
     -- 0 = no weeds, 1-6 = living stages, 7-9 = withered (dying/brown visual)
     WEED_STATE_CLEAR     = 0,
     WEED_STATE_WITHERED  = 7,   -- small withered - visible brown weeds
+    -- All herbicide-withered states (vanilla maps_weed.xml herbicide targets). Fallback only:
+    -- the daily weed read prefers the map's own replacement table (#1030).
+    WITHERED_STATES      = { 7, 8, 9 },
 
     -- Maximum weed pressure increase per daily update.
     -- Prevents the snap-to-game-weedFactor spike on reload/time-skip (issue #536).
