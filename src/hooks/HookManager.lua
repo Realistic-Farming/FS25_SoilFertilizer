@@ -6123,7 +6123,12 @@ function HookManager:installSprayerAreaHook()
                 -- once per tank. Each secondary tank is drained by the same liters so the
                 -- mod does not hand out free fertilizer.
                 do
-                    local multiTankEnabled = hookMgrRef and hookMgrRef._settings and hookMgrRef._settings.multiTankApplication
+                    -- #1030: the player's Multi-tank application setting. This used to read
+                    -- hookMgrRef._settings, which nothing assigns, so it was always nil and
+                    -- the secondary tanks drained even with the setting off. The entry
+                    -- guard above has already read g_SoilFertilityManager.settings. A save
+                    -- with no key reads nil, and nil ~= false keeps the schema default (on).
+                    local multiTankEnabled = g_SoilFertilityManager.settings.multiTankApplication
                     -- [SF-73] a target cycle's product is its one plan: no secondary replay
                     if multiTankEnabled ~= false and sf73Cycle == nil then
                         local spraySpec = self.spec_sprayer

@@ -95,7 +95,7 @@ local function newWorld(opts)
     soilSys.fieldData[7].sessionCoverageFraction = opts.coverageFraction or 0.5
 
     g_SoilFertilityManager = {
-        settings = { enabled = true, overlapPrevention = true, debugMode = false },
+        settings = { enabled = true, overlapPrevention = true, debugMode = false, multiTankApplication = false },
         soilSystem = soilSys,
     }
 
@@ -115,7 +115,6 @@ local function newWorld(opts)
         -- table. Leaving it nil throws inside the hook's outer pcall, which looks
         -- exactly like a guard refusing the pass: a silent zero credit.
         _sectionScratch = {},
-        _settings = { multiTankApplication = false },
         customFillTypePrices = {},
         -- Identity mirrors the priced set, which is the pre-F196 world this bar
         -- models: nothing priced here, so nothing custom, and no refusals.

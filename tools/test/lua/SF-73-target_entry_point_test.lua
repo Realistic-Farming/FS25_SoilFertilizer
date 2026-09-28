@@ -385,7 +385,6 @@ local function newWorld(opts)
   ss.valueMaps = SoilValueMaps.new()
   ss.valueMaps:initialize("savegame")
   local hm = HookManager.new()
-  hm._settings = settings
   hm._sectionScratch = {}
   hm.getBoomCellPositions = function() return nil end   -- display sweep, not under test
   hm.getBoomLineEndpoints = function() return nil end
