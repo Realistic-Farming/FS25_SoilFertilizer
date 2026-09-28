@@ -6533,7 +6533,9 @@ end
 -- =========================================================
 -- g_farmlandManager.fieldOwnershipChanged does not exist in FS25.
 -- The correct pattern is g_messageCenter:subscribe(MessageType.FARMLAND_OWNER_CHANGED, cb, target).
--- Callback receives: farmlandId, farmId, loadFromSavegame
+-- Callback receives: target, farmlandId, farmId, loadFromSavegame. With a target the
+-- engine calls callback(target, ...) (MessageCenter.lua:100-101); the publish is
+-- (farmlandId, farmId, loadFromSavegame) (FarmlandManager.lua:320).
 -- loadFromSavegame=true fires for every field on game load; we skip those to avoid
 -- resetting existing soil data on a fresh load.
 ---@return boolean success True if hook installed successfully
@@ -6543,7 +6545,10 @@ function HookManager:installOwnershipHook()
         return false
     end
 
-    local function onOwnerChanged(farmlandId, farmId, loadFromSavegame)
+    -- #1031: the leading target parameter. Without it every argument arrived one slot
+    -- early, loadFromSavegame received the farm id (1 on a buy, 0 on a sell, both
+    -- truthy in Lua), and every live ownership change returned here unhandled.
+    local function onOwnerChanged(_target, farmlandId, farmId, loadFromSavegame)
         if loadFromSavegame then return end  -- skip initial population on load
         if not g_SoilFertilityManager or
            not g_SoilFertilityManager.soilSystem or
