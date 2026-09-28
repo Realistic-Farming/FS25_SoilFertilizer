@@ -7124,7 +7124,8 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
     end
 end
 
-function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, liters)
+---@param fillName string|nil the pass's own fill type name (e.g. "PESTICIDE"), from the sprayer hook
+function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, liters, fillName)
     if not self.settings.pestPressure then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
@@ -7171,7 +7172,14 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99992] = (field.nutrientBuffer[99992] or 0) + liters
-    self:trackSprayerCoverage(fieldId, liters, "INSECTICIDE")
+    -- MAINTENANCE row 168, the insecticide twin of the fungicide work-trail fix (8463752d):
+    -- tag coverage with the REAL fill name, not the literal "INSECTICIDE". The sprayer hook
+    -- already tracked this pass under fillType.name ("PESTICIDE", the vanilla / PF insecticide,
+    -- is the only fill type that reaches this route). Tagging "INSECTICIDE" here made
+    -- sessionLastProduct flip every tick, tripping the product-change reset (#442) that wipes
+    -- the session's coverage, so a PESTICIDE field never built past one pass's litres.
+    -- updateFractions=false: name-only, so this does not double-count the area already tracked.
+    self:trackSprayerCoverage(fieldId, liters, fillName or "INSECTICIDE", false)
 
     -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
     if self:_grantCropProtection(fieldId, field, "insecticide") then

@@ -11,7 +11,7 @@
 -- ENTRY-POINT BAR: every group drives passes through the real sprayer hook into the
 -- real soil system (MAINT-166-protection_sprayer_world.lua), one group per route:
 --   H  HERBICIDE      herbicide direct         (onHerbicideAppliedDirect)
---   P  PESTICIDE      insecticide direct       (onInsecticideAppliedDirect; its own group)
+--   P  PESTICIDE      insecticide direct       (onInsecticideAppliedDirect)
 --   Z  PROPICONAZOLE  fungicide direct         (onFungicideAppliedDirect)
 --   I  INSECTICIDE    applyFertilizer, pest branch
 --   F  FUNGICIDE      applyFertilizer, disease branch
@@ -27,8 +27,7 @@
 -- cap stays spent, nothing is sent), pass 17 grants (every route reads the fraction
 -- the previous pass left, because the hook's markBoomCells runs after the route) and
 -- sends exactly one field update carrying the window, and pass 18 sends nothing more.
--- P's coverage does not accumulate across passes (a separate defect, see group P), so
--- its group spends the cap over two passes and covers 85% in a third.
+-- (P ran as its own group until MAINTENANCE row 168 stopped its coverage resetting.)
 --   S  a route whose pressure setting is off grants nothing (the helper's gate)
 --
 -- Targeted mutations: re-nest each route's grant inside its reduction gate (five, each
@@ -53,6 +52,7 @@ end
 
 local ROUTES = {
   { key = "H", product = "HERBICIDE",     daily = "herbicideDailyApplied",   days = "herbicideDaysLeft",   what = "herbicide direct" },
+  { key = "P", product = "PESTICIDE",     daily = "insecticideDailyApplied", days = "insecticideDaysLeft", what = "insecticide direct" },
   { key = "Z", product = "PROPICONAZOLE", daily = "fungicideDailyApplied",   days = "fungicideDaysLeft",   what = "fungicide direct" },
   { key = "I", product = "INSECTICIDE",   daily = "insecticideDailyApplied", days = "insecticideDaysLeft", what = "applyFertilizer insecticide" },
   { key = "F", product = "FUNGICIDE",     daily = "fungicideDailyApplied",   days = "fungicideDaysLeft",   what = "applyFertilizer fungicide" },
@@ -90,39 +90,6 @@ for _, r in ipairs(ROUTES) do
     T.eq(K .. "13 no weed-map task at any point (MAINTENANCE row 166)", #w.tasks, 0)
   end)
 end
-
--- ── P: the insecticide direct route (PESTICIDE) ─────────────────────────────────
--- This route's session coverage does not accumulate across passes: the hook tracks the
--- pass under the fill name (PESTICIDE) and onInsecticideAppliedDirect tracks it again
--- under the literal "INSECTICIDE", so the product-change reset (#442) empties the
--- session twice a pass and the fraction is that pass's litres alone (the named
--- fungicides had the same flip, fixed in 8463752d). That is a separate defect, not
--- this PR's; these rows drive the route as it behaves, through the same hook.
-group("P insecticide direct", function()
-  local w = PSW.new({ product = "PESTICIDE", multiplayer = true })
-  local sys = w.sys
-  -- 0.2 ha at the 100 L/ha reference: 20 L is the day's cap and a full pass's coverage.
-  w:tick(12, w:cells(1, 1))
-  local f = w:field()
-  T.eq("P1 [reached: the insecticide direct route ran through the hook]", sys.insecticideDailyApplied ~= nil and sys.insecticideDailyApplied[7] ~= nil, true)
-  T.ok("P2 [reached: the pass ends at 65%: its 12 L read as 60%, then markBoomCells adds its one cell]", math.abs((f.sessionCoverageFraction or 0) - 0.65) < 1e-6)
-  T.eq("P3 below 80% there is no protection", f.insecticideDaysLeft or 0, 0)
-  w:tick(12, w:cells(2, 2))
-  local spent = sys.insecticideDailyApplied[7].applied
-  T.ok("P4 [reached: the second 12 L pass spends the rest of the day's cap]", math.abs(spent - 100) < 1e-6)
-  T.eq("P5 still no protection at 60%", f.insecticideDaysLeft or 0, 0)
-  local e2 = #w.events
-  w:tick(17, w:cells(3, 3))
-  T.eq("P6 [reached: the 17 L pass adds no reduction, the cap is spent]", sys.insecticideDailyApplied[7].applied, spent)
-  T.ok("P7 NAMED: at 85% with the day's cap spent, the insecticide direct route grants protection", (f.insecticideDaysLeft or 0) > 0)
-  local n, ev = sendsSince(w, e2)
-  T.eq("P8 MP: the grant sends exactly one field update", n, 1)
-  T.ok("P9 and that update carries the window", ev ~= nil and ev.field ~= nil and (ev.field.insecticideDaysLeft or 0) > 0)
-  local e3 = #w.events
-  w:tick(17, w:cells(4, 4))
-  T.eq("P10 an already protected field sends nothing more", (sendsSince(w, e3)), 0)
-  T.ok("P11 and stays protected", (f.insecticideDaysLeft or 0) > 0)
-end)
 
 -- ── S: a route whose pressure setting is off grants nothing ─────────────────────
 group("S setting off", function()

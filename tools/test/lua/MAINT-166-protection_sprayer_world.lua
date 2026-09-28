@@ -59,6 +59,7 @@ end
 --- opts.areaHa       the field's crop area (default 0.2 ha = 20 cells)
 --- opts.centreWeed   the weed state FieldState reads at the field's centre (default 2, live)
 --- opts.multiplayer  a multiplayer host (every event it broadcasts is recorded in world.events)
+--- opts.noVww        a rig with no variable-width sections: coverage takes the hook's litres path
 function PSW.new(opts)
   opts = opts or {}
   if saved == nil then
@@ -167,7 +168,7 @@ function PSW.new(opts)
   local v = {
     isServer = true, id = "veh1",
     spec_workArea = { workAreas = {} },
-    spec_variableWorkWidth = { sections = { { isActive = true } } },
+    spec_variableWorkWidth = (not opts.noVww) and { sections = { { isActive = true } } } or nil,
     getIsTurnedOn = function() return true end,
     getLastSpeed  = function() return 8.0 end,
     getSprayerFillUnitIndex = function() return 1 end,
