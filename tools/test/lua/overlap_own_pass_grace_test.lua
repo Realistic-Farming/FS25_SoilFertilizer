@@ -18,10 +18,14 @@
 -- 15 m + boom half-width + boom offset past it (HookManager.computeOverlapBoomGeometry).
 --
 -- The integration cases drive the REAL preserver + overlap hook (and the real
--- fieldBoundaryControl copy in installSectionControlHook), the REAL
--- getBoomCellPositions sweep and the REAL markBoomCells stamps, on a sprayer laid
--- out like the Hardi Mega 1200L (mega1200L.xml/.i3d): 9 sections, tips at
--- +-3.5/6/9/12 m, an isCenter section with no node, boom line 0.46 m behind root.
+-- fieldBoundaryControl copy in installSectionControlHook), and stamp through the
+-- REAL production writer: installSprayerAreaHook's append on onEndWorkAreaProcessing,
+-- which calls the REAL getBoomCellPositions sweep and the REAL markBoomCells with the
+-- stamping vehicle. The stamp's `by` and `odo` are what the rule reads, so a fixture
+-- that stamped by hand would supply the very vehicle production is meant to supply
+-- (P1-P4 pin that). The sprayer is laid out like the Hardi Mega 1200L
+-- (mega1200L.xml/.i3d): 9 sections, tips at +-3.5/6/9/12 m, an isCenter section with
+-- no node, boom line 0.46 m behind root.
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
@@ -109,10 +113,19 @@ do
 end
 
 -- ── Integration harness ────────────────────────────────────────────────────
-local function newWorld(settings)
+local function newWorld(settings, multiTank)
+    -- markBoomCells and trackSprayerCoverage are the REAL ones (through __index):
+    -- trackSprayerCoverage's product-change reset (#442) decides whose stamps survive.
+    -- The credit append's other downstream calls never touch the session cells and
+    -- are stubbed. The append stamps only after an application it credited, so
+    -- onFertilizerApplied says yes.
     local ss = setmetatable({
         fieldData = { [7] = { fieldArea = 1000, sessionCoverageCells = {}, dailyCoverageCells = {},
                               zoneData = {}, sessionCoverageFraction = 0 } },
+        onFertilizerApplied = function() return true end,
+        paintBoomStrip = function() end,
+        applyBurnEffect = function() end,
+        applyScorchEffect = function() end,
     }, { __index = SoilFertilitySystem })
     g_SoilFertilityManager = {
         settings = settings,
@@ -123,13 +136,14 @@ local function newWorld(settings)
         hooks = {}, register = function() end, registerCleanup = function() end,
         getFieldIdAtWorldPosition = function() return 7 end,
         getTargetApplication = function() return nil end,
-        _sectionScratch = {}, _settings = { multiTankApplication = false },
+        getBoomLineEndpoints = function() return nil end,   -- engine localToLocal; paint is stubbed
+        _sectionScratch = {}, _settings = { multiTankApplication = multiTank == true },
         customFillTypePrices = {}, customProductIndices = {}, refusedProducts = {},
     }, { __index = HookManager })
     return ss, hookMgr
 end
 
-local function newHardi()
+local function newHardi(multiTank)
     local v = {
         isServer = true, id = "hardi", rootNode = "root",
         spec_variableWorkWidth = { sections = {} },
@@ -137,6 +151,14 @@ local function newHardi()
             start = "waS", width = "waW", height = "waH",
             functionName = "processSprayerArea",
         } } },
+        -- What the credit append reads to decide the pass put product down.
+        getIsTurnedOn = function() return true end,
+        getLastSpeed = function(self) return math.abs(self.lastSpeed or 0) * 3600 end,
+        getSprayerFillUnitIndex = function() return 1 end,
+        getFillUnitFillLevel = function() return 900 end,
+        getFillUnitFillType = function() return 42 end,
+        getOwnerFarmId = function() return 1 end,
+        addFillUnitFillLevel = function() return 0 end,
     }
     v.spec_workArea.workAreas[1].processingFunction = function() return 1, 1 end
     v.processSprayerArea = v.spec_workArea.workAreas[1].processingFunction
@@ -149,6 +171,18 @@ local function newHardi()
     end
     v.spec_sprayer = { workAreaParameters = { sprayFillType = 42, usage = 1, sprayFillLevel = 900 },
                        effects = {}, sprayTypes = {} }
+    if multiTank then
+        -- A second tank of the same fertilizer: the append credits and stamps it in its
+        -- multi-tank block (the driving unit is excluded by identity), BEFORE the
+        -- driving tank's own stamp, so the first stamp of each cell comes from the
+        -- multi-tank markBoomCells call. The same product on purpose: a different one
+        -- trips trackSprayerCoverage's product-change reset twice per tick and wipes
+        -- those stamps before the overlap check reads them.
+        local wap = v.spec_sprayer.workAreaParameters
+        wap.sprayVehicle, wap.sprayVehicleFillUnitIndex = v, 1
+        v.spec_fillUnit = { fillUnits = { { fillLevel = 900, fillType = 42 },
+                                          { fillLevel = 900, fillType = 42 } } }
+    end
     return v
 end
 
@@ -165,8 +199,9 @@ local function place(rx, rz, hx, hz)
     POS.waS = at(12, boomFwd); POS.waW = at(-12, boomFwd); POS.waH = at(12, boomFwd - 0.14)
 end
 
--- One tick as the game runs it: start processing (preserver prepend, overlap prepend,
--- appends), stamp this tick's boom as the credit append does, end processing.
+-- One tick as the game runs it: start processing (preserver prepend, overlap prepend),
+-- the engine's paint through the work area's processing function, end processing
+-- (the credit append stamps this tick's boom, then the restore appends).
 -- Returns the set of sections switched off by either overlap check this tick.
 local function tick(v, ss, hookMgr, dtMs)
     g_currentMission.time = g_currentMission.time + dtMs
@@ -174,30 +209,37 @@ local function tick(v, ss, hookMgr, dtMs)
     local off = {}
     for i in pairs(v._sfOverlapSuppressedSections or {}) do off[i] = true end
     for i in pairs(v._sfSuppressedSections or {}) do off[i] = true end
-    -- The engine paints through the work area's processing function; a blocked pass
-    -- has it swapped for a stub that paints nothing (and the credit hook skips it).
     local wa = v.spec_workArea.workAreas[1]
-    local painted = wa.processingFunction(v, wa, dtMs)
-    local blocked = v._sfOverlapBlockedPass == true
-    if not blocked then
-        local pts = HookManager.getBoomCellPositions(hookMgr, v, v._sfRootX, v._sfRootZ)
-        if pts then ss:markBoomCells(7, pts, false, v) end
-    end
+    wa.processingFunction(v, wa, dtMs)
     Sprayer.onEndWorkAreaProcessing(v, dtMs, true)
-    return off, blocked, painted
+    return off
 end
 
-local function install(which, settings)
+-- Install order as the mod does it: the credit append first (top of the install
+-- sequence), then the overlap check, then the preserver last so its prepend runs first.
+local function install(which, settings, multiTank)
     Sprayer = { onStartWorkAreaProcessing = function() end, onEndWorkAreaProcessing = function() end }
     g_currentMission = { time = 0 }
-    local ss, hookMgr = newWorld(settings)
+    local ss, hookMgr = newWorld(settings, multiTank)
+    HookManager.installSprayerAreaHook(hookMgr)
     if which == "overlap" then
         HookManager.installOverlapPreventionHook(hookMgr)
     else
         HookManager.installSectionControlHook(hookMgr)
     end
-    HookManager.installSectionStatePreserver(hookMgr)   -- last, so its prepend runs first
-    return ss, hookMgr, newHardi()
+    HookManager.installSectionStatePreserver(hookMgr)
+    return ss, hookMgr, newHardi(multiTank)
+end
+
+-- Every stamp in the field: count, and how many carry this sprayer and a distance.
+local function stampCensus(ss, v)
+    local n, byMe, withOdo = 0, 0, 0
+    for _, st in pairs(ss.fieldData[7].sessionCoverageCells) do
+        n = n + 1
+        if type(st) == "table" and st.by == v then byMe = byMe + 1 end
+        if type(st) == "table" and type(st.odo) == "number" then withOdo = withOdo + 1 end
+    end
+    return n, byMe, withOdo
 end
 
 local function list(set)
@@ -231,13 +273,32 @@ do
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
     local off = driveLane(v, ss, hookMgr, 4, 3, 0, 1, 60)
     T.eq("L1 first lane, north: no section is ever switched off", list(off), "")
-    T.ok("L1b and the lane really was stamped (the check had cells to look at)",
-         next(ss.fieldData[7].sessionCoverageCells) ~= nil)
+    local n, byMe, withOdo = stampCensus(ss, v)
+    T.ok("L1b and the lane really was stamped (the check had cells to look at)", n > 0)
+    -- P1/P2: the stamps came from the production credit append (the bar never stamps
+    -- by hand). If that append stopped passing its vehicle, every stamp would read
+    -- as another vehicle's and every section would switch off on this first lane.
+    T.eq("P1 every stamp was written by the production append with this sprayer (by == v)", byMe, n)
+    T.eq("P2 and every stamp carries the sprayer's driven distance (numeric odo)", withOdo, n)
 
     local ss2, hookMgr2, v2 = install("overlap", OVERLAP_ON)
     local s = math.sqrt(0.5)
     local off2 = driveLane(v2, ss2, hookMgr2, 4, 3, s, s, 60)
     T.eq("L2 first lane on a 45 degree heading: no section is ever switched off", list(off2), "")
+end
+
+-- ── P: the multi-tank credit path stamps with the vehicle too ──────────────
+do
+    -- A second tank (same product, see newHardi) is credited and stamped in the
+    -- append's multi-tank block, before the driving tank's stamp, so the first stamp
+    -- of every cell comes from that block's markBoomCells call.
+    local ss, hookMgr, v = install("overlap", OVERLAP_ON, true)
+    local off = driveLane(v, ss, hookMgr, 4, 3, 0, 1, 60)
+    local n, byMe, withOdo = stampCensus(ss, v)
+    T.ok("P3 multi-tank: the lane was stamped", n > 0)
+    T.eq("P4 multi-tank: every stamp carries this sprayer and its distance",
+         (byMe == n and withOdo == n) and "all" or (byMe .. "/" .. withOdo .. " of " .. n), "all")
+    T.eq("P5 multi-tank first lane: no section is ever switched off", list(off), "")
 end
 
 -- ── S: standing still, then driving off ────────────────────────────────────
@@ -249,9 +310,8 @@ do
     local off, blockedTicks = {}, 0
     v.lastSpeed = 0
     for _ = 1, 400 do   -- 60 s stopped, same position
-        local o, blocked = tick(v, ss, hookMgr, 150)
-        for i in pairs(o) do off[i] = true end
-        if blocked then blockedTicks = blockedTicks + 1 end
+        for i in pairs(tick(v, ss, hookMgr, 150)) do off[i] = true end
+        if v._sfOverlapBlockedPass == true then blockedTicks = blockedTicks + 1 end
     end
     T.eq("S1 60 s standing still mid-lane: no section switched off", list(off), "")
     -- Only the 99% coverage block may block a pass (RSF-F226). Blocking a stopped
@@ -274,9 +334,9 @@ do
     -- section 9 (lat 9..12, x 12..15 on lane 2) overlaps lane 1 by 2 m. The quick
     -- turn is the case the old no-grace centre rule was added for (b6a961f0): under
     -- a 10 s grace the previous lane's stamps were still "fresh" on the way back.
-    -- Checks are per 10 m cell at the section tip (#562), so section 8 (x 15..18,
-    -- tip x = 15, same [10, 20) cell) may go off too without overlapping: that is
-    -- the existing cell coarseness, not asserted either way here.
+    -- Checks are per 10 m cell at the section tip (#562), so sections 7 and 8 (tips
+    -- at x = 18 and 15, same [10, 20) cell) may go off too without overlapping: that
+    -- is the existing cell coarseness, not asserted either way here.
     -- x = 2 is chosen so the world-axis stamp sweep (getBoomCellPositions, minX = -10)
     -- covers the x in [10, 20) column; from some offsets it skips the outer column,
     -- a separate known defect this test must not depend on.
@@ -292,7 +352,7 @@ do
     local offFirst = driveLane(v, ss, hookMgr, 24, 60, 0, -1, 4)
     T.ok("T1 coming back after a quick turn: section 9, overlapping lane 1, switches off at once",
          offFirst[9] == true)
-    local off = driveLane(v, ss, hookMgr, 24, 56, 0, -1, 40)
+    local off = driveLane(v, ss, hookMgr, 24, 56, 0, -1, 40, offFirst)   -- T3/T4 cover the whole lane
     T.ok("T2 and is still off at the end of the lane",
          (v._sfOverlapSuppressedSections or {})[9] ~= nil)
     T.eq("T3 the centre never switches off on lane 2", off[5], nil)
