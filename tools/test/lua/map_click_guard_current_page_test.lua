@@ -20,7 +20,7 @@
 --
 -- It does not prove anything about where the buttons are drawn or what they do once hit.
 --
---!load: src/utils/Logger.lua, src/hooks/SoilMapHooks.lua
+--!load: tools/test/lua/SG10-051-map_frame_model.lua, src/utils/Logger.lua, src/hooks/SoilMapHooks.lua
 
 Input = Input or { MOUSE_BUTTON_LEFT = 1, MOUSE_BUTTON_RIGHT = 2 }
 InGameMenu = InGameMenu or {}
@@ -101,7 +101,43 @@ do
     T.eq("with the overlay untouched", o.clicks, 0)
 end
 
--- ---- 5. both gates failing is still a decline, not a double negative ---------------------
+-- ---- 5. through production's own entry point, not the handler ----------------------------
+-- Everything above calls SoilMapHooks.handleMouseEvent directly. That is not the path the
+-- defect travels. Production wraps InGameMenuMapFrame.mouseEvent (SoilMapHooks.lua:461-507,
+-- installed :658) and runs the handler BEFORE the engine's own mouseEvent, so the frame does
+-- not have to be on screen for the handler to see the click. These two cases cross that
+-- wrapper, which is where the report came from.
+do
+    T.ok("the install block wrapped the engine's mouseEvent",
+        type(InGameMenuMapFrame) == "table" and type(InGameMenuMapFrame.mouseEvent) == "function"
+        and InGameMenuMapFrame._rfMapMouseChainInstalled == true)
+
+    -- a frame that is NOT the page on screen, sitting on the Soil layer
+    local frame, o = mapFrame(), overlay()
+    g_SoilFertilityManager = { soilMapOverlay = o }
+    setCurrentPage({ name = "the RF PDA page the player is actually on" })
+    InGameMenuMapFrame.resetModel()
+
+    local used = InGameMenuMapFrame.mouseEvent(frame, 0.5, 0.5, true, false, Input.MOUSE_BUTTON_LEFT, false)
+    T.eq("through the real chain, an off-page click opens no help dialog", o.clicks, 0)
+    T.ok("and the chain fell through to the engine instead of being swallowed",
+        InGameMenuMapFrame.engineMouseCalls == 1)
+    T.ok("the engine's own verdict is returned unchanged", used == false)
+
+    -- the same click while the map IS the page on screen still works
+    local frame2, o2 = mapFrame(), overlay()
+    g_SoilFertilityManager = { soilMapOverlay = o2 }
+    setCurrentPage(frame2)
+    InGameMenuMapFrame.resetModel()
+
+    local used2 = InGameMenuMapFrame.mouseEvent(frame2, 0.5, 0.5, true, false, Input.MOUSE_BUTTON_LEFT, false)
+    T.eq("on the displayed map page the sidebar click still lands", o2.clicks, 1)
+    T.ok("and the chain stops there, never reaching the engine",
+        InGameMenuMapFrame.engineMouseCalls == 0)
+    T.ok("reporting the event as consumed", used2 == true)
+end
+
+-- ---- 6. both gates failing is still a decline, not a double negative ---------------------
 do
     local frame, o = mapFrame(), overlay()
     frame.mapOverviewSelector = { getState = function() return SOIL_PAGE + 1 end }
