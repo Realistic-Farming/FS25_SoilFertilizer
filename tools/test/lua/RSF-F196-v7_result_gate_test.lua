@@ -126,7 +126,7 @@ local function newWorld(opts)
   g_currentMission = { time = 10000 }
   g_server = nil
   g_SoilFertilityManager = {
-    settings = { enabled = true, overlapPrevention = false, debugMode = false },
+    settings = { enabled = true, overlapPrevention = false, debugMode = false, multiTankApplication = opts.multiTank == true },
     soilSystem = soilSys,
     sprayerRateManager = { getMultiplier = function() return 2.0 end },   -- above BURN_RISK_THRESHOLD
   }
@@ -136,7 +136,6 @@ local function newWorld(opts)
     getBoomCellPositions = function() return { { x = 10, z = 10 } } end,
     getBoomLineEndpoints = function() return nil end,
     _sectionScratch = {},
-    _settings = { multiTankApplication = opts.multiTank == true },
     customFillTypePrices = {},
     customProductIndices = { [REFUSED] = true, [VALID] = true, [SECOND] = true },
     refusedProducts = opts.firstFence or {},

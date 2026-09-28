@@ -319,7 +319,6 @@ local function newWorld()
     getBoomCellPositions = function() return { { x = 10, z = 10 } } end,
     getBoomLineEndpoints = function() return nil end,
     _sectionScratch = {},
-    _settings = { multiTankApplication = true },
     customFillTypePrices = {},
     customProductIndices = { [50] = true, [51] = true, [52] = true },
     refusedProducts = {},
