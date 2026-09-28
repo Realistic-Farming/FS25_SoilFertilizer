@@ -1950,10 +1950,9 @@ function SoilFertilitySystem:onHerbicideApplied(fieldId, effectiveness)
     self:log("[Herbicide] Field %d: weed pressure %.0f -> %.0f, protected for %d days",
         fieldId, before, field.weedPressure, field.herbicideDaysLeft)
 
-    -- Transition weeds to withered (brown) visual state in the game's density map.
-    -- The game's FieldState.weedFactor stays high until the density map is updated, so
-    -- we drive it ourselves: withered now so weeds turn brown, cleared on next daily tick.
-    self:applyWeedMapState(fieldId, SoilConstants.WEED_PRESSURE.WEED_STATE_WITHERED)
+    -- MAINTENANCE row 166: no weed map write here either (see onHerbicideAppliedDirect). This
+    -- once-per-day path has no caller in the mod; it keeps the same rule so it cannot bring the
+    -- whole-polygon paint back if it is ever wired up again.
 
     -- Broadcast in multiplayer
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo and g_currentMission.missionDynamicInfo.isMultiplayer then
@@ -7034,15 +7033,16 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
         field.weedPressure = math.max(0, before - reduction)
         -- Only grant protected status once 80% of the field has been covered (issue #441)
         local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-        local wasProtected = (field.herbicideDaysLeft or 0) > 0
         if (field.sessionCoverageFraction or 0) >= protThreshold then
             -- Duration is in in-game DAYS (decremented 1/game-day); see #639.
             field.herbicideDaysLeft = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
-            -- Apply weed map state (visual browning) exactly once when protection is first granted.
-            -- applyWeedMapState is server-only; guards inside it handle the nil-field case.
-            if not wasProtected and g_server then
-                self:applyWeedMapState(fieldId, SoilConstants.WEED_PRESSURE.WEED_STATE_WITHERED)
-            end
+            -- MAINTENANCE row 166: the grant writes no weed map. It used to call
+            -- applyWeedMapState(WITHERED) on the first grant, which reads ONE weed state at the
+            -- field's centre and writes its replacement to every pixel of the field polygon: on a
+            -- field sprayed to 80% with a live centre, the unsprayed ground lost its live weeds and
+            -- clean ground took withered ones. Vanilla herbicide already withers the ground the
+            -- pass sprays (FSDensityMapUtil.updateSprayArea to updateHerbicideArea), and Soil only
+            -- counts vanilla HERBICIDE (#839), so the write added nothing where the pass sprayed.
         end
 
         -- Update per-cell weed pressure so the PDA cell-report shows changes immediately.
