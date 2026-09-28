@@ -1778,10 +1778,10 @@ function HookManager:installSectionControlHook()
 
             -- Field Boundary Enforcement + Overlap Prevention:
             -- (1) Suppress boom sections whose outer tip extends outside the current field.
-            -- (2) Suppress boom sections whose outer tip (or root for center) is in a cell
-            --     already sprayed this session AND stamped more than OVERLAP_GRACE_MS ago.
-            --     The grace period prevents self-suppression on the current forward pass:
-            --     a cell stamped < 20 s ago is still "fresh" and won't block its own section.
+            -- (2) Suppress boom sections whose outer tip (or the boom-line centre for the
+            --     center section) is in a cell sprayed on an earlier pass - same rule as
+            --     overlap prevention (HookManager.isCellSprayedEarlier), so the current
+            --     pass does not switch off its own sections.
             -- Independent of Smart Sensor - applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
@@ -1800,18 +1800,19 @@ function HookManager:installSectionControlHook()
                                             and fieldDataRef[vehicleFieldId] or nil
                         local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells or nil
                         local zoneCell     = SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE or 10
-                        local graceMs      = SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_MS or 20000
-                        local nowMs        = g_currentMission and g_currentMission.time or 0
+                        local graceM       = sprayerSelf._sfOverlapGraceM
+                                             or (SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_M or 15)
 
                         for i, section in ipairs(vwwBE.sections) do
                             if section.isActive then
                                 -- Determine position to check:
                                 -- Non-center sections use the cached outer tip.
-                                -- Center section uses the vehicle root (no tip node).
+                                -- Center section uses the boom-line centre (no tip node);
+                                -- the root sits ahead of the boom.
                                 local sx, sz
                                 if section.isCenter then
-                                    sx = rx
-                                    sz = rz
+                                    sx = sprayerSelf._sfBoomCentreX or rx
+                                    sz = sprayerSelf._sfBoomCentreZ or rz
                                 else
                                     local tip = tips and tips[i]
                                     if tip then
@@ -1833,13 +1834,12 @@ function HookManager:installSectionControlHook()
                                         end
                                     end
 
-                                    -- (2) Overlap: cell already visited AND older than grace period.
+                                    -- (2) Overlap: cell sprayed on an earlier pass.
                                     if section.isActive and coveredCells then
                                         local cx      = math.floor(sx / zoneCell)
                                         local cz      = math.floor(sz / zoneCell)
                                         local cellKey = tostring(cx * 10000 + cz)
-                                        local stampMs = coveredCells[cellKey]
-                                        if stampMs and (nowMs - stampMs) > graceMs then
+                                        if HookManager.isCellSprayedEarlier(coveredCells[cellKey], sprayerSelf, graceM) then
                                             section.isActive = false
                                             if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
                                             sprayerSelf._sfSuppressedSections[i] = true
@@ -2353,14 +2353,108 @@ function HookManager:installVariableRateHook()
 end
 
 -- =========================================================
+-- OVERLAP PREVENTION: "sprayed earlier" rule shared by the overlap hook and the
+-- fieldBoundaryControl overlap check (installSectionControlHook)
+-- =========================================================
+-- markBoomCells stamps each cell ONCE, on first visit, with the stamping vehicle and
+-- its driven distance (vehicle._sfOdoM, accumulated by installSectionStatePreserver).
+-- The stamp points are a world-axis sweep through the vehicle ROOT plus the root cell
+-- (getBoomCellPositions), not the boom line, so a section can reach a cell its own
+-- pass stamped up to (half-width + boom offset behind the root) metres of travel
+-- before or after the stamp, and then stays in it for up to one cell diagonal.
+-- That sum is the grace. It replaces a time grace (10 s) that aged while standing
+-- still and a no-grace "centre cell" rule that assumed the root cell is always
+-- unstamped ahead of the boom - false on every sprayer (booms sit 0.5-4.8 m behind
+-- the root), so the centre and inner sections switched off on a never-sprayed field.
+-- Limits: the bound holds for straight passes and gentle curves. The distance is the
+-- root's, and in a tight corner taken with the boom on (root radius below ~1.75x the
+-- half-width) the inner tip moves slower than the root, so an inner-side section can
+-- still drop out for a few metres. Counting the slowest boom point instead would stop
+-- a pivot-tight headland U-turn from ageing the previous lane at all. Reversing back
+-- over this pass's own fresh track (and driving forward over that stretch again)
+-- looks like the current pass until the distance since the stamp passes the grace,
+-- about 8-13 m of reversing on a 24 m boom, so those sections keep spraying.
+
+--- Boom geometry from the cached section tips: the boom-line centre (where a section
+--- with no tip node is checked) and the grace distance in metres.
+---@param tips table|nil  sprayer._sfSectionTip: [sectionIndex] = {x, z} (may have holes)
+---@param rx number  root world X
+---@param rz number  root world Z
+---@param baseM number  SoilConstants.ZONE.OVERLAP_GRACE_M
+---@return number|nil centreX, number|nil centreZ, number graceM
+function HookManager.computeOverlapBoomGeometry(tips, rx, rz, baseM)
+    -- Two ends of the boom: the tip furthest from the root, then the tip furthest
+    -- from that one.
+    local ax, az, best = nil, nil, -1
+    for _, t in pairs(tips or {}) do
+        local dx, dz = t[1] - rx, t[2] - rz
+        local d2 = dx * dx + dz * dz
+        if d2 > best then best, ax, az = d2, t[1], t[2] end
+    end
+    if not ax then return nil, nil, baseM end
+    local bx, bz = ax, az
+    best = -1
+    for _, t in pairs(tips) do
+        local dx, dz = t[1] - ax, t[2] - az
+        local d2 = dx * dx + dz * dz
+        if d2 > best then best, bx, bz = d2, t[1], t[2] end
+    end
+    local len = math.sqrt(best)
+    if len < 0.5 then
+        -- One usable tip: no boom direction. Its distance bounds both terms.
+        return nil, nil, baseM + 2 * math.sqrt((ax - rx) ^ 2 + (az - rz) ^ 2)
+    end
+    -- u = along the boom, n = across it (travel direction). Half-width and offset are
+    -- measured from the ROOT, because that is where the stamp sweep runs.
+    local ux, uz = (bx - ax) / len, (bz - az) / len
+    local nx, nz = -uz, ux
+    local halfW, offset = 0, 0
+    for _, t in pairs(tips) do
+        local dx, dz = t[1] - rx, t[2] - rz
+        halfW  = math.max(halfW,  math.abs(dx * ux + dz * uz))
+        offset = math.max(offset, math.abs(dx * nx + dz * nz))
+    end
+    return (ax + bx) * 0.5, (az + bz) * 0.5, baseM + halfW + offset
+end
+
+--- True when a session coverage stamp means "sprayed on an earlier pass".
+---@param stamp any  sessionCoverageCells[cellKey]: nil, or {ms, odo, by} from markBoomCells
+---@param sprayer table  the vehicle deciding
+---@param graceM number  from computeOverlapBoomGeometry
+---@return boolean
+function HookManager.isCellSprayedEarlier(stamp, sprayer, graceM)
+    if stamp == nil then return false end
+    -- Another vehicle's stamp, or one with no distance on it: an earlier pass.
+    if type(stamp) ~= "table" or stamp.by ~= sprayer or stamp.odo == nil then return true end
+    return ((sprayer._sfOdoM or 0) - stamp.odo) > graceM
+end
+
+--- Ground speed of a sprayer in km/h: its own lastSpeed, or the root vehicle's for an
+--- implement without one - the same source the usage override's 0.5 km/h zero-drain
+--- check uses (installSprayerUsageHook).
+---@param sprayer table
+---@return number|nil  nil when no speed is known
+function HookManager.getSprayerSpeedKmh(sprayer)
+    local s = sprayer.lastSpeed
+    if s == nil then
+        local root = sprayer.rootVehicle
+        if root and root ~= sprayer then s = root.lastSpeed end
+    end
+    return s and math.abs(s) * 3600 or nil
+end
+
+-- =========================================================
 -- OVERLAP PREVENTION: session-cell-based nozzle shutoff
 -- =========================================================
 -- Prepended to onStartWorkAreaProcessing (before VWW processes work areas).
--- For each non-center VWW section, checks whether the section tip's 10×10 m cell
--- was already sprayed by this sprayer during the current session (tracked in
--- sessionCoverageCells with a timestamp).  If the cell was stamped more than
--- OVERLAP_GRACE_MS ago, the section is suppressed so the nozzle does not
--- re-apply product on overlapping headland swaths.
+-- For each VWW section, checks whether the 10×10 m cell under the section tip
+-- (or, for a section with no tip node, under the boom-line centre) was already
+-- sprayed this session (sessionCoverageCells). See HookManager.isCellSprayedEarlier:
+-- a cell stamped by another vehicle counts at once; a cell this sprayer stamped
+-- counts once it has driven the grace distance past the stamp, so its own current
+-- pass does not switch its sections off, reversing included (see the limits noted
+-- above isCellSprayedEarlier). Below ZONE.OVERLAP_STOPPED_KMH the whole pass is
+-- blocked instead, like the 99% block: a stopped sprayer sprays nothing.
 --
 -- Uses session coverage cells rather than the SPRAY_LEVEL density map.
 -- The density-map approach (EQUAL lvlMax) was unreliable because:
@@ -2584,6 +2678,26 @@ function HookManager:installOverlapPreventionHook()
                 return
             end
 
+            -- Stopped: the boom stands on ground it has just sprayed, so nothing is
+            -- sprayed. The pass is blocked the same way as the 99% block below: no
+            -- ground paint, no drain, no credit. Because nothing paints, the engine's
+            -- own effect visibility (lastSprayTime + 100 ms) hides the particles and
+            -- shows them again once the sprayer moves, for vanilla and custom products
+            -- alike - no section effects are stopped here, so none need restarting.
+            local speedKmh = HookManager.getSprayerSpeedKmh(sprayerSelf)
+            local stoppedKmh = SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_STOPPED_KMH or 0.5
+            if canRestore and speedKmh ~= nil and speedKmh < stoppedKmh then
+                if sprayerSelf._sfOverlapSuppressedSections then
+                    sprayerSelf._sfOverlapSuppressedSections = {}
+                end
+                sprayerSelf._sfSprayAreaBlocked = true
+                sprayerSelf._sfOverlapBlockedPass = true
+                HookManager.blockWorkAreaProcessing(
+                    sprayerSelf, "spec_sprayer", "processSprayerArea",
+                    function() return 0, 0 end)
+                return
+            end
+
             local rootX = sprayerSelf._sfRootX
             local rootZ = sprayerSelf._sfRootZ
             if not rootX then return end
@@ -2617,10 +2731,14 @@ function HookManager:installOverlapPreventionHook()
 
             local zone    = SoilConstants.ZONE
             local zoneCell = zone and zone.CELL_SIZE or 10
-            local graceMs  = zone and zone.OVERLAP_GRACE_MS or 20000
+            local graceM   = sprayerSelf._sfOverlapGraceM or (zone and zone.OVERLAP_GRACE_M or 15)
             local nowMs    = g_currentMission and g_currentMission.time or 0
 
             local tips = sprayerSelf._sfSectionTip
+            -- A section with no tip node (e.g. an isCenter section) is checked on the
+            -- boom line, not at the root: the root is ahead of the boom.
+            local centreX = sprayerSelf._sfBoomCentreX or rootX
+            local centreZ = sprayerSelf._sfBoomCentreZ or rootZ
 
             -- Debug diagnostic: throttled to once per ~2s per sprayer instance
             local debugEnabled = sfm.settings and sfm.settings.debugMode
@@ -2628,8 +2746,8 @@ function HookManager:installOverlapPreventionHook()
             local doLog = debugEnabled and (not dbgLogThrottle[vid] or (nowMs - dbgLogThrottle[vid]) > 2000)
             if doLog then
                 dbgLogThrottle[vid] = nowMs
-                SoilLogger.debug("[OverlapPrev] ft=%d fieldId=%d rootX=%.1f rootZ=%.1f graceMs=%d",
-                    fillTypeIndex, vehicleFieldId, rootX, rootZ, graceMs)
+                SoilLogger.debug("[OverlapPrev] ft=%d fieldId=%d rootX=%.1f rootZ=%.1f odo=%.1f graceM=%.1f",
+                    fillTypeIndex, vehicleFieldId, rootX, rootZ, sprayerSelf._sfOdoM or 0, graceM)
             end
 
             -- Transition-based effect management:
@@ -2641,9 +2759,8 @@ function HookManager:installOverlapPreventionHook()
             local currSuppressed = {}
 
             -- At >=99% field coverage every section is guaranteed to be on
-            -- already-sprayed ground - suppress everything without a grace period.
-            -- This handles the centre section whose coverage cells are always stamped
-            -- fresh (it's under the vehicle) and never age past graceMs on the current pass.
+            -- already-sprayed ground - suppress everything without a grace period,
+            -- including cells this pass stamped less than graceM metres ago.
             local coverage = fieldEntry and fieldEntry.sessionCoverageFraction or 0
             local coverageComplete = coverage >= 0.99
 
@@ -2653,38 +2770,23 @@ function HookManager:installOverlapPreventionHook()
                 local alreadySprayed = coverageComplete  -- global gate at 99%+
 
                 if not alreadySprayed then
-                    -- Tip-based cell check. Wing sections use their outer tip node;
-                    -- sections with no tip node fall back to the vehicle root position.
-                    --
-                    -- Grace period rationale:
-                    --   Wings (tip in a different cell from root): graceMs required -
-                    --     the tip's cell may have been freshly stamped by an adjacent
-                    --     strip only seconds ago, and skipping grace would cause false
-                    --     suppression on the current forward pass.
-                    --   Centre (no tip, OR tip maps to the same cell as root): the
-                    --     cell under the root/tip is ALWAYS unstamped ahead of the
-                    --     vehicle on the current pass (markBoomCells runs AFTER this
-                    --     PREPEND), so any existing stamp means "visited in a prior
-                    --     pass." No grace needed - this also fixes JD R700i/R975i
-                    --     where the centre tip exists but falls in the root cell.
-                    local tx = tip and tip[1] or rootX
-                    local tz = tip and tip[2] or rootZ
+                    -- Tip-based cell check (#562: sample at the tip, so a section whose
+                    -- outer edge is on fresh ground keeps spraying). Sections with no
+                    -- tip node use the boom-line centre. One rule for every section:
+                    -- HookManager.isCellSprayedEarlier (own stamps need graceM metres
+                    -- of driving, other vehicles' stamps count at once).
+                    local tx = tip and tip[1] or centreX
+                    local tz = tip and tip[2] or centreZ
                     local cx = math.floor(tx / zoneCell)
                     local cz = math.floor(tz / zoneCell)
                     local cellKey = tostring(cx * 10000 + cz)
-                    local stampMs = coveredCells[cellKey]
-                    local rootCx = math.floor(rootX / zoneCell)
-                    local rootCz = math.floor(rootZ / zoneCell)
-                    local isCentreCell = (cx == rootCx and cz == rootCz)
-                    if tip and not isCentreCell then
-                        alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
-                    else
-                        alreadySprayed = stampMs ~= nil  -- no grace for centre cell
-                    end
+                    local stamp = coveredCells[cellKey]
+                    alreadySprayed = HookManager.isCellSprayedEarlier(stamp, sprayerSelf, graceM)
 
                     if doLog and i <= 4 then
-                        SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampMs=%s graceOk=%s",
-                            i, tx, tz, tostring(stampMs), tostring(alreadySprayed))
+                        SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampOdo=%s sprayedEarlier=%s",
+                            i, tx, tz, tostring(type(stamp) == "table" and stamp.odo or stamp),
+                            tostring(alreadySprayed))
                     end
                 end
 
@@ -2887,6 +2989,17 @@ function HookManager:installSectionStatePreserver()
             -- Cache root world position once; the three appended hooks read this
             -- cache instead of calling getWorldTranslation independently.
             local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
+            -- Distance driven, for overlap prevention's own-stamp grace
+            -- (HookManager.isCellSprayedEarlier). Accumulated here because this prepend
+            -- runs every tick, spraying or not (WorkArea:onUpdateTick raises the event
+            -- unconditionally), so a headland turn with the boom off still counts.
+            local prevX, prevZ = sprayerSelf._sfRootX, sprayerSelf._sfRootZ
+            local step = 0
+            if rx and prevX then
+                local ddx, ddz = rx - prevX, rz - prevZ
+                step = math.sqrt(ddx * ddx + ddz * ddz)
+            end
+            sprayerSelf._sfOdoM = (sprayerSelf._sfOdoM or 0) + step
             sprayerSelf._sfRootX = rx
             sprayerSelf._sfRootZ = rz
 
@@ -2950,6 +3063,12 @@ function HookManager:installSectionStatePreserver()
                         tips[i] = nil
                     end
                 end
+
+                -- Boom-line centre and own-stamp grace for overlap prevention and
+                -- the fieldBoundaryControl overlap check.
+                local zone = SoilConstants.ZONE
+                sprayerSelf._sfBoomCentreX, sprayerSelf._sfBoomCentreZ, sprayerSelf._sfOverlapGraceM =
+                    HookManager.computeOverlapBoomGeometry(tips, rx, rz, zone and zone.OVERLAP_GRACE_M or 15)
             else
                 for i, section in ipairs(vww.sections) do
                     saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
@@ -6277,9 +6396,9 @@ function HookManager:installSprayerAreaHook()
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
                                                         if vww and vww.sections and #vww.sections > 0 then
-                                                            soilSys:markBoomCells(fieldId, boomPts)
+                                                            soilSys:markBoomCells(fieldId, boomPts, false, self)
                                                         else
-                                                            soilSys:markBoomCells(fieldId, boomPts, true)
+                                                            soilSys:markBoomCells(fieldId, boomPts, true, self)
                                                         end
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
@@ -6341,11 +6460,11 @@ function HookManager:installSprayerAreaHook()
                         soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
-                        soilSys:markBoomCells(fieldId, boomPts)
+                        soilSys:markBoomCells(fieldId, boomPts, false, self)
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
-                            soilSys:markBoomCells(fieldId, boomPts, true)  -- overlay only
+                            soilSys:markBoomCells(fieldId, boomPts, true, self)  -- overlay only
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call

@@ -1000,9 +1000,16 @@ SoilConstants.HUD = {
 SoilConstants.ZONE = {
     CELL_SIZE        = 10,    -- meters per cell side
     CELL_AREA_HA     = 0.01,  -- hectares per cell (10×10 m = 0.01 ha)
-    -- A cell stamped less than this many ms ago won't trigger overlap suppression.
-    -- At 6 km/h a sprayer crosses a 10m cell in ~6 s; 10 s gives safe headroom.
-    OVERLAP_GRACE_MS = 10000,
+    -- Overlap prevention: a cell this sprayer stamped itself only counts as
+    -- "sprayed earlier" once the sprayer has DRIVEN this many metres past the stamp,
+    -- plus the boom's half-width and its offset behind the root (measured at runtime,
+    -- see HookManager.computeOverlapBoomGeometry). 15 m > the 14.1 m diagonal of a
+    -- 10 m cell. Distance, not time: standing still or crawling never ages a stamp.
+    OVERLAP_GRACE_M = 15,
+    -- Overlap prevention: below this ground speed the sprayer counts as stopped and
+    -- its pass is blocked (no paint, no drain, no particles) - the boom stands on
+    -- ground it has just sprayed. Same threshold as the usage override's zero drain.
+    OVERLAP_STOPPED_KMH = 0.5,
 }
 
 -- ========================================
