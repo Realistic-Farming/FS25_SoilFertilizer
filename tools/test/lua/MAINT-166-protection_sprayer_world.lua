@@ -32,6 +32,8 @@ local FT = {
   HERBICIDE   = { name = "HERBICIDE",   index = 70, massPerLiter = 0.001 },
   INSECTICIDE = { name = "INSECTICIDE", index = 71, massPerLiter = 0.001 },
   FUNGICIDE   = { name = "FUNGICIDE",   index = 72, massPerLiter = 0.001 },
+  PESTICIDE   = { name = "PESTICIDE",   index = 73, massPerLiter = 0.001 },
+  PROPICONAZOLE = { name = "PROPICONAZOLE", index = 74, massPerLiter = 0.001 },
 }
 PSW.FT = FT
 
@@ -48,6 +50,7 @@ function PSW.restore()
   g_fillTypeManager, Sprayer, Utils, g_SoilFertilityManager = saved.ftm, saved.sprayer, saved.utils, saved.sfm
   g_fieldManager, g_farmlandManager, g_server = saved.fm, saved.flm, saved.server
   g_currentMission.missionDynamicInfo, g_currentMission.weedSystem = saved.mdi, saved.weed
+  g_currentMission.addUpdateable, g_currentMission.removeUpdateable = saved.addU, saved.removeU
   FieldState, FieldUpdateTask = saved.fieldState, saved.fieldUpdateTask
   saved = nil
 end
@@ -55,7 +58,7 @@ end
 --- opts.product      fill type name the sprayer carries (default HERBICIDE)
 --- opts.areaHa       the field's crop area (default 0.2 ha = 20 cells)
 --- opts.centreWeed   the weed state FieldState reads at the field's centre (default 2, live)
---- opts.multiplayer  a multiplayer host (broadcasts are counted)
+--- opts.multiplayer  a multiplayer host (every event it broadcasts is recorded in world.events)
 function PSW.new(opts)
   opts = opts or {}
   if saved == nil then
@@ -63,10 +66,11 @@ function PSW.new(opts)
       ftm = g_fillTypeManager, sprayer = Sprayer, utils = Utils, sfm = g_SoilFertilityManager,
       fm = g_fieldManager, flm = g_farmlandManager, server = g_server,
       mdi = g_currentMission.missionDynamicInfo, weed = g_currentMission.weedSystem,
+      addU = g_currentMission.addUpdateable, removeU = g_currentMission.removeUpdateable,
       fieldState = FieldState, fieldUpdateTask = FieldUpdateTask,
     }
   end
-  local world = { tasks = {}, broadcasts = 0, centreWeed = opts.centreWeed or 2, boom = {} }
+  local world = { tasks = {}, events = {}, centreWeed = opts.centreWeed or 2, boom = {} }
   local areaHa = opts.areaHa or 0.2
 
   FillType = FillType or { UNKNOWN = 0 }
@@ -124,8 +128,13 @@ function PSW.new(opts)
   end }
 
   -- ── The peer ──
-  g_server = { broadcastEvent = function() world.broadcasts = world.broadcasts + 1 end }
+  g_server = { broadcastEvent = function(_, ev) world.events[#world.events + 1] = ev end }
   g_currentMission.missionDynamicInfo = { isMultiplayer = opts.multiplayer == true }
+  -- The mission's updateable list: a multiplayer host's load scan hands the full field
+  -- sync to it (broadcastAllFieldData). Recorded, not run: the bars do not need it.
+  world.updateables = {}
+  g_currentMission.addUpdateable = function(_, u) world.updateables[#world.updateables + 1] = u end
+  g_currentMission.removeUpdateable = function() end
 
   -- ── The soil system ──
   local settings = Settings.new(nil)

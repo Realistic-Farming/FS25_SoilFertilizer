@@ -6164,6 +6164,12 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
             e.applied = e.applied + clamped
             if clamped > 0 then self:onInsecticideAppliedIncremental(fieldId, clamped) end
         end
+        -- #1030: the grant runs on every tick, whatever the day's cap left for `clamped`.
+        -- This route's coverage is tracked by the hook after this call returns, so the grant
+        -- reads the fraction the previous tick left.
+        if self:_grantCropProtection(fieldId, field, "insecticide") then
+            self:_broadcastProtectionUpdate(fieldId, field)
+        end
 
     elseif entry.diseaseReduction then
         local targetRate = SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE
@@ -6179,6 +6185,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
             local clamped = math.min(proposed, remaining)
             e.applied = e.applied + clamped
             if clamped > 0 then self:onFungicideAppliedIncremental(fieldId, clamped) end
+        end
+        -- #1030: as the insecticide route above.
+        if self:_grantCropProtection(fieldId, field, "fungicide") then
+            self:_broadcastProtectionUpdate(fieldId, field)
         end
 
     else
@@ -6509,14 +6519,11 @@ function SoilFertilitySystem:onInsecticideAppliedIncremental(fieldId, reduction)
     local field = self:getOrCreateField(fieldId, false)
     if not field then return end
 
-    local pp = SoilConstants.PEST_PRESSURE
     local before = field.pestPressure or 0
     field.pestPressure = math.max(0, before - reduction)
-    -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
-    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-    if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
-    end
+    -- #1030: the protection grant is not here. Every caller runs this only when its
+    -- capped reduction is positive, so a grant here never came once the day's cap was
+    -- spent. The callers grant through _grantCropProtection on every tick instead.
 
     -- Update per-cell pest pressure for existing zoneData entries only.
     -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
@@ -6539,16 +6546,9 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     local field = self:getOrCreateField(fieldId, false)
     if not field then return end
 
-    local dp = SoilConstants.DISEASE_PRESSURE
-    local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
-        or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
     local before = field.diseasePressure or 0
     field.diseasePressure = math.max(0, before - reduction)
-    -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
-    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-    if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * (cm.fungicideMult or 1))
-    end
+    -- #1030: the protection grant is not here (see onInsecticideAppliedIncremental).
 
     -- Update per-cell disease pressure for existing zoneData entries only.
     -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
@@ -6561,6 +6561,66 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
         local cell = field.zoneData[cellKey]
         if cell then
             cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - reduction)
+        end
+    end
+end
+
+-- =====================================================================
+-- CROP-PROTECTION GRANT (#1030)
+-- =====================================================================
+-- The >= 80% coverage protection grant (COVERAGE.PROTECTION_THRESHOLD, #441) used to
+-- sit inside each route's `reduction > 0` block: the herbicide direct path, and the
+-- insecticide and fungicide incrementals, which the other four routes call only when
+-- their capped reduction is positive. Once a field's daily reduction cap was spent, a
+-- field that crossed 80% later that day was never protected. Every route now calls
+-- this on every application tick, after its own coverage tracking where it has one,
+-- whatever the reduction was. The threshold, the durations and the cap are unchanged.
+local PROTECTION_KINDS = {
+    herbicide   = { setting = "weedPressure",    days = "herbicideDaysLeft" },
+    insecticide = { setting = "pestPressure",    days = "insecticideDaysLeft" },
+    fungicide   = { setting = "diseasePressure", days = "fungicideDaysLeft" },
+}
+
+--- Grant (or refresh) a crop-protection window once the field's session coverage has
+--- reached the threshold. Durations are in in-game DAYS (decremented 1/game-day, #639).
+---@param kind string "herbicide" | "insecticide" | "fungicide"
+---@return boolean newlyGranted true only when the field had no window of this kind before
+function SoilFertilitySystem:_grantCropProtection(fieldId, field, kind)
+    local k = PROTECTION_KINDS[kind]
+    if not k or not field or not self.settings[k.setting] then return false end
+    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
+    if (field.sessionCoverageFraction or 0) < protThreshold then return false end
+
+    local days
+    if kind == "herbicide" then
+        -- MAINTENANCE row 166: the grant writes no weed map. It used to call
+        -- applyWeedMapState(WITHERED) on the first grant, which reads ONE weed state at the
+        -- field's centre and writes its replacement to every pixel of the field polygon.
+        -- Vanilla herbicide already withers the ground the pass sprays, and Soil only
+        -- counts vanilla HERBICIDE (#839).
+        days = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
+    elseif kind == "insecticide" then
+        days = SoilDuration.seasonScaled(SoilConstants.PEST_PRESSURE.INSECTICIDE_DURATION_DAYS)
+    else
+        local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
+            or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
+        days = math.floor(SoilDuration.seasonScaled(SoilConstants.DISEASE_PRESSURE.FUNGICIDE_DURATION_DAYS)
+            * (cm.fungicideMult or 1))
+    end
+
+    local wasProtected = (field[k.days] or 0) > 0
+    field[k.days] = days
+    return not wasProtected and days > 0
+end
+
+--- One field update to the clients (server, multiplayer only): the send the herbicide
+--- path has made since #257. A route calls it for a newly granted window, so clients
+--- see protection turn on without waiting for the next full sync.
+function SoilFertilitySystem:_broadcastProtectionUpdate(fieldId, field)
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+        and g_currentMission.missionDynamicInfo.isMultiplayer then
+        if SoilFieldUpdateEvent then
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
         end
     end
 end
@@ -7031,19 +7091,6 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
     if reduction > 0 then
         local before = field.weedPressure or 0
         field.weedPressure = math.max(0, before - reduction)
-        -- Only grant protected status once 80% of the field has been covered (issue #441)
-        local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-        if (field.sessionCoverageFraction or 0) >= protThreshold then
-            -- Duration is in in-game DAYS (decremented 1/game-day); see #639.
-            field.herbicideDaysLeft = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
-            -- MAINTENANCE row 166: the grant writes no weed map. It used to call
-            -- applyWeedMapState(WITHERED) on the first grant, which reads ONE weed state at the
-            -- field's centre and writes its replacement to every pixel of the field polygon: on a
-            -- field sprayed to 80% with a live centre, the unsprayed ground lost its live weeds and
-            -- clean ground took withered ones. Vanilla herbicide already withers the ground the
-            -- pass sprays (FSDensityMapUtil.updateSprayArea to updateHerbicideArea), and Soil only
-            -- counts vanilla HERBICIDE (#839), so the write added nothing where the pass sprayed.
-        end
 
         -- Update per-cell weed pressure so the PDA cell-report shows changes immediately.
         -- onInsecticideAppliedIncremental does this for pest pressure; herbicide was missing it.
@@ -7063,19 +7110,18 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
             field.zoneData[cellKey].weedPressure = math.max(0,
                 (field.zoneData[cellKey].weedPressure or field.weedPressure or 0) - reduction)
         end
-
-        -- Broadcast updated weed pressure to all clients (dedicated server fix - Issue #257)
-        if g_server and g_currentMission and g_currentMission.missionDynamicInfo
-            and g_currentMission.missionDynamicInfo.isMultiplayer then
-            if SoilFieldUpdateEvent then
-                SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
-            end
-        end
     end
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99991] = (field.nutrientBuffer[99991] or 0) + liters
     self:trackSprayerCoverage(fieldId, liters, "HERBICIDE", false)
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    -- One send per tick: the updated weed pressure (#257) and a newly granted window.
+    local granted = self:_grantCropProtection(fieldId, field, "herbicide")
+    if reduction > 0 or granted then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
 function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, liters)
@@ -7126,6 +7172,11 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99992] = (field.nutrientBuffer[99992] or 0) + liters
     self:trackSprayerCoverage(fieldId, liters, "INSECTICIDE")
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    if self:_grantCropProtection(fieldId, field, "insecticide") then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
 function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters, chemId)
@@ -7325,6 +7376,11 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- Only the named physical fungicides hit this (generic FUNGICIDE's fill name IS "FUNGICIDE").
     -- updateFractions=false: name-only, so this does not double-count the area already tracked.
     self:trackSprayerCoverage(fieldId, liters, chemId or "FUNGICIDE", false)
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    if self:_grantCropProtection(fieldId, field, "fungicide") then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
 --- Apply over-application burn penalty to a field.
