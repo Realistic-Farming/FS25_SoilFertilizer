@@ -2429,20 +2429,6 @@ function HookManager.isCellSprayedEarlier(stamp, sprayer, graceM)
     return ((sprayer._sfOdoM or 0) - stamp.odo) > graceM
 end
 
---- Ground speed of a sprayer in km/h: its own lastSpeed, or the root vehicle's for an
---- implement without one - the same source the usage override's 0.5 km/h zero-drain
---- check uses (installSprayerUsageHook).
----@param sprayer table
----@return number|nil  nil when no speed is known
-function HookManager.getSprayerSpeedKmh(sprayer)
-    local s = sprayer.lastSpeed
-    if s == nil then
-        local root = sprayer.rootVehicle
-        if root and root ~= sprayer then s = root.lastSpeed end
-    end
-    return s and math.abs(s) * 3600 or nil
-end
-
 -- =========================================================
 -- OVERLAP PREVENTION: session-cell-based nozzle shutoff
 -- =========================================================
@@ -2452,9 +2438,8 @@ end
 -- sprayed this session (sessionCoverageCells). See HookManager.isCellSprayedEarlier:
 -- a cell stamped by another vehicle counts at once; a cell this sprayer stamped
 -- counts once it has driven the grace distance past the stamp, so its own current
--- pass does not switch its sections off, reversing included (see the limits noted
--- above isCellSprayedEarlier). Below ZONE.OVERLAP_STOPPED_KMH the whole pass is
--- blocked instead, like the 99% block: a stopped sprayer sprays nothing.
+-- pass does not switch its sections off, standing still and reversing included (see
+-- the limits noted above isCellSprayedEarlier).
 --
 -- Uses session coverage cells rather than the SPRAY_LEVEL density map.
 -- The density-map approach (EQUAL lvlMax) was unreliable because:
@@ -2675,26 +2660,6 @@ function HookManager:installOverlapPreventionHook()
                 if sprayerSelf._sfOverlapSuppressedSections then
                     sprayerSelf._sfOverlapSuppressedSections = {}
                 end
-                return
-            end
-
-            -- Stopped: the boom stands on ground it has just sprayed, so nothing is
-            -- sprayed. The pass is blocked the same way as the 99% block below: no
-            -- ground paint, no drain, no credit. Because nothing paints, the engine's
-            -- own effect visibility (lastSprayTime + 100 ms) hides the particles and
-            -- shows them again once the sprayer moves, for vanilla and custom products
-            -- alike - no section effects are stopped here, so none need restarting.
-            local speedKmh = HookManager.getSprayerSpeedKmh(sprayerSelf)
-            local stoppedKmh = SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_STOPPED_KMH or 0.5
-            if canRestore and speedKmh ~= nil and speedKmh < stoppedKmh then
-                if sprayerSelf._sfOverlapSuppressedSections then
-                    sprayerSelf._sfOverlapSuppressedSections = {}
-                end
-                sprayerSelf._sfSprayAreaBlocked = true
-                sprayerSelf._sfOverlapBlockedPass = true
-                HookManager.blockWorkAreaProcessing(
-                    sprayerSelf, "spec_sprayer", "processSprayerArea",
-                    function() return 0, 0 end)
                 return
             end
 

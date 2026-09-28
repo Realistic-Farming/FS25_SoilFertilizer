@@ -242,33 +242,29 @@ end
 
 -- ── S: standing still, then driving off ────────────────────────────────────
 do
-    -- Stopped (below 0.5 km/h) the pass is blocked: nothing painted, drained or
-    -- credited, and the engine hides the particles because nothing paints. The own
-    -- stamps must not age either, so driving on over fresh ground sprays at once.
+    -- Standing still must not age the pass's own stamps (the old 10 s grace did),
+    -- so no section switches off while stopped, and driving on sprays at once.
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
     driveLane(v, ss, hookMgr, 4, 3, 0, 1, 30)
-    local off, blockedTicks, paintedWhileStopped = {}, 0, 0
+    local off, blockedTicks = {}, 0
     v.lastSpeed = 0
     for _ = 1, 400 do   -- 60 s stopped, same position
-        local o, blocked, painted = tick(v, ss, hookMgr, 150)
+        local o, blocked = tick(v, ss, hookMgr, 150)
         for i in pairs(o) do off[i] = true end
         if blocked then blockedTicks = blockedTicks + 1 end
-        if painted ~= 0 then paintedWhileStopped = paintedWhileStopped + 1 end
     end
     T.eq("S1 60 s standing still mid-lane: no section switched off", list(off), "")
-    T.eq("S3 stopped: the pass is blocked on every tick", blockedTicks, 400)
-    T.eq("S4 stopped: nothing is painted", paintedWhileStopped, 0)
-    local off2, movingBlocked = {}, 0
+    -- Only the 99% coverage block may block a pass (RSF-F226). Blocking a stopped
+    -- pass is a separate decision; if it is ever made, this row flips on purpose.
+    T.eq("S3 stopped: the pass is not blocked (RSF-F226's block predicate unchanged)", blockedTicks, 0)
+    local off2 = {}
     v.movingDirection = 1
     v.lastSpeed = 12 / 3600
     for s = 0, 20, 0.5 do
         place(4, 33 + s, 0, 1)
-        local o, blocked = tick(v, ss, hookMgr, 150)
-        for i in pairs(o) do off2[i] = true end
-        if blocked then movingBlocked = movingBlocked + 1 end
+        for i in pairs(tick(v, ss, hookMgr, 150)) do off2[i] = true end
     end
     T.eq("S2 and driving on afterwards: no section off", list(off2), "")
-    T.eq("S5 and the pass is no longer blocked once moving", movingBlocked, 0)
 end
 
 -- ── T: back along the lane just sprayed, after a headland turn ─────────────

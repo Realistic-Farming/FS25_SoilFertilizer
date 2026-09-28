@@ -1006,10 +1006,6 @@ SoilConstants.ZONE = {
     -- see HookManager.computeOverlapBoomGeometry). 15 m > the 14.1 m diagonal of a
     -- 10 m cell. Distance, not time: standing still or crawling never ages a stamp.
     OVERLAP_GRACE_M = 15,
-    -- Overlap prevention: below this ground speed the sprayer counts as stopped and
-    -- its pass is blocked (no paint, no drain, no particles) - the boom stands on
-    -- ground it has just sprayed. Same threshold as the usage override's zero drain.
-    OVERLAP_STOPPED_KMH = 0.5,
 }
 
 -- ========================================
