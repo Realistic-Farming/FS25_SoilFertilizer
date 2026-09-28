@@ -143,6 +143,9 @@ SFNozzleEffects.init(modDirectory)
 -- 3. Core systems
 source(modDirectory .. "src/hooks/HookManager.lua")
 source(modDirectory .. "src/hooks/GroundTipGate.lua")
+-- SP01-187: the legacy ground type injection main.lua's loadedMission calls when
+-- the capacity load did not prepare the ground; bounded by the map's channels.
+source(modDirectory .. "src/hooks/SoilLegacyGroundTypes.lua")
 -- SG-6 (Soil half): the capacity-load join StockGuard's preflight resolves as
 -- getfenv(0)["FS25_SoilFertilizer"].SoilCapacityIntegration. Sourced right after
 -- the tip gate it drives.
@@ -526,60 +529,10 @@ local function loadedMission(mission, node)
         local dmhm = g_densityMapHeightManager
         local ftm  = g_fillTypeManager
         if dmhm and ftm and dmhm.heightTypes and dmhm.fillTypeIndexToHeightType then
-            -- Two templates: FERTILIZER (light granular) for mineral types,
-            -- MANURE (dark organic) for compost/biosolids/chicken manure/pelletized manure.
-            -- Using the wrong template causes black/unlit pile rendering because the
-            -- C++ material reference from the shallow copy drives the visual output.
-            local tmplFert   = nil
-            local tmplManure = nil
-            local fertIdx    = ftm:getFillTypeIndexByName("FERTILIZER")
-            local manureIdx  = ftm:getFillTypeIndexByName("MANURE")
-            if fertIdx  then tmplFert   = dmhm.fillTypeIndexToHeightType[fertIdx]   end
-            if manureIdx then tmplManure = dmhm.fillTypeIndexToHeightType[manureIdx] end
-
-            -- Fall back to the other template if one is missing
-            local tmpl = tmplFert or tmplManure
-
-            -- Which types use the organic (MANURE) template
-            local organicSet = {
-                COMPOST = true, BIOSOLIDS = true,
-                CHICKEN_MANURE = true, PELLETIZED_MANURE = true,
-            }
-
-            if tmpl then
-                -- Our 11 solid fill types that need ground-tipping support.
-                local solidTypes = {
-                    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-                    "GYPSUM", "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE",
-                }
-                local registered = 0
-                for _, typeName in ipairs(solidTypes) do
-                    local idx = ftm:getFillTypeIndexByName(typeName)
-                    if idx and not dmhm.fillTypeIndexToHeightType[idx] then
-                        local nextSlot = dmhm.numHeightTypes + 1
-                        -- Shallow-copy the appropriate template so C++ object references
-                        -- (density map channel pointer, material, physics layer handle) are
-                        -- preserved. Organic types use MANURE to get the correct dark pile
-                        -- visual; mineral types use FERTILIZER for the light granular look.
-                        local srcTmpl = (organicSet[typeName] and tmplManure) or tmplFert or tmpl
-                        local ht = {}
-                        for k, v in pairs(srcTmpl) do ht[k] = v end
-                        ht.allowsSmoothing  = false
-                        ht.canBeTipped      = true
-                        ht.fillTypeIndex    = idx
-                        ht.fillTypeName     = typeName
-                        ht.index            = nextSlot
-
-                        dmhm.fillTypeIndexToHeightType[idx]           = ht
-                        if dmhm.fillTypeNameToHeightType then
-                            dmhm.fillTypeNameToHeightType[typeName]   = ht
-                        end
-                        dmhm.heightTypeIndexToFillTypeIndex[nextSlot] = idx
-                        dmhm.heightTypes[nextSlot]                    = ht
-                        dmhm.numHeightTypes                           = nextSlot
-                        registered = registered + 1
-                    end
-                end
+            -- SP01-187: the injection lives in SoilLegacyGroundTypes, bounded by the
+            -- map's height-type channels the way the engine bounds its own types.
+            local registered = SoilLegacyGroundTypes.inject(dmhm, ftm)
+            if registered ~= nil then
                 -- Verify at least one registration worked by checking getMinValidLiterValue.
                 local testIdx = ftm:getFillTypeIndexByName("UREA")
                 local ok, val = pcall(function() return dmhm:getMinValidLiterValue(testIdx) end)
