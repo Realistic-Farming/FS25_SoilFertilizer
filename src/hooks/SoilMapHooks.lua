@@ -33,8 +33,28 @@ local function getSoilOverlay(frame)
     return g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
 end
 
+--- Is the map frame the page the player is actually looking at?
+--- The selector state below is the map frame's REMEMBERED sub-page and it survives
+--- leaving the map entirely, so on its own it says "the Soil layer is the one the map
+--- will show next time", not "the map is on screen now". FS25 has no GUI z-order, so a
+--- frame that is not displayed still receives mouse events, and the overlay's
+--- onSideBarClick matches its buttonRects on screen coordinates alone. That combination
+--- opened the Soil map help dialog on clicks made on other Esc pages.
+--- Same idiom as SoilPDAScreen.toggle and RfPdaMenuPage.toggle. Undeterminable stays
+--- permissive, so a build where the menu cannot be resolved behaves exactly as before.
+local function isMapFrameCurrentPage(frame)
+    if g_gui == nil or InGameMenu == nil then return true end
+    local inGameMenu = g_gui.screenControllers ~= nil and g_gui.screenControllers[InGameMenu] or g_inGameMenu
+    if inGameMenu == nil or inGameMenu.currentPage == nil then return true end
+    return inGameMenu.currentPage == frame
+end
+
 local function isSoilPageActive(frame)
     if frame == nil or frame.soilMapPageIndex == nil or frame.mapOverviewSelector == nil then
+        return false
+    end
+
+    if not isMapFrameCurrentPage(frame) then
         return false
     end
 
