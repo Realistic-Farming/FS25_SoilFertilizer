@@ -6009,7 +6009,7 @@ function HookManager:installSprayerAreaHook()
                         soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
                     end
                     if pestOnlyDirect and soilSys.onInsecticideAppliedDirect then
-                        soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters)
+                        soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters, fillType.name)
                     end
                     if diseaseOnlyDirect and soilSys.onFungicideAppliedDirect then
                         soilSys:onFungicideAppliedDirect(fId, diseaseEffectiveness, sectionLiters, fillType.name)
@@ -6231,7 +6231,7 @@ function HookManager:installSprayerAreaHook()
                                                         soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2 * herbAreaFraction)
                                                     end
                                                     if pestOnly2 and soilSys.onInsecticideAppliedDirect then
-                                                        soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2)
+                                                        soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2, ftName)
                                                     end
                                                     if disOnly2 and soilSys.onFungicideAppliedDirect then
                                                         soilSys:onFungicideAppliedDirect(fId2, disE, sLiters2, ftName)
