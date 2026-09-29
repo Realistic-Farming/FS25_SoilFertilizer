@@ -285,6 +285,9 @@ local function resetEngine()
   Sprayer  = { getSprayerUsage = nativeGetSprayerUsage, getExternalFill = nativeGetExternalFill,
                getIsSprayerExternallyFilled = nativeIsExternallyFilled, onStartWorkAreaProcessing = nativeOnStart,
                onEndWorkAreaProcessing = nativeOnEnd, processSprayerArea = nativeProcessSprayerArea }
+  -- VehicleSystem is a Class (VehicleSystem.lua:3, :6); the mission's instance reaches
+  -- addVehicle through __index (the sprayer overlap gate wraps the class method)
+  VehicleSystem = { addVehicle = function(_self, _vehicle) return true end }
   -- finalizeTypes: the type table reads the CLASS functions at boot
   g_vehicleTypeManager = { types = {
     sprayer = { specializationsByName = { sprayer = true, fillUnit = true, workArea = true },
@@ -372,7 +375,7 @@ local function newWorld(opts)
     missionDynamicInfo = { isMultiplayer = false },
     environment = { currentDay = 5 },
     addMoney = function(_, amount) NATIVE.money[#NATIVE.money + 1] = amount end,
-    vehicleSystem = { vehicles = {} },
+    vehicleSystem = setmetatable({ vehicles = {} }, { __index = VehicleSystem }),
     aiMessageManager = aiMessageManager(),
     hud = { showBlinkingWarning = function(_, text) NATIVE.notices[#NATIVE.notices + 1] = text end },
   }
@@ -395,8 +398,9 @@ local function newWorld(opts)
   hm._soilSystemRef = ss
   local v = newSprayer(opts)
   g_currentMission.vehicleSystem.vehicles = { v }
-  -- the mod's own install sequence for these hooks, in installAll's order
-  local seq = { "installSprayerAreaHook", "installPurchaseRefillHook", "installExternalFillHook",
+  -- the mod's own install sequence for these hooks, in installAll's order (the sprayer
+  -- overlap gate sits right after harvest, ahead of all of them; RSF-F226 item 3)
+  local seq = { "installSprayerOverlapGate", "installSprayerAreaHook", "installPurchaseRefillHook", "installExternalFillHook",
                 "installSprayerStartHook", "installSprayerUsageHook", "installTargetApplicationHooks",
                 "installExternalFillOptInHook", "registerCustomSprayTypes", "installDensityRefusalHook",
                 "installTargetStartEnforcement", "installOverlapPreventionHook", "installSectionStatePreserver",
