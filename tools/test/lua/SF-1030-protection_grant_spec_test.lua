@@ -61,7 +61,11 @@ local ROUTES = {
 for _, r in ipairs(ROUTES) do
   local K = r.key
   group(K .. " " .. r.what, function()
-    local w = PSW.new({ product = r.product, multiplayer = true })
+    -- 0.195 ha, so sixteen 0.01 ha cells are 82%. On a field of exactly twenty cells the
+    -- sixteenth sits on 0.80 to the last floating-point bit; until MAINTENANCE row 170 the
+    -- fertilizer-profile routes (I, F) were carried over it by a first-tick litre count
+    -- they should never have had. 20 L on pass 2 still spends the day's cap (19.5 L).
+    local w = PSW.new({ product = r.product, multiplayer = true, areaHa = 0.195 })
     local sys = w.sys
     w:tick(0.01, w:cells(1, 1))
     local f = w:field()

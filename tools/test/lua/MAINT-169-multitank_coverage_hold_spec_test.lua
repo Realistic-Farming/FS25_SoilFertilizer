@@ -18,7 +18,7 @@
 --
 --   C  one-tank controls: FERTILIZER on both paths and HERBICIDE on the litres path
 --      accumulate tick by tick (the values the other groups are compared against), and a
---      FERTILIZER litres tick keeps development's absolute figure
+--      FERTILIZER litres tick counts its litres once (absolute, since row 170)
 --   T  FERTILIZER + LIQUIDFERTILIZER: accumulates exactly as the control, the session
 --      stays FERTILIZER, and tank 2 drains (the loop ran)
 --   H  FERTILIZER + a HERBICIDE secondary: the same, and the herbicide still reduces
@@ -64,12 +64,11 @@ group("C controls", function()
   local _, s = run({ product = "FERTILIZER", noVww = true, areaHa = 1.0 })
   CL = s
   T.ok("C1 [reached: FERTILIZER on the litres path counts a tick]", s[1].ha > 0)
-  -- Development's value, unchanged here: a one-tank FERTILIZER tick on the litres path is
-  -- counted by two tracks, the pre-loop one at :5953 (its updateFractions is nil, not
-  -- false, for a fertilizer with no crop-protection effect) and the post-loop one. That
-  -- doubling is pre-existing and raised separately; this row pins that row 169 leaves the
-  -- one-tank figure exactly as it was.
-  T.ok("C1b one FERTILIZER tick counts 2 x 10 L / 225 L/ha, development's figure", near(s[1].ha, 2 * 10 / SoilConstants.SPRAYER_RATE.BASE_RATES.FERTILIZER.value))
+  -- A one-tank FERTILIZER tick on the litres path counts its litres once, after the
+  -- credit. Until MAINTENANCE row 170 the pre-loop track counted them too (its
+  -- updateFractions was nil, not false), and this row pinned that 2x; row 170 moved it
+  -- to 1x. It stays the only row that sees the loop's clear go missing.
+  T.ok("C1b one FERTILIZER tick counts 10 L / 225 L/ha once", near(s[1].ha, 10 / SoilConstants.SPRAYER_RATE.BASE_RATES.FERTILIZER.value))
   T.ok("C2 and accumulates tick by tick", near(s[2].ha, 2 * s[1].ha) and near(s[3].ha, 3 * s[1].ha))
   local _, v = run({ product = "FERTILIZER", areaHa = 1.0 })
   CV = v
