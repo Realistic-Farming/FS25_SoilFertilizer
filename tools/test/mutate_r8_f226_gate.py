@@ -90,6 +90,23 @@ MUTATIONS = [
   [("    record.active = false\n    return \"left\"\n",
     "    HookManager.workAreaRecords[workArea][functionName] = nil\n    return \"left\"\n", 1)],
   "a slot left in place forgets its record"),
+ ("G22-armed-state-dropped", HM,
+  [("                .. \"(RSF-F226 permanent gate). \"\n"
+    "                .. (armed and \"Overlap prevention ON: a pass on complete coverage is refused (server only).\"\n"
+    "                          or \"Overlap prevention OFF: this gate will not refuse any pass.\"))\n",
+    "                .. \"(RSF-F226 permanent gate confirmed live).\")\n", 1)],
+  "the first-execution line no longer names overlap prevention's state (Bob's MAJOR on #1052)"),
+ ("G23-armed-state-constant", HM,
+  [("            local armed = sfm ~= nil and not (sfm.settings and sfm.settings.overlapPrevention == false)\n",
+    "            local armed = true\n", 1)],
+  "the line says ON whatever the setting is"),
+ ("G24-flags-not-reset-per-install", HM,
+  [("    local SITE = HookManager.SPRAYER_GATE_SITE\n"
+    "    -- The one-shot proof lines are per install, as the tedder's is: a second\n"
+    "    -- savegame in the same game process logs its own first execution and refusal.\n"
+    "    HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }\n",
+    "    local SITE = HookManager.SPRAYER_GATE_SITE\n", 1)],
+  "the one-shot flags are set once per game process, not per install (Bob's MINOR on #1052)"),
  ("G21-records-not-weak", HM,
   [("HookManager.workAreaRecords = HookManager.workAreaRecords or setmetatable({}, { __mode = \"k\" })\n",
     "HookManager.workAreaRecords = HookManager.workAreaRecords or {}\n", 1)],

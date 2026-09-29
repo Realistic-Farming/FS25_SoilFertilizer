@@ -4339,7 +4339,8 @@ HookManager.SPRAYER_GATE_SITE = "sprayer overlap gate"
 -- One-shot proof lines, per session. An install count is never evidence a
 -- work-area wrapper runs (RSF-F226's own history); these are. Held on the table,
 -- not as file locals: the bench loads every source into one chunk, which is at
--- Lua 5.1's 200-local ceiling.
+-- Lua 5.1's 200-local ceiling. installSprayerOverlapGate resets both flags, so each
+-- savegame in one game process logs its own first execution and refusal.
 HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
 
 --- The gate wrapper for one captured processSprayerArea slot.
@@ -4350,8 +4351,17 @@ function HookManager.makeSprayerGate(predecessor, record)
         local logged = HookManager._sprayerGateLogged
         if not logged.firstRun then
             logged.firstRun = true
+            -- THE ARMED STATE GOES IN THE SAME LINE (RSF-F226 item 2: "with the
+            -- effect's armed state"), read at this pass the way the overlap prepend
+            -- reads it: with overlap prevention off the prepend returns before any flag
+            -- is set, so this gate runs and never refuses. A line saying only that the
+            -- gate ran would read as success next to a block that can never come.
+            local sfm = g_SoilFertilityManager
+            local armed = sfm ~= nil and not (sfm.settings and sfm.settings.overlapPrevention == false)
             SoilLogger.info("[OverlapGate] FIRST EXECUTION: the sprayer gate ran on a real sprayer pass "
-                .. "(RSF-F226 permanent gate confirmed live).")
+                .. "(RSF-F226 permanent gate). "
+                .. (armed and "Overlap prevention ON: a pass on complete coverage is refused (server only)."
+                          or "Overlap prevention OFF: this gate will not refuse any pass."))
         end
         if record.active and vehicleSelf ~= nil and vehicleSelf._sfOverlapBlockedPass then
             if not logged.firstRefusal then
@@ -4426,6 +4436,9 @@ function HookManager:installSprayerOverlapGate()
     end
 
     local SITE = HookManager.SPRAYER_GATE_SITE
+    -- The one-shot proof lines are per install, as the tedder's is: a second
+    -- savegame in the same game process logs its own first execution and refusal.
+    HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
     -- Every slot this install wrapped or reactivated, for its own teardown.
     -- Weak keys: a sold sprayer's work areas are not kept alive by this set.
     local activated = setmetatable({}, { __mode = "k" })

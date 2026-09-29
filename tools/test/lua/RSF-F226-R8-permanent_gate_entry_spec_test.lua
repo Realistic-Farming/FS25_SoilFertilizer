@@ -27,6 +27,8 @@
 --   F  finding 2: a sprayer drained through another processor is never refused
 --   I  identity: failed adds, repeated adds, a foreign wrap, teardown, reinstall
 --   U  unchanged: a client, overlap prevention off, an untracked product, no sections
+--   V  the evidence lines: the first-execution line names overlap prevention's state,
+--      and the one-shot flags reset with each install (Bob's MAJOR and MINOR on #1052)
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
@@ -609,4 +611,57 @@ end)
 group("U4", function()
     local _, d = neverBlocked("U4 a sprayer with no sections", {}, { uid = "nosec", sections = false })
     T.eq("U4b the tank drains", d.tank, -12)
+end)
+
+-- =====================================================================
+-- GROUP V: the evidence lines. RSF-F226 item 2: "each site logs its first real
+-- execution once per session with the effect's armed state". The first-execution
+-- line names overlap prevention's state, read at the pass; the one-shot flags reset
+-- with every install, so a second savegame in the same game process logs again.
+-- Earlier groups have already run passes, so V1 also proves the reset.
+-- =====================================================================
+local function captureInfo(fn)
+    local lines, saved = {}, SoilLogger.info
+    SoilLogger.info = function(msg, ...)
+        local ok, s = pcall(string.format, msg, ...)
+        lines[#lines + 1] = ok and s or tostring(msg)
+    end
+    local ok, err = pcall(fn)
+    SoilLogger.info = saved
+    if not ok then error(err, 0) end
+    return lines
+end
+local function lineWith(lines, needle)
+    for _, l in ipairs(lines) do if string.find(l, needle, 1, true) then return l end end
+    return nil
+end
+
+group("V", function()
+    local lines = captureInfo(function()
+        world()
+        local v = buy({ uid = "evidence-on" })
+        setCoverage(0.5)
+        tick(v)
+        setCoverage(1.0)
+        tick(v)
+    end)
+    local first = lineWith(lines, "[OverlapGate] FIRST EXECUTION")
+    T.ok("V1 a new install's first real pass logs FIRST EXECUTION (the flags reset per install)", first ~= nil)
+    T.ok("V2 and the same line says overlap prevention is ON",
+         first ~= nil and string.find(first, "Overlap prevention ON", 1, true) ~= nil, tostring(first))
+    T.ok("V3 the first refusal is logged too", lineWith(lines, "[OverlapGate] FIRST REFUSAL") ~= nil)
+
+    -- The next savegame in the same game process, with overlap prevention OFF.
+    W.hm:uninstallAll()
+    lines = captureInfo(function()
+        world({ overlap = false })
+        local v = buy({ uid = "evidence-off" })
+        setCoverage(1.0)
+        tick(v)
+    end)
+    first = lineWith(lines, "[OverlapGate] FIRST EXECUTION")
+    T.ok("V4 the next install logs FIRST EXECUTION again", first ~= nil)
+    T.ok("V5 and with overlap prevention OFF the line says this gate will not refuse",
+         first ~= nil and string.find(first, "Overlap prevention OFF", 1, true) ~= nil, tostring(first))
+    T.eq("V6 and no refusal is logged, because nothing was refused", lineWith(lines, "[OverlapGate] FIRST REFUSAL"), nil)
 end)
