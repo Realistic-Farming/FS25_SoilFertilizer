@@ -1964,6 +1964,14 @@ function SoilFertilityManager:updateAutoRates(dt)
     -- Calculate the ideal index and send if it changed
     local newIdx = self:calculateAutoRateIndex(fieldData, fillType)
     local currentIdx = rm:getIndex(vehicle.id)
+    if newIdx == nil then
+        -- [SF-79 D] A product sized by pH on a field with no current pH report:
+        -- "an unavailable required sample retains the selected rate", so nothing is
+        -- set and nothing is sent.
+        SoilLogger.debug("Auto-rate: vehicle %d holds index %d [%s on field %d] - pH unknown, rate held",
+            vehicle.id, currentIdx, fillType.name, fieldId)
+        return
+    end
     if newIdx ~= currentIdx then
         rm:setIndex(vehicle.id, newIdx)
         if SoilNetworkEvents_SendSprayerRate then
@@ -1993,13 +2001,18 @@ end
 --- Shape Contract: `fieldData` must be the output of `SoilFertilitySystem:getFieldInfo()`.
 --- Expected fields: `nitrogen.value`, `phosphorus.value`, `potassium.value`, `pH`, `organicMatter`,
 --- `pestPressure` (number), `diseasePressure` (number), `weedPressure` (number).
+--- `pH` is nil when the field has no current pH report (SF-79 D, "No unknown-to-7.0"):
+--- the pH term then drops out, weight and deficit both, and nothing stands in for it.
 ---
 --- The cap of 1.20x keeps the rate below BURN_RISK_THRESHOLD (1.25x) even when
 --- the field is completely depleted, protecting the player from accidental burns.
 ---
 ---@param fieldData table  Return value of SoilFertilitySystem:getFieldInfo()
 ---@param fillType  table  FillType object (has .name string)
----@return number          1-based index into SoilConstants.SPRAYER_RATE.STEPS
+---@return number|nil      1-based index into SoilConstants.SPRAYER_RATE.STEPS, or nil when
+---                        the product is sized by pH and the pH is unknown, so no known term
+---                        is left to size it by; the caller then holds the selected rate
+---                        (SF-79 D: "An unavailable required sample retains the selected rate")
 function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
     local steps    = SoilConstants.SPRAYER_RATE.STEPS
     local defaults = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
@@ -2055,7 +2068,7 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                     weightedDeficit = weightedDeficit + deficit * profile.K
                     totalWeight     = totalWeight     + profile.K
                 end
-                if profile.pH and profile.pH > 0 then
+                if profile.pH and profile.pH > 0 and type(fieldData.pH) == 'number' then
                     -- pH: how far below target normalised to the possible range [PH_MIN, target]
                     local phRange = targets.pH - phMin
                     if phRange > 0 then
@@ -2099,6 +2112,11 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                     SoilLogger.debug(
                         "Auto-rate calc: %s | deficit=%.3f | target multiplier=%.3f",
                         fillType.name, deficitFraction, multiplier)
+                elseif profile.pH and profile.pH > 0 and type(fieldData.pH) ~= 'number' then
+                    -- [SF-79 D] Sized by pH, and the pH is unknown: no known term is left.
+                    -- Falling through to 1.0 would reset the selected rate, so return nil
+                    -- and let the caller hold it.
+                    return nil
                 end
             end
         end
