@@ -1,6 +1,7 @@
 # #1037 cause 2 mutation battery (targeted, a small logic fix): the daily weed read
-# measures the whole field. Production lines in src/SoilFertilitySystem.lua only; the rows
-# live in SF-1037-whole_field_weed_read_spec_test.lua, and every other bar runs with it.
+# measures the whole field, from a read taken for that day's pass. Production lines in
+# src/SoilFertilitySystem.lua only; the rows live in SF-1037-whole_field_weed_read_spec_test.lua,
+# and every other bar runs with it.
 #
 # Each mutation removes or bends one clause and must be KILLED by a named row. For each:
 # assert the edit LANDED (exact occurrence count), run the suite, record KILLED/SURVIVED with
@@ -10,6 +11,9 @@
 #
 # R1 and R2 are the intake's two (revert to the ring average; count withered states at
 # their vanilla factor). The rest bend the other changed lines.
+#
+# Not run, and why:
+# - the batch progress line now logs only when a frame processed a field: logging only.
 #
 # Anchors are written with LF line ends; in a CRLF file they are matched as CRLF.
 #
@@ -28,10 +32,11 @@ SFS = "src/SoilFertilitySystem.lua"
 
 MUTATIONS = [
  ("R1-ring-average", SFS,
-  [("    if wholeField ~= nil then return wholeField end\n", "", 1)],
+  [("    if read ~= nil and read.day == self._dailyBatchDay then return read.factor end\n", "", 1)],
   "the daily pass reads the ring average again, whatever the whole-field read found"),
  ("R2-withered-at-vanilla-factor", SFS,
-  [("factor > 0 and not withered[state] then", "factor > 0 then", 1)],
+  [("local live = type(factor) == \"number\" and factor > 0 and not withered[value]",
+    "local live = type(factor) == \"number\" and factor > 0", 1)],
   "withered weed states count at their vanilla factor (8 = 0.5, 9 = 0.75)"),
  ("R3-whole-polygon-in-one-frame", SFS,
   [("    local okR, finished = pcall(self._readWeedFieldSlice, self, job)\n",
@@ -45,25 +50,41 @@ MUTATIONS = [
   [("    multi:resetStats()\n", "", 1)],
   "the engine's running counts are summed again on every slice"),
  ("R6-denominator-weed-pixels", SFS,
-  [("    job.touched = job.touched + (touched or 0)\n",
-    "    for name in pairs(job.factorOf) do job.touched = job.touched + (counts[name] or 0) end\n", 1)],
+  [("        job.pixels   = job.pixels + n\n",
+    "        if weight > 0 then job.pixels = job.pixels + n end\n", 1)],
   "the mean is taken over the weedy pixels, not over the field"),
- ("R7-no-next-read", SFS,
-  [("    self:_requestWeedFieldRead(fieldId, fsField)\n"
-    "    local wholeField = self._weedFieldReads and self._weedFieldReads[fieldId]\n"
-    "    if wholeField ~= nil then return wholeField end\n",
-    "    local wholeField = self._weedFieldReads and self._weedFieldReads[fieldId]\n"
-    "    if wholeField ~= nil then return wholeField end\n"
-    "    self:_requestWeedFieldRead(fieldId, fsField)\n", 1)],
-  "after its first result a field is never read again"),
- ("R8-tick-on-client", SFS,
+ ("R7-read-outlives-its-day", SFS,
+  [("    if read ~= nil and read.day == self._dailyBatchDay then return read.factor end\n",
+    "    if read ~= nil then return read.factor end\n", 1)],
+  "a read taken for an earlier day is used again (Bob's BLOCKER on ed7e54d6)"),
+ ("R8-batch-does-not-wait", SFS,
+  [("                if self:_weedReadPending(list[cursor + 1]) then break end\n", "", 1)],
+  "the daily pass runs before its read has finished"),
+ ("R9-no-reads-queued", SFS,
+  [("    self:_queueDailyWeedReads()\n", "", 1)],
+  "the day's batch asks for no whole-field read"),
+ ("R10-tick-on-client", SFS,
   [("function SoilFertilitySystem:_weedReadTick()\n    if g_server == nil then return end\n",
     "function SoilFertilitySystem:_weedReadTick()\n", 1)],
   "a client runs the read"),
- ("R9-queue-on-client", SFS,
-  [("function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField)\n    if g_server == nil then return end\n",
-    "function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField)\n", 1)],
+ ("R11-queue-on-client", SFS,
+  [("function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField, day)\n    if g_server == nil then return end\n",
+    "function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField, day)\n", 1)],
   "a client queues a read"),
+ ("R12-value-0-not-counted", SFS,
+  [("    for value = 0, values - 1 do\n", "    for value = 1, values - 1 do\n", 1)],
+  "clean pixels (value 0) drop out of the field's pixel total"),
+ ("R13-queued-read-keeps-old-day", SFS,
+  [("            if job.fieldId == fieldId then job.day = day end\n", "", 1)],
+  "a read queued for an earlier day, not yet started, does not serve the day it runs for"),
+ ("R14-failed-start-holds-batch", SFS,
+  [("            self._weedReadQueued[job.fieldId] = nil\n            return\n",
+    "            return\n", 1)],
+  "a read that cannot start stays pending and holds the day's batch"),
+ ("R15-no-engine-field", SFS,
+  [("function SoilFertilitySystem:_fsFieldFor(fieldId)\n",
+    "function SoilFertilitySystem:_fsFieldFor(fieldId)\n    do return nil end\n", 1)],
+  "the daily pass cannot find the engine field (the lookup moved into _fsFieldFor)"),
 ]
 
 def sha(b): return hashlib.sha256(b).hexdigest()
