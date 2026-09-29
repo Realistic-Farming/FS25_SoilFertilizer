@@ -163,6 +163,10 @@ function PSW.new(opts)
   hm.getBoomCellPositions = function() return world.boom end
   hm.getBoomLineEndpoints = function() return nil end
   world.hookMgr = hm
+  -- Production wiring: the soil system owns the HookManager the hooks are installed
+  -- from (SoilFertilitySystem.new, :165), so onFertilizerApplied's refusal check
+  -- (RSF-F196 V7) reads the same refused-product table.
+  sys.hookManager = hm
   world.installed = hm:installSprayerAreaHook()
 
   local product = FT[opts.product or "HERBICIDE"]

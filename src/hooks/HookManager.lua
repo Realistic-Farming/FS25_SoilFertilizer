@@ -5933,20 +5933,23 @@ function HookManager:installSprayerAreaHook()
                 -- Do NOT multiply by coverageFraction again, otherwise we quadratically penalize the dosage.
 
                 -- ── Coverage tracking ──────────────────────────────────────────────
-                -- updateFractions=false: markBoomCells (called below) owns coverage for
-                -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
-                -- only records the product name for the HUD label.
-                -- Crop protection direct paths (herbicide/insecticide/fungicide) have no
-                -- boomPoints, so coverage must be tracked via the liter-based fallback
-                -- (updateFractions=true). Fertilizers use markBoomCells for spatial
-                -- deduplication and must pass false to avoid double-counting.
-                -- HOWEVER: dual-purpose products (fertilizer + crop protection, e.g.
-                -- PROPICONAZOLE) applied on sprayers without VWW sections hit a gap:
-                -- markBoomCells runs in overlayOnly mode (no coverage update) and
-                -- trackSprayerCoverage returns early (updateFractions=false). Force the
-                -- liter-based fallback for dual-purpose products so coverage tracks.
-                local _hasCropProt = herbEffectiveness or pestEffectiveness or diseaseEffectiveness
-                local _useLitCov = (not isFertilizer) or (isFertilizer and _hasCropProt)
+                -- Crop protection that is NOT a fertilizer profile (herbicide, PESTICIDE,
+                -- PROPICONAZOLE and the other named fungicides) has no fertilizer credit, so
+                -- its coverage is counted here from the litres (updateFractions=true).
+                -- Every fertilizer profile, the profile-plus-protection ones (SF's INSECTICIDE
+                -- and FUNGICIDE) included, passes false here and is counted ONCE: by
+                -- markBoomCells on a VWW rig, or by the litre track after the credit on a rig
+                -- without VWW sections, and in both only when the credit's result is true
+                -- (RSF-F196 V7, DESIGN-CHECK row 70).
+                -- MAINTENANCE row 170: this used to be
+                -- `(not isFertilizer) or (isFertilizer and _hasCropProt)`, which is nil, not
+                -- false, for a plain fertilizer and truthy for a dual-purpose one, so both
+                -- counted their litres here and again after the credit, and a pass the V7
+                -- gate refused still counted here. The gap it was added for (#753, coverage
+                -- stuck on a sprayer without VWW sections) is cured by the same commit's
+                -- _geometricCoverageOwner clear below, and PROPICONAZOLE is not a profile, so
+                -- `not isFertilizer` already counts it.
+                local _useLitCov = not isFertilizer
                 if g_SoilFertilityManager.soilSystem then
                     local _vwwEarly = self.spec_variableWorkWidth
                     local _hasVWWEarly = _vwwEarly and _vwwEarly.sections and #_vwwEarly.sections > 0
