@@ -3,9 +3,11 @@
 --
 -- The sprayer hook tracks every pass under fillType.name (HookManager :5953), and
 -- onInsecticideAppliedDirect tracked it again under the literal "INSECTICIDE" with the
--- fractions on. The only fill type that reaches this route is PESTICIDE (the vanilla /
--- PF insecticide; SF's own INSECTICIDE is a fertilizer profile and takes applyFertilizer),
--- so sessionLastProduct flipped twice a pass and the product-change reset (#442) wiped
+-- fractions on. The only name that reaches this route is PESTICIDE, a compatibility slot
+-- for a mod that registers a fill type by that name; no base-game, PF or known mod does, so
+-- this bar pins real code on a route no base-game product reaches. SF's own INSECTICIDE is
+-- a fertilizer profile and takes applyFertilizer. For such a mod product,
+-- sessionLastProduct flipped twice a pass and the product-change reset (#442) wiped
 -- the session's coverage and work trail every tick. The route now receives the name from
 -- the hook and tracks name-only, the twin of the named-fungicide fix (8463752d).
 --

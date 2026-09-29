@@ -1181,9 +1181,10 @@ SoilConstants.SPRAYER_RATE = {
 SoilConstants.WEED_PRESSURE = {
     -- Herbicide fill type names → effectiveness multiplier (0.0-1.0)
     -- Any fill type not listed here is NOT treated as herbicide
-    -- NOTE: PESTICIDE is the vanilla FS25 / PF insecticide fill type ("Rovarló szer" in HU).
-    -- It belongs in INSECTICIDE_TYPES, NOT here. Listing it here caused PESTICIDE sprays to
-    -- reduce weed pressure instead of pest pressure (bug: 0% pest protection after full tank).
+    -- NOTE: PESTICIDE is not a herbicide. It sits in INSECTICIDE_TYPES below as a compatibility
+    -- slot for a mod that registers a fill type named PESTICIDE; no base-game, PF or known mod
+    -- does (checked 2026-09-29). It was listed here until 9e135d90 moved it, on a report of 0%
+    -- pest protection whose product was almost certainly Soil's own INSECTICIDE.
     HERBICIDE_TYPES = {
         HERBICIDE = 1.0,
     },
@@ -1269,7 +1270,7 @@ SoilConstants.PEST_PRESSURE = {
     -- Insecticide fill type names → effectiveness multiplier (0.0-1.0)
     INSECTICIDE_TYPES = {
         INSECTICIDE = 1.0,  -- SF custom fill type
-        PESTICIDE   = 1.0,  -- vanilla FS25 / PF fill type ("Rovarló szer" / bug spray)
+        PESTICIDE   = 1.0,  -- compatibility slot for a mod fill type named PESTICIDE; none in the base game, PF or any known mod
     },
     -- Pressure points removed on a single full-field insecticide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.

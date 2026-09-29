@@ -1987,8 +1987,8 @@ end
 --- computing a weighted average of nutrient deficit fractions, then maps that
 --- fraction linearly to the safe rate range 0.20x–1.20x (indices 2–12).
 ---
---- Crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE/PESTICIDE) use
---- the relevant pressure value instead of nutrient deficits.
+--- Crop-protection products (Soil's INSECTICIDE and FUNGICIDE, and HERBICIDE) apply at
+--- the full rate: they are not sized by a nutrient deficit or by their pressure.
 ---
 --- Shape Contract: `fieldData` must be the output of `SoilFertilitySystem:getFieldInfo()`.
 --- Expected fields: `nitrogen.value`, `phosphorus.value`, `potassium.value`, `pH`, `organicMatter`,
