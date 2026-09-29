@@ -18,6 +18,14 @@
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
+-- The class function Sprayer.processSprayerArea exists in a game (Sprayer.lua:80).
+-- Here it is a stand-in that counts its calls and draws nothing, so a gate that
+-- delegated to the class instead of its captured predecessor fails the draw rows by
+-- name (battery G10) instead of crashing on a nil Sprayer.
+local CLASS_SPRAY_CALLS = 0
+local function classProcessSprayerArea() CLASS_SPRAY_CALLS = CLASS_SPRAY_CALLS + 1 return 0, 0 end
+Sprayer = { processSprayerArea = classProcessSprayerArea }
+
 -- ── The engine's three-copy chain, modelled ──────────────────────────────────
 
 --- Build a vehicle the way the engine builds one.
@@ -130,7 +138,7 @@ do
     T.eq("C5 the mower's own install does",
          W(mower, "spec_mower", "processDropArea", function(f) return f end), 1)
     T.eq("C6 and it wrapped the drop area, not the mower area",
-         mower.spec_workArea.workAreas[1]._sfWraps, nil)
+         HookManager.workAreaRecords[mower.spec_workArea.workAreas[1]], nil)
 end
 
 -- ── D: idempotency. A second sweep must not stack wrappers. ──────────────────
@@ -169,24 +177,18 @@ end
 -- ── F: teardown restores only what is still ours ─────────────────────────────
 do
     local vehicle = buildVehicle("spec_tedder", { { functionName = "processTedderArea", fn = function() return 9 end } })
-    local originals = {}
     W(vehicle, "spec_tedder", "processTedderArea", function(realFn)
-        local w = function(v, a, d) return realFn(v, a, d) end
-        originals[w] = realFn
-        return w
+        return function(v, a, d) return realFn(v, a, d) end
     end)
-    local restored, left = U(vehicle, "spec_tedder", "processTedderArea", originals)
+    local restored, left = U(vehicle, "spec_tedder", "processTedderArea")
     T.eq("F1 our own wrapper is restored", restored, 1)
     T.eq("F2 nothing was left in place", left, 0)
     T.eq("F3 the engine pointer is the original again", engineCall(vehicle, 1), 9)
 
     -- Someone else wraps us afterwards: restoring would delete THEIR hook.
     local vehicle2 = buildVehicle("spec_tedder", { { functionName = "processTedderArea", fn = function() return 9 end } })
-    local originals2 = {}
     W(vehicle2, "spec_tedder", "processTedderArea", function(realFn)
-        local w = function(v, a, d) return realFn(v, a, d) end
-        originals2[w] = realFn
-        return w
+        return function(v, a, d) return realFn(v, a, d) end
     end)
     local foreignRan = 0
     local ours = vehicle2.spec_workArea.workAreas[1].processingFunction
@@ -194,7 +196,7 @@ do
         foreignRan = foreignRan + 1
         return ours(v, a, d)
     end
-    local r2, l2 = U(vehicle2, "spec_tedder", "processTedderArea", originals2)
+    local r2, l2 = U(vehicle2, "spec_tedder", "processTedderArea")
     T.eq("F4 a pointer another mod has since wrapped is NOT restored", r2, 0)
     T.eq("F5 it is reported as left in place", l2, 1)
     engineCall(vehicle2, 1)
@@ -221,17 +223,15 @@ end
 -- an error: the wrapper simply runs TWICE per pass, so a drying delta applies at
 -- double rate with a green bar behind it.
 --
--- Not reachable today, because unwrapWorkAreaProcessing has no production caller
--- and nothing builds the originals map. That is exactly why it is pinned now,
--- before the mower and windrower observers or a hot-reload path wire teardown up.
+-- unwrapWorkAreaProcessing still has no production caller. Its rule is
+-- releaseWorkAreaSlot's, which the sprayer overlap gate's teardown does call (RSF-F226
+-- item 2): a slot with something above it keeps its record, inactive, and a later
+-- install reactivates that record instead of wrapping again.
 do
     local applied = 0
     local vehicle = buildVehicle("spec_tedder", { { functionName = "processTedderArea", fn = function() return 4 end } })
-    local originals = {}
     local mk = function(realFn)
-        local w = function(v, a, d) applied = applied + 1 return realFn(v, a, d) end
-        originals[w] = realFn
-        return w
+        return function(v, a, d) applied = applied + 1 return realFn(v, a, d) end
     end
 
     T.eq("H1 install wraps once", W(vehicle, "spec_tedder", "processTedderArea", mk), 1)
@@ -240,13 +240,17 @@ do
     local ours = vehicle.spec_workArea.workAreas[1].processingFunction
     vehicle.spec_workArea.workAreas[1].processingFunction = function(v, a, d) return ours(v, a, d) end
 
-    local restored, left = U(vehicle, "spec_tedder", "processTedderArea", originals)
+    local restored, left = U(vehicle, "spec_tedder", "processTedderArea")
     T.eq("H2 teardown correctly restores nothing", restored, 0)
     T.eq("H3 and reports ours as left in the chain", left, 1)
+    T.eq("H3b THE RECORD IS KEPT, inactive, so the next sweep can see it",
+         HookManager.workAreaRecord(vehicle.spec_workArea.workAreas[1], "processTedderArea").active, false)
 
     -- The install sweep runs again, as it does on every load.
     T.eq("H4 a re-install must NOT wrap a second time over our own live wrapper",
          W(vehicle, "spec_tedder", "processTedderArea", mk), 0)
+    T.eq("H4b it reactivated the kept record instead",
+         HookManager.workAreaRecord(vehicle.spec_workArea.workAreas[1], "processTedderArea").active, true)
 
     applied = 0
     engineCall(vehicle, 1)
@@ -415,8 +419,8 @@ do
 
     local areas = combine.spec_workArea.workAreas
     T.ok("K2 THE INSTALLER WRAPPED THE SWATH AREA, so it passed the right spec and name",
-         areas[2]._sfWraps ~= nil and areas[2]._sfWraps["processCombineSwathArea"] ~= nil)
-    T.eq("K3 and it left the chopper area alone", areas[1]._sfWraps, nil)
+         HookManager.workAreaRecord(areas[2], "processCombineSwathArea") ~= nil)
+    T.eq("K3 and it left the chopper area alone", HookManager.workAreaRecords[areas[1]], nil)
 
     -- Dispatch the way the engine does and confirm the original still runs
     -- underneath the installed wrapper.
@@ -426,13 +430,14 @@ do
     Combine, g_currentMission = savedCombine, savedMission
 end
 
--- ── L: the sprayer block, the OTHER half of the wrap slot ────────────────────
--- The overlap-prevention hook does not install a permanent wrapper; it swaps the
--- pointer out for one processing window and puts it back. Same slot, different
--- lifetime, and it was assigning the instance copy too, so the tank block has
--- never taken effect on any save.
-local B = HookManager.blockWorkAreaProcessing
-local Ub = HookManager.unblockWorkAreaProcessing
+-- ── L: the sprayer gate, the permanent half of the wrap slot (RSF-F226 item 3) ──
+-- The overlap block is a gate installed ONCE on the captured slot. It refuses a
+-- pass only while the record is active and the vehicle's _sfOverlapBlockedPass is
+-- set, and otherwise delegates to the exact predecessor. It replaced a per-window
+-- pointer swap, which was itself a repair of a block assigned to the instance copy
+-- that never took effect on any save.
+local G = HookManager.makeSprayerGate
+local SITE = HookManager.SPRAYER_GATE_SITE
 
 do
     local realRan = 0
@@ -440,29 +445,35 @@ do
     local sprayer = buildVehicle("spec_sprayer",
         { { functionName = "processSprayerArea", fn = real } })
 
-    -- Unblocked, the engine reaches the real function and litres are drawn.
+    -- Ungated, the engine reaches the real function and litres are drawn.
     local drawn = engineCall(sprayer, 1)
-    T.eq("L1 unblocked, the sprayer draws from the tank", drawn, 250)
+    T.eq("L1 ungated, the sprayer draws from the tank", drawn, 250)
     T.eq("L2 and the real function ran", realRan, 1)
 
-    T.eq("L3 the block takes one work area",
-         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 1)
+    T.eq("L3 the gate takes one work area", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 1)
+    local gate = sprayer.spec_workArea.workAreas[1].processingFunction
+    local record = HookManager.workAreaRecord(sprayer.spec_workArea.workAreas[1], "processSprayerArea")
+    T.ok("L3b the record holds the exact predecessor, the wrapper and the site",
+         record.predecessor == real and record.wrapper == gate and record.site == SITE and record.active == true)
 
     realRan = 0
+    sprayer._sfOverlapBlockedPass = true
     local blockedDraw, second = engineCall(sprayer, 1)
-    T.eq("L4 BLOCKED, the engine's own dispatch draws nothing", blockedDraw, 0)
+    T.eq("L4 FLAGGED, the engine's own dispatch draws nothing", blockedDraw, 0)
     T.eq("L5 and returns the second value the engine's refusal path returns", second, 0)
     T.eq("L6 THE REAL FUNCTION NEVER RAN, which is the whole point", realRan, 0)
 
-    T.eq("L7 the restore puts one work area back", Ub(sprayer, "spec_sprayer", "processSprayerArea"), 1)
-    local after = engineCall(sprayer, 1)
-    T.eq("L8 restored, the sprayer draws again", after, 250)
-    T.eq("L9 and it is the ORIGINAL function, not a copy of it",
-         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+    sprayer._sfOverlapBlockedPass = nil
+    local after, afterSecond = engineCall(sprayer, 1)
+    T.eq("L7 unflagged, the gate is a pass-through and the sprayer draws again", after, 250)
+    T.eq("L8 every return forwarded", afterSecond, 3)
+    T.eq("L9 THE SLOT NEVER MOVED: the gate is still the captured pointer",
+         sprayer.spec_workArea.workAreas[1].processingFunction == gate, true)
 end
 
 do
-    -- THE DEFECT, reproduced. This is what shipped and why the tank kept draining.
+    -- THE ORIGINAL DEFECT, reproduced. This is what shipped first and why the tank
+    -- kept draining.
     local realRan = 0
     local real = function() realRan = realRan + 1 return 250, 3 end
     local sprayer = buildVehicle("spec_sprayer",
@@ -479,11 +490,15 @@ do
     -- PRECISION FARMING. With PF installed, the pointer WorkArea captured is
     -- already PF's wrapper, because ExtendedSprayer registers processSprayerArea
     -- through registerOverwrittenFunction, which rewrites objectType.functions
-    -- before the instance copy is taken. So the restore MUST put back whatever was
-    -- there rather than any known value: restoring the base function, or nilling
-    -- the field as the old code did, silently deletes PF for the session.
+    -- before the instance copy is taken. The gate must delegate to whatever was
+    -- there, never to the base function.
     local pfRan, baseRan = 0, 0
     local base = function() baseRan = baseRan + 1 return 100, 1 end
+    -- The class function is the base, as in a game (Sprayer.lua:80), so a gate that
+    -- delegated to the class instead of its captured predecessor would skip PF's
+    -- wrapper and fail L14 by name rather than crash on a nil Sprayer.
+    local savedSprayer = Sprayer
+    Sprayer = { processSprayerArea = base }
     local sprayer = buildVehicle("spec_sprayer",
         { { functionName = "processSprayerArea", fn = base } })
 
@@ -491,70 +506,102 @@ do
     local pfWrapper = function(v, w, d) pfRan = pfRan + 1 return base(v, w, d) end
     sprayer.spec_workArea.workAreas[1].processingFunction = pfWrapper
 
-    B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end)
+    W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE)
+    sprayer._sfOverlapBlockedPass = true
     engineCall(sprayer, 1)
-    T.eq("L12 while blocked, PF's wrapper does not run either", pfRan, 0)
+    T.eq("L12 while flagged, PF's wrapper does not run either", pfRan, 0)
 
-    Ub(sprayer, "spec_sprayer", "processSprayerArea")
-    T.eq("L13 THE RESTORE PUTS PF'S WRAPPER BACK, not the base function",
-         sprayer.spec_workArea.workAreas[1].processingFunction == pfWrapper, true)
+    sprayer._sfOverlapBlockedPass = nil
+    T.eq("L13 THE GATE'S PREDECESSOR IS PF'S WRAPPER, not the base function",
+         HookManager.workAreaRecord(sprayer.spec_workArea.workAreas[1], "processSprayerArea").predecessor == pfWrapper, true)
     engineCall(sprayer, 1)
-    T.eq("L14 so PF still runs after a block/restore cycle", pfRan, 1)
+    T.eq("L14 so PF still runs through the gate", pfRan, 1)
     T.eq("L15 and the base function still runs underneath it", baseRan, 1)
+    Sprayer = savedSprayer
+    T.eq("L15b no gate in this file ever called the class function Sprayer.processSprayerArea", CLASS_SPRAY_CALLS, 0)
 end
 
 do
-    -- Lifetime edges. The block and the restore are separate engine callbacks, so
-    -- a frame where one does not run must not lose the original.
-    local real = function() return 7 end
+    -- Lifetime edges: the record, not a per-window save, is the authority.
+    local realRan = 0
+    local real = function() realRan = realRan + 1 return 7, 1 end
     local sprayer = buildVehicle("spec_sprayer",
         { { functionName = "processSprayerArea", fn = real } })
-    local blocker = function() return 0, 0 end
+    local workArea = sprayer.spec_workArea.workAreas[1]
 
-    T.eq("L16 first block takes it", B(sprayer, "spec_sprayer", "processSprayerArea", blocker), 1)
-    T.eq("L17 a second block does NOT overwrite the saved original",
-         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 0)
-    Ub(sprayer, "spec_sprayer", "processSprayerArea")
-    T.eq("L18 so the restore still returns the true original",
-         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+    T.eq("L16 first install takes it", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 1)
+    local gate = workArea.processingFunction
+    -- RSF-F226 item 2 names the record's home: one table on the global HookManager
+    -- class, weakly keyed by work area, not a field on the work area.
+    T.eq("L16b THE RECORD IS IN HookManager.workAreaRecords, keyed by this work area",
+         type(HookManager.workAreaRecords[workArea]) == "table" and HookManager.workAreaRecords[workArea].processSprayerArea ~= nil, true)
+    T.eq("L16c that table's keys are weak", getmetatable(HookManager.workAreaRecords) ~= nil and getmetatable(HookManager.workAreaRecords).__mode, "k")
+    T.eq("L17 a second sweep wraps nothing", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 0)
+    T.eq("L17b and the slot still holds the first gate", workArea.processingFunction == gate, true)
 
-    T.eq("L19 restoring an unblocked area is a no-op",
-         Ub(sprayer, "spec_sprayer", "processSprayerArea"), 0)
-    T.eq("L20 and leaves the pointer alone",
-         sprayer.spec_workArea.workAreas[1].processingFunction == real, true)
+    -- A foreign wrap above the gate, then teardown: ours stays, inactive.
+    local foreignRan = 0
+    workArea.processingFunction = function(v, a, d) foreignRan = foreignRan + 1 return gate(v, a, d) end
+    T.eq("L18 release with something above us leaves the slot in place",
+         HookManager.releaseWorkAreaSlot(workArea, "processSprayerArea"), "left")
+    T.eq("L18b and the record is kept, inactive", HookManager.workAreaRecord(workArea, "processSprayerArea").active, false)
+    sprayer._sfOverlapBlockedPass = true
+    local xs = engineCall(sprayer, 1)
+    T.eq("L19 AN INACTIVE GATE IS A PURE PASS-THROUGH even with the flag set", xs, 7)
+    T.eq("L19b the foreign wrap ran and so did the real function", foreignRan + realRan, 2)
+
+    -- Reinstall: reactivated, never stacked.
+    T.eq("L20 a reinstall wraps nothing new", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 0)
+    T.eq("L20b it reactivated the kept record", HookManager.workAreaRecord(workArea, "processSprayerArea").active, true)
+    realRan = 0
+    T.eq("L20c so the flag refuses again, through one gate", engineCall(sprayer, 1), 0)
+    T.eq("L20d and the real function did not run", realRan, 0)
+    sprayer._sfOverlapBlockedPass = nil
+
+    -- Still ours at release: the exact predecessor goes back and the record goes.
+    local sprayer2 = buildVehicle("spec_sprayer",
+        { { functionName = "processSprayerArea", fn = real } })
+    local wa2 = sprayer2.spec_workArea.workAreas[1]
+    W(sprayer2, "spec_sprayer", "processSprayerArea", G, SITE)
+    T.eq("L21 release while still ours restores", HookManager.releaseWorkAreaSlot(wa2, "processSprayerArea"), "restored")
+    T.eq("L21b the exact predecessor is back", wa2.processingFunction == real, true)
+    T.eq("L21c and the record is gone", HookManager.workAreaRecord(wa2, "processSprayerArea"), nil)
+    T.eq("L21d a slot with no record releases nothing", HookManager.releaseWorkAreaSlot(wa2, "processSprayerArea"), nil)
 end
 
 do
-    -- Selection, same rule as the permanent wrapper: spec and name together.
+    -- Selection, same rule as every permanent wrapper: spec and name together.
     local tedder = buildVehicle("spec_tedder",
         { { functionName = "processTedderArea", fn = function() return 1 end } })
-    T.eq("L21 a sprayer block does not touch a tedder",
-         B(tedder, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 0)
+    T.eq("L22 a sprayer gate does not touch a tedder",
+         W(tedder, "spec_sprayer", "processSprayerArea", G, SITE), 0)
 
     local sprayer = buildVehicle("spec_sprayer", {
         { functionName = "processSprayerArea", fn = function() return 2 end },
         { functionName = "processDropArea",    fn = function() return 3 end },
     })
-    T.eq("L22 and it takes only the sprayer area, not a same-vehicle drop area",
-         B(sprayer, "spec_sprayer", "processSprayerArea", function() return 0, 0 end), 1)
-    T.eq("L23 the drop area is untouched", engineCall(sprayer, 2), 3)
+    T.eq("L23 and it takes only the sprayer area, not a same-vehicle drop area",
+         W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 1)
+    sprayer._sfOverlapBlockedPass = true
+    T.eq("L24 the drop area is untouched, even flagged", engineCall(sprayer, 2), 3)
 end
 
--- ── M: the canRestore gate, which was itself unpinned ───────────────────────
--- The gate exists to close the one failure on this hook a player cannot recover
--- from without a restart: a block armed with no restore installed, leaving a
--- sprayer permanently unable to spray. Bob found the gate had nothing under it,
--- so a later refactor could quietly reopen the very thing it was added to close.
+-- ── M: the end append writes no processor slot ──────────────────────────────
+-- The swap's restore lived in the end append, so the block depended on an end
+-- event the engine skips after a processor error (WorkArea.lua:183 has no pcall,
+-- :206 raises the end). The gate owes the end append nothing: it must never touch
+-- processingFunction or the instance field, and the block must work whether or not
+-- Sprayer has an onEndWorkAreaProcessing at all.
 --
--- WHY THIS DRIVES THE REAL PREPEND instead of just running the installer. The
--- block is not armed at install time; it is armed inside the prepend when
--- coverage reaches 99 percent. So an install-only case cannot distinguish a
--- working gate from a deleted one. M1 exists to prove this fixture genuinely
--- REACHES the arm: if M1 ever stops showing a block, M2's "no block" means
--- nothing, because a fixture that falls out early would report exactly the same.
+-- WHY THIS DRIVES THE REAL PREPEND. The flag is set inside the prepend when
+-- coverage reaches 99 percent, so an install-only case cannot tell a working block
+-- from a missing one. M1b proves this fixture genuinely REACHES the arm.
 do
     local savedSprayer, savedUtils = Sprayer, Utils
     local savedFT, savedMission, savedSFM = g_fillTypeManager, g_currentMission, g_SoilFertilityManager
+    local savedEffects = g_effectManager
+    -- The end append re-stops suppressed effects; it is driven here, so it needs one.
+    g_effectManager = { stopEffects = function() end, startEffects = function() end }
 
     Utils = {
         prependedFunction = function(orig, new)
@@ -574,20 +621,25 @@ do
     end }
     g_currentMission = { time = 100000 }
 
-    --- Build the whole world the prepend walks, then run the REAL installer and
-    --- the REAL prepend. `withRestore` decides whether Sprayer has an
-    --- onEndWorkAreaProcessing, which is the only input to canRestore.
-    local function runPass(withRestore)
-        Sprayer = { onStartWorkAreaProcessing = function() end }
-        if withRestore then Sprayer.onEndWorkAreaProcessing = function() end end
+    --- Build the whole world the prepend walks, then run the REAL installer, the
+    --- REAL prepend and, when present, the REAL end append. `withEnd` decides
+    --- whether Sprayer has an onEndWorkAreaProcessing; `gated` whether the sprayer
+    --- area carries the gate.
+    local function runPass(withEnd, gated)
+        Sprayer = { onStartWorkAreaProcessing = function() end, processSprayerArea = classProcessSprayerArea }
+        if withEnd then Sprayer.onEndWorkAreaProcessing = function() end end
 
         local realRan = 0
         local sprayer = buildVehicle("spec_sprayer", {
             { functionName = "processSprayerArea", fn = function() realRan = realRan + 1 return 250, 3 end },
         })
+        sprayer.isServer = true
         sprayer.spec_variableWorkWidth = { sections = { { isActive = true } } }
         sprayer.spec_sprayer = { workAreaParameters = { sprayFillType = 42 }, effects = {}, sprayTypes = {} }
         sprayer._sfRootX, sprayer._sfRootZ = 10, 10
+        if gated then W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE) end
+        local slotBefore = sprayer.spec_workArea.workAreas[1].processingFunction
+        local fieldBefore = sprayer.processSprayerArea
 
         -- 99 percent session coverage on the field the root sits in, which is what
         -- makes every section already-sprayed ground and arms the block.
@@ -605,27 +657,37 @@ do
             getFieldIdAtWorldPosition = function() return 7 end,
         })
 
-        -- Drive the real prepend, then dispatch the way WorkArea does.
+        -- Drive the real prepend, dispatch the way WorkArea does, then the end.
         Sprayer.onStartWorkAreaProcessing(sprayer, 16)
+        local flagged = sprayer._sfOverlapBlockedPass
         local drawn = engineCall(sprayer, 1)
-        return installed, drawn, realRan, sprayer
+        if Sprayer.onEndWorkAreaProcessing then Sprayer.onEndWorkAreaProcessing(sprayer, 16, true) end
+        local slotAfter = sprayer.spec_workArea.workAreas[1].processingFunction
+        return {
+            installed = installed, drawn = drawn, ran = realRan, flagged = flagged,
+            slotKept = slotAfter == slotBefore, fieldKept = sprayer.processSprayerArea == fieldBefore,
+        }
     end
 
-    local installedA, drawnA, ranA, sprayerA = runPass(true)
-    T.eq("M1 with a restore available the installer succeeds", installedA, true)
-    T.eq("M1b AND THE BLOCK ACTUALLY FIRES, so this fixture reaches the arm", drawnA, 0)
-    T.eq("M1c the real spray function never ran", ranA, 0)
-    T.ok("M1d the work area carries our saved original, ready to restore",
-         sprayerA.spec_workArea.workAreas[1]._sfBlocked ~= nil
-         and sprayerA.spec_workArea.workAreas[1]._sfBlocked["processSprayerArea"] ~= nil)
+    local a = runPass(true, true)
+    T.eq("M1 with an end event the installer succeeds", a.installed, true)
+    T.eq("M1b AND THE BLOCK ACTUALLY FIRES, so this fixture reaches the arm", a.drawn, 0)
+    T.eq("M1c the real spray function never ran", a.ran, 0)
+    T.eq("M1d THE END APPEND WROTE NO PROCESSOR SLOT: the gate is still the captured pointer", a.slotKept, true)
+    T.eq("M1e and it never touched the instance field", a.fieldKept, true)
 
-    local installedB, drawnB, ranB, sprayerB = runPass(false)
-    T.eq("M2 with NO restore available the hook still installs", installedB, true)
-    T.eq("M2b BUT THE BLOCK IS NEVER ARMED, so the sprayer keeps working", drawnB, 250)
-    T.eq("M2c and the real spray function ran normally", ranB, 1)
-    T.eq("M2d nothing was saved for a restore that could never happen",
-         sprayerB.spec_workArea.workAreas[1]._sfBlocked, nil)
+    local b = runPass(false, true)
+    T.eq("M2 with NO end event the hook still installs", b.installed, true)
+    T.eq("M2b and the block still fires, because nothing waits on a restore", b.drawn, 0)
+    T.eq("M2c the real spray function never ran", b.ran, 0)
+
+    -- RSF-F226 finding 2: the flag means "the gate refused this pass".
+    local c = runPass(true, false)
+    T.eq("M3 a sprayer area with no gate is never flagged at 99 percent", c.flagged, nil)
+    T.eq("M3b so it draws as native does", c.drawn, 250)
+    T.eq("M3c and the real spray function ran", c.ran, 1)
 
     Sprayer, Utils = savedSprayer, savedUtils
     g_fillTypeManager, g_currentMission, g_SoilFertilityManager = savedFT, savedMission, savedSFM
+    g_effectManager = savedEffects
 end

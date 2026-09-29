@@ -26,11 +26,17 @@
 -- soilSystem:trackSprayerCoverage for coverage). A test that checked our own flag
 -- would pass against a build where the flag is set and never read.
 --
+-- THE BLOCK IS THE PERMANENT GATE (RSF-F226 item 3). Every sprayer here reaches it
+-- the way production does: installSprayerOverlapGate's class wrap of
+-- VehicleSystem.addVehicle, called with the colon call Vehicle.lua:1044 makes. No
+-- slot is wrapped by hand.
+--
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local savedSprayer, savedUtils = Sprayer, Utils
 local savedFT, savedMission, savedSFM = g_fillTypeManager, g_currentMission, g_SoilFertilityManager
 local savedEffects = g_effectManager
+local savedVehicleSystem = VehicleSystem
 
 -- The overlap hook drives boom section effects on both ends of the pass. They are
 -- not what this bar is about, but they have to exist for the real hook to run.
@@ -99,6 +105,12 @@ local function newWorld(opts)
         soilSystem = soilSys,
     }
 
+    -- The vehicle system is a Class instance (VehicleSystem.lua:3, :6): the method
+    -- lives on the class and the instance reaches it through __index.
+    VehicleSystem = { addVehicle = function(_self, _vehicle) return true end }
+    g_currentMission = { time = 100000,
+        vehicleSystem = setmetatable({ vehicles = {} }, { __index = VehicleSystem }) }
+
     -- A REAL HookManager underneath, not a bag of fields. The hooks capture `self`
     -- and call its methods (RSF-F196 added resolveCustomProductIntent and the
     -- refused-product table, and a bare table has neither), so a fixture that omits
@@ -161,17 +173,37 @@ local function newSprayer(opts)
     return v
 end
 
---- Install both real hooks in the same order the mod does (sprayer area first at
---- the top of the install sequence, overlap prevention later), drive a full pass,
---- and report what the downstream actually got.
+--- A new sprayer, registered through the production route: the gate reaches its
+--- work area through the addVehicle class wrap, never by hand.
+local function spawn(opts)
+    local v = newSprayer(opts)
+    g_currentMission.vehicleSystem:addVehicle(v)
+    return v
+end
+
+--- Every real hook this bar needs, in the order installAll runs them: the gate
+--- (right after harvest), the sprayer area hook, then overlap prevention.
+local function installHooks(hookMgr, overlapFirst)
+    HookManager.installSprayerOverlapGate(hookMgr)
+    if overlapFirst then
+        HookManager.installOverlapPreventionHook(hookMgr)
+        HookManager.installSprayerAreaHook(hookMgr)
+    else
+        HookManager.installSprayerAreaHook(hookMgr)
+        HookManager.installOverlapPreventionHook(hookMgr)
+    end
+end
+
+--- Install the real hooks, drive a full pass, and report what the downstream
+--- actually got.
 local function runPass(opts)
     Sprayer = { onStartWorkAreaProcessing = function() end,
-                onEndWorkAreaProcessing = function() end }
+                onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 250, 3 end }
     local seen, hookMgr = newWorld(opts)
-    HookManager.installSprayerAreaHook(hookMgr)
-    HookManager.installOverlapPreventionHook(hookMgr)
+    installHooks(hookMgr)
 
-    local v = newSprayer(opts)
+    local v = spawn(opts)
     Sprayer.onStartWorkAreaProcessing(v, 16)
     local drawn = v.spec_workArea.workAreas[1].processingFunction(v, v.spec_workArea.workAreas[1], 16)
     Sprayer.onEndWorkAreaProcessing(v, 16, true)
@@ -210,12 +242,12 @@ do
     -- The flag is per-pass. A blocked pass must not poison the pass after it,
     -- which is the failure a flag cleared in the wrong place would produce.
     Sprayer = { onStartWorkAreaProcessing = function() end,
-                onEndWorkAreaProcessing = function() end }
+                onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 250, 3 end }
     local seen, hookMgr = newWorld({ coverageFraction = 1.0 })
-    HookManager.installSprayerAreaHook(hookMgr)
-    HookManager.installOverlapPreventionHook(hookMgr)
+    installHooks(hookMgr)
 
-    local v = newSprayer({ usage = 12, fillLevel = 900, isActive = false })
+    local v = spawn({ usage = 12, fillLevel = 900, isActive = false })
     Sprayer.onStartWorkAreaProcessing(v, 16)
     Sprayer.onEndWorkAreaProcessing(v, 16, true)
     T.eq("N9 the first pass is blocked and credits nothing", seen.fertilizer, 0)
@@ -230,35 +262,29 @@ do
 end
 
 do
-    -- THE REASON THIS USES ITS OWN FLAG RATHER THAN _sfSprayAreaBlocked.
+    -- THE SKIP DOES NOT DEPEND ON THE ORDER OF THE TWO APPENDS.
     --
-    -- _sfSprayAreaBlocked is cleared by the overlap hook's RESTORE append on
-    -- onEndWorkAreaProcessing. Whether the nutrient hook can still see it
-    -- therefore depends on which append was registered first. In the shipping
-    -- install sequence installSprayerAreaHook runs early and
-    -- installOverlapPreventionHook much later, so the nutrient append happens to
-    -- run before the restore clears it, and reading that flag would work.
-    --
-    -- It would work by coincidence. This case installs the two hooks in the
-    -- OPPOSITE order so the restore append runs FIRST, which is the arrangement
-    -- that breaks a fix resting on _sfSprayAreaBlocked. The skip must still hold,
-    -- because a live consumable correctness rule must not depend on the
-    -- registration order of two appends.
+    -- The swap this gate replaced kept a second flag that its restore append
+    -- cleared, so whether the nutrient hook could still see it depended on which
+    -- append was registered first. The flag the skip reads is cleared only at the
+    -- START of a pass, and nothing in the end event touches the slot. This case
+    -- installs the two hooks in the OPPOSITE order to installAll, so the overlap
+    -- append runs FIRST, and the skip must still hold.
     Sprayer = { onStartWorkAreaProcessing = function() end,
-                onEndWorkAreaProcessing = function() end }
+                onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 250, 3 end }
     local seen, hookMgr = newWorld({ coverageFraction = 1.0 })
-    HookManager.installOverlapPreventionHook(hookMgr)   -- restore append FIRST
-    HookManager.installSprayerAreaHook(hookMgr)         -- nutrient append SECOND
+    installHooks(hookMgr, true)   -- overlap append FIRST, nutrient append SECOND
 
-    local v = newSprayer({ usage = 12, fillLevel = 900, isActive = false })
+    local v = spawn({ usage = 12, fillLevel = 900, isActive = false })
+    local gate = v.spec_workArea.workAreas[1].processingFunction
     Sprayer.onStartWorkAreaProcessing(v, 16)
-    local drawn = v.spec_workArea.workAreas[1].processingFunction(v, v.spec_workArea.workAreas[1], 16)
+    local drawn = gate(v, v.spec_workArea.workAreas[1], 16)
     T.eq("N12 the block still fires under the reversed install order", drawn, 0)
     Sprayer.onEndWorkAreaProcessing(v, 16, true)
-    T.eq("N13 _sfSprayAreaBlocked has ALREADY been cleared by the restore append",
-         v._sfSprayAreaBlocked, nil)
-    T.eq("N14 but the skip still held, because it does not read that flag",
-         seen.fertilizer, 0)
+    T.eq("N13 the end event left the gate in the slot and the flag set",
+         v.spec_workArea.workAreas[1].processingFunction == gate and v._sfOverlapBlockedPass == true, true)
+    T.eq("N14 and the skip held", seen.fertilizer, 0)
     T.eq("N15 and no coverage was credited either", seen.coverage, 0)
 end
 
@@ -270,12 +296,12 @@ do
     -- work. Here the second pass bails at the overlapPrevention check, the
     -- earliest exit the hook has.
     Sprayer = { onStartWorkAreaProcessing = function() end,
-                onEndWorkAreaProcessing = function() end }
+                onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 250, 3 end }
     local seen, hookMgr = newWorld({ coverageFraction = 1.0 })
-    HookManager.installSprayerAreaHook(hookMgr)
-    HookManager.installOverlapPreventionHook(hookMgr)
+    installHooks(hookMgr)
 
-    local v = newSprayer({ usage = 12, fillLevel = 900, isActive = false })
+    local v = spawn({ usage = 12, fillLevel = 900, isActive = false })
     Sprayer.onStartWorkAreaProcessing(v, 16)
     Sprayer.onEndWorkAreaProcessing(v, 16, true)
     T.eq("N16 the first pass is blocked and credits nothing", seen.fertilizer, 0)
@@ -292,7 +318,33 @@ do
          seen.fertilizer > 0)
 end
 
+do
+    -- RSF-F226 FINDING 2: THE FLAG ALONE IS NOT A REFUSAL. The skip reads the ONE
+    -- predicate billing and SF-73 read: the flag AND an active gate on the sprayer.
+    -- A Sprayer-spec vehicle whose drain comes from another processor (a fertilizing
+    -- seeder or cultivator, FertilizingSowingMachine.lua:105) has no
+    -- processSprayerArea area, so nothing refuses its pass. The prepend never flags
+    -- it (the entry-point bar pins that); this pins the reader, for any other writer
+    -- of the flag.
+    Sprayer = { onStartWorkAreaProcessing = function() end,
+                onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 250, 3 end }
+    local seen, hookMgr = newWorld({ coverageFraction = 0.5 })
+    installHooks(hookMgr)
+
+    local v = newSprayer({ usage = 12, fillLevel = 900, isActive = true })
+    v.spec_workArea.workAreas[1].functionName = "processSowingMachineArea"
+    g_currentMission.vehicleSystem:addVehicle(v)
+    T.eq("N19 a seeder's area carries no sprayer gate", HookManager.hasActiveSprayerGate(v), false)
+    Sprayer.onStartWorkAreaProcessing(v, 16)
+    v._sfOverlapBlockedPass = true   -- a writer other than the prepend, mid-window
+    Sprayer.onEndWorkAreaProcessing(v, 16, true)
+    T.ok("N20 the drained product is credited: a flag with no gate refused nothing", seen.fertilizer > 0)
+    T.ok("N21 and so is coverage", seen.coverage > 0)
+end
+
 Sprayer, Utils = savedSprayer, savedUtils
 g_fillTypeManager, g_currentMission, g_SoilFertilityManager = savedFT, savedMission, savedSFM
 g_effectManager = savedEffects
 FillType, ToolType = savedFillType, savedToolType
+VehicleSystem = savedVehicleSystem

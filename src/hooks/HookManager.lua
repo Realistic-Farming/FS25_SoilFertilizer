@@ -532,6 +532,12 @@ function HookManager:installAll(soilSystem)
     self._harvestHookOk = harvestOk == true   -- RSF-741 item 9: the token rides this wrapper
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Sprayer overlap gate (RSF-F226 item 3). MUST stay here, right after harvest and
+    -- before the tedder: its VehicleSystem.addVehicle class wrap is shadowed by the
+    -- instance-field writers that follow (see installSprayerOverlapGate).
+    local overlapGateOk = self:installSprayerOverlapGate()
+    if overlapGateOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Zone yield cutter hook (SF-14): scales the newly-added Cutter
     -- multiplier-area delta by the pre-cut spatial scalar (or the frozen
     -- field-average scalar) on the live cutter work-area pointer. Replaces
@@ -2560,26 +2566,11 @@ function HookManager:installOverlapPreventionHook()
         return false
     end
 
-    -- DECIDED BEFORE ANYTHING CAN ARM A BLOCK, and the order is the point.
-    --
-    -- The block goes on in a prepend to onStartWorkAreaProcessing and comes off in
-    -- an append to onEndWorkAreaProcessing. Those were installed independently, and
-    -- only the End half was guarded on its function existing, so a world where the
-    -- End half failed to install gave blocks that never came off. That is the one
-    -- failure on this hook a player cannot recover from without a restart: a
-    -- sprayer permanently unable to spray.
-    --
-    -- It is not reachable today, because the engine defines both (Sprayer.lua:855
-    -- and :938). Deciding it here makes it structurally impossible rather than
-    -- merely unlikely: if the restore cannot be installed, the block is never armed,
-    -- and the worst case degrades to the old behaviour of not blocking at all.
-    local canRestore = type(Sprayer.onEndWorkAreaProcessing) == "function"
-    if not canRestore then
-        SoilLogger.warning(
-            "[OverlapPrev] Sprayer.onEndWorkAreaProcessing not found, so the work-area block cannot be "
-            .. "restored. Section suppression still runs; the tank block stays OFF rather than risking a "
-            .. "sprayer that can never spray again.")
-    end
+    -- NOTHING HERE OWES A RESTORE (RSF-F226 item 3). The tank block is the permanent
+    -- gate on the captured processSprayerArea slot (installSprayerOverlapGate), which
+    -- reads _sfOverlapBlockedPass on every call. The flag is set in the prepend below
+    -- and cleared at the start of every window, so no end-event half has to exist for
+    -- a block to come off, and the end append further down only re-stops effects.
 
     local hookMgrRef = self
 
@@ -2624,19 +2615,14 @@ function HookManager:installOverlapPreventionHook()
         Sprayer.onStartWorkAreaProcessing,
         function(sprayerSelf, dt)
             -- RSF-F226d: one flag per pass, cleared HERE at the start of every pass
-            -- so a blocked pass can never colour a later one. Read by the nutrient
-            -- hook's append on onEndWorkAreaProcessing.
+            -- so a blocked pass can never colour a later one. The permanent gate
+            -- reads it on every processor call; the nutrient hook, billing and
+            -- SF-73 read it through HookManager.isOverlapBlockedPass.
             --
-            -- DELIBERATELY SEPARATE FROM _sfSprayAreaBlocked. That flag is cleared
-            -- by the restore append on onEndWorkAreaProcessing, so whether the
-            -- nutrient hook can still see it depends on which append was registered
-            -- first: installSprayerAreaHook runs early in this file's install
-            -- sequence and installOverlapPreventionHook much later, so today the
-            -- nutrient append happens to run before the restore clears it. That is
-            -- a coincidence of registration order, and resting a live consumable
-            -- correctness rule on it is how this class of defect gets written in
-            -- the first place. This flag is cleared at the start of the pass
-            -- instead and does not depend on append order at all.
+            -- CLEARING IT HERE IS WHAT ENDS A BLOCK. The start event is raised
+            -- unconditionally (WorkArea.lua:126); the end event is not (a processor
+            -- error skips :206). A block that came off in the end event could
+            -- outlive its window; this one cannot.
             sprayerSelf._sfOverlapBlockedPass = nil
 
             local sfm = g_SoilFertilityManager
@@ -2792,49 +2778,31 @@ function HookManager:installOverlapPreventionHook()
 
             -- When all sections are overlap-suppressed, also block the sprayer's
             -- work-area processing so the non-VWW centre work area cannot drain the
-            -- tank. Restored in onEndWorkAreaProcessing each frame.
+            -- tank. The block is the permanent gate on the captured slot
+            -- (installSprayerOverlapGate); this line only arms it for this window.
             --
-            -- THIS BLOCK HAS NEVER TAKEN EFFECT (RSF-F226, the sprayer case). It
-            -- used to assign sprayerSelf.processSprayerArea, the instance copy that
-            -- WorkArea:onLoad had already read from at WorkArea.lua:266, so the
-            -- engine went on calling its own captured pointer and the centre work
-            -- area kept drawing from the tank on fully suppressed ground. Unlike
-            -- the tedder and combine cases this one is not gated behind anything:
-            -- overlapPrevention defaults to true, so it has been costing every
-            -- player with default settings real product.
+            -- THE BLOCK ONCE NEVER TOOK EFFECT (RSF-F226, the sprayer case). It
+            -- assigned sprayerSelf.processSprayerArea, the instance copy WorkArea:onLoad
+            -- had already read from at WorkArea.lua:266, so the engine went on calling
+            -- its own captured pointer. This file already explained the trap for this
+            -- exact function (the "Root cause" note above installDensityMapSprayHook).
+            -- A later repair swapped the captured
+            -- pointer per window; the gate replaced that swap, see the note above
+            -- makeSprayerGate.
             --
-            -- AND THIS FILE ALREADY EXPLAINED THE TRAP, FOR THIS EXACT FUNCTION.
-            -- See :1208-1218, which sets out why a class-level replacement of
-            -- Sprayer.processSprayerArea never reaches loaded vehicles, and gives
-            -- the right answer: hook onStartWorkAreaProcessing, because
-            -- registerEventListener resolves dynamically at each fire.
+            -- THE FLAG MEANS "THE GATE REFUSED THIS PASS", so it is set only where a
+            -- gate exists to refuse it. A Sprayer-spec vehicle that drains through
+            -- another processor (a fertilizing seeder or cultivator) has no
+            -- processSprayerArea gate: nothing refuses its pass, it drains, and it must
+            -- be credited. Server only: session coverage exists only there.
             --
-            -- This hook FOLLOWED that advice. It is a prepend on
-            -- onStartWorkAreaProcessing precisely so it reaches every vehicle. Then,
-            -- inside that handler, it reintroduced the same trap one level down by
-            -- assigning the instance copy. Getting the outer mechanism right is
-            -- what made the inner mistake invisible: the hook demonstrably runs on
-            -- every sprayer, so the only thing that could be wrong was what it did
-            -- once it got there.
-            --
-            -- The TIMING was always right. This is a prepend on
-            -- onStartWorkAreaProcessing, so it runs before the work areas process,
-            -- and the restore is an append on onEndWorkAreaProcessing. Only the
-            -- target moved.
-            --
-            -- It returns 0, 0 rather than 0 because the engine's own refusal paths
-            -- do (Sprayer.lua:317-318) and WorkArea.lua:183 destructures two.
-            if coverageComplete and canRestore then
-                sprayerSelf._sfSprayAreaBlocked = true
-                -- RSF-F226d: the same instant, and only here. This is the one case
-                -- where consumption and application are guaranteed to disagree,
-                -- because WE are the reason nothing reached the ground. Partial
-                -- suppression leaves coverageComplete false, does not block, and
-                -- must still credit the ground it did cover.
+            -- RSF-F226d: this is the one case where consumption and application are
+            -- guaranteed to disagree, because WE are the reason nothing reached the
+            -- ground. Partial suppression leaves coverageComplete false, does not
+            -- block, and must still credit the ground it did cover.
+            if coverageComplete and sprayerSelf.isServer
+               and HookManager.hasActiveSprayerGate(sprayerSelf) then
                 sprayerSelf._sfOverlapBlockedPass = true
-                HookManager.blockWorkAreaProcessing(
-                    sprayerSelf, "spec_sprayer", "processSprayerArea",
-                    function() return 0, 0 end)
             end
         end
     )
@@ -2848,26 +2816,14 @@ function HookManager:installOverlapPreventionHook()
     -- g_effectManager:startEffects(spec.effects) on a state-change tick (e.g. sprayer
     -- just turned on after braking), restarting effects we suppressed in the PREPEND.
     -- This APPEND re-stops them so the boom stays visually correct.
-    if canRestore then
+    --
+    -- It never touches processingFunction or the instance field: the tank block is
+    -- the permanent gate, and nothing here owes it a restore.
+    if type(Sprayer.onEndWorkAreaProcessing) == "function" then
         local origEnd = Sprayer.onEndWorkAreaProcessing
         Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
             Sprayer.onEndWorkAreaProcessing,
             function(sprayerSelf, dt, hasProcessed)
-                -- Restore the work-area override we set in the PREPEND. This runs
-                -- AFTER the processing window, so the block has already done its job.
-                --
-                -- It puts back the exact pointer that was saved, which is the only
-                -- Precision-Farming-safe restore: with PF installed the captured
-                -- pointer is PF's own wrapper, because ExtendedSprayer registers
-                -- processSprayerArea through registerOverwrittenFunction. Restoring
-                -- to Sprayer.processSprayerArea, or nilling the field as this used
-                -- to, would drop PF's behaviour for the rest of the session.
-                if sprayerSelf._sfSprayAreaBlocked then
-                    HookManager.unblockWorkAreaProcessing(
-                        sprayerSelf, "spec_sprayer", "processSprayerArea")
-                    sprayerSelf._sfSprayAreaBlocked = nil
-                end
-
                 local suppressed = sprayerSelf._sfOverlapSuppressedSections
                 if suppressed and next(suppressed) then
                     for _, section in pairs(suppressed) do
@@ -3298,9 +3254,13 @@ end
 -- =========================================================
 -- HOOK 1: Harvest events (Cutter.onEndWorkAreaProcessing)
 -- =========================================================
--- Combine.addCutterArea is registered via SpecializationUtil.registerFunction,
--- then WorkArea captures it as a direct closure reference at vehicle load -
--- class-level hook is bypassed completely.
+-- Combine.addCutterArea is an ordinary copied method (RSF-F226 item 5): it is
+-- registered on the vehicle type (Combine.lua:109), copied onto each vehicle at
+-- load (SpecializationUtil.lua:141-145) and called on the vehicle as
+-- combineVehicle:addCutterArea(...) (Cutter.lua:801). WorkArea never captures it.
+-- A class-level wrap alone misses the copy each vehicle holds, which is why this
+-- hook patches the vehicle instances and reaches later ones through its
+-- VehicleSystem.addVehicle late patch.
 -- Cutter.onEndWorkAreaProcessing IS an event listener (dynamic dispatch).
 -- It runs AFTER processCutterArea accumulates workAreaParameters this tick,
 -- and AFTER calling combineVehicle:addCutterArea internally, so all harvest
@@ -3629,8 +3589,11 @@ end
 -- and that pointer is COPIED from `self[functionName]` at vehicle load
 -- (WorkArea.lua:257-266), so a class-only hook is a failed install. We wrap
 -- all four surfaces (class, registered type, live instance, live work-area
--- stored pointer) with one factory, prevent duplicate wrapping, retain every
--- exact original, and register cleanup for all four layers.
+-- stored pointer) with one factory, retain every exact original, and register
+-- cleanup for all four layers. The factory itself has no identity guard (RSF-F226
+-- item 6): it wraps whatever it is handed. Stacking is prevented at the slot, where
+-- a slot already holding one of its tagged wrappers is skipped (RSF-741 item 9,
+-- HookManager._zoneYieldWrappers below).
 --
 -- The wrapper scales ONLY the newly-added multiplier-area delta
 -- (`lastMultiplierArea` after minus before) by the pre-cut spatial scalar (or
@@ -4242,19 +4205,38 @@ end
 -- work area by functionName ALONE would conflate a mower's drop area with a
 -- tedder's, so the owning spec field is part of the selector.
 
+--- THE IDENTITY RECORD (RSF-F226 item 2): one durable table on the global HookManager
+--- class, weakly keyed by work area. For each wrapped slot it holds the exact
+--- predecessor, the exact wrapper installed, the owning site and an active flag. It is
+--- not the per-instance hook row list, so uninstallAll's row wipe cannot erase it, and
+--- a deleted vehicle's work areas fall away with it. It is the only authority for
+--- "already wrapped". Kept across a re-run of this file, so it stays durable.
+HookManager.workAreaRecords = HookManager.workAreaRecords or setmetatable({}, { __mode = "k" })
+
+--- The identity record of one slot, or nil.
+---@return table|nil { predecessor, wrapper, site, active }
+function HookManager.workAreaRecord(workArea, functionName)
+    local byName = type(workArea) == "table" and HookManager.workAreaRecords[workArea] or nil
+    return byName and byName[functionName] or nil
+end
+
 --- Wrap the captured processing pointer of every matching work area on one vehicle.
+--- The identity record lives in HookManager.workAreaRecords (above).
 ---
---- Idempotent: a work area we already wrapped is skipped, so a second sweep or a
---- re-entrant addVehicle cannot stack wrappers. The wrapper we installed is
---- remembered on the work area so teardown can restore ONLY what is still ours and
---- never clobber another mod that wrapped us in turn.
+--- Idempotent: a slot that already has a record is REACTIVATED, never wrapped again,
+--- so a second sweep, a re-entrant addVehicle or a reinstall after teardown cannot
+--- stack a second Soil wrapper under a foreign one.
 ---
 ---@param vehicle table       the vehicle instance, after its load has finished
 ---@param specField string    e.g. "spec_tedder", the owning specialization
 ---@param functionName string e.g. "processTedderArea", as registered
----@param makeWrapper function  (realFn) -> wrapperFn
+---@param makeWrapper function  (predecessor, record) -> wrapperFn; a wrapper that reads
+---                            record.active is a pure pass-through while it is false
+---@param site string|nil     the owning site, for the record and the teardown log
+---@param activated table|nil a set that collects every slot this call wrapped or
+---                            reactivated, for the caller's teardown
 ---@return number wrapped  how many work areas were newly wrapped
-function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, makeWrapper)
+function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, makeWrapper, site, activated)
     if type(vehicle) ~= "table" then return 0 end
     -- The owning spec must be present: functionName alone is not unique across
     -- carriers, and a vehicle without the spec has no business being wrapped.
@@ -4268,13 +4250,21 @@ function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, ma
         if type(workArea) == "table"
            and workArea.functionName == functionName
            and type(workArea.processingFunction) == "function" then
-            workArea._sfWraps = workArea._sfWraps or {}
-            if workArea._sfWraps[functionName] == nil then
-                local wrapper = makeWrapper(workArea.processingFunction)
+            local byName = HookManager.workAreaRecords[workArea]
+            if byName == nil then byName = {} HookManager.workAreaRecords[workArea] = byName end
+            local record = byName[functionName]
+            if record ~= nil then
+                record.active = true
+                if activated then activated[workArea] = true end
+            else
+                record = { predecessor = workArea.processingFunction, site = site or functionName, active = true }
+                local wrapper = makeWrapper(workArea.processingFunction, record)
                 if type(wrapper) == "function" then
-                    workArea._sfWraps[functionName] = wrapper
+                    record.wrapper = wrapper
+                    byName[functionName] = record
                     workArea.processingFunction = wrapper
                     wrapped = wrapped + 1
+                    if activated then activated[workArea] = true end
                 end
             end
         end
@@ -4282,174 +4272,237 @@ function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, ma
     return wrapped
 end
 
---- Remove our wrapper from one vehicle's matching work areas, but ONLY where the
---- live pointer is still the wrapper we installed. If something else has wrapped
---- us since, restoring the original would silently delete that other mod's hook,
---- so we leave it alone and say so.
+--- Take Soil's wrapper out of one slot, but ONLY where the live pointer is still the
+--- wrapper Soil installed: then the recorded predecessor goes back and the record is
+--- deleted. If something else has wrapped us since, restoring would silently delete
+--- that other mod's hook, so the record is set INACTIVE and KEPT: the wrapper becomes
+--- a pure pass-through, and a later install reactivates it instead of stacking a
+--- second Soil wrapper (for a drying delta that would dry hay at double rate, with
+--- nothing anywhere reporting it). Never writes nil, a class or a type function.
+---@return string|nil "restored", "left" or nil when the slot has no record
+function HookManager.releaseWorkAreaSlot(workArea, functionName)
+    local record = HookManager.workAreaRecord(workArea, functionName)
+    if type(record) ~= "table" then return nil end
+    if workArea.processingFunction == record.wrapper and type(record.predecessor) == "function" then
+        workArea.processingFunction = record.predecessor
+        HookManager.workAreaRecords[workArea][functionName] = nil
+        return "restored"
+    end
+    record.active = false
+    return "left"
+end
+
+--- releaseWorkAreaSlot over one vehicle's matching work areas.
 ---@return number restored, number leftInPlace
-function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName, originals)
+function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName)
     if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0, 0 end
     local waSpec = vehicle.spec_workArea
     if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0, 0 end
 
     local restored, leftInPlace = 0, 0
     for _, workArea in pairs(waSpec.workAreas) do
-        if type(workArea) == "table" and type(workArea._sfWraps) == "table" then
-            local ours = workArea._sfWraps[functionName]
-            if ours ~= nil then
-                local original = originals and originals[ours] or nil
-                if workArea.processingFunction == ours and original ~= nil then
-                    workArea.processingFunction = original
-                    -- Ours is gone from the chain, so the record goes with it.
-                    workArea._sfWraps[functionName] = nil
-                    restored = restored + 1
-                else
-                    -- THE RECORD STAYS, and this is the half that matters.
-                    --
-                    -- We are here because our wrapper is still IN the chain with
-                    -- something else on top of it. Clearing the record would tell
-                    -- the next install sweep this work area is unwrapped, it would
-                    -- wrap again, and the chain becomes W2 over X over W over the
-                    -- original. For a drying delta that means the effect applies
-                    -- TWICE per pass, so hay dries at double rate and nothing
-                    -- anywhere reports a problem.
-                    --
-                    -- Keeping the record makes the idempotency test below refuse
-                    -- the second wrap, which is exactly what it is for.
-                    leftInPlace = leftInPlace + 1
-                end
-            end
-        end
+        local result = HookManager.releaseWorkAreaSlot(workArea, functionName)
+        if result == "restored" then restored = restored + 1
+        elseif result == "left" then leftInPlace = leftInPlace + 1 end
     end
     return restored, leftInPlace
 end
 
---- TEMPORARILY override the captured processing pointer of every matching work
---- area, and remember exactly what was there.
----
---- This is the OTHER half of the wrap-slot rule, and it is a different job from
---- wrapWorkAreaProcessing above. That one installs a permanent delegating wrapper
---- once. This one substitutes a pointer for the duration of ONE processing window
---- and puts the original back afterwards, which is what a per-frame block needs.
----
---- WHY IT SAVES RATHER THAN RESTORING A KNOWN VALUE, and this is the part that
---- matters most. With Precision Farming installed, the pointer WorkArea captured
---- is already PF's wrapper: ExtendedSprayer registers processSprayerArea through
---- SpecializationUtil.registerOverwrittenFunction, which writes
---- objectType.functions[name] = Utils.overwrittenFunction(existing, new), so the
---- instance copy and therefore the captured pointer are PF's chain, not the base
---- Sprayer function. Restoring to Sprayer.processSprayerArea, or to the instance
---- copy, would silently delete PF's behaviour for the rest of the session. Saving
---- the live value and putting that exact value back is the only PF-safe move, and
---- it is correct whether PF is present or not.
----
---- Idempotent on both sides: blocking an already-blocked area does not overwrite
---- the saved original, and restoring an unblocked area is a no-op. That matters
---- because the block and the restore are separate engine callbacks, and a frame
---- where the restore does not run must not lose the original.
----@return number blocked
-function HookManager.blockWorkAreaProcessing(vehicle, specField, functionName, replacement)
-    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
-    if type(replacement) ~= "function" then return 0 end
-    local waSpec = vehicle.spec_workArea
-    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+-- =========================================================
+-- THE PERMANENT SPRAYER GATE (RSF-F226 item 3)
+-- =========================================================
+-- The overlap block used to SWAP the captured processSprayerArea pointer for a
+-- stub at the window start and swap it back in the end append. That shape had a
+-- state the permanent gate cannot have: a processor error inside the work-area
+-- loop skips the end event (WorkArea.lua:183 has no pcall, the end event is raised
+-- only at :206), so the stub survived into the next tick while the next start
+-- cleared the flag. One tick on fresh ground then painted nothing and drained
+-- nothing while the nutrient hook credited and billing charged. Its unconditional
+-- restore also erased any foreign wrap made during the window, and it was not
+-- server-gated.
+--
+-- The gate is installed ONCE per sprayer work area, on the captured slot, and
+-- never moved. It reads the flag on every call, and the flag is cleared at every
+-- window start (WorkArea.lua:126 raises the start event unconditionally), so a
+-- stale block cannot outlive its window. Where the flag is not set it is a pure
+-- pass-through: one dot call to the exact predecessor, every return forwarded,
+-- errors propagate. It never writes nil, a class function or a type function into
+-- a slot.
+--
+-- WHY IT DELEGATES TO THE SAVED PREDECESSOR and never to Sprayer.processSprayerArea:
+-- with Precision Farming installed the captured pointer is already PF's chain
+-- (ExtendedSprayer registers processSprayerArea through registerOverwrittenFunction),
+-- so the predecessor is the only PF-safe thing to call.
 
-    local blocked = 0
+HookManager.SPRAYER_GATE_SITE = "sprayer overlap gate"
+
+-- One-shot proof lines, per session. An install count is never evidence a
+-- work-area wrapper runs (RSF-F226's own history); these are. Held on the table,
+-- not as file locals: the bench loads every source into one chunk, which is at
+-- Lua 5.1's 200-local ceiling. installSprayerOverlapGate resets both flags, so each
+-- savegame in one game process logs its own first execution and refusal.
+HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
+
+--- The gate wrapper for one captured processSprayerArea slot.
+--- Matches wrapWorkAreaProcessing's makeWrapper contract: (predecessor, record).
+---@return function
+function HookManager.makeSprayerGate(predecessor, record)
+    return function(vehicleSelf, workArea, dt, ...)
+        local logged = HookManager._sprayerGateLogged
+        if not logged.firstRun then
+            logged.firstRun = true
+            -- THE ARMED STATE GOES IN THE SAME LINE (RSF-F226 item 2: "with the
+            -- effect's armed state"), read at this pass the way the overlap prepend
+            -- reads it: with overlap prevention off the prepend returns before any flag
+            -- is set, so this gate runs and never refuses. A line saying only that the
+            -- gate ran would read as success next to a block that can never come.
+            local sfm = g_SoilFertilityManager
+            local armed = sfm ~= nil and not (sfm.settings and sfm.settings.overlapPrevention == false)
+            SoilLogger.info("[OverlapGate] FIRST EXECUTION: the sprayer gate ran on a real sprayer pass "
+                .. "(RSF-F226 permanent gate). "
+                .. (armed and "Overlap prevention ON: a pass on complete coverage is refused (server only)."
+                          or "Overlap prevention OFF: this gate will not refuse any pass."))
+        end
+        if record.active and vehicleSelf ~= nil and vehicleSelf._sfOverlapBlockedPass then
+            if not logged.firstRefusal then
+                logged.firstRefusal = true
+                SoilLogger.info("[OverlapGate] FIRST REFUSAL: a pass on complete coverage was refused "
+                    .. "at the processor; nothing painted, nothing drained.")
+            end
+            -- The same pair native returns for its own refusals (Sprayer.lua:318,
+            -- :321, :327); WorkArea.lua:184 needs a number first.
+            return 0, 0
+        end
+        return predecessor(vehicleSelf, workArea, dt, ...)
+    end
+end
+
+--- Does this sprayer carry at least one ACTIVE Soil gate on a processSprayerArea
+--- area? Read from the identity record (HookManager.workAreaRecords).
+---@return boolean
+function HookManager.hasActiveSprayerGate(sprayer)
+    if type(sprayer) ~= "table" or sprayer.spec_sprayer == nil then return false end
+    local waSpec = sprayer.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return false end
     for _, workArea in pairs(waSpec.workAreas) do
-        if type(workArea) == "table"
-           and workArea.functionName == functionName
-           and type(workArea.processingFunction) == "function" then
-            workArea._sfBlocked = workArea._sfBlocked or {}
-            if workArea._sfBlocked[functionName] == nil then
-                -- Save the LIVE value, whatever it is. See the PF note above.
-                workArea._sfBlocked[functionName] = workArea.processingFunction
-                workArea.processingFunction = replacement
-                blocked = blocked + 1
+        if type(workArea) == "table" and workArea.functionName == "processSprayerArea" then
+            local record = HookManager.workAreaRecord(workArea, "processSprayerArea")
+            if type(record) == "table" and record.active
+               and record.site == HookManager.SPRAYER_GATE_SITE then
+                return true
             end
         end
     end
-    return blocked
+    return false
 end
 
---- Put back exactly what blockWorkAreaProcessing saved.
+--- RSF-F226e: did the gate refuse this sprayer's pass for overlap? The ONE predicate
+--- for all three readers: the nutrient skip (installSprayerAreaHook), the external-fill
+--- billing skip, and SF-73 (TargetApplication.lua:466).
 ---
---- Restores unconditionally rather than checking that the live pointer is still
---- our replacement, which is the opposite of the teardown rule for the permanent
---- wrapper. The load-bearing difference is NOT the lifetime, it is WHAT A FOREIGN
---- WRAPPER WOULD BE WRAPPING.
----
---- In the permanent case an interloper has wrapped a real function that goes on
---- being called, so clobbering it deletes working behaviour. Here an interloper has
---- wrapped OUR STUB: a function that returns 0, 0 and is about to become garbage.
---- Leaving it in place preserves a wrapper whose inner call is permanently dead,
---- and costs the player every future spray from that work area.
----
---- Stated that way the rule survives a change of lifetime, which the
---- one-frame-versus-session version did not: if this override ever became
---- longer-lived, unconditional restore would still be correct.
----@return number restored
-function HookManager.unblockWorkAreaProcessing(vehicle, specField, functionName)
-    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
-    local waSpec = vehicle.spec_workArea
-    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
-
-    local restored = 0
-    for _, workArea in pairs(waSpec.workAreas) do
-        if type(workArea) == "table" and type(workArea._sfBlocked) == "table" then
-            local saved = workArea._sfBlocked[functionName]
-            if saved ~= nil then
-                workArea.processingFunction = saved
-                workArea._sfBlocked[functionName] = nil
-                restored = restored + 1
-            end
-        end
-    end
-    return restored
-end
-
---- How many matching work areas are blocked RIGHT NOW, read from the record
---- blockWorkAreaProcessing leaves, not from the count it returned. That return
---- is 0 for an area that was already blocked, so it cannot answer "is the block
---- in effect" on a pass whose restore did not run.
----@return number blocked
-function HookManager.countBlockedWorkAreas(vehicle, specField, functionName)
-    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0 end
-    local waSpec = vehicle.spec_workArea
-    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
-
-    local blocked = 0
-    for _, workArea in pairs(waSpec.workAreas) do
-        if type(workArea) == "table" and type(workArea._sfBlocked) == "table"
-           and workArea._sfBlocked[functionName] ~= nil then
-            blocked = blocked + 1
-        end
-    end
-    return blocked
-end
-
---- RSF-F226e: did WE refuse this sprayer's pass for overlap, with the refusal
---- actually in effect? The external-fill billing skip reads this.
----
---- BOTH halves are required, and each for its own reason.
----
---- The SWAP. The overlap prepend sets _sfOverlapBlockedPass beside its call to
---- blockWorkAreaProcessing and never reads what that call returned. A vehicle
---- whose sprayer areas are declared under another functionName (the name is
---- pure XML, WorkArea.lua:257-266) gets the flag with nothing swapped, sprays
---- normally, and must be billed normally.
----
---- The FLAG. A block record can outlive its pass: a throw inside the work-area
---- loop skips the end event (WorkArea.lua:183 has no pcall), so the restore
---- does not run. The next pass clears the flag at its start. Skipping billing on
---- the record alone would then hand that pass zero usage WITHOUT the flag, and
---- the nutrient hook's buy-mode injection (AI-1, installSprayerAreaHook) treats
---- an AI pass with zero usage and zero fill level as "buy mode shipped nothing"
---- and credits nutrients anyway. The #964 skip that prevents that keys on the
---- flag, so billing may only be skipped where that skip also fires.
+--- BOTH halves are required. The flag alone is not enough: a Sprayer-spec vehicle
+--- whose drain comes from another processor (a fertilizing seeder or cultivator sets
+--- the sprayer's isActive from processSowingMachineArea / processCultivatorArea,
+--- FertilizingSowingMachine.lua:105, FertilizingCultivator.lua:74) has no
+--- processSprayerArea area to gate, so nothing refuses its pass. It drains and must
+--- be credited and billed as before. The prepend already sets the flag only where a
+--- gate exists; this predicate says so again for every reader.
 ---@return boolean
 function HookManager.isOverlapBlockedPass(sprayer)
     if type(sprayer) ~= "table" or not sprayer._sfOverlapBlockedPass then return false end
-    return HookManager.countBlockedWorkAreas(sprayer, "spec_sprayer", "processSprayerArea") > 0
+    return HookManager.hasActiveSprayerGate(sprayer)
+end
+
+--- Install the gate: one VehicleSystem.addVehicle class wrap for sprayers bought
+--- later, then the vehicles already present.
+---
+--- PLACEMENT IS LOAD-BEARING. installAll calls this immediately after
+--- installHarvestHook and before installTedderHook. Six hooks after that point
+--- (tedder, windrower, mower carrier, swath, baler, forage wagon) write the live
+--- instance field vehicleSystem.addVehicle, and Vehicle.lua:1044 resolves the
+--- instance field first (class.lua:13-16). A class wrap installed after them is
+--- shadowed and never runs for a newly bought sprayer. Installed here, the first
+--- instance writer captures this wrap as its predecessor and the chain bottoms out
+--- on it.
+---@return boolean success
+function HookManager:installSprayerOverlapGate()
+    if not Sprayer or type(Sprayer.processSprayerArea) ~= "function" then
+        SoilLogger.warning("[OverlapGate] Sprayer.processSprayerArea not available - skipping")
+        return false
+    end
+    if type(VehicleSystem) ~= "table" or type(VehicleSystem.addVehicle) ~= "function" then
+        SoilLogger.warning("[OverlapGate] VehicleSystem.addVehicle not available - skipping")
+        return false
+    end
+
+    local SITE = HookManager.SPRAYER_GATE_SITE
+    -- The one-shot proof lines are per install, as the tedder's is: a second
+    -- savegame in the same game process logs its own first execution and refusal.
+    HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
+    -- Every slot this install wrapped or reactivated, for its own teardown.
+    -- Weak keys: a sold sprayer's work areas are not kept alive by this set.
+    local activated = setmetatable({}, { __mode = "k" })
+
+    local function gateVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_sprayer", "processSprayerArea",
+            HookManager.makeSprayerGate, SITE, activated)
+    end
+
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- 1. THE CLASS WRAP, FIRST. It calls its predecessor first and returns that
+    -- result unchanged; only a successful add (true, VehicleSystem.lua:178) gets the
+    -- gate. A failed add (false at :163/:167) wraps nothing.
+    local predecessorAdd = VehicleSystem.addVehicle
+    local addRecord = { active = true }
+    local ourAdd = function(vsSelf, vehicle, ...)
+        local results = packAll(predecessorAdd(vsSelf, vehicle, ...))
+        if addRecord.active and results[1] == true then
+            local ok, err = pcall(gateVehicle, vehicle)
+            if not ok then
+                SoilLogger.warning("[OverlapGate] gate install on a new vehicle failed (%s) - native work unaffected",
+                    tostring(err))
+            end
+        end
+        return unpack(results, 1, results.n)
+    end
+    VehicleSystem.addVehicle = ourAdd
+    self:registerCleanup("VehicleSystem.addVehicle (sprayer overlap gate)", function()
+        -- Inactive always: if something sits above us, we stay in its chain as a
+        -- pure pass-through. Restored only while the live method is still ours.
+        addRecord.active = false
+        if VehicleSystem.addVehicle == ourAdd then
+            VehicleSystem.addVehicle = predecessorAdd
+        end
+    end)
+
+    -- 2. THEN THE VEHICLES ALREADY PRESENT.
+    local gated = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do
+            gated = gated + gateVehicle(vehicle)
+        end
+    end
+
+    -- 3. The gate slots' teardown: still-ours restore, otherwise inactive-and-kept.
+    self:registerCleanup("processSprayerArea work-area slots (sprayer overlap gate)", function()
+        local restored, left = 0, 0
+        for workArea in pairs(activated) do
+            local result = HookManager.releaseWorkAreaSlot(workArea, "processSprayerArea")
+            if result == "restored" then restored = restored + 1
+            elseif result == "left" then left = left + 1 end
+            activated[workArea] = nil
+        end
+        SoilLogger.debug("[OverlapGate] teardown: %d slot(s) restored, %d left in place inactive", restored, left)
+    end)
+
+    SoilLogger.info(
+        "[OK] Sprayer overlap gate installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "watch for the first-execution line during an actual sprayer pass.", gated)
+    return true
 end
 
 -- =========================================================
@@ -5643,8 +5696,10 @@ function HookManager:installSprayerAreaHook()
             -- prevent.
             --
             -- The overlap flag is the right signal precisely because it is set only
-            -- when we refused the pass ourselves.
-            if self._sfOverlapBlockedPass then
+            -- when we refused the pass ourselves. Read through the ONE predicate the
+            -- billing skip and SF-73 use (RSF-F226 finding 2): the flag AND an active
+            -- gate, so a vehicle that drains through another processor is credited.
+            if HookManager.isOverlapBlockedPass(self) then
                 local _now = (g_currentMission and g_currentMission.time) or 0
                 if not self._sfOverlapSkipLogAt or (_now - self._sfOverlapSkipLogAt) > 3000 then
                     self._sfOverlapSkipLogAt = _now
@@ -6444,7 +6499,7 @@ function HookManager:installSprayerAreaHook()
                 -- RSF-F196 V7: boom paint and litre coverage for a fertilizer product
                 -- require result == true; a crop-protection-only pass is not gated.
                 if soilSys and fieldId and fieldId > 0 and (not isFertilizer or fertResult) then
-                    local hasVWW = sectioned   -- #1039: a lime pass on the Streumaster is not
+                    local hasVWW = sectioned   -- #1039: a lime pass on the Streumaster is not sectioned
                     local boomPts = burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                     -- RSF-836: the true boom line, never the ends of the cell sweep.
                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)

@@ -34,6 +34,7 @@ local saved = {
     g_currentMission = g_currentMission, g_SoilFertilityManager = g_SoilFertilityManager,
     g_effectManager = g_effectManager, g_fieldManager = g_fieldManager,
     getWorldTranslation = getWorldTranslation, FillType = FillType, ToolType = ToolType,
+    VehicleSystem = VehicleSystem,
 }
 
 g_effectManager = { startEffects = function() end, stopEffects = function() end }
@@ -204,29 +205,32 @@ end
 -- the engine's paint through the work area's processing function, end processing
 -- (the credit append stamps this tick's boom, then the restore appends).
 -- Returns the set of sections switched off by either overlap check this tick, and
--- whether the pass was blocked: the flag, or the work area's processing function
--- swapped for the block's stub (read between the start and end events, where a
--- block is in effect).
+-- whether the pass was blocked: the flag, or the permanent gate on the work area
+-- refusing the call (the fixture's processor returns 1, the gate's refusal 0).
 local function tick(v, ss, hookMgr, dtMs)
     g_currentMission.time = g_currentMission.time + dtMs
     Sprayer.onStartWorkAreaProcessing(v, dtMs)
     local off = {}
     for i in pairs(v._sfOverlapSuppressedSections or {}) do off[i] = true end
     for i in pairs(v._sfSuppressedSections or {}) do off[i] = true end
-    local blocked = v._sfOverlapBlockedPass == true
-        or HookManager.countBlockedWorkAreas(v, "spec_sprayer", "processSprayerArea") > 0
     local wa = v.spec_workArea.workAreas[1]
-    wa.processingFunction(v, wa, dtMs)
+    local xs = wa.processingFunction(v, wa, dtMs)
+    local blocked = v._sfOverlapBlockedPass == true or xs == 0
     Sprayer.onEndWorkAreaProcessing(v, dtMs, true)
     return off, blocked
 end
 
--- Install order as the mod does it: the credit append first (top of the install
--- sequence), then the overlap check, then the preserver last so its prepend runs first.
+-- Install order as the mod does it: the sprayer overlap gate (right after harvest),
+-- the credit append, then the overlap check, then the preserver last so its prepend
+-- runs first. The Hardi is registered through the gate's production route, the
+-- colon call Vehicle.lua:1044 makes on a Class-instance vehicle system.
 local function install(which, settings, multiTank)
-    Sprayer = { onStartWorkAreaProcessing = function() end, onEndWorkAreaProcessing = function() end }
-    g_currentMission = { time = 0 }
+    Sprayer = { onStartWorkAreaProcessing = function() end, onEndWorkAreaProcessing = function() end,
+                processSprayerArea = function() return 1, 1 end }
+    VehicleSystem = { addVehicle = function(_self, _vehicle) return true end }
+    g_currentMission = { time = 0, vehicleSystem = setmetatable({ vehicles = {} }, { __index = VehicleSystem }) }
     local ss, hookMgr = newWorld(settings, multiTank)
+    HookManager.installSprayerOverlapGate(hookMgr)
     HookManager.installSprayerAreaHook(hookMgr)
     if which == "overlap" then
         HookManager.installOverlapPreventionHook(hookMgr)
@@ -234,7 +238,9 @@ local function install(which, settings, multiTank)
         HookManager.installSectionControlHook(hookMgr)
     end
     HookManager.installSectionStatePreserver(hookMgr)
-    return ss, hookMgr, newHardi(multiTank)
+    local v = newHardi(multiTank)
+    g_currentMission.vehicleSystem:addVehicle(v)
+    return ss, hookMgr, v
 end
 
 -- Every stamp in the field: count, and how many carry this sprayer and a distance.
@@ -323,7 +329,7 @@ do
     T.eq("S1 60 s standing still mid-lane: no section switched off", list(off), "")
     -- Only the 99% coverage block may block a pass (RSF-F226). Blocking a stopped
     -- pass is a separate decision; if it is ever made, this row flips on purpose.
-    -- Either signal counts (tick): the flag, or a swapped processSprayerArea.
+    -- Either signal counts (tick): the flag, or the gate refusing processSprayerArea.
     T.eq("S3 stopped: the pass is not blocked (RSF-F226's block predicate unchanged)", blockedTicks, 0)
     local off2 = {}
     v.movingDirection = 1
@@ -478,3 +484,4 @@ g_fillTypeManager, g_currentMission = saved.g_fillTypeManager, saved.g_currentMi
 g_SoilFertilityManager, g_effectManager = saved.g_SoilFertilityManager, saved.g_effectManager
 g_fieldManager, getWorldTranslation = saved.g_fieldManager, saved.getWorldTranslation
 FillType, ToolType = saved.FillType, saved.ToolType
+VehicleSystem = saved.VehicleSystem

@@ -17,7 +17,9 @@
 -- cannot pass as a suppression.
 --
 -- WHAT IS REAL AND WHAT IS A MODEL. The Hook 9 installer, its live-vehicle
--- propagation and the overlap prepend are the shipping code. The engine side is a
+-- propagation, the overlap prepend and the permanent sprayer gate (RSF-F226 item 3,
+-- reached through installSprayerOverlapGate's sweep of the vehicles already
+-- present) are the shipping code. The engine side is a
 -- MODEL, written against the decompile: getExternalFill follows Sprayer.lua:383-465
 -- and onStartWorkAreaProcessing follows :855-935 for the lines that matter here
 -- (the tank read, the :889 call, the :890-900 branch on its return and the
@@ -46,7 +48,7 @@ local saved = {
     g_fillTypeManager = g_fillTypeManager, g_currentMission = g_currentMission,
     g_SoilFertilityManager = g_SoilFertilityManager, g_effectManager = g_effectManager,
     g_farmManager = g_farmManager, g_sprayTypeManager = g_sprayTypeManager,
-    g_vehicleTypeManager = g_vehicleTypeManager,
+    g_vehicleTypeManager = g_vehicleTypeManager, VehicleSystem = VehicleSystem,
 }
 
 -- The engine's own wrappers, as they are (utils/Utils.lua:380-393): the appended
@@ -112,7 +114,8 @@ local function newWorld(opts)
         end,
         liquidManureLoadingStations = { station(100000) },
         manureLoadingStations       = { station(100000) },
-        vehicleSystem = { vehicles = {} },
+        -- A Class instance (VehicleSystem.lua:3, :6): the method is on the class.
+        vehicleSystem = setmetatable({ vehicles = {} }, { __index = VehicleSystem }),
     }
     g_farmManager = { updateFarmStats = function() books.stats = books.stats + 1 end }
 
@@ -275,8 +278,8 @@ local function nativeProcessSprayerArea(self, _workArea)
     return 250, 3
 end
 
---- A sprayer with the three-copy chain for each work area, so the block has a
---- real captured pointer to swap. `functionNames` lets a case declare an area
+--- A sprayer with the three-copy chain for each work area, so the gate has a
+--- real captured pointer to sit on. `functionNames` lets a case declare an area
 --- under another name, which is how a mod alias reaches processSprayerArea.
 local function newSprayer(opts)
     local tankType  = opts.tankType or FillType.UNKNOWN
@@ -333,11 +336,14 @@ local function install(opts)
         getExternalFill = nativeGetExternalFill,
         onStartWorkAreaProcessing = nativeOnStart,
         onEndWorkAreaProcessing = function() end,
+        processSprayerArea = nativeProcessSprayerArea,
     }
+    VehicleSystem = { addVehicle = function(_self, _vehicle) return true end }
     local books, hookMgr = newWorld(opts)
     local v = newSprayer(opts)
     g_currentMission.vehicleSystem.vehicles = { v }
 
+    HookManager.installSprayerOverlapGate(hookMgr)
     HookManager.installExternalFillHook(hookMgr)
     HookManager.propagateExternalFillHookToLiveVehicles(hookMgr)
     HookManager.installOverlapPreventionHook(hookMgr)
@@ -442,10 +448,10 @@ end)
 -- ── F: what the skip keys on ────────────────────────────────────────────────
 
 group("F1", function()
-    -- THE FLAG WITHOUT A SWAP. An area declared under another functionName is not
-    -- swapped by the block (the name is pure XML, WorkArea.lua:257-266), but the
-    -- overlap prepend sets the pass flag anyway. That area sprays, so the pass
-    -- must be billed.
+    -- NO GATE, NO FLAG (RSF-F226 finding 2). An area declared under another
+    -- functionName carries no gate (the name is pure XML, WorkArea.lua:257-266), so
+    -- nothing can refuse its pass. The prepend must not flag it: the flag means "the
+    -- gate refused this pass". That area sprays, so the pass must be billed.
     local books, v = install({ ai = true, buyFertilizer = true, allows = { FillType.LIQUIDFERTILIZER },
                                functionNames = { "processSprayerAreaAlias" } })
     setCoverage(0.5)
@@ -453,32 +459,32 @@ group("F1", function()
     local before = books.charges
     setCoverage(1.0)
     Sprayer.onStartWorkAreaProcessing(v, 16)
-    T.eq("F1 the prepend flagged the pass", v._sfOverlapBlockedPass, true)
-    -- Read from the block's own record, not from the helper under test.
-    local rec = v.spec_workArea.workAreas[1]._sfBlocked
-    T.ok("F2 but swapped nothing, so the block is not in effect",
-         rec == nil or rec.processSprayerArea == nil)
+    T.eq("F1 the prepend did NOT flag a pass no gate can refuse", v._sfOverlapBlockedPass, nil)
+    -- Read from the work area's own record, not from the helper under test.
+    T.eq("F2 because the alias area carries no gate record", HookManager.workAreaRecords[v.spec_workArea.workAreas[1]], nil)
     T.ok("F3 THE PASS IS BILLED, because the alias area is about to spray", books.charges > before)
     local wa = v.spec_workArea.workAreas[1]
     T.ok("F4 and it does spray", wa.processingFunction(v, wa, 16) > 0)
 end)
 
 group("F5", function()
-    -- THE SWAP WITHOUT THE FLAG. A throw inside the work-area loop skips the end
-    -- event, so the restore does not run and the block record outlives its pass.
-    -- The next pass clears the flag at its start and, with the overlap gone, does
-    -- not block again. That pass is NOT ours to refuse: the nutrient hook's skip
-    -- keys on the flag, and zero usage without the flag reaches its buy-mode
-    -- injection (AI-1), which credits nutrients for a pass nobody paid for.
+    -- THE END EVENT THAT NEVER RAN. A throw inside the work-area loop skips the end
+    -- event (WorkArea.lua:183 has no pcall, the end is raised at :206). The swap this
+    -- gate replaced restored its slot there, so its stub outlived the pass: the next
+    -- pass on fresh ground cleared the flag, was billed, and still painted nothing.
+    -- The gate owes the end event nothing. The next pass clears the flag at its
+    -- start and, with the overlap gone, is NOT ours to refuse: it is billed, and it
+    -- sprays.
     local books, v = install({ ai = true, buyFertilizer = true, allows = { FillType.LIQUIDFERTILIZER } })
     setCoverage(0.5)
     frame(v)
     setCoverage(1.0)
     frame(v, true)                      -- blocked, and the end event never runs
     local before = books.charges
-    local rec = v.spec_workArea.workAreas[1]._sfBlocked
-    T.ok("F5 the block record survived the skipped restore",
-         rec ~= nil and rec.processSprayerArea ~= nil)
+    local wa = v.spec_workArea.workAreas[1]
+    local rec = HookManager.workAreaRecord(wa, "processSprayerArea")
+    T.ok("F5 the gate is still the captured pointer and its record is active",
+         rec ~= nil and rec.active == true and wa.processingFunction == rec.wrapper)
 
     setCoverage(0.5)
     Sprayer.onStartWorkAreaProcessing(v, 16)
@@ -486,6 +492,9 @@ group("F5", function()
     T.ok("F7 SO IT IS BILLED, and never handed zero usage without the flag", books.charges > before)
     T.ok("F8 with real usage in wap for the nutrient hook to read",
          v.spec_sprayer.workAreaParameters.usage > 0)
+    T.ok("F9 AND IT SPRAYS: nothing of the blocked pass survived into this one",
+         wa.processingFunction(v, wa, 16) > 0)
+    Sprayer.onEndWorkAreaProcessing(v, 16, true)
 end)
 
 group("R", function()
@@ -632,9 +641,9 @@ group("W", function()
     T.eq("W3 and its usage", usage, 12)
 
     -- And so does a blocked one. A full pass first puts a trackable type into wap
-    -- (the direct calls above never touch it); then the start event blocks and,
-    -- with no end event, leaves the block record live, so the direct calls below
-    -- are blocked calls.
+    -- (the direct calls above never touch it); then the start event flags the pass,
+    -- and the flag stands until the next start, so the direct calls below are
+    -- blocked calls.
     frame(v)
     setCoverage(1.0)
     Sprayer.onStartWorkAreaProcessing(v, 16)
@@ -668,3 +677,4 @@ g_fillTypeManager, g_currentMission = saved.g_fillTypeManager, saved.g_currentMi
 g_SoilFertilityManager, g_effectManager = saved.g_SoilFertilityManager, saved.g_effectManager
 g_farmManager, g_sprayTypeManager = saved.g_farmManager, saved.g_sprayTypeManager
 g_vehicleTypeManager = saved.g_vehicleTypeManager
+VehicleSystem = saved.VehicleSystem

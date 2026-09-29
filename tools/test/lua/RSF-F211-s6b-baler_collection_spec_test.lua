@@ -150,8 +150,8 @@ group("E", function()
     local okI = installAll()
     local late, lateWork = baler({ capacity = 100, uid = "late" })   -- added after install
     T.eq("E1 installAll wraps the captured pickup pointer and the instance finish and create, on a baler present at install and one added later; the class listeners are the collection's",
-        tostring(okI) .. "/" .. tostring(work._sfWraps ~= nil and work._sfWraps.processBalerArea ~= nil) .. "/" .. tostring(v.finishBale ~= Baler.finishBale and v.createBale ~= Baler.createBale)
-        .. "/" .. tostring(lateWork._sfWraps ~= nil and lateWork._sfWraps.processBalerArea ~= nil) .. "/" .. tostring(late.finishBale ~= Baler.finishBale),
+        tostring(okI) .. "/" .. tostring(HookManager.workAreaRecord(work, "processBalerArea") ~= nil) .. "/" .. tostring(v.finishBale ~= Baler.finishBale and v.createBale ~= Baler.createBale)
+        .. "/" .. tostring(HookManager.workAreaRecord(lateWork, "processBalerArea") ~= nil) .. "/" .. tostring(late.finishBale ~= Baler.finishBale),
         "true/true/true/true/true")
     -- A wet swath (10 L at 79.9%) and a dry one (90 L at 20.1%) under the pickup.
     setCell(2, 8, 1, 204) windrow(2, 5)
@@ -435,7 +435,7 @@ group("F", function()
     local w, work = wagon({ capacity = 1000 })
     installAll()
     T.eq("F1 installAll wraps the wagon's captured pickup pointer and its instance fillForageWagon",
-        tostring(work._sfWraps ~= nil and work._sfWraps.processForageWagonArea ~= nil) .. "/" .. tostring(w.fillForageWagon ~= ForageWagon.fillForageWagon), "true/true")
+        tostring(HookManager.workAreaRecord(work, "processForageWagonArea") ~= nil) .. "/" .. tostring(w.fillForageWagon ~= ForageWagon.fillForageWagon), "true/true")
     setCell(2, 8, 1, 204) windrow(2, 5)
     setCell(3, 8, 1, 52)  windrow(3, 45)
     ENGINE.tick(w, 16)
