@@ -7186,10 +7186,12 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
     field.nutrientBuffer[99992] = (field.nutrientBuffer[99992] or 0) + liters
     -- MAINTENANCE row 168, the insecticide twin of the fungicide work-trail fix (8463752d):
     -- tag coverage with the REAL fill name, not the literal "INSECTICIDE". The sprayer hook
-    -- already tracked this pass under fillType.name ("PESTICIDE", the vanilla / PF insecticide,
-    -- is the only fill type that reaches this route). Tagging "INSECTICIDE" here made
+    -- already tracked this pass under fillType.name. The only name that reaches this route is
+    -- PESTICIDE, the compatibility slot for a mod that registers a fill type by that name (no
+    -- base-game, PF or known mod does; SF's own INSECTICIDE is a fertilizer profile and takes
+    -- applyFertilizer). Tagging "INSECTICIDE" here made
     -- sessionLastProduct flip every tick, tripping the product-change reset (#442) that wipes
-    -- the session's coverage, so a PESTICIDE field never built past one pass's litres.
+    -- the session's coverage, so such a field never built past one pass's litres.
     -- updateFractions=false: name-only, so this does not double-count the area already tracked.
     self:trackSprayerCoverage(fieldId, liters, fillName or "INSECTICIDE", false)
 

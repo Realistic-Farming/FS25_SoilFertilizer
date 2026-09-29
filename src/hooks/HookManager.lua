@@ -1418,9 +1418,10 @@ function HookManager:installSprayTypeEffectsHook()
     for _, n in ipairs(liquidNames) do liquidNameSet[string.upper(n)] = true end
     for _, n in ipairs(solidNames)  do solidNameSet[string.upper(n)]  = true end
 
-    -- Pass 2 must NOT strip vanilla fill type names from their native slots.
-    -- HERBICIDE is a vanilla spray type; INSECTICIDE/FUNGICIDE have dedicated vehicle
-    -- slots with their own effects. Stripping them empties the slot → getActiveSprayType()
+    -- Pass 2 must NOT strip these names from a slot of their own.
+    -- HERBICIDE is a base-game spray type. INSECTICIDE and FUNGICIDE are Soil's own fill
+    -- types (fillTypes.xml), not base-game ones, so only a mod sprayer can give them a slot of
+    -- their own. Stripping a name empties its slot → getActiveSprayType()
     -- returns nil → vanilla starts no slot effects → no spray visual.
     local vanillaNames = { HERBICIDE = true, INSECTICIDE = true, FUNGICIDE = true }
 
@@ -1479,8 +1480,8 @@ function HookManager:installSprayTypeEffectsHook()
         end
 
         -- Pass 2: strip our names from any slot that lacks a base fertilizer type.
-        -- Without this, vanilla HERBICIDE/INSECTICIDE/FUNGICIDE slots (center-only
-        -- nozzle config) are found first by getActiveSprayType and override the
+        -- Without this, a HERBICIDE slot (center-only nozzle config), or a mod sprayer's own
+        -- INSECTICIDE/FUNGICIDE slot, is found first by getActiveSprayType and overrides the
         -- full-boom LIQUIDFERTILIZER slot we patched in Pass 1.
         for _, st in ipairs(spec.sprayTypes) do
             if st.fillTypes then
@@ -5938,7 +5939,7 @@ function HookManager:installSprayerAreaHook()
                 -- and are routed through applyFertilizer → on*Applied internally.
                 -- We must NOT also call on*Applied directly from here, or they would be
                 -- double-applied. Only use the direct path for products NOT in FERTILIZER_PROFILES
-                -- (e.g. vanilla HERBICIDE / PESTICIDE fill types that have no profile entry).
+                -- (e.g. the base game's HERBICIDE, or a mod's PESTICIDE: fill types with no profile entry).
                 local herbOnlyDirect = herbEffectiveness and not isFertilizer
                 local pestOnlyDirect = pestEffectiveness and not isFertilizer
                 local diseaseOnlyDirect = diseaseEffectiveness and not isFertilizer
