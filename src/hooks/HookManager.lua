@@ -6034,13 +6034,16 @@ function HookManager:installSprayerAreaHook()
                 -- _geometricCoverageOwner flag (and the later F61 clear below), and PROPICONAZOLE is not a profile, so
                 -- `not isFertilizer` already counts it.
                 local _useLitCov = not isFertilizer
+                -- #1039: whether this pass is governed by its VWW sections. The one answer
+                -- for the section credit and both stamp choices below: a sprayer with
+                -- sections whose active spray type does not use them (lime on the
+                -- Streumaster) is a pass without sections, like the Bredal K105.
+                local sectioned = hookMgrRef:_isSectionedPass(self)
                 if g_SoilFertilityManager.soilSystem then
-                    local _vwwEarly = self.spec_variableWorkWidth
-                    local _hasVWWEarly = _vwwEarly and _vwwEarly.sections and #_vwwEarly.sections > 0
                     -- F61: for non-VWW implements using liter-based coverage, clear stale
                     -- _geometricCoverageOwner so a previous VWW session's guard does not
                     -- block the liter path (line 5123 in trackSprayerCoverage).
-                    if not _hasVWWEarly and g_SoilFertilityManager.soilSystem.fieldData
+                    if not sectioned and g_SoilFertilityManager.soilSystem.fieldData
                        and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
                         g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
                     end
@@ -6048,10 +6051,12 @@ function HookManager:installSprayerAreaHook()
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
-                -- When VariableWorkWidth is present, distribute the nutrient credit
+                -- When the pass is sectioned, distribute the nutrient credit
                 -- across active section nodes so that boundary passes only affect the
                 -- portion of the field the boom is actually spraying.
-                -- Falls back to the rootNode single-field path when VWW is absent.
+                -- Falls back to the rootNode single-field path otherwise (#1039: every
+                -- section of a lime pass is active at full width, so a midpoint up to
+                -- 10.5 m out could credit a field the spreader never reached).
                 local rootX, _, rootZ = getWorldTranslation(self.rootNode)
                 local vww = self.spec_variableWorkWidth
                 local soilSys = g_SoilFertilityManager.soilSystem
@@ -6125,7 +6130,7 @@ function HookManager:installSprayerAreaHook()
                     end
                 end
 
-                if sf73Cycle == nil and vww and vww.sections and #vww.sections > 0 then
+                if sf73Cycle == nil and sectioned then
                     SoilLogger.debug("SprayerHook: VWW path - %d total sections for %s", #vww.sections, fillType.name)
                     -- Collect active sections into pre-allocated scratch table (avoids per-tick allocation).
                     -- Assigns the hoisted vars (declared above) so the multi-tank block can reuse them.
@@ -6383,7 +6388,7 @@ function HookManager:installSprayerAreaHook()
                                                     -- NOT the ends of the cell sweep array.
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
-                                                        if vww and vww.sections and #vww.sections > 0 then
+                                                        if sectioned then
                                                             soilSys:markBoomCells(fieldId, boomPts, false, self)
                                                         else
                                                             soilSys:markBoomCells(fieldId, boomPts, true, self)
@@ -6438,8 +6443,7 @@ function HookManager:installSprayerAreaHook()
                 -- RSF-F196 V7: boom paint and litre coverage for a fertilizer product
                 -- require result == true; a crop-protection-only pass is not gated.
                 if soilSys and fieldId and fieldId > 0 and (not isFertilizer or fertResult) then
-                    local vww = self.spec_variableWorkWidth
-                    local hasVWW = vww and vww.sections and #vww.sections > 0
+                    local hasVWW = sectioned   -- #1039: a lime pass on the Streumaster is not
                     local boomPts = burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                     -- RSF-836: the true boom line, never the ends of the cell sweep.
                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
@@ -10095,71 +10099,19 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     local cellSize = SoilConstants.ZONE.CELL_SIZE
     local xs, zs = {}, {}
 
-    local function addNode(node)
-        if not node then return end
+    -- #1039: the cells and the boom line come from ONE collector. This used to be an
+    -- inline copy of _collectBoomNodes, so a fix to one left the other wide.
+    for _, node in ipairs(self:_collectBoomNodes(vehicle)) do
         local ok, x, _, z = pcall(getWorldTranslation, node)
         if ok and x then table.insert(xs, x); table.insert(zs, z) end
-    end
-
-    local function collectFromObj(obj)
-        if not obj then return end
-        -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
-        -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
-        -- 'height' the forward edge. The old code read start and a non-existent 'end', so a
-        -- broadcast spreader without VariableWorkWidth collapsed to the single start node -
-        -- getBoomCellPositions then returned nil and dry fertilizer never painted boom-width
-        -- coverage cells (no tracking markers, map barely changed). Issue #626.
-        if obj.spec_workArea and obj.spec_workArea.workAreas then
-            for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                addNode(wa.start)
-                addNode(wa.width)
-                addNode(wa.height)
-            end
-        end
-        -- VWW section maxWidthNodes capture the outer boom edge of each section -
-        -- workArea start/end nodes are often co-located at the centre, giving a
-        -- near-zero span and causing the function to return nil for boom sprayers.
-        local vww = obj.spec_variableWorkWidth
-        if vww and vww.sections then
-            for _, section in ipairs(vww.sections) do
-                -- Skip inactive sections (Partial Width mode): their maxWidthNodes are still
-                -- physically at the boom tip position, which would incorrectly inflate the
-                -- detected boom span and credit cells that were never sprayed (#475/#476).
-                if section.isActive ~= false and section.maxWidthNode then
-                    local ok, x, _, z = pcall(getWorldTranslation, section.maxWidthNode)
-                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
-                end
-            end
-        end
-    end
-
-    collectFromObj(vehicle)
-    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
-        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements or {}) do
-            collectFromObj(impl and impl.object)
-        end
     end
 
     if #xs < 2 then
         -- Fallback for broadcast spreaders (e.g. Bredal K105): work area nodes are
         -- co-located at the implement centre, giving a near-zero span.  Use the
-        -- implement's spec_sprayer.usageScale.workingWidth to generate a proper sweep
-        -- so coverage tracks correctly (#758).
-        local implWW = nil
-        local spec_s = vehicle.spec_sprayer
-        if spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth then
-            implWW = spec_s.usageScale.workingWidth
-        end
-        if not implWW and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
-            for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-                local obj = impl and impl.object
-                local iss = obj and obj.spec_sprayer
-                if iss and iss.usageScale and iss.usageScale.workingWidth then
-                    implWW = iss.usageScale.workingWidth
-                    break
-                end
-            end
-        end
+        -- implement's working width to generate a proper sweep so coverage tracks
+        -- correctly (#758); the active spray type's width, like the boom line (#1039).
+        local implWW = self:_implWorkingWidth(vehicle)
         if implWW and implWW > 0 then
             local halfW = implWW * 0.5
             local pts = {}
@@ -10240,11 +10192,54 @@ end
 -- vehicle has no components array at all. The old fallback branch's
 -- getWorldRotation(vehicle.rootNode) read is not inherited.
 
+--- #1039: the spray type obj is spreading now, through the vehicle's own
+--- getActiveSprayType (Sprayer.lua:626-648: the first spray type whose fill types
+--- hold the tank's fill type, with Foldable's folding-configuration gate at
+--- Foldable.lua:1164-1176). nil for a non-sprayer or when none is active.
+function HookManager:_activeSprayType(obj)
+    if obj == nil or type(obj.getActiveSprayType) ~= "function" then return nil end
+    local ok, sprayType = pcall(obj.getActiveSprayType, obj)
+    if ok and type(sprayType) == "table" then return sprayType end
+    return nil
+end
+
+--- #1039: whether a work area belongs to the pass the active spray type makes. The
+--- engine's rule (Sprayer:getIsWorkAreaActive, Sprayer.lua:726-734): a work area that
+--- names another spray type is idle. One that names none, or a machine with no
+--- active spray type, always belongs.
+function HookManager.workAreaInPass(workArea, activeSprayType)
+    return workArea.sprayType == nil or activeSprayType == nil
+        or activeSprayType.index == workArea.sprayType
+end
+
+--- #1039: whether obj's variable-width sections govern this pass. For a spray type
+--- that does not support variable work width the engine switches the sections off
+--- and sets every one to full width (Sprayer:onSprayTypeChange, Sprayer.lua:1034-1041;
+--- VariableWorkWidth.lua:290-296), so they are all isActive and say nothing about
+--- where the product lands (lime on the Streumaster FW 212 TD Profi).
+function HookManager.sectionsInPass(obj, activeSprayType)
+    local vww = obj and obj.spec_variableWorkWidth
+    if not (vww and vww.sections and #vww.sections > 0) then return false end
+    return activeSprayType == nil or activeSprayType.supportsVariableWorkWidth ~= false
+end
+
+--- #1039: HookManager.sectionsInPass for obj's own active spray type.
+function HookManager:_isSectionedPass(obj)
+    return HookManager.sectionsInPass(obj, self:_activeSprayType(obj))
+end
+
 --- Collect the boom's spanning node references (workArea corners + active VWW
 --- section tips) from a vehicle and its attached implements. Inactive VWW sections
 --- are excluded on purpose: their nodes sit at the boom tip whether or not they are
 --- spraying, so including them would inflate the line back to full width in Partial
---- Width mode (#475/#476). Mirrors the node set getBoomCellPositions collects.
+--- Width mode (#475/#476). The one node set for both the cell sweep
+--- (getBoomCellPositions) and the boom line (getBoomLineEndpoints).
+---
+--- #1039: only the pass the active spray type makes, read per object because every
+--- attached implement has its own. A work area for another spray type is left out,
+--- and so are the sections when the spray type does not use them. Lime on the
+--- Streumaster was tracked at the fertilizer sections' 42 m instead of its own 15 m
+--- work area, and the Bredal K105 at its outermost 30 m in every configuration.
 function HookManager:_collectBoomNodes(vehicle)
     local nodes = {}
     local function addNode(node)
@@ -10252,16 +10247,24 @@ function HookManager:_collectBoomNodes(vehicle)
     end
     local function collectFromObj(obj)
         if not obj then return end
+        local activeSprayType = self:_activeSprayType(obj)
+        -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
+        -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
+        -- 'height' the forward edge. Reading a non-existent 'end' collapsed a broadcast
+        -- spreader without VariableWorkWidth to the single start node (#626).
         if obj.spec_workArea and obj.spec_workArea.workAreas then
             for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                addNode(wa.start)
-                addNode(wa.width)
-                addNode(wa.height)
+                if HookManager.workAreaInPass(wa, activeSprayType) then
+                    addNode(wa.start)
+                    addNode(wa.width)
+                    addNode(wa.height)
+                end
             end
         end
-        local vww = obj.spec_variableWorkWidth
-        if vww and vww.sections then
-            for _, section in ipairs(vww.sections) do
+        -- VWW section maxWidthNodes capture the outer boom edge of each section:
+        -- workArea nodes are often co-located at the centre on boom sprayers.
+        if HookManager.sectionsInPass(obj, activeSprayType) then
+            for _, section in ipairs(obj.spec_variableWorkWidth.sections) do
                 if section.isActive ~= false and section.maxWidthNode then
                     addNode(section.maxWidthNode)
                 end
@@ -10300,19 +10303,36 @@ function HookManager:_recordTillagePoint(vehicle, x, z, fieldId)
     ss._lastTillageLine = self:getBoomLineEndpoints(vehicle, x, z)
 end
 
+--- #1039: obj's working width for the pass its active spray type makes, sized the
+--- way the engine sizes usage (Sprayer:getSprayerUsage, Sprayer.lua:503-523) and the
+--- usage override does: the active spray type's usageScale, else the machine's; the
+--- named work area's width when it has one, else workingWidth. nil for a non-sprayer.
+function HookManager:_sprayTypeWorkingWidth(obj)
+    local spec_s = obj and obj.spec_sprayer
+    if not spec_s then return nil end
+    local usScale = spec_s.usageScale
+    local activeSprayType = self:_activeSprayType(obj)
+    if activeSprayType and activeSprayType.usageScale then
+        usScale = activeSprayType.usageScale
+    end
+    if not usScale then return nil end
+    local ww = usScale.workingWidth
+    if usScale.workAreaIndex ~= nil and type(obj.getWorkAreaWidth) == "function" then
+        local okW, w = pcall(obj.getWorkAreaWidth, obj, usScale.workAreaIndex)
+        if okW and type(w) == "number" and w > 0 then ww = w end
+    end
+    return ww
+end
+
 --- The implement working width used by the fallback (broadcast spreader whose work
---- area nodes are co-located at the centre, so no lateral span exists).
+--- area nodes are co-located at the centre, so no lateral span exists). Both the
+--- cell sweep and the boom line fall back through here.
 function HookManager:_implWorkingWidth(vehicle)
-    local spec_s = vehicle and vehicle.spec_sprayer
-    local ww = spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth
+    local ww = self:_sprayTypeWorkingWidth(vehicle)
     if not ww and vehicle and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
         for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-            local obj = impl and impl.object
-            local iss = obj and obj.spec_sprayer
-            if iss and iss.usageScale and iss.usageScale.workingWidth then
-                ww = iss.usageScale.workingWidth
-                break
-            end
+            ww = self:_sprayTypeWorkingWidth(impl and impl.object)
+            if ww then break end
         end
     end
     return ww
