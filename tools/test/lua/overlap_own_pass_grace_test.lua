@@ -175,9 +175,10 @@ local function newHardi(multiTank)
         -- A second tank of the same fertilizer: the append credits and stamps it in its
         -- multi-tank block (the driving unit is excluded by identity), BEFORE the
         -- driving tank's own stamp, so the first stamp of each cell comes from the
-        -- multi-tank markBoomCells call. The same product on purpose: a different one
-        -- trips trackSprayerCoverage's product-change reset twice per tick and wipes
-        -- those stamps before the overlap check reads them.
+        -- multi-tank markBoomCells call. The same product on purpose, so the case does
+        -- not depend on how trackSprayerCoverage handles a product change within a tick
+        -- (the #442 reset, which MAINT-169's _multiTankCoverageHold now holds off
+        -- during the multi-tank replay).
         local wap = v.spec_sprayer.workAreaParameters
         wap.sprayVehicle, wap.sprayVehicleFillUnitIndex = v, 1
         v.spec_fillUnit = { fillUnits = { { fillLevel = 900, fillType = 42 },
@@ -202,17 +203,22 @@ end
 -- One tick as the game runs it: start processing (preserver prepend, overlap prepend),
 -- the engine's paint through the work area's processing function, end processing
 -- (the credit append stamps this tick's boom, then the restore appends).
--- Returns the set of sections switched off by either overlap check this tick.
+-- Returns the set of sections switched off by either overlap check this tick, and
+-- whether the pass was blocked: the flag, or the work area's processing function
+-- swapped for the block's stub (read between the start and end events, where a
+-- block is in effect).
 local function tick(v, ss, hookMgr, dtMs)
     g_currentMission.time = g_currentMission.time + dtMs
     Sprayer.onStartWorkAreaProcessing(v, dtMs)
     local off = {}
     for i in pairs(v._sfOverlapSuppressedSections or {}) do off[i] = true end
     for i in pairs(v._sfSuppressedSections or {}) do off[i] = true end
+    local blocked = v._sfOverlapBlockedPass == true
+        or HookManager.countBlockedWorkAreas(v, "spec_sprayer", "processSprayerArea") > 0
     local wa = v.spec_workArea.workAreas[1]
     wa.processingFunction(v, wa, dtMs)
     Sprayer.onEndWorkAreaProcessing(v, dtMs, true)
-    return off
+    return off, blocked
 end
 
 -- Install order as the mod does it: the credit append first (top of the install
@@ -310,12 +316,14 @@ do
     local off, blockedTicks = {}, 0
     v.lastSpeed = 0
     for _ = 1, 400 do   -- 60 s stopped, same position
-        for i in pairs(tick(v, ss, hookMgr, 150)) do off[i] = true end
-        if v._sfOverlapBlockedPass == true then blockedTicks = blockedTicks + 1 end
+        local o, blocked = tick(v, ss, hookMgr, 150)
+        for i in pairs(o) do off[i] = true end
+        if blocked then blockedTicks = blockedTicks + 1 end
     end
     T.eq("S1 60 s standing still mid-lane: no section switched off", list(off), "")
     -- Only the 99% coverage block may block a pass (RSF-F226). Blocking a stopped
     -- pass is a separate decision; if it is ever made, this row flips on purpose.
+    -- Either signal counts (tick): the flag, or a swapped processSprayerArea.
     T.eq("S3 stopped: the pass is not blocked (RSF-F226's block predicate unchanged)", blockedTicks, 0)
     local off2 = {}
     v.movingDirection = 1
