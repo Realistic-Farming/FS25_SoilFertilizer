@@ -5465,6 +5465,13 @@ function HookManager:installSprayerAreaHook()
             -- Server only
             if not self.isServer then return end
 
+            -- MAINTENANCE row 169: clear the multi-tank coverage hold at the start of every
+            -- tick, so a throw inside a previous tick's secondary loop can never leave it set
+            -- (the same clear-at-start discipline as RSF-F226d's _sfOverlapBlockedPass).
+            if g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilSystem ~= nil then
+                g_SoilFertilityManager.soilSystem._multiTankCoverageHold = nil
+            end
+
             if not g_SoilFertilityManager or
                not g_SoilFertilityManager.soilSystem or
                not g_SoilFertilityManager.settings.enabled then
@@ -6174,6 +6181,14 @@ function HookManager:installSprayerAreaHook()
                                 end
                             end
 
+                            -- MAINTENANCE row 169: one pass covers its ground once, however many
+                            -- tanks spray it, and the active tank's product is the pass's identity.
+                            -- While the secondaries replay, their coverage tracks (the fertilizer
+                            -- one below and the direct routes' name-only ones) must change nothing:
+                            -- a secondary's different name tripped the #442 product reset every
+                            -- tick and wiped the session, and its area was not new ground. Their
+                            -- drain, credit, reductions, grants and cell marks all still run.
+                            if soilSys then soilSys._multiTankCoverageHold = true end
                             for fuIdx, fu in ipairs(fuSpec.fillUnits) do
                                 -- RSF-F196 R3d: a secondary unit holding a refused product
                                 -- costs only that unit. No drain, no credit, no coverage for
@@ -6313,6 +6328,7 @@ function HookManager:installSprayerAreaHook()
                                     end
                                 end
                             end
+                            if soilSys then soilSys._multiTankCoverageHold = nil end
                         end
                     end
                 end

@@ -6684,6 +6684,10 @@ end
 ---@param fillTypeName   string|nil
 ---@param updateFractions boolean|nil  false = skip area update, only record product name
 function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions)
+    -- MAINTENANCE row 169: while the sprayer hook replays a rig's secondary tanks, the pass's
+    -- coverage belongs to the active tank. Return before the #442 reset, the name write and
+    -- the area add, so a secondary neither wipes the session nor counts its ground twice.
+    if self._multiTankCoverageHold then return end
     if not liters or liters <= 0 then return end
     local field = self.fieldData[fieldId]
     if not field then return end

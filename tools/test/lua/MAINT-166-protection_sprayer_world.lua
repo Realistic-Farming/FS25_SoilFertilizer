@@ -34,6 +34,8 @@ local FT = {
   FUNGICIDE   = { name = "FUNGICIDE",   index = 72, massPerLiter = 0.001 },
   PESTICIDE   = { name = "PESTICIDE",   index = 73, massPerLiter = 0.001 },
   PROPICONAZOLE = { name = "PROPICONAZOLE", index = 74, massPerLiter = 0.001 },
+  FERTILIZER  = { name = "FERTILIZER",  index = 75, massPerLiter = 0.001 },
+  LIQUIDFERTILIZER = { name = "LIQUIDFERTILIZER", index = 76, massPerLiter = 0.001 },
 }
 PSW.FT = FT
 
@@ -60,6 +62,7 @@ end
 --- opts.centreWeed   the weed state FieldState reads at the field's centre (default 2, live)
 --- opts.multiplayer  a multiplayer host (every event it broadcasts is recorded in world.events)
 --- opts.noVww        a rig with no variable-width sections: coverage takes the hook's litres path
+--- opts.secondTank   a fill type name for a real second fill unit (a multi-tank rig); world.units
 function PSW.new(opts)
   opts = opts or {}
   if saved == nil then
@@ -165,6 +168,10 @@ function PSW.new(opts)
   local product = FT[opts.product or "HERBICIDE"]
   world.product = product
   local units = { [1] = { fillLevel = 5000, fillType = product.index } }
+  if opts.secondTank ~= nil then
+    units[2] = { fillLevel = 5000, fillType = FT[opts.secondTank].index }
+  end
+  world.units = units
   local v = {
     isServer = true, id = "veh1",
     spec_workArea = { workAreas = {} },
@@ -191,6 +198,13 @@ function PSW.new(opts)
   wa.processingFunction = v.processSprayerArea
   table.insert(v.spec_workArea.workAreas, wa)
   world.vehicle = v
+
+  --- Switch the active tank (unit 1) to another product, as a refill does.
+  function world:setProduct(name)
+    self.product = FT[name]
+    self.units[1].fillType = FT[name].index
+    self.vehicle.spec_sprayer.workAreaParameters.sprayFillType = FT[name].index
+  end
 
   --- The field record scanFields made.
   function world:field() return self.sys.fieldData[7] end
