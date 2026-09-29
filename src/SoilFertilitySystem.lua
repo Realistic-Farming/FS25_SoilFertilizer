@@ -6883,7 +6883,10 @@ end
 ---@param fieldId   number
 ---@param boomPoints table  Array of {x=, z=} world positions
 ---@param overlayOnly boolean|nil  When true, stamp visuals only; skip coverage counters
-function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
+---@param stampVehicle table|nil  The spraying vehicle. Recorded with its driven distance
+---       (_sfOdoM) in each new session stamp so overlap prevention can tell this
+---       vehicle's current pass from an earlier one (HookManager.isCellSprayedEarlier).
+function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly, stampVehicle)
     if not boomPoints or #boomPoints == 0 then return end
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
@@ -6921,10 +6924,15 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
             if polyVerts == nil or _isPointInPoly(cellCx, cellCz, polyVerts) then
 
                 -- ── Coverage deduplication ─────────────────────────────────────────
-                -- Store stamp timestamp (ms) so the overlap check can apply a grace period
-                -- and avoid suppressing sections that are still on their current pass.
+                -- The stamp records who stamped the cell and how far that vehicle had
+                -- driven, so the overlap check can tell the pass that stamped the cell
+                -- from an earlier one (HookManager.isCellSprayedEarlier).
                 if not field.sessionCoverageCells[cellKey] then
-                    field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
+                    field.sessionCoverageCells[cellKey] = {
+                        ms  = (g_currentMission and g_currentMission.time) or 0,
+                        odo = stampVehicle and stampVehicle._sfOdoM or nil,
+                        by  = stampVehicle,
+                    }
                     if not overlayOnly then
                         field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
