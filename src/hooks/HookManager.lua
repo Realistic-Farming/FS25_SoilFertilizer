@@ -5946,8 +5946,8 @@ function HookManager:installSprayerAreaHook()
                 -- false, for a plain fertilizer and truthy for a dual-purpose one, so both
                 -- counted their litres here and again after the credit, and a pass the V7
                 -- gate refused still counted here. The gap it was added for (#753, coverage
-                -- stuck on a sprayer without VWW sections) is cured by the same commit's
-                -- _geometricCoverageOwner clear below, and PROPICONAZOLE is not a profile, so
+                -- stuck on a sprayer without VWW sections) is cured by that commit's
+                -- _geometricCoverageOwner flag (and the later F61 clear below), and PROPICONAZOLE is not a profile, so
                 -- `not isFertilizer` already counts it.
                 local _useLitCov = not isFertilizer
                 if g_SoilFertilityManager.soilSystem then
