@@ -138,7 +138,7 @@ do
     T.eq("C5 the mower's own install does",
          W(mower, "spec_mower", "processDropArea", function(f) return f end), 1)
     T.eq("C6 and it wrapped the drop area, not the mower area",
-         mower.spec_workArea.workAreas[1]._sfWraps, nil)
+         HookManager.workAreaRecords[mower.spec_workArea.workAreas[1]], nil)
 end
 
 -- ── D: idempotency. A second sweep must not stack wrappers. ──────────────────
@@ -244,13 +244,13 @@ do
     T.eq("H2 teardown correctly restores nothing", restored, 0)
     T.eq("H3 and reports ours as left in the chain", left, 1)
     T.eq("H3b THE RECORD IS KEPT, inactive, so the next sweep can see it",
-         vehicle.spec_workArea.workAreas[1]._sfWraps.processTedderArea.active, false)
+         HookManager.workAreaRecord(vehicle.spec_workArea.workAreas[1], "processTedderArea").active, false)
 
     -- The install sweep runs again, as it does on every load.
     T.eq("H4 a re-install must NOT wrap a second time over our own live wrapper",
          W(vehicle, "spec_tedder", "processTedderArea", mk), 0)
     T.eq("H4b it reactivated the kept record instead",
-         vehicle.spec_workArea.workAreas[1]._sfWraps.processTedderArea.active, true)
+         HookManager.workAreaRecord(vehicle.spec_workArea.workAreas[1], "processTedderArea").active, true)
 
     applied = 0
     engineCall(vehicle, 1)
@@ -419,8 +419,8 @@ do
 
     local areas = combine.spec_workArea.workAreas
     T.ok("K2 THE INSTALLER WRAPPED THE SWATH AREA, so it passed the right spec and name",
-         areas[2]._sfWraps ~= nil and areas[2]._sfWraps["processCombineSwathArea"] ~= nil)
-    T.eq("K3 and it left the chopper area alone", areas[1]._sfWraps, nil)
+         HookManager.workAreaRecord(areas[2], "processCombineSwathArea") ~= nil)
+    T.eq("K3 and it left the chopper area alone", HookManager.workAreaRecords[areas[1]], nil)
 
     -- Dispatch the way the engine does and confirm the original still runs
     -- underneath the installed wrapper.
@@ -452,7 +452,7 @@ do
 
     T.eq("L3 the gate takes one work area", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 1)
     local gate = sprayer.spec_workArea.workAreas[1].processingFunction
-    local record = sprayer.spec_workArea.workAreas[1]._sfWraps.processSprayerArea
+    local record = HookManager.workAreaRecord(sprayer.spec_workArea.workAreas[1], "processSprayerArea")
     T.ok("L3b the record holds the exact predecessor, the wrapper and the site",
          record.predecessor == real and record.wrapper == gate and record.site == SITE and record.active == true)
 
@@ -513,7 +513,7 @@ do
 
     sprayer._sfOverlapBlockedPass = nil
     T.eq("L13 THE GATE'S PREDECESSOR IS PF'S WRAPPER, not the base function",
-         sprayer.spec_workArea.workAreas[1]._sfWraps.processSprayerArea.predecessor == pfWrapper, true)
+         HookManager.workAreaRecord(sprayer.spec_workArea.workAreas[1], "processSprayerArea").predecessor == pfWrapper, true)
     engineCall(sprayer, 1)
     T.eq("L14 so PF still runs through the gate", pfRan, 1)
     T.eq("L15 and the base function still runs underneath it", baseRan, 1)
@@ -531,6 +531,11 @@ do
 
     T.eq("L16 first install takes it", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 1)
     local gate = workArea.processingFunction
+    -- RSF-F226 item 2 names the record's home: one table on the global HookManager
+    -- class, weakly keyed by work area, not a field on the work area.
+    T.eq("L16b THE RECORD IS IN HookManager.workAreaRecords, keyed by this work area",
+         type(HookManager.workAreaRecords[workArea]) == "table" and HookManager.workAreaRecords[workArea].processSprayerArea ~= nil, true)
+    T.eq("L16c that table's keys are weak", getmetatable(HookManager.workAreaRecords) ~= nil and getmetatable(HookManager.workAreaRecords).__mode, "k")
     T.eq("L17 a second sweep wraps nothing", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 0)
     T.eq("L17b and the slot still holds the first gate", workArea.processingFunction == gate, true)
 
@@ -539,7 +544,7 @@ do
     workArea.processingFunction = function(v, a, d) foreignRan = foreignRan + 1 return gate(v, a, d) end
     T.eq("L18 release with something above us leaves the slot in place",
          HookManager.releaseWorkAreaSlot(workArea, "processSprayerArea"), "left")
-    T.eq("L18b and the record is kept, inactive", workArea._sfWraps.processSprayerArea.active, false)
+    T.eq("L18b and the record is kept, inactive", HookManager.workAreaRecord(workArea, "processSprayerArea").active, false)
     sprayer._sfOverlapBlockedPass = true
     local xs = engineCall(sprayer, 1)
     T.eq("L19 AN INACTIVE GATE IS A PURE PASS-THROUGH even with the flag set", xs, 7)
@@ -547,7 +552,7 @@ do
 
     -- Reinstall: reactivated, never stacked.
     T.eq("L20 a reinstall wraps nothing new", W(sprayer, "spec_sprayer", "processSprayerArea", G, SITE), 0)
-    T.eq("L20b it reactivated the kept record", workArea._sfWraps.processSprayerArea.active, true)
+    T.eq("L20b it reactivated the kept record", HookManager.workAreaRecord(workArea, "processSprayerArea").active, true)
     realRan = 0
     T.eq("L20c so the flag refuses again, through one gate", engineCall(sprayer, 1), 0)
     T.eq("L20d and the real function did not run", realRan, 0)
@@ -560,7 +565,7 @@ do
     W(sprayer2, "spec_sprayer", "processSprayerArea", G, SITE)
     T.eq("L21 release while still ours restores", HookManager.releaseWorkAreaSlot(wa2, "processSprayerArea"), "restored")
     T.eq("L21b the exact predecessor is back", wa2.processingFunction == real, true)
-    T.eq("L21c and the record is gone", wa2._sfWraps.processSprayerArea, nil)
+    T.eq("L21c and the record is gone", HookManager.workAreaRecord(wa2, "processSprayerArea"), nil)
     T.eq("L21d a slot with no record releases nothing", HookManager.releaseWorkAreaSlot(wa2, "processSprayerArea"), nil)
 end
 

@@ -3254,9 +3254,13 @@ end
 -- =========================================================
 -- HOOK 1: Harvest events (Cutter.onEndWorkAreaProcessing)
 -- =========================================================
--- Combine.addCutterArea is registered via SpecializationUtil.registerFunction,
--- then WorkArea captures it as a direct closure reference at vehicle load -
--- class-level hook is bypassed completely.
+-- Combine.addCutterArea is an ordinary copied method (RSF-F226 item 5): it is
+-- registered on the vehicle type (Combine.lua:109), copied onto each vehicle at
+-- load (SpecializationUtil.lua:141-145) and called on the vehicle as
+-- combineVehicle:addCutterArea(...) (Cutter.lua:801). WorkArea never captures it.
+-- A class-level wrap alone misses the copy each vehicle holds, which is why this
+-- hook patches the vehicle instances and reaches later ones through its
+-- VehicleSystem.addVehicle late patch.
 -- Cutter.onEndWorkAreaProcessing IS an event listener (dynamic dispatch).
 -- It runs AFTER processCutterArea accumulates workAreaParameters this tick,
 -- and AFTER calling combineVehicle:addCutterArea internally, so all harvest
@@ -3585,8 +3589,11 @@ end
 -- and that pointer is COPIED from `self[functionName]` at vehicle load
 -- (WorkArea.lua:257-266), so a class-only hook is a failed install. We wrap
 -- all four surfaces (class, registered type, live instance, live work-area
--- stored pointer) with one factory, prevent duplicate wrapping, retain every
--- exact original, and register cleanup for all four layers.
+-- stored pointer) with one factory, retain every exact original, and register
+-- cleanup for all four layers. The factory itself has no identity guard (RSF-F226
+-- item 6): it wraps whatever it is handed. Stacking is prevented at the slot, where
+-- a slot already holding one of its tagged wrappers is skipped (RSF-741 item 9,
+-- HookManager._zoneYieldWrappers below).
 --
 -- The wrapper scales ONLY the newly-added multiplier-area delta
 -- (`lastMultiplierArea` after minus before) by the pre-cut spatial scalar (or
@@ -4198,13 +4205,23 @@ end
 -- work area by functionName ALONE would conflate a mower's drop area with a
 -- tedder's, so the owning spec field is part of the selector.
 
+--- THE IDENTITY RECORD (RSF-F226 item 2): one durable table on the global HookManager
+--- class, weakly keyed by work area. For each wrapped slot it holds the exact
+--- predecessor, the exact wrapper installed, the owning site and an active flag. It is
+--- not the per-instance hook row list, so uninstallAll's row wipe cannot erase it, and
+--- a deleted vehicle's work areas fall away with it. It is the only authority for
+--- "already wrapped". Kept across a re-run of this file, so it stays durable.
+HookManager.workAreaRecords = HookManager.workAreaRecords or setmetatable({}, { __mode = "k" })
+
+--- The identity record of one slot, or nil.
+---@return table|nil { predecessor, wrapper, site, active }
+function HookManager.workAreaRecord(workArea, functionName)
+    local byName = type(workArea) == "table" and HookManager.workAreaRecords[workArea] or nil
+    return byName and byName[functionName] or nil
+end
+
 --- Wrap the captured processing pointer of every matching work area on one vehicle.
----
---- THE IDENTITY RECORD (RSF-F226 item 2). Each wrapped slot keeps one record on the
---- work area itself, `workArea._sfWraps[functionName]`: the exact predecessor, the
---- exact wrapper installed, the owning site, and an active flag. It lives on the work
---- area, not in the hook rows, so uninstallAll's row wipe cannot erase it, and it dies
---- with the vehicle. It is the only authority for "already wrapped".
+--- The identity record lives in HookManager.workAreaRecords (above).
 ---
 --- Idempotent: a slot that already has a record is REACTIVATED, never wrapped again,
 --- so a second sweep, a re-entrant addVehicle or a reinstall after teardown cannot
@@ -4233,8 +4250,9 @@ function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, ma
         if type(workArea) == "table"
            and workArea.functionName == functionName
            and type(workArea.processingFunction) == "function" then
-            workArea._sfWraps = workArea._sfWraps or {}
-            local record = workArea._sfWraps[functionName]
+            local byName = HookManager.workAreaRecords[workArea]
+            if byName == nil then byName = {} HookManager.workAreaRecords[workArea] = byName end
+            local record = byName[functionName]
             if record ~= nil then
                 record.active = true
                 if activated then activated[workArea] = true end
@@ -4243,7 +4261,7 @@ function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, ma
                 local wrapper = makeWrapper(workArea.processingFunction, record)
                 if type(wrapper) == "function" then
                     record.wrapper = wrapper
-                    workArea._sfWraps[functionName] = record
+                    byName[functionName] = record
                     workArea.processingFunction = wrapper
                     wrapped = wrapped + 1
                     if activated then activated[workArea] = true end
@@ -4263,12 +4281,11 @@ end
 --- nothing anywhere reporting it). Never writes nil, a class or a type function.
 ---@return string|nil "restored", "left" or nil when the slot has no record
 function HookManager.releaseWorkAreaSlot(workArea, functionName)
-    if type(workArea) ~= "table" or type(workArea._sfWraps) ~= "table" then return nil end
-    local record = workArea._sfWraps[functionName]
+    local record = HookManager.workAreaRecord(workArea, functionName)
     if type(record) ~= "table" then return nil end
     if workArea.processingFunction == record.wrapper and type(record.predecessor) == "function" then
         workArea.processingFunction = record.predecessor
-        workArea._sfWraps[functionName] = nil
+        HookManager.workAreaRecords[workArea][functionName] = nil
         return "restored"
     end
     record.active = false
@@ -4351,17 +4368,15 @@ function HookManager.makeSprayerGate(predecessor, record)
 end
 
 --- Does this sprayer carry at least one ACTIVE Soil gate on a processSprayerArea
---- area? Read from the identity record on each work area.
+--- area? Read from the identity record (HookManager.workAreaRecords).
 ---@return boolean
 function HookManager.hasActiveSprayerGate(sprayer)
     if type(sprayer) ~= "table" or sprayer.spec_sprayer == nil then return false end
     local waSpec = sprayer.spec_workArea
     if waSpec == nil or type(waSpec.workAreas) ~= "table" then return false end
     for _, workArea in pairs(waSpec.workAreas) do
-        if type(workArea) == "table"
-           and workArea.functionName == "processSprayerArea"
-           and type(workArea._sfWraps) == "table" then
-            local record = workArea._sfWraps.processSprayerArea
+        if type(workArea) == "table" and workArea.functionName == "processSprayerArea" then
+            local record = HookManager.workAreaRecord(workArea, "processSprayerArea")
             if type(record) == "table" and record.active
                and record.site == HookManager.SPRAYER_GATE_SITE then
                 return true

@@ -1,7 +1,7 @@
 -- MAINT-168-insecticide_coverage_name_spec_test.lua: MAINTENANCE row 168, the
 -- insecticide direct route tags coverage with the pass's real fill name.
 --
--- The sprayer hook tracks every pass under fillType.name (HookManager :6078, the trackSprayerCoverage call), and
+-- The sprayer hook tracks every pass under fillType.name (HookManager :6093, the trackSprayerCoverage call), and
 -- onInsecticideAppliedDirect tracked it again under the literal "INSECTICIDE" with the
 -- fractions on. The only name that reaches this route is PESTICIDE, a compatibility slot
 -- for a mod that registers a fill type by that name; no base-game, PF or known mod does, so

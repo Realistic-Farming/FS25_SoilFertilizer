@@ -345,7 +345,7 @@ end
 local function setCoverage(fraction) W.soilSys.fieldData[7].sessionCoverageFraction = fraction end
 local function gateRecord(v, i)
     local wa = v.spec_workArea.workAreas[i or 1]
-    return wa._sfWraps and wa._sfWraps.processSprayerArea or nil, wa
+    return HookManager.workAreaRecord(wa, "processSprayerArea"), wa
 end
 --- What one pass did, read from the engine and from Soil's two downstream credits.
 local function snapshot(v)
@@ -378,7 +378,7 @@ group("E", function()
          and rec.site == HookManager.SPRAYER_GATE_SITE)
     T.ok("E4 over the pointer the engine captured, not a class or type function",
          rec ~= nil and rec.predecessor == g_vehicleTypeManager.types.sprayer.functions.processSprayerArea)
-    T.eq("E5 an area of another name on the same sprayer carries none", v.spec_workArea.workAreas[2]._sfWraps, nil)
+    T.eq("E5 an area of another name on the same sprayer carries none", HookManager.workAreaRecords[v.spec_workArea.workAreas[2]], nil)
     local rec0, wa0 = gateRecord(before)
     T.ok("E6 the sprayer present at install got it through the install sweep",
          rec0 ~= nil and rec0.active == true and wa0.processingFunction == rec0.wrapper)
@@ -493,7 +493,7 @@ group("I", function()
 
     local twin = build({ uid = "one" })   -- a second vehicle under an id already taken
     T.eq("I3 a failed add (VehicleSystem.lua:165-168) returns false", g_currentMission.vehicleSystem:addVehicle(twin), false)
-    T.eq("I4 and wraps nothing", twin.spec_workArea.workAreas[1]._sfWraps, nil)
+    T.eq("I4 and wraps nothing", HookManager.workAreaRecords[twin.spec_workArea.workAreas[1]], nil)
 
     -- A foreign mod wraps over the gate after it was installed.
     local foreign = 0
@@ -545,7 +545,7 @@ group("I-restore", function()
     local captured = rec.predecessor
     W.hm:uninstallAll()
     T.eq("I15 teardown restored the exact captured pointer", wa.processingFunction == captured, true)
-    T.eq("I16 and dropped the record", wa._sfWraps.processSprayerArea, nil)
+    T.eq("I16 and dropped the record", HookManager.workAreaRecord(wa, "processSprayerArea"), nil)
     T.eq("I17 and the class method is the engine's own again", VehicleSystem.addVehicle == W.nativeAdd, true)
     -- The instance writers are never torn down (MAINTENANCE, out of R8), so the live
     -- instance chain still reaches the gate's addVehicle wrap. It went inactive.

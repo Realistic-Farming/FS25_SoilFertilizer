@@ -461,7 +461,7 @@ group("F1", function()
     Sprayer.onStartWorkAreaProcessing(v, 16)
     T.eq("F1 the prepend did NOT flag a pass no gate can refuse", v._sfOverlapBlockedPass, nil)
     -- Read from the work area's own record, not from the helper under test.
-    T.eq("F2 because the alias area carries no gate record", v.spec_workArea.workAreas[1]._sfWraps, nil)
+    T.eq("F2 because the alias area carries no gate record", HookManager.workAreaRecords[v.spec_workArea.workAreas[1]], nil)
     T.ok("F3 THE PASS IS BILLED, because the alias area is about to spray", books.charges > before)
     local wa = v.spec_workArea.workAreas[1]
     T.ok("F4 and it does spray", wa.processingFunction(v, wa, 16) > 0)
@@ -482,7 +482,7 @@ group("F5", function()
     frame(v, true)                      -- blocked, and the end event never runs
     local before = books.charges
     local wa = v.spec_workArea.workAreas[1]
-    local rec = wa._sfWraps and wa._sfWraps.processSprayerArea
+    local rec = HookManager.workAreaRecord(wa, "processSprayerArea")
     T.ok("F5 the gate is still the captured pointer and its record is active",
          rec ~= nil and rec.active == true and wa.processingFunction == rec.wrapper)
 
