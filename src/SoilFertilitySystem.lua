@@ -2931,6 +2931,9 @@ function SoilFertilitySystem:update(dt)
     -- per tick, engine-side ops only when a value actually moved.
     self:_vmMirrorDisplayTick(dt)
 
+    -- #1037: one slice of the whole-field weed read (server only).
+    self:_weedReadTick()
+
     -- =========================================================
     -- PHASE 4: Batched daily field processing
     -- =========================================================
@@ -4919,9 +4922,129 @@ function SoilFertilitySystem:_getWitheredWeedStates()
     return set
 end
 
---- Average the game's weed factor across the field instead of reading a single centre
---- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
---- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
+-- #1037: the daily weed read measures the WHOLE field. The rings above reach about 30 m
+-- from one point, about 4% of a 6.6 ha field, so a field sprayed over most of its area,
+-- centre included, read 0% for good while the unsprayed strip grew back. The whole-field
+-- read counts the weed map's pixels inside the field's own polygon, state by state, the
+-- way the engine's herbicide mission measures a field (HerbicideMission.lua:36-55), and
+-- slices the polygon across frames the way FieldGetInfoTask reads a field
+-- (FieldGetInfoTask.lua:38-85; DensityMapUpdateTask.lua:23, 30 m of Z a frame). Server
+-- only, one slice per frame. The daily pass takes the field's latest finished result and
+-- asks for the next; until a field's first result arrives it keeps the ring average.
+local WEED_READ_SLICE_M = 30
+
+--- #1037: queue a whole-field weed read (a field already queued or being read is not
+--- queued twice). Needs the engine field's density-map polygon (Field.lua:170).
+---@param fieldId number
+---@param fsField table   g_fieldManager field
+function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField)
+    if g_server == nil then return end
+    if not (fsField and type(fsField.getDensityMapPolygon) == "function") then return end
+    self._weedReadQueue  = self._weedReadQueue or {}
+    self._weedReadQueued = self._weedReadQueued or {}
+    if self._weedReadQueued[fieldId] then return end
+    self._weedReadQueued[fieldId] = true
+    table.insert(self._weedReadQueue, { fieldId = fieldId, fsField = fsField })
+end
+
+--- #1037: build one read. One pixel count per weed state that has a factor and is not
+--- withered (a withered state reads 0, #1032), over the field polygon; the pixels the
+--- polygon touches are the denominator (FieldGetInfoTask.lua:72, and its consumer
+--- PlaceableRiceField.lua:1319-1326 compares per-state counts against that total).
+---@return boolean started
+function SoilFertilitySystem:_startWeedFieldRead(job)
+    local weedSystem = g_currentMission and g_currentMission.weedSystem
+    if weedSystem == nil or g_terrainNode == nil then return false end
+    local mapId, firstChannel, numChannels = weedSystem:getDensityMapData()
+    local factors = weedSystem:getFactors()
+    local area = job.fsField:getDensityMapPolygon()
+    if mapId == nil or type(factors) ~= "table" or area == nil then return false end
+
+    local withered = self:_getWitheredWeedStates()
+    local modifier = DensityMapModifier.new(mapId, firstChannel, numChannels, g_terrainNode)
+    local multi = DensityMapMultiModifier.new()
+    job.factorOf = {}
+    for state, factor in pairs(factors) do
+        if type(state) == "number" and type(factor) == "number" and factor > 0 and not withered[state] then
+            local filter = DensityMapFilter.new(modifier)
+            filter:setValueCompareParams(DensityValueCompareType.EQUAL, state)
+            local name = "weed" .. state
+            multi:addExecuteGet(name, modifier, filter)
+            job.factorOf[name] = factor
+        end
+    end
+    area:applyToModifier(multi)
+    job.multi = multi
+    job.minZ, job.maxZ = multi:getPolygonMinMaxZ()
+    job.curZ = job.minZ
+    job.weighted, job.touched = 0, 0
+    return true
+end
+
+--- #1037: read one slice of the running job; store the field's factor when the last
+--- slice is done. Each slice resets the stats and counts into a fresh table, so the sum
+--- is right whether the engine reports a slice's counts or its running total.
+---@return boolean finished
+function SoilFertilitySystem:_readWeedFieldSlice(job)
+    local multi = job.multi
+    if job.minZ ~= nil then
+        local toZ = math.min(job.curZ + WEED_READ_SLICE_M, job.maxZ)
+        multi:setPolygonClipRegion(job.curZ, toZ)
+        job.curZ = toZ
+    end
+    multi:resetStats()
+    local counts = {}
+    local _, _, _, touched = multi:execute(nil, counts)
+    job.touched = job.touched + (touched or 0)
+    for name, factor in pairs(job.factorOf) do
+        job.weighted = job.weighted + (counts[name] or 0) * factor
+    end
+    if job.minZ ~= nil and job.curZ < job.maxZ then return false end
+
+    if job.touched > 0 then
+        self._weedFieldReads = self._weedFieldReads or {}
+        local factor = math.max(0, math.min(1, job.weighted / job.touched))
+        self._weedFieldReads[job.fieldId] = factor
+        SoilLogger.debug("[#1037] whole-field weed read: field=%d factor=%.3f pixels=%d",
+            job.fieldId, factor, job.touched)
+    end
+    return true
+end
+
+--- #1037: advance the whole-field weed read by one slice. Called every frame from
+--- update(); server only.
+function SoilFertilitySystem:_weedReadTick()
+    if g_server == nil then return end
+    local job = self._weedReadActive
+    if job == nil then
+        local queue = self._weedReadQueue
+        if queue == nil or #queue == 0 then return end
+        job = table.remove(queue, 1)
+        local okS, started = pcall(self._startWeedFieldRead, self, job)
+        if not (okS and started) then
+            if not okS then
+                SoilLogger.debug("[#1037] whole-field weed read could not start for field %d: %s",
+                    job.fieldId, tostring(started))
+            end
+            self._weedReadQueued[job.fieldId] = nil
+            return
+        end
+        self._weedReadActive = job
+    end
+    local okR, finished = pcall(self._readWeedFieldSlice, self, job)
+    if not okR then
+        SoilLogger.debug("[#1037] whole-field weed read failed for field %d: %s", job.fieldId, tostring(finished))
+    end
+    if not okR or finished then
+        self._weedReadActive = nil
+        self._weedReadQueued[job.fieldId] = nil
+    end
+end
+
+--- The field's weed factor for the daily pass, in [0,1], or 0 when no managed crop is
+--- present at the centre (bare/grass/forage skip exactly as before). #1037: the latest
+--- whole-field read once one has finished for this field (see _requestWeedFieldRead);
+--- until then, the average of the centre and two rings. A ring point counts only if
 --- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
 --- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
 --- field where every ring point is rejected this collapses to the old centre-only read.
@@ -4953,6 +5076,11 @@ function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
 
     -- Dead (herbicide-withered) weeds read as 0: vanilla already applies their harvest
     -- factor, and they neither compete nor draw nutrients (#1030).
+    -- #1037: the whole field, once a read has finished; ask for the next one either way.
+    self:_requestWeedFieldRead(fieldId, fsField)
+    local wholeField = self._weedFieldReads and self._weedFieldReads[fieldId]
+    if wholeField ~= nil then return wholeField end
+
     local withered = self:_getWitheredWeedStates()
     local function liveWeedFactor()
         if fs.weedState ~= nil and withered[fs.weedState] then return 0 end
