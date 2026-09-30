@@ -126,14 +126,44 @@ function luaStringText(raw) {
   return m ? (m[1] ?? m[2] ?? m[4]) : null;
 }
 
-const isGlobalG = (n) => n && n.type === "Identifier" && n.name === "_G" && !n.isLocal;
+const isGlobal = (n, name) => n?.type === "Identifier" && n.name === name && !n.isLocal;
+
+// An expression that yields the environment, spelled the ways src/ spells it: `_G`,
+// any getfenv(...) call (a mod's getfenv returns modEnv, which carries source:
+// mods.lua:497-505 and :512 at game 1.24.0.0), `a and getfenv(0) or b`, or a local
+// of the file assigned from one of those (`local env = getfenv(0)`). Locals are
+// tracked by name within the file, so an unrelated local of the same name counts
+// too; that can only add a hit, never hide one.
+function isEnv(n, envLocals) {
+  if (!n) return false;
+  if (isGlobal(n, "_G")) return true;
+  if (n.type === "CallExpression" && isGlobal(n.base, "getfenv")) return true;
+  if (n.type === "LogicalExpression") return isEnv(n.left, envLocals) || isEnv(n.right, envLocals);
+  return n.type === "Identifier" && n.isLocal === true && envLocals.has(n.name);
+}
+
+// Walk an AST, depth first in source order. `globals` is skipped: with scope on,
+// luaparse lists each global's first Identifier there too (luaparse.js:1496-1497,
+// :2732), and walking it would report every hit twice.
+function walkAst(node, visit, parent = null, key = null) {
+  if (node === null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const child of node) walkAst(child, visit, parent, key);
+    return;
+  }
+  visit(node, parent, key);
+  for (const k of Object.keys(node)) {
+    if (k !== "loc" && k !== "range" && k !== "globals") walkAst(node[k], visit, node, k);
+  }
+}
 
 // Every reference to a loader in src/ outside src/main.lua, as "file:line name".
 // Only global references count, so the many locals, parameters and table keys
 // named `source` in src/ are not hits. An alias (`local f = loadfile`) is a hit,
-// and so are `_G.name`, `_G["name"]` and `rawget(_G, "name")`. A name built at
-// run time (`_G["sour" .. "ce"]`) is beyond a static check. A file that does not
-// parse cannot be checked, so it is reported as a hit.
+// and so are `env.name`, `env["name"]` and `rawget(env, "name")` for any env above.
+// A name built at run time (`_G["sour" .. "ce"]`), or an environment that reaches
+// a file another way (a parameter, a table field), is beyond a static check. A
+// file that does not parse cannot be checked, so it is reported as a hit.
 function srcLoaderRefs() {
   const hits = [];
   for (const file of findLuaFiles()) {
@@ -148,31 +178,29 @@ function srcLoaderRefs() {
       hits.push(`${where}: does not parse as Lua 5.1 (${e.message}), so it cannot be checked`);
       continue;
     }
-    const walk = (node, parent, key) => {
-      if (node === null || typeof node !== "object") return;
-      if (Array.isArray(node)) {
-        for (const child of node) walk(child, parent, key);
-        return;
-      }
+    const envLocals = new Set();
+    walkAst(ast, (node) => {
+      if (node.type !== "LocalStatement" && node.type !== "AssignmentStatement") return;
+      node.variables.forEach((v, i) => {
+        if (v.type === "Identifier" && v.isLocal === true && isEnv(node.init[i], envLocals)) envLocals.add(v.name);
+      });
+    });
+    walkAst(ast, (node, parent, key) => {
       let name = null;
       if (node.type === "Identifier" && !node.isLocal
           && !(parent?.type === "MemberExpression" && key === "identifier")
           && !(parent?.type === "TableKeyString" && key === "key")) {
         name = node.name;
-      } else if (node.type === "MemberExpression" && isGlobalG(node.base)) {
+      } else if (node.type === "MemberExpression" && isEnv(node.base, envLocals)) {
         name = node.identifier.name;
-      } else if (node.type === "IndexExpression" && isGlobalG(node.base) && node.index.type === "StringLiteral") {
+      } else if (node.type === "IndexExpression" && isEnv(node.base, envLocals) && node.index.type === "StringLiteral") {
         name = luaStringText(node.index.raw);
-      } else if (node.type === "CallExpression" && node.base.type === "Identifier" && node.base.name === "rawget"
-          && !node.base.isLocal && isGlobalG(node.arguments[0]) && node.arguments[1]?.type === "StringLiteral") {
+      } else if (node.type === "CallExpression" && isGlobal(node.base, "rawget")
+          && isEnv(node.arguments[0], envLocals) && node.arguments[1]?.type === "StringLiteral") {
         name = luaStringText(node.arguments[1].raw);
       }
       if (name !== null && LOADERS.has(name)) hits.push(`${where}:${node.loc.start.line} ${name}`);
-      for (const k of Object.keys(node)) {
-        if (k !== "loc" && k !== "range") walk(node[k], node, k);
-      }
-    };
-    walk(ast, null, null);
+    });
   }
   return hits;
 }

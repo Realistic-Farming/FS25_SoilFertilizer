@@ -129,8 +129,25 @@ const DECOYS = [
   "local S = {}; S.source = function() return source end",
   "-- source(g_currentModDirectory .. \"src/B.lua\")",
   "local note = \"loadstring and require\"",
+  "local env = getfenv(0)",
+  "local mission = env.g_currentMission",
+  "local i18n = getfenv(0)[\"g_i18n\"]",
+  "local box = {}; box.source = 1",
   "",
 ].join("\n");
+
+// The environment as src/ reaches it (getfenv(0), directly or through a local),
+// one form per row, run after B12.
+const ENV_PLANTS = [
+  ["B13 getfenv(0).source", "getfenv(0).source(\"src/A.lua\")", "source"],
+  ["B14 getfenv(0)[\"dofile\"]", "getfenv(0)[\"dofile\"](\"src/A.lua\")", "dofile"],
+  ["B15 a local holding getfenv(0)", "local env = getfenv(0); env.require(\"A\")", "require"],
+  ["B16 rawget(getfenv(0), \"loadfile\")", "local f = rawget(getfenv(0), \"loadfile\")", "loadfile"],
+  ["B17 getfenv and getfenv(0) or nil", "local env = getfenv and getfenv(0) or nil; env.source(\"src/A.lua\")", "source"],
+];
+
+// A hit is reported once: the line must appear exactly once in the output.
+const count = (out, s) => out.split(s).length - 1;
 
 const PLANTS = [
   ["B2 source(...)", "source(g_currentModDirectory .. \"src/A.lua\")", "source"],
@@ -161,8 +178,8 @@ try {
   for (const [name, code, loader] of PLANTS) {
     put("src/B.lua", "-- planted\nlocal x = 1\n" + code + "\n");
     const r = await runRunner(runner, ["--loads", "src/A.lua"], FIX_TEST);
-    row(`${name} in another src/ file fails --loads and names it`,
-      r.code === 1 && r.out.includes(`src/B.lua:${plantLine} ${loader}`), shown(r));
+    row(`${name} in another src/ file fails --loads and names it once`,
+      r.code === 1 && count(r.out, `src/B.lua:${plantLine} ${loader}`) === 1, shown(r));
   }
 
   put("src/B.lua", "-- source\nlocal = 1\n");
@@ -174,6 +191,13 @@ try {
   const plain = await runRunner(runner, [], FIX_TEST);
   row("B12 without --loads the check does not run (a plain run is as before)",
     plain.code === 0 && /PASS - 1 assertion passed, 0 failed across 1 file\./.test(plain.out), shown(plain));
+
+  for (const [name, code, loader] of ENV_PLANTS) {
+    put("src/B.lua", "-- planted\nlocal x = 1\n" + code + "\n");
+    const r = await runRunner(runner, ["--loads", "src/A.lua"], FIX_TEST);
+    row(`${name} in another src/ file fails --loads and names it once`,
+      r.code === 1 && count(r.out, `src/B.lua:${plantLine} ${loader}`) === 1, shown(r));
+  }
 } finally {
   rmSync(FIX, { recursive: true, force: true });
 }

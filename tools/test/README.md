@@ -29,8 +29,11 @@ it, so `./src/X.lua`, an absolute path in the repo and, on Windows, a different
 letter case all select what `src/X.lua` selects. A path outside the repo, or one
 that is not a file, is refused. Every `--loads` run first checks the rule the
 selection rests on: no `src/` file other than `src/main.lua` loads another
-(`source`, `loadfile`, `dofile`, `loadstring` or `require`, called or aliased). If
-one does, `--loads` fails and names it; run the whole suite instead.
+(`source`, `loadfile`, `dofile`, `loadstring` or `require`, called or aliased,
+directly or through `_G`, `getfenv(...)` or a local holding one). If one does,
+`--loads` fails and names it; run the whole suite instead. A name built at run
+time, or an environment passed in as a parameter or a table field, is beyond this
+static check.
 
 Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 
