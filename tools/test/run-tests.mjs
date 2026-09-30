@@ -18,9 +18,10 @@
 // itself load under `local _ENV` shaped exactly like modEnv, so a source that reads
 // an engine global the wrong way fails on the bench the way it fails in a game.
 //
-// Usage:  node run-tests.mjs
-// Exit:   0 = all assertions passed, 1 = any failure or Lua load error.
-import { readFileSync, readdirSync } from "node:fs";
+// Usage:  node run-tests.mjs [--loads <repo path> ...]
+//         (--loads runs only the tests that can reach that file; see Selection below)
+// Exit:   0 = all assertions passed, 1 = any failure, Lua load error, or bad selection.
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import fengari from "fengari";
@@ -88,10 +89,50 @@ function runLua(program) {
   return { rc, out, errMsg };
 }
 
-const testFiles = readdirSync(LUA_DIR).filter((f) => f.endsWith("_test.lua")).sort();
-if (testFiles.length === 0) {
+const allTestFiles = readdirSync(LUA_DIR).filter((f) => f.endsWith("_test.lua")).sort();
+if (allTestFiles.length === 0) {
   console.log(c.yellow("No *_test.lua files found in tools/test/lua/."));
   process.exit(0);
+}
+
+// Selection (Tyson's battery ruling, 2026-09-30): a mutation battery runs each
+// mutant only against the test files that can see the file it mutates.
+//   node run-tests.mjs                          every *_test.lua, as before
+//   node run-tests.mjs --loads src/X.lua [...]  only the tests that can reach it
+// Each test file runs in its own fresh Lua state (runLua above), so a repo file
+// reaches a test only through that test's own text: its --!load list, its
+// --!text list, or a path it loads by hand (RSF-F202 loadfiles
+// src/utils/Logger.lua). So a test is selected when its text names the path.
+// src/main.lua sources every module, so a test that --!loads it is always
+// selected. Selecting by text can take in too many files, never too few.
+// A path that is not a repo file, or a selection that finds no test, is an
+// error: a battery must never read a run over zero files as a pass.
+const loadsPaths = [];
+for (let i = 2; i < process.argv.length; i++) {
+  if (process.argv[i] === "--loads" && i + 1 < process.argv.length) {
+    loadsPaths.push(process.argv[++i].replace(/\\/g, "/"));
+    continue;
+  }
+  console.log(c.red(`Unknown argument '${process.argv[i]}'. Usage: node run-tests.mjs [--loads <repo path> ...]`));
+  process.exit(1);
+}
+let testFiles = allTestFiles;
+if (loadsPaths.length) {
+  for (const p of loadsPaths) {
+    if (!existsSync(join(REPO_ROOT, p))) {
+      console.log(c.red(`--loads ${p}: no such file in the repo.`));
+      process.exit(1);
+    }
+  }
+  testFiles = allTestFiles.filter((tf) => {
+    const text = readFileSync(join(LUA_DIR, tf), "utf8");
+    return parseDeps(text).includes("src/main.lua") || loadsPaths.some((p) => text.includes(p));
+  });
+  if (testFiles.length === 0) {
+    console.log(c.red(`--loads ${loadsPaths.join(", ")}: no test file reaches it.`));
+    process.exit(1);
+  }
+  console.log(c.dim(`Selected ${testFiles.length} of ${allTestFiles.length} test files that reach ${loadsPaths.join(", ")}.`));
 }
 
 let totalPass = 0, totalFail = 0, hadError = false;
@@ -169,6 +210,7 @@ for (const tf of testFiles) {
 console.log(
   "\n" +
     (totalFail === 0 && !hadError ? c.green("PASS") : c.red("FAIL")) +
-    ` - ${totalPass} assertion${totalPass === 1 ? "" : "s"} passed, ${totalFail} failed across ${testFiles.length} file${testFiles.length === 1 ? "" : "s"}.`
+    ` - ${totalPass} assertion${totalPass === 1 ? "" : "s"} passed, ${totalFail} failed across ${testFiles.length} file${testFiles.length === 1 ? "" : "s"}` +
+    (loadsPaths.length ? ` (selected by --loads, of ${allTestFiles.length}).` : ".")
 );
 process.exit(totalFail === 0 && !hadError ? 0 : 1);

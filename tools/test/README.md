@@ -13,7 +13,15 @@ npm run all                       # everything
 npm run syntax                    # Lua 5.1 parse check only
 npm run lint                      # FS25 footgun lint only
 npm test                          # logic tests only
+node run-tests.mjs --loads src/X.lua   # only the logic tests that can reach src/X.lua
 ```
+
+`--loads` is for mutation batteries (Tyson's ruling, 2026-09-30): each mutant runs
+only against the test files that can see the file it mutates. A test is selected
+when its own text names the path (its `--!load` or `--!text` list, or a hand
+`loadfile`), and a test that loads `src/main.lua` is always selected. Every test
+file runs in its own Lua state, so no other test can see the file. The whole suite
+still runs once, green, on the head.
 
 Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 
