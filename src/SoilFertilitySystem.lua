@@ -4970,8 +4970,9 @@ function SoilFertilitySystem:_weedReadPending(fieldId)
 end
 
 --- #1037: queue today's whole-field weed read for every active field whose daily pass
---- will sample weeds: the setting on, a field the sim has not put to sleep, not grassland,
---- and a managed crop at the centre (the same gates the daily pass applies). Server only.
+--- will sample weeds: the setting on, a field the sim has not put to sleep, not a meadow,
+--- not grassland, and a managed crop at the centre (the same gates the daily pass
+--- applies). Server only.
 function SoilFertilitySystem:_queueDailyWeedReads()
     if g_server == nil then return end
     if not (self.settings.weedPressure and SoilConstants.WEED_PRESSURE) then return end
@@ -4979,9 +4980,22 @@ function SoilFertilitySystem:_queueDailyWeedReads()
     for _, fieldId in ipairs(self._activeFieldList or {}) do
         local field = self.fieldData[fieldId]
         local cropLower = field and field.lastCrop and string.lower(field.lastCrop) or nil
-        local asleep = FieldSentry_API ~= nil and type(FieldSentry_API.isFieldSimDisabled) == "function"
-            and FieldSentry_API.isFieldSimDisabled(fieldId) == true
-        if field and not asleep and not (cropLower and nonCrops[cropLower]) then
+        -- The daily pass's FieldSentry gate (_processOneDailyField): a field put to sleep
+        -- skips the pass, and a meadow returns before the weed block, so neither may queue
+        -- a read or hold the batch for one. The pass calls refreshContract first; this
+        -- queue does not, and accepts a one-day lag on a contract that starts or ends
+        -- today. refreshContract asks every contract provider and the deco detector, and
+        -- here that would run for every active field in the one frame the batch is queued.
+        -- On the day of a flip the lag costs at most one unused read or one day on the
+        -- ring average, never a stale value (the pass uses a read only for its own day).
+        -- The meadow toggle has no lag: refreshContract never changes it.
+        local asleep, meadow = false, false
+        if FieldSentry_API ~= nil and type(FieldSentry_API.isFieldSimDisabled) == "function" then
+            local disabled, _, isMeadow = FieldSentry_API.isFieldSimDisabled(fieldId)
+            asleep = disabled == true
+            meadow = isMeadow == true
+        end
+        if field and not asleep and not meadow and not (cropLower and nonCrops[cropLower]) then
             local fsField = self:_fsFieldFor(fieldId)
             if fsField and self:_weedCentreState(fsField, fieldId) then
                 self:_requestWeedFieldRead(fieldId, fsField, self._dailyBatchDay)

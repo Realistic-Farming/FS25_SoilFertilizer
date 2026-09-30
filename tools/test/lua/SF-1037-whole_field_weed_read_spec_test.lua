@@ -27,9 +27,11 @@
 --     the clip region bounds a slice, and each get reports its running count since
 --     resetStats. execute returns NOTHING, so no count can come from its return values;
 --   * FieldState reading the same pixel map at a point, for the centre gate and the
---     ring fallback.
+--     ring fallback;
+--   * FieldSentry (src/FieldSentry.lua, loaded as the mod loads it). Groups M and Z set a
+--     field's meadow toggle and sleep flag only through FieldSentry's own setters.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local saved = {
   g_server = g_server, g_fieldManager = g_fieldManager, g_fruitTypeManager = g_fruitTypeManager,
@@ -322,6 +324,50 @@ do
   T.eq("C3b no whole-field read is made for it", EXECUTES - before, 0)
   T.eq("C3c and its day is not held up", frames, 1)
   CROP_AT_CENTRE = 3
+end
+
+-- ══════════════════════════════════════════════════════════
+-- M: A MEADOW QUEUES NO READ (MAINTENANCE row 177). The daily pass returns before its
+-- weed block for a meadow (_processOneDailyField), so a read queued for one was never
+-- used, and the batch still waited for it.
+-- ══════════════════════════════════════════════════════════
+do
+  paint(function() return 4 end)              -- uniformly weedy, a crop field reads 75
+  FieldSentry_API.reset()
+  local field = newField(40)
+  local sys = newSystem(field)
+  FieldSentry_API.setFieldMeadow(1, true)     -- the player's meadow toggle
+  local before = EXECUTES
+  local frames = runDay(sys, 101)
+  T.eq("M1 a meadow with a crop at its centre gets no whole-field read", EXECUTES - before, 0)
+  T.eq("M2 and its day is not held up", frames, 1)
+  -- Meadow rules shed MEADOW.PRESSURE_DECAY (2.0, Constants.lua) a day; crop rules would
+  -- have risen toward the map's 75.
+  T.near("M3 the pass keeps it on meadow rules: weed risk sheds 2 a day (40 to 38)", field.weedPressure, 38, 1e-6)
+  FieldSentry_API.setFieldMeadow(1, false)    -- the toggle off: an ordinary crop field again
+  before = EXECUTES
+  frames = runDay(sys, 102)
+  T.ok("M4 the same field with the toggle off gets its read the next day", EXECUTES - before > 0)
+  T.eq("M4b and the pass waits for it, one slice a frame", frames, SLICES)
+  T.near("M4c and moves toward the map's 75 by the day's cap (38 + 20 = 58)", field.weedPressure, 58, 1e-6)
+  FieldSentry_API.reset()
+end
+
+-- ══════════════════════════════════════════════════════════
+-- Z: A FIELD PUT TO SLEEP QUEUES NO READ (the #1049 gate this change rewrites)
+-- ══════════════════════════════════════════════════════════
+do
+  paint(function() return 4 end)
+  FieldSentry_API.reset()
+  local field = newField(40)
+  local sys = newSystem(field)
+  FieldSentry_API.setFieldManual(1, true)     -- the player puts the field to sleep
+  local before = EXECUTES
+  local frames = runDay(sys, 101)
+  T.eq("Z1 a field put to sleep gets no whole-field read", EXECUTES - before, 0)
+  T.eq("Z2 and its day is not held up", frames, 1)
+  T.eq("Z3 and its values stay frozen (40)", field.weedPressure, 40)
+  FieldSentry_API.reset()
 end
 
 -- ══════════════════════════════════════════════════════════
