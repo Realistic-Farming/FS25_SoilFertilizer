@@ -49,8 +49,10 @@ local function world(today)
     local sys = SoilFertilitySystem.new(settings)
     local vm, age, wet = ENGINE.newValueMaps()
     W.sys, W.age, W.wet = sys, age, wet
-    g_currentMission = { environment = { currentMonotonicDay = today }, vehicleSystem = { vehicles = {} } }
-    g_currentMission.vehicleSystem.addVehicle = function(self, v) self.vehicles[#self.vehicles + 1] = v return true end
+    g_currentMission = { environment = { currentMonotonicDay = today }, vehicleSystem = ENGINE.newVehicleSystem() }
+    -- The engine's vehicle system: a Class instance, addVehicle on the class (MAINTENANCE row 172).
+    -- installAll's order: the later-vehicle wrap before any hook registers its route on it.
+    sys.hookManager:installVehicleRoutes()
     g_SoilFertilityManager = { settings = settings, soilSystem = sys }
     sys.materialDown.ageAppliedThroughDay = today
     sys.materialWetness.appliedThroughDay = today

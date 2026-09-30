@@ -4,15 +4,16 @@
 --
 -- THE ENTRY-POINT BAR IS GROUP E. Production enters through HookManager:installAll,
 -- run here for real and in full, on a vehicle system that is a Class instance of
--- VehicleSystem (VehicleSystem.lua:3, :6). installAll's own order puts the tedder,
--- windrower, mower carrier and swath hooks after the gate, and each of them writes
--- the live instance field vehicleSystem.addVehicle, which shadows the class method
--- (class.lua:13-16). A sprayer is then BOUGHT: built the way the engine builds one
+-- VehicleSystem (VehicleSystem.lua:3, :6). installAll installs the one later-vehicle
+-- wrap on the class method right after harvest, and the gate, the tedder, windrower,
+-- mower carrier and swath hooks register their routes on it. None of them writes the
+-- live instance field vehicleSystem.addVehicle any more, which would shadow the class
+-- method (class.lua:13-16; MAINTENANCE row 172). A sprayer is then BOUGHT: built the way the engine builds one
 -- (the type's functions copied into the instance, Vehicle.lua:486; the work area's
 -- pointer captured from the instance, WorkArea.lua:257-266) and registered with the
 -- colon call Vehicle.lua:1044 makes. Nothing in this file wraps a slot by hand, and
 -- nothing pre-fills a record: the gate on a bought sprayer is there only if the
--- class wrap was installed where the instance chain bottoms out on it.
+-- class wrap runs its route.
 --
 -- Every pass is dispatched as WorkArea does it (WorkArea.lua:124-206): the start
 -- event, raised unconditionally; each captured pointer, a dot call whose first
@@ -368,8 +369,8 @@ group("E", function()
     end })
     T.eq("E0 installAll ran to its end (" .. tostring(W.installErr) .. ")", W.installOk, true)
     local vs = g_currentMission.vehicleSystem
-    T.ok("E1 the later hooks wrote the live instance field, so the class method is shadowed",
-         rawget(vs, "addVehicle") ~= nil and getmetatable(vs).__index == VehicleSystem)
+    T.ok("E1 no hook wrote the live instance field, so Vehicle.lua:1044's colon call reaches the class wrap",
+         rawget(vs, "addVehicle") == nil and getmetatable(vs).__index == VehicleSystem)
 
     local v, added = buy({ uid = "bought", areas = { "processSprayerArea", "processExtraArea" } })
     T.eq("E2 the colon call registered the bought sprayer, its return forwarded", added, true)
@@ -549,22 +550,25 @@ group("I-restore", function()
     T.eq("I15 teardown restored the exact captured pointer", wa.processingFunction == captured, true)
     T.eq("I16 and dropped the record", HookManager.workAreaRecord(wa, "processSprayerArea"), nil)
     T.eq("I17 and the class method is the engine's own again", VehicleSystem.addVehicle == W.nativeAdd, true)
-    -- The instance writers are never torn down (MAINTENANCE, out of R8), so the live
-    -- instance chain still reaches the gate's addVehicle wrap. It went inactive.
+    -- No instance writer is left (MAINTENANCE row 172), so the colon call reaches the
+    -- class method, and the later-vehicle wrap came off it at teardown.
     local later, addedLater = buy({ uid = "after-teardown" })
     T.eq("I18 a sprayer bought after teardown is still registered", addedLater, true)
-    T.eq("I19 and carries no gate: the addVehicle wrap went inactive at teardown", gateRecord(later), nil)
+    T.eq("I19 and carries no gate: no route runs after teardown", gateRecord(later), nil)
 end)
 
 group("I-class", function()
-    -- The class wrap's own teardown row: still-ours restore, otherwise left in place.
-    -- Driven through the gate's rows alone, because installAll's older harvest row
-    -- restores VehicleSystem.addVehicle unconditionally (pre-existing, not R8's).
+    -- The later-vehicle wrap's own teardown row (MAINTENANCE row 172): still-ours
+    -- restore, otherwise left in place. Driven through the rows of the wrap and the
+    -- gate alone, because installAll's older harvest row restores
+    -- VehicleSystem.addVehicle unconditionally (pre-existing, not R8's).
     world()
     VehicleSystem.addVehicle = W.nativeAdd
+    local mgr = setmetatable({ hooks = {} }, { __index = HookManager })
+    T.eq("I20 the later-vehicle wrap and the gate install on their own",
+         tostring(mgr:installVehicleRoutes()) .. "/" .. tostring(mgr:installSprayerOverlapGate()), "true/true")
     local rows = {}
-    local mgr = { registerCleanup = function(_, _name, fn) rows[#rows + 1] = fn end }
-    T.eq("I20 the gate installs on its own", HookManager.installSprayerOverlapGate(mgr), true)
+    for _, row in ipairs(mgr.hooks) do rows[#rows + 1] = row.cleanup end
     local ours = VehicleSystem.addVehicle
     local foreignAdd = function(self, vehicle) return ours(self, vehicle) end
     VehicleSystem.addVehicle = foreignAdd

@@ -532,9 +532,15 @@ function HookManager:installAll(soilSystem)
     self._harvestHookOk = harvestOk == true   -- RSF-741 item 9: the token rides this wrapper
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- Sprayer overlap gate (RSF-F226 item 3). MUST stay here, right after harvest and
-    -- before the tedder: its VehicleSystem.addVehicle class wrap is shadowed by the
-    -- instance-field writers that follow (see installSprayerOverlapGate).
+    -- Later-vehicle routes (RSF-F226 item 2, MAINTENANCE row 172): the ONE
+    -- VehicleSystem.addVehicle class wrap through which every hook below reaches a
+    -- vehicle bought after install. Right after harvest, before any hook registers a
+    -- route on it. It needs VehicleSystem only, never a specialization.
+    local routesOk = self:installVehicleRoutes()
+    if routesOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Sprayer overlap gate (RSF-F226 item 3): the present sprayers, and one route on
+    -- the wrap above for sprayers bought later.
     local overlapGateOk = self:installSprayerOverlapGate()
     if overlapGateOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
@@ -4308,6 +4314,181 @@ function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName)
     return restored, leftInPlace
 end
 
+--- releaseWorkAreaSlot over every slot one install wrapped or reactivated, emptying
+--- the set as it goes.
+---@param activated table   the weak set wrapWorkAreaProcessing filled
+---@return number restored, number leftInPlace
+function HookManager.releaseActivatedSlots(activated, functionName)
+    local restored, leftInPlace = 0, 0
+    for workArea in pairs(activated) do
+        local result = HookManager.releaseWorkAreaSlot(workArea, functionName)
+        if result == "restored" then restored = restored + 1
+        elseif result == "left" then leftInPlace = leftInPlace + 1 end
+        activated[workArea] = nil
+    end
+    return restored, leftInPlace
+end
+
+--- A makeWrapper whose wrapper is a pure pass-through while its identity record is
+--- inactive. A slot a teardown had to leave under a foreign wrap then calls its exact
+--- predecessor once, every return and error passed on, and applies no Soil effect; a
+--- reinstall reactivates the record instead of stacking a second wrapper.
+---@param makeWrapper function (predecessor, record) -> wrapperFn
+---@return function (predecessor, record) -> wrapperFn
+function HookManager.passThroughWhenInactive(makeWrapper)
+    return function(predecessor, record)
+        local inner = makeWrapper(predecessor, record)
+        if type(inner) ~= "function" then return inner end
+        return function(...)
+            if not record.active then return predecessor(...) end
+            return inner(...)
+        end
+    end
+end
+
+--- Wrap one copied instance function (Vehicle.lua:486 copies the type's functions
+--- into the vehicle) and record the wrapper beside the original, under `markerKey`,
+--- so the teardown can tell whether the live function is still ours.
+--- One record per function name: a name already recorded is not wrapped again.
+---@param makeWrapper function original -> wrapperFn
+---@return boolean wrapped
+function HookManager.wrapInstanceFunction(vehicle, markerKey, name, makeWrapper)
+    if type(vehicle) ~= "table" then return false end
+    local wraps = rawget(vehicle, markerKey)
+    if wraps ~= nil and wraps[name] ~= nil then return false end
+    local original = vehicle[name]
+    if type(original) ~= "function" then return false end
+    local wrapper = makeWrapper(original)
+    if type(wrapper) ~= "function" then return false end
+    if wraps == nil then
+        wraps = {}
+        rawset(vehicle, markerKey, wraps)
+    end
+    rawset(vehicle, name, wrapper)
+    wraps[name] = { original = original, wrapper = wrapper }
+    return true
+end
+
+--- Take Soil's copied-instance-function wraps off one vehicle, each ONLY while the live
+--- function is still the wrapper Soil installed (GROUND-CONDITION-CONTRACT v1.5
+--- section 3 and RSF-F211: "restore only still-owned wrappers"). A function something
+--- else has wrapped since is left in place, still working, and stays in the record, so
+--- a reinstall does not stack a second wrapper under the foreign one.
+---@return number restored, number leftInPlace
+function HookManager.releaseInstanceWraps(vehicle, markerKey)
+    local wraps = type(vehicle) == "table" and rawget(vehicle, markerKey) or nil
+    if type(wraps) ~= "table" then return 0, 0 end
+    local restored, leftInPlace = 0, 0
+    for name, w in pairs(wraps) do
+        if rawget(vehicle, name) == w.wrapper then
+            rawset(vehicle, name, w.original)
+            wraps[name] = nil
+            restored = restored + 1
+        else
+            leftInPlace = leftInPlace + 1
+        end
+    end
+    if next(wraps) == nil then rawset(vehicle, markerKey, nil) end
+    return restored, leftInPlace
+end
+
+-- =========================================================
+-- THE LATER-VEHICLE ROUTES (RSF-F226 item 2, MAINTENANCE row 172)
+-- =========================================================
+-- A vehicle bought after install reaches Soil through ONE VehicleSystem.addVehicle
+-- class wrap. Vehicle.lua:1044 registers every vehicle with the colon call
+-- g_currentMission.vehicleSystem:addVehicle(self), which finds the class method
+-- through the instance's metatable (VehicleSystem.lua:3, :6; class.lua:13-16).
+--
+-- Six hooks used to write the live instance field vehicleSystem.addVehicle instead,
+-- each chaining the one before. That shadowed every class wrap, and it wrapped a
+-- vehicle whatever the add returned. Now each hook registers a ROUTE here. The wrap:
+--   * calls its predecessor first and forwards every return unchanged;
+--   * runs the routes only when the add returned true (VehicleSystem.lua:178), so a
+--     refused add (:163, :167) wraps nothing;
+--   * runs each route under its own pcall: one route's error stops neither another
+--     route nor the add, and a failing route is logged once;
+--   * needs VehicleSystem only, never a specialization (the sprayer gate is a route).
+-- Its cleanup row turns the wrap inactive, and restores the class method only while it
+-- is still ours; under a foreign wrap it stays in the chain as a pure pass-through. Each
+-- site's own teardown row switches its route off (registerSiteTeardown). Each install
+-- wraps afresh, with its own route list.
+
+--- Install the one addVehicle class wrap; the hooks installed after it register their
+--- routes through addVehicleRoute.
+---@return boolean success
+function HookManager:installVehicleRoutes()
+    self._vehicleRoutes = nil
+    if type(VehicleSystem) ~= "table" or type(VehicleSystem.addVehicle) ~= "function" then
+        SoilLogger.warning("[VehicleRoutes] VehicleSystem.addVehicle not available - vehicles bought later get no Soil hooks")
+        return false
+    end
+    local routes = {}
+    self._vehicleRoutes = routes
+
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    local predecessorAdd = VehicleSystem.addVehicle
+    local addRecord = { active = true }
+    local ourAdd = function(vsSelf, vehicle, ...)
+        local results = packAll(predecessorAdd(vsSelf, vehicle, ...))
+        if addRecord.active and results[1] == true then
+            for _, route in ipairs(routes) do
+                if route.active then
+                    local ok, err = pcall(route.fn, vehicle)
+                    if not ok and not route.failureLogged then
+                        route.failureLogged = true
+                        SoilLogger.warning("[VehicleRoutes] %s: install on a new vehicle failed (%s) - native work unaffected",
+                            tostring(route.name), tostring(err))
+                    end
+                end
+            end
+        end
+        return unpack(results, 1, results.n)
+    end
+    VehicleSystem.addVehicle = ourAdd
+    self:registerCleanup("VehicleSystem.addVehicle (later-vehicle routes)", function()
+        -- Inactive always: if something sits above us, we stay in its chain as a
+        -- pure pass-through. Restored only while the live method is still ours. Each
+        -- route is switched off by its own site's teardown row.
+        addRecord.active = false
+        if VehicleSystem.addVehicle == ourAdd then
+            VehicleSystem.addVehicle = predecessorAdd
+        end
+    end)
+    return true
+end
+
+--- Register one later-vehicle route on this install's wrap.
+---@param name string    the site, for the log
+---@param fn function    fn(vehicle), run for every vehicle added successfully
+---@return table|nil route { name, fn, active }, whose active the site's teardown
+---                        clears; nil when the wrap is not installed
+function HookManager:addVehicleRoute(name, fn)
+    local routes = self._vehicleRoutes
+    if routes == nil or type(fn) ~= "function" then return nil end
+    local route = { name = name, fn = fn, active = true }
+    routes[#routes + 1] = route
+    return route
+end
+
+--- The teardown row of one site: its route off, then every slot it wrapped or
+--- reactivated released (still ours, restored; otherwise inactive and kept), then
+--- `releaseMore` for the site's copied instance functions, when it has any.
+---@param releaseMore function|nil () -> restored, leftInPlace
+function HookManager:registerSiteTeardown(site, route, activated, functionName, releaseMore)
+    self:registerCleanup(functionName .. " work-area slots (" .. site .. ")", function()
+        if route ~= nil then route.active = false end
+        local restored, left = HookManager.releaseActivatedSlots(activated, functionName)
+        local fnRestored, fnLeft = 0, 0
+        if releaseMore ~= nil then fnRestored, fnLeft = releaseMore() end
+        SoilLogger.debug("[%s] teardown: %d slot(s) restored, %d left in place inactive; "
+            .. "%d instance function(s) restored, %d left in place", site, restored, left, fnRestored, fnLeft)
+    end)
+end
+
 -- =========================================================
 -- THE PERMANENT SPRAYER GATE (RSF-F226 item 3)
 -- =========================================================
@@ -4413,17 +4594,13 @@ function HookManager.isOverlapBlockedPass(sprayer)
     return HookManager.hasActiveSprayerGate(sprayer)
 end
 
---- Install the gate: one VehicleSystem.addVehicle class wrap for sprayers bought
---- later, then the vehicles already present.
+--- Install the gate: one route on the later-vehicle wrap (installVehicleRoutes) for
+--- sprayers bought later, then the vehicles already present.
 ---
---- PLACEMENT IS LOAD-BEARING. installAll calls this immediately after
---- installHarvestHook and before installTedderHook. Six hooks after that point
---- (tedder, windrower, mower carrier, swath, baler, forage wagon) write the live
---- instance field vehicleSystem.addVehicle, and Vehicle.lua:1044 resolves the
---- instance field first (class.lua:13-16). A class wrap installed after them is
---- shadowed and never runs for a newly bought sprayer. Installed here, the first
---- instance writer captures this wrap as its predecessor and the chain bottoms out
---- on it.
+--- installAll calls this right after installVehicleRoutes. Its position among the
+--- other routes no longer matters: no hook writes the instance field
+--- vehicleSystem.addVehicle any more (MAINTENANCE row 172), so nothing can shadow
+--- the class wrap the routes ride on.
 ---@return boolean success
 function HookManager:installSprayerOverlapGate()
     if not Sprayer or type(Sprayer.processSprayerArea) ~= "function" then
@@ -4448,35 +4625,9 @@ function HookManager:installSprayerOverlapGate()
             HookManager.makeSprayerGate, SITE, activated)
     end
 
-    local function packAll(...)
-        return { n = select("#", ...), ... }
-    end
-
-    -- 1. THE CLASS WRAP, FIRST. It calls its predecessor first and returns that
-    -- result unchanged; only a successful add (true, VehicleSystem.lua:178) gets the
-    -- gate. A failed add (false at :163/:167) wraps nothing.
-    local predecessorAdd = VehicleSystem.addVehicle
-    local addRecord = { active = true }
-    local ourAdd = function(vsSelf, vehicle, ...)
-        local results = packAll(predecessorAdd(vsSelf, vehicle, ...))
-        if addRecord.active and results[1] == true then
-            local ok, err = pcall(gateVehicle, vehicle)
-            if not ok then
-                SoilLogger.warning("[OverlapGate] gate install on a new vehicle failed (%s) - native work unaffected",
-                    tostring(err))
-            end
-        end
-        return unpack(results, 1, results.n)
-    end
-    VehicleSystem.addVehicle = ourAdd
-    self:registerCleanup("VehicleSystem.addVehicle (sprayer overlap gate)", function()
-        -- Inactive always: if something sits above us, we stay in its chain as a
-        -- pure pass-through. Restored only while the live method is still ours.
-        addRecord.active = false
-        if VehicleSystem.addVehicle == ourAdd then
-            VehicleSystem.addVehicle = predecessorAdd
-        end
-    end)
+    -- 1. Sprayers bought later: one route on the later-vehicle wrap. It runs only on a
+    -- successful add (true, VehicleSystem.lua:178); a failed add wraps nothing.
+    local route = self:addVehicleRoute(SITE, gateVehicle)
 
     -- 2. THEN THE VEHICLES ALREADY PRESENT.
     local gated = 0
@@ -4487,17 +4638,9 @@ function HookManager:installSprayerOverlapGate()
         end
     end
 
-    -- 3. The gate slots' teardown: still-ours restore, otherwise inactive-and-kept.
-    self:registerCleanup("processSprayerArea work-area slots (sprayer overlap gate)", function()
-        local restored, left = 0, 0
-        for workArea in pairs(activated) do
-            local result = HookManager.releaseWorkAreaSlot(workArea, "processSprayerArea")
-            if result == "restored" then restored = restored + 1
-            elseif result == "left" then left = left + 1 end
-            activated[workArea] = nil
-        end
-        SoilLogger.debug("[OverlapGate] teardown: %d slot(s) restored, %d left in place inactive", restored, left)
-    end)
+    -- 3. The gate's teardown: its route off, the slots still-ours restored,
+    -- otherwise inactive-and-kept.
+    self:registerSiteTeardown(SITE, route, activated, "processSprayerArea")
 
     SoilLogger.info(
         "[OK] Sprayer overlap gate installed on %d work area(s). This is an INSTALL count, not proof it runs; "
@@ -4512,8 +4655,8 @@ end
 --- Applies the hay bet's one-time drying delta and enqueues a
 --- corrective pass at end of frame. Never a class-level assignment
 --- (the brief rules it explicitly) - each existing tedder instance
---- is patched at install time, and VehicleSystem.addVehicle is
---- hooked to catch new spawns.
+--- is patched at install time, and new spawns reach it through its
+--- route on the later-vehicle wrap (installVehicleRoutes).
 ---@return boolean success
 function HookManager:installTedderHook()
     if not Tedder or type(Tedder.processTedderArea) ~= "function" then
@@ -4682,24 +4825,23 @@ function HookManager:installTedderHook()
     -- The TIMING here was always right and is unchanged: both sweeps happen after
     -- a vehicle has finished loading, which is exactly when spec_workArea.workAreas
     -- exists. Only the target moved.
+    local SITE = "tedder"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function tedderVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_tedder", "processTedderArea", wrapSlot, SITE, activated)
+    end
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_tedder", "processTedderArea", makeWrapper)
+            patchedCount = patchedCount + tedderVehicle(vehicle)
         end
     end
 
-    -- HOOK VehicleSystem.addVehicle for tedders that spawn later.
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_tedder", "processTedderArea", makeWrapper)
-            return origAdd(self, vehicle, ...)
-        end
-    end
+    -- Tedders bought later: one route on the later-vehicle wrap (installVehicleRoutes).
+    local route = self:addVehicleRoute(SITE, tedderVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processTedderArea")
 
     -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS, and saying
     -- so here is the point. This exact line reported a non-zero count for months
@@ -4776,21 +4918,22 @@ function HookManager:installWindrowerHook()
         end
     end
 
+    local SITE = "windrower"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function windrowerVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_windrower", "processWindrowerArea", wrapSlot, SITE, activated)
+    end
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_windrower", "processWindrowerArea", makeWrapper)
+            patchedCount = patchedCount + windrowerVehicle(vehicle)
         end
     end
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            HookManager.wrapWorkAreaProcessing(vehicle, "spec_windrower", "processWindrowerArea", makeWrapper)
-            return origAdd(self, vehicle, ...)
-        end
-    end
+    -- Windrowers bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, windrowerVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processWindrowerArea")
 
     SoilLogger.info(
         "[OK] Windrower hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
@@ -4891,13 +5034,11 @@ function HookManager:installMowerCarrierHook()
         end
     end
 
-    -- The drop: the instance copy of processDropArea, one frame per drop area.
-    local function wrapDrop(vehicle)
-        if type(vehicle) ~= "table" or vehicle.spec_mower == nil then return 0 end
-        if rawget(vehicle, "_sfMowerDropWrap") ~= nil then return 0 end
-        local real = rawget(vehicle, "processDropArea")
-        if real ~= nativeDrop then return 0 end
-        local wrapper = function(mowerSelf, dropArea, dt)
+    -- The drop: the instance copy of processDropArea, one frame per drop area. The
+    -- wrapper is recorded beside the original, for the still-owned teardown.
+    local dropWrapped = setmetatable({}, { __mode = "k" })
+    local function makeDropWrapper(real)
+        return function(mowerSelf, dropArea, dt)
             -- The end of processing drops every drop area every frame; one with nothing
             -- pending drops nothing (:385), so it opens no frame and runs no barrier.
             local frame = nil
@@ -4909,28 +5050,47 @@ function HookManager:installMowerCarrierHook()
             if not packed[1] then error(packed[2], 0) end
             return unpack(packed, 2, packed.n)
         end
-        rawset(vehicle, "processDropArea", wrapper)
-        rawset(vehicle, "_sfMowerDropWrap", { original = real, wrapper = wrapper })
+    end
+    local function wrapDrop(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_mower == nil then return 0 end
+        -- Only over the native drop: a foreign replacement is left alone.
+        if rawget(vehicle, "processDropArea") ~= nativeDrop then return 0 end
+        if not HookManager.wrapInstanceFunction(vehicle, "_sfMowerDropWrap", "processDropArea", makeDropWrapper) then
+            return 0
+        end
+        dropWrapped[vehicle] = true
         return 1
+    end
+
+    local SITE = "mower carrier"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapCutSlot = HookManager.passThroughWhenInactive(makeCutWrapper)
+    local function wrapCut(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_mower", "processMowerArea", wrapCutSlot, SITE, activated)
     end
 
     local patchedCount, dropCount = 0, 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_mower", "processMowerArea", makeCutWrapper)
+            patchedCount = patchedCount + wrapCut(vehicle)
             dropCount = dropCount + wrapDrop(vehicle)
         end
     end
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            HookManager.wrapWorkAreaProcessing(vehicle, "spec_mower", "processMowerArea", makeCutWrapper)
-            wrapDrop(vehicle)
-            return origAdd(self, vehicle, ...)
+    -- Mowers bought later: one route on the later-vehicle wrap, the cut and the drop.
+    local route = self:addVehicleRoute(SITE, function(vehicle)
+        wrapCut(vehicle)
+        wrapDrop(vehicle)
+    end)
+    self:registerSiteTeardown(SITE, route, activated, "processMowerArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(dropWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfMowerDropWrap")
+            restored, left = restored + r, left + l
+            dropWrapped[vehicle] = nil
         end
-    end
+        return restored, left
+    end)
 
     SoilLogger.info(
         "[OK] Mower carrier installed on %d work area(s) and %d drop call(s). This is an INSTALL count, not proof "
@@ -5155,24 +5315,23 @@ function HookManager:installCombineSwathHook()
     -- processCombineSwathArea has zero direct callers anywhere in the engine, the
     -- same as processTedderArea and processWindrowerArea, which is what confirms it
     -- is reached only through the work-area slot.
+    local SITE = "combine swath"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function swathVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_combine", "processCombineSwathArea", wrapSlot, SITE, activated)
+    end
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            patchedCount = patchedCount + HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_combine", "processCombineSwathArea", makeWrapper)
+            patchedCount = patchedCount + swathVehicle(vehicle)
         end
     end
 
-    -- And any that spawn later, the same way the tedder hook does.
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            HookManager.wrapWorkAreaProcessing(
-                vehicle, "spec_combine", "processCombineSwathArea", makeWrapper)
-            return origAdd(self, vehicle, ...)
-        end
-    end
+    -- And combines bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, swathVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processCombineSwathArea")
 
     -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS. The tedder
     -- hook's equivalent line reported a non-zero count for its entire life while
@@ -5440,22 +5599,30 @@ function HookManager:installBalerPickupHook()
         end
     end
 
+    local SITE = "baler collection"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makePickupWrapper)
+    local fnWrapped = setmetatable({}, { __mode = "k" })
     local function wrapBaler(vehicle)
         if type(vehicle) ~= "table" or vehicle.spec_baler == nil then return 0 end
-        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_baler", "processBalerArea", makePickupWrapper)
-        if rawget(vehicle, "_sfBalerWraps") == nil and type(vehicle.finishBale) == "function" and type(vehicle.createBale) == "function" then
-            local ownFinish, ownCreate = vehicle.finishBale, vehicle.createBale
-            vehicle.finishBale = function(v, ...) return BalerCollection.aroundFinish(v, ownFinish, ...) end
-            vehicle.createBale = function(v, ...) return BalerCollection.aroundCreate(v, ownCreate, ...) end
-            local wraps = { finishBale = ownFinish, createBale = ownCreate }
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_baler", "processBalerArea", wrapSlot, SITE, activated)
+        -- The copied instance functions, each recorded beside its original for the
+        -- still-owned teardown (RSF-F211 :58, :106).
+        if type(vehicle.finishBale) == "function" and type(vehicle.createBale) == "function" then
+            local a = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "finishBale", function(own)
+                return function(v, ...) return BalerCollection.aroundFinish(v, own, ...) end
+            end)
+            local b = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "createBale", function(own)
+                return function(v, ...) return BalerCollection.aroundCreate(v, own, ...) end
+            end)
             -- [part 2b] The partial round bale's pad scope.
-            if type(vehicle.setIsUnloadingBale) == "function" then
-                local ownUnloading = vehicle.setIsUnloadingBale
-                vehicle.setIsUnloadingBale = function(v, ...) return BalerCollection.aroundUnloading(v, ownUnloading, ...) end
-                wraps.setIsUnloadingBale = ownUnloading
+            local c = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "setIsUnloadingBale", function(own)
+                return function(v, ...) return BalerCollection.aroundUnloading(v, own, ...) end
+            end)
+            if a or b or c then
+                fnWrapped[vehicle] = true
+                n = n + 1
             end
-            rawset(vehicle, "_sfBalerWraps", wraps)
-            n = n + 1
         end
         return n
     end
@@ -5465,15 +5632,17 @@ function HookManager:installBalerPickupHook()
     if vs and type(vs.vehicles) == "table" then
         for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapBaler(vehicle) end
     end
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(vsSelf, vehicle, ...)
-            local r = packAll(origAdd(vsSelf, vehicle, ...))
-            pcall(wrapBaler, vehicle)
-            return unpack(r, 1, r.n)
+    -- Balers bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, wrapBaler)
+    self:registerSiteTeardown(SITE, route, activated, "processBalerArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(fnWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfBalerWraps")
+            restored, left = restored + r, left + l
+            fnWrapped[vehicle] = nil
         end
-        self:register(vs, "addVehicle", origAdd, "VehicleSystem.addVehicle (baler collection)")
-    end
+        return restored, left
+    end)
 
     SoilLogger.info("[OK] Baler collection installed (captured pickup pointer, fill-change acceptance, bale binding; %d existing wrap(s))", patched)
     return true
@@ -5487,14 +5656,19 @@ function HookManager:installForageWagonCollectionHook()
         SoilLogger.warning("[ForageWagonCollection] ForageWagon or the collection module not available - wagon loads stay unknown")
         return false
     end
-    local function packAll(...) return { n = select("#", ...), ... } end
+    local SITE = "forage wagon collection"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(ForageWagonCollection.makePickupWrapper)
+    local fnWrapped = setmetatable({}, { __mode = "k" })
     local function wrapWagon(vehicle)
         if type(vehicle) ~= "table" or vehicle.spec_forageWagon == nil then return 0 end
-        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_forageWagon", "processForageWagonArea", ForageWagonCollection.makePickupWrapper)
-        if rawget(vehicle, "_sfForageWagonWraps") == nil and type(vehicle.fillForageWagon) == "function" then
-            local ownFill = vehicle.fillForageWagon
-            vehicle.fillForageWagon = function(v, ...) return ForageWagonCollection.aroundFill(v, ownFill, ...) end
-            rawset(vehicle, "_sfForageWagonWraps", { fillForageWagon = ownFill })
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_forageWagon", "processForageWagonArea", wrapSlot, SITE, activated)
+        -- The copied fillForageWagon, recorded beside its original for the still-owned
+        -- teardown (RSF-F211 :58).
+        if HookManager.wrapInstanceFunction(vehicle, "_sfForageWagonWraps", "fillForageWagon", function(own)
+            return function(v, ...) return ForageWagonCollection.aroundFill(v, own, ...) end
+        end) then
+            fnWrapped[vehicle] = true
             n = n + 1
         end
         return n
@@ -5504,15 +5678,17 @@ function HookManager:installForageWagonCollectionHook()
     if vs and type(vs.vehicles) == "table" then
         for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapWagon(vehicle) end
     end
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(vsSelf, vehicle, ...)
-            local r = packAll(origAdd(vsSelf, vehicle, ...))
-            pcall(wrapWagon, vehicle)
-            return unpack(r, 1, r.n)
+    -- Wagons bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, wrapWagon)
+    self:registerSiteTeardown(SITE, route, activated, "processForageWagonArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(fnWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfForageWagonWraps")
+            restored, left = restored + r, left + l
+            fnWrapped[vehicle] = nil
         end
-        self:register(vs, "addVehicle", origAdd, "VehicleSystem.addVehicle (forage wagon collection)")
-    end
+        return restored, left
+    end)
     SoilLogger.info("[OK] ForageWagon collection installed (captured pickup pointer, fill acceptance; %d existing wrap(s))", patched)
     return true
 end

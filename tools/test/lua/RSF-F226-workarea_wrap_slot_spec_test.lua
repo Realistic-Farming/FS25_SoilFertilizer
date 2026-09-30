@@ -399,22 +399,18 @@ do
     Combine = { processCombineSwathArea = function() return 0, 0 end }
     g_currentMission = { vehicleSystem = { vehicles = { combine } } }
 
-    -- THE ARGUMENT BELOW IS INERT FOR THIS CASE, and saying so is the point.
-    -- installCombineSwathHook is declared with a colon, so this table lands in the
-    -- implicit self. The installer captures it (`local hookMgrRef = self`) but the
-    -- only use is hookMgrRef:getFieldIdAtWorldPosition deep inside the wrapper,
-    -- past the isServer and isArmed returns that this case never gets past. So the
-    -- stub method is never read, by this test or by K's dispatch.
-    --
-    -- It is left in place rather than deleted because it documents the real
-    -- dependency, but the risk is worth naming: if the installer ever starts using
-    -- self AT INSTALL TIME, this test feeds a one-method table while production
-    -- feeds the real HookManager, and the bar would stay green straight across
-    -- that divergence. An earlier version of this comment claimed the stub was a
-    -- collaborator the installer reaches, which was simply not true.
-    local installed = HookManager.installCombineSwathHook({
+    -- THE ARGUMENT BELOW IS THE MANAGER, a HookManager underneath. installCombineSwathHook
+    -- is declared with a colon, so this table lands in the implicit self. Since
+    -- MAINTENANCE row 172 the installer uses self AT INSTALL TIME: it registers its
+    -- later-vehicle route (addVehicleRoute) and its teardown row (registerSiteTeardown).
+    -- A one-method stub would now raise, which is the divergence the earlier version
+    -- of this comment warned of, so the table inherits the real methods. No
+    -- installVehicleRoutes ran here, so the route is nil and only the install sweep
+    -- wraps, which is all this case reads.
+    local installed = HookManager.installCombineSwathHook(setmetatable({
+        hooks = {},
         getFieldIdAtWorldPosition = function() return 1 end,
-    })
+    }, { __index = HookManager }))
     T.eq("K1 the real installer reports success", installed, true)
 
     local areas = combine.spec_workArea.workAreas

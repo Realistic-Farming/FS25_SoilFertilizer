@@ -1014,3 +1014,35 @@ function ENGINE.newWeatherGuard(opts)
         getClimate       = function(_, _season) if opts.climate then return { meanTemp = 12, rainDayFraction = 0.2 } end return nil end,
     }
 end
+
+--- The mission's vehicle system as the engine builds it, for a bar that registers a
+--- vehicle bought after install (MAINTENANCE row 172). VehicleSystem is a Class
+--- (VehicleSystem.lua:3) and new() sets the instance's metatable (:6), so the
+--- mission's instance reaches addVehicle through __index (class.lua:13-16), and a
+--- class wrap is what Vehicle.lua:1044's colon call runs. addVehicle (:160-179)
+--- refuses a non-vehicle (:161-164) and a unique id already registered (:165-168),
+--- otherwise registers the vehicle and returns true (:178). MODELED: "a vehicle" is
+--- any table (the engine asks vehicle:isa(Vehicle)), and a vehicle with no unique id
+--- is registered without one (the engine mints one, :169-171).
+---
+--- The CLASS is rebuilt on every call, because installAll wraps the class table it
+--- finds: a bar's next world must not inherit the last world's wraps.
+function ENGINE.newVehicleSystem()
+    VehicleSystem = {}
+    local VehicleSystem_mt = Class(VehicleSystem)
+    function VehicleSystem.new()
+        local self = setmetatable({}, VehicleSystem_mt)
+        self.vehicles = {}
+        self.vehicleByUniqueId = {}
+        return self
+    end
+    function VehicleSystem:addVehicle(vehicle)
+        if type(vehicle) ~= "table" then return false end
+        local id = vehicle.uniqueId
+        if id ~= nil and self.vehicleByUniqueId[id] ~= nil then return false end
+        table.insert(self.vehicles, vehicle)
+        if id ~= nil then self.vehicleByUniqueId[id] = vehicle end
+        return true
+    end
+    return VehicleSystem.new()
+end

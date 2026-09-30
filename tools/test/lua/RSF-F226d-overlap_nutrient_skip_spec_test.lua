@@ -27,9 +27,9 @@
 -- would pass against a build where the flag is set and never read.
 --
 -- THE BLOCK IS THE PERMANENT GATE (RSF-F226 item 3). Every sprayer here reaches it
--- the way production does: installSprayerOverlapGate's class wrap of
--- VehicleSystem.addVehicle, called with the colon call Vehicle.lua:1044 makes. No
--- slot is wrapped by hand.
+-- the way production does: the gate's route on the later-vehicle class wrap of
+-- VehicleSystem.addVehicle (installVehicleRoutes, MAINTENANCE row 172), called with the
+-- colon call Vehicle.lua:1044 makes. No slot is wrapped by hand.
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
@@ -181,9 +181,11 @@ local function spawn(opts)
     return v
 end
 
---- Every real hook this bar needs, in the order installAll runs them: the gate
---- (right after harvest), the sprayer area hook, then overlap prevention.
+--- Every real hook this bar needs, in the order installAll runs them: the
+--- later-vehicle wrap and the gate (right after harvest), the sprayer area hook, then
+--- overlap prevention.
 local function installHooks(hookMgr, overlapFirst)
+    HookManager.installVehicleRoutes(hookMgr)
     HookManager.installSprayerOverlapGate(hookMgr)
     if overlapFirst then
         HookManager.installOverlapPreventionHook(hookMgr)

@@ -81,7 +81,7 @@ MUTATIONS = [
   "a creation frame stays open after createBale returns"),
  # ── the hooks ───────────────────────────────────────────────────────────────
  ("H1-pickup-pointer-not-wrapped", HM,
-  [("        local n = HookManager.wrapWorkAreaProcessing(vehicle, \"spec_baler\", \"processBalerArea\", makePickupWrapper)\n",
+  [("        local n = HookManager.wrapWorkAreaProcessing(vehicle, \"spec_baler\", \"processBalerArea\", wrapSlot, SITE, activated)\n",
     "        local n = 0\n", 1)],
   "the captured pickup pointer is left native, so no pickup is observed"),
  ("H2-fill-change-not-wrapped", HM,

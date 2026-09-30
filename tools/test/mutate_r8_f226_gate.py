@@ -10,9 +10,16 @@
 # never counts as a kill. KILLED* means killed only by a Lua error (a crash, or a group that
 # raised): a weak kill, a failure.
 #
-# G1, G5 and G9 are the intake's three (move the class wrap to the overlap hook; key the
-# nutrient skip on the flag alone; restore the swap's lifetime, a block that comes off in
-# the end event). The rest bend the other changed lines.
+# G5 and G9 are the intake's (key the nutrient skip on the flag alone; restore the swap's
+# lifetime, a block that comes off in the end event). The rest bend the other changed lines.
+#
+# G1 (move the gate install to the overlap hook's position) is RETIRED, 2026-09-30,
+# MAINTENANCE row 172. It died only because six later hooks wrote the instance field
+# vehicleSystem.addVehicle and shadowed a class wrap installed after them. Row 172 removed
+# those writers: every hook is now a route on one class wrap, so the gate's position among
+# the routes is not load-bearing and G1 survives, correctly. The mutants on the lines row
+# 172 moved (the add wrap's return rule, its teardown) are also carried by
+# mutate_maint172_vehicle_routes.py.
 #
 # Not run, and why:
 # - hasActiveSprayerGate's site check: no other Soil site wraps processSprayerArea, so
@@ -38,11 +45,6 @@ GATE_CALL = ("    local overlapGateOk = self:installSprayerOverlapGate()\n"
              "    if overlapGateOk then successCount = successCount + 1 else failCount = failCount + 1 end\n")
 
 MUTATIONS = [
- ("G1-class-wrap-at-the-overlap-hook", HM,
-  [(GATE_CALL, "", 1),
-   ("    self:installOverlapPreventionHook()\n",
-    "    self:installOverlapPreventionHook()\n" + GATE_CALL, 1)],
-  "the gate installs where the overlap hook lives, after the instance-field writers (finding 1)"),
  ("G2-no-gate-install", HM,
   [(GATE_CALL, "", 1)],
   "installAll never installs the gate"),
@@ -133,8 +135,7 @@ MUTATIONS = [
   [("        addRecord.active = false\n", "", 1)],
   "the addVehicle wrap keeps wrapping after teardown"),
  ("G19-teardown-no-slot-release", HM,
-  [("            local result = HookManager.releaseWorkAreaSlot(workArea, \"processSprayerArea\")\n",
-    "            local result = nil\n", 1)],
+  [("    self:registerSiteTeardown(SITE, route, activated, \"processSprayerArea\")\n", "", 1)],
   "teardown never releases a gate slot"),
  ("G20-class-restore-unconditional", HM,
   [("        if VehicleSystem.addVehicle == ourAdd then\n", "        if true then\n", 1)],
