@@ -8,27 +8,40 @@
 -- presence. Nothing above this file touches a provider field, a provider
 -- method name or a disease name.
 --
--- Contract (handoff v0.8, items 1 to 8):
+-- Contract (handoff v0.8, and the Realistic Livestock 1.4.0.0 record-state
+-- delta, brief v1.0 on amendment v0.9):
 --   isBarnActivelySick(placeable) -> true | nil
 --     true  : at least one animal in the barn holds a disease record that is
---             active sickness (cured == false AND isCarrier == false, both real
---             booleans). Never a disease name, never a count.
+--             active sickness (see isActiveRecord). Never a disease name,
+--             never a count.
 --     nil   : everything else. Provider absent, diseases disabled, no records,
 --             a healthy herd, a malformed record, a read that throws, a list
 --             that cannot be walked. Nil means no warning, same as the crop half.
 --
+-- The provider has shipped two record shapes:
+--   1.4.0.0 on: a record carries a string state (EXPOSED, INFECTIOUS,
+--     RECOVERED, DEAD) and no cured field. Only INFECTIOUS is sickness, the
+--     provider's own rule (RLDiseaseStatus.isDiseased). EXPOSED is its hidden
+--     phase and stays hidden; a genetic carrier stays EXPOSED for life. When a
+--     state is present it decides alone: an unknown or non-string state is
+--     quiet and never falls through to the flags.
+--   1.2.6.0 and 1.3.2.1: no state. A record carries the cured and isCarrier
+--     booleans, and is sickness only when both read false.
+--
 -- The provider's own animal:getHasAnyDisease() is a PRE-GATE, never the
 -- verdict. Its value is that the provider evaluates its own disease manager and
 -- its own enabled flag inside its own environment, so this mod never reaches
--- across the sandbox for g_diseaseManager. On the installed 1.2.6.0 that getter
--- is true for ANY attached record, cured animals and genetic carriers
--- included, so the per-record test below is the only thing between a true gate
--- and a false bark. On 1.3.2.1 the getter already refuses those rows; the
--- per-record test then costs nothing and changes no answer.
+-- across the sandbox for g_diseaseManager. Its rule differs by version: on
+-- 1.2.6.0 it is true for ANY attached record, cured animals and genetic
+-- carriers included; 1.3.2.1 refuses those rows; 1.4.0.0 is true only when a
+-- record is INFECTIOUS. So on 1.2.6.0 the per-record test below is the only
+-- thing between a true gate and a false bark, and on the later versions it
+-- costs nothing and changes no answer.
 --
--- A malformed record (flags missing, nil or not booleans) does NOT count. This
--- is the opposite of DairyCore's RLBridge, which weights a herd score and
--- errs toward a penalty; the dog's own law is no false positives.
+-- A malformed record (a state that is not a string, or flags missing, nil or
+-- not booleans) does NOT count. This is the opposite of DairyCore's RLBridge,
+-- which weights a herd score and errs toward a penalty; the dog's own law is
+-- no false positives.
 --
 -- Containment: one bad animal never silences its siblings (per-animal pcall
 -- here), and the dog wraps each barn separately so one bad barn never
@@ -40,12 +53,22 @@
 
 LivestockWarningReader = LivestockWarningReader or {}
 
---- One disease record counts as active sickness only when both flags are
---- genuine booleans reading false. Anything else is not sickness for the dog.
+--- One disease record counts as active sickness when:
+---   it carries a state (1.4.0.0 on): the state is the string "INFECTIOUS",
+---   the provider's STATE value (its values equal their keys). Every other
+---   state, known, unknown or not a string, is not sickness, and the legacy
+---   flags are never consulted.
+---   it carries no state (1.2.6.0, 1.3.2.1): cured and isCarrier are both
+---   genuine booleans reading false.
+--- Anything else is not sickness for the dog.
 ---@param record any
 ---@return boolean
 function LivestockWarningReader.isActiveRecord(record)
     if type(record) ~= "table" then return false end
+    local state = record.state
+    if state ~= nil then
+        return type(state) == "string" and state == "INFECTIOUS"
+    end
     return record.cured == false and record.isCarrier == false
 end
 

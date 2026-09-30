@@ -15,6 +15,11 @@
 -- animal.getHasAnyDisease() and animal.diseases, each record carrying cured
 -- and isCarrier as the provider's constructor, XML load and stream read write
 -- them (Disease.lua:10,15 on 1.2.6.0).
+--
+-- The Realistic Livestock 1.4.0.0 delta (brief v1.0, amendment v0.9) adds a
+-- section near the end: the record-state table, the provider's own 1.4 gate
+-- line for line, and the entry-point bar through dog:update, the call
+-- src/main.lua:972 makes.
 
 local R = LivestockWarningReader
 
@@ -63,6 +68,22 @@ local function barn(animals, opts)
   p.getUniqueId = function() if opts.idThrows then error("id boom") end return opts.id or "B1" end
   return p
 end
+
+-- ── the reader never throws to its caller ────────────────
+-- Run first, so a guard that goes missing fails a named row here instead of
+-- only crashing a later direct call.
+local walkBoom = function() return { diseases = { setmetatable({}, { __index = function() error("walk boom") end }) }, getHasAnyDisease = function() return true end } end
+T.eq("no throw: record nil", (pcall(R.isActiveRecord, nil)), true)
+T.eq("no throw: record number", (pcall(R.isActiveRecord, 5)), true)
+T.eq("no throw: animal nil", (pcall(R.isAnimalActivelySick, nil)), true)
+T.eq("no throw: animal number", (pcall(R.isAnimalActivelySick, 42)), true)
+T.eq("no throw: gate throws", (pcall(R.isAnimalActivelySick, animal({ ACTIVE() }, { gateThrows = true }))), true)
+T.eq("no throw: record walk throws", (pcall(R.isAnimalActivelySick, walkBoom())), true)
+T.eq("no throw: barn nil", (pcall(R.isBarnActivelySick, nil)), true)
+T.eq("no throw: barn list throws", (pcall(R.isBarnActivelySick, barn({}, { listThrows = true }))), true)
+T.eq("no throw: barn list not a table", (pcall(R.isBarnActivelySick, { spec_husbandryAnimals = { clusterSystem = { getAnimals = function() return 5 end } } })), true)
+T.eq("no throw: barn with an animal whose field read raises",
+     (pcall(R.isBarnActivelySick, barn({ setmetatable({}, { __index = function() error("field boom") end }), animal({ ACTIVE() }) }))), true)
 
 -- ── isActiveRecord: the per-record law ───────────────────
 T.eq("record: active counts", R.isActiveRecord(ACTIVE()), true)
@@ -124,6 +145,8 @@ T.eq("barn: walk-throwing animal then sick animal -> true (containment)",
        { diseases = { setmetatable({}, { __index = function() error("x") end }) }, getHasAnyDisease = function() return true end },
        animal({ ACTIVE() }),
      })), true)
+T.eq("barn: an animal whose field read raises, then a sick animal -> true (containment)",
+     R.isBarnActivelySick(barn({ setmetatable({}, { __index = function() error("field boom") end }), animal({ ACTIVE() }) })), true)
 T.eq("barn: only sick animal throws -> nil (accepted limit)",
      R.isBarnActivelySick(barn({ animal({}), animal({ ACTIVE() }, { gateThrows = true }) })), nil)
 T.eq("barn: non-table entries in the list are skipped", R.isBarnActivelySick(barn({ "junk", 7, animal({ ACTIVE() }) })), true)
@@ -276,6 +299,136 @@ do
   T.eq("dog: reader absent -> no barn warning, no throw", #scanFarm(dog), 0)
   LivestockWarningReader = saved
 end
+
+-- ── Realistic Livestock 1.4.0.0: the record-state delta ──
+-- Brief v1.0 on amendment v0.9. A 1.4 record carries a string state and
+-- isCarrier, never cured (Disease.lua constructor, XML load and save, and
+-- streams at tag v1.4.0.0). The rows above stay as the legacy shape's bar.
+local function srec(state, carrier) return { type = "x", state = state, isCarrier = carrier == true } end
+local INFECTIOUS = function() return srec("INFECTIOUS") end
+local EXPOSED    = function() return srec("EXPOSED") end
+local RECOVERED  = function() return srec("RECOVERED") end
+local DEAD       = function() return srec("DEAD") end
+
+T.eq("v1.4 record: INFECTIOUS counts", R.isActiveRecord(INFECTIOUS()), true)
+T.eq("v1.4 record: EXPOSED (the hidden phase) does not count", R.isActiveRecord(EXPOSED()), false)
+T.eq("v1.4 record: RECOVERED does not count", R.isActiveRecord(RECOVERED()), false)
+T.eq("v1.4 record: DEAD does not count", R.isActiveRecord(DEAD()), false)
+T.eq("v1.4 record: SUSCEPTIBLE (in the enum, never held) does not count", R.isActiveRecord(srec("SUSCEPTIBLE")), false)
+T.eq("v1.4 record: unknown state SICK does not count", R.isActiveRecord(srec("SICK")), false)
+T.eq("v1.4 record: lower-case infectious does not count", R.isActiveRecord(srec("infectious")), false)
+T.eq("v1.4 record: numeric state does not count", R.isActiveRecord({ state = 1, isCarrier = false }), false)
+T.eq("v1.4 record: boolean state does not count", R.isActiveRecord({ state = true, isCarrier = false }), false)
+T.eq("v1.4 record: table state does not count", R.isActiveRecord({ state = {}, isCarrier = false }), false)
+T.eq("v1.4 record: state false with both legacy flags false does not count (present, not a string, no fall-through)",
+     R.isActiveRecord({ state = false, cured = false, isCarrier = false }), false)
+T.eq("v1.4 record: INFECTIOUS carrier counts, as the provider's own rule does", R.isActiveRecord(srec("INFECTIOUS", true)), true)
+T.eq("v1.4 record: state wins, EXPOSED with both legacy flags false does not count",
+     R.isActiveRecord({ state = "EXPOSED", cured = false, isCarrier = false }), false)
+T.eq("v1.4 record: state wins, RECOVERED with both legacy flags false does not count",
+     R.isActiveRecord({ state = "RECOVERED", cured = false, isCarrier = false }), false)
+T.eq("v1.4 record: state wins, unknown state with both legacy flags false does not count",
+     R.isActiveRecord({ state = "SICK", cured = false, isCarrier = false }), false)
+T.eq("v1.4 record: state wins, INFECTIOUS with cured = true still counts",
+     R.isActiveRecord({ state = "INFECTIOUS", cured = true, isCarrier = false }), true)
+T.eq("v1.4 record: nil state, no cured (a client's out-of-range ordinal) does not count",
+     R.isActiveRecord({ state = nil, isCarrier = false }), false)
+
+-- The provider's own 1.4.0.0 gate, Animal:getHasAnyDisease at
+-- RealisticLivestock_Animal.lua:1942-1954 (tag v1.4.0.0, e914c2f8), line for
+-- line: false with no manager, diseases off or no diseases table; otherwise
+-- true when any record passes RLDiseaseStatus.isDiseased (RLDiseaseStatus.lua
+-- :72-74, state == STATE.INFECTIOUS; STATE values equal their keys,
+-- RLDiseaseRecord.lua:39-45). Not a stub that returns true.
+local STATE14 = { SUSCEPTIBLE = "SUSCEPTIBLE", EXPOSED = "EXPOSED", INFECTIOUS = "INFECTIOUS", RECOVERED = "RECOVERED", DEAD = "DEAD" }
+local function isDiseased14(record) return record.state == STATE14.INFECTIOUS end
+local function gate14(self)
+  if g_diseaseManager == nil or not g_diseaseManager.diseasesEnabled or self.diseases == nil then
+    return false
+  end
+  for _, disease in ipairs(self.diseases) do
+    if isDiseased14(disease) then
+      return true
+    end
+  end
+  return false
+end
+local function animal14(records, opts)
+  opts = opts or {}
+  local a = { diseases = records }
+  if opts.noGetter then return a end
+  if opts.gateThrows then
+    a.getHasAnyDisease = function() error("provider boom") end
+  else
+    a.getHasAnyDisease = gate14
+  end
+  return a
+end
+
+local savedDM, savedFM = g_diseaseManager, g_farmManager
+g_diseaseManager = { diseasesEnabled = true }
+T.eq("v1.4 animal: INFECTIOUS -> true", R.isAnimalActivelySick(animal14({ INFECTIOUS() })), true)
+T.eq("v1.4 animal: EXPOSED only -> nil", R.isAnimalActivelySick(animal14({ EXPOSED() })), nil)
+T.eq("v1.4 animal: RECOVERED only -> nil", R.isAnimalActivelySick(animal14({ RECOVERED() })), nil)
+T.eq("v1.4 animal: DEAD only -> nil", R.isAnimalActivelySick(animal14({ DEAD() })), nil)
+T.eq("v1.4 animal: EXPOSED + INFECTIOUS (mixed) -> true", R.isAnimalActivelySick(animal14({ EXPOSED(), INFECTIOUS() })), true)
+T.eq("v1.4 animal: RECOVERED + DEAD + INFECTIOUS (mixed) -> true", R.isAnimalActivelySick(animal14({ RECOVERED(), DEAD(), INFECTIOUS() })), true)
+T.eq("v1.4 animal: INFECTIOUS carrier -> true", R.isAnimalActivelySick(animal14({ srec("INFECTIOUS", true) })), true)
+T.eq("v1.4 animal: EXPOSED carrier (a genetic carrier for life) -> nil", R.isAnimalActivelySick(animal14({ srec("EXPOSED", true) })), nil)
+T.eq("v1.4 animal: unknown state SICK only -> nil", R.isAnimalActivelySick(animal14({ srec("SICK") })), nil)
+T.eq("v1.4 animal: unknown state SICK + INFECTIOUS -> true", R.isAnimalActivelySick(animal14({ srec("SICK"), INFECTIOUS() })), true)
+T.eq("v1.4 animal: healthy (no records) -> nil", R.isAnimalActivelySick(animal14({})), nil)
+T.eq("v1.4 animal: diseases table nil -> nil", R.isAnimalActivelySick(animal14(nil)), nil)
+T.eq("v1.4 animal: getter absent -> nil", R.isAnimalActivelySick(animal14({ INFECTIOUS() }, { noGetter = true })), nil)
+T.eq("v1.4 animal: getter throws -> nil", R.isAnimalActivelySick(animal14({ INFECTIOUS() }, { gateThrows = true })), nil)
+g_diseaseManager.diseasesEnabled = false
+T.eq("v1.4 animal: diseases disabled with INFECTIOUS -> nil", R.isAnimalActivelySick(animal14({ INFECTIOUS() })), nil)
+g_diseaseManager = nil
+T.eq("v1.4 animal: no disease manager with INFECTIOUS -> nil", R.isAnimalActivelySick(animal14({ INFECTIOUS() })), nil)
+g_diseaseManager = { diseasesEnabled = true }
+T.eq("v1.4 barn: EXPOSED and RECOVERED animals only -> nil",
+     R.isBarnActivelySick(barn({ animal14({ EXPOSED() }), animal14({ RECOVERED() }) })), nil)
+T.eq("v1.4 barn: one INFECTIOUS animal among EXPOSED and RECOVERED -> true",
+     R.isBarnActivelySick(barn({ animal14({ EXPOSED() }), animal14({ RECOVERED(), INFECTIOUS() }), animal14({ EXPOSED() }) })), true)
+T.eq("v1.4 barn: throwing getter then INFECTIOUS animal -> true (containment)",
+     R.isBarnActivelySick(barn({ animal14({ INFECTIOUS() }, { gateThrows = true }), animal14({ INFECTIOUS() }) })), true)
+g_diseaseManager.diseasesEnabled = false
+T.eq("v1.4 barn: diseases disabled -> nil", R.isBarnActivelySick(barn({ animal14({ INFECTIOUS() }) })), nil)
+
+do
+  -- Entry-point bar (R-18): the dog's production call, dogWarning:update(dt)
+  -- from FSBaseMission.update (src/main.lua:972), reaching the farm through
+  -- g_farmManager:getFarms() as update does; scan is never called directly.
+  -- The barn is a fixture: the placeable registry is the engine's and the
+  -- animal list is the provider's, so no offline bench can build them. The
+  -- gate is the provider's own 1.4 rule above.
+  g_diseaseManager = { diseasesEnabled = true }
+  local sick = INFECTIOUS()
+  mission({ barn({ animal14({ EXPOSED() }), animal14({ RECOVERED() }), animal14({ EXPOSED(), sick }) }, { id = "B14" }) })
+  g_farmManager = { getFarms = function() return { { farmId = 1 } } end }
+  local dog = DogEarlyWarning.new({})
+  dog:update(59999)
+  T.eq("v1.4 entry: under the 60 s cadence nothing is read", #shown, 0)
+  dog:update(1)
+  T.eq("v1.4 entry: one HUD warning from dog:update", #shown, 1)
+  T.eq("v1.4 entry: the barn fallback sentence with the placeable's id", shown[1] and shown[1].msg, "Your dog senses something wrong at Barn B14.")
+  T.eq("v1.4 entry: 5000 ms", shown[1] and shown[1].ms, 5000)
+  T.eq("v1.4 entry: dedupe key", table.concat(keysOf(dog), ","), "B14_livestock")
+  dog:update(60000)
+  T.eq("v1.4 entry: unchanged barn, no second warning", #shown, 1)
+  sick.state = "RECOVERED"
+  dog:update(60000)
+  T.eq("v1.4 entry: recovered, no warning", #shown, 1)
+  T.eq("v1.4 entry: recovered clears the key", #keysOf(dog), 0)
+  sick.state = "INFECTIOUS"
+  g_diseaseManager.diseasesEnabled = false
+  dog:update(60000)
+  T.eq("v1.4 entry: diseases disabled, no warning", #shown, 1)
+  g_diseaseManager.diseasesEnabled = true
+  dog:update(60000)
+  T.eq("v1.4 entry: enabled again, the dog warns again", #shown, 2)
+end
+g_diseaseManager, g_farmManager = savedDM, savedFM
 
 -- ── no new player-facing string ──────────────────────────
 T.eq("strings: barn fallback unchanged", DogEarlyWarning.BARN_WARNING_FALLBACK, "Your dog senses something wrong at Barn %s.")
