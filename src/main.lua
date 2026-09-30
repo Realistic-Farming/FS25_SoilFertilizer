@@ -272,6 +272,11 @@ source(modDirectory .. "src/DogEarlyWarning.lua")
 -- CD-15 native cell probe (chore, read-only logging behind the sfCd15Probe
 -- console command; no gameplay effect; remove this line and the file to retire).
 source(modDirectory .. "src/probe/CD15NativeCellProbe.lua")
+-- CD-15 local disease, step 1a: the sparse grid, the logical day and the server model
+-- beside the field model. Server only; nothing reads it until the later steps.
+source(modDirectory .. "src/disease/CD15Grid.lua")
+source(modDirectory .. "src/disease/CD15Day.lua")
+source(modDirectory .. "src/disease/CD15Model.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
