@@ -14,6 +14,7 @@ npm run syntax                    # Lua 5.1 parse check only
 npm run lint                      # FS25 footgun lint only
 npm test                          # logic tests only
 node run-tests.mjs --loads src/X.lua   # only the logic tests that can reach src/X.lua
+node loads-selection-bar.mjs           # the bar for --loads itself
 ```
 
 `--loads` is for mutation batteries (Tyson's ruling, 2026-09-30): each mutant runs
@@ -22,6 +23,14 @@ when its own text names the path (its `--!load` or `--!text` list, or a hand
 `loadfile`), and a test that loads `src/main.lua` is always selected. Every test
 file runs in its own Lua state, so no other test can see the file. The whole suite
 still runs once, green, on the head.
+
+The path is taken relative to the repo root and matched the way the tests spell
+it, so `./src/X.lua`, an absolute path in the repo and, on Windows, a different
+letter case all select what `src/X.lua` selects. A path outside the repo, or one
+that is not a file, is refused. Every `--loads` run first checks the rule the
+selection rests on: no `src/` file other than `src/main.lua` loads another
+(`source`, `loadfile`, `dofile`, `loadstring` or `require`, called or aliased). If
+one does, `--loads` fails and names it; run the whole suite instead.
 
 Each command exits non-zero on failure, so it's CI/pre-commit friendly.
 

@@ -21,11 +21,12 @@
 // Usage:  node run-tests.mjs [--loads <repo path> ...]
 //         (--loads runs only the tests that can reach that file; see Selection below)
 // Exit:   0 = all assertions passed, 1 = any failure, Lua load error, or bad selection.
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import fengari from "fengari";
-import { REPO_ROOT, rel, c } from "./lib.mjs";
+import luaparse from "luaparse";
+import { REPO_ROOT, findLuaFiles, rel, c } from "./lib.mjs";
 
 const { lua, lauxlib, lualib, to_luastring } = fengari;
 const LUA_DIR = fileURLToPath(new URL("./lua", import.meta.url));
@@ -104,29 +105,114 @@ if (allTestFiles.length === 0) {
 // --!text list, or a path it loads by hand (RSF-F202 loadfiles
 // src/utils/Logger.lua). So a test is selected when its text names the path.
 // src/main.lua sources every module, so a test that --!loads it is always
-// selected. Selecting by text can take in too many files, never too few.
+// selected. Selecting by text can take in too many files, never too few, on two
+// conditions this block enforces (MAINTENANCE row 182, Bob's MINORs on #1055):
+//   - The path is matched the way the tests spell it: resolved against the repo
+//     root, made repo-relative with forward slashes, and on Windows, where the
+//     file system ignores case, matched without case. So ./src/X.lua, an
+//     absolute path and a different letter case select what src/X.lua selects.
+//     A path outside the repo is refused.
+//   - No src/ file other than src/main.lua loads another. If one did, a test
+//     could reach a file its text never names. srcLoaderRefs checks it on every
+//     --loads run, and a hit is an error.
 // A path that is not a repo file, or a selection that finds no test, is an
 // error: a battery must never read a run over zero files as a pass.
-const loadsPaths = [];
+const LOADERS = new Set(["source", "loadfile", "dofile", "loadstring", "require"]);
+const LOADER_WORD = /\b(source|loadfile|dofile|loadstring|require)\b/;
+
+// The text of a Lua string literal (luaparse leaves .value null by default).
+function luaStringText(raw) {
+  const m = raw.match(/^"(.*)"$|^'(.*)'$|^\[(=*)\[([\s\S]*)\]\3\]$/s);
+  return m ? (m[1] ?? m[2] ?? m[4]) : null;
+}
+
+const isGlobalG = (n) => n && n.type === "Identifier" && n.name === "_G" && !n.isLocal;
+
+// Every reference to a loader in src/ outside src/main.lua, as "file:line name".
+// Only global references count, so the many locals, parameters and table keys
+// named `source` in src/ are not hits. An alias (`local f = loadfile`) is a hit,
+// and so are `_G.name`, `_G["name"]` and `rawget(_G, "name")`. A name built at
+// run time (`_G["sour" .. "ce"]`) is beyond a static check. A file that does not
+// parse cannot be checked, so it is reported as a hit.
+function srcLoaderRefs() {
+  const hits = [];
+  for (const file of findLuaFiles()) {
+    const where = rel(file);
+    if (where === "src/main.lua") continue;
+    const text = readFileSync(file, "utf8");
+    if (!LOADER_WORD.test(text)) continue;
+    let ast;
+    try {
+      ast = luaparse.parse(text, { comments: false, scope: true, locations: true, luaVersion: "5.1" });
+    } catch (e) {
+      hits.push(`${where}: does not parse as Lua 5.1 (${e.message}), so it cannot be checked`);
+      continue;
+    }
+    const walk = (node, parent, key) => {
+      if (node === null || typeof node !== "object") return;
+      if (Array.isArray(node)) {
+        for (const child of node) walk(child, parent, key);
+        return;
+      }
+      let name = null;
+      if (node.type === "Identifier" && !node.isLocal
+          && !(parent?.type === "MemberExpression" && key === "identifier")
+          && !(parent?.type === "TableKeyString" && key === "key")) {
+        name = node.name;
+      } else if (node.type === "MemberExpression" && isGlobalG(node.base)) {
+        name = node.identifier.name;
+      } else if (node.type === "IndexExpression" && isGlobalG(node.base) && node.index.type === "StringLiteral") {
+        name = luaStringText(node.index.raw);
+      } else if (node.type === "CallExpression" && node.base.type === "Identifier" && node.base.name === "rawget"
+          && !node.base.isLocal && isGlobalG(node.arguments[0]) && node.arguments[1]?.type === "StringLiteral") {
+        name = luaStringText(node.arguments[1].raw);
+      }
+      if (name !== null && LOADERS.has(name)) hits.push(`${where}:${node.loc.start.line} ${name}`);
+      for (const k of Object.keys(node)) {
+        if (k !== "loc" && k !== "range") walk(node[k], node, k);
+      }
+    };
+    walk(ast, null, null);
+  }
+  return hits;
+}
+
+const loadsArgs = [];
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--loads" && i + 1 < process.argv.length) {
-    loadsPaths.push(process.argv[++i].replace(/\\/g, "/"));
+    loadsArgs.push(process.argv[++i]);
     continue;
   }
   console.log(c.red(`Unknown argument '${process.argv[i]}'. Usage: node run-tests.mjs [--loads <repo path> ...]`));
   process.exit(1);
 }
+const fold = process.platform === "win32" ? (s) => s.toLowerCase() : (s) => s;
+const loadsPaths = [];
+for (const arg of loadsArgs) {
+  const abs = resolve(REPO_ROOT, arg.replace(/\\/g, "/"));
+  const inRepo = relative(REPO_ROOT, abs);
+  if (inRepo === ".." || inRepo.startsWith(".." + sep) || isAbsolute(inRepo)) {
+    console.log(c.red(`--loads ${arg}: outside the repo. Give a path in the repo, relative to its root (src/X.lua).`));
+    process.exit(1);
+  }
+  if (!existsSync(abs) || !statSync(abs).isFile()) {
+    console.log(c.red(`--loads ${arg}: no such file in the repo.`));
+    process.exit(1);
+  }
+  loadsPaths.push(inRepo.split(sep).join("/"));
+}
 let testFiles = allTestFiles;
 if (loadsPaths.length) {
-  for (const p of loadsPaths) {
-    if (!existsSync(join(REPO_ROOT, p))) {
-      console.log(c.red(`--loads ${p}: no such file in the repo.`));
-      process.exit(1);
-    }
+  const loaderRefs = srcLoaderRefs();
+  if (loaderRefs.length) {
+    console.log(c.red("--loads cannot select safely: a src/ file other than src/main.lua loads another."));
+    for (const h of loaderRefs) console.log(c.red(`  ${h}`));
+    console.log(c.red("Selection matches test text, so a test could reach a file its text never names. Run the whole suite without --loads."));
+    process.exit(1);
   }
   testFiles = allTestFiles.filter((tf) => {
-    const text = readFileSync(join(LUA_DIR, tf), "utf8");
-    return parseDeps(text).includes("src/main.lua") || loadsPaths.some((p) => text.includes(p));
+    const text = fold(readFileSync(join(LUA_DIR, tf), "utf8"));
+    return parseDeps(text).includes("src/main.lua") || loadsPaths.some((p) => text.includes(fold(p)));
   });
   if (testFiles.length === 0) {
     console.log(c.red(`--loads ${loadsPaths.join(", ")}: no test file reaches it.`));
