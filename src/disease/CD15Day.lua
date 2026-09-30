@@ -171,8 +171,10 @@ function D.seed(fieldId, gx, gz, day)
     return (isFinite(fieldId) and fieldId or 0) * 1000.0 + day + gx * 0.6180339887 + gz * 0.4142135623
 end
 
---- Protection suppresses growth and spread while any mode's expiry lies after the day
---- (compared, never decremented, :122).
+--- Protection suppresses growth and spread while a mode's expiry lies after the day
+--- (compared, never decremented, :122). PLACEHOLDER: :122 and :129 say a QUALIFIED mode,
+--- and which modes qualify is the treatment's to define (step 3). Nothing writes
+--- protection before then, so any mode counts until step 3 narrows it.
 function D.isProtected(cell, day)
     for _, expiry in pairs(cell.protection) do
         if expiry > day then return true end
@@ -219,7 +221,10 @@ function D.settleCell(c, gx, gz, input, ci)
         c.pressure = math.max(0, pressure - dp.DRY_DECAY_RATE * input.dryDecayMult * dt)
     elseif D.isProtected(c, day) then
         -- Qualified protection suppresses growth; pressure does not clear without control.
-    elseif living then
+    else
+        -- :129's formula applies to every evaluated cell, a living crop or not; an unknown
+        -- crop gets no crop-specific modifier (:131), which is neutral, as the field model
+        -- grows on any active field whatever its crop (SoilFertilitySystem.lua:5594-5597).
         local base
         if     pressure < dp.LOW    then base = dp.GROWTH_RATE_LOW
         elseif pressure < dp.MEDIUM then base = dp.GROWTH_RATE_MID
@@ -232,7 +237,7 @@ function D.settleCell(c, gx, gz, input, ci)
         elseif input.season == 3 then seasonMult = dp.SEASONAL_FALL
         elseif input.season == 4 then seasonMult = dp.SEASONAL_WINTER
         end
-        local cropMult = dp.CROP_SUSCEPTIBILITY[string.lower(c.cropName)] or 1.0
+        local cropMult = living and (dp.CROP_SUSCEPTIBILITY[string.lower(c.cropName)] or 1.0) or 1.0
         local soilMult = D.localSoilHealthMult(ci.soil)
         local rotMult = input.cropRotation and D.localRotationMult(c) or 1.0
         local rainBonus = input.isWet and (dp.RAIN_BONUS * input.rainBonusMult) or 0

@@ -256,7 +256,10 @@ group("F", function()
 
     sys, m = bound({ day = 100 })
     c = oneDay(m, sys, 101, { pressure = 30, resistance = { dmi = 0.5 } }, { rain = 1.0 })
-    T.eq("F8 no living crop: no growth and no onset; resistance still decays", num(c.pressure) .. "/" .. tostring(c.diseaseName) .. "/" .. num(c.resistance.dmi), "30/nil/" .. num(0.5 * decay))
+    local noCrop = math.min(100, 30 + (dp.GROWTH_RATE_MID * cm.growthMult * dp.SEASONAL_SPRING * 1 * tun * (diff.pressureMult or 1) * 1 * 1 * 1
+        + dp.RAIN_BONUS * cm.rainBonusMult) / dpm)
+    T.eq("F8 no living crop: the formula still applies (:129), with no crop-specific modifier (:131); onset needs a crop; resistance decays",
+        num(c.pressure) .. "/" .. tostring(c.diseaseName) .. "/" .. num(c.resistance.dmi), num(noCrop) .. "/nil/" .. num(0.5 * decay))
 
     sys, m = bound({ day = 100 })
     W.fieldAt = function() return 9 end
