@@ -58,8 +58,8 @@ local function world(today, opts)
     local sys = SoilFertilitySystem.new(settings)
     local vm = ENGINE.newValueMaps()
     W.sys = sys
-    g_currentMission = { environment = { currentMonotonicDay = today }, vehicleSystem = { vehicles = {} } }
-    g_currentMission.vehicleSystem.addVehicle = function(self, v) self.vehicles[#self.vehicles + 1] = v return true end
+    g_currentMission = { environment = { currentMonotonicDay = today }, vehicleSystem = ENGINE.newVehicleSystem() }
+    -- The engine's vehicle system: a Class instance, addVehicle on the class (MAINTENANCE row 172).
     g_SoilFertilityManager = { settings = settings, soilSystem = sys }
     sys.materialDown.ageAppliedThroughDay = today
     sys.materialWetness.appliedThroughDay = today

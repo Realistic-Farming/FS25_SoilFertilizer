@@ -126,14 +126,14 @@ local function world(dir, opts)
     local today = opts.today or 100
     g_currentMission = {
         environment = { currentMonotonicDay = today, currentSeason = 2, daysPerPeriod = 3 },
-        vehicleSystem = { vehicles = {} },
+        vehicleSystem = ENGINE.newVehicleSystem(),
         weatherGuard = ENGINE.newWeatherGuard({ sky = SKY, rain = { rainScale = 0 } }),
         timeGuard = { registerAccrual = function() return true end, unregisterAccrual = function() end },
         indoorMask = ENGINE.newIndoorMask({}),
         missionInfo = { savegameDirectory = dir, isValid = opts.valid == true, xmlFile = newHandle(dir .. "/careerSavegame.xml") },
         stateLedger = opts.ledger,
     }
-    g_currentMission.vehicleSystem.addVehicle = function(self, v) self.vehicles[#self.vehicles + 1] = v return true end
+    -- The engine's vehicle system: a Class instance, addVehicle on the class (MAINTENANCE row 172).
     g_SoilFertilityManager = { settings = settings, soilSystem = sys }
     sys.hookManager.getFieldIdAtWorldPosition = function(_, x, _z) if x < 0 then return 7 end return nil end
     -- Production's order: the owners arm inside the mission's load (onMissionLoaded) ...
