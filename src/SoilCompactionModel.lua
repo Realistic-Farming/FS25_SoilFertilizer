@@ -16,7 +16,7 @@
 --   in bar via vehicle:vtpGetDashboardPressureBar(). Surface contact pressure ≈ tyre
 --   inflation pressure (PSU), so we read that bar value DIRECTLY as our surface pressure
 --   - airing down to FIELD mode automatically lowers compaction. With VTP absent we
---   approximate contact pressure from live wheel geometry instead.
+--   approximate contact pressure from each tyre's own loaded size instead (#1057).
 --
 -- The vehicle/VTP reads live here; the scoring math (scorePoints / advanceWetness) is
 -- pure and unit-tested under tools/test.
@@ -102,8 +102,12 @@ end
 
 -- -------------------------------------------------------------------------------------
 -- Geometry fallback: contact pressure ≈ (own weight) / (Σ tyre contact patch), where a
--- patch ≈ width × (radius × CONTACT_LENGTH_FACTOR). Reads live wheel geometry, so VTP's
--- physics-radius reduction is still partially reflected even on this path.
+-- patch ≈ width × (radius × CONTACT_LENGTH_FACTOR). The radius is the tyre's loaded size,
+-- radiusOriginal, which the engine sets once from the wheel XML (WheelPhysics:loadFromXML
+-- at game 1.24.0.0); the live radius is only the fallback when that is missing. A mod that
+-- shrinks the live radius at runtime (airing down, sinking, wear) no longer shrinks the
+-- patch and raises this estimate, the opposite of the design above (#1057). Airing down
+-- lowers compaction only through a pressure read, which today is VTP's (above).
 -- -------------------------------------------------------------------------------------
 function SoilCompactionModel.readGeometryPressureKPa(vehicle, massT)
     if vehicle == nil or not massT or massT <= 0 then return nil end
@@ -116,7 +120,7 @@ function SoilCompactionModel.readGeometryPressureKPa(vehicle, massT)
         local phys = wheel.physics
         if phys then
             local width  = phys.wheelShapeWidth
-            local radius = phys.radius
+            local radius = phys.radiusOriginal or phys.radius
             if width and radius and width > 0 and radius > 0 then
                 sumAreaM2 = sumAreaM2 + width * (radius * gp.CONTACT_LENGTH_FACTOR)
             end
