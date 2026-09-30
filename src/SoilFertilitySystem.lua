@@ -179,6 +179,10 @@ function SoilFertilitySystem.new(settings)
     -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
     -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
     self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
+    -- CD-15 step 1a: the local disease grid beside the field model. Its day and update
+    -- work run only where g_server exists, so a client holds an idle model; it binds
+    -- its geometry to the value maps above on its first day.
+    self.cd15         = CD15Model        and CD15Model.new(self)    or nil
     -- [SF-79] Positional pH: the map revision advances on every applied pH
     -- footprint write; a derived field report is CURRENT only at the revision it
     -- was computed from. Session-local; the map's own GRLE file is the truth.
@@ -456,6 +460,10 @@ function SoilFertilitySystem:delete()
     if self.valueMaps then
         self.valueMaps:delete()
         self.valueMaps = nil
+    end
+    if self.cd15 ~= nil then
+        self.cd15:delete()
+        self.cd15 = nil
     end
     self.fieldData = {}
     self.isInitialized = false
@@ -2819,6 +2827,9 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:onDayChanged()
         end
+        -- CD-15 step 1a: the local disease model captures its logical day here, at the
+        -- existing daily settlement (server only; nil on a client).
+        if self.cd15 ~= nil then self.cd15:onDayChanged() end
     end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
@@ -2879,6 +2890,9 @@ function SoilFertilitySystem:update(dt)
     -- in effect: on a client scanFields returns true immediately and never sets
     -- the pending flag.
     self:_scanRetryTick(dt)
+
+    -- CD-15 step 1a: the local disease day cursor, at most 256 cells a call.
+    if self.cd15 ~= nil then self.cd15:update(dt) end
 
     self.lastUpdate = self.lastUpdate + dt
 
