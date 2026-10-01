@@ -7126,11 +7126,13 @@ function HookManager:installNativeFieldInfoHook()
 
     --- Maps which native hook call each buildFieldInfoLines() row group is appended after --
     --- "early" rows land right after the native Farmland/Owned by rows (fieldAddFarmland),
-    --- "late" rows land right after the native Crop type/Growth rows (fieldAddFruit). Must be
-    --- declared before onFieldAddFarmland below, since it's captured as an upvalue there.
+    --- "late" rows land right after the native Crop type/Growth/Yield bonus rows
+    --- (fieldAddField, PlayerHUDUpdater.lua:272-307). FS25 has no fieldAddFruit, the FS22
+    --- name this slot used to carry, so the late rows never showed. Must be declared before
+    --- onFieldAddFarmland below, since it's captured as an upvalue there.
     local GROUP_FOR_SOURCE = {
         fieldAddFarmland = "early",
-        fieldAddFruit    = "late",
+        fieldAddField    = "late",
     }
 
     local function onFieldAddFarmland(sourceFnName, hudUpdater, data, box, ...)
@@ -7211,18 +7213,19 @@ function HookManager:installNativeFieldInfoHook()
         end
 
         local lines = g_SoilFertilityManager.soilHUD:buildFieldInfoLines(info)
-        -- Skip our own deficit-style "Yield" row here -- when the native-row override
-        -- above (see installFieldInfoFn) successfully matched and replaced the vanilla
-        -- "Yield bonus" row, that row already shows our number; a second appended Yield
-        -- row would just be confusing duplicate information. If the override could not
-        -- find a native row to replace (e.g. unmatched language string), we still show
-        -- this row as a fallback so the data is not lost entirely.
+        -- Skip our own "Yield" row here when the native-row override (see installFieldInfoFn)
+        -- replaced the vanilla "Yield bonus" row's value with our number in this same
+        -- fieldAddField call: one yield row, not two. The engine adds that row only for a
+        -- growing crop (PlayerHUDUpdater.lua:298-302), so on a cut or empty field our own row
+        -- shows instead. It is a "late" row, appended after the override has run in the same
+        -- call, which is what keeps this gate current.
         local yieldRowLabel = SoilL10n.tr("sf_fieldinfo_yield", "Yield")
         -- Only add the subset of rows that belong at this insertion point -- the native box
-        -- updates an existing label in place rather than re-inserting it, so a row's on-screen
-        -- position is fixed by whichever call first creates it. "early" rows go right after
-        -- Farmland/Owned by (this is the fieldAddFarmland pass); "late" rows go right after
-        -- Crop type/Growth (the fieldAddFruit pass). See GROUP_FOR_SOURCE below.
+        -- draws its rows in the order addLine is called (InfoDisplayKeyValueBox.lua:130-144),
+        -- so a row's on-screen position is fixed by the native call it is appended after.
+        -- "early" rows go right after Farmland/Owned by (the fieldAddFarmland pass); "late"
+        -- rows go right after Crop type/Growth/Yield bonus (the fieldAddField pass), before the
+        -- weed and field-action rows. See GROUP_FOR_SOURCE above.
         local expectedGroup = GROUP_FOR_SOURCE[sourceFnName]
         for _, line in ipairs(lines) do
             if (expectedGroup == nil or line.group == expectedGroup)
@@ -7232,62 +7235,20 @@ function HookManager:installNativeFieldInfoHook()
         end
     end
 
-    --- Heuristic fragments used to spot the vanilla "Yield bonus" row by its (already
-    --- localized) label text. We do not have the base game l10n keys for every language,
-    --- so this is matched case-insensitively as a substring rather than an exact key.
-    --- If your client language is not matching, enable debug logging: the first ~20
-    --- unmatched row labels seen by the hook get logged so you can add the right
-    --- fragment for your language here.
-    local YIELD_LABEL_FRAGMENTS = {
-        "yield",        -- en
-        "ertrag",       -- de
-        "rendement",    -- fr / nl
-        "rendimiento",  -- es
-        "resa",         -- it
-        "rendimento",   -- pt / br
-        "plon",         -- pl
-        "vynos",        -- cz / sk (ascii fallback for "výnos")
-        "hozam",        -- hu
-        "urodzaj",      -- pl (alt)
-        "skord",        -- sv (ascii fallback for "skörd")
-        "avling",       -- no / da
-    }
+    --- The two native rows the hook acts on, matched by the engine's own text for their l10n
+    --- keys, the exact label the engine draws (PlayerHUDUpdater.lua:301 and :305). A mod's
+    --- g_i18n reads through to the base game's texts (mods.lua:506, I18N.lua:149-158), so
+    --- this matches in every language with no list of fragments, and never matches another
+    --- row, so the yield replacement happens only in fieldAddField, the one function that adds
+    --- that row. The vanilla "Yield bonus" row shows our number; the vanilla "Fertilized" row
+    --- is dropped from the FIELD INFO box entirely, per user preference.
+    local YIELD_BONUS_KEY = "fieldInfo_yieldBonus"
+    local FERTILIZED_KEY  = "ui_growthMapFertilized"
 
-    local function isYieldBonusLabel(label)
-        if type(label) ~= "string" then return false end
-        local lower = string.lower(label)
-        for _, frag in ipairs(YIELD_LABEL_FRAGMENTS) do
-            if string.find(lower, frag, 1, true) then
-                return true
-            end
-        end
-        return false
-    end
-
-    --- Heuristic fragments used to spot (and suppress) the vanilla "Fertilized" row by its
-    --- (already localized) label text, same approach as YIELD_LABEL_FRAGMENTS above. Per
-    --- user preference this row is dropped from the FIELD INFO box entirely.
-    local FERTILIZED_LABEL_FRAGMENTS = {
-        "fertili",      -- en / fr (fertilisé) / es (fertilizado) / it (fertilizzato) / pt (fertilizado)
-        "gedungt",      -- de (ascii fallback for "gedüngt")
-        "bemest",       -- nl
-        "nawoz",        -- pl (nawożenie / nawożone)
-        "pohnojen",     -- cz / sk
-        "tragya",       -- hu (ascii fallback for "trágyázott")
-        "godsl",        -- sv (ascii fallback for "gödslad")
-        "gjods",        -- no (ascii fallback for "gjødslet")
-        "godet",        -- da
-    }
-
-    local function isFertilizedLabel(label)
-        if type(label) ~= "string" then return false end
-        local lower = string.lower(label)
-        for _, frag in ipairs(FERTILIZED_LABEL_FRAGMENTS) do
-            if string.find(lower, frag, 1, true) then
-                return true
-            end
-        end
-        return false
+    local function isEngineLabel(label, key)
+        if type(label) ~= "string" or g_i18n == nil then return false end
+        local ok, text = pcall(g_i18n.getText, g_i18n, key)
+        return ok and text == label
     end
 
     --- Wraps a single PlayerHUDUpdater function (by name) so we can intercept the box
@@ -7347,12 +7308,12 @@ function HookManager:installNativeFieldInfoHook()
                         restoreAddLine = function() realBox.addLine = origAddLine end
 
                         realBox.addLine = function(selfBox, label, value, ...)
-                            if replacementText ~= nil and matchedLabel == nil and isYieldBonusLabel(label) then
+                            if replacementText ~= nil and matchedLabel == nil and isEngineLabel(label, YIELD_BONUS_KEY) then
                                 matchedLabel = label
                                 SoilLogger.debug("Native field info hook: overriding native yield row '%s' (%s -> %s)",
                                     tostring(label), tostring(value), replacementText)
                                 value = replacementText
-                            elseif isFertilizedLabel(label) then
+                            elseif isEngineLabel(label, FERTILIZED_KEY) then
                                 -- Drop the base game's own "Fertilized" row entirely (per user
                                 -- preference) -- skip calling origAddLine so it never appears.
                                 SoilLogger.debug("Native field info hook: suppressing native Fertilized row '%s' (%s)",
@@ -7380,13 +7341,10 @@ function HookManager:installNativeFieldInfoHook()
 
             if restoreAddLine then restoreAddLine() end
 
-            if replacementText ~= nil then
-                if matchedLabel ~= nil then
-                    hookManagerSelf._nativeYieldRowOverridden = true
-                elseif hookManagerSelf._nativeYieldNoMatchWarned ~= true then
-                    hookManagerSelf._nativeYieldNoMatchWarned = true
-                    SoilLogger.warning("Native field info hook (%s): no native yield-bonus row matched our label heuristic -- it will keep showing vanilla's own number until YIELD_LABEL_FRAGMENTS is extended for your language. Enable debug logging to see the row labels actually seen.", functionName)
-                end
+            -- No match is normal: the engine adds the yield row only for a growing crop
+            -- (PlayerHUDUpdater.lua:298-302), and our own "Yield" row shows instead.
+            if replacementText ~= nil and matchedLabel ~= nil then
+                hookManagerSelf._nativeYieldRowOverridden = true
             end
 
             -- Append our remaining soil rows (Soil Grade, N/P/K, pH, OM, Needs, etc.) -- only
@@ -7406,29 +7364,23 @@ function HookManager:installNativeFieldInfoHook()
         return true
     end
 
-    -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddFruit owns the
-    -- crop/yield-state rows (Crop type/Growth/Yield-bonus/Weed/Needs lime) - the
-    -- ones our soil data is actually relevant alongside. A confirmed working reference
-    -- (FS22_CropRotation, github.com/bodzio528/FS22_CropRotation) hooks fieldAddFruit
-    -- specifically for this kind of row, with the identical (updater, data, box) signature.
-    -- We hook both: harmless if one is a no-op for this box, and avoids re-guessing again
-    -- if a future base-game patch moves things around.
+    -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddField owns the
+    -- crop rows (Crop type, Growth, Yield bonus, Fertilized; PlayerHUDUpdater.lua:272-307),
+    -- the ones our soil data is relevant alongside. showFieldInfo calls fieldAddFarmland,
+    -- fieldAddField, fieldAddWeed and fieldAddFieldActions in that order (:235-238).
     local farmlandHookOk = installFieldInfoFn("fieldAddFarmland", true)
-    local fruitHookOk    = installFieldInfoFn("fieldAddFruit", true)
+    local fieldHookOk    = installFieldInfoFn("fieldAddField", true)
 
-    -- The native "Fertilized" row isn't guaranteed to come from fieldAddFruit on every FS25
-    -- build -- that assumption was ported from an FS22 mod and may not hold here. Rather than
-    -- guess another exact function name, scan PlayerHUDUpdater for every other function whose
-    -- name looks like it's part of building this same FIELD INFO box (starts with "field") and
-    -- wrap it too, purely to catch/suppress native rows via the addLine override above (no
-    -- extra rows of our own are appended through these -- see appendRows=false). This makes
-    -- the Fertilized suppression resilient to whichever function actually adds that row.
+    -- Every other PlayerHUDUpdater function whose name starts with "field" (fieldAddWeed and
+    -- fieldAddFieldActions in FS25) is wrapped too, purely so the Fertilized suppression
+    -- holds if a later build moves that row. No rows of our own are appended through these
+    -- (appendRows=false).
     local extraHookCount = 0
     if type(PlayerHUDUpdater) == "table" then
         local extraNames = {}
         for key, value in pairs(PlayerHUDUpdater) do
             if type(key) == "string" and type(value) == "function"
-                and key ~= "fieldAddFarmland" and key ~= "fieldAddFruit"
+                and key ~= "fieldAddFarmland" and key ~= "fieldAddField"
                 and string.find(string.lower(key), "^field") then
                 table.insert(extraNames, key)
             end
@@ -7445,7 +7397,7 @@ function HookManager:installNativeFieldInfoHook()
         end
     end
 
-    return farmlandHookOk or fruitHookOk or extraHookCount > 0
+    return farmlandHookOk or fieldHookOk or extraHookCount > 0
 end
 
 -- =========================================================
