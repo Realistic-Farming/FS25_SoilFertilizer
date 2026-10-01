@@ -580,6 +580,64 @@ do
 end
 
 -- =====================================================================
+-- E2b. The refused cycle says why, throttled (R15, truthful UI (c))
+-- =====================================================================
+do
+  newWorld({ z = 10.03 })
+  paintCarrier(40, 39.8, 39.8)
+  autoOn(W.v)
+  local lines, realDebug = {}, SoilLogger.debug
+  SoilLogger.debug = function(fmt, ...)
+    local ok, s = pcall(string.format, fmt, ...)
+    lines[#lines + 1] = ok and s or tostring(fmt)
+  end
+  local function refusalLines()
+    local out = {}
+    for _, l in ipairs(lines) do
+      if l:find("[SF-73] target cycle refused", 1, true) and l:find("reasons MIXED_CROP", 1, true) then out[#out + 1] = l end
+    end
+    return out
+  end
+  local function mixed() local r = W.ss:getApplicationTargetResult(W.v) return r ~= nil and r.reasons[1] == "MIXED_CROP" end
+  run(W.v, 1)                        -- prime
+  local refusedTicks = 0
+  for _ = 1, 40 do
+    run(W.v, 1)
+    if mixed() then refusedTicks = refusedTicks + 1 end
+    if refusedTicks == 3 then break end
+  end
+  local got = refusalLines()
+  T.eq("E2b.1 [reached] three refused MIXED_CROP cycles in a row", refusedTicks, 3)
+  T.eq("E2b.2 NAMED: they log their reason once, not once per cycle (the approach's priming refusal is its own change, its own line)", #got, 1)
+  T.ok("E2b.3 the line names the vehicle, the product, the state and the reason (" .. tostring(got[1]) .. ")",
+       got[1] ~= nil and got[1]:find("vehicle 4242", 1, true) ~= nil and got[1]:find("product UREA", 1, true) ~= nil
+       and got[1]:find("state INACTIVE", 1, true) ~= nil and got[1]:find("reasons MIXED_CROP", 1, true) ~= nil)
+  g_currentMission.time = g_currentMission.time + (TargetApplication.REFUSAL_LOG_MS or 4000)
+  run(W.v, 1)
+  T.eq("E2b.4 the same refusal still holding 4 s later logs once more", tostring(mixed()) .. "/" .. #refusalLines(), "true/2")
+  -- The key is (state, reasons, field): a new reason under the same state and field is a change.
+  local before = #lines
+  local st = {}
+  local ta = W.ss.targetApplication
+  local one = ta:noteRefusal(st, W.v, { refused = true, state = "INACTIVE", reasons = { "MIXED_CROP" }, fieldId = 7, fillType = UREA })
+  local two = ta:noteRefusal(st, W.v, { refused = true, state = "INACTIVE", reasons = { "MIXED_CROP" }, fieldId = 7, fillType = UREA })
+  local three = ta:noteRefusal(st, W.v, { refused = true, state = "INACTIVE", reasons = { "DENIED_SHARE" }, fieldId = 7, fillType = UREA })
+  T.eq("E2b.5 a repeat is held, a new reason under the same state and field logs at once",
+       tostring(one) .. "/" .. tostring(two) .. "/" .. tostring(three) .. "/" .. (#lines - before), "true/false/true/2")
+  -- A machine switched off while AUTO stays armed: a native-inactive cycle, the machine not
+  -- working, never a target refusal line (Bob's R-15 build note).
+  W.v.turnedOn = false
+  local before6 = #lines
+  run(W.v, 3)
+  local r6 = W.ss:getApplicationTargetResult(W.v)
+  local refusedLines6 = 0
+  for k = before6 + 1, #lines do if lines[k]:find("[SF-73] target cycle refused", 1, true) then refusedLines6 = refusedLines6 + 1 end end
+  T.ok("E2b.6 [reached] switched off, the cycle is native-inactive (INACTIVE, no reason)", r6 ~= nil and r6.doseState == "INACTIVE" and #r6.reasons == 0)
+  T.eq("E2b.7 NAMED: and it logs no target-refusal line", refusedLines6, 0)
+  SoilLogger.debug = realDebug
+end
+
+-- =====================================================================
 -- E3. Actual litres are the applied delta: a short removal is APPLICATION_FAILED
 -- =====================================================================
 do

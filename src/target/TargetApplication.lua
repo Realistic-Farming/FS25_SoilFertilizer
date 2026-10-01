@@ -950,12 +950,39 @@ local function primaryProgress(sprayer)
     return false
 end
 
+TA.REFUSAL_LOG_MS = 4000   -- the SprayUsage diagnostic's cadence (HookManager installSprayerUsageHook)
+
+--- [R15, truthful UI (c)] A refused cycle says why, in the debug log: once when the
+--- (state, reasons, field) set changes for this vehicle, then at most every
+--- REFUSAL_LOG_MS while it holds. A cycle is one WorkArea tick, so a line per cycle would
+--- be tens a second. A native-inactive cycle is not passed here. Returns true when it logged.
+function TA:noteRefusal(st, sprayer, plan)
+    local reasons = table.concat(plan.reasons or {}, ",")
+    local key = tostring(plan.state) .. "|" .. reasons .. "|" .. tostring(plan.fieldId)
+    local t = now()
+    local last = st.refusalLog
+    if last ~= nil and last.key == key and (t - last.at) < TA.REFUSAL_LOG_MS then return false end
+    st.refusalLog = { key = key, at = t }
+    local name = plan.fillTypeName
+    if name == nil and plan.fillType ~= nil and g_fillTypeManager ~= nil then
+        local ok, desc = pcall(g_fillTypeManager.getFillTypeByIndex, g_fillTypeManager, plan.fillType)
+        name = ok and desc ~= nil and desc.name or nil
+    end
+    logDebug("[SF-73] target cycle refused: vehicle %s, field %s, product %s, state %s, reasons %s",
+        tostring(sprayer and sprayer.id), tostring(plan.fieldId), tostring(name or plan.fillType),
+        tostring(plan.state), reasons ~= "" and reasons or "none")
+    return true
+end
+
 --- Finish a cycle that put no target nutrient down: refused, priming, held, zero
 --- dose, or a dose that native never processed. Anchors, guard, result.
 function TA:finishWithoutCredit(sprayer, cycle)
     local st = self.states[sprayer]
     if st == nil then return end
     local plan = cycle.committed
+    -- Not a native-inactive cycle (turned off, lifted, overlap-blocked, no geometry): that is
+    -- the machine not working, not a target refusal, as updateGuard counts it (Bob, R-15).
+    if plan.refused and not plan.nativeInactive then self:noteRefusal(st, sprayer, plan) end
     if plan.primeLine ~= nil and plan.geometry ~= nil then
         local pc = plan.primeCaches or {}
         st.hold = { anchor = plan.primeLine, fillType = plan.fillType, areaKey = plan.geometry.areaKey,
