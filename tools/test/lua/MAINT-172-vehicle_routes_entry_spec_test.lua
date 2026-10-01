@@ -28,6 +28,8 @@
 --   D  teardown through SoilFertilitySystem:delete(): restored where still ours, left and
 --      passed through under a foreign wrap, the copied instance functions the same, a
 --      reinstall with no second layer, and nothing for a vehicle bought after
+--   L  the Baler's four class listeners (MAINTENANCE row 189): restored only where still
+--      ours, a later mod's wrap over them kept, ours a pass-through inside it
 --
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/RSF-F211-s6b-baler_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/PolygonClip.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/BalerCollection.lua, src/ground/ForageWagonCollection.lua
 
@@ -364,6 +366,76 @@ group("D", function()
 
     Windrower.processWindrowerArea = nativeWindrower
     wK.native = function() return Windrower.processWindrowerArea end
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- L. THE BALER'S CLASS LISTENERS: RESTORED ONLY WHERE STILL OURS (MAINTENANCE row 189)
+-- ══════════════════════════════════════════════════════════════════════════
+group("L", function()
+    world()
+    -- The engine's end listener (the model's Baler:onEndWorkAreaProcessing), counted.
+    local nativeEnd, endCalls = PRISTINE.finish, 0
+    Baler.onEndWorkAreaProcessing = function(...) endCalls = endCalls + 1 return nativeEnd(...) end
+    local countedEnd = Baler.onEndWorkAreaProcessing
+    installAll()
+    local ourStart, ourEnd = Baler.onStartWorkAreaProcessing, Baler.onEndWorkAreaProcessing
+    local ourFill, ourTick = Baler.onFillUnitFillLevelChanged, Baler.onUpdateTick
+    T.ok("L0 [reached] installAll put Soil's four class listeners on Baler",
+         ourStart ~= PRISTINE.start and ourEnd ~= countedEnd and ourFill ~= PRISTINE.fill and ourTick ~= PRISTINE.tick)
+    local baler = buy(kind("baler collection"), "L baler")
+    -- A later mod (SG2-5's StockGuard Baler wraps) wraps over two of ours.
+    local foreignCalls = 0
+    local foreignEnd = function(...) foreignCalls = foreignCalls + 1 return ourEnd(...) end
+    local foreignTick = function(...) return ourTick(...) end
+    Baler.onEndWorkAreaProcessing, Baler.onUpdateTick = foreignEnd, foreignTick
+    -- Soil's collection work, counted at the module functions the listeners call.
+    local aroundCalls, realAround = 0, BalerCollection.aroundEnd
+    BalerCollection.aroundEnd = function(...) aroundCalls = aroundCalls + 1 return realAround(...) end
+    local soil = { start = 0, fill = 0, tick = 0 }
+    local realOnStart, realFill, realTick = BalerCollection.onStart, BalerCollection.aroundFillChange, BalerCollection.aroundTick
+    BalerCollection.onStart = function(...) soil.start = soil.start + 1 return realOnStart(...) end
+    BalerCollection.aroundFillChange = function(...) soil.fill = soil.fill + 1 return realFill(...) end
+    BalerCollection.aroundTick = function(...) soil.tick = soil.tick + 1 return realTick(...) end
+    Baler.onEndWorkAreaProcessing(baler, 16, true)
+    T.eq("L1 [reached] before teardown one end event runs the foreign wrap, Soil's collection and the engine's listener once each",
+         foreignCalls .. "/" .. aroundCalls .. "/" .. endCalls, "1/1/1")
+
+    W.sys:delete()
+
+    T.ok("L2 teardown put the engine's own back where the listener was still ours (start, fill change)",
+         Baler.onStartWorkAreaProcessing == PRISTINE.start and Baler.onFillUnitFillLevelChanged == PRISTINE.fill)
+    T.ok("L3 THE WRAPS A LATER MOD INSTALLED OVER OURS SURVIVE THE TEARDOWN (end, tick)",
+         Baler.onEndWorkAreaProcessing == foreignEnd and Baler.onUpdateTick == foreignTick)
+    foreignCalls, aroundCalls, endCalls = 0, 0, 0
+    Baler.onEndWorkAreaProcessing(baler, 16, true)
+    T.eq("L4 an end event through the left chain: the foreign wrap once, the engine's listener once, Soil's collection not at all",
+         foreignCalls .. "/" .. aroundCalls .. "/" .. endCalls, "1/0/1")
+    Baler.onUpdateTick(baler, 16)
+    T.eq("L4b an update tick through the left chain does no Soil transfer", soil.tick, 0)
+
+    -- The next savegame in the same process installs again over the same chain.
+    local hm2 = HookManager.new()
+    local okRe, errRe = pcall(hm2.installAll, hm2, W.sys)
+    T.eq("L5 a reinstall ran (" .. tostring(errRe) .. ")", okRe and hm2.installed, true)
+    foreignCalls, aroundCalls, endCalls = 0, 0, 0
+    Baler.onEndWorkAreaProcessing(baler, 16, true)
+    T.eq("L6 one active Soil layer above the foreign wrap: Soil's collection, the foreign wrap and the engine's listener once each",
+         foreignCalls .. "/" .. aroundCalls .. "/" .. endCalls, "1/1/1")
+    -- This time the later mod wraps the other two, over the reinstall's listeners.
+    local ourStart2, ourFill2 = Baler.onStartWorkAreaProcessing, Baler.onFillUnitFillLevelChanged
+    local foreignStart = function(...) return ourStart2(...) end
+    local foreignFill = function(...) return ourFill2(...) end
+    Baler.onStartWorkAreaProcessing, Baler.onFillUnitFillLevelChanged = foreignStart, foreignFill
+    hm2:uninstallAll()
+    T.ok("L7 the reinstall's teardown kept the start and fill-change wraps above it, and gave end and tick back to the first foreign wraps",
+         Baler.onStartWorkAreaProcessing == foreignStart and Baler.onFillUnitFillLevelChanged == foreignFill
+         and Baler.onEndWorkAreaProcessing == foreignEnd and Baler.onUpdateTick == foreignTick)
+    soil.start, soil.fill = 0, 0
+    Baler.onStartWorkAreaProcessing(baler, 16)
+    Baler.onFillUnitFillLevelChanged(baler, 1, 0, FillType.UNKNOWN, ToolType.UNDEFINED, nil, 0)
+    T.eq("L8 a start and a fill change through the left chains do no Soil work", soil.start .. "/" .. soil.fill, "0/0")
+    BalerCollection.aroundEnd = realAround
+    BalerCollection.onStart, BalerCollection.aroundFillChange, BalerCollection.aroundTick = realOnStart, realFill, realTick
 end)
 
 GroundMovementCarrier.begin = realBegin
