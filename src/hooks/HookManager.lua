@@ -5546,31 +5546,53 @@ function HookManager:installBalerPickupHook()
     local function packAll(...) return { n = select("#", ...), ... } end
 
     -- The class listeners (the engine reads spec[eventName] at call time).
+    -- MAINTENANCE row 189 (RSF-F211 v1.1 :58, "restore only still-owned wrappers"): the
+    -- teardown row below turns them inactive, and restores each original only while the
+    -- live method is still ours. Under a later wrap (a StockGuard Baler wrap installed
+    -- after ours) ours stays in that chain as a pure pass-through, so the later wrap is
+    -- never erased while its owner still counts on it.
     local origStart = Baler.onStartWorkAreaProcessing
     local origEnd = Baler.onEndWorkAreaProcessing
     local origFill = Baler.onFillUnitFillLevelChanged
     local origTick = Baler.onUpdateTick
-    Baler.onStartWorkAreaProcessing = function(balerSelf, ...)
+    local listeners = { active = true }
+    local owned = {}
+    owned[#owned + 1] = { key = "onStartWorkAreaProcessing", original = origStart, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origStart(balerSelf, ...) end
         local r = packAll(origStart(balerSelf, ...))
         pcall(BalerCollection.onStart, balerSelf)
         return unpack(r, 1, r.n)
-    end
-    Baler.onEndWorkAreaProcessing = function(balerSelf, ...)
+    end }
+    owned[#owned + 1] = { key = "onEndWorkAreaProcessing", original = origEnd, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origEnd(balerSelf, ...) end
         return BalerCollection.aroundEnd(balerSelf, origEnd, ...)
-    end
-    Baler.onFillUnitFillLevelChanged = function(balerSelf, ...)
+    end }
+    owned[#owned + 1] = { key = "onFillUnitFillLevelChanged", original = origFill, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origFill(balerSelf, ...) end
         return BalerCollection.aroundFillChange(balerSelf, origFill, ...)
-    end
-    self:register(Baler, "onStartWorkAreaProcessing", origStart, "Baler.onStartWorkAreaProcessing (collection)")
-    self:register(Baler, "onEndWorkAreaProcessing", origEnd, "Baler.onEndWorkAreaProcessing (collection)")
-    self:register(Baler, "onFillUnitFillLevelChanged", origFill, "Baler.onFillUnitFillLevelChanged (collection)")
+    end }
     -- [part 2b] The non-stop buffer's transfer into the chamber runs in onUpdateTick.
     if type(origTick) == "function" then
-        Baler.onUpdateTick = function(balerSelf, ...)
+        owned[#owned + 1] = { key = "onUpdateTick", original = origTick, wrapper = function(balerSelf, ...)
+            if not listeners.active then return origTick(balerSelf, ...) end
             return BalerCollection.aroundTick(balerSelf, origTick, ...)
-        end
-        self:register(Baler, "onUpdateTick", origTick, "Baler.onUpdateTick (collection transfer)")
+        end }
     end
+    for _, o in ipairs(owned) do Baler[o.key] = o.wrapper end
+    self:registerCleanup("Baler collection listeners (still-owned restore)", function()
+        listeners.active = false
+        local restored, left = 0, 0
+        for _, o in ipairs(owned) do
+            if Baler[o.key] == o.wrapper then
+                Baler[o.key] = o.original
+                restored = restored + 1
+            else
+                left = left + 1
+            end
+        end
+        SoilLogger.debug("[BalerCollection] teardown: %d class listener(s) restored, %d left in place inactive",
+            restored, left)
+    end)
 
     -- The captured pickup pointer: a carrier frame per call, the collection's handler.
     local function makePickupWrapper(original)
