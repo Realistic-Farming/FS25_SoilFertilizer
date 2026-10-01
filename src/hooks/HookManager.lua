@@ -6243,6 +6243,15 @@ function HookManager:installSprayerAreaHook()
                 end
                 local effectiveLiters = liters
 
+                -- [#1063] The litres per hectare this pass put down, which the litre
+                -- coverage estimate divides out so a covered field reads covered at any
+                -- rate: the native rate of the product credited, from the terms Soil's
+                -- usage formula uses, times the multiplier the start hook actually
+                -- applied (rateMultiplier above misses SF-79's pH factor).
+                local _wapCov = spec.workAreaParameters
+                local coverageLitersPerHa = HookManager.getNativeSprayRatePerHa(self, fillTypeIndex)
+                    * ((_wapCov and _wapCov.sfRateMult) or 1.0)
+
                 -- Section Control double-penalty fix (Issue #345):
                 -- wap.usage already reflects section shutoff (VariableWorkWidth.getIsWorkAreaActive
                 -- gates each work area on section.isActive), so 'liters' is already proportionally reduced.
@@ -6279,7 +6288,7 @@ function HookManager:installSprayerAreaHook()
                        and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
                         g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
                     end
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov, coverageLitersPerHa)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
@@ -6631,7 +6640,7 @@ function HookManager:installSprayerAreaHook()
                                                         end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
-                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true)
+                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true, coverageLitersPerHa)
                                                     end
                                                 end
 
@@ -6700,7 +6709,7 @@ function HookManager:installSprayerAreaHook()
                             if soilSys.fieldData and soilSys.fieldData[fieldId] then
                                 soilSys.fieldData[fieldId]._geometricCoverageOwner = nil
                             end
-                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true)
+                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true, coverageLitersPerHa)
                         end
                     end
                 end
@@ -9551,6 +9560,12 @@ function HookManager:installSprayerStartHook()
             if not self.isServer then return end
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
+            -- [#1063] The multiplier this hook actually applied to the usage, recorded
+            -- beside it for the litre coverage estimate to divide out: SF-79's pH factor
+            -- included, and 1 on every early return and for a usage that was 0 (so a
+            -- usage another writer fills in later, AI-1's injection, reads as 1.0x).
+            local wap = spec.workAreaParameters
+            wap.sfRateMult = 1.0
             if not g_SoilFertilityManager or not g_SoilFertilityManager.sprayerRateManager then return end
             -- [SF-73] a target cycle's one quantity is never multiplied afterwards:
             -- the pH factor was resolved inside its plan, before the minimum
@@ -9585,9 +9600,9 @@ function HookManager:installSprayerStartHook()
             local totalMult = mult * phFactor
             if totalMult == 1.0 then return end
 
-            local wap = spec.workAreaParameters
             if wap.usage and wap.usage ~= 0 then
                 wap.usage = wap.usage * totalMult
+                wap.sfRateMult = totalMult
             end
             if wap.usagePerMin and wap.usagePerMin ~= 0 then
                 wap.usagePerMin = wap.usagePerMin * totalMult
@@ -9617,6 +9632,36 @@ end
 -- Three-layer patch required: SpecializationUtil.registerFunction (line 91 of Sprayer.lua)
 -- + copyTypeFunctionsInto means class-table patches never reach live vehicle instances.
 -- Rate multiplier is no longer applied here; see installSprayerStartHook above.
+
+--- The two per-product terms of Soil's usage formula below: the sprayer's fill-type
+--- scale (else its default scale, else 1) and the spray type's litersPerSecond (else 1,
+--- as Sprayer.lua:509-513 defaults it). One function, so the formula and the native
+--- rate cannot disagree.
+---@return number fillScale, number litersPerSecond
+function HookManager.getSprayUsageTerms(sprayer, fillTypeIndex)
+    local spec = sprayer and sprayer.spec_sprayer
+    local fillScale = 1
+    if spec and spec.usageScale then
+        local scales = spec.usageScale.fillTypeScales
+        fillScale = (scales and fillTypeIndex and scales[fillTypeIndex])
+            or spec.usageScale.default or 1
+    end
+    local spT = g_sprayTypeManager and fillTypeIndex
+        and g_sprayTypeManager:getSprayTypeByFillTypeIndex(fillTypeIndex)
+    local lps = spT and spT.litersPerSecond or 1
+    return fillScale, lps
+end
+
+--- [#1063] The litres per hectare Soil's usage formula puts down at 1.0x. A tick uses
+--- fillScale x lps x km/h x width x dt x 0.001 litres and covers km/h x width x dt / 3.6e7
+--- hectares, so the rate is fillScale x lps x 36000, whatever the speed and width
+--- (lps 0.005 is 180 L/ha, 0.006 is 216).
+---@return number litresPerHa
+function HookManager.getNativeSprayRatePerHa(sprayer, fillTypeIndex)
+    local fillScale, lps = HookManager.getSprayUsageTerms(sprayer, fillTypeIndex)
+    return fillScale * lps * 36000
+end
+
 ---@return boolean success
 function HookManager:installSprayerUsageHook()
     if not Sprayer or type(Sprayer.getSprayerUsage) ~= "function" then
@@ -9669,18 +9714,11 @@ function HookManager:installSprayerUsageHook()
                 return originalFn(sprayerSelf, fillType, dt)
             end
 
-            -- fillType-specific scale (falls back to usageScale.default, normally 1.0)
-            local fillScale = 1
-            if spec_s.usageScale then
-                local ft_scales = spec_s.usageScale.fillTypeScales
-                fillScale = (ft_scales and ft_scales[fillType])
-                    or spec_s.usageScale.default or 1
-            end
-
+            -- fillType-specific scale (falls back to usageScale.default, normally 1.0) and
             -- litersPerSecond from the spray type manager (registered for all custom types
-            -- by registerCustomSprayTypes; vanilla types are always present).
-            -- spT was already resolved above in the towed-implement check.
-            local lps = spT and spT.litersPerSecond or 1
+            -- by registerCustomSprayTypes; vanilla types are always present). The same
+            -- terms give the coverage estimate its native rate (#1063).
+            local fillScale, lps = HookManager.getSprayUsageTerms(sprayerSelf, fillType)
 
             -- Working width: prefer active spray-type's usageScale, then vehicle default.
             local usScale = spec_s.usageScale

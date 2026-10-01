@@ -8,7 +8,8 @@
 --       hectare at 1.0x drains exactly the configured mass;
 --   U2  the one conversion (HookManager.massEquivalent), litres x density;
 --   U3  the four interpretation sites, each driven through its REAL body: the
---       nutrient factor, the fully-treated comparison, the litre-fallback coverage,
+--       nutrient factor, the fully-treated comparison, the litre-fallback coverage
+--       (retired by #1063: it now divides litres by the applied L/ha, group E),
 --       and the HUD ghost bar, which must use the same function as the threshold;
 --   U4  passthrough: liquids, base-game FERTILIZER and LIME convert by nothing;
 --   U5  a secondary fill unit is credited under ITS OWN product's density;
@@ -199,26 +200,36 @@ do
 end
 
 -- =====================================================================
--- GROUP E: U3 site 3, trackSprayerCoverage's litre fallback.
+-- GROUP E: U3 site 3, trackSprayerCoverage's litre fallback. RETIRED by #1063:
+-- the divisor is the litres per hectare the pass applied, not the kg/ha BASE_RATES
+-- figure, so litres meet litres and no conversion is owed. The unit rule holds
+-- because no litre meets a kg/ha number here any more; these rows pin that.
 -- =====================================================================
 do
   local s = newSys(); local f = newField(s, 1, 4.0)
-  s:trackSprayerCoverage(1, 100, "UREA", true)
-  T.near("U E1: UREA litres convert before dividing by the kg/ha rate", f.coveredAreaHa, (100 * 0.77) / BR.UREA.value, 1e-12)
+  s:trackSprayerCoverage(1, 100, "UREA", true, 180)
+  T.near("U E1: UREA litres divide by the applied L/ha, with no density conversion", f.coveredAreaHa, 100 / 180, 1e-12)
 end
 do
   local s = newSys(); local f = newField(s, 1, 4.0)
-  s:trackSprayerCoverage(1, 100, "INSECTICIDE", true)
-  T.near("U E2: INSECTICIDE (crop protection) divides raw litres, unchanged", f.coveredAreaHa, 100 / BR.INSECTICIDE.value, 1e-12)
+  s:trackSprayerCoverage(1, 100, "INSECTICIDE", true, 180)
+  T.near("U E2: INSECTICIDE (crop protection) divides the same way", f.coveredAreaHa, 100 / 180, 1e-12)
 end
 do
   local s = newSys(); local f = newField(s, 1, 4.0)
   local saved = g_fillTypeManager
   g_fillTypeManager = nil
-  local ok, err = pcall(s.trackSprayerCoverage, s, 1, 100, "UREA", true)
+  local ok, err = pcall(s.trackSprayerCoverage, s, 1, 100, "UREA", true, 180)
   g_fillTypeManager = saved
   T.ok("U E3: no fill-type manager: no error (" .. tostring(err) .. ")", ok)
-  T.near("U E4: and no conversion (nothing to resolve the name against)", f.coveredAreaHa, 100 / BR.UREA.value, 1e-12)
+  T.near("U E4: and the same area: the name is never resolved for the arithmetic", f.coveredAreaHa, 100 / 180, 1e-12)
+end
+do
+  local s = newSys(); local f = newField(s, 1, 4.0)
+  local before = SoilFertilitySystem.coverageRateMissing or 0
+  s:trackSprayerCoverage(1, 100, "UREA", true)
+  T.eq("U E5: a caller with no rate counts no area (no BASE_RATES fallback)", f.coveredAreaHa, nil)
+  T.eq("U E6: and the miss is counted, never silent", (SoilFertilitySystem.coverageRateMissing or 0) - before, 1)
 end
 
 -- =====================================================================

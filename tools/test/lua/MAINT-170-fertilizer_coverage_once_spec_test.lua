@@ -12,10 +12,11 @@
 --
 -- ENTRY-POINT BAR: every pass runs through the real installSprayerAreaHook into the real
 -- SoilFertilitySystem on the row-166 world (which hands the soil system the same
--- HookManager, as SoilFertilitySystem.new does). Expected values derive from
--- SPRAYER_RATE.BASE_RATES, the rates the code reads. One 10 L tick on 1.0 ha.
+-- HookManager, as SoilFertilitySystem.new does). Expected values derive from the
+-- world's spray types (PSW.SPRAY_LPS: litres per hectare = lps x 36000), the rate the
+-- code divides out since #1063. One 10 L tick on 1.0 ha.
 --
---   F   FERTILIZER on the litres path: 10 / 225 once
+--   F   FERTILIZER on the litres path: 10 / 216 once
 --   I   SF's INSECTICIDE (a fertilizer profile, applyFertilizer's pest branch): 10 / 100 once
 --   P   PROPICONAZOLE (not a profile, the direct route): still counted, 10 / 100 (#753)
 --   V   a pass the V7 gate refuses counts no coverage. The refusal is written by the real
@@ -32,7 +33,6 @@
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-166-protection_sprayer_world.lua
 
 local group = PSW.group
-local BR = SoilConstants.SPRAYER_RATE.BASE_RATES
 local function near(a, b) return math.abs(a - b) < 1e-9 end
 
 local function oneTick(product, opts)
@@ -45,19 +45,19 @@ end
 
 group("F fertilizer", function()
   local _, f = oneTick("FERTILIZER")
-  T.ok("F1 NAMED: one FERTILIZER tick on the litres path counts 10 L / 225 L/ha once", near(f.sessionCoverageHa or 0, 10 / BR.FERTILIZER.value))
+  T.ok("F1 NAMED: one FERTILIZER tick on the litres path counts 10 L / 216 L/ha once (#1063: the map's spray type)", near(f.sessionCoverageHa or 0, 10 / PSW.ratePerHa("FERTILIZER")))
 end)
 
 group("I dual-purpose", function()
   local w, f = oneTick("INSECTICIDE")
   T.ok("I0 [reached: SF's INSECTICIDE took applyFertilizer's pest branch]", w.sys.insecticideDailyApplied ~= nil and w.sys.insecticideDailyApplied[7] ~= nil)
-  T.ok("I1 NAMED: one SF INSECTICIDE tick counts 10 L / 100 L/ha once", near(f.sessionCoverageHa or 0, 10 / BR.INSECTICIDE.value))
+  T.ok("I1 NAMED: one SF INSECTICIDE tick counts 10 L / 100 L/ha once", near(f.sessionCoverageHa or 0, 10 / PSW.ratePerHa("INSECTICIDE")))
 end)
 
 group("P non-profile protection", function()
   local w, f = oneTick("PROPICONAZOLE")
   T.ok("P0 [reached: PROPICONAZOLE took the direct fungicide route]", w.sys.fungicideDailyApplied ~= nil and w.sys.fungicideDailyApplied[7] ~= nil)
-  T.ok("P1 NAMED: one PROPICONAZOLE tick still counts 10 L / 100 L/ha (the #753 case)", near(f.sessionCoverageHa or 0, 10 / BR.PROPICONAZOLE.value))
+  T.ok("P1 NAMED: one PROPICONAZOLE tick still counts 10 L / 100 L/ha (the #753 case)", near(f.sessionCoverageHa or 0, 10 / PSW.ratePerHa("PROPICONAZOLE")))
 end)
 
 group("V refused pass", function()
