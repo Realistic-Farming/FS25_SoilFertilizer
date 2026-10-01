@@ -47,7 +47,7 @@ local S = GroundConditionSave
 local S_mt = { __index = S }
 
 S.PARTICIPANT_ID = "soilGroundCondition"
-S.SG2_GROUND = "sg2Ground"          -- StockGuard's ground participant (SGGround.lua:49)
+S.SG2_GROUND = "sg2Ground"          -- StockGuard's ground participant (GR.PARTICIPANT_ID, SGGround.lua:66)
 S.SCHEMA = 1
 S.KEY = "soilData.nativeSave"
 S.PAYLOAD_FILE = "soilData.xml"

@@ -24,8 +24,8 @@
 --   U  unpaired: a failed save, a layer that did not save, an out-of-band saveSoilData, a
 --      foreign schema, a completion for another attempt; member cells NATIVE_SAVE_UNPAIRED
 --   L  legacy and new careers mark nothing; a verdict never outlives its mission
---   J  joined to StockGuard (a stub boundary; the real SGNativeMaterialSave bench follows
---      #24): no Soil wrapper, no image named, the completion needs sg2Ground READY
+--   J  joined to StockGuard (a stub boundary): no Soil wrapper, no image named, the
+--      completion needs sg2Ground READY
 --   V  the version dialog's "don't show again" (SoilVersionDialog:onClickDontShowAgain, the
 --      real method): lastSeenVersion alone, edited in place, so a paired save stays paired
 --
@@ -365,7 +365,11 @@ end)
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- J. JOINED TO STOCKGUARD (a stub boundary that calls the participant as SG-2 :818-830
---    describes; the bench against the real SGNativeMaterialSave follows #24)
+--    describes). Before the PR the same cases were rerun once against StockGuard's real
+--    SGNativeMaterialSave and SGClassHook, pinned from its development 70f040c, wrapping
+--    the controller themselves, with only SG-1's attempt counter and SG2's ground
+--    participant stood in: all green, no code change. That rerun is not committed: a
+--    committed load of a sibling repo's tree means whatever branch that clone is on.
 -- ══════════════════════════════════════════════════════════════════════════
 local function stockGuardStub(capable)
     local sg = { registered = {}, nextAttempt = 100, sg2 = { state = "READY" } }
