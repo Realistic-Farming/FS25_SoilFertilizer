@@ -22,6 +22,8 @@
 --   * the weed system: a map with weeds, a herbicide replacement table (fixture
 --     states), and FieldState:update reading the weed state at the field's centre;
 --   * FieldUpdateTask, which records every task enqueued (the weed-map write).
+--   * the map's spray types (g_sprayTypeManager after Soil's registration), whose
+--     litersPerSecond the hook's coverage estimate divides out (#1063). PSW.SPRAY_LPS.
 --
 -- Cells are 10 m (SoilConstants.ZONE.CELL_SIZE), 0.01 ha each; world:cells(from, to)
 -- gives distinct cell centres along one row, so a pass covers exactly those cells.
@@ -39,6 +41,19 @@ local FT = {
 }
 PSW.FT = FT
 
+-- The map's spray types: litersPerSecond per product, as the engine holds them once Soil
+-- has registered its own. Soil registers its crop protection at its rate over 36000
+-- (registerCustomSprayTypes, HookManager.lua liquidNames: 100 L/ha); FERTILIZER and
+-- LIQUIDFERTILIZER keep the base map's (0.0060 and 0.0081, the registration's own
+-- defaults); PESTICIDE is another mod's product with its own figure. A bar derives an
+-- expected rate from this table, never from the code: litres per hectare = lps x 36000.
+PSW.SPRAY_LPS = {
+  HERBICIDE = 100 / 36000, INSECTICIDE = 100 / 36000, FUNGICIDE = 100 / 36000,
+  PROPICONAZOLE = 100 / 36000, PESTICIDE = 0.0026,
+  FERTILIZER = 0.0060, LIQUIDFERTILIZER = 0.0081,
+}
+function PSW.ratePerHa(name) return PSW.SPRAY_LPS[name] * 36000 end
+
 local saved = nil
 
 --- A group that raises is reported as a named failing row, so a crash stays attributable.
@@ -50,6 +65,7 @@ end
 function PSW.restore()
   if saved == nil then return end
   g_fillTypeManager, Sprayer, Utils, g_SoilFertilityManager = saved.ftm, saved.sprayer, saved.utils, saved.sfm
+  g_sprayTypeManager = saved.stm
   g_fieldManager, g_farmlandManager, g_server = saved.fm, saved.flm, saved.server
   g_currentMission.missionDynamicInfo, g_currentMission.weedSystem = saved.mdi, saved.weed
   g_currentMission.addUpdateable, g_currentMission.removeUpdateable = saved.addU, saved.removeU
@@ -68,6 +84,7 @@ function PSW.new(opts)
   if saved == nil then
     saved = {
       ftm = g_fillTypeManager, sprayer = Sprayer, utils = Utils, sfm = g_SoilFertilityManager,
+      stm = g_sprayTypeManager,
       fm = g_fieldManager, flm = g_farmlandManager, server = g_server,
       mdi = g_currentMission.missionDynamicInfo, weed = g_currentMission.weedSystem,
       addU = g_currentMission.addUpdateable, removeU = g_currentMission.removeUpdateable,
@@ -85,6 +102,30 @@ function PSW.new(opts)
     getFillTypeByIndex = function(_, i) return byIndex[i] end,
     getFillTypeByName  = function(_, n) return byName[n] end,
   }
+  local sprayTypes = {}
+  for name, lps in pairs(PSW.SPRAY_LPS) do
+    sprayTypes[FT[name].index] = { name = name, litersPerSecond = lps }
+  end
+  -- A bar that installs its own manager first (a registration bar) keeps it: every other
+  -- method, and any index the map does not carry, goes to that manager.
+  local underlying = g_sprayTypeManager
+  local stm = {
+    getSprayTypeByFillTypeIndex = function(_, i)
+      if sprayTypes[i] ~= nil then return sprayTypes[i] end
+      if underlying ~= nil and underlying.getSprayTypeByFillTypeIndex ~= nil then
+        return underlying:getSprayTypeByFillTypeIndex(i)
+      end
+      return nil
+    end,
+  }
+  if underlying ~= nil then
+    for k, v in pairs(underlying) do
+      if stm[k] == nil and type(v) == "function" then
+        stm[k] = function(_, ...) return v(underlying, ...) end
+      end
+    end
+  end
+  g_sprayTypeManager = stm
   Utils = {
     prependedFunction = function(orig, new)
       return function(...) new(...) if orig then return orig(...) end end

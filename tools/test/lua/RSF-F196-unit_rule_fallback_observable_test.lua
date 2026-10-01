@@ -7,8 +7,9 @@
 -- that asserted a dry conversion through the wrapper would pass at factor 1 and
 -- prove nothing. So each fallback records that it was taken, and this bar proves
 -- three things: with HookManager present the counters never move; with it absent
--- they move exactly when the unconverted value is used; and a name the manager
--- cannot resolve is counted separately from passthrough by design.
+-- they move exactly when the unconverted value is used; and (since #1063 retired
+-- site 3, the litre coverage, which used to resolve a name) the coverage resolves
+-- no name at all, so its unresolved-name counter never moves.
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
 
@@ -44,8 +45,8 @@ do
   s:applyFertilizer(1, 50, 40, nil)
   T.near("OBS 4: UREA converts by its density with HookManager present", f.nitrogen - n0, PF.UREA.N * (40 * 0.77 / 1000) / 4.0 * RR * TUN, 1e-9)
   T.eq("OBS 5: and the fallback counter did not move", SoilFertilitySystem.unitRuleFallbacks, nil)
-  s:trackSprayerCoverage(1, 100, "UREA", true)
-  T.eq("OBS 6: a name the manager resolves is not counted as unresolved", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
+  s:trackSprayerCoverage(1, 100, "UREA", true, 180)
+  T.eq("OBS 6: the litre coverage (site 3, retired by #1063) reaches no conversion and resolves no name", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
 end
 
 -- ── with HookManager ABSENT: the value is unconverted AND the counter says so ──
@@ -64,17 +65,20 @@ do
   T.eq("OBS 9: and the fallback is RECORDED, once per site reached (the factor and the fully-treated comparison)", SoilFertilitySystem.unitRuleFallbacks, 2)
 end
 
--- ── an unresolved name is counted, separately ──
+-- ── the litre coverage resolves no name since #1063 (site 3 retired) ──
+-- Its divisor is the litres per hectare the pass applied, so nothing is converted and
+-- no name is looked up: an unknown name or a missing manager changes nothing.
 do
-  local s = newSys()
+  local s = newSys(); local f = s.fieldData[1]
   local saved = g_fillTypeManager
   g_fillTypeManager = nil
-  s:trackSprayerCoverage(1, 100, "UREA", true)
+  s:trackSprayerCoverage(1, 100, "UREA", true, 180)
   g_fillTypeManager = saved
-  T.eq("OBS 10: no manager to resolve the name: counted as unresolved", SoilFertilitySystem.unitRuleUnresolvedNames, 1)
+  T.eq("OBS 10: no manager: nothing to resolve, nothing counted as unresolved", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
   T.eq("OBS 11: and NOT as a system fallback (HookManager was present; the count is still the two from OBS 9)", SoilFertilitySystem.unitRuleFallbacks, 2)
-  s:trackSprayerCoverage(1, 100, "NOT_A_FILL_TYPE", true)
-  T.eq("OBS 12: a name the manager does not know: counted again", SoilFertilitySystem.unitRuleUnresolvedNames, 2)
+  s:trackSprayerCoverage(1, 100, "NOT_A_FILL_TYPE", true, 180)
+  T.eq("OBS 12: a name the manager does not know: still nothing counted", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
+  T.near("OBS 12b: and both ticks counted their area from the litres alone", f.coveredAreaHa, 200 / 180, 1e-12)
 end
 
 -- ── the HUD guard ──

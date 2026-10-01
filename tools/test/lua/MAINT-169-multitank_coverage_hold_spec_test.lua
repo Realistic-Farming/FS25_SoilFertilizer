@@ -68,7 +68,7 @@ group("C controls", function()
   -- credit. Until MAINTENANCE row 170 the pre-loop track counted them too (its
   -- updateFractions was nil, not false), and this row pinned that 2x; row 170 moved it
   -- to 1x. It stays the only row that sees the loop's clear go missing.
-  T.ok("C1b one FERTILIZER tick counts 10 L / 225 L/ha once", near(s[1].ha, 10 / SoilConstants.SPRAYER_RATE.BASE_RATES.FERTILIZER.value))
+  T.ok("C1b one FERTILIZER tick counts 10 L / 216 L/ha once (the map's FERTILIZER spray type, #1063)", near(s[1].ha, 10 / PSW.ratePerHa("FERTILIZER")))
   T.ok("C2 and accumulates tick by tick", near(s[2].ha, 2 * s[1].ha) and near(s[3].ha, 3 * s[1].ha))
   local _, v = run({ product = "FERTILIZER", areaHa = 1.0 })
   CV = v

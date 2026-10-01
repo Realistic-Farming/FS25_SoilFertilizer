@@ -12,7 +12,7 @@ do
   local sys = newSys({ [1] = { fieldArea = 2.0 } })
   local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.FERTILIZER.value  -- L/ha
   -- Apply exactly 0.5 ha worth of product onto a 2.0 ha field → 25% covered.
-  sys:trackSprayerCoverage(1, rate * 0.5, "FERTILIZER", true)
+  sys:trackSprayerCoverage(1, rate * 0.5, "FERTILIZER", true, rate)
   T.near("trackSprayerCoverage: 0.5ha on 2ha field = 25%",
          sys.fieldData[1].sessionCoverageFraction, 0.25)
 end
@@ -108,7 +108,7 @@ do
     },
   })
   local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
-  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)  -- 0.5 ha of a 2 ha field
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true, rate)  -- 0.5 ha of a 2 ha field
   T.near("#753: cells without the owner flag do NOT suppress the liter fallback",
          sys.fieldData[1].sessionCoverageFraction, 0.25)
 end
@@ -125,7 +125,7 @@ do
     },
   })
   local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
-  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true, rate)
   T.ok("#753: switching product clears the geometric owner flag",
        sys.fieldData[1]._geometricCoverageOwner == nil)
   T.near("#753: the new product's session starts from the liter path, not the old total",
@@ -136,7 +136,7 @@ do
   -- True no-boom fallback: no geometric cells -> the liter path still runs as before.
   local sys = newSys({ [1] = { fieldArea = 2.0, sessionCoverageCells = {} } })
   local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
-  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)  -- 0.5 ha of a 2 ha field
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true, rate)  -- 0.5 ha of a 2 ha field
   T.near("#726: liter fallback still tracks with no boom cells (25%)",
          sys.fieldData[1].sessionCoverageFraction, 0.25)
 end
@@ -173,7 +173,7 @@ do
 
   -- The liter fallback must still be reachable, exactly as for a non-VWW implement.
   local rate = SoilConstants.SPRAYER_RATE.BASE_RATES.HERBICIDE.value
-  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true)
+  sys:trackSprayerCoverage(1, rate * 0.5, "HERBICIDE", true, rate)
   T.near("F61: liter fallback still tracks after a fully-rejected geometric pass",
          sys.fieldData[1].sessionCoverageFraction, 0.25)
 end

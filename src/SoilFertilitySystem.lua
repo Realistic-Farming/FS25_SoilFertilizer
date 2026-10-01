@@ -6886,19 +6886,24 @@ end
 --
 -- Area-based approach: liters consumed per tick is proportional to
 --   boom_width × speed × LPS_rate
--- Dividing by the product's reference rate (L/ha) converts liters → hectares covered.
--- This is field-size and boom-size independent and matches real application density.
+-- Dividing by the litres per hectare the pass actually applied converts liters →
+-- hectares covered. This is field-size and boom-size independent, and independent of
+-- the rate the player chose: Soil's usage formula is the worked area times the native
+-- rate times the start hook's multiplier, so dividing out both leaves the area (#1063).
 --
--- Called from the sprayer hook with raw liters (before rateMultiplier).
+-- Called from the sprayer hook with the liters it consumed (after the rate multiplier).
 -- For fertilizer products, updateFractions should be false because markBoomCells
 -- handles coverage via spatial cell deduplication (eliminates overlap inflation).
 -- For crop protection direct paths (herbicide/insecticide/fungicide) where no
 -- boomPoints are available, updateFractions remains true (liter-based fallback).
 ---@param fieldId        number
----@param liters         number   Raw liters consumed this tick (pre-rateMultiplier)
+---@param liters         number   Liters consumed this tick (the rate multiplier included)
 ---@param fillTypeName   string|nil
 ---@param updateFractions boolean|nil  false = skip area update, only record product name
-function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions)
+---@param litersPerHa    number|nil  the litres per hectare this pass applied: the product's
+---                                  native rate times the multiplier applied
+---                                  (HookManager.getNativeSprayRatePerHa, the start hook)
+function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions, litersPerHa)
     -- MAINTENANCE row 169: while the sprayer hook replays a rig's secondary tanks, the pass's
     -- coverage belongs to the active tank. Return before the #442 reset, the name write and
     -- the area add, so a secondary neither wipes the session nor counts its ground twice.
@@ -6932,25 +6937,15 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
 
-    local baseRates = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.BASE_RATES
-    local rateEntry = fillTypeName and baseRates and (baseRates[fillTypeName] or baseRates.DEFAULT)
-    local ratePerHa = (rateEntry and rateEntry.value and rateEntry.value > 0) and rateEntry.value or 93.5
-
-    -- RSF-F196 U3 (site 3 of 4): litres convert to mass-equivalent before dividing
-    -- by the kg/ha rate. This path receives a NAME, so the descriptor is looked up
-    -- for the conversion; crop protection and every other passthrough product
-    -- resolve to factor 1 and keep their exact arithmetic.
-    local ftDesc = nil
-    if fillTypeName and g_fillTypeManager and type(g_fillTypeManager.getFillTypeByName) == "function" then
-        local okDesc, desc = pcall(g_fillTypeManager.getFillTypeByName, g_fillTypeManager, fillTypeName)
-        if okDesc then ftDesc = desc end
+    -- #1063: litres over the litres per hectare the pass applied, litres with litres.
+    -- RSF-F196 U3 site 3 (the mass conversion before a kg/ha BASE_RATES divisor) is
+    -- retired with that divisor: no litre meets a kg/ha number here any more. A caller
+    -- with no rate counts no area, and the miss is counted, never silent.
+    if type(litersPerHa) ~= "number" or not (litersPerHa > 0) or litersPerHa == math.huge then
+        SoilFertilitySystem.coverageRateMissing = (SoilFertilitySystem.coverageRateMissing or 0) + 1
+        return
     end
-    if fillTypeName ~= nil and ftDesc == nil then
-        -- A name that resolved to no descriptor converts by 1. Counted, so a bar can
-        -- tell passthrough by design from a lookup that failed (#976 cold review).
-        SoilFertilitySystem.unitRuleUnresolvedNames = (SoilFertilitySystem.unitRuleUnresolvedNames or 0) + 1
-    end
-    local areaThisTick = massEquivalent(ftDesc, liters) / ratePerHa
+    local areaThisTick = liters / litersPerHa
     field.coveredAreaHa = (field.coveredAreaHa or 0) + areaThisTick
 
     local prevCoverage = field.coverageFraction or 0

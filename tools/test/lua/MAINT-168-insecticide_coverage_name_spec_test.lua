@@ -13,9 +13,10 @@
 --
 -- ENTRY-POINT BAR: PESTICIDE passes through the real sprayer hook into the real soil
 -- system (MAINT-166-protection_sprayer_world.lua) on a rig with no variable-width
--- sections, so coverage takes the hook's litres path: litres over the product's reference
--- rate (PESTICIDE has no BASE_RATES entry, so SPRAYER_RATE.BASE_RATES.DEFAULT, 93.5 L/ha)
--- over the field's 0.2 ha, so one 6 L pass is about 32%. Nothing sets a fraction by hand.
+-- sections, so coverage takes the hook's litres path: litres over the litres per hectare
+-- the pass applied (#1063: the map's PESTICIDE spray type, lps 0.0026, so 93.6 L/ha at
+-- 1.0x, PSW.SPRAY_LPS) over the field's 0.2 ha, so one 6 L pass is about 32%. Nothing sets
+-- a fraction by hand.
 --
 --   L1  one 6 L pass counts its litres ONCE (about 32%, not 64%)
 --   L2  the session keeps the pass's own name (no flip)
@@ -32,8 +33,7 @@
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-166-protection_sprayer_world.lua
 
 local group = PSW.group
-local BR = SoilConstants.SPRAYER_RATE.BASE_RATES
-local PER_PASS = 6 / (BR.PESTICIDE or BR.DEFAULT).value / 0.2   -- one 6 L pass, as a fraction of 0.2 ha
+local PER_PASS = 6 / PSW.ratePerHa("PESTICIDE") / 0.2   -- one 6 L pass, as a fraction of 0.2 ha
 
 group("L litres path", function()
   local w = PSW.new({ product = "PESTICIDE", noVww = true })
