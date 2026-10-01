@@ -26,7 +26,8 @@
 --   B  a blocked pass: every effect checked in the same pass (Iris's same-pass rule)
 --   X  the discriminating case: a processor error, then fresh ground
 --   F  finding 2: a sprayer drained through another processor is never refused
---   I  identity: failed adds, repeated adds, a foreign wrap, teardown, reinstall
+--   I  identity: failed adds, repeated adds, a foreign wrap, teardown, reinstall, and a
+--      build without VehicleSystem.addVehicle (MAINTENANCE row 188)
 --   U  unchanged: a client, overlap prevention off, an untracked product, no sections
 --   V  the evidence lines: the first-execution line names overlap prevention's state,
 --      and the one-shot flags reset with each install (Bob's MAJOR and MINOR on #1052)
@@ -579,6 +580,25 @@ group("I-class", function()
     local v = build({ uid = "through-foreign" })
     T.eq("I22 and ours, still under it, wraps nothing any more",
          tostring(VehicleSystem.addVehicle(g_currentMission.vehicleSystem, v)) .. "/" .. tostring(gateRecord(v)), "true/nil")
+end)
+
+group("I-noadd", function()
+    -- MAINTENANCE row 188: a build without VehicleSystem.addVehicle. The later-vehicle
+    -- wrap cannot install (installVehicleRoutes says so once); the gate still gates
+    -- the sprayers already present, as every other route does.
+    local present
+    world({ beforeInstall = function()
+        present = build({ uid = "present" })
+        g_currentMission.vehicleSystem:addVehicle(present)
+        VehicleSystem.addVehicle = nil
+    end })
+    T.eq("I23 installAll ran to its end without addVehicle (" .. tostring(W.installErr) .. ")", W.installOk, true)
+    local rec, wa = gateRecord(present)
+    T.ok("I24 THE SPRAYER PRESENT AT INSTALL CARRIES THE GATE",
+         rec ~= nil and rec.active == true and wa.processingFunction == rec.wrapper)
+    local mgr = setmetatable({ hooks = {} }, { __index = HookManager })
+    T.eq("I25 on their own: the later-vehicle wrap refuses, the gate installs",
+         tostring(mgr:installVehicleRoutes()) .. "/" .. tostring(mgr:installSprayerOverlapGate()), "false/true")
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
