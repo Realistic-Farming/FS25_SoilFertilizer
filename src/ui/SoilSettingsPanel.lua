@@ -831,8 +831,10 @@ function SoilSettingsPanel:drawLandingPage()
         btnHov and {0.55, 0.08, 0.08, 0.95} or {0.22, 0.05, 0.05, 0.88})
     self:drawRect(btnX, btnY, 0.003, btnH, ADMIN_ACCENT)
     self:drawRect(btnX, btnY + btnH - 0.001, btnW, 0.001, ADMIN_ACCENT, 0.40)
+    -- Plain text: FS25's text font has no U+2699 (gear), so the game logged
+    -- "Character '9881' not found in texture font" and drew a blank (MAINTENANCE row 194).
     self:drawText(btnX + btnW * 0.5 + 0.002, btnY + btnH * 0.22, TS_SMALL,
-        "⚙ ADMIN",
+        "ADMIN",
         btnHov and {1.0, 0.55, 0.55, 1.0} or {0.85, 0.35, 0.35, 1.0},
         RenderText.ALIGN_CENTER, true)
     self:registerClick("open_admin", btnX, btnY, btnW, btnH)
