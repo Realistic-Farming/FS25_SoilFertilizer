@@ -598,16 +598,46 @@ end
 
 -- ── Nozzle state functions ────────────────────────────────────────────────────
 
--- Batch update: sets isActive on each effectData and fires fade transitions.
+--- [SF-73 truthful UI (b)] Whether product is actually going down on this pass, for the
+--- spray VISUAL only. The engine's own test, read through its own definition
+--- (Sprayer:getAreEffectsVisible, Sprayer.lua:466-468: lastSprayTime + 100 > g_time, and
+--- lastSprayTime is set only when processSprayerArea paints, :335), so a pass the engine did
+--- not paint (an SF-73 refused cycle, an overlap-gate refusal) shows no spray. A client runs
+--- its own processSprayerArea while SF-73's enforcement is server-only, so a client also goes
+--- off on a received, current target result that plans nothing (a refusal or a zero plan).
+---@return boolean
+function SFNozzleEffects.isApplying(vehicle)
+    if type(vehicle) ~= "table" or vehicle.spec_sprayer == nil then return true end
+    if Sprayer ~= nil and type(Sprayer.getAreEffectsVisible) == "function" then
+        local ok, painted = pcall(Sprayer.getAreEffectsVisible, vehicle)
+        if ok and painted ~= true then return false end
+    end
+    if g_server == nil then
+        local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        if ss ~= nil and type(ss.getApplicationTargetResult) == "function" then
+            local r = ss:getApplicationTargetResult(vehicle)
+            if r ~= nil and r.active == true and (tonumber(r.plannedLitres) or 0) <= 0 then return false end
+        end
+    end
+    return true
+end
+
+-- Batch update: sets isActive on each effectData (the See & Spray decision the section
+-- gate and the usage scale read) and fires the fade transitions from isShown, which is
+-- isActive AND the engine actually applying (SF-73 truthful UI (b)). The two are kept apart
+-- on purpose: the section gate must not wait for paint, since paint needs the section open.
 function SFNozzleEffects:sfUpdateNozzleEffectsState(sprayerEffects, dt, isTurnedOn, lastSpeed)
+    local applying = SFNozzleEffects.isApplying(self)
     for _, effectData in ipairs(sprayerEffects) do
         local isActive, _ = self:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
+        effectData.isActive = isActive
 
-        if isActive ~= effectData.isActive then
-            effectData.isActive = isActive
+        local isShown = isActive and applying
+        if isShown ~= (effectData.isShown == true) then
+            effectData.isShown = isShown
 
             if effectData.effectNode then
-                if isActive then
+                if isShown then
                     if effectData.state == STATE_OFF or effectData.state == STATE_TURNING_OFF then
                         effectData.state   = STATE_TURNING_ON
                         effectData.fadeDir = SFNozzleEffects.FADE_DIR_START
