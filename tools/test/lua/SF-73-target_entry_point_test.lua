@@ -624,6 +624,16 @@ do
   local three = ta:noteRefusal(st, W.v, { refused = true, state = "INACTIVE", reasons = { "DENIED_SHARE" }, fieldId = 7, fillType = UREA })
   T.eq("E2b.5 a repeat is held, a new reason under the same state and field logs at once",
        tostring(one) .. "/" .. tostring(two) .. "/" .. tostring(three) .. "/" .. (#lines - before), "true/false/true/2")
+  -- A machine switched off while AUTO stays armed: a native-inactive cycle, the machine not
+  -- working, never a target refusal line (Bob's R-15 build note).
+  W.v.turnedOn = false
+  local before6 = #lines
+  run(W.v, 3)
+  local r6 = W.ss:getApplicationTargetResult(W.v)
+  local refusedLines6 = 0
+  for k = before6 + 1, #lines do if lines[k]:find("[SF-73] target cycle refused", 1, true) then refusedLines6 = refusedLines6 + 1 end end
+  T.ok("E2b.6 [reached] switched off, the cycle is native-inactive (INACTIVE, no reason)", r6 ~= nil and r6.doseState == "INACTIVE" and #r6.reasons == 0)
+  T.eq("E2b.7 NAMED: and it logs no target-refusal line", refusedLines6, 0)
   SoilLogger.debug = realDebug
 end
 

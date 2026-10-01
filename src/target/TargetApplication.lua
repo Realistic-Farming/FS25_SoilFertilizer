@@ -955,7 +955,7 @@ TA.REFUSAL_LOG_MS = 4000   -- the SprayUsage diagnostic's cadence (HookManager i
 --- [R15, truthful UI (c)] A refused cycle says why, in the debug log: once when the
 --- (state, reasons, field) set changes for this vehicle, then at most every
 --- REFUSAL_LOG_MS while it holds. A cycle is one WorkArea tick, so a line per cycle would
---- be tens a second. Returns true when it logged.
+--- be tens a second. A native-inactive cycle is not passed here. Returns true when it logged.
 function TA:noteRefusal(st, sprayer, plan)
     local reasons = table.concat(plan.reasons or {}, ",")
     local key = tostring(plan.state) .. "|" .. reasons .. "|" .. tostring(plan.fieldId)
@@ -980,7 +980,9 @@ function TA:finishWithoutCredit(sprayer, cycle)
     local st = self.states[sprayer]
     if st == nil then return end
     local plan = cycle.committed
-    if plan.refused then self:noteRefusal(st, sprayer, plan) end
+    -- Not a native-inactive cycle (turned off, lifted, overlap-blocked, no geometry): that is
+    -- the machine not working, not a target refusal, as updateGuard counts it (Bob, R-15).
+    if plan.refused and not plan.nativeInactive then self:noteRefusal(st, sprayer, plan) end
     if plan.primeLine ~= nil and plan.geometry ~= nil then
         local pc = plan.primeCaches or {}
         st.hold = { anchor = plan.primeLine, fillType = plan.fillType, areaKey = plan.geometry.areaKey,
