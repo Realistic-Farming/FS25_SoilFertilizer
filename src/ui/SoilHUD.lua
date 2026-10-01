@@ -1123,13 +1123,14 @@ function SoilHUD:buildFieldInfoLines(info)
 
     -- ── Assemble rows ────────────────────────────────────────
     -- Each row carries a `group` ("early" or "late") that controls where it lands in the
-    -- native FIELD INFO box. That box updates an existing label in place rather than
-    -- re-inserting it, so a row's on-screen position is fixed by whichever native call
-    -- first creates it -- not by the order we build `lines` in here. installNativeFieldInfoHook
-    -- appends "early" rows right after the native Farmland/Owned by rows (fieldAddFarmland),
-    -- and "late" rows right after the native Crop type/Growth rows (fieldAddFruit), which is
-    -- what actually produces:
-    --   Farmland, Owned by, Soil Grade, Yield, pH, OM, Needs, Rotation, Crop type, Growth, Amend. burn risk
+    -- native FIELD INFO box. That box draws rows in the order addLine is called, so a row's
+    -- on-screen position is fixed by the native call it is appended after -- not by the order
+    -- we build `lines` in here. installNativeFieldInfoHook appends "early" rows right after
+    -- the native Farmland/Owned by rows (fieldAddFarmland), and "late" rows right after the
+    -- native Crop type/Growth/Yield bonus rows (fieldAddField), which is what actually produces:
+    --   Farmland, Owned by, Soil Grade, pH, OM, Needs, Rotation, Crop type, Growth, Yield bonus,
+    --   Yield (only when there is no Yield bonus row), Amend. burn risk, Drilling, then the
+    --   native weed and field-action rows
     if simStatusStr then
         table.insert(lines, {
             group = "early",
@@ -1138,7 +1139,9 @@ function SoilHUD:buildFieldInfoLines(info)
         })
     end
     table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_grade", "Soil Grade"), value = SoilHUD.statusText(grade) })
-    table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_yield", "Yield"),      value = yieldStr })
+    -- "late": appended in the fieldAddField pass after the native Yield bonus row has taken
+    -- this number, so the hook can skip it when that row exists (one yield row, not two).
+    table.insert(lines, { group = "late",  label = SoilL10n.tr("sf_fieldinfo_yield", "Yield"),      value = yieldStr })
     -- N/P/K (ppm) and Compaction are intentionally NOT duplicated here -- they're already
     -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
     -- numbers in this box was redundant. Compaction still feeds the "Needs" summary below
