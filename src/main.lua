@@ -167,6 +167,10 @@ source(modDirectory .. "src/MaterialWetness.lua")
 source(modDirectory .. "src/ground/GroundConditionCells.lua")
 source(modDirectory .. "src/ground/GroundConditionCoordinator.lua")
 source(modDirectory .. "src/ground/GroundConditionAdmission.lua")
+-- [GCC 6] The native save boundary Soil owns when StockGuard does not, and the ground-
+-- condition participant that pairs the condition layers with the height image.
+source(modDirectory .. "src/ground/SoilNativeSave.lua")
+source(modDirectory .. "src/ground/GroundConditionSave.lua")
 -- [RSF-F208 section 3] The native-cell observer and the Soil-alone movement carriers
 -- (the Tedder in this slice). HookManager's tedder wrapper calls into them.
 source(modDirectory .. "src/ground/GroundNativeObserver.lua")
@@ -403,6 +407,16 @@ local function missionStarted(mission)
     if sfm then
         sfm:onMissionStarted()
     end
+    -- [GCC 6] StockGuard may have published its boundary after Soil's install: Soil then
+    -- joins it and releases its own (GCC :112).
+    if SoilNativeSave ~= nil and SoilNativeSave.current ~= nil then
+        pcall(SoilNativeSave.current.reconsider, SoilNativeSave.current)
+    end
+end
+
+--- [GCC 6] The native save boundary for this mission (GroundConditionSave.installForMission).
+local function installNativeSave(mission)
+    if GroundConditionSave ~= nil then GroundConditionSave.installForMission(mission) end
 end
 
 -- Called after mission loaded
@@ -413,6 +427,11 @@ local function loadedMission(mission, node)
         return
     end
     sfm:onMissionLoaded()
+
+    -- [GCC 6] Here, before onMissionStarted: the install reads the loaded save's verdict
+    -- before the store decides, and seeds the attempt ids.
+    local okSave, errSave = pcall(installNativeSave, mission)
+    if not okSave then SoilLogger.warning("[NativeSave] install failed: %s", tostring(errSave)) end
 
     -- CD-13: dog early-warning (passive crop disease alert when a doghouse is placed).
     if DogEarlyWarning ~= nil and sfm.soilSystem ~= nil then
@@ -784,6 +803,10 @@ local function unload(mission)
     -- else, so the next mission never inherits this one's gates. Unconditional and
     -- outside the sfm block: it must run even when the manager is already gone.
     if GroundTipGate then GroundTipGate.disable() end
+    -- [GCC 6] Release Soil's native save boundary (its wrappers unlink or pass through)
+    -- and the participant, before the manager goes.
+    if SoilNativeSave ~= nil and SoilNativeSave.current ~= nil then pcall(SoilNativeSave.current.close, SoilNativeSave.current, "MISSION_END") end
+    if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil then pcall(GroundConditionSave.current.close, GroundConditionSave.current) end
     -- SG-6: clear the joined-mission binding for exactly the mission being
     -- deleted (the legacy override stays disabled); StockGuard's own teardown
     -- may repeat this safely. The prepend's own argument is the exact object;

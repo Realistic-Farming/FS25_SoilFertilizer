@@ -709,6 +709,14 @@ function GroundConditionCoordinator:_onStoreDecided(state, payload)
        and type(payload.groundAvailability) == "table" then
         restored = self:deserialize(payload.groundAvailability)
     end
+    -- [GCC 6] A save whose condition layers did not pair with its height image marks every
+    -- member cell unavailable (:96, through the :31 overlay; the bytes are kept).
+    if GroundConditionSave ~= nil then
+        local okV, runs = pcall(GroundConditionSave.applyVerdict, self)
+        if okV and type(runs) == "number" and runs > 0 then
+            SoilLogger.info("[GroundCoord] the save did not pair with its height image: %d member run(s) marked unavailable", runs)
+        end
+    end
     SoilLogger.info("[GroundCoord] availability overlay %s (%d cell(s) unavailable)",
         restored and "restored from the save" or "not restored (" .. tostring(state) .. ")", self.unavailableCount)
     self:bumpRevision("overlay-decided")

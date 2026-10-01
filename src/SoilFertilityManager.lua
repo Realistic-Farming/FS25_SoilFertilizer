@@ -1276,6 +1276,13 @@ function SoilFertilityManager:saveSoilData(missionInfo)
         if indexStamp ~= nil then
             setXMLString(xmlFile, SoilMaterialDownBridge.INDEX_STAMP_KEY, string.format("%.17g", indexStamp))
         end
+        -- [GCC 6] The native save stamp, and this save's attempt when a boundary began one:
+        -- the condition layers pair with the height image only through it.
+        if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil then
+            local layersSaved = type(savedByKey) == "table" and MaterialDown ~= nil and MaterialWetness ~= nil
+                and savedByKey.groundMembership == true and savedByKey[MaterialDown.LAYER_KEY] == true and savedByKey[MaterialWetness.LAYER_KEY] == true
+            GroundConditionSave.current:stampSoilData(xmlFile, layersSaved)
+        end
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
