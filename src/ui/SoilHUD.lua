@@ -186,6 +186,7 @@ function SoilHUD.new(soilSystem, settings)
     self._cachedFillType   = nil
     self._cachedProfile    = nil
     self._cachedRateMult   = 1.0
+    self._cachedTargetMode = false
 
     -- Height dirty flag: set by refreshFieldData, cleared after calculateHeight()
     self._heightDirty = true
@@ -899,6 +900,11 @@ function SoilHUD:update(dt)
     local _sprRoot = sprayer and sprayer.rootVehicle
     local _rateVehId = sprayer and ((_sprRoot and _sprRoot ~= sprayer) and (_sprRoot.id or 0) or sprayer.id) or 0
     self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(_rateVehId) or 1.0
+    -- SF-73 section 7 (:89): under target mode the projection below cannot stand in for
+    -- the plan's confirmed footprint result, so the N/P/K ghost draws nothing.
+    local _ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    self._cachedTargetMode = sprayer ~= nil and _ss ~= nil and type(_ss.isTargetModeForDisplay) == "function"
+        and _ss:isTargetModeForDisplay(sprayer) == true or false
 
     -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
@@ -1930,7 +1936,9 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     -- Shows the expected nutrient gain for the remainder of the current application pass.
     local projectedDelta = 0
     local ghostFill = 0
-    if profile and profile[label] and info and info.nutrientBuffer then
+    -- Not under SF-73 target mode: the plan, not this field-wide projection, decides what
+    -- goes down (section 7 :89; the honest footprint surface is Wizard's, DESIGN-CHECK 138).
+    if profile and profile[label] and info and info.nutrientBuffer and not self._cachedTargetMode then
         local fillTypeIndex = fillType and fillType.index
         if fillTypeIndex then
             local currentBuffer = info.nutrientBuffer[fillTypeIndex] or 0

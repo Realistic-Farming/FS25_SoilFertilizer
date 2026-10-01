@@ -1348,6 +1348,17 @@ function TA:getApplicationTargetResult(vehicle)
     return C.copy(c.result)
 end
 
+--- Whether target mode governs this vehicle's pass, for a display whose old figure
+--- "cannot stand in for a confirmed footprint result" (section 7 :89): the server and
+--- host ask the mode itself; a client reads the received result's active flag, through
+--- the read contract above (an expired result is no answer, so not target mode).
+function TA:isTargetModeForDisplay(vehicle)
+    if vehicle == nil then return false end
+    if g_server ~= nil then return self:isTargetMode(vehicle) == true end
+    local r = self:getApplicationTargetResult(vehicle)
+    return r ~= nil and r.active == true
+end
+
 --- The crop for a field report: the live fruit at the engine field's centre, else
 --- the just-sown crop. Never the harvested last crop (the getFieldInfo read order,
 --- SoilFertilitySystem:getFieldInfo, without its lastCrop fallback).
