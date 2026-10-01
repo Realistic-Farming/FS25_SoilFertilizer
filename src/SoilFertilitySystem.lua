@@ -6712,6 +6712,15 @@ function SoilFertilitySystem:getApplicationTargetResult(vehicle)
     return nil
 end
 
+--- Whether SF-73 target mode governs this vehicle's pass, for the HUD (one read on
+--- every role; false when the module or the read is unavailable).
+function SoilFertilitySystem:isTargetModeForDisplay(vehicle)
+    local ta = self.targetApplication
+    if ta == nil or type(ta.isTargetModeForDisplay) ~= "function" then return false end
+    local ok, on = pcall(ta.isTargetModeForDisplay, ta, vehicle)
+    return ok and on == true
+end
+
 --- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
 --- field scalars without coordinates; strict LOCAL map truth with them.
 --- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target
