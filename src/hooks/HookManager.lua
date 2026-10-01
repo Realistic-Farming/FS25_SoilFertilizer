@@ -4601,14 +4601,14 @@ end
 --- other routes no longer matters: no hook writes the instance field
 --- vehicleSystem.addVehicle any more (MAINTENANCE row 172), so nothing can shadow
 --- the class wrap the routes ride on.
+---
+--- No VehicleSystem check of its own (MAINTENANCE row 188): without addVehicle,
+--- installVehicleRoutes says so once and addVehicleRoute returns nil, so only the
+--- sprayers bought later go ungated, as for every other route.
 ---@return boolean success
 function HookManager:installSprayerOverlapGate()
     if not Sprayer or type(Sprayer.processSprayerArea) ~= "function" then
         SoilLogger.warning("[OverlapGate] Sprayer.processSprayerArea not available - skipping")
-        return false
-    end
-    if type(VehicleSystem) ~= "table" or type(VehicleSystem.addVehicle) ~= "function" then
-        SoilLogger.warning("[OverlapGate] VehicleSystem.addVehicle not available - skipping")
         return false
     end
 
