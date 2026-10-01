@@ -26,9 +26,11 @@
 --   L  legacy and new careers mark nothing; a verdict never outlives its mission
 --   J  joined to StockGuard (a stub boundary; the real SGNativeMaterialSave bench follows
 --      #24): no Soil wrapper, no image named, the completion needs sg2Ground READY
+--   V  the version dialog's "don't show again" (SoilVersionDialog:onClickDontShowAgain, the
+--      real method): lastSeenVersion alone, edited in place, so a paired save stays paired
 --
 --!env: modenv
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/GC-6-savegame_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/SoilNativeSave.lua, src/ground/GroundConditionSave.lua, src/SoilFertilityManager.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/GC-6-savegame_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/SoilNativeSave.lua, src/ground/GroundConditionSave.lua, src/SoilFertilityManager.lua, src/ui/SoilVersionDialog.lua
 
 -- The bench runs inside one function: the concatenated sources' file-level locals with this
 -- file's would pass Lua's 200-local limit for a single function.
@@ -151,7 +153,8 @@ local function world(dir, opts)
     vm.layers.materialWetness.def = { file = "materialWetness.grle" }
     vm.saveToSavegame = REAL_SAVE
     sys.valueMaps = vm
-    W.sys, W.vm, W.mgr, W.age = sys, vm, { soilSystem = sys, lastSeenVersion = "bench" }, age
+    W.sys, W.vm, W.age = sys, vm, age
+    W.mgr = setmetatable({ soilSystem = sys, lastSeenVersion = "bench" }, { __index = SoilFertilityManager })
     local mission = {
         environment = { currentMonotonicDay = 100, currentSeason = 2, daysPerPeriod = 3 },
         vehicleSystem = { vehicles = {}, addVehicle = function() return true end },
@@ -435,6 +438,54 @@ group("J", function()
     T.eq("J8 the next save runs under StockGuard's attempt, never one of Soil's", stampOf("j_final7") .. "/" .. tostring(W.boundary.lastAttempt), "1:101:101/nil")
     unload()
     T.eq("J9 the teardown removes the participant from StockGuard by identity", tostring(sg.registered[GS.PARTICIPANT_ID]), "nil")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- V. THE VERSION DIALOG'S "DON'T SHOW AGAIN"
+-- ══════════════════════════════════════════════════════════════════════════
+local CLOSED = {}
+g_gui = { closeDialogByName = function(_, name) CLOSED[#CLOSED + 1] = name end }
+local function dontShowAgain(version)
+    g_SoilFertilityManager = W.mgr
+    SoilVersionDialog.onClickDontShowAgain({ _version = version })
+end
+group("V", function()
+    resetDisk()
+    savedCareer("v_career", "v_final", { index = 30 })
+    reload("v_final", { index = 30 })
+    local layer = DISK["v_final/materialAge.grle"]
+    dontShowAgain("9.9.9")
+    local d = DISK["v_final/soilData.xml"]
+    T.eq("V1 [entry point] \"don't show again\" on a loaded save: the version lands in soilData.xml, edited in place; the native save stamp is untouched and no condition layer is rewritten",
+        tostring(d["soilData#lastSeenVersion"]) .. "/" .. stampOf("v_final") .. "/" .. tostring(DISK["v_final/materialAge.grle"] == layer) .. "/" .. tostring(CLOSED[#CLOSED]),
+        "9.9.9/1:1:1/true/SoilVersionDialog")
+    T.eq("V2 quit without saving and reload: still PAIRED, nothing marked", reload("v_final", { index = 30 }) .. " " .. membersUnav(), "PAIRED false:nil false:nil false:nil")
+
+    -- A career never saved: no soilData.xml exists, and none is created (SF-76 genesis reads it).
+    resetDisk()
+    world("v_new", { valid = false, index = 31 })
+    dontShowAgain("9.9.9")
+    T.eq("V3 a career never saved: no soilData.xml is created; the version waits in memory for the first save",
+        tostring(DISK["v_new/soilData.xml"]) .. "/" .. tostring(W.mgr.lastSeenVersion), "nil/9.9.9")
+    W.sys.yardLadder:onMissionStarted()
+    nativeSave("v_final3")
+    T.eq("V4 and the first save carries it, paired", tostring(DISK["v_final3/soilData.xml"]["soilData#lastSeenVersion"]) .. "/" .. stampOf("v_final3"), "9.9.9/1:1:1")
+
+    -- A click while a native save attempt is open (the async frames after the career chain).
+    resetDisk()
+    savedCareer("v_career5", "v_final5", { index = 32 })
+    reload("v_final5", { index = 32 })
+    local seenOpen = false
+    nativeSave("v_final6", false, function(frame)
+        if frame == 1 then
+            seenOpen = GS.current ~= nil and GS.current.pending ~= nil
+            dontShowAgain("8.8.8")
+        end
+    end)
+    T.eq("V5 a click during an open attempt writes nothing to disk; the save it interrupted still pairs, and the version waits for the next save",
+        tostring(seenOpen) .. "/" .. tostring(DISK["v_final6/soilData.xml"]["soilData#lastSeenVersion"]) .. "/" .. stampOf("v_final6") .. "/" .. tostring(W.mgr.lastSeenVersion),
+        "true/bench/1:2:2/8.8.8")
+    unload()
 end)
 end
 GC6_PARTICIPANT_BENCH()

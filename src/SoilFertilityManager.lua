@@ -1299,6 +1299,28 @@ function SoilFertilityManager:saveSoilData(missionInfo)
     end
 end
 
+--- [GCC 6] "Don't show again" (SoilVersionDialog): persist lastSeenVersion alone, edited in
+--- place in the save's existing soilData.xml, so the condition layers and the native save
+--- stamp (soilData.nativeSave) stay exactly as the last native save paired them. Never
+--- creates the file: a career not saved yet has none, and an empty one would end SF-76's
+--- genesis (_hasSavedSoilData); the value lands with the first save. Skipped while a native
+--- save attempt is open; the value is in memory and lands with the next save.
+---@return boolean written
+function SoilFertilityManager:persistLastSeenVersion()
+    local mi = g_currentMission and g_currentMission.missionInfo
+    local dir = mi and mi.savegameDirectory
+    if dir == nil or loadXMLFile == nil or fileExists == nil then return false end
+    if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil and GroundConditionSave.current.pending ~= nil then return false end
+    local path = dir .. "/soilData.xml"
+    if not fileExists(path) then return false end
+    local xmlFile = loadXMLFile("soilDataVersion", path)
+    if xmlFile == nil or xmlFile == 0 then return false end
+    setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
+    local saved = saveXMLFile(xmlFile)
+    delete(xmlFile)
+    return saved ~= false
+end
+
 -- SF-76: does this save already carry soil data? A new save has neither a
 -- soilData.xml nor a StateLedger soil block, so genesis may seed from terrain.
 function SoilFertilityManager:_hasSavedSoilData()

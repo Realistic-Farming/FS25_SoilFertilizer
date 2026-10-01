@@ -9,7 +9,9 @@
 #   - every other mutant selects GroundConditionSave.lua's one bench. The seams in
 #     SoilFertilityManager.lua and GroundConditionCoordinator.lua run only when
 #     GroundConditionSave is loaded (GroundConditionSave ~= nil, and .current set by its
-#     install), so no other bench can see them.
+#     install), so no other bench can see them. SoilFertilityManager:persistLastSeenVersion
+#     has one caller, the version dialog, which only that bench drives; a mutant in the
+#     dialog itself selects the benches that name src/ui/SoilVersionDialog.lua.
 # Run ONE mutant per call, in the foreground, memory-checked.
 #
 # KILLED* means killed only by a Lua error: a weak kill, treated as a failure.
@@ -43,7 +45,8 @@ NS = "src/ground/SoilNativeSave.lua"
 GS = "src/ground/GroundConditionSave.lua"
 SFM = "src/SoilFertilityManager.lua"
 GC = "src/ground/GroundConditionCoordinator.lua"
-SELECT = {NS: ["--loads", NS]}
+VD = "src/ui/SoilVersionDialog.lua"
+SELECT = {NS: ["--loads", NS], VD: ["--loads", VD]}
 DEFAULT_SELECT = ["--loads", GS]
 
 MUTATIONS = [
@@ -233,6 +236,23 @@ MUTATIONS = [
  ("C01-verdict-not-applied", GC,
   [("        local okV, runs = pcall(GroundConditionSave.applyVerdict, self)\n", "        local okV, runs = true, 0\n", 1)],
   "the coordinator never applies the verdict (U2)"),
+ # ── the version dialog's "don't show again" ─────────────────────────────────
+ ("D01-dialog-full-save", VD,
+  [("        g_SoilFertilityManager:persistLastSeenVersion()\n", "        g_SoilFertilityManager:saveSoilData()\n", 1)],
+  "the dialog rewrites the layers outside a native save: the reload is UNPAIRED (V2)"),
+ ("D02-version-file-recreated", SFM,
+  [("    local xmlFile = loadXMLFile(\"soilDataVersion\", path)\n", "    local xmlFile = createXMLFile(\"soilDataVersion\", path, \"soilData\")\n", 1)],
+  "the version write recreates soilData.xml and drops the native save stamp (V1, V2)"),
+ ("D03-version-file-created-when-absent", SFM,
+  [("    if not fileExists(path) then return false end\n    local xmlFile = loadXMLFile(\"soilDataVersion\", path)\n",
+    "    local xmlFile = fileExists(path) and loadXMLFile(\"soilDataVersion\", path) or createXMLFile(\"soilDataVersion\", path, \"soilData\")\n", 1)],
+  "a career never saved gets a soilData.xml, which ends SF-76 genesis (V3)"),
+ ("D04-version-written-during-attempt", SFM,
+  [("    if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil and GroundConditionSave.current.pending ~= nil then return false end\n", "", 1)],
+  "a click during an open attempt writes into the staged file (V5)"),
+ ("D05-version-not-written", SFM,
+  [("    setXMLString(xmlFile, \"soilData#lastSeenVersion\", self.lastSeenVersion or \"\")\n    local saved = saveXMLFile(xmlFile)\n", "    local saved = saveXMLFile(xmlFile)\n", 1)],
+  "the click persists nothing (V1)"),
 ]
 
 
@@ -282,7 +302,7 @@ def main(argv):
         return 1 if bad else 0
     if argv[0] == "--baseline":
         worst = 0
-        for select in (SELECT[NS], DEFAULT_SELECT):
+        for select in (SELECT[NS], DEFAULT_SELECT, SELECT[VD]):
             rc, _, _, out = run_bench(select)
             print(" ".join(select) + ": " + (out.strip().splitlines()[-1] if out.strip() else "(no output)"))
             worst = max(worst, rc)

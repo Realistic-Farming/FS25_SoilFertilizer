@@ -33,9 +33,11 @@
 -- marks every condition cell unavailable through the coordinator's availability overlay
 -- (GCC :31) when the store decides: the bytes are kept, never cleared (:96, :62).
 --
--- OUT-OF-BAND SAVES. saveSoilData also runs outside any native save (the version dialog,
--- settings actions, the sfSaveData console command): it rewrites the layers in the live
--- savegame directory at a moment no height image describes. Such a soilData.xml carries the
+-- OUT-OF-BAND SAVES. saveSoilData also runs outside any native save, from five console
+-- commands (SoilSettingsGUI.lua:70-77: SoilSaveData, soilSetState, soilRecoverField,
+-- SoilRerollFields, SoilRerollUnownedFields): it rewrites the layers in the live savegame
+-- directory at a moment no height image describes. (The version dialog's "don't show again"
+-- writes lastSeenVersion alone, in place: SoilFertilityManager:persistLastSeenVersion.) Such a soilData.xml carries the
 -- stamp and no attempt, and loads UNPAIRED: the layers on disk no longer pair with the
 -- height image (:96). A normal save afterwards pairs them again.
 -- =========================================================
