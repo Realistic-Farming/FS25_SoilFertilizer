@@ -202,6 +202,9 @@ MaterialWetness.BASIS = {
 -- A source cell's condition as the standing and collected readers classify it. Missing
 -- data is not dry: no record, and a read that cannot be vouched for, are UNKNOWN.
 MaterialWetness.SOURCE = { KNOWN = "KNOWN", UNKNOWN = "UNKNOWN", REFUSAL = "REFUSAL" }
+-- [SG2-5d] The producer a receipt Soil sealed names: it resolves from Soil's own store
+-- (resolveAllocation), never from another producer's.
+MaterialWetness.PRODUCER_SOIL = "SOIL"
 -- The candidate cells one standing snapshot may visit (the polygons' box at the condition
 -- grain), and the sealed allocations kept for their receipts (a transient causal binding,
 -- not a journal: the oldest leaves first).
@@ -1357,7 +1360,8 @@ end
 --- with raw. Parts are put in canonical order (by id) before summing, and the sum must
 --- equal A exactly (the producer assigns the final remainder to the final positive
 --- canonical part). A zero A makes no material result. Returns the receipt, a
---- reference to this sealed allocation; the facts stay here, not with the caller.
+--- reference to this sealed allocation; the facts stay here, not with the caller. The
+--- receipt names Soil as its producer, so it resolves here even with StockGuard present.
 ---@return table|nil receipt, string|nil reason
 function MaterialWetness:sealAllocation(snapshot, acceptedCarrierLitres, parts)
     local B = MaterialWetness.BASIS
@@ -1398,20 +1402,27 @@ function MaterialWetness:sealAllocation(snapshot, acceptedCarrierLitres, parts)
     local receiptParts = {}
     for i, p in ipairs(sealed) do receiptParts[i] = { id = p.id, q = p.carrierLitres } end
     return { allocationId = allocationId, snapshotId = snapshot.id, basis = B.COLLECTED,
-             revision = snapshot.revision, total = acceptedCarrierLitres, parts = receiptParts }
+             revision = snapshot.revision, total = acceptedCarrierLitres, parts = receiptParts,
+             producer = MaterialWetness.PRODUCER_SOIL }
 end
 
---- The producer's sealed allocation behind a receipt. With StockGuard present and
---- publishing its receipt resolver (SG-2 build brief :60 and :358:
+--- The producer's sealed allocation behind a receipt, resolved by the receipt's own
+--- producer. A receipt Soil sealed (producer SOIL, sealAllocation) resolves from Soil's
+--- own store whatever else is installed: Soil seals only what it carries itself, never a
+--- collection under a StockGuard lease (BalerCollection.lua:64-69), so Soil's balers,
+--- round and non-stop ones and any StockGuard does not frame, keep their condition with
+--- StockGuard installed. Any other receipt, with StockGuard present and publishing its
+--- receipt resolver (SG-2 build brief :60 and :358:
 --- g_currentMission.stockGuard.readCollectionReceipt(receiptRef) -> sealed allocation or
---- UNAVAILABLE; its handle's functions are plain closures, StockGuard.lua:100-147),
---- StockGuard is the producer and its answer is the only one. Without it, Soil's own
---- seal. Never both: a second authority would be a parallel record.
+--- UNAVAILABLE; its handle's functions are plain closures, StockGuard.lua:100-147), is
+--- StockGuard's, and its answer is the only one. Without StockGuard, Soil's own seal.
+--- Never both for one receipt: a second authority would be a parallel record.
 ---@return table|nil allocation, string source  "STOCKGUARD" or "SOIL"
 function MaterialWetness:resolveAllocation(receipt)
+    local soilSealed = type(receipt) == "table" and receipt.producer == MaterialWetness.PRODUCER_SOIL
     local mission = g_currentMission
     local sg = mission ~= nil and mission.stockGuard or nil
-    if sg ~= nil and type(sg.readCollectionReceipt) == "function" then
+    if not soilSealed and sg ~= nil and type(sg.readCollectionReceipt) == "function" then
         local ok, allocation = pcall(sg.readCollectionReceipt, receipt)
         if ok and type(allocation) == "table" then return allocation, "STOCKGUARD" end
         return nil, "STOCKGUARD"
