@@ -388,8 +388,15 @@ group("K", function()
     local r10 = mw:readCollectedCondition(snap, sgReceipt)
     T.eq("K10 with StockGuard present its resolver answers for a receipt Soil never sealed, and the read uses its seal",
         r10.status .. "/" .. num(r10.carrierLitres) .. "/" .. num(r10.rawSourceLitres) .. "/" .. num(r10.pct) .. "/" .. #asked, "ok/50/60/79.9213/1")
-    T.eq("K11 with StockGuard present a receipt only Soil sealed is unavailable: one authority, never both",
-        mw:readCollectedCondition(snap, localReceipt).reason, "PRODUCER_SEAL_MISSING")
+    -- [SG2-5d-soil-c] One authority per receipt, its producer's: a receipt Soil sealed names Soil
+    -- (sealAllocation) and resolves from Soil's own store with StockGuard present too.
+    local r11 = mw:readCollectedCondition(snap, localReceipt)
+    T.eq("K11 with StockGuard present a receipt Soil sealed resolves from Soil's own store, its producer, and StockGuard is not asked for it: one authority per receipt, never both",
+        r11.status .. "/" .. #asked, "ok/1")
+    local unnamed = copy(localReceipt)
+    unnamed.producer = nil
+    T.eq("K11b the same receipt without its producer named is StockGuard's alone, and unavailable there: Soil's store is not consulted",
+        mw:readCollectedCondition(snap, unnamed).reason .. "/" .. #asked, "PRODUCER_SEAL_MISSING/2")
     g_currentMission.stockGuard = { getCapabilities = function() return {} end }   -- a StockGuard without the resolver
     T.eq("K12 a StockGuard without the resolver leaves Soil's own seal the producer", mw:readCollectedCondition(snap, localReceipt).status, "ok")
     g_currentMission.stockGuard = nil
