@@ -488,7 +488,12 @@ group("K", function()
     local v2, mowers2 = mowerInWorld({ uid = "refusals" })
     adm, t = W.sys.groundConditionAdmission, gc()
     local before = adm:admissionCount()
-    local function reason(fp, owner, identity) return tostring(t.admitPrimitive(fp, A.KIND_MOWER_CUT, owner, identity).reason) end
+    -- A raise reads as a value, so every case is compared even when one of them throws.
+    local function reason(fp, owner, identity)
+        local ok, r = pcall(t.admitPrimitive, fp, A.KIND_MOWER_CUT, owner, identity)
+        if not ok then return "raised" end
+        return tostring(r.status == A.STATUS_ADMITTED and "ADMITTED" or r.reason)
+    end
     T.eq("K7 refused: a LINE footprint, an owner that is not a mower, an identity that is not a work area table, no identity; nothing counted",
         table.concat({ reason(lineFP(0, 1, 8, 1, FT.GRASS_WINDROW, 1, 1), v2, mowers2[1]), reason(areaFP(mowers2[1]), { isServer = true }, mowers2[1]),
             reason(areaFP(mowers2[1]), v2, "area1"), reason(areaFP(mowers2[1]), v2, nil) }, "/") .. "/" .. (adm:admissionCount() - before),
@@ -674,6 +679,8 @@ group("P", function()
     unread[#unread + 1] = settle({ part(1, 400, known) }, allFresh, { destinationBefore = "400" })
     T.eq("P5 a figure that cannot be read names nothing: negative, NaN, infinite, allocation 0 or 1.5, named twice, more than the part, a malformed list, a bad destinationBefore",
         table.concat(unread, " "), string.rep("UNKNOWN/0/24/800/0 ", 10) .. "UNKNOWN/0/24/800/0")
+    T.eq("P5b a figure that cannot be read is no name either: an allocation named once with a negative figure and once with a readable one takes the readable one (not 'named twice')",
+        settle(cut, nil, { allocations = { { allocation = 1, litres = -1 }, { allocation = 1, litres = 400 } } }), "KNOWN/5/100/400/400")
     T.eq("P6 a figure within the tolerance above the part names the whole part; a residue within the tolerance imports nothing; one litre short is unknown",
         settle(cut, nil, fresh(1, 400 + 1e-7)) .. " " .. settle(cut, nil, fresh(1, 400 - 1e-7)) .. " " .. settle(cut, nil, fresh(1, 399)),
         "KNOWN/5/100/400/400 KNOWN/5/100/400/400 UNKNOWN/0/24/401/0")
