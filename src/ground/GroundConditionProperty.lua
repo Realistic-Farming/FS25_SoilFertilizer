@@ -238,6 +238,8 @@ local function componentsOf(rec)
     local p = rec.payload
     return p.ageRaw, p.wetnessRaw, p.ageDay
 end
+-- The one reader of these records: the admission's drop (SG2-5 5-0) reads them through it too.
+GroundConditionProperty.componentsOf = componentsOf
 
 ---@return table|nil record, string|nil reason
 function GroundConditionProperty:combine(_context, contributions, destinationBefore)
