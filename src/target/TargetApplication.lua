@@ -227,6 +227,27 @@ local function refusedPlan(fillTypeIndex, state, reasons, extra)
     return plan
 end
 
+--- [MAINTENANCE row 211] What a witness refusal may name, so the result carries "one supported
+--- crop and field when known" (Wizard brief :38): the field when the witness read exactly one
+--- (a farmland, and no MIXED_FIELD), and the crop only when it is one supported crop (a crop
+--- key, and neither MIXED_CROP nor UNSUPPORTED_CROP), so an unsupported or mixed crop is never
+--- named as the target crop. A refusal always carries a reason, so a refusal naming a field
+--- stays distinct from a hold (INACTIVE, no reason, a field).
+---@return number|nil fieldId, number|nil fruitIndex, string|nil cropKey
+function TA.refusalIdentity(verdict)
+    if type(verdict) ~= "table" then return nil, nil, nil end
+    local has = {}
+    for _, r in ipairs(verdict.reasons or {}) do has[r] = true end
+    local fieldId = nil
+    if type(verdict.farmlandId) == "number" and verdict.farmlandId > 0 and not has.MIXED_FIELD then
+        fieldId = verdict.farmlandId
+    end
+    if fieldId == nil or verdict.cropKey == nil or has.MIXED_CROP or has.UNSUPPORTED_CROP then
+        return fieldId, nil, nil
+    end
+    return fieldId, verdict.fruitIndex, verdict.cropKey
+end
+
 local function vehiclesOf(sprayer)
     local list, seen = {}, {}
     local function add(v)
@@ -533,7 +554,9 @@ function TA:buildPlan(st, cycle, sprayer, fillTypeIndex, dt, predecessor)
     })
     caches.cellCount = (caches.cellCount or 0) + (verdict.newCells or 0)
     if not verdict.accepted then
-        return refusedPlan(fillTypeIndex, verdict.state, verdict.reasons, { clearAnchor = true, geometry = geometry })
+        local fieldId, fruitIndex, cropKey = TA.refusalIdentity(verdict)
+        return refusedPlan(fillTypeIndex, verdict.state, verdict.reasons, { clearAnchor = true, geometry = geometry,
+            fieldId = fieldId, fruitIndex = fruitIndex, cropKey = cropKey })
     end
     if reprime then
         return refusedPlan(fillTypeIndex, C.STATE.INACTIVE, { C.REASON.FOOTPRINT_PRIMING },
