@@ -38,7 +38,8 @@
 -- known age advances by the whole days since its stamp. The mixture takes the newest stamp
 -- and each older part is aged to it once (GroundMovementCarrier.agedRaw), so a later read
 -- derives from one stamp and never counts a span twice. A known age with no stamp cannot
--- be aged and is unknown. Wetness is kept as captured.
+-- be aged and is unknown. Wetness is kept as captured. Fresh litres a settle report names as
+-- pending (SG2-5c, a mower's buffer) are left out of the floor and the coverage (below).
 -- TRANSFORM: a conversion with no registered basis is unknown (SG-2 :280). Soil registers
 -- none.
 -- DISCLOSURE: nothing. No player view has ruled what a player sees (SG-5, Wizard).
@@ -328,12 +329,66 @@ function GP.adoptedAccount(acc, litres)
              refusedCarrierLitres = 0, knownWeightedPctSum = 0 }
 end
 
+-- [SG2-5c] PENDING FRESH LITRES (Bob's 5c ruling, Q1; GCC section 4, SG-2 :351). A mower's
+-- fresh output waits in StockGuard's drop-area buffer until it lands, and Soil makes its birth
+-- at that deposit (GroundConditionAdmission, the birth contribution). Until then those litres
+-- are neither known nor unknown: they are a birth that has not happened. In the buffer they
+-- arrive as a BIRTH slot portion, which carries no record (SGOperations.lua:1058-1065), and
+-- sit in the buffer's own remainder; read as parts, either would turn the whole buffer UNKNOWN
+-- by section 2's floor, and a grass cut that also picks up old dry grass would deposit unknown
+-- where Soil alone deposits the dry grass's condition with the fresh profile. So the settle
+-- report names them:
+--   outcomeEvidence["soil.groundCondition"].pendingFresh =
+--       { destinationBefore = litres, allocations = { { allocation = index, litres }, ... } }
+-- and this combine leaves the named litres out of its floor and its coverage. A part left with
+-- nothing (within the account tolerance) imports nothing. Every figure is checked, and one
+-- that cannot be read names nothing, so those litres stay in as their own record says:
+--   * litres finite and not negative, an allocation a positive integer named once;
+--   * no more than the part holds, within the tolerance (then the whole part).
+-- With no evidence, combine is unchanged.
+GP.EVIDENCE_PENDING_FRESH = "pendingFresh"
+
+--- The pending fresh litres a settle report names: per allocation ref, and for the
+--- destination's own remainder. A doubly named allocation names nothing.
+function GP.evidencePendingFresh(context)
+    local out, before = {}, nil
+    if type(context) ~= "table" or type(context.operationId) ~= "string" then return out, before end
+    local report = context.report
+    local evidence = type(report) == "table" and report.outcomeEvidence or nil
+    local mine = type(evidence) == "table" and evidence[GP.PROPERTY_ID] or nil
+    local pending = type(mine) == "table" and mine[GP.EVIDENCE_PENDING_FRESH] or nil
+    if type(pending) ~= "table" then return out, before end
+    if isFinite(pending.destinationBefore) then before = pending.destinationBefore end
+    if type(pending.allocations) == "table" then
+        for _, e in ipairs(pending.allocations) do
+            if type(e) == "table" and isInt(e.allocation) and e.allocation >= 1 and isFinite(e.litres) and e.litres >= 0 then
+                local ref = context.operationId .. ":a" .. tostring(e.allocation)
+                if out[ref] == nil then out[ref] = e.litres else out[ref] = false end
+            end
+        end
+    end
+    return out, before
+end
+
+--- A part's litres less the pending fresh litres named on it: unchanged when nothing
+--- readable is named (no figure, or one not above zero) or the figure exceeds the part,
+--- zero when nothing is left.
+function GP.lessPending(litres, pending)
+    if type(pending) ~= "number" or pending <= 0 then return litres end
+    local slack = ACCOUNT_TOLERANCE * math.max(1, litres)
+    if pending > litres + slack then return litres end
+    local left = litres - pending
+    if left <= slack then return 0 end
+    return left
+end
+
 ---@return table|nil record, string|nil reason
 function GroundConditionProperty:combine(context, contributions, destinationBefore)
     local parts, unit = {}, nil
     local named = GP.evidenceAccounts(context)
-    local function add(litres, rec, partUnit, evidence)
-        litres = tonumber(litres) or 0
+    local pendingByRef, pendingBefore = GP.evidencePendingFresh(context)
+    local function add(litres, rec, partUnit, evidence, pending)
+        litres = GP.lessPending(tonumber(litres) or 0, pending)
         -- Zero litres import nothing: not unknown, not a refusal (section 2).
         if not isFinite(litres) or litres <= 0 then return end
         local a, w, d = componentsOf(rec)
@@ -344,15 +399,17 @@ function GroundConditionProperty:combine(context, contributions, destinationBefo
     end
     if type(destinationBefore) == "table" then
         local props = type(destinationBefore.properties) == "table" and destinationBefore.properties or {}
-        add(destinationBefore.observedAmount, props[GP.PROPERTY_ID], destinationBefore.amountUnit)
+        add(destinationBefore.observedAmount, props[GP.PROPERTY_ID], destinationBefore.amountUnit, nil, pendingBefore)
     end
     if type(contributions) == "table" then
         for _, part in ipairs(contributions) do
             local props = type(part.properties) == "table" and part.properties or {}
             -- A doubly named allocation maps to false, which must reach adoptedAccount as such.
-            local evidence = nil
-            if type(part.allocationRef) == "string" then evidence = named[part.allocationRef] end
-            add(part.amount, props[GP.PROPERTY_ID], part.unit, evidence)
+            local evidence, pending = nil, nil
+            if type(part.allocationRef) == "string" then
+                evidence, pending = named[part.allocationRef], pendingByRef[part.allocationRef]
+            end
+            add(part.amount, props[GP.PROPERTY_ID], part.unit, evidence, pending)
         end
     end
     if #parts == 0 then return nil, GP.NO_MATERIAL end
