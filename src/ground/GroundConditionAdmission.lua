@@ -37,8 +37,22 @@
 --   Soil-grid-shaped):
 --     { schemaVersion = 1, primitiveKind, ok, fillTypeIndex, deltaRequested,
 --       litresReturned, lineOffset, sourceTypeIndex, destinationTypeIndex,
---       conversionBasis }
+--       conversionBasis, contributions }
 --   `ok = false` means the primitive threw: every lease cell goes unavailable.
+--
+--   contributions (optional, a TIP_TO_GROUND_AROUND_LINE drop only; SG-2 v2.3 :345,
+--   Bob's SG2-5 G1 ruling of 2026-10-02): the condition of the material the caller
+--   drops, as the `soil.groundCondition` records StockGuard carried on it.
+--     { { litres = n, record = <soil.groundCondition PropertyRecord> }, ... }
+--   Soil reads each record through its own property (GroundConditionProperty.validate
+--   and componentsOf, the one reader its combine uses): a record that does not
+--   validate, or one StockGuard has qualified, is unknown; a KNOWN record's coverage
+--   splits its litres into known and unknown; each known age is aged once, from its
+--   stamp to today (P-GROUND-1, on re-entry). The mixture lands through the shared
+--   projector (P.drop): its floor and its unexplained-gain rule decide each cell, and
+--   Soil still chooses the cells. Without the field a drop arrives of unknown
+--   condition, as before; a pickup ignores it. The field is additive under revision 2:
+--   an older Soil copies only the fields it knows, so the drop lands unknown there.
 --
 -- WHY THE CAPABILITY MATTERS MORE THAN THE TABLE. A consumer must decide whether
 -- Soil can actually receive a delivery. The contract is explicit that a registered
@@ -240,6 +254,18 @@ local function validObservation(observation, lease)
         if not finite(observation.litresReturned) then return nil end
         obs.fillTypeIndex, obs.deltaRequested, obs.litresReturned = observation.fillTypeIndex, observation.deltaRequested, observation.litresReturned
         obs.lineOffset = observation.lineOffset
+        -- The dropped material's carried records (header). A malformed list is a bad
+        -- observation like any other malformed field; a record Soil cannot read is not:
+        -- its litres are unknown.
+        if observation.contributions ~= nil then
+            if type(observation.contributions) ~= "table" then return nil end
+            local list = {}
+            for _, c in ipairs(observation.contributions) do
+                if type(c) ~= "table" or not finite(c.litres) or c.litres < 0 then return nil end
+                list[#list + 1] = { litres = c.litres, record = c.record }
+            end
+            obs.contributions = list
+        end
     elseif kind == GroundConditionAdmission.KIND_CHANGE_TYPE then
         if type(observation.sourceTypeIndex) ~= "number" or type(observation.destinationTypeIndex) ~= "number" then return nil end
         if observation.litresReturned ~= nil and not finite(observation.litresReturned) then return nil end
@@ -250,6 +276,43 @@ local function validObservation(observation, lease)
         obs.litresReturned = observation.litresReturned
     end
     return obs
+end
+
+--- A drop's carried contributions as the projector's mixture ({ litres, ageRaw,
+--- wetnessRaw }, aged) and its total. Each record is read through Soil's own property:
+--- one that does not validate is unknown; a KNOWN record's coverage splits its litres
+--- into known and unknown; each known age is aged once, from its stamp to `today`
+--- (P-GROUND-1). Zero litres import nothing.
+---@return table mixture, number total
+function GroundConditionAdmission.mixtureOf(contributions, today)
+    local mixture, total = {}, 0
+    if type(contributions) ~= "table" then return mixture, total end
+    local GP = GroundConditionProperty
+    for _, c in ipairs(contributions) do
+        local litres = c.litres
+        if finite(litres) and litres > 0 then
+            total = total + litres
+            local rec = c.record
+            local ageRaw, wetnessRaw, ageDay
+            if GP ~= nil and GP.validate(rec) == true then
+                ageRaw, wetnessRaw, ageDay = GP.componentsOf(rec)
+            end
+            if ageRaw == nil and wetnessRaw == nil then
+                mixture[#mixture + 1] = { litres = litres }
+            else
+                local known = litres
+                if rec.knowledge == "KNOWN" and finite(rec.knownAmount) and finite(rec.basisAmount) and rec.basisAmount > 0 then
+                    known = litres * math.max(0, math.min(1, rec.knownAmount / rec.basisAmount))
+                end
+                if known > 0 then
+                    mixture[#mixture + 1] = { litres = known,
+                        ageRaw = GroundMovementCarrier.agedRaw(ageRaw, ageDay, today), wetnessRaw = wetnessRaw }
+                end
+                if litres - known > 0 then mixture[#mixture + 1] = { litres = litres - known } end
+            end
+        end
+    end
+    return mixture, total
 end
 
 -- =========================================================
@@ -524,9 +587,12 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
             result.collected = collected
             counts = c
         else
-            -- A drop from carried stock: Soil captured nothing of it, so it arrives of
-            -- unknown condition and the conservative combine propagates that.
-            counts = P.drop(lease, cells, obs.fillTypeIndex, {}, 0)
+            -- A drop from carried stock: the caller's contributions carry the material's
+            -- condition (header); without them it arrives of unknown condition, and the
+            -- conservative combine propagates that either way.
+            local today = self.coordinator ~= nil and self.coordinator:currentMonotonicDay() or nil
+            local mixture, total = GroundConditionAdmission.mixtureOf(obs.contributions, today)
+            counts = P.drop(lease, cells, obs.fillTypeIndex, mixture, total)
         end
     elseif kind == GroundConditionAdmission.KIND_CHANGE_TYPE then
         counts = P.convert(lease, cells, obs.sourceTypeIndex, obs.destinationTypeIndex, false)
