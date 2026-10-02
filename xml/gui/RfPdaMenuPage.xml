@@ -217,6 +217,19 @@
                             <Text profile="RF_TreatTargetLine" id="treatTargetP" position="10px -84px" size="180px 20px"/>
                             <Text profile="RF_TreatTargetLine" id="treatTargetK" position="10px -106px" size="180px 20px"/>
                             <Text profile="RF_TreatTargetLine" id="treatTargetPH" position="10px -128px" size="180px 20px"/>
+                            <!-- W1 door set (SF-73 section 7, R15; Tyson's ruling 2026-10-02, placement B): the SF-73 target card,
+                                 hidden. It sits in this card's free lower zone under the target levels (y -150 to -244, inside
+                                 the 248px frame), moving nothing. Soil's W1b paints and shows it; every other door owner leaves it
+                                 hidden, so the page draws as before. The clip keeps a long line inside the zone. Byte-same in
+                                 all ten door files, like the rest of this page. -->
+                            <GuiElement profile="RF_ProductsRowsClip" id="soilTargetCard" position="10px -150px" size="180px 94px" visible="false">
+                                <Bitmap profile="RF_EscCardRule" id="soilTargetRule" position="0px 0px" size="180px 1px"/>
+                                <Text profile="RF_ProductColHeaderDense" id="soilTargetTitle" position="0px -4px" size="180px 16px"/>
+                                <Text profile="RF_ProductCellDense" id="soilTargetWindow" position="0px -20px" size="180px 16px"/>
+                                <Text profile="RF_ProductCellDense" id="soilTargetState" position="0px -38px" size="180px 16px"/>
+                                <Text profile="RF_ProductCellDense" id="soilTargetReason" position="0px -56px" size="180px 16px"/>
+                                <Text profile="RF_ProductCellDense" id="soilTargetDetail" position="0px -74px" size="180px 16px"/>
+                            </GuiElement>
                         </GuiElement>
                         <!-- Legacy bind kept hidden (F5 replaces single multiline Text) -->
                         <Text profile="RF_HintText" id="treatTargetsLabel" position="10px -54px" size="1px 1px"
