@@ -560,6 +560,16 @@ function SoilFertilityManager:activateSoilSystem()
     if not ok then
         SoilLogger.error("activateSoilSystem failed: %s", tostring(err))
     end
+
+    -- [MAINTENANCE row 195] The ground family's mission start runs HERE, after the arm
+    -- chain in initialize() and after loadSoilData: both owners' starts are inert while
+    -- unarmed (YardLadder:onMissionStarted, GroundConditionCoordinator:onMissionStarted),
+    -- so run from onMissionStarted before this call they decided nothing, and every
+    -- ground cell read RESTORING until the first bale event or in-game day boundary. Both
+    -- callers have started the mission by now: onMissionStarted, and the settings panel
+    -- enabling the mod mid-session. Outside the pcall so a later subsystem's error cannot
+    -- leave the hold standing; both starts are idempotent, so a repeat call is harmless.
+    self:_groundMissionStarted()
     return ok
 end
 
@@ -586,8 +596,6 @@ function SoilFertilityManager:onMissionStarted()
             SoilLogger.info("Colorblind mode auto-enabled from game settings")
         end
     end
-
-    self:_groundMissionStarted()
 
     -- [SF-73] Register the target boundary AI message on EVERY peer, here, after the
     -- mission's AIMessageManager:loadMapData and before any job can stop: the engine
@@ -2578,12 +2586,14 @@ function SoilFertilityManager:getConditionPortionsForNode(nodeId)
     return result
 end
 
---- [RSF-F215, MAINTENANCE row 137] The ground-material family's mission start. Every
---- savegame item has loaded by now: the bale condition store's load is decided (if no bale
---- did it first), a row whose bale never registered stops reading as restoring, and the
---- ground coordinator's availability hold ends. EACH OWNER TRIGGERS ITS OWN decision: the
---- coordinator arms on the condition owners alone, so it must not depend on the yard ladder
---- being armed to leave its hold (Bob's MAJOR on #1022).
+--- [RSF-F215, MAINTENANCE rows 137 and 195] The ground-material family's mission start,
+--- run at the end of activateSoilSystem, after initialize() has armed the family (row 195:
+--- both owners' starts return early while unarmed). Every savegame item has loaded by now:
+--- the bale condition store's load is decided (if no bale did it first), a row whose bale
+--- never registered stops reading as restoring, and the ground coordinator's availability
+--- hold ends. EACH OWNER TRIGGERS ITS OWN decision: the coordinator arms on the condition
+--- owners alone, so it must not depend on the yard ladder being armed to leave its hold
+--- (Bob's MAJOR on #1022).
 function SoilFertilityManager:_groundMissionStarted()
     local sys = self.soilSystem
     if sys == nil then return end

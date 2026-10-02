@@ -21,7 +21,7 @@
 -- one cell a native error marked unavailable.
 --
 --!env: modenv
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/SoilFertilityManager.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua
 
 -- The bench runs inside one function: the concatenated sources' file-level locals with this
 -- file's would pass Lua's 200-local limit for a single function.
@@ -251,7 +251,7 @@ group("O", function()
     local env = md():serialize()
     local cells = env.groundAvailability and env.groundAvailability.unavailable or {}
     -- The coordinator arms on the condition owners alone; the yard ladder is not armed. The
-    -- manager's mission start (SoilFertilityManager:onMissionStarted's ground step) must end
+    -- manager's mission start (the ground step at the end of activateSoilSystem) must end
     -- the hold through the coordinator's own trigger (Bob's MAJOR on #1022).
     DISK = {}
     savedCareer("o4")
@@ -279,6 +279,98 @@ group("O", function()
     T.eq("O3 the envelope carries the overlay, detached, with its grid stamped",
         tostring(env.saveStatus) .. "/" .. #cells .. "/" .. tostring(cells[1] and cells[1].key) .. "/" .. tostring(env.groundAvailability and env.groundAvailability.resolution ~= nil),
         "COMPLETE/1/2:2/true")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- M. MAINTENANCE row 195: the mission start, through the manager itself
+-- ══════════════════════════════════════════════════════════════════════════
+--- A reload in PRODUCTION'S order (Bob's intake on row 195): a fresh system nobody has armed,
+--- main.lua's loadedMission opening the store's load (main.lua:453-455), then the real manager,
+--- whose activateSoilSystem runs the real initialize(). The world supplies what world() above
+--- supplies (the store, whose three files the engine restored at load) and the settings file
+--- (the mod enabled or disabled at load).
+local function reloadForManager(dir, enabled)
+    HEIGHT.pixels = {}
+    MDB.ledgerActive = false
+    local settings = { enabled = enabled, load = function() end, save = function() end }
+    local sys = SoilFertilitySystem.new(settings)
+    local vm, age, wet, member = ENGINE.newValueMaps({ membershipLoaded = true, conditionLoaded = true })
+    vm.applyRawDeltaToLayer = function() return nil end
+    vm.setPolygonWhere = function() return false end
+    vm.hasAnyInBand = function() return nil end
+    vm.available = true
+    vm.layers = vm.layers or {}
+    vm.layers.groundMembership = vm.layers.groundMembership or { bvm = member.id, channels = 1 }
+    vm.layers.materialAge = vm.layers.materialAge or { bvm = age.id, channels = 8 }
+    vm.layers.materialWetness = vm.layers.materialWetness or { bvm = wet.id, channels = 8 }
+    vm.layers.groundMembership.def = { file = "groundMembership.grle" }
+    vm.layers.materialAge.def = { file = "materialAge.grle" }
+    vm.layers.materialWetness.def = { file = "materialWetness.grle" }
+    vm.saveToSavegame = REAL_SAVE
+    vm.initialize = function() end   -- the engine restored the store's files at load
+    sys.valueMaps = vm
+    local mgr = setmetatable({ soilSystem = sys, settings = settings, modName = "FS25_SoilFertilizer", disableGUI = true,
+                               lastSeenVersion = "bench" }, { __index = SoilFertilityManager })
+    W.sys, W.vm, W.mgr = sys, vm, mgr
+    g_currentMission = {
+        environment = { currentMonotonicDay = 100, currentSeason = 2, daysPerPeriod = 3 },
+        vehicleSystem = { vehicles = {}, addVehicle = function() return true end },
+        weatherGuard = ENGINE.newWeatherGuard({ sky = SKY, rain = { rainScale = 0 } }),
+        timeGuard = { registerAccrual = function() return true end, unregisterAccrual = function() end },
+        indoorMask = ENGINE.newIndoorMask({}),
+        missionInfo = { savegameDirectory = dir, isValid = true, xmlFile = newHandle(dir .. "/careerSavegame.xml") },
+    }
+    g_SoilFertilityManager = mgr
+    -- The engine's fruit list, which initialize() reads last (logCropProfileStatus); without
+    -- it the activation raises right after the arm, and M1 would be M4's failed activation.
+    g_fruitTypeManager.getFruitTypes = function() return ENGINE.FRUIT_DESC end
+    sys.hookManager.getFieldIdAtWorldPosition = function(_, x, _z) if x < 0 then return 7 end return nil end
+    MDB.beginLoad(sys.materialDown)
+    MDB.loadFallback(sys.materialDown)
+    return mgr
+end
+local function armed() return tostring(coord():isArmed()) .. "/" .. tostring(W.sys.yardLadder:isArmed()) end
+local function decided() return tostring(md().loadState) .. " " .. unav(3, 3) .. " " .. unav(8, 8) .. " " .. tostring(W.sys.yardLadder._discoveryComplete) end
+
+group("M", function()
+    DISK = {}
+    savedCareer("m1")
+    local mgr = reloadForManager("m1", true)
+    WARN = {}
+    SoilFertilityManager.onMissionStarted(mgr)
+    local failedM1 = {}
+    for _, w in ipairs(WARN) do if w:find("activateSoilSystem failed", 1, true) then failedM1[#failedM1 + 1] = w end end
+    T.eq("M0 [reached] production's onMissionStarted armed the family through activateSoilSystem's real initialize(), and the activation itself succeeded",
+        armed() .. " " .. #failedM1 .. " " .. tostring(failedM1[1]), "true/true 0 nil")
+    T.eq("M1 [entry point] when production's mission start returns, the store has decided MODERN, the saved overlay is back, an untouched cell is available and discovery is complete",
+        decided(), "MODERN true:NATIVE_ERROR false:nil true")
+
+    DISK = {}
+    savedCareer("m2")
+    local mgr2 = reloadForManager("m2", false)
+    SoilFertilityManager.onMissionStarted(mgr2)
+    local atLoad = tostring(md().loadState) .. " " .. armed()
+    WARN = {}
+    local said = SoilSettingsGUI.consoleCommandSoilEnable({})
+    local failedM2 = 0
+    for _, w in ipairs(WARN) do if w:find("activateSoilSystem failed", 1, true) then failedM2 = failedM2 + 1 end end
+    T.eq("M2 a mod disabled at load arms nothing at mission start; enabled from the settings console mid-session, the activation succeeds, the store decides at once and the saved overlay is back",
+        atLoad .. " | " .. said .. " | " .. failedM2 .. " " .. decided(), "PENDING false/false | Soil & Fertilizer Mod enabled | 0 MODERN true:NATIVE_ERROR false:nil true")
+    coord():markUnavailable(5, 5, "AFTER_START")
+    SoilSettingsGUI.consoleCommandSoilEnable({})
+    T.eq("M3 enabling again runs the mission start again, harmlessly: still MODERN, the overlay and a cell marked since both stand",
+        decided() .. " " .. unav(5, 5), "MODERN true:NATIVE_ERROR false:nil true true:AFTER_START")
+
+    DISK = {}
+    savedCareer("m4")
+    local mgr4 = reloadForManager("m4", true)
+    mgr4.cropTuning = { load = function() error("a later subsystem failed") end }
+    WARN = {}
+    SoilFertilityManager.onMissionStarted(mgr4)
+    local failed = 0
+    for _, w in ipairs(WARN) do if w:find("activateSoilSystem failed", 1, true) then failed = failed + 1 end end
+    T.eq("M4 a subsystem that raises after the arm fails the activation, and the ground mission start still runs: the hold does not stand",
+        failed .. " " .. decided(), "1 MODERN true:NATIVE_ERROR false:nil true")
 end)
 end
 MAINT137_BENCH()
