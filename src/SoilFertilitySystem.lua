@@ -205,6 +205,9 @@ function SoilFertilitySystem.new(settings)
     self.groundConditionCells = GroundConditionCells and GroundConditionCells.new() or nil
     self.groundConditionCoordinator = GroundConditionCoordinator and GroundConditionCoordinator.new() or nil
     self.groundConditionAdmission = GroundConditionAdmission and GroundConditionAdmission.new() or nil
+    -- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard's SG-1: registered
+    -- after the coordinator arms, withdrawn at unload or when a condition owner stands down.
+    self.groundConditionProperty = GroundConditionProperty and GroundConditionProperty.new() or nil
     -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
     -- cells that reveal the trouble's pattern where the player walked, on foot.
     -- Armed after the value maps initialize; its own bridges register in
@@ -353,6 +356,14 @@ function SoilFertilitySystem:initialize()
             end
         end
     end
+    -- [SG2-4c-3] Register `soil.groundCondition` with StockGuard when it published its
+    -- mission handle; the property refuses unless the coordinator armed, so a client, the
+    -- gate or any refusal above registers nothing. A separate registration from the
+    -- admission interface: it moves no admissionRevision. StockGuard absent is the
+    -- Soil-alone path.
+    if self.groundConditionProperty and self.groundConditionCoordinator then
+        self.groundConditionProperty:register(self.groundConditionCoordinator, g_currentMission)
+    end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
     -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
@@ -448,6 +459,10 @@ end
 
 -- Cleanup hooks and resources
 function SoilFertilitySystem:delete()
+    -- [SG2-4c-3] Withdraw the property before the layers it reads go.
+    if self.groundConditionProperty then
+        self.groundConditionProperty:withdraw("unload")
+    end
     self.hookManager:uninstallAll()
     if self.layerSystem then
         self.layerSystem:delete()
@@ -2893,6 +2908,9 @@ function SoilFertilitySystem:update(dt)
 
     -- CD-15 step 1a: the local disease day cursor, at most 256 cells a call.
     if self.cd15 ~= nil then self.cd15:update(dt) end
+
+    -- [SG2-4c-3] A condition owner that stood down withdraws `soil.groundCondition`.
+    if self.groundConditionProperty ~= nil then self.groundConditionProperty:update() end
 
     self.lastUpdate = self.lastUpdate + dt
 
