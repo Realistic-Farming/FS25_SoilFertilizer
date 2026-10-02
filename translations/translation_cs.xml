@@ -1499,5 +1499,51 @@
     <e k="sf_target_ai_boundary_host" v="一名帮工已停止：在混合、禁止或未知的地块上，目标施肥已暂停。仍可手动施用。" eh="abf38208" />
     <e k="sf_target_failed_title" v="目标施肥" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="%d号田地：产品已消耗，但本地 N/P/K 结果未确认。目标自动已停止；仍可手动施用。" eh="29d18403" />
+    <e k="sf_tgt_title_last" v="上次自动作业" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="自动：已达目标" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="自动：未达目标" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="自动已停止：产品已消耗" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="自动：剂量待定" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="自动：未在施用" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="自动：开始施用时启动目标剂量" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="自动：等待服务器" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="自动：目标不可用" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="自动已暂停：没有生长中的作物" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="自动已暂停：目标不可用" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="自动已暂停：作物边界" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="自动已暂停：田地边界" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="自动已暂停：无权进入此土地" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="自动已暂停：产品无效" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="自动已暂停：播种不带目标施肥" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="自动已暂停：并非所有分段都开启" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="自动已暂停：作业区域重叠" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="自动已暂停：中耕机没有目标" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="自动已暂停：不支持的供给方式" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="自动已暂停：双倍用量已开启" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="自动：正在准备作业轨迹" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="关闭自动即可手动施用。" eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="喷杆下没有土壤读数。" eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="喷杆超出了地图边缘。" eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="第一条喷杆线，未计费。" eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="仅对此作业轨迹确认，并非整块田地。" eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="再多用此混合肥会超过 %s。" eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="此速度下机器无法施用更多。" eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="罐内或供给中的产品不足。" eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="剂量低于土壤图的一个级差。" eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="本地 N/P/K 未确认。" eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="喷杆封闭一个土壤单元时计费。" eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="没有来自服务器的当前结果。" eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="偏低" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="接近" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="在范围内" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="偏高" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="未知" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s 施于 %s，%s号田地" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="喷杆作业轨迹，%s 米土壤单元" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s，范围 %s 至 %s，%s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="限制养分：%s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="计划 %s 升，已施用 %s 升" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="有效 %s 升" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s。%s" eh="9467817b" />
 </elements>
 </l10n>

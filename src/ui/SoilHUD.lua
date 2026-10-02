@@ -187,6 +187,8 @@ function SoilHUD.new(soilSystem, settings)
     self._cachedProfile    = nil
     self._cachedRateMult   = 1.0
     self._cachedTargetMode = false
+    self._cachedTargetView = nil   -- SF-73 section 7: the rate panel's target block
+    self._targetMemory     = {}    -- vehicle -> what this HUD saw of its target results
 
     -- Height dirty flag: set by refreshFieldData, cleared after calculateHeight()
     self._heightDirty = true
@@ -905,6 +907,8 @@ function SoilHUD:update(dt)
     local _ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
     self._cachedTargetMode = sprayer ~= nil and _ss ~= nil and type(_ss.isTargetModeForDisplay) == "function"
         and _ss:isTargetModeForDisplay(sprayer) == true or false
+    -- SF-73 section 7: the rate panel's target block, read once here (draw only renders it).
+    self._cachedTargetView = self:buildTargetView(sprayer, _ss, rm, _rateVehId, self._cachedProfile)
 
     -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
@@ -2434,6 +2438,326 @@ function SoilHUD:_calcCropTargetRateIdx(fillType)
     return bestIdx
 end
 
+-- ── SF-73 section 7: the rate panel's target block ──────────────────────────
+-- The host's own floor for target automatic (Implementation v1.1 section 7, the Wizard
+-- brief sections 2 and 3, Iris's answer of 2026-10-02 section 1). It is built only from
+-- the soil system's reads: the machine-pass result (getApplicationTargetResult), the
+-- target-mode read (isTargetModeForDisplay) and the release lock (isTargetGateOpen).
+-- Locked, there is no block and the panel is today's. Under target mode the block
+-- replaces the legacy "Target:" line, which is built from field info and defaults and
+-- "cannot stand in for the new confirmed implement-footprint result" (:89).
+
+-- The refusal reason the block names when a cycle carries several. Denied access and
+-- an invalid product come first, so the block never points the farmer at manual
+-- application past either (Iris, 2026-10-02 section 1).
+SoilHUD.TARGET_REASON_PRIORITY = {
+    "FARM_ACCESS", "UNKNOWN_PRODUCT", "OUTSIDE_MAP", "UNKNOWN_GROUND", "MIXED_FIELD", "MIXED_CROP",
+    "UNSUPPORTED_CROP", "CULTIVATION_NO_TARGET", "SOURCE_CONTRACT_UNAVAILABLE", "DOUBLED_AMOUNT_ACTIVE",
+    "NOZZLE_PARTIAL", "CELL_OVERLAP", "SOWABILITY_UNKNOWN", "FOOTPRINT_PRIMING",
+}
+
+-- One state line per reason, and a note where the line alone does not tell the
+-- reasons apart. UNKNOWN_GROUND and OUTSIDE_MAP share Iris's line and differ by note.
+SoilHUD.TARGET_REASON_COPY = {
+    UNSUPPORTED_CROP            = { line = "sf_tgt_r_unsupported_crop", tone = "paused" },
+    UNKNOWN_GROUND              = { line = "sf_tgt_r_unavailable", note = "sf_tgt_n_unknown_ground", tone = "paused" },
+    OUTSIDE_MAP                 = { line = "sf_tgt_r_unavailable", note = "sf_tgt_n_outside_map", tone = "paused" },
+    MIXED_CROP                  = { line = "sf_tgt_r_mixed_crop", tone = "paused" },
+    MIXED_FIELD                 = { line = "sf_tgt_r_mixed_field", tone = "paused" },
+    FARM_ACCESS                 = { line = "sf_tgt_r_farm_access", tone = "paused" },
+    UNKNOWN_PRODUCT             = { line = "sf_tgt_r_unknown_product", tone = "paused" },
+    SOWABILITY_UNKNOWN          = { line = "sf_tgt_r_sowability", tone = "paused" },
+    NOZZLE_PARTIAL              = { line = "sf_tgt_r_nozzle_partial", tone = "paused" },
+    CELL_OVERLAP                = { line = "sf_tgt_r_cell_overlap", tone = "paused" },
+    CULTIVATION_NO_TARGET       = { line = "sf_tgt_r_cultivation", tone = "paused" },
+    SOURCE_CONTRACT_UNAVAILABLE = { line = "sf_tgt_r_source_contract", tone = "paused" },
+    DOUBLED_AMOUNT_ACTIVE       = { line = "sf_tgt_r_doubled", tone = "paused" },
+    -- the first boom line is observed, not a paid pass, and not a refusal (no notice)
+    FOOTPRINT_PRIMING           = { line = "sf_tgt_r_priming", note = "sf_tgt_n_priming", tone = "neutral", notRefusal = true },
+}
+-- Iris's manual hint: only when no growing crop is the cycle's one reason, and never
+-- past denied access, an invalid product or a failed write.
+SoilHUD.TARGET_MANUAL_HINT = "sf_tgt_n_manual"
+
+-- A closed footprint's outcome. The four shortfalls share a line and name their kind
+-- in the note (the Wizard brief :46: binding, hardware, supply, quantization).
+SoilHUD.TARGET_STATE_COPY = {
+    REACHED            = { line = "sf_tgt_state_reached", note = "sf_tgt_n_reached", tone = "good" },
+    SHORT_BINDING      = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_binding", tone = "short" },
+    SHORT_HARDWARE     = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_hardware", tone = "short" },
+    SHORT_SUPPLY       = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_supply", tone = "short" },
+    SHORT_QUANTIZED    = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_quantized", tone = "short" },
+    APPLICATION_FAILED = { line = "sf_tgt_state_failed", note = "sf_tgt_n_failed", tone = "failed" },
+}
+
+-- The block's situations with no footprint outcome to show.
+SoilHUD.TARGET_VIEW_COPY = {
+    pending     = { line = "sf_tgt_state_pending", note = "sf_tgt_n_pending", tone = "neutral" },
+    idle        = { line = "sf_tgt_state_idle", tone = "neutral" },
+    ready       = { line = "sf_tgt_state_ready", tone = "neutral" },
+    waiting     = { line = "sf_tgt_state_waiting", tone = "neutral" },
+    expired     = { line = "sf_tgt_state_unavailable", note = "sf_tgt_n_expired", tone = "neutral" },
+    unavailable = { line = "sf_tgt_state_unavailable", tone = "neutral" },
+}
+
+SoilHUD.TARGET_REL_COPY = {
+    BELOW = "sf_tgt_rel_below", APPROACHING = "sf_tgt_rel_approaching", IDEAL = "sf_tgt_rel_ideal",
+    ABOVE = "sf_tgt_rel_above", UNDETERMINED = "sf_tgt_rel_unknown",
+}
+
+-- The other keys the block reads: the title of a final result, the detail rows, the
+-- notice's join. The notice's title and a client's failure notice reuse
+-- sf_target_failed_title and sf_target_failed_body.
+SoilHUD.TARGET_KEYS = {
+    title = "sf_tgt_title_last", pass = "sf_tgt_d_pass", footprint = "sf_tgt_d_footprint",
+    nutrient = "sf_tgt_d_nutrient", binding = "sf_tgt_d_binding", litres = "sf_tgt_d_litres",
+    useful = "sf_tgt_d_useful", notify = "sf_tgt_notify",
+}
+
+SoilHUD.TARGET_TONE = {
+    good    = {0.40, 1.00, 0.40, 1.00},
+    short   = {0.95, 0.75, 0.20, 1.00},
+    paused  = {1.00, 0.62, 0.20, 1.00},
+    failed  = {1.00, 0.30, 0.30, 1.00},
+    neutral = {0.82, 0.82, 0.82, 1.00},
+    note    = {0.78, 0.78, 0.78, 0.90},
+    detail  = {0.80, 0.90, 0.80, 0.90},
+}
+
+-- The block's helpers, one table (the file keeps its count of top-level locals).
+local tgt = {}
+tgt.OUTCOME = { REACHED = true, SHORT_BINDING = true, SHORT_HARDWARE = true, SHORT_SUPPLY = true,
+                SHORT_QUANTIZED = true, APPLICATION_FAILED = true }
+tgt.NUTRIENTS = { "N", "P", "K" }
+
+function tgt.finite(x)
+    return type(x) == "number" and x == x and x ~= math.huge and x ~= -math.huge
+end
+
+--- A result reporting a closed footprint: classified after its write, or failed after a spend.
+function SoilHUD.isTargetOutcome(r)
+    return type(r) == "table" and tgt.OUTCOME[r.doseState] == true
+end
+
+--- A cycle between closures (the anchor held, nothing charged yet): INACTIVE with no
+--- reason and the verified field. A native-inactive cycle carries no field (TA:setResult).
+function SoilHUD.isTargetHold(r)
+    return type(r) == "table" and r.doseState == "INACTIVE" and #(r.reasons or {}) == 0 and r.fieldId ~= nil
+end
+
+--- The refusal reason the block names, or nil (an outcome, or no reason it knows).
+function SoilHUD.targetPrimaryReason(r)
+    if type(r) ~= "table" or SoilHUD.isTargetOutcome(r) then return nil end
+    local has = {}
+    for _, x in ipairs(r.reasons or {}) do has[x] = true end
+    for _, x in ipairs(SoilHUD.TARGET_REASON_PRIORITY) do
+        if has[x] then return x end
+    end
+    return nil
+end
+
+--- The product carries N/P/K (the target product rule, TargetApplication's carriesNPK).
+function SoilHUD.carriesNPK(profile)
+    if type(profile) ~= "table" then return false end
+    for _, n in ipairs(tgt.NUTRIENTS) do
+        if tgt.finite(profile[n]) and profile[n] > 0 then return true end
+    end
+    return false
+end
+
+--- The block for a result. `confirmed` is the last footprint outcome this HUD saw in the
+--- same epoch: the held cycles between closures show it rather than replacing it with a
+--- blank, since a hold confirms nothing new. A final (inactive) result stays inspectable
+--- until the next activation (the Wizard brief :42).
+function SoilHUD.targetViewForResult(r, confirmed)
+    local final = r.active == false
+    local shown = r
+    if SoilHUD.isTargetHold(r) and confirmed ~= nil and confirmed.epoch == r.epoch then shown = confirmed end
+    local view = { final = final, result = shown }
+    if SoilHUD.isTargetOutcome(shown) then
+        local c = SoilHUD.TARGET_STATE_COPY[shown.doseState]
+        view.line, view.note, view.tone = c.line, c.note, c.tone
+        if shown.doseState == "SHORT_BINDING" then view.noteArg = shown.binding or "?" end
+        view.details = true
+        return view
+    end
+    local reason = SoilHUD.targetPrimaryReason(shown)
+    if reason ~= nil then
+        local c = SoilHUD.TARGET_REASON_COPY[reason]
+        view.line, view.note, view.tone, view.reason = c.line, c.note, c.tone, reason
+        if reason == "UNSUPPORTED_CROP" and #shown.reasons == 1 and not final then
+            view.note = SoilHUD.TARGET_MANUAL_HINT
+        end
+        return view
+    end
+    local kind = "unavailable"
+    if SoilHUD.isTargetHold(shown) then
+        -- a final hold was never charged: the deactivation dropped the held region
+        kind = final and "unavailable" or "pending"
+    elseif shown.doseState == "INACTIVE" and #(shown.reasons or {}) == 0 then
+        kind = "idle"
+    end
+    local c = SoilHUD.TARGET_VIEW_COPY[kind]
+    view.line, view.note, view.tone, view.kind = c.line, c.note, c.tone, kind
+    return view
+end
+
+function tgt.text(key)
+    return g_i18n:getText(key)
+end
+
+function tgt.number(x, decimals)
+    if not tgt.finite(x) then return "?" end
+    return string.format("%." .. decimals .. "f", x)
+end
+
+function tgt.litres(x)
+    if not tgt.finite(x) then return "?" end
+    return string.format(math.abs(x) < 10 and "%.2f" or "%.1f", x)
+end
+
+function tgt.productTitle(r)
+    if r.productFillType ~= nil and g_fillTypeManager ~= nil then
+        local ok, ft = pcall(g_fillTypeManager.getFillTypeByIndex, g_fillTypeManager, r.productFillType)
+        if ok and ft ~= nil and type(ft.title) == "string" and ft.title ~= "" then return ft.title end
+    end
+    return r.productName or "?"
+end
+
+function tgt.cropTitle(r)
+    if r.cropFruitIndex ~= nil and g_fruitTypeManager ~= nil then
+        local ok, desc = pcall(g_fruitTypeManager.getFruitTypeByIndex, g_fruitTypeManager, r.cropFruitIndex)
+        local ft = ok and desc ~= nil and desc.fillType or nil
+        if ft ~= nil and type(ft.title) == "string" and ft.title ~= "" then return ft.title end
+    end
+    if type(r.cropKey) == "string" and SoilUtils ~= nil and SoilUtils.getCropDisplayName ~= nil then
+        local ok, name = pcall(SoilUtils.getCropDisplayName, r.cropKey)
+        if ok and name ~= nil then return name end
+    end
+    return "?"
+end
+
+--- The block's text rows for a view, formatted once in update() (draw only renders).
+function SoilHUD.formatTargetRows(view)
+    local rows = {}
+    local K = SoilHUD.TARGET_KEYS
+    if view.final then rows[#rows + 1] = { text = tgt.text(K.title), tone = "note" } end
+    rows[#rows + 1] = { text = tgt.text(view.line), tone = view.tone, bold = true }
+    if view.note ~= nil then
+        local note = tgt.text(view.note)
+        if view.noteArg ~= nil then note = string.format(note, tostring(view.noteArg)) end
+        rows[#rows + 1] = { text = note, tone = "note" }
+    end
+    local r = view.details and view.result or nil
+    if r == nil then return rows end
+    rows[#rows + 1] = { text = string.format(tgt.text(K.pass), tgt.productTitle(r), tgt.cropTitle(r),
+        tostring(r.fieldId or "?")), tone = "detail" }
+    if tgt.finite(r.grainMetres) and r.grainMetres > 0 then
+        rows[#rows + 1] = { text = string.format(tgt.text(K.footprint), tgt.number(r.grainMetres, 1)), tone = "detail" }
+    end
+    if r.doseState ~= "APPLICATION_FAILED" then
+        -- a failed write confirms no local N/P/K: no reading is shown as if it were
+        local ppmTable = SoilConstants.PPM_DISPLAY or {}
+        for _, n in ipairs(tgt.NUTRIENTS) do
+            local x = r.nutrients and r.nutrients[n]
+            if x ~= nil then
+                local ppm = ppmTable[n] or 1
+                local value = tgt.finite(x.after) and x.after or x.reading
+                local relKey = SoilHUD.TARGET_REL_COPY[x.relationship] or SoilHUD.TARGET_REL_COPY.UNDETERMINED
+                rows[#rows + 1] = { text = string.format(tgt.text(K.nutrient), n,
+                    tgt.number(tgt.finite(value) and value * ppm or nil, 1),
+                    tgt.number(tgt.finite(x.lower) and x.lower * ppm or nil, 1),
+                    tgt.number(tgt.finite(x.upper) and x.upper * ppm or nil, 1),
+                    tgt.text(relKey)), tone = "detail" }
+            end
+        end
+        if r.binding ~= nil then
+            rows[#rows + 1] = { text = string.format(tgt.text(K.binding), tostring(r.binding)), tone = "detail" }
+        end
+    end
+    rows[#rows + 1] = { text = string.format(tgt.text(K.litres), tgt.litres(r.plannedLitres),
+        tgt.litres(r.physicalLitres)), tone = "detail" }
+    if tgt.finite(r.agronomicLitres) then
+        -- useful litres only where the equivalent is known, never a guessed figure
+        rows[#rows + 1] = { text = string.format(tgt.text(K.useful), tgt.litres(r.agronomicLitres)), tone = "detail" }
+    end
+    return rows
+end
+
+--- One notice on entering a refusal (Iris, 2026-10-02 section 1): once per reason in an
+--- AUTO activation (the result's epoch) for this vehicle, never per cycle, through the
+--- soil system's helper, which respects showNotifications. A client also hears of an
+--- APPLICATION_FAILED here; on the server and host TA:notifyFailure has already said it.
+--- A failure is always the final result (TA:fail stops target automatic before storing
+--- it), so only a final refusal stays quiet: AUTO is already off.
+function SoilHUD:notifyTargetEntry(ss, mem, r, view)
+    if type(ss.showNotification) ~= "function" or g_i18n == nil then return end
+    local key, body
+    if r.doseState == "APPLICATION_FAILED" then
+        if g_server ~= nil then return end
+        key = "APPLICATION_FAILED"
+        body = string.format(tgt.text("sf_target_failed_body"), tonumber(r.fieldId) or 0)
+    elseif r.active ~= false and view.reason ~= nil and not SoilHUD.TARGET_REASON_COPY[view.reason].notRefusal then
+        key = view.reason
+        body = tgt.text(view.line)
+        if view.note ~= nil then
+            body = string.format(tgt.text(SoilHUD.TARGET_KEYS.notify), body, tgt.text(view.note))
+        end
+    else
+        return
+    end
+    if mem.notified[key] then return end
+    mem.notified[key] = true
+    pcall(function() ss:showNotification(tgt.text("sf_target_failed_title"), body) end)
+end
+
+--- Forget what this HUD saw of a deleted vehicle (a later object never inherits it).
+function SoilHUD:pruneTargetMemory()
+    for vehicle in pairs(self._targetMemory) do
+        if type(vehicle) ~= "table" or vehicle.isDeleted == true then self._targetMemory[vehicle] = nil end
+    end
+end
+
+--- This frame's target block for the sprayer the player sits in, or nil for today's panel.
+---@return table|nil view { line, note, tone, rows, ... }
+function SoilHUD:buildTargetView(sprayer, ss, rm, rateVehId, profile)
+    if self._targetMemory == nil then self._targetMemory = {} end
+    self:pruneTargetMemory()
+    if sprayer == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" then return nil end
+    if ss:isTargetGateOpen() ~= true then return nil end
+    local mem = self._targetMemory[sprayer]
+    if mem == nil then
+        mem = { notified = {} }
+        self._targetMemory[sprayer] = mem
+    end
+    local r = type(ss.getApplicationTargetResult) == "function" and ss:getApplicationTargetResult(sprayer) or nil
+    local view
+    if r ~= nil then
+        if mem.epoch ~= r.epoch then mem.epoch, mem.confirmed, mem.notified = r.epoch, nil, {} end
+        mem.seen = true
+        if SoilHUD.isTargetOutcome(r) then mem.confirmed = r end
+        view = SoilHUD.targetViewForResult(r, mem.confirmed)
+        self:notifyTargetEntry(ss, mem, r, view)
+    else
+        local isAuto = rm ~= nil and rm:getAutoMode(rateVehId) == true and self.settings.autoRateControl
+        if not isAuto or not SoilHUD.carriesNPK(profile) then return nil end
+        local kind
+        if g_server ~= nil then
+            if type(ss.isTargetModeForDisplay) ~= "function" or ss:isTargetModeForDisplay(sprayer) ~= true then
+                return nil
+            end
+            kind = "ready"
+        else
+            -- a client: nothing yet from the server, or the last active result expired
+            kind = mem.seen and "expired" or "waiting"
+        end
+        local c = SoilHUD.TARGET_VIEW_COPY[kind]
+        view = { kind = kind, line = c.line, note = c.note, tone = c.tone }
+    end
+    view.rows = SoilHUD.formatTargetRows(view)
+    return view
+end
+
 
 function SoilHUD:drawSprayerRatePanel()
     self.appRateDrawRect = nil
@@ -2465,7 +2789,14 @@ function SoilHUD:drawSprayerRatePanel()
     local scrollH = self:py(22) * s
     local headerH = self:py(16) * s
     local warningH = (burnGuaranteed or burnPossible) and (self:py(16) * s) or 0
-    local panelH  = warningH + padV + barH + padV + scrollH + padV + headerH
+    -- SF-73 section 7: the target block sits under the header and grows the panel by the
+    -- rows it draws (a height change, never a reposition). Built in update() for this sprayer.
+    local tview = self._cachedTargetView
+    if tview ~= nil and (sprayer == nil or self._cachedSprayer ~= sprayer) then tview = nil end
+    local tRows = tview and tview.rows or nil
+    local tLineH = math.max(self:py(12) * s, 0.0105 * fontMult * s)
+    local blockH = (tRows ~= nil and #tRows > 0) and (#tRows * tLineH + padV) or 0
+    local panelH  = warningH + padV + barH + padV + scrollH + padV + headerH + blockH
     local gap     = self:py(6) * s
     local stackedX = self.panelX
     local stackedY = self.panelY - gap - panelH
@@ -2559,6 +2890,24 @@ function SoilHUD:drawSprayerRatePanel()
         0.009 * fontMult * s, headerText)
     setTextBold(false)
 
+    -- SF-73 section 7: the target block, one row per line, under the header. A row too
+    -- wide for the panel is drawn smaller rather than spilling past its edge.
+    if tRows ~= nil then
+        local top = panelY + panelH - headerH
+        local maxW = pw * 0.94
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        for i, row in ipairs(tRows) do
+            local size = (row.bold and 0.0085 or 0.0075) * fontMult * s
+            local w = getTextWidth(size, row.text)
+            if w ~= nil and w > maxW and w > 0 then size = size * maxW / w end
+            local col = SoilHUD.TARGET_TONE[row.tone] or SoilHUD.TARGET_TONE.neutral
+            setTextBold(row.bold == true)
+            setTextColor(col[1], col[2], col[3], col[4])
+            renderText(cx, top - i * tLineH + tLineH * 0.22, size, row.text)
+        end
+        setTextBold(false)
+    end
+
     -- Rate scroll row base Y
     local scrollY = contentY + padV + barH + padV
 
@@ -2582,8 +2931,10 @@ function SoilHUD:drawSprayerRatePanel()
     renderText(cx, scrollY + self:py(7)*s, 0.013 * fontMult * s, curRateStr)
     setTextBold(false)
 
-    -- In Auto-Mode, show what we are targeting below the rate
-    if isAuto and fillType then
+    -- In Auto-Mode, show what we are targeting below the rate. Under SF-73 target mode the
+    -- target block above stands in its place: this line is built from field info and
+    -- defaults and cannot stand in for a confirmed footprint result (section 7, :89).
+    if isAuto and fillType and tRows == nil then
         local profile = SoilConstants.FERTILIZER_PROFILES[fillType.name]
         if profile then
             local targetText = g_i18n:getText("sf_sprayer_target")

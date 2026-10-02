@@ -1500,6 +1500,52 @@
     <e k="sf_target_ai_boundary_host" v="도우미가 정지했습니다: 혼합, 접근 불가 또는 알 수 없는 토지에서 목표 시비가 일시 중지되었습니다. 수동 살포는 계속 사용할 수 있습니다." eh="abf38208" />
     <e k="sf_target_failed_title" v="목표 시비" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="%d번 필드: 제품이 소모되었지만 국소 N/P/K 결과가 확인되지 않았습니다. 목표 자동이 중지되었습니다. 수동 살포는 계속 사용할 수 있습니다." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="마지막 자동 작업" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="자동: 목표 도달" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="자동: 목표 미달" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="자동 중지: 제품 소모됨" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="자동: 투입 대기" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="자동: 살포 안 함" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="자동: 살포 시 목표 투입 시작" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="자동: 서버 대기 중" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="자동: 목표 사용 불가" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="자동 일시 중지: 자라는 작물 없음" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="자동 일시 중지: 목표 사용 불가" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="자동 일시 중지: 작물 경계" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="자동 일시 중지: 필드 경계" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="자동 일시 중지: 이 토지에 접근 불가" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="자동 일시 중지: 잘못된 제품" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="자동 일시 중지: 목표 시비 없이 파종" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="자동 일시 중지: 일부 구간 꺼짐" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="자동 일시 중지: 작업 영역 겹침" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="자동 일시 중지: 컬티베이터에는 목표 없음" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="자동 일시 중지: 지원되지 않는 공급 방식" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="자동 일시 중지: 두 배 살포 켜짐" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="자동: 작업 흔적 준비 중" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="수동 살포하려면 자동을 끄세요." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="붐 아래 토양 측정값이 없습니다." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="붐이 지도 가장자리를 넘었습니다." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="첫 붐 라인, 비용 없음." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="이 작업 흔적에 대해 확인됨, 필드 전체가 아님." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="이 혼합물을 더 쓰면 %s 초과." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="이 속도에서는 더 살포할 수 없습니다." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="탱크나 공급에 제품이 부족합니다." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="투입량이 토양 지도 한 단계보다 작습니다." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="국소 N/P/K가 확인되지 않았습니다." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="붐이 토양 셀을 닫을 때 비용이 청구됩니다." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="서버의 현재 결과가 없습니다." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="부족" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="근접" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="적정 범위" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="초과" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="알 수 없음" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s / %s, 필드 %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="붐 작업 흔적, %s m 토양 셀" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, 범위 %s에서 %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="제한 영양소: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="계획 %s L, 살포 %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="유효 %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

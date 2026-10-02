@@ -1473,6 +1473,52 @@
     <e k="sf_target_ai_boundary_host" v="Bir yardımcı durdu: hedef gübreleme karışık, izin verilmeyen veya bilinmeyen zeminde duraklatıldı. Manuel uygulama hâlâ kullanılabilir." eh="abf38208" />
     <e k="sf_target_failed_title" v="Hedef gübreleme" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Tarla %d: ürün harcandı ancak yerel N/P/K sonucu doğrulanmadı. Hedef otomatik durduruldu; manuel uygulama hâlâ kullanılabilir." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Son OTO geçişi" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="OTO: hedefe ulaşıldı" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="OTO: hedefin altında" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="OTO durdu: ürün harcandı" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="OTO: doz bekliyor" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="OTO: uygulama yok" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="OTO: hedef doz uygulamayla başlar" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="OTO: sunucu bekleniyor" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="OTO: hedef kullanılamıyor" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="OTO duraklatıldı: büyüyen ürün yok" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="OTO duraklatıldı: hedef kullanılamıyor" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="OTO duraklatıldı: ürün sınırı" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="OTO duraklatıldı: tarla sınırı" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="OTO duraklatıldı: bu araziye erişim yok" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="OTO duraklatıldı: geçersiz ürün" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="OTO duraklatıldı: hedef gübresiz ekim" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="OTO duraklatıldı: tüm seksiyonlar açık değil" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="OTO duraklatıldı: çalışma alanları çakışıyor" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="OTO duraklatıldı: kültivatörde hedef yok" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="OTO duraklatıldı: besleme yolu desteklenmiyor" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="OTO duraklatıldı: çift doz açık" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="OTO: çalışma izi hazırlanıyor" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Manuel uygulama için OTO'yu kapatın." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Bom altında toprak okuması yok." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="Bom harita kenarını aşıyor." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="İlk bom çizgisi, ücret alınmadı." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Bu iz için onaylandı, tüm tarla için değil." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Bu karışımdan fazlası %s değerini aşar." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="Makine bu hızda daha fazla uygulayamaz." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Tankta veya beslemede yeterli ürün yok." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="Doz bir toprak haritası adımının altında." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Yerel N/P/K doğrulanmadı." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Bom bir toprak hücresini kapattığında ücretlenir." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Sunucudan güncel sonuç yok." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="altında" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="yaklaşıyor" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="aralıkta" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="üstünde" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="bilinmiyor" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s, %s üzerinde, tarla %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Bom izi, %s m toprak hücreleri" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, aralık %s - %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Sınırlayan besin: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Planlanan %s L, uygulanan %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Faydalı %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

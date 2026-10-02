@@ -1492,6 +1492,52 @@
     <e k="sf_target_ai_boundary_host" v="Egy segítő leállt: a célzott trágyázás szünetel vegyes, tiltott vagy ismeretlen talajon. A kézi kijuttatás továbbra is elérhető." eh="abf38208" />
     <e k="sf_target_failed_title" v="Célzott trágyázás" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="%d. tábla: a termék elfogyott, de a helyi N/P/K eredmény nincs megerősítve. A célzott automatika leállt; a kézi kijuttatás továbbra is elérhető." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Utolsó AUTO menet" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: cél elérve" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: cél alatt" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO leállt: termék elhasználva" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: adag függőben" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: nem juttat ki" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: a céladag kijuttatáskor indul" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: várakozás a szerverre" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: cél nem elérhető" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO szünetel: nincs növekvő kultúra" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO szünetel: cél nem elérhető" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO szünetel: kultúrahatár" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO szünetel: táblahatár" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO szünetel: nincs hozzáférés ehhez a földhöz" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO szünetel: érvénytelen termék" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO szünetel: vetés célzott trágyázás nélkül" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO szünetel: nem minden szakasz aktív" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO szünetel: átfedő munkaterületek" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO szünetel: kultivátoron nincs cél" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO szünetel: nem támogatott ellátási mód" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO szünetel: dupla adag bekapcsolva" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: munkasáv előkészítése" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Kézi kijuttatáshoz kapcsold ki az AUTO-t." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Nincs talajmérés a keret alatt." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="A keret túlnyúlik a térkép szélén." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Első keretvonal, nincs terhelés." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Erre a munkasávra igazolva, nem az egész táblára." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Több ebből a keverékből túllépné ezt: %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="A gép ennél a sebességnél nem tud többet kijuttatni." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Nincs elég termék a tartályban vagy az ellátásban." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="Az adag kisebb egy talajtérkép-lépésnél." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="A helyi N/P/K nincs igazolva." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Terhelés, amikor a keret lezár egy talajcellát." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Nincs aktuális eredmény a szervertől." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="alatta" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="közel" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="ablakban" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="felette" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="ismeretlen" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s, kultúra: %s, tábla: %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="A keret munkasávja, %s m-es talajcellák" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, ablak %s - %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Korlátozó tápanyag: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Tervezett %s L, kijuttatott %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Hasznos %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

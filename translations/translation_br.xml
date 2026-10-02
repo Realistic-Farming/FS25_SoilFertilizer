@@ -1520,6 +1520,52 @@
     <e k="sf_target_ai_boundary_host" v="Um ajudante parou: adubação alvo pausada em terreno misto, negado ou desconhecido. A aplicação manual continua disponível." eh="abf38208" />
     <e k="sf_target_failed_title" v="Adubação alvo" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Campo %d: o produto foi gasto, mas o resultado local de N/P/K não foi confirmado. O automático alvo parou; a aplicação manual continua disponível." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Última passada AUTO" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: alvo atingido" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: abaixo do alvo" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO parou: produto gasto" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: dose pendente" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: sem aplicação" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: a dose alvo começa ao aplicar" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: aguardando o servidor" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: alvo indisponível" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO pausado: sem cultura em crescimento" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO pausado: alvo indisponível" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO pausado: limite de cultura" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO pausado: limite do campo" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO pausado: sem acesso a este terreno" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO pausado: produto inválido" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO pausado: plantio sem adubação alvo" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO pausado: nem todas as seções ligadas" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO pausado: áreas de trabalho sobrepostas" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO pausado: sem alvo em um cultivador" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO pausado: rota de abastecimento não suportada" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO pausado: dose dupla ligada" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: preparando a pegada" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Desligue o AUTO para aplicação manual." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Sem leitura de solo sob a barra." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="A barra passa da borda do mapa." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Primeira linha da barra, nada cobrado." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Confirmado para esta pegada, não para o campo todo." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Mais desta mistura passaria de %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="A máquina não consegue aplicar mais nesta velocidade." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Produto insuficiente no tanque ou no abastecimento." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="A dose está abaixo de um passo do mapa de solo." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="N/P/K local não confirmado." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Cobrado quando a barra fecha uma célula de solo." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Sem resultado atual do servidor." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="abaixo" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="se aproximando" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="na janela" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="acima" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="desconhecido" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s em %s, campo %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Pegada da barra, células de solo de %s m" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, janela de %s a %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Nutriente limitante: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Previsto %s L, aplicado %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Útil %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

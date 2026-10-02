@@ -6739,6 +6739,17 @@ function SoilFertilitySystem:isTargetModeForDisplay(vehicle)
     return ok and on == true
 end
 
+--- Whether SF-73's release lock is open on this peer, for the HUD's target block
+--- (section 7): the same fail-closed switch as target mode (TA:isGateOpen). The opt-in
+--- it reads is a synced setting, so a client answers as its server does. Locked, the
+--- HUD draws today's panel and nothing new.
+function SoilFertilitySystem:isTargetGateOpen()
+    local ta = self.targetApplication
+    if ta == nil or type(ta.isGateOpen) ~= "function" then return false end
+    local ok, open = pcall(ta.isGateOpen, ta)
+    return ok and open == true
+end
+
 --- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
 --- field scalars without coordinates; strict LOCAL map truth with them.
 --- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target

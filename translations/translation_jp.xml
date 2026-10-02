@@ -1499,6 +1499,52 @@
     <e k="sf_target_ai_boundary_host" v="ヘルパーが停止しました: 混在、立入不可、または不明な土地のため目標施肥を一時停止しました。手動散布は引き続き使用できます。" eh="abf38208" />
     <e k="sf_target_failed_title" v="目標施肥" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="フィールド %d: 資材は消費されましたが、局所的な N/P/K の結果は確認されていません。目標自動は停止しました。手動散布は引き続き使用できます。" eh="29d18403" />
+    <e k="sf_tgt_title_last" v="前回の自動散布" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="自動: 目標達成" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="自動: 目標未達" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="自動停止: 資材を消費済み" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="自動: 投入待ち" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="自動: 散布していません" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="自動: 散布開始時に目標投入を開始" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="自動: サーバー待ち" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="自動: 目標を利用できません" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="自動一時停止: 生育中の作物なし" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="自動一時停止: 目標を利用できません" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="自動一時停止: 作物の境界" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="自動一時停止: フィールドの境界" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="自動一時停止: この土地に立ち入れません" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="自動一時停止: 無効な資材" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="自動一時停止: 目標施肥なしで播種" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="自動一時停止: 一部のセクションがオフ" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="自動一時停止: 作業範囲が重複" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="自動一時停止: カルチベーターに目標なし" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="自動一時停止: 対応していない供給方法" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="自動一時停止: 倍量散布がオン" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="自動: 作業跡を準備中" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="手動散布するには自動をオフにしてください。" eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="ブームの下に土壌データがありません。" eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="ブームがマップの端を越えています。" eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="最初のブームライン、請求なし。" eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="この作業跡について確認済み、フィールド全体ではありません。" eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="この配合をさらに使うと %s を超えます。" eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="この速度ではこれ以上散布できません。" eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="タンクまたは供給の資材が足りません。" eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="投入量が土壌マップの1段階未満です。" eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="局所的な N/P/K は確認されていません。" eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="ブームが土壌セルを閉じたときに請求されます。" eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="サーバーから現在の結果がありません。" eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="不足" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="接近" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="適正範囲" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="超過" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="不明" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s / %s、フィールド %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="ブームの作業跡、%s m の土壌セル" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s、範囲 %s から %s、%s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="制限栄養素: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="計画 %s L、散布 %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="有効 %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s。%s" eh="9467817b" />
 </elements>
 
 
