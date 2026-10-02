@@ -19,10 +19,9 @@
 -- them is a throwaway, outside the repo (the PR body names it).
 --
 -- The rows after R10 end the overlay hold by running the coordinator's mission start AFTER
--- the arm, the order its hook assumes. Production runs _groundMissionStarted
--- (SoilFertilityManager.lua:590) before activateSoilSystem (:649) arms the family, so in a
--- game the store is decided by the first bale door instead (YardLadder:_ensureLoaded). That
--- order is reported on its own; this slice neither depends on it nor changes it.
+-- the arm, the order its hook assumes. Production runs that order since MAINTENANCE row 195:
+-- _groundMissionStarted is called at the end of activateSoilSystem, after initialize() arms
+-- the family. MAINT-137's group M drives that order through the real manager.
 --
 -- NOT RUN, and why:
 --   - a client: the coordinator refuses to arm without g_server (GroundConditionCoordinator

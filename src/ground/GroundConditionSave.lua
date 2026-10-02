@@ -28,8 +28,9 @@
 --
 -- ON RELOAD the verdict is read at install (loadMission00Finished), from the directory
 -- MaterialDown's sidecar is read from at the same point, before the store decides at mission
--- start (YardLadder.lua:246, GroundConditionCoordinator.lua:692); loadSoilData runs after that
--- decision (SoilFertilityManager.lua:590 before :649), too late to read it. An UNPAIRED save
+-- start (YardLadder.lua:246, GroundConditionCoordinator.lua:692). Since MAINTENANCE row 195
+-- that decision runs at the end of activateSoilSystem, after loadSoilData; reading at install
+-- keeps the verdict ahead of it whatever the order inside activation. An UNPAIRED save
 -- marks every condition cell unavailable through the coordinator's availability overlay
 -- (GCC :31) when the store decides: the bytes are kept, never cleared (:96, :62).
 --
