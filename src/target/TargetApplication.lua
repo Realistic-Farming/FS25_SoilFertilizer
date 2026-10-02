@@ -71,6 +71,7 @@ function TA.new(soilSystem)
     self.soilSystem   = soilSystem
     self.states       = {}      -- server: vehicle object -> state
     self.client       = {}      -- client: vehicle object -> last confirmed result
+    self.lastOutcomeByField = {} -- fieldId -> { result, at }: display only (PDA, W1b), never saved
     self.epochCounter = 0
     self.aiMessageClass = nil
     return self
@@ -137,6 +138,27 @@ end
 function TA:reset()
     self.states = {}
     self.client = {}
+    self.lastOutcomeByField = {}
+end
+
+--- [W1b] Remember a field's last confirmed footprint outcome, for the PDA. One result per
+--- vehicle cannot answer "the last pass on this field": the held cycles between closures
+--- overwrite each outcome, and a stopped pass ends on a hold. Display only: written on
+--- the server for an outcome stored with its verified field, on a client for an outcome
+--- received naming one; cleared by reset, never saved, never read by the simulation.
+function TA:noteFieldOutcome(r)
+    if type(r) ~= "table" or not C.isOutcome(r) or type(r.fieldId) ~= "number" then return end
+    if self.lastOutcomeByField == nil then self.lastOutcomeByField = {} end
+    self.lastOutcomeByField[r.fieldId] = { result = C.copy(r), at = now() }
+end
+
+--- A copy of the field's last confirmed footprint outcome, or nil.
+function TA:getLastOutcomeForField(fieldId)
+    local rec = self.lastOutcomeByField and self.lastOutcomeByField[fieldId]
+    if rec == nil then return nil end
+    local r = C.copy(rec.result)
+    r.notedAt = rec.at
+    return r
 end
 
 -- ── the cycle ───────────────────────────────────────────────────────────────
@@ -1298,6 +1320,7 @@ function TA:setResult(st, plan, cls)
     local failed = st.result ~= nil and st.result.doseState == C.STATE.APPLICATION_FAILED
     local changed = st.result == nil or st.result.doseState ~= r.doseState
     st.result = r
+    self:noteFieldOutcome(r)   -- remembered only when it is a footprint outcome (the writer's own test)
     self:publish(st, changed or failed or r.doseState == C.STATE.APPLICATION_FAILED)
 end
 
@@ -1354,6 +1377,7 @@ function TA:receive(vehicle, result)
         epoch = result.epoch, epochSerial = tonumber(result.epoch), sequence = result.sequence,
         receivedAt = now(), result = C.copy(result),
     }
+    self:noteFieldOutcome(result)
     return true
 end
 

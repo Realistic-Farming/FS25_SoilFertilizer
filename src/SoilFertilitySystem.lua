@@ -6750,6 +6750,30 @@ function SoilFertilitySystem:isTargetGateOpen()
     return ok and open == true
 end
 
+--- [W1b] The field's last confirmed target footprint outcome (REACHED, a shortfall, or a
+--- post-spend failure), a copy, for the PDA; nil while SF-73 is locked or when this peer has
+--- seen none since load or join. Display only: one footprint's result, never a field claim.
+function SoilFertilitySystem:getLastTargetPassForField(fieldId)
+    if not self:isTargetGateOpen() then return nil end
+    local ta = self.targetApplication
+    if ta == nil or type(ta.getLastOutcomeForField) ~= "function" then return nil end
+    local ok, r = pcall(ta.getLastOutcomeForField, ta, fieldId)
+    if ok then return r end
+    return nil
+end
+
+--- [W1b] The refusal reason a player surface names for a target result (the one display
+--- order the HUD and the PDA read, TargetNutrientCore.REASON_DISPLAY_ORDER), so another
+--- mod's view (FarmTablet, W1c) names the same reason. nil while SF-73 is locked, for an
+--- outcome, or for a result with no reason it knows.
+function SoilFertilitySystem:getTargetPrimaryReason(result)
+    if not self:isTargetGateOpen() then return nil end
+    if TargetNutrientCore == nil or type(TargetNutrientCore.primaryReason) ~= "function" then return nil end
+    local ok, reason = pcall(TargetNutrientCore.primaryReason, result)
+    if ok then return reason end
+    return nil
+end
+
 --- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
 --- field scalars without coordinates; strict LOCAL map truth with them.
 --- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target

@@ -1565,6 +1565,24 @@
     <e k="sf_tgt_d_litres" v="Previsto %s L, applicato %s L" eh="409fbe14" />
     <e k="sf_tgt_d_useful" v="Utile %s L" eh="38ea2cc0" />
     <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
+    <e k="sf_tgt_pda_title" v="AUTO mirato" eh="015a43f5" />
+    <e k="sf_tgt_pda_window" v="Rapporto campo: N %s, P %s, K %s" eh="0fb4140e" />
+    <e k="sf_tgt_pda_window_none" v="Rapporto campo: finestra non disponibile" eh="a5363bde" />
+    <e k="sf_tgt_pda_rel_below" v="basso" eh="53cced8d" />
+    <e k="sf_tgt_pda_rel_near" v="vicino" eh="85f06cc8" />
+    <e k="sf_tgt_pda_rel_ok" v="giusto" eh="444bcb3a" />
+    <e k="sf_tgt_pda_rel_high" v="alto" eh="8d966b22" />
+    <e k="sf_tgt_pda_rel_unknown" v="?" eh="d1457b72" />
+    <e k="sf_tgt_pda_state_reached" v="Ultimo passaggio: obiettivo raggiunto" eh="e1958a65" />
+    <e k="sf_tgt_pda_state_binding" v="Ultimo passaggio: scarso, miscela" eh="8c2318f6" />
+    <e k="sf_tgt_pda_state_hardware" v="Ultimo passaggio: scarso, macchina" eh="7ccf8639" />
+    <e k="sf_tgt_pda_state_supply" v="Ultimo passaggio: scarso, finito" eh="718f2cb2" />
+    <e k="sf_tgt_pda_state_quantized" v="Ultimo passaggio: sotto un gradino" eh="03b4dc16" />
+    <e k="sf_tgt_pda_state_failed" v="Ultimo passaggio: prodotto consumato" eh="15afe7ea" />
+    <e k="sf_tgt_pda_state_none" v="Ultimo passaggio: nessuno su questa coltura" eh="b90d76c3" />
+    <e k="sf_tgt_pda_scope" v="Un'impronta, non tutto il campo" eh="d96e3c9b" />
+    <e k="sf_tgt_pda_binding" v="Di più supererebbe %s" eh="53a1a1fe" />
+    <e k="sf_tgt_pda_manual_targets" v="Obiettivi del piano manuale" eh="e44e77d3" />
 </elements>
 
 
