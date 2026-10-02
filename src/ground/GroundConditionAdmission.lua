@@ -56,6 +56,37 @@
 --   condition, as before; a pickup ignores it. The field is additive under revision 2:
 --   an older Soil copies only the fields it knows, so the drop lands unknown there.
 --
+--   A BIRTH CONTRIBUTION (SG2-5c-soil; SG-2 v2.3 :351, GCC section 4; Bob's 5c ruling
+--   of 2026-10-02): fresh output a positive native production observation proved, which
+--   the caller held in a machine buffer without a condition of its own.
+--     { litres = n, birth = { kind = "MOWER", fillTypeIndex = <the output's type> } }
+--   Soil makes it here, born AT THIS DEPOSIT exactly as its own mower carrier does
+--   (GroundMovementCarrier.freshBirth and accountResolve): age raw 1 whatever day the
+--   output entered the buffer (section 4's last sentence), wetness from Soil's starting
+--   profile when (kind, type) is an accepted branch (profileFor), with the profile's id,
+--   revision and estimated-at-birth provenance on the contribution, and unknown wetness
+--   otherwise (a converter that makes hay). A kind Soil makes no birth for is unknown.
+--   An entry names a record or a birth, never both. The caller names a birth only for
+--   output it counted from a cut whose MOWER_CUT admission (below) was ADMITTED: under a
+--   refused barrier Soil's own carrier makes that output explicit unknown, never a birth.
+--
+-- MOWER_CUT (SG2-5c-soil; GCC :106 read through :129; Bob's 5c ruling, Q2). A mower's
+-- cut writes no Soil cell: its output waits in the drop area's buffer, and the old dry
+-- windrow it picks up is its own line primitive with its own lease. So Soil's mower carrier
+-- cannot see a StockGuard frame from any line lease, and StockGuard admits the cut itself,
+-- once per processMowerArea call, BEFORE the native call, and closes it in the call's
+-- finally:
+--     admitPrimitive({ schemaVersion = 1, kind = "AREA", x0, z0, x1, z1, x2, z2 },
+--         "MOWER_CUT", mower, workArea)
+-- with the work area's start, width and height corners and the work area table native
+-- passes to processMowerArea as the identity. The barrier runs as for every admission.
+-- The lease derives no cells, so neither a delivery (`{ schemaVersion = 1, primitiveKind
+-- = "MOWER_CUT", ok }`, optional) nor its close projects or marks anything. While it is
+-- live, Soil's cut frame stands aside before the call (hasLiveLeaseFor); when StockGuard's
+-- bracket is the inner one, Soil's frame is already open and stands aside after the call
+-- instead (mowerCutAdmittedSince), recording no fresh birth. The kind is additive under
+-- revision 2, as readCollectedCondition was.
+--
 -- THE COLLECTED READ (SG2-5d; SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; Bob's
 -- G2 ruling as amended 2026-10-02). With StockGuard present, StockGuard is the collection's
 -- producer: it seals the allocation at the add's applied delta (F211 :76), hands this reader the
@@ -136,12 +167,20 @@ GroundConditionAdmission.KIND_TIP_LINE    = "TIP_TO_GROUND_AROUND_LINE"
 GroundConditionAdmission.KIND_SMOOTH_LINE = "SMOOTH_AROUND_LINE"
 GroundConditionAdmission.KIND_CLEAR_AREA  = "CLEAR_AREA"
 GroundConditionAdmission.KIND_CHANGE_TYPE = "CHANGE_FILL_TYPE_AT_AREA"
+-- [SG2-5c-soil] A mower's cut, admitted so Soil's cut frame stands aside (header).
+GroundConditionAdmission.KIND_MOWER_CUT   = "MOWER_CUT"
 GroundConditionAdmission.KIND_SHAPE = {
     [GroundConditionAdmission.KIND_TIP_LINE]    = "LINE",
     [GroundConditionAdmission.KIND_SMOOTH_LINE] = "LINE",
     [GroundConditionAdmission.KIND_CLEAR_AREA]  = "AREA",
     [GroundConditionAdmission.KIND_CHANGE_TYPE] = "AREA",
+    [GroundConditionAdmission.KIND_MOWER_CUT]   = "AREA",
 }
+-- [SG2-5c-soil] The birth kinds a drop's contribution may name: the carriers whose fresh
+-- births Soil makes itself (GroundMovementCarrier.KIND_MOWER is "MOWER").
+GroundConditionAdmission.BIRTH_KINDS = { MOWER = true }
+GroundConditionAdmission.AGE_BORN = 1
+GroundConditionAdmission.firstBirthLogged = {}   -- profile id -> true, once per session
 
 local function finite(n)
     return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
@@ -164,6 +203,9 @@ function GroundConditionAdmission.new()
     -- deliver into a Soil that is no longer listening.
     self.groundCondition = nil
     self.collected, self.collectedOrder = {}, {}
+    -- [SG2-5c-soil] Per work area, the last MOWER_CUT admitted and the lease count it took.
+    -- The count is never reset, so a record from before a re-arm never reads as later.
+    self.mowerCuts = setmetatable({}, { __mode = "k" })
     return self
 end
 
@@ -295,7 +337,15 @@ local function validObservation(observation, lease)
             local list = {}
             for _, c in ipairs(observation.contributions) do
                 if type(c) ~= "table" or not finite(c.litres) or c.litres < 0 then return nil end
-                list[#list + 1] = { litres = c.litres, record = c.record }
+                local entry = { litres = c.litres, record = c.record }
+                -- [SG2-5c-soil] A birth (header): its shape is checked here, its kind is
+                -- read by mixtureOf. It names a record or a birth, never both.
+                if c.birth ~= nil then
+                    local b = c.birth
+                    if c.record ~= nil or type(b) ~= "table" or type(b.kind) ~= "string" or type(b.fillTypeIndex) ~= "number" then return nil end
+                    entry.birth = { kind = b.kind, fillTypeIndex = b.fillTypeIndex }
+                end
+                list[#list + 1] = entry
             end
             obs.contributions = list
         end
@@ -304,18 +354,44 @@ local function validObservation(observation, lease)
         if observation.litresReturned ~= nil and not finite(observation.litresReturned) then return nil end
         obs.sourceTypeIndex, obs.destinationTypeIndex, obs.litresReturned = observation.sourceTypeIndex, observation.destinationTypeIndex, observation.litresReturned
     else
-        -- SMOOTH_AROUND_LINE and CLEAR_AREA return nothing the join needs.
+        -- SMOOTH_AROUND_LINE, CLEAR_AREA and MOWER_CUT return nothing the join needs.
         if observation.litresReturned ~= nil and not finite(observation.litresReturned) then return nil end
         obs.litresReturned = observation.litresReturned
     end
     return obs
 end
 
+--- [SG2-5c-soil] A birth contribution as the projector's mixture part, made at this deposit
+--- as GroundMovementCarrier.freshBirth makes a birth and accountResolve hands it to the
+--- projector: age raw 1; the profile's wetness, id, revision and estimated-at-birth
+--- provenance when (kind, type) is an accepted branch and the profile encodes, unknown
+--- wetness otherwise. A kind Soil makes no birth for is unknown. The deposit's own lease
+--- was admitted, so its barrier passed.
+function GroundConditionAdmission.birthPart(litres, birth)
+    if not GroundConditionAdmission.BIRTH_KINDS[birth.kind] then return { litres = litres } end
+    local C = GroundMovementCarrier
+    local part = { litres = litres, ageRaw = GroundConditionAdmission.AGE_BORN }
+    local profile = C.profileFor(birth.kind, birth.fillTypeIndex)
+    local wetnessRaw = profile ~= nil and C.profileWetnessRaw(profile) or nil
+    if wetnessRaw ~= nil then
+        part.wetnessRaw = wetnessRaw
+        part.profile, part.revision, part.provenance = profile.id, profile.revision, C.PROVENANCE_ESTIMATED_AT_BIRTH
+        if not GroundConditionAdmission.firstBirthLogged[profile.id] then
+            GroundConditionAdmission.firstBirthLogged[profile.id] = true
+            SoilLogger.info(
+                "[GroundAdmit] FIRST FRESH %s BIRTH ON AN ADMITTED DROP: %.1f L born at the deposit with profile %s " ..
+                "revision %d (%d%% wet basis, raw %d), provenance estimated-at-birth. The machine's frame is StockGuard's.",
+                tostring(profile.fillType), litres, profile.id, profile.revision, profile.pct, wetnessRaw)
+        end
+    end
+    return part
+end
+
 --- A drop's carried contributions as the projector's mixture ({ litres, ageRaw,
 --- wetnessRaw }, aged) and its total. Each record is read through Soil's own property:
 --- one that does not validate is unknown; a KNOWN record's coverage splits its litres
 --- into known and unknown; each known age is aged once, from its stamp to `today`
---- (P-GROUND-1). Zero litres import nothing.
+--- (P-GROUND-1). A birth is made at this deposit (birthPart). Zero litres import nothing.
 ---@return table mixture, number total
 function GroundConditionAdmission.mixtureOf(contributions, today)
     local mixture, total = {}, 0
@@ -330,7 +406,9 @@ function GroundConditionAdmission.mixtureOf(contributions, today)
             if GP ~= nil and GP.validate(rec) == true then
                 ageRaw, wetnessRaw, ageDay = GP.componentsOf(rec)
             end
-            if ageRaw == nil and wetnessRaw == nil then
+            if c.birth ~= nil then
+                mixture[#mixture + 1] = GroundConditionAdmission.birthPart(litres, c.birth)
+            elseif ageRaw == nil and wetnessRaw == nil then
                 mixture[#mixture + 1] = { litres = litres }
             else
                 local known = litres
@@ -507,6 +585,13 @@ function GroundConditionAdmission:_admitPrimitive(footprint, primitiveKind, vehi
         return { status = GroundConditionAdmission.STATUS_REFUSED,
                  reason = GroundConditionAdmission.REFUSE_ARGS }
     end
+    -- [SG2-5c-soil] A cut is a mower's, named by the work area table Soil's carrier is
+    -- handed: any other owner or identity could only stand some other frame aside.
+    local mowerCut = primitiveKind == GroundConditionAdmission.KIND_MOWER_CUT
+    if mowerCut and (type(vehicleOrObject) ~= "table" or vehicleOrObject.spec_mower == nil or type(workAreaIdentity) ~= "table") then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_ARGS }
+    end
 
     local geometry = self.cells:getConditionGeometry()
     if geometry == nil then
@@ -543,7 +628,12 @@ function GroundConditionAdmission:_admitPrimitive(footprint, primitiveKind, vehi
         cells         = self.cells,
         stats         = { projected = 0, cleared = 0, unavailable = 0 },
     }
-    self:_prepareLease(lease)
+    if mowerCut then
+        -- No cells: the cut writes none, so nothing may be marked at its close (header).
+        self.mowerCuts[workAreaIdentity] = { owner = vehicleOrObject, seq = self.leaseSeq }
+    else
+        self:_prepareLease(lease)
+    end
     self.leases[token] = lease
     self.openLeases = self.openLeases + 1
 
@@ -638,8 +728,9 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
                      projected = 0, refusedCells = 0, cleared = 0, unavailable = 0 }
 
     if cells == nil then
-        -- The envelope could not be placed on cells (off the map, nonfinite, unbounded):
-        -- nothing to project, and nothing to mark.
+        -- The envelope could not be placed on cells (off the map, nonfinite, unbounded),
+        -- or the primitive writes none (MOWER_CUT, header): nothing to project, and
+        -- nothing to mark.
         result.envelopeRefused = lease.envelopeRefused
         return result
     end
@@ -758,6 +849,15 @@ function GroundConditionAdmission:hasLiveLeaseFor(vehicleOrObject, workAreaIdent
         end
     end
     return false
+end
+
+--- [SG2-5c-soil] Whether a MOWER_CUT for this mower's work area was admitted after the
+--- admission count read `count` (header: StockGuard's bracket inside Soil's cut frame).
+--- The lease has closed by the time the frame asks, so this reads the record the
+--- admission keeps per work area, not the lease.
+function GroundConditionAdmission:mowerCutAdmittedSince(vehicleOrObject, workAreaIdentity, count)
+    local cut = self.mowerCuts[workAreaIdentity]
+    return cut ~= nil and cut.owner == vehicleOrObject and cut.seq > count
 end
 
 function GroundConditionAdmission:getOpenLeaseCount()
