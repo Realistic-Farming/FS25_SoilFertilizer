@@ -348,11 +348,42 @@ function BC.sealTarget(ctx, W, amount)
     return acc
 end
 
+--- [MAINTENANCE row 196] Put the final remainder on the last part so the parts, summed in
+--- this order, equal total EXACTLY (F211 :134): sealAllocation and the reader compare that
+--- sum with the sealed total by equality (MaterialWetness.lua RECEIPT_TOTAL_MISMATCH). Every
+--- part but the last is first cut down to a multiple of the power-of-two quantum
+--- Q = 2^(e - 40), where 2^e <= total < 2^(e + 1): their running sums are then exact, total
+--- minus a multiple of Q is representable, and the last part closes the sum on total.
+--- Correcting the last part alone cannot: when the running sum before it is an odd multiple
+--- of half total's unit in the last place, no last part rounds the sum onto total (123.456 L
+--- over raws 1, 5 and 10). The cut is under total x 2^-40 per part and adds no material.
+--- StockGuard's SGCollectionSeal seals the same way. false when the sum still misses or the
+--- last part is negative. A module function, not a file local: the benches concatenate the
+--- sources into one chunk, which holds at most 200 locals.
+function BC.exactParts(parts, total)
+    if not finite(total) or total <= 0 or #parts == 0 then return false end
+    local Q = 1
+    while Q > total do Q = Q / 2 end
+    while Q * 2 <= total do Q = Q * 2 end
+    Q = Q * 2 ^ -40
+    local sum = 0
+    for i = 1, #parts - 1 do
+        local p = parts[i]
+        if Q > 0 then p.carrierLitres = math.floor(p.carrierLitres / Q) * Q end
+        sum = sum + p.carrierLitres
+    end
+    local last = parts[#parts]
+    last.carrierLitres = total - sum
+    local s = 0
+    for _, p in ipairs(parts) do s = s + p.carrierLitres end
+    return s == total and last.carrierLitres >= 0
+end
+
 --- Seal one batch's allocation of `A_b` carrier litres over its sources (q_i = A_b *
 --- r_i / R, the raw retained equivalent r_i * ratio), in canonical id order with the
---- final remainder on the last positive part so the parts sum to A_b exactly. Every
---- source of one batch shares one snapshot (the positive primitive's). Returns the
---- reader's coverage, or nil when the seal or the read refuses.
+--- final remainder on the last positive part so the parts sum to A_b exactly
+--- (BC.exactParts). Every source of one batch shares one snapshot (the positive primitive's).
+--- Returns the reader's coverage, or nil when the seal or the read refuses.
 function BC.sealBatch(mw, batch, A_b, R, ratio)
     local snap = batch.sources[1].snapshot
     local byId = {}
@@ -363,22 +394,12 @@ function BC.sealBatch(mw, batch, A_b, R, ratio)
     local ids = {}
     for id in pairs(byId) do ids[#ids + 1] = id end
     table.sort(ids)
-    local parts, sum = {}, 0
+    local parts = {}
     for i, id in ipairs(ids) do
-        local q = A_b * byId[id] / R
-        parts[i] = { id = id, carrierLitres = q, rawLitres = byId[id] * ratio }
-        if i < #ids then sum = sum + q end
+        parts[i] = { id = id, carrierLitres = A_b * byId[id] / R, rawLitres = byId[id] * ratio }
     end
     -- The final remainder on the last part; the seal sums in this same order.
-    local last = parts[#parts]
-    last.carrierLitres = A_b - sum
-    for _ = 1, 4 do
-        local s = 0
-        for _, p in ipairs(parts) do s = s + p.carrierLitres end
-        if s == A_b then break end
-        last.carrierLitres = last.carrierLitres + (A_b - s)
-    end
-    if last.carrierLitres < 0 then return nil end
+    if not BC.exactParts(parts, A_b) then return nil end
     local receipt, why = mw:sealAllocation(snap, A_b, parts)
     if receipt == nil then
         BC.stats.sealRefused = BC.stats.sealRefused + 1
