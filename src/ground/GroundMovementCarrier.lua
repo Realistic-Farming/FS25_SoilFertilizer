@@ -528,13 +528,13 @@ end
 --- area's cut, or the drop) reconciles to the native remainder before any primitive
 --- reads the account, and a reconcile downward removes uniformly. So the loss discards
 --- condition in proportion and is never re-created.
----@param frame table    the cut frame
----@param fresh number   litres the cut produced (the rise in workArea.pickedUpLiters)
 ---
 --- [SG2-5c-soil] A MOWER_CUT StockGuard admitted for this work area after the frame opened
 --- means StockGuard's bracket was inside this one and frames the cut: the output is
 --- StockGuard's to carry and Soil makes it at the deposit (GroundConditionAdmission), so
 --- this frame records no birth, as it would have stood aside before the call.
+---@param frame table    the cut frame
+---@param fresh number   litres the cut produced (the rise in workArea.pickedUpLiters)
 ---@param fillTypeIndex number|nil  the converter's output type (dropArea.fillType after the cut)
 function C.mowerCut(frame, fresh, fillTypeIndex)
     local admission = frame ~= nil and frame.admission or nil
