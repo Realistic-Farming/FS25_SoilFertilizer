@@ -14,6 +14,8 @@
 --       -> { status = "ADMITTED"|"REFUSED", reason, leaseToken }
 --   g_currentMission.soilFertilityManager.groundCondition.deliverMovement(
 --       leaseToken, observation)
+--   g_currentMission.soilFertilityManager.groundCondition.readCollectedCondition(
+--       snapshotRef, receiptRef)                             (SG2-5d, below)
 --
 -- ADMISSION REVISION 2 (SG2-4 S3, Iris's answer 2 of 2026-09-23, Bob's intake of
 -- 2026-09-23): the public input of deliverMovement is StockGuard's admitted NATIVE
@@ -53,6 +55,27 @@
 --   Soil still chooses the cells. Without the field a drop arrives of unknown
 --   condition, as before; a pickup ignores it. The field is additive under revision 2:
 --   an older Soil copies only the fields it knows, so the drop lands unknown there.
+--
+-- THE COLLECTED READ (SG2-5d; SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; Bob's
+-- G2 ruling as amended 2026-10-02). With StockGuard present, StockGuard is the collection's
+-- producer: it seals the allocation at the add's applied delta (F211 :76), hands this reader the
+-- reference and stores the account it returns as the carried property. Soil computes the meaning:
+--   * a pickup (TIP_TO_GROUND_AROUND_LINE, negative delta) by a collection machine (a Baler or a
+--     ForageWagon, Baler.lua:1874, ForageWagon.lua:147-160) captures, on delivery and before Soil
+--     projects it, a COLLECTED snapshot of its source cells (MaterialWetness:collectedSnapshot):
+--     each cell's litres of the type as read at admit, before the native pickup, and its
+--     condition, stamped with the owner revision. Nothing writes Soil's condition between the
+--     admit and that projection, so the condition is the admit's; a collector's drop (a
+--     ForageWagon tipping to the ground) captures nothing;
+--   * that pickup's delivery result names it: result.collection = { snapshotRef, basis,
+--     revision, parts = { { id, raw } } }, raw being the litres each cell actually lost;
+--   * readCollectedCondition(snapshotRef, receiptRef) runs Soil's collected reader on that snapshot,
+--     which resolves the producer's sealed allocation through StockGuard's readCollectionReceipt
+--     (MaterialWetness:resolveAllocation). It always answers a coverage; an unknown snapshot is
+--     UNAVAILABLE. The lease token is correlation only (GCC :129); the snapshot names the capture.
+--   Snapshots are transient causal bindings (F211 :50), the oldest leaving first, never saved.
+--   Under a lease Soil's own collection (BalerCollection, ForageWagonCollection) stands aside and
+--   seals nothing, so there is one producer, never a parallel record.
 --
 -- WHY THE CAPABILITY MATTERS MORE THAN THE TABLE. A consumer must decide whether
 -- Soil can actually receive a delivery. The contract is explicit that a registered
@@ -103,6 +126,9 @@ GroundConditionAdmission.DELIVER_NO_LEASE      = "NO_SUCH_LEASE"
 GroundConditionAdmission.DELIVER_LEASE_CLOSED  = "LEASE_CLOSED"
 GroundConditionAdmission.DELIVER_STALE_FRAME   = "LEASE_CROSSED_A_FRAME"
 GroundConditionAdmission.DELIVER_BAD_OBS       = "BAD_OBSERVATION"
+-- [SG2-5d] The collected snapshots kept for the published read: a transient causal binding.
+GroundConditionAdmission.MAX_COLLECTED         = 256
+GroundConditionAdmission.READ_SNAPSHOT_UNKNOWN = "SNAPSHOT_UNKNOWN"
 
 -- The primitive kinds a lease can name (Bob's SG2 chain intake: the four
 -- DensityMapHeightUtil primitives SG2-4 brackets) and the footprint shape each takes.
@@ -137,6 +163,7 @@ function GroundConditionAdmission.new()
     -- stays valid; torn down on stand-down so a stale reference cannot be used to
     -- deliver into a Soil that is no longer listening.
     self.groundCondition = nil
+    self.collected, self.collectedOrder = {}, {}
     return self
 end
 
@@ -146,6 +173,7 @@ function GroundConditionAdmission:arm(coordinator, cells)
     self.groundCondition = nil
     self.leases = {}
     self.openLeases = 0
+    self.collected, self.collectedOrder = {}, {}
 
     if g_server == nil then
         -- Server-local by contract. A client never admits a primitive.
@@ -169,12 +197,16 @@ function GroundConditionAdmission:arm(coordinator, cells)
     local close = function(leaseToken)
         return self:_closePrimitive(leaseToken)
     end
+    local readCollected = function(snapshotRef, receiptRef)
+        return self:_readCollectedCondition(snapshotRef, receiptRef)
+    end
 
     self.groundCondition = {
         admissionRevision = GroundConditionAdmission.ADMISSION_REVISION,
         admitPrimitive    = admit,
         deliverMovement   = deliver,
         closePrimitive    = close,
+        readCollectedCondition = readCollected,
     }
     self.armed = true
     SoilLogger.info("[OK] GroundConditionAdmission published (admissionRevision %d)",
@@ -194,6 +226,7 @@ function GroundConditionAdmission:standDown(why)
     self.groundCondition = nil
     self.leases = {}
     self.openLeases = 0
+    self.collected, self.collectedOrder = {}, {}
 end
 
 --- The capability table. Publishing `groundCondition` here is the ONLY promise a
@@ -379,6 +412,73 @@ function GroundConditionAdmission:_prepareLease(lease)
     O.stats.cellsRead = O.stats.cellsRead + #cells
     GroundMovementProjector.captureCells(lease, cells)
     lease.derived = cells
+end
+
+--- [SG2-5d] A collection machine: its pickups feed a collection StockGuard seals (header).
+function GroundConditionAdmission.isCollector(owner)
+    return type(owner) == "table" and (owner.spec_baler ~= nil or owner.spec_forageWagon ~= nil)
+end
+
+--- [SG2-5d] The COLLECTED snapshot of a collection pickup's source cells, before Soil projects
+--- it: each cell's litres of the footprint's type as Soil read them at admit, and its condition.
+function GroundConditionAdmission:_captureCollected(lease, cells)
+    local mw = self.coordinator ~= nil and self.coordinator.materialWetness or nil
+    if mw == nil or type(mw.collectedSnapshot) ~= "function" then return end
+    local ft = lease.footprint.fillTypeIndex
+    local src = {}
+    for _, cell in ipairs(cells) do
+        local before = cell.before ~= nil and cell.before[ft] or nil
+        if finite(before) and before > GroundMovementProjector.EPSILON then
+            src[#src + 1] = { gx = cell.gx, gz = cell.gz, litres = before }
+        end
+    end
+    -- Over bare ground the pickup can take nothing: no snapshot, so a machine working an
+    -- empty strip does not turn the store over every frame.
+    if #src == 0 then return end
+    local snap = mw:collectedSnapshot(ft, src)
+    if snap == nil then return end
+    lease.collected = snap
+    self.collected[snap.id] = snap
+    self.collectedOrder[#self.collectedOrder + 1] = snap.id
+    while #self.collectedOrder > GroundConditionAdmission.MAX_COLLECTED do
+        self.collected[table.remove(self.collectedOrder, 1)] = nil
+    end
+end
+
+--- [SG2-5d] A collection pickup's result: the snapshot it was captured in and, per cell the
+--- pickup actually lowered, the litres it lost, in id order.
+function GroundConditionAdmission.collectionOf(lease, cells, ft)
+    local snap = lease.collected
+    local parts = {}
+    for _, cell in ipairs(cells) do
+        local b, a = cell.before, cell.after
+        local id = tostring(cell.gx) .. ":" .. tostring(cell.gz)
+        if b ~= nil and a ~= nil and snap.parts[id] ~= nil then
+            local removed = (b[ft] or 0) - (a[ft] or 0)
+            if removed > GroundMovementProjector.EPSILON then parts[#parts + 1] = { id = id, raw = removed } end
+        end
+    end
+    table.sort(parts, function(p, q) return p.id < q.id end)
+    local r = snap.revision
+    return { snapshotRef = snap.id, basis = snap.basis, parts = parts,
+             revision = { epoch = r.epoch, changeCounter = r.changeCounter, ageThroughDay = r.ageThroughDay, wetThroughDay = r.wetThroughDay } }
+end
+
+--- [SG2-5d] THE PUBLISHED COLLECTED READ (header). Always a coverage.
+function GroundConditionAdmission:_readCollectedCondition(snapshotRef, receiptRef)
+    local MW = MaterialWetness
+    local function unavailable(reason) return MW.coverageResult(MW.BASIS.COLLECTED, MW.RESULT.UNAVAILABLE, reason) end
+    if snapshotRef ~= nil and snapshotRef == self.groundCondition then
+        SoilLogger.warning("[GroundAdmit] readCollectedCondition was called with a colon; it is a plain function on " ..
+            "the groundCondition table. Refusing rather than reading the table as a snapshot.")
+        return unavailable(GroundConditionAdmission.REFUSE_COLON_CALL)
+    end
+    if not self.armed then return unavailable(GroundConditionAdmission.REFUSE_NOT_ARMED) end
+    local mw = self.coordinator ~= nil and self.coordinator.materialWetness or nil
+    if mw == nil or type(mw.readCollectedCondition) ~= "function" then return unavailable("NO_GROUND_FAMILY") end
+    local snap = type(snapshotRef) == "string" and self.collected[snapshotRef] or nil
+    if snap == nil then return unavailable(GroundConditionAdmission.READ_SNAPSHOT_UNKNOWN) end
+    return mw:readCollectedCondition(snap, receiptRef)
 end
 
 --- A lease is bound to the primitive, the vehicle or object, and the work area.
@@ -580,11 +680,17 @@ function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
             -- back to the caller in this result (result.collected: litres with the
             -- captured age and wetness per source cell), the evidence F211's reader
             -- will take; the lease itself closes with the primitive and keeps nothing.
+            if GroundConditionAdmission.isCollector(lease.owner) then
+                self:_captureCollected(lease, cells)   -- [SG2-5d] before the projection clears them
+            end
             local collected = {}
             local _, c = P.pickup(lease, cells, obs.fillTypeIndex, function(litres, ageRaw, wetnessRaw)
                 collected[#collected + 1] = { litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw }
             end)
             result.collected = collected
+            if lease.collected ~= nil then
+                result.collection = GroundConditionAdmission.collectionOf(lease, cells, obs.fillTypeIndex)
+            end
             counts = c
         else
             -- A drop from carried stock: the caller's contributions carry the material's

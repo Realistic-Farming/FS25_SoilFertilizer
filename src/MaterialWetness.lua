@@ -1277,6 +1277,8 @@ local function coverageResult(basis, status, reason)
              carrierLitres = 0, knownCarrierLitres = 0, unknownCarrierLitres = 0,
              refusedCarrierLitres = 0, knownWeightedPctSum = 0 }
 end
+-- [SG2-5d] The published collected read answers its own refusals in this same shape.
+MaterialWetness.coverageResult = coverageResult
 
 --- THE STANDING READ: the snapshot's cells weighted by their native volume. Always
 --- returns the coverage (carrier, known, unknown, refused litres; the known weighted
