@@ -1503,6 +1503,52 @@
     <e k="sf_target_ai_boundary_host" v="Een helper is gestopt: doelbemesting gepauzeerd op gemengde, geweigerde of onbekende grond. Handmatig strooien blijft mogelijk." eh="abf38208" />
     <e k="sf_target_failed_title" v="Doelbemesting" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Veld %d: product is verbruikt, maar het lokale N/P/K-resultaat is niet bevestigd. De doelautomaat is gestopt; handmatig strooien blijft mogelijk." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Laatste AUTO-gang" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: doel bereikt" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: doel niet gehaald" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO gestopt: product verbruikt" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: dosis in afwachting" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: geen toediening" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: doeldosis begint bij het toedienen" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: wacht op de server" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: doel niet beschikbaar" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO gepauzeerd: geen groeiend gewas" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO gepauzeerd: doel niet beschikbaar" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO gepauzeerd: gewasgrens" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO gepauzeerd: perceelgrens" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO gepauzeerd: geen toegang tot dit land" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO gepauzeerd: ongeldig product" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO gepauzeerd: zaaien zonder doelbemesting" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO gepauzeerd: niet alle secties aan" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO gepauzeerd: werkgebieden overlappen" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO gepauzeerd: geen doel op een cultivator" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO gepauzeerd: toevoerroute niet ondersteund" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO gepauzeerd: dubbele dosis staat aan" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: werkstrook wordt voorbereid" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Zet AUTO uit om handmatig toe te dienen." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Geen bodemmeting onder de spuitboom." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="De spuitboom reikt voorbij de kaartrand." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Eerste boomlijn, niets in rekening gebracht." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Bevestigd voor deze werkstrook, niet het hele perceel." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Meer van dit mengsel zou %s overschrijden." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="De machine kan bij deze snelheid niet meer toedienen." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Niet genoeg product in tank of toevoer." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="De dosis ligt onder één stap van de bodemkaart." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Lokale N/P/K niet bevestigd." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Afgerekend als de boom een bodemcel afsluit." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Geen actueel resultaat van de server." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="onder" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="bijna" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="binnen venster" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="boven" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="onbekend" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s op %s, perceel %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Werkstrook van de boom, bodemcellen van %s m" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, venster %s tot %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Beperkende voedingsstof: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Gepland %s L, toegediend %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Nuttig %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

@@ -1472,6 +1472,52 @@
     <e k="sf_target_ai_boundary_host" v="Một người giúp việc đã dừng: bón phân theo mục tiêu tạm dừng trên đất hỗn hợp, bị từ chối hoặc không xác định. Vẫn có thể bón thủ công." eh="abf38208" />
     <e k="sf_target_failed_title" v="Bón phân theo mục tiêu" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Cánh đồng %d: sản phẩm đã được sử dụng, nhưng kết quả N/P/K tại chỗ chưa được xác nhận. Chế độ tự động theo mục tiêu đã dừng; vẫn có thể bón thủ công." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Lượt TỰ ĐỘNG gần nhất" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="TỰ ĐỘNG: đã đạt mục tiêu" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="TỰ ĐỘNG: thiếu so với mục tiêu" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="TỰ ĐỘNG đã dừng: đã tiêu hao sản phẩm" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="TỰ ĐỘNG: liều đang chờ" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="TỰ ĐỘNG: không đang bón" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="TỰ ĐỘNG: liều mục tiêu bắt đầu khi bón" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="TỰ ĐỘNG: đang chờ máy chủ" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="TỰ ĐỘNG: mục tiêu không khả dụng" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="TỰ ĐỘNG tạm dừng: không có cây đang phát triển" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="TỰ ĐỘNG tạm dừng: mục tiêu không khả dụng" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="TỰ ĐỘNG tạm dừng: ranh giới cây trồng" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="TỰ ĐỘNG tạm dừng: ranh giới ruộng" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="TỰ ĐỘNG tạm dừng: không có quyền vào đất này" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="TỰ ĐỘNG tạm dừng: sản phẩm không hợp lệ" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="TỰ ĐỘNG tạm dừng: gieo không bón phân mục tiêu" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="TỰ ĐỘNG tạm dừng: không phải mọi đoạn đều bật" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="TỰ ĐỘNG tạm dừng: vùng làm việc chồng nhau" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="TỰ ĐỘNG tạm dừng: máy xới không có mục tiêu" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="TỰ ĐỘNG tạm dừng: nguồn cấp không được hỗ trợ" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="TỰ ĐỘNG tạm dừng: đang bật liều gấp đôi" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="TỰ ĐỘNG: đang chuẩn bị vệt làm việc" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Tắt TỰ ĐỘNG để bón thủ công." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Không có số đo đất dưới cần phun." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="Cần phun vượt quá mép bản đồ." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Đường cần phun đầu tiên, chưa tính phí." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Đã xác nhận cho vệt này, không phải cả ruộng." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Thêm hỗn hợp này sẽ vượt quá %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="Máy không thể bón thêm ở tốc độ này." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Không đủ sản phẩm trong bồn hoặc nguồn cấp." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="Liều nhỏ hơn một bậc của bản đồ đất." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="N/P/K tại chỗ chưa được xác nhận." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Tính phí khi cần phun khép một ô đất." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Không có kết quả hiện tại từ máy chủ." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="dưới" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="gần đạt" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="trong khoảng" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="trên" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="không rõ" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s trên %s, ruộng %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Vệt cần phun, ô đất %s m" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, khoảng %s đến %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Chất dinh dưỡng giới hạn: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Dự kiến %s L, đã bón %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Hữu ích %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

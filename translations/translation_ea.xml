@@ -1472,6 +1472,52 @@
     <e k="sf_target_ai_boundary_host" v="Un ayudante se detuvo: la fertilización objetivo está en pausa en terreno mixto, denegado o desconocido. La aplicación manual sigue disponible." eh="abf38208" />
     <e k="sf_target_failed_title" v="Fertilización objetivo" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Campo %d: se usó producto, pero el resultado local de N/P/K no está confirmado. El automático objetivo se detuvo; la aplicación manual sigue disponible." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Última pasada AUTO" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: objetivo alcanzado" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: por debajo del objetivo" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO detenido: producto consumido" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: dosis pendiente" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: sin aplicar" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: la dosis objetivo empieza al aplicar" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: esperando al servidor" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: objetivo no disponible" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO en pausa: sin cultivo en crecimiento" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO en pausa: objetivo no disponible" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO en pausa: límite de cultivo" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO en pausa: límite de campo" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO en pausa: sin acceso a este terreno" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO en pausa: producto no válido" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO en pausa: siembra sin fertilización objetivo" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO en pausa: no todas las secciones activas" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO en pausa: áreas de trabajo superpuestas" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO en pausa: sin objetivo en un cultivador" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO en pausa: vía de suministro no compatible" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO en pausa: dosis doble activada" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: preparando la huella" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Desactiva AUTO para aplicar manualmente." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Sin lectura del suelo bajo la barra." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="La barra sobrepasa el borde del mapa." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Primera línea de barra, sin cargo." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Confirmado para esta huella, no para todo el campo." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Más de esta mezcla superaría %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="La máquina no puede aplicar más a esta velocidad." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="No hay suficiente producto en el tanque o el suministro." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="La dosis es menor que un paso del mapa de suelo." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="N/P/K local no confirmado." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Se cobra cuando la barra cierra una celda de suelo." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Sin resultado actual del servidor." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="por debajo" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="cerca" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="en la ventana" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="por encima" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="desconocido" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s en %s, campo %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Huella de la barra, celdas de suelo de %s m" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, ventana %s a %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Nutriente limitante: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Previsto %s L, aplicado %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Útil %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 
 

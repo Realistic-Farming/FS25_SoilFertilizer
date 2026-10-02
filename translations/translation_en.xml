@@ -1537,5 +1537,51 @@
     <e k="sf_target_ai_boundary_host" v="A helper stopped: target fertilizer paused on mixed, denied or unknown ground. Manual application is still available." eh="abf38208" />
     <e k="sf_target_failed_title" v="Target fertilizer" eh="45fbf3bf" />
     <e k="sf_target_failed_body" v="Field %d: product was spent, but the local N/P/K result is not confirmed. Target automatic has stopped; manual application is still available." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Last AUTO pass" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: target reached" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: short of target" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO stopped: product spent" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: dose pending" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: not spraying" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: target dose starts when spraying" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: waiting for the server" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: target unavailable" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO paused: no growing crop" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO paused: target unavailable" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO paused: crop boundary" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO paused: field boundary" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO paused: no access to this land" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO paused: invalid product" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO paused: sowing without target fertilizer" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO paused: not all boom sections on" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO paused: work areas overlap" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO paused: no target on a cultivator" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO paused: supply route not supported" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO paused: double rate is on" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: preparing the footprint" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Turn AUTO off for manual application." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="No soil reading under the boom." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="The boom reaches past the map edge." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="First boom line, nothing charged." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Confirmed for this footprint, not the whole field." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="More of this blend would overshoot %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="The machine cannot apply more at this speed." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Not enough product in the tank or supply." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="The dose is below one soil map step." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Local N/P/K is not confirmed." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Charged when the boom closes a soil cell." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="No current result from the server." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="below" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="approaching" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="in window" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="above" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="unknown" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s on %s, field %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Boom footprint, %s m soil cells" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, window %s to %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Limiting nutrient: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Planned %s L, applied %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Useful %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
 </elements>
 </l10n>
