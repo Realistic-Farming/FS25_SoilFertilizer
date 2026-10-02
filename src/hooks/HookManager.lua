@@ -3414,7 +3414,7 @@ function HookManager:installHarvestHook()
 
                     detectedFieldId = fieldId
                     detectedX, detectedZ = x, z
-                    SoilLogger.debug("Harvest hook: Field %d, Crop %d, area=%.1fm2 (yield modifier applied via hopper hook)",
+                    SoilLogger.debug("Harvest hook: Field %d, Crop %d, area=%.1fm2 (yield modifier applied at the cutter)",
                         fieldId, inputFruitType, area)
                 end)
 
@@ -3672,12 +3672,18 @@ function HookManager:installZoneYieldCutterHook()
                    and context.fieldId and context.fieldId > 0
                 then
                     local ok, errMsg = pcall(function()
-                        -- Establish the existing persisted crop freeze once.
-                        local frozen = g_SoilFertilityManager.soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
-                        -- Use the spatial scalar when valid, otherwise the frozen scalar.
-                        local scalar = frozen
+                        -- The spatial scalar when SF-14 gave one (it also establishes the
+                        -- persisted crop freeze once, as SF-14 built it). Every other path
+                        -- (fallback, contract) is the baseline field-average scalar, which,
+                        -- like the hopper hook it replaced, applies only with nutrient cycles
+                        -- on (MAINTENANCE row 210).
+                        local soilSystem = g_SoilFertilityManager.soilSystem
+                        local scalar = 1.0
                         if context.path == "spatial" and type(context.scalar) == "number" then
+                            soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
                             scalar = context.scalar
+                        elseif g_SoilFertilityManager.settings.nutrientCycles then
+                            scalar = soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
                         end
                         if scalar ~= 1.0 then
                             spec.workAreaParameters.lastMultiplierArea = before + added * scalar

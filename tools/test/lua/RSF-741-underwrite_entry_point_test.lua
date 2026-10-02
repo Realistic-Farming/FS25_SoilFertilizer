@@ -337,7 +337,9 @@ local function newWorld()
   g_currentMission = { vehicleSystem = { vehicles = {} }, addIngameNotification = function() end, time = 0 }
   local soil = newSoil()
   g_SoilFertilityManager = {
-    settings = { enabled = true },
+    -- nutrientCycles is the schema default (true): the field-average scalar applies only
+    -- with it on, as the pre-SF-14 hopper hook did (MAINTENANCE row 210)
+    settings = { enabled = true, nutrientCycles = true },
     soilSystem = soil,
     zoneYield = {
       preparePreCutContext = function(_self, cutterSelf, workArea)

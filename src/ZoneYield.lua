@@ -941,10 +941,14 @@ end
 --- destructive base Cutter call. Paths: "spatial" (READY/FROZEN_SPATIAL receipt
 --- plus a native read), "fallback" (no receipt or no spatial answer; the caller
 --- uses the existing frozen scalar), "contract" (NPC-disabled or contract-exempt).
+---
+--- MAINTENANCE row 210 (#1083): the N/P/K yield penalty is the baseline, not part of
+--- the locked growth family. The fruit, the field and the contract branch read no SF-14
+--- state, so they resolve whatever the release gate says; a closed gate is unavailable
+--- spatial truth (One Ground amendment :361) and returns the fallback context, before any
+--- route, source polygon, receipt or value-map read. An unavailable value map on the live
+--- path falls back the same way, never nil (brief :43, :138).
 function ZoneYield:preparePreCutContext(cutterSelf, workArea)
-    if not self:isLive() then return nil end
-    local vm = self:_valueMaps()
-    if vm == nil then return nil end
     local spec = cutterSelf.spec_cutter
     if spec == nil or spec.workAreaParameters == nil then return nil end
     local para = self:_workAreaParallelogram(workArea)
@@ -989,6 +993,15 @@ function ZoneYield:preparePreCutContext(cutterSelf, workArea)
         and FieldSentry_Core.BLACKLIST.NPC or nil
     if disabled and ((npcReason ~= nil and reason == npcReason) or contractExempt) then
         return { path = "contract", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = nil }
+    end
+
+    -- Below here is SF-14's own (routes, receipts, value-map reads): inert while locked.
+    if not self:isLive() then
+        return { path = "fallback", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = nil }
+    end
+    local vm = self:_valueMaps()
+    if vm == nil then
+        return { path = "fallback", fieldId = fieldId, fruitTypeIndex = fruitTypeIndex, scalar = nil, drag = nil }
     end
 
     local desc = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(fruitTypeIndex)
