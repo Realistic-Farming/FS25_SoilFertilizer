@@ -18,6 +18,12 @@
 -- StockGuard's real registry and operations are not loaded here. The joined run against
 -- them is a throwaway, outside the repo (the PR body names it).
 --
+-- The rows after R10 end the overlay hold by running the coordinator's mission start AFTER
+-- the arm, the order its hook assumes. Production runs _groundMissionStarted
+-- (SoilFertilityManager.lua:590) before activateSoilSystem (:649) arms the family, so in a
+-- game the store is decided by the first bale door instead (YardLadder:_ensureLoaded). That
+-- order is reported on its own; this slice neither depends on it nor changes it.
+--
 -- NOT RUN, and why:
 --   - a client: the coordinator refuses to arm without g_server (GroundConditionCoordinator
 --     :105), and a bench in the mod environment cannot clear the engine's g_server, which
