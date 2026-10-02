@@ -102,6 +102,7 @@ function GroundConditionProperty.new()
     self.coordinator = nil
     self.handle      = nil   -- the StockGuard mission handle the lease came from
     self.lease       = nil
+    self.consumerLease = nil -- [SG2-5d] the bale birth's SG-1 consumer (below)
     return self
 end
 
@@ -278,15 +279,67 @@ local function accountFor(rec, litres)
     return out
 end
 
+-- [SG2-5d] THE ACCOUNT FROM THE OPERATION (Bob's 5d ruling, Q2; SG-2 :344, R1). StockGuard
+-- seals a Baler's collection, calls the published readCollectedCondition and stores what it
+-- returns on the receiving stock. SG-1 lets only the owner write this property, so the account
+-- travels in the settle report and this combine adopts it: SG-1 hands every combine
+-- context.report.outcomeEvidence (SGOperations.lua:1084) and stamps each contribution with its
+-- allocation's ref, operationId .. ":a" .. index (:942). The evidence names the leg:
+--   outcomeEvidence["soil.groundCondition"].collectedAccounts = { { allocation = index, account }, ... }
+-- The account is adopted only
+--   1. on the contribution whose allocation it names, never on destinationBefore or another part;
+--   2. when it is well formed (accountProblem);
+--   3. when its carrier litres are that contribution's litres, within the account tolerance.
+-- A named leg whose account fails a check, or whose allocation is named twice, enters as unknown
+-- carrier litres: never dropped, never its own record's older account. StockGuard builds an
+-- UNAVAILABLE read into the account it passes as unknown litres (the reader's own contract), so
+-- an adopted account always covers its whole leg. With no evidence, combine is unchanged.
+GP.EVIDENCE_ACCOUNTS = "collectedAccounts"
+
+--- The accounts a settle report names, by allocation ref. A doubly named allocation maps to
+--- false: it cannot be told which account is meant. (Module functions, not file locals: the benches
+--- that load this file with many others sit near Lua's 200-local limit for one chunk.)
+function GP.evidenceAccounts(context)
+    local out = {}
+    if type(context) ~= "table" or type(context.operationId) ~= "string" then return out end
+    local report = context.report
+    local evidence = type(report) == "table" and report.outcomeEvidence or nil
+    local mine = type(evidence) == "table" and evidence[GP.PROPERTY_ID] or nil
+    local list = type(mine) == "table" and mine[GP.EVIDENCE_ACCOUNTS] or nil
+    if type(list) ~= "table" then return out end
+    for _, e in ipairs(list) do
+        if type(e) == "table" and isInt(e.allocation) and e.allocation >= 1 then
+            local ref = context.operationId .. ":a" .. tostring(e.allocation)
+            if out[ref] == nil then out[ref] = e.account else out[ref] = false end
+        end
+    end
+    return out
+end
+
+--- The named leg's account: the evidence's own when it passes the checks, else all unknown.
+function GP.adoptedAccount(acc, litres)
+    if acc ~= false and accountProblem(acc) == nil
+       and math.abs(acc.carrierLitres - litres) <= ACCOUNT_TOLERANCE * math.max(1, litres) then
+        local out = {}
+        for _, k in ipairs(GP.ACCOUNT_FIELDS) do out[k] = acc[k] end
+        return out
+    end
+    return { carrierLitres = litres, knownCarrierLitres = 0, unknownCarrierLitres = litres,
+             refusedCarrierLitres = 0, knownWeightedPctSum = 0 }
+end
+
 ---@return table|nil record, string|nil reason
-function GroundConditionProperty:combine(_context, contributions, destinationBefore)
+function GroundConditionProperty:combine(context, contributions, destinationBefore)
     local parts, unit = {}, nil
-    local function add(litres, rec, partUnit)
+    local named = GP.evidenceAccounts(context)
+    local function add(litres, rec, partUnit, evidence)
         litres = tonumber(litres) or 0
         -- Zero litres import nothing: not unknown, not a refusal (section 2).
         if not isFinite(litres) or litres <= 0 then return end
         local a, w, d = componentsOf(rec)
-        parts[#parts + 1] = { litres = litres, ageRaw = a, wetnessRaw = w, ageDay = d, account = accountFor(rec, litres) }
+        local account
+        if evidence ~= nil then account = GP.adoptedAccount(evidence, litres) else account = accountFor(rec, litres) end
+        parts[#parts + 1] = { litres = litres, ageRaw = a, wetnessRaw = w, ageDay = d, account = account }
         if unit == nil and type(partUnit) == "string" then unit = partUnit end
     end
     if type(destinationBefore) == "table" then
@@ -296,7 +349,10 @@ function GroundConditionProperty:combine(_context, contributions, destinationBef
     if type(contributions) == "table" then
         for _, part in ipairs(contributions) do
             local props = type(part.properties) == "table" and part.properties or {}
-            add(part.amount, props[GP.PROPERTY_ID], part.unit)
+            -- A doubly named allocation maps to false, which must reach adoptedAccount as such.
+            local evidence = nil
+            if type(part.allocationRef) == "string" then evidence = named[part.allocationRef] end
+            add(part.amount, props[GP.PROPERTY_ID], part.unit, evidence)
         end
     end
     if #parts == 0 then return nil, GP.NO_MATERIAL end
@@ -428,9 +484,64 @@ function GroundConditionProperty:register(coordinator, mission)
         return false, reason
     end
     self.handle, self.lease = sg, lease
+    self:registerBaleConsumer(sg)
     coordinator:bumpRevision("provider-registered")
     SoilLogger.info("[OK] %s registered with StockGuard (epoch %d)", GP.PROPERTY_ID, coordinator.epoch)
     return true, nil
+end
+
+-- [SG2-5d] THE BALE BIRTH'S READ OF THE CHAMBER (Bob's 5d ruling, Q4 and Q5). With StockGuard
+-- framing a square Baler, the chamber's material is StockGuard's carrier and its condition is the
+-- soil.groundCondition record StockGuard's settle stored there, with the collected account Soil's
+-- own combine adopted (above); Soil's own chamber account is unknown by construction under a
+-- lease. SG-2 :477 keeps one record in SG-1, not a second Soil accumulator, so the bale's birth reads
+-- that record: through SG-1's consumer path (a consumer lease is SG-1's gate for schema and material
+-- kind, SGOperations.lua:1631-1640) on the stock StockGuard's read-only lookup names,
+-- fillUnitStockRef(vehicle, fillUnitIndex). With no lookup, no lease, or no usable account it
+-- answers nil and the reason, and the caller keeps its own account.
+GP.BALE_CONSUMER_ID = "soil.baleBirth"
+
+--- Register the bale birth's consumer on StockGuard's handle, when the handle offers it.
+function GroundConditionProperty:registerBaleConsumer(sg)
+    if type(sg) ~= "table" or type(sg.registerConsumer) ~= "function" then return false end
+    local spec = {
+        version = 1,
+        requiredSchemas = { [GP.PROPERTY_ID] = GP.SCHEMA_VERSION },
+        materialKinds = { "FILL_TYPE" },
+        resolveReadContext = function(query)
+            if type(query) ~= "table" or type(query.stockRef) ~= "table" then return nil, "QUERY" end
+            return { stockRefs = { query.stockRef }, purpose = "BALE_BIRTH" }
+        end,
+    }
+    local ok, lease = pcall(sg.registerConsumer, GP.BALE_CONSUMER_ID, spec)
+    if ok and type(lease) == "table" then self.consumerLease = lease return true end
+    return false
+end
+
+--- The account StockGuard's record holds for a vehicle's fill unit: the G3 account, or nil and
+--- the reason. Taken only from a READY read of a KNOWN or UNKNOWN record whose account is well
+--- formed; a record SG-1 qualified, or one with no account (an unframed chamber), is none.
+---@return table|nil account, string|nil reason
+function GroundConditionProperty:readChamberAccount(vehicle, fillUnitIndex)
+    local sg, lease = self.handle, self.consumerLease
+    if self.lease == nil or type(sg) ~= "table" then return nil, "STOCKGUARD_ABSENT" end
+    if type(sg.fillUnitStockRef) ~= "function" or type(sg.readMaterial) ~= "function" then return nil, "NO_LOOKUP" end
+    if lease == nil then return nil, "NO_CONSUMER" end
+    local okL, ref, whyL = pcall(sg.fillUnitStockRef, vehicle, fillUnitIndex)
+    if not okL then return nil, "LOOKUP_ERROR" end
+    if type(ref) ~= "table" then return nil, tostring(whyL or "NO_STOCK") end
+    local okR, read = pcall(sg.readMaterial, lease, { stockRef = ref, propertyIds = { GP.PROPERTY_ID } })
+    if not okR or type(read) ~= "table" or read.state ~= "READY" or type(read.records) ~= "table" then return nil, "READ" end
+    local snap = read.records[1]
+    if type(snap) ~= "table" or snap.state ~= "READY" or type(snap.properties) ~= "table" then return nil, "NOT_READY" end
+    local rec = snap.properties[GP.PROPERTY_ID]
+    if type(rec) ~= "table" or (rec.knowledge ~= "KNOWN" and rec.knowledge ~= "UNKNOWN") then return nil, "QUALIFIED" end
+    local acc = type(rec.payload) == "table" and rec.payload.account or nil
+    if acc == nil then return nil, "NO_ACCOUNT" end
+    if GP.accountProblem(acc) ~= nil then return nil, "ACCOUNT" end
+    local out = {}
+    for _, k in ipairs(GP.ACCOUNT_FIELDS) do out[k] = acc[k] end
+    return out, nil
 end
 
 --- Withdraw the registration: unload, or a condition owner stood down.
@@ -440,6 +551,10 @@ function GroundConditionProperty:withdraw(why)
     if lease == nil then return false end
     self.lease, self.handle = nil, nil
     pcall(sg.unregisterOwner, lease)
+    if self.consumerLease ~= nil then
+        pcall(sg.unregisterOwner, self.consumerLease)
+        self.consumerLease = nil
+    end
     if self.coordinator ~= nil then self.coordinator:bumpRevision("provider-withdrawn") end
     SoilLogger.info("[GroundProperty] %s withdrawn from StockGuard (%s)", GP.PROPERTY_ID, tostring(why))
     return true

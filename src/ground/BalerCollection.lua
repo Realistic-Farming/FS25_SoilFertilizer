@@ -567,6 +567,17 @@ end
 
 --- finishBale: the chamber's account is captured before the native clears it
 --- (square) or creates first (round).
+--- [SG2-5d] The chamber's account from StockGuard's SG-1 record, in this module's fields, or nil.
+function BC.chamberAccount(vehicle, spec)
+    local sys = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilSystem or nil
+    local prop = sys ~= nil and sys.groundConditionProperty or nil
+    if prop == nil or type(prop.readChamberAccount) ~= "function" then return nil end
+    local ok, acc = pcall(prop.readChamberAccount, prop, vehicle, spec.fillUnitIndex)
+    if not ok or type(acc) ~= "table" then return nil end
+    return { carrier = acc.carrierLitres, known = acc.knownCarrierLitres, unknown = acc.unknownCarrierLitres,
+             refused = acc.refusedCarrierLitres, weighted = acc.knownWeightedPctSum }
+end
+
 function BC.aroundFinish(vehicle, original, ...)
     local st = (g_server ~= nil and vehicle.isServer) and BC.state(vehicle) or nil
     local spec = vehicle.spec_baler
@@ -579,8 +590,17 @@ function BC.aroundFinish(vehicle, original, ...)
             if st.pad.share ~= nil then BC.accountAddAccount(account, st.pad.share) end
         else
             local level = mainLevel(vehicle, spec)
-            if level ~= nil then BC.accountReconcile(st.main, level) end
-            account = BC.copyAccount(st.main)
+            -- [SG2-5d] A chamber StockGuard frames holds its condition in SG-1's record (Bob's 5d Q4):
+            -- that account, reconciled to the chamber's native level, is the finish account. Only a
+            -- framed square chamber's record holds one, so an unframed chamber keeps Soil's own.
+            local fromStockGuard = BC.chamberAccount(vehicle, spec)
+            if fromStockGuard ~= nil then
+                if level ~= nil then BC.accountReconcile(fromStockGuard, level) end
+                account = fromStockGuard
+            else
+                if level ~= nil then BC.accountReconcile(st.main, level) end
+                account = BC.copyAccount(st.main)
+            end
         end
         st.finishes[#st.finishes + 1] = { account = account }
     end
