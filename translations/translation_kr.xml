@@ -1546,6 +1546,24 @@
     <e k="sf_tgt_d_litres" v="계획 %s L, 살포 %s L" eh="409fbe14" />
     <e k="sf_tgt_d_useful" v="유효 %s L" eh="38ea2cc0" />
     <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
+    <e k="sf_tgt_pda_title" v="자동 목표" eh="015a43f5" />
+    <e k="sf_tgt_pda_window" v="필드 보고: N %s, P %s, K %s" eh="0fb4140e" />
+    <e k="sf_tgt_pda_window_none" v="필드 보고: 적정 범위 없음" eh="a5363bde" />
+    <e k="sf_tgt_pda_rel_below" v="부족" eh="53cced8d" />
+    <e k="sf_tgt_pda_rel_near" v="근접" eh="85f06cc8" />
+    <e k="sf_tgt_pda_rel_ok" v="적정" eh="444bcb3a" />
+    <e k="sf_tgt_pda_rel_high" v="초과" eh="8d966b22" />
+    <e k="sf_tgt_pda_rel_unknown" v="?" eh="d1457b72" />
+    <e k="sf_tgt_pda_state_reached" v="지난 작업: 목표 도달" eh="e1958a65" />
+    <e k="sf_tgt_pda_state_binding" v="지난 작업: 미달, 혼합물" eh="8c2318f6" />
+    <e k="sf_tgt_pda_state_hardware" v="지난 작업: 미달, 기계" eh="7ccf8639" />
+    <e k="sf_tgt_pda_state_supply" v="지난 작업: 미달, 소진" eh="718f2cb2" />
+    <e k="sf_tgt_pda_state_quantized" v="지난 작업: 한 단계 미만" eh="03b4dc16" />
+    <e k="sf_tgt_pda_state_failed" v="지난 작업: 제품 소모됨" eh="15afe7ea" />
+    <e k="sf_tgt_pda_state_none" v="지난 작업: 이 작물 없음" eh="b90d76c3" />
+    <e k="sf_tgt_pda_scope" v="작업 흔적 하나, 필드 전체 아님" eh="d96e3c9b" />
+    <e k="sf_tgt_pda_binding" v="더 쓰면 %s 초과" eh="53a1a1fe" />
+    <e k="sf_tgt_pda_manual_targets" v="수동 계획 목표" eh="e44e77d3" />
 </elements>
 
 

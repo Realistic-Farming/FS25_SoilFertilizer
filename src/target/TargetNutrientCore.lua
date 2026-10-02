@@ -61,6 +61,42 @@ C.REASON_ORDER = {
     "SOURCE_CONTRACT_UNAVAILABLE", "DOUBLED_AMOUNT_ACTIVE", "FOOTPRINT_PRIMING",
 }
 
+-- The reason a player surface names when a cycle carries several (section 7; W1a and W1b
+-- read this one order, so every surface names the same reason for the same result). Denied
+-- access and an invalid product come first, so no surface points the farmer at manual
+-- application past either (Iris, 2026-10-02 section 1). Wire order is REASON_ORDER above.
+C.REASON_DISPLAY_ORDER = {
+    "FARM_ACCESS", "UNKNOWN_PRODUCT", "OUTSIDE_MAP", "UNKNOWN_GROUND", "MIXED_FIELD", "MIXED_CROP",
+    "UNSUPPORTED_CROP", "CULTIVATION_NO_TARGET", "SOURCE_CONTRACT_UNAVAILABLE", "DOUBLED_AMOUNT_ACTIVE",
+    "NOZZLE_PARTIAL", "CELL_OVERLAP", "SOWABILITY_UNKNOWN", "FOOTPRINT_PRIMING",
+}
+
+-- The states that report a closed footprint: classified after its write, or failed after a spend.
+C.OUTCOME_STATES = { REACHED = true, SHORT_BINDING = true, SHORT_HARDWARE = true, SHORT_SUPPLY = true,
+                     SHORT_QUANTIZED = true, APPLICATION_FAILED = true }
+
+--- A result reporting a closed footprint.
+function C.isOutcome(r)
+    return type(r) == "table" and C.OUTCOME_STATES[r.doseState] == true
+end
+
+--- A cycle between closures (the anchor held, nothing charged yet): INACTIVE with no reason
+--- and the verified field. A native-inactive cycle carries no field (TargetApplication:setResult).
+function C.isHold(r)
+    return type(r) == "table" and r.doseState == "INACTIVE" and #(r.reasons or {}) == 0 and r.fieldId ~= nil
+end
+
+--- The refusal reason a surface names, or nil (an outcome, or no reason it knows).
+function C.primaryReason(r)
+    if type(r) ~= "table" or C.isOutcome(r) then return nil end
+    local has = {}
+    for _, x in ipairs(r.reasons or {}) do has[x] = true end
+    for _, x in ipairs(C.REASON_DISPLAY_ORDER) do
+        if has[x] then return x end
+    end
+    return nil
+end
+
 C.REL = {
     BELOW        = "BELOW",
     APPROACHING  = "APPROACHING",

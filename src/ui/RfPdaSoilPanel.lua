@@ -828,6 +828,114 @@ function RfPdaMenuPage:onClickSoilResistancePairs()
     end
 end
 
+-- ── SF-73 section 7, W1b: the TREATMENT card's target card ─────────────────
+-- The door's soilTargetCard (the W1 door set, placement B: the TREATMENT card's lower zone
+-- under the target levels). It shows only while SF-73's release lock is open and a field is
+-- selected. Two scopes, each titled: the AUTO crop window is a field report (FIELD_REPORT,
+-- Wizard :40), never a local reading; the last pass is one footprint's confirmed result
+-- (:38, :46), never a field-reached claim, and only for the field's current crop. Nothing
+-- in it is compared, summed or aligned with the legacy target levels or the PRODUCTS rows
+-- (:30): those stay the manual planner's, and their heading says so while the card shows.
+-- A door without the card (another mod's older copy won) draws nothing new.
+
+-- One state line per footprint outcome, the same kinds as the HUD's TARGET_STATE_COPY
+-- (shorter for the 180px card); the note gives the binding nutrient, the failure, or the scope.
+RfPdaSoilPanel.TARGET_PDA_STATE = {
+    REACHED            = { line = "sf_tgt_pda_state_reached",   note = "sf_tgt_pda_scope",   color = "good" },
+    SHORT_BINDING      = { line = "sf_tgt_pda_state_binding",   note = "sf_tgt_pda_binding", color = "fair" },
+    SHORT_HARDWARE     = { line = "sf_tgt_pda_state_hardware",  note = "sf_tgt_pda_scope",   color = "fair" },
+    SHORT_SUPPLY       = { line = "sf_tgt_pda_state_supply",    note = "sf_tgt_pda_scope",   color = "fair" },
+    SHORT_QUANTIZED    = { line = "sf_tgt_pda_state_quantized", note = "sf_tgt_pda_scope",   color = "fair" },
+    APPLICATION_FAILED = { line = "sf_tgt_pda_state_failed",    note = "sf_tgt_n_failed",    color = "poor" },
+}
+RfPdaSoilPanel.TARGET_PDA_REL = {
+    BELOW = "sf_tgt_pda_rel_below", APPROACHING = "sf_tgt_pda_rel_near", IDEAL = "sf_tgt_pda_rel_ok",
+    ABOVE = "sf_tgt_pda_rel_high", UNDETERMINED = "sf_tgt_pda_rel_unknown",
+}
+RfPdaSoilPanel.TARGET_PDA_KEYS = {
+    title = "sf_tgt_pda_title", window = "sf_tgt_pda_window", windowNone = "sf_tgt_pda_window_none",
+    none = "sf_tgt_pda_state_none", litres = "sf_tgt_d_litres", manual = "sf_tgt_pda_manual_targets",
+}
+-- English fallbacks for the page translator (tr(key, fallback)), the en file's own text.
+RfPdaSoilPanel.TARGET_PDA_EN = {
+    sf_tgt_pda_title = "AUTO target", sf_tgt_pda_window = "Field report: N %s, P %s, K %s",
+    sf_tgt_pda_window_none = "Field report: crop window unavailable",
+    sf_tgt_pda_rel_below = "low", sf_tgt_pda_rel_near = "near", sf_tgt_pda_rel_ok = "ok", sf_tgt_pda_rel_high = "high",
+    sf_tgt_pda_rel_unknown = "?",
+    sf_tgt_pda_state_reached = "Last pass: target reached", sf_tgt_pda_state_binding = "Last pass: short, blend limit",
+    sf_tgt_pda_state_hardware = "Last pass: short, machine limit", sf_tgt_pda_state_supply = "Last pass: short, ran out",
+    sf_tgt_pda_state_quantized = "Last pass: short, under a map step", sf_tgt_pda_state_failed = "Last pass: product spent",
+    sf_tgt_pda_state_none = "Last pass: none on this crop",
+    sf_tgt_pda_scope = "One footprint, not the whole field", sf_tgt_pda_binding = "More would overshoot %s",
+    sf_tgt_n_failed = "Local N/P/K is not confirmed.", sf_tgt_d_litres = "Planned %s L, applied %s L",
+    sf_tgt_pda_manual_targets = "Manual plan targets",
+}
+
+local function targetPdaLitres(x)
+    if type(x) ~= "number" or x ~= x or x == math.huge or x == -math.huge then return "?" end
+    return string.format(math.abs(x) < 10 and "%.2f" or "%.1f", x)
+end
+
+--- Paint the target card for the selected entry. Never throws past its caller: the host
+--- wraps it in pcall, as it wraps the rotation and resistance cards, and PRODUCTS paints on.
+--- Sets page._targetCardShown, which the legacy heading reads.
+---@param page table RfPdaMenuPage instance (may be a door without the card)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshTargetCard(page, entry)
+    if page == nil then return end
+    page._targetCardShown = false
+    local cardEl = resEl(page, "soilTargetCard")
+    if cardEl == nil then return end
+    local function hide() if cardEl.setVisible then cardEl:setVisible(false) end end
+    local fieldId = entry and entry.fieldId or nil
+    local sfm = g_SoilFertilityManager
+    local ss = sfm and sfm.soilSystem
+    if fieldId == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" or ss:isTargetGateOpen() ~= true then
+        hide()
+        return
+    end
+    local trPage = page._rfTr or function(k, fb) return fb or k end
+    local EN = RfPdaSoilPanel.TARGET_PDA_EN
+    local function tr(key) return trPage(key, EN[key]) end
+    local K = RfPdaSoilPanel.TARGET_PDA_KEYS
+
+    -- The AUTO crop window: a field report over the field's scalars, never a local reading.
+    local rel = type(ss.getCropNutrientRelationship) == "function" and ss:getCropNutrientRelationship(fieldId) or nil
+    local windowText
+    if rel ~= nil and rel.cropKey ~= nil and type(rel.nutrients) == "table" then
+        local words = {}
+        for _, n in ipairs({ "N", "P", "K" }) do
+            local x = rel.nutrients[n]
+            words[#words + 1] = tr(RfPdaSoilPanel.TARGET_PDA_REL[x and x.relationship or "UNDETERMINED"]
+                or RfPdaSoilPanel.TARGET_PDA_REL.UNDETERMINED)
+        end
+        windowText = string.format(tr(K.window), words[1], words[2], words[3])
+    else
+        windowText = tr(K.windowNone)
+    end
+
+    -- The last pass: one footprint's confirmed outcome on this field, for its current crop only.
+    local pass = type(ss.getLastTargetPassForField) == "function" and ss:getLastTargetPassForField(fieldId) or nil
+    if pass ~= nil and (rel == nil or rel.cropKey == nil or pass.cropKey ~= rel.cropKey) then pass = nil end
+    local copy = pass ~= nil and RfPdaSoilPanel.TARGET_PDA_STATE[pass.doseState] or nil
+    local stateText, noteText, detailText, stateColor = tr(K.none), "", "", COLOR_DIM
+    if copy ~= nil then
+        stateText = tr(copy.line)
+        noteText = tr(copy.note)
+        if pass.doseState == "SHORT_BINDING" then noteText = string.format(noteText, tostring(pass.binding or "?")) end
+        detailText = string.format(tr(K.litres), targetPdaLitres(pass.plannedLitres), targetPdaLitres(pass.physicalLitres))
+        stateColor = (copy.color == "good" and COLOR_GOOD) or (copy.color == "poor" and COLOR_POOR) or COLOR_FAIR
+    end
+
+    setTextColored(resEl(page, "soilTargetTitle"), tr(K.title))
+    setTextColored(resEl(page, "soilTargetWindow"), windowText, COLOR_LIME_BRIGHT)
+    setTextColored(resEl(page, "soilTargetState"), stateText, stateColor)
+    setTextColored(resEl(page, "soilTargetReason"), noteText, COLOR_DIM)
+    setTextColored(resEl(page, "soilTargetDetail"), detailText, COLOR_DIM)
+    if cardEl.setVisible then cardEl:setVisible(true) end
+    page._targetCardShown = true
+end
+
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
     local tr = page._rfTr or function(k, fb) return fb or k end
     local fieldId = page.selectedFieldId
@@ -861,6 +969,21 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         if not okRes and not page._resistanceCardErrLogged then
             page._resistanceCardErrLogged = true
             print("[SoilFertilizer] resistance card paint failed (PRODUCTS continues): " .. tostring(errRes))
+        end
+    end
+
+    -- SF-73 W1b target card (the door set's placement B). Same guard shape; it runs on nil
+    -- entries too so the card hides when nothing is selected, and its shown flag decides the
+    -- legacy heading below.
+    page._targetCardShown = false
+    if type(RfPdaSoilPanel.refreshTargetCard) == "function" then
+        local okTgt, errTgt = pcall(RfPdaSoilPanel.refreshTargetCard, page, entry)
+        if not okTgt then
+            page._targetCardShown = false
+            if not page._targetCardErrLogged then
+                page._targetCardErrLogged = true
+                print("[SoilFertilizer] target card paint failed (PRODUCTS continues): " .. tostring(errTgt))
+            end
         end
     end
 
@@ -1010,7 +1133,14 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
 
     -- F5: separate Text lines (Giants Text often shows literal \n / broken l10n backticks)
     if page.treatTargetsHeading then
-        page.treatTargetsHeading:setText(tr("rf_pda_treatment_targets_heading", "Target levels"))
+        -- While the SF-73 target card shows in this card, these lines are the manual plan's
+        -- targets (the PRODUCTS planner computes against them) and say so, so two target
+        -- bands for the same nutrients never read as synonyms (W1b's pre-build ruling).
+        if page._targetCardShown == true then
+            page.treatTargetsHeading:setText(tr(RfPdaSoilPanel.TARGET_PDA_KEYS.manual, "Manual plan targets"))
+        else
+            page.treatTargetsHeading:setText(tr("rf_pda_treatment_targets_heading", "Target levels"))
+        end
     end
     if page.treatTargetN then
         page.treatTargetN:setText(string.format("N %d-%d%%", nLo, nHi))

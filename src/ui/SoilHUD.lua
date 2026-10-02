@@ -2447,14 +2447,16 @@ end
 -- replaces the legacy "Target:" line, which is built from field info and defaults and
 -- "cannot stand in for the new confirmed implement-footprint result" (:89).
 
--- The refusal reason the block names when a cycle carries several. Denied access and
--- an invalid product come first, so the block never points the farmer at manual
--- application past either (Iris, 2026-10-02 section 1).
-SoilHUD.TARGET_REASON_PRIORITY = {
-    "FARM_ACCESS", "UNKNOWN_PRODUCT", "OUTSIDE_MAP", "UNKNOWN_GROUND", "MIXED_FIELD", "MIXED_CROP",
-    "UNSUPPORTED_CROP", "CULTIVATION_NO_TARGET", "SOURCE_CONTRACT_UNAVAILABLE", "DOUBLED_AMOUNT_ACTIVE",
-    "NOZZLE_PARTIAL", "CELL_OVERLAP", "SOWABILITY_UNKNOWN", "FOOTPRINT_PRIMING",
-}
+-- The refusal reason the block names when a cycle carries several, and the three result
+-- classifiers, are TargetNutrientCore's (W1b's pre-build ruling): the HUD and the PDA read
+-- one order and one test, so both name the same reason for the same result. These names
+-- are the core's own objects, not copies. TargetNutrientCore is sourced before this file
+-- (main.lua); without it (a bench that loads the HUD alone) they are nil and the block is
+-- never built, as the lock read answers closed without a target engine.
+SoilHUD.TARGET_REASON_PRIORITY = TargetNutrientCore and TargetNutrientCore.REASON_DISPLAY_ORDER or nil
+SoilHUD.isTargetOutcome        = TargetNutrientCore and TargetNutrientCore.isOutcome or nil
+SoilHUD.isTargetHold           = TargetNutrientCore and TargetNutrientCore.isHold or nil
+SoilHUD.targetPrimaryReason    = TargetNutrientCore and TargetNutrientCore.primaryReason or nil
 
 -- One state line per reason, and a note where the line alone does not tell the
 -- reasons apart. UNKNOWN_GROUND and OUTSIDE_MAP share Iris's line and differ by note.
@@ -2526,34 +2528,10 @@ SoilHUD.TARGET_TONE = {
 
 -- The block's helpers, one table (the file keeps its count of top-level locals).
 local tgt = {}
-tgt.OUTCOME = { REACHED = true, SHORT_BINDING = true, SHORT_HARDWARE = true, SHORT_SUPPLY = true,
-                SHORT_QUANTIZED = true, APPLICATION_FAILED = true }
 tgt.NUTRIENTS = { "N", "P", "K" }
 
 function tgt.finite(x)
     return type(x) == "number" and x == x and x ~= math.huge and x ~= -math.huge
-end
-
---- A result reporting a closed footprint: classified after its write, or failed after a spend.
-function SoilHUD.isTargetOutcome(r)
-    return type(r) == "table" and tgt.OUTCOME[r.doseState] == true
-end
-
---- A cycle between closures (the anchor held, nothing charged yet): INACTIVE with no
---- reason and the verified field. A native-inactive cycle carries no field (TA:setResult).
-function SoilHUD.isTargetHold(r)
-    return type(r) == "table" and r.doseState == "INACTIVE" and #(r.reasons or {}) == 0 and r.fieldId ~= nil
-end
-
---- The refusal reason the block names, or nil (an outcome, or no reason it knows).
-function SoilHUD.targetPrimaryReason(r)
-    if type(r) ~= "table" or SoilHUD.isTargetOutcome(r) then return nil end
-    local has = {}
-    for _, x in ipairs(r.reasons or {}) do has[x] = true end
-    for _, x in ipairs(SoilHUD.TARGET_REASON_PRIORITY) do
-        if has[x] then return x end
-    end
-    return nil
 end
 
 --- The product carries N/P/K (the target product rule, TargetApplication's carriesNPK).
