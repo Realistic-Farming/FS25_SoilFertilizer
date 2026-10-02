@@ -508,14 +508,20 @@ do
     T.ok("H8 a contract-exempt field takes the contract path", ctxC ~= nil and ctxC.path == "contract")
     FieldSentry_API.isFieldSimDisabled = function() return false, nil, false, nil end
 
-    -- Not live -> nil.
+    -- Not live -> the fallback context (MAINTENANCE row 210): the field-average yield
+    -- penalty is the baseline, not the locked growth family; a closed gate is unavailable
+    -- spatial truth (One Ground amendment :361). It used to be nil, which dropped the penalty.
     zy.manager.viability.enabled = false
-    T.eq("H9 not live is nil", zy:preparePreCutContext(cutter, workArea), nil)
+    local ctxOff = zy:preparePreCutContext(cutter, workArea)
+    T.ok("H9 not live is the fallback context, never nil",
+        ctxOff ~= nil and ctxOff.path == "fallback" and ctxOff.fieldId == 7 and ctxOff.scalar == nil)
     zy.manager.viability.enabled = true
 
-    -- No value maps -> nil.
+    -- No value maps -> the fallback context on the live path (brief :43, :138).
     zy.manager.soilSystem.valueMaps = nil
-    T.eq("H10 no maps is nil", zy:preparePreCutContext(cutter, workArea), nil)
+    local ctxNoMaps = zy:preparePreCutContext(cutter, workArea)
+    T.ok("H10 no maps is the fallback context, never nil",
+        ctxNoMaps ~= nil and ctxNoMaps.path == "fallback" and ctxNoMaps.fieldId == 7)
     zy.manager.soilSystem.valueMaps = vm
 
     -- Positive drag routes through the rotated drag lattice.
