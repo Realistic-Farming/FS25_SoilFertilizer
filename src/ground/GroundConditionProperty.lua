@@ -155,6 +155,10 @@ function GroundConditionProperty.validate(rec)
     if p.wetnessRaw ~= WET_UNKNOWN and not wetKnown(p.wetnessRaw) then return false, "WETNESS" end
     if p.ageDay ~= nil and not isInt(p.ageDay) then return false, "AGE_DAY" end
     if p.wetDay ~= nil and not isInt(p.wetDay) then return false, "WET_DAY" end
+    if p.account ~= nil then
+        local why = GP.accountProblem(p.account)
+        if why ~= nil then return false, why end
+    end
     if (rec.knowledge == "KNOWN") ~= (ageKnown(p.ageRaw) and wetKnown(p.wetnessRaw)) then
         return false, "KNOWLEDGE_PAYLOAD"
     end
@@ -241,6 +245,39 @@ end
 -- The one reader of these records: the admission's drop (SG2-5 5-0) reads them through it too.
 GroundConditionProperty.componentsOf = componentsOf
 
+-- [SG2-5d] THE COLLECTED ACCOUNT (Bob's G3 ruling; SG-2 :344, RSF-F211 :46). On the F211
+-- collection paths StockGuard stores the account Soil's collected reader returned as an optional
+-- `account` in this payload: carrier litres split into known, unknown and refused, with the known
+-- weighted percent sum kept for later uniform combinations. It travels beside the floor fields.
+GP.ACCOUNT_FIELDS = { "carrierLitres", "knownCarrierLitres", "unknownCarrierLitres", "refusedCarrierLitres", "knownWeightedPctSum" }
+local ACCOUNT_TOLERANCE = 1e-6
+
+--- nil when the account is well formed, else the reason.
+local function accountProblem(acc)
+    if type(acc) ~= "table" then return "ACCOUNT" end
+    for _, f in ipairs(GP.ACCOUNT_FIELDS) do
+        if not isFinite(acc[f]) or acc[f] < 0 then return "ACCOUNT" end
+    end
+    local parts = acc.knownCarrierLitres + acc.unknownCarrierLitres + acc.refusedCarrierLitres
+    if math.abs(parts - acc.carrierLitres) > ACCOUNT_TOLERANCE * math.max(1, acc.carrierLitres) then return "ACCOUNT_SUM" end
+    if acc.knownWeightedPctSum > 100 * acc.knownCarrierLitres + ACCOUNT_TOLERANCE * math.max(1, acc.knownCarrierLitres) then return "ACCOUNT_PCT" end
+    return nil
+end
+GP.accountProblem = accountProblem
+
+--- A record's account as `litres` of it: each component scaled to the part (SG-1 scales a
+--- portion's coverage, never its payload), or nil when the record carries none that can be read.
+local function accountFor(rec, litres)
+    -- Read only as componentsOf reads: this property's own two states (a qualified record is unknown).
+    if type(rec) ~= "table" or type(rec.payload) ~= "table" or (rec.knowledge ~= "KNOWN" and rec.knowledge ~= "UNKNOWN") then return nil end
+    local acc = rec.payload.account
+    if acc == nil or accountProblem(acc) ~= nil or acc.carrierLitres <= 0 then return nil end
+    local f = litres / acc.carrierLitres
+    local out = {}
+    for _, k in ipairs(GP.ACCOUNT_FIELDS) do out[k] = acc[k] * f end
+    return out
+end
+
 ---@return table|nil record, string|nil reason
 function GroundConditionProperty:combine(_context, contributions, destinationBefore)
     local parts, unit = {}, nil
@@ -249,7 +286,7 @@ function GroundConditionProperty:combine(_context, contributions, destinationBef
         -- Zero litres import nothing: not unknown, not a refusal (section 2).
         if not isFinite(litres) or litres <= 0 then return end
         local a, w, d = componentsOf(rec)
-        parts[#parts + 1] = { litres = litres, ageRaw = a, wetnessRaw = w, ageDay = d }
+        parts[#parts + 1] = { litres = litres, ageRaw = a, wetnessRaw = w, ageDay = d, account = accountFor(rec, litres) }
         if unit == nil and type(partUnit) == "string" then unit = partUnit end
     end
     if type(destinationBefore) == "table" then
@@ -279,8 +316,25 @@ function GroundConditionProperty:combine(_context, contributions, destinationBef
     end
     local combined = GroundConditionCoordinator.combine(nil, floorParts)
     local c = self.coordinator
-    return GP.record({ ageRaw = combined.ageRaw, wetnessRaw = combined.wetnessRaw, ageDay = newest },
-        total, unit, c ~= nil and c.changeCounter or 0)
+    local payload = { ageRaw = combined.ageRaw, wetnessRaw = combined.wetnessRaw, ageDay = newest }
+    -- [SG2-5d] Accounts add by carrier litres; a part without one adds its litres as unknown.
+    -- With no account among the parts there is none to carry.
+    local anyAccount = false
+    for _, p in ipairs(parts) do if p.account ~= nil then anyAccount = true end end
+    if anyAccount then
+        local acc = {}
+        for _, k in ipairs(GP.ACCOUNT_FIELDS) do acc[k] = 0 end
+        for _, p in ipairs(parts) do
+            if p.account ~= nil then
+                for _, k in ipairs(GP.ACCOUNT_FIELDS) do acc[k] = acc[k] + p.account[k] end
+            else
+                acc.carrierLitres = acc.carrierLitres + p.litres
+                acc.unknownCarrierLitres = acc.unknownCarrierLitres + p.litres
+            end
+        end
+        payload.account = acc
+    end
+    return GP.record(payload, total, unit, c ~= nil and c.changeCounter or 0)
 end
 
 ---@return table record
