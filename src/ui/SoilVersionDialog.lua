@@ -363,7 +363,10 @@ end
 function SoilVersionDialog:onClickDontShowAgain()
     if g_SoilFertilityManager and self._version then
         g_SoilFertilityManager.lastSeenVersion = self._version
-        g_SoilFertilityManager:saveSoilData()
+        -- [GCC 6] Persist the version alone. A full saveSoilData here rewrote the ground
+        -- condition layers outside any native save, so a player who quit without saving
+        -- loaded with all ground condition unavailable.
+        g_SoilFertilityManager:persistLastSeenVersion()
     end
     g_gui:closeDialogByName("SoilVersionDialog")
 end
