@@ -337,12 +337,49 @@ function GroundConditionProperty:combine(_context, contributions, destinationBef
     return GP.record(payload, total, unit, c ~= nil and c.changeCounter or 0)
 end
 
+-- [SG2-5b] THE TEDDER'S HAY CONVERSION (SG-2 v2.3 :296, :652, :684; Bob's 5b ruling, Q3). A Tedder
+-- pass picks grass windrow up and drops it as dry grass windrow, litre for litre
+-- (Tedder.lua:289-300), and StockGuard settles that pickup as a CONVERT on the profile's basis
+-- NATIVE_HAY_CONVERT_V1. Soil's rule at the tedder is already to carry the pickup's condition
+-- through to the drop (GroundMovementCarrier's tedder account, type-blind), so this transform
+-- writes that rule down for StockGuard's path: when at least one contribution is on the hay basis
+-- and every other carries no basis (dry grass already of the target type joins the same pass
+-- unchanged, and any based contribution sends the whole candidate here, SGOperations.lua:752),
+-- the result is combine's own: the floor with P-GROUND-1 ageing and the accounts by carrier
+-- litres, at the destination's litres. The condition is carried as it is: drying stays HayBet's
+-- own effect after the deliveries (:345). Any other basis, or none at all, is UNKNOWN as before.
+GP.HAY_CONVERT_BASIS = "NATIVE_HAY_CONVERT_V1"
+
+--- Whether a conversion carries the condition: at least one contribution on the hay basis, and
+--- no contribution on any other basis.
+function GroundConditionProperty.carriesThroughConversion(contributions)
+    if type(contributions) ~= "table" then return false end
+    local hay = false
+    for _, part in ipairs(contributions) do
+        if type(part) ~= "table" then return false end
+        local basis = part.conversionBasisId
+        if basis == GP.HAY_CONVERT_BASIS then
+            hay = true
+        elseif basis ~= nil then
+            return false
+        end
+    end
+    return hay
+end
+
 ---@return table record
-function GroundConditionProperty:transform(_context, _contributions, destinations)
+function GroundConditionProperty:transform(context, contributions, destinations)
     local d = type(destinations) == "table" and destinations[1] or nil
     local c = self.coordinator
-    return GP.record({ ageRaw = AGE_UNKNOWN, wetnessRaw = WET_UNKNOWN },
-        type(d) == "table" and d.amount or nil, type(d) == "table" and d.unit or nil, c ~= nil and c.changeCounter or 0)
+    local amount = type(d) == "table" and d.amount or nil
+    local unit = type(d) == "table" and d.unit or nil
+    if GP.carriesThroughConversion(contributions) then
+        local carried = self:combine(context, contributions, type(d) == "table" and d.destinationBefore or nil)
+        if carried ~= nil then
+            return GP.record(carried.payload, amount, unit, c ~= nil and c.changeCounter or 0)
+        end
+    end
+    return GP.record({ ageRaw = AGE_UNKNOWN, wetnessRaw = WET_UNKNOWN }, amount, unit, c ~= nil and c.changeCounter or 0)
 end
 
 -- =========================================================
