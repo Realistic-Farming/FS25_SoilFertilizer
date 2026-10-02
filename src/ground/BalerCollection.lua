@@ -164,6 +164,51 @@ function BC.accountReconcile(acc, nativeLevel)
     end
 end
 
+--- [MAINTENANCE row 207] The quantity the engine's float XML writer saves for x, as an integer
+--- count of millionths: x rounded to float32 (24 significant bits, ties to even), then to six
+--- decimals (ties to even). The engine writes a fill unit's level (an XMLValueType.FLOAT) that
+--- way, measured from its own save files; StockGuard's restore compares by the same rule (its
+--- SGValues.nativeFloatImage, MAINTENANCE row 206). Soil keeps its own copy, so this reconcile
+--- never depends on a StockGuard export; the two are pinned to the same engine-written pairs in
+--- each mod's bench. Pure arithmetic: no string.format (fengari rounds a tie up), no string.pack
+--- (absent in the game's Lua 5.1), no math.frexp. nil for a non-number or a non-finite one.
+function BC.nativeFloatImage(x)
+    if not finite(x) then return nil end
+    local sign = 1
+    if x < 0 then sign, x = -1, -x end
+    -- Below float32's normal range the six decimals are 0 whatever float32 does.
+    if x < 2 ^ -126 then return 0 end
+    if x >= 2 ^ 128 then return nil end
+    local function halfEven(v)
+        local r = math.floor(v)
+        local f = v - r
+        if f > 0.5 or (f == 0.5 and r % 2 == 1) then r = r + 1 end
+        return r
+    end
+    -- float32: scale by powers of two into [2^23, 2^24), round, scale back. Every step is exact.
+    local m, e = x, 0
+    while m >= 16777216 do m, e = m / 2, e + 1 end
+    while m < 8388608 do m, e = m * 2, e - 1 end
+    local y = halfEven(m)
+    while e > 0 do y, e = y * 2, e - 1 end
+    while e < 0 do y, e = y / 2, e + 1 end
+    -- six decimals: 24 significant bits times 10^6 (20 bits) is exact in a double.
+    return sign * halfEven(y * 1000000) + 0
+end
+
+--- [MAINTENANCE row 207] The finish's reconcile of the account StockGuard's chamber record holds.
+--- After a save and reload, SG-1 reattaches the record with its pre-save litres while the chamber
+--- holds the engine's float readback of them (row 206), so the two differ by the writer's rounding
+--- (up to half a float32 step: about 6e-5 L at 2,000 L), past BC.TOLERANCE above about 16 L. The level and the account are the same
+--- quantity when their native images are equal: no reconcile then. Otherwise the reconcile is
+--- exactly as before. No wider tolerance.
+function BC.accountReconcileRecord(acc, nativeLevel)
+    if not finite(nativeLevel) or nativeLevel < 0 then return end
+    local a, b = BC.nativeFloatImage(nativeLevel), BC.nativeFloatImage(acc.carrier)
+    if a ~= nil and a == b then return end
+    BC.accountReconcile(acc, nativeLevel)
+end
+
 -- =========================================================
 -- Per-vehicle state
 -- =========================================================
@@ -399,7 +444,12 @@ function BC.sealBatch(mw, batch, A_b, R, ratio)
         parts[i] = { id = id, carrierLitres = A_b * byId[id] / R, rawLitres = byId[id] * ratio }
     end
     -- The final remainder on the last part; the seal sums in this same order.
-    if not BC.exactParts(parts, A_b) then return nil end
+    -- [#1080's MINOR] counted and logged like sealAllocation's refusal below.
+    if not BC.exactParts(parts, A_b) then
+        BC.stats.sealRefused = BC.stats.sealRefused + 1
+        SoilLogger.debug("[BalerCollection] seal refused (%s)", "REMAINDER")
+        return nil
+    end
     local receipt, why = mw:sealAllocation(snap, A_b, parts)
     if receipt == nil then
         BC.stats.sealRefused = BC.stats.sealRefused + 1
@@ -616,7 +666,7 @@ function BC.aroundFinish(vehicle, original, ...)
             -- framed square chamber's record holds one, so an unframed chamber keeps Soil's own.
             local fromStockGuard = BC.chamberAccount(vehicle, spec)
             if fromStockGuard ~= nil then
-                if level ~= nil then BC.accountReconcile(fromStockGuard, level) end
+                if level ~= nil then BC.accountReconcileRecord(fromStockGuard, level) end
                 account = fromStockGuard
             else
                 if level ~= nil then BC.accountReconcile(st.main, level) end
