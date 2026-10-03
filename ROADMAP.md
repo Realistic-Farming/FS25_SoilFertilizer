@@ -226,3 +226,10 @@
 - [x] Small metadata rides `soilData.zoneYield` XML and mirrors through `SoilStateLedgerBridge`; no per-cell list, dense truth is the `yieldEfficiency` GRLE. `getGrowthSurfaceWitness` reports matching receipt identity/status/path/grain/generation/captured percent for SF-54.
 - [x] Reference bar SF-14 155/0 (Groups A-I; Group A re-pointed to the shipped surfaces). Full suite 3607 passed; siblings green, only the pre-existing om_213 pair red. Syntax and lint clean.
 - [~] In-game (owed, release LOCKED): native fruit-plane writes and post-read behavior, polygon clipping, physical save interruption and GRLE recovery, dedicated-server delivery and client engine sync, real capture bytes/save duration/frame cost, and the SF14_RUNTIME_ACCEPTANCE harness cannot run offline.
+
+## 2026-10-03 (Fred): each big bag loads its own label (issue #1087, MAINTENANCE 212)
+
+- [x] DAP and Polifoska no longer share one i3d. Polifoska loads its own `objects/bigBag/polifoska/bigBag_polifoska.i3d` (the DAP i3d with only its label and shapes file changed, its shapes a byte copy of DAP's) with its print moved beside it, and DAP wears its own `bigBag_dap_diffuse.png` again. Since 9c50f0b3 (2026-05-21) the shared i3d had put the Polifoska print on the DAP bag.
+- [x] AN wears its own print, `bigBag_an_diffuse.dds`; the urea copy it loaded is deleted.
+- [x] `tools/test/bigbag-labels-check.mjs` walks modDesc's storeItems and fillTypes' pallets to every big bag's i3d, label and shapes file: every file exists, no two products share a label, DAP, Polifoska and AN wear their own prints, and no print is left unreferenced.
+- [ ] Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every big bag shares one generic picture), the "FERTILAZER" spelling on the labels, and the Polifoska branding (MAINTENANCE 213, parked).

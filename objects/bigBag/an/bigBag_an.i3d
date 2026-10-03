@@ -6,7 +6,7 @@
   </Asset>
 
   <Files>
-    <File fileId="2" filename="bigBag_an_diffuse.png"/>
+    <File fileId="2" filename="bigBag_an_diffuse.dds"/>
     <File fileId="6" filename="$data/objects/bigBag/bigBagOutput_normal.png"/>
     <File fileId="7" filename="$data/objects/bigBag/bigBagOutput_vmask.png"/>
     <File fileId="3" filename="$data/objects/bigBag/bigBag_normal.png"/>

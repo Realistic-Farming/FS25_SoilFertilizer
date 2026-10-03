@@ -217,3 +217,11 @@
 - [x] Metadata rides `soilData.zoneYield` XML + StateLedger mirror; dense truth in the yieldEfficiency GRLE. `getGrowthSurfaceWitness` surface.
 - [x] SF-14 bar 155/0 (Groups A-I; Group A shipped-surface re-point); full suite 3607 passed, only om_213 red; syntax + lint clean.
 - [~] In-game (owed): SF14_RUNTIME_ACCEPTANCE harness (cannot run offline); native writes + post-read, polygon clipping, save interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
+
+## Big bag labels (2026-10-03, issue #1087, MAINTENANCE 212)
+
+- [x] DAP: back to its own print (`dap/bigBag_dap.i3d` loads `bigBag_dap_diffuse.png`).
+- [x] Polifoska: its own i3d, shapes copy and print in `objects/bigBag/polifoska/`; `polifoska/bigBag_polifoska.xml` loads that i3d.
+- [x] AN: `an/bigBag_an.i3d` loads `bigBag_an_diffuse.dds`; the urea copy `an/bigBag_an_diffuse.png` is deleted.
+- [x] Bar: `node tools/test/bigbag-labels-check.mjs` (16 rows; the same bar against development ebe20f77 fails 7 by assertion, naming the AN+UREA and DAP+POLIFOSKA shared labels).
+- [~] In game (owed): the shop preview and a placed bag for DAP, Polifoska and AN each show their own label; no texture or i3d warning for objects/bigBag in log.txt; the same on a dedicated-server client.

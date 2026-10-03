@@ -21,7 +21,7 @@
     <File fileId="16" filename="$data/shared/detailLibrary/metallic/silverScratched_diffuse.png" />
     <File fileId="18" filename="$data/shared/detailLibrary/metallic/silverScratched_specular.png" />
     <File fileId="12" filename="$data/shared/white_diffuse.png" />
-    <File fileId="20" filename="bigBag_dap_diffuse.png" />
+    <File fileId="20" filename="bigBag_polifoska_diffuse.dds" />
   </Files>
 
   <Materials>
@@ -86,7 +86,7 @@
   </Materials>
 
 
-  <Shapes externalShapesFile="bigBag_dap.i3d.shapes">
+  <Shapes externalShapesFile="bigBag_polifoska.i3d.shapes">
   </Shapes>
 
   <Scene>
