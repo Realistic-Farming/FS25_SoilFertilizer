@@ -22,8 +22,8 @@
             </ThreePartBitmap>
 
             <Bitmap profile="fs25_subCategoryContainer" id="rfFilterBox">
-                <!-- BUILD 18:16: rfPanelSelector moved to LAST child of rfFilterBox (see below).
-                     George TASK 18:12 asked for z-order ~10-20 on the selector; this engine has no
+                <!-- rfPanelSelector moved to LAST child of rfFilterBox (see below).
+                     12 asked for z-order ~10-20 on the selector; this engine has no
                      z attribute of any kind (GuiElement loads none, and no rfHeaderBg element exists
                      in this page) - draw AND input priority are declaration order, walked in reverse
                      for events. Declaring the selector last IS the engine's z-raise: it now receives
@@ -39,7 +39,7 @@
                 <ThreePartBitmap profile="fs25_lineSeparatorTop" id="rfSideMidSeparator"
                                  position="8px -130px" width="380px" visible="false"/>
 
-                <!-- Soil/CS left info (George: inside rfFilterBox, BEFORE moduleList; Text + blank.png). -->
+                <!-- Soil/CS left info. -->
                 <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
                     <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 644px"
@@ -65,11 +65,11 @@
                     </ThreePartBitmap>
                 </GuiElement>
 
-                <!-- BUILD 18:16 (George TASK 18:12): the module selector is deliberately the LAST
+                <!-- 12): the module selector is deliberately the LAST
                      child of rfFilterBox. Events walk children in reverse declaration order, so
                      last-declared = first offered = this engine's only "z-order raise". Its band
                      rect (profile-positioned, unchanged) does not overlap any sibling's visible
-                     paint, so drawing on top changes no pixel. The BUILD 17:08 page-level click
+                     paint, so drawing on top changes no pixel. The page-level click
                      shield stays as the guarantee against anything OUTSIDE this box. -->
                 <MultiTextOption profile="fs25_subCategorySelector" id="rfPanelSelector"
                                  disableButtonsOnSingleText="false"
@@ -110,9 +110,9 @@
                 </GuiElement>
             </GuiElement>
 
-            <!-- CS page chrome (BUILD 18:48): Fields | Pivot. Straight twin of the WC and
+            <!-- CS page chrome: Fields | Pivot. Straight twin of the WC and
                  MDM subnavs - sibling under Modules, never inside rfFilterBox, host-owned.
-                 csSubnavShell is RETIRED as of BUILD 21:06: Crop Stress is one desk and the
+                 csSubnavShell is RETIRED as of: Crop Stress is one desk and the
                  Fields | Pivot selector selected nothing, so the host never shows it. Kept in
                  place so the ids bind and the WC / MDM twins keep their shared profiles. -->
             <GuiElement profile="RF_WcSubnavShell" id="csSubnavShell" visible="false">
@@ -122,7 +122,7 @@
                 <BoxLayout profile="RF_WcSubnavDotBox" id="csSubnavDotBox" visible="false">
                     <RoundCorner profile="fs25_subCategorySelectorDot"/>
                 </BoxLayout>
-                <!-- RETIRED BUILD 21:06. The CS teach moved back to rfSideInfoShell in
+                <!-- RETIRED. The CS teach moved back to rfSideInfoShell in
                      rfFilterBox once the subnav it was avoiding was retired. This element is
                      kept, never shown, and cleared every refresh, so the id still binds and a
                      stale nested copy cannot surface behind the live one. -->
@@ -159,7 +159,7 @@
                     <GuiElement profile="RF_TableRegionShell">
                         <Bitmap profile="RF_TableWrapBg"/>
 
-                        <!-- BUILD 16:56: RF_Soil* carve-outs (text -2) are Soil-table only; CS/MDM keep the shared profiles. -->
+                        <!-- RF_Soil* carve-outs (text -2) are Soil-table only; CS/MDM keep the shared profiles. -->
                         <!-- F12: all headers centered; AREA/STATUS/Fertilizer body centered.
                              IDs: Lua _applyChromeL10n rebinds when CS/WC created the Esc door. -->
                         <Text profile="RF_SoilColHeader" id="soilColField"  text="$l10n_sf_pda_col_field"  position="12px -8px"    size="102px 24px"/>
@@ -208,8 +208,8 @@
                     <!-- TREATMENT PLAN (F8: clip shell keeps PRODUCTS rows inside panel) -->
                     <GuiElement profile="RF_TreatmentStrip" id="rfTreatmentStrip">
                         <Bitmap profile="RF_TreatmentBoxBg"/>
-                        <!-- Card 1 of 3 (BUILD 12:59): TREATMENT + target levels share the
-                             -12 top line (BUILD 17:52 AMEND, was -22) with PRODUCTS and ROTATION. Children re-based inside. -->
+                        <!-- Card 1 of 3: TREATMENT + target levels share the
+                             12 top line with PRODUCTS and ROTATION. Children re-based inside. -->
                         <GuiElement profile="RF_EscCardFrame" id="soilTreatmentCard" position="10px -12px" size="200px 248px">
                             <Text profile="RF_SectionTitle" id="soilSectionTreatment" position="10px -6px" size="180px 24px" text="$l10n_rf_pda_section_treatment"/>
                             <Text profile="RF_TreatTargetLine" id="treatTargetsHeading" position="10px -40px" size="180px 20px"/>
@@ -235,9 +235,9 @@
                         <Text profile="RF_HintText" id="treatTargetsLabel" position="10px -54px" size="1px 1px"
                               visible="false"/>
 
-                        <!-- Card 2 of 3 (BUILD 12:59): Selected + Next now live INSIDE the
+                        <!-- Card 2 of 3: Selected + Next now live INSIDE the
                              PRODUCTS card, so the card owns the whole middle column. -->
-                        <!-- GO 21:06 (BUILD 21:01): PRODUCTS was inheriting 560 from
+                        <!-- GO 21:06: PRODUCTS was inheriting 560 from
                              RF_EscCardFrame, so its right edge sat at 220 + 560 = 780 against
                              ROTATION at 850: a dark 70px canyon down the middle of a three-card
                              family. The inline 620 lands the right edge on 840, leaving 10px of
@@ -250,7 +250,7 @@
                              built by whichever mod loads first, from its own copy, so a change
                              in Soil alone would be overwritten by whoever won the race. -->
                         <GuiElement profile="RF_EscCardFrame" id="treatProductsShell" position="220px -12px" size="620px 248px">
-                            <!-- BUILD 09:19 (PB-05). Brian read "Wait: amending now can burn t..." on
+                            <!-- Amending now can burn t..." on
                                  this strip: the sentence that says an apply will scorch the crop was
                                  cut before its own verb.
                                  The wrap was not broken. TextElement defaults to LAYOUT_MODE.TRUNCATE
@@ -268,7 +268,7 @@
                                   textAlignment="left"/>
                             <Text profile="RF_TreatNext" id="treatNextLabel" position="10px -24px" size="600px 54px"
                                   textAlignment="left" textMaxNumLines="3" textVerticalAlignment="top"/>
-                            <!-- Zone split (BUILD 16:19): Selected + Next stay on top, then air with
+                            <!-- Zone split: Selected + Next stay on top, then air with
                                  one 1px hairline in it, then the PRODUCTS table.
                                  One outer outline only; the rule is a Bitmap, not a second frame.
                                  Bodies inset X 0 -> 10 and widths 560 -> 540 so nothing kisses the
@@ -338,13 +338,13 @@
                             </GuiElement>
                         </GuiElement>
 
-                        <!-- Col 3: read-only rotation glance + What-if (Wizard eyes-on 2026-08-08 pics 1-3,
-                             Samantha DESIGN + George ENGINE ACK). Footprint held at George's
+                        <!-- Col 3: read-only rotation glance + What-if (eyes-on 2026-08-08 pics 1-3,
+                             DESIGN + ENGINE ACK). Footprint held at 's
                              850px -88px / 290px 248px - never grows left into PRODUCTS.
                              Soil grey via RF_TreatmentBoxBg (mock blue vetoed). Fixed Text only,
                              no SmoothList. Read-only: no apply-rotation controls. -->
                         <GuiElement profile="RF_EscCardFrame" id="soilRotationCard" position="850px -12px" size="290px 248px">
-                            <!-- Zone split (BUILD 16:19): ROTATION glance on top, then 14px of air
+                            <!-- Zone split: ROTATION glance on top, then 14px of air
                                  with one 1px hairline, then WHAT IF. Same recipe as the middle card
                                  so the two read as one family. All bodies inset X 0 -> 10, widths
                                  290 -> 270, title Y 0 -> -10, standing block shifted 10px down to
@@ -354,7 +354,7 @@
                             <Text profile="RF_ProductCell" id="soilRotationStatus" position="10px -56px" size="270px 20px"/>
                             <Text profile="RF_ProductCell" id="soilRotationTip" position="10px -76px" size="270px 32px"
                                   textMaxNumLines="2" textVerticalAlignment="top"/>
-                            <!-- BUILD 09:19 (PB-05). The WHAT IF effect column lost whole consequences.
+                            <!-- (PB-05). The WHAT IF effect column lost whole consequences.
                                  RotationPlannerData.effectText joins at most three items with ", " and
                                  the set is closed: fatigue "x1.15 depletion", nitrogen "+N", and one of
                                  "less disease" / "more disease". The worst real string is therefore
@@ -365,7 +365,7 @@
                                  18 was not arbitrary against the OLD cell: this card's own calibration
                                  is ~6px per glyph at 17px (crop 92px/16, status 60px/10, effect 110px/18),
                                  so 110px really does hold about 18. One 17px line cannot hold 33 and the
-                                 card cannot grow - George holds the footprint at 290x248 and it must
+                                 card cannot grow - holds the footprint at 290x248 and it must
                                  never take width back from PRODUCTS. So the effect cell gains a SECOND
                                  line at 14px instead, which is the size the PRODUCTS table already uses
                                  for its own cells (RF_ProductCellDense), and about 22 glyphs a line at
@@ -402,7 +402,7 @@
                         <Text profile="RF_HintText" id="samplingInfoFallback" position="850px -24px" size="180px 160px"
                               textMaxNumLines="7" text="$l10n_rf_pda_sample_hint" visible="false"/>
 
-                        <!-- Card 4 (BUILD 10:52, CD-11): RESISTANCE. Full-width strip under the three
+                        <!-- Card 4: RESISTANCE. Full-width strip under the three
                              cards, in the 114px the strip already had free below y -270. Read-only
                              band readout painted by RfPdaSoilPanel.refreshResistanceCard on panel
                              show and owned-field select only; hidden until a field is selected.
@@ -412,7 +412,7 @@
                              the map, blank.png hairline only. Existing RF_* profiles throughout.
                              If another mod's copy of this file builds the door these ids are
                              absent and the painter skips the card (PRODUCTS unaffected). -->
-                        <!-- BUILD 17:52 AMEND (Y): card breathes. Top -270 (10px under the three cards, now at -12), 136 tall so the
+                        <!-- Card breathes. Top -270 (10px under the three cards, now at -12), 136 tall so the
                              bottom stroke stays 10px above the HELP/BACK band (the strip already reaches under that band; nothing to
                              grow into). 10px stroke clearance, 10px rule to heads, 10px bands to note, seven columns 150 wide on 10px gaps. -->
                         <GuiElement profile="RF_EscCardFrame" id="soilResistanceCard" position="10px -270px" size="1130px 136px" visible="false">
@@ -467,9 +467,9 @@
 
                     <!-- Worker Costs page bodies only (page chrome = left sibling band). -->
                     <GuiElement profile="RF_WcPageShell" id="wcPageShell" visible="false">
-                        <!-- Dashboard / Wages / Workers on ONE page (BUILD 18:26, George CLOSED DESIGN 17:59): two
+                        <!-- Dashboard / Wages / Workers on ONE page: two
                              columns, four inner cards, the page itself unframed (a frame on RF_WcPage would be the
-                             mega-shell over the MTOs George vetoed). Left: Card A = the six wage MTO rows, positions
+                             mega-shell over the MTOs vetoed). Left: Card A = the six wage MTO rows, positions
                              unchanged, onClickWcWageOption, disableButtonsOnSingleText=false; Card B = rate, help, Reset.
                              Right: Card C = eight live stats; Card D = the roster (fixed Text rows, no SmoothList).
                              wcPageWages / wcPageWorkers stay declared as empty hidden shells for nil-safe ids; the page
@@ -516,7 +516,7 @@
                                 <Text profile="RF_TreatTargetLine" id="wcStatsCount" position="10px -202px" size="460px 22px" text=""/>
                             </GuiElement>
                             <GuiElement profile="RF_EscCardFrameWide" id="wcWorkersCardB" position="660px -256px" size="480px 324px" handleFocus="false">
-                                <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): fourteen declared row Texts on the chip Ys (page-rel
+                                <!-- 45): fourteen declared row Texts on the chip Ys (page-rel
                                      -266 .. -549; this card sits at -256), 460x22, 17px, one line each (clip, no wrap), so Hire /
                                      Fire sit on the same rows as the names. Rows 1-8 crew, 9 blank, 10 title, 11-14 recruits. -->
                                 <Text profile="RF_HintText" id="wcRosterRow1" position="10px -10px" size="460px 22px" textSize="17px"
@@ -548,7 +548,7 @@
                                 <Text profile="RF_HintText" id="wcRosterRow14" position="10px -293px" size="460px 22px" textSize="17px"
                                       textMaxNumLines="1" textVerticalAlignment="middle" text=""/>
                             </GuiElement>
-                            <!-- BUILD 22:42 (George CLOSED DESIGN 21:26, Ash 22:42): Hire / Fire on this page. Twelve declared
+                            <!-- 26, 22:42): Hire / Fire on this page. Twelve declared
                                  RF_FwPagerBtn buttons (no inputAction, mouse only, handleFocus=false), page-relative, right of the
                                  roster text column (x 1060-1130): wcBtnFire1..8 on crew rows 1-8, wcBtnHire1..4 on recruit rows
                                  11-14 (WcRfPdaGuest pins the recruit block there). Hidden by default; the guest shows one only
@@ -604,7 +604,7 @@
 
                     <!-- Framework glance shell (Income/Tax/Depot Status + Dairy/NPC Favor Table).
                          Text-only; no onClick. Visible only for framework module ids.
-                         George 2026-08-05: shell 0/-20 (X flush + B1 blurb-48 clearance); titles hidden; rows +36. -->
+                         Shell 0/-20 (X flush + B1 blurb-48 clearance); titles hidden; rows +36. -->
                     <GuiElement profile="RF_WcPageShell" id="rfFrameworkGlanceShell" visible="false" position="0px 0px">
                         <!-- Income / Tax / Depot status glance. 580 was taller than the shell (520);
                              the card is sized to its content instead: hint ends at -328, so 340
@@ -622,17 +622,17 @@
                             <Text profile="RF_HintText" id="rfFwHint" position="10px -208px" size="1120px 120px"
                                   textMaxNumLines="4" textVerticalAlignment="top" text=""/>
                         </GuiElement>
-                        <!-- Dairy / NPC Favor / Pro Staff glance bay. BUILD 20:36 (George CLOSED DESIGN 19:03,
-                             Wizard eyes-on): 1140x780 so two 380-tall Dairy cards, a taller NPC row pitch and the
+                        <!-- Dairy / NPC Favor / Pro Staff glance bay. (CLOSED DESIGN 19:03,
+                             1140x780 so two 380-tall Dairy cards, a taller NPC row pitch and the
                              276x124 Pro Staff cards fit. Income / Depot keep their XML rows and hint positions
                              (grey air below is benign); NPC re-places the shared rows at show time and hands
                              the XML positions back on the registry change listener. Only one block is ever
                              visible (setVis is an either/or). -->
                         <GuiElement profile="RF_EscCardFrameWide" id="rfFwTableBlock" visible="false" position="0px 0px" size="1140px 780px">
                             <Text profile="RF_SectionTitle" id="rfFwTableTitle" position="10px -8px" size="1120px 24px" text="" visible="false"/>
-                            <!-- REPAIR-213: the MTO carries NO position or size. Its profile is
+                            <!-- The MTO carries NO position or size. Its profile is
                                  "100% + 56px", so it sizes itself from this shell; overriding it on the
-                                 element (REPAIR-207) and again at runtime (REPAIR-211) is what pushed the
+                                 element, and again at runtime, is what pushed the
                                  value and the right arrow outside the frame. -->
                             <GuiElement profile="RF_WcSubnavShell" id="rfFwSelShell"
                                 position="620px 0px" size="450px 40px" visible="false">
@@ -692,7 +692,7 @@
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8C" position="610px -264px" size="220px 20px" text="" visible="false"/>
                             <Text profile="RF_TreatTargetLine" id="rfFwRow8D" position="850px -264px" size="280px 20px" text="" visible="false"/>
                             <Text profile="RF_TreatTargetLine" id="rfFwMore" position="10px -548px" size="1120px 20px" text=""/>
-                            <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): the shared table scrolls. ONE SmoothList
+                            <!-- 00): the shared table scrolls. ONE SmoothList
                                  under this GuiElement host (rfFwTableBlock is a GuiElement, never a Map Bitmap: the
                                  hang fence), the NPC Favor nest, the sheet's own 28px pitch and the same four column
                                  X as rfFwColA..D, so the headers above it still line up. Painted by whichever Table
@@ -700,7 +700,7 @@
                                  refresh, so no module inherits another's rows. The 32 rfFwRow* cells above stay
                                  declared and unused: Dairy, NPC Favor and Pro Staff each hide them by id, and a door
                                  must never lose an id a shipped guest still names. -->
-                            <!-- BUILD 19:15 (George CLOSED DESIGN 18:55): the sheet fills the bay like the Soil field
+                            <!-- 55): the sheet fills the bay like the Soil field
                                  list - 480 tall, 48px rows, 18px cells - so ten full rows read at a glance instead of
                                  eight cramped ones. Bottom sits at -540; rfFwMore follows at -548 and rfFwHintTable at
                                  -576, and nothing in this block goes below -740, which is what keeps the Pro Staff
@@ -724,16 +724,16 @@
                                     <Slider profile="fs25_listSlider" dataElementId="rfFwSheetList" hideParentWhenEmpty="true"/>
                                 </ThreePartBitmap>
                             </GuiElement>
-                            <!-- BUILD 19:15: the readout for the row the player clicked. Text only, no chip. Hidden by
+                            <!-- The readout for the row the player clicked. Text only, no chip. Hidden by
                                  default and hidden again on every host refresh beside rfFwSheetBox, so it can never
                                  carry one module's row onto another module's page. The Depot guest fills it; Income
                                  has no band and its onSheetRow is a no-op. -->
                             <Text profile="RF_SheetBand" id="rfFwSheetBand" position="10px -664px" size="1120px 92px"
                                   textMaxNumLines="4" textVerticalAlignment="top" visible="false" text=""/>
-                            <!-- BUILD 00:06 (George CLOSED DESIGN 23:12): the rfFwPagePrev / rfFwPageNext row pager is gone;
+                            <!-- 12): the rfFwPagePrev / rfFwPageNext row pager is gone;
                                  the NPC Favor tables scroll (rfFwRosterList / rfFwFavorList below). The host keyEvent page
                                  belt (. / , keys) still serves a guest that registers onPageStep (Dairy cards). -->
-                            <!-- BUILD 14:35 (Ash 14:35, Wizard: build Buy / Run like the other modules): the
+                            <!-- 35, build Buy / Run like the other modules): the
                                  Pro Staff action strip, bottom-left of the same band the pager parks on (the
                                  pager is bottom-right). In EVERY suite door copy from this build on, so the
                                  buttons paint and click whichever mod built menuRealisticFarming. Hidden
@@ -753,7 +753,7 @@
                                 onClick="onClickRfFwQuoteConfirm" text="" visible="false"/>
                             <Button profile="RF_CsPivotBtn" id="rfFwQuoteCancel" position="1020px -724px" size="110px 28px" handleFocus="true"
                                 onClick="onClickRfFwQuoteCancel" text="" visible="false"/>
-                            <!-- REPAIR-214: handleFocus false. The chip law is that these are mouse-only key chips, so a
+                            <!-- handleFocus false. The chip law is that these are mouse-only key chips, so a
                                  focusable one lets SPACE confirm it, which is exactly what the law
                                  forbids. rfFwAct2 and rfFwAct3 were already false; this was the only
                                  one left. -->
@@ -763,7 +763,7 @@
                                 onClick="onClickRfFwAct2" text="" visible="false"/>
                             <Button profile="RF_CsPivotBtn" id="rfFwAct3" position="770px -756px" size="360px 28px" handleFocus="false"
                                 onClick="onClickRfFwAct3" text="" visible="false"/>
-                            <!-- REPAIR-213: same treatment as rfFwSelSelector. NOTE for the record:
+                            <!-- Same treatment as rfFwSelSelector. NOTE for the record:
                                  RF_FwSelSelector is declared in no profiles file in the suite, so this one
                                  falls back to the base reference profile and logs
                                  "Could not retrieve GUI profile 'RF_FwSelSelector'". Reported, not changed
@@ -777,7 +777,7 @@
                                   textMaxNumLines="2" visible="false" text=""/>
                             <Text profile="RF_HintText" id="rfFwHintTable" position="10px -576px" size="1120px 80px"
                                   textMaxNumLines="3" textVerticalAlignment="top" text=""/>
-                            <!-- BUILD 00:06 (George CLOSED DESIGN 23:12, Ash 00:06): NPC Favor scrollable tables. Two SmoothLists
+                            <!-- 12, 00:06): NPC Favor scrollable tables. Two SmoothLists
                                  under this GuiElement host (rfFwTableBlock is a GuiElement, never a Map Bitmap: the hang fence),
                                  the same nest as mdCommodityList (ListItem template cloned by the engine, clipper Bitmaps, slider
                                  box). No runtime element create; reloadData on show only. Hidden by default so Income / Dairy /
@@ -822,10 +822,10 @@
                                 </ThreePartBitmap>
                             </GuiElement>
                             <Text profile="RF_HintText" id="rfFwFavEmpty" position="10px -528px" size="800px 40px" visible="false" text=""/>
-                            <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): the two detail cards on the right of the 800 lists. A
+                            <!-- 45): the two detail cards on the right of the 800 lists. A
                                  SmoothList click selects a row (engine setSelectedItem -> delegate onListSelectionChanged); the
                                  guest paints the row unclipped here and hides the card on a full show until a row is picked.
-                                 George named rfFwCardWho on both cards; one id per page, so the favor card carries the
+                                 named rfFwCardWho on both cards; one id per page, so the favor card carries the
                                  rfFwFavCard* ids. Hidden by default, host-hidden on every refresh, NPC show alone paints. -->
                             <GuiElement profile="RF_EscCardFrame" id="rfFwRosterDetailCard" position="820px -68px" size="300px 420px" visible="false">
                                 <Text profile="RF_SectionTitle" id="rfFwCardWho" position="10px -10px" size="280px 24px" textMaxNumLines="1" text=""/>
@@ -844,7 +844,7 @@
                                       textMaxNumLines="5" textVerticalAlignment="top" text=""/>
                                 <Text profile="RF_TreatTargetLine" id="rfFwFavCardUrgency" position="10px -190px" size="280px 22px" textMaxNumLines="1" text=""/>
                             </GuiElement>
-                            <!-- BUILD 07:47 (Ash 07:47, George CLOSED DESIGN 07:36): Dairy barn cards, breed tables.
+                            <!-- 47, CLOSED DESIGN 07:36): Dairy barn cards, breed tables.
                                  Two 555x380 RF_EscCardFrame cards side by side in the 1140x428 bay (2 per page; the
                                  rfDairyCard3 / rfDairyCard4 frames stay as dark spares so no id disappears from the
                                  nine doors, DairyRfPdaGuest never shows them). Inside a card: Name, State, then the
@@ -856,7 +856,7 @@
                                  Button is inert (ButtonElement:getIsActive needs a callback), so no other door can
                                  fire them. Hidden by default. Byte-same in all nine door files. rfDairyCardsHint is
                                  the page hint for this layout (rfFwHintTable sits at -336, under the cards). -->
-                            <!-- BUILD 11:40 (George CLOSED DESIGN 11:25): herd / milk breed rows are in-card SmoothLists
+                            <!-- 25): herd / milk breed rows are in-card SmoothLists
                                  (NPC Favor nest: GuiElement box, clippers, slider box that shows only on overflow), 20px rows,
                                  four visible in the 80px box, the rest scroll. No breed chips. The box is 520 wide: the
                                  engine slider box sits 8px past its parent's right edge and the card frame line is at 555.
@@ -1058,9 +1058,9 @@
                             </GuiElement>
                             <Text profile="RF_HintText" id="rfDairyCardsHint" position="10px -390px" size="860px 80px"
                                   textMaxNumLines="4" textVerticalAlignment="top" visible="false" text=""/>
-                            <!-- BUILD 09:37 (Ash 09:37, George CLOSED DESIGN 09:08): Pro Staff one-page level ladder.
-                                 Header line 1 at -2 (line 2 declared, hidden since BUILD 17:58: honesty lives in the side
-                                 info), a 4x5 grid of 276x124 cards (y -26 to -726, 20px gaps; BUILD 20:36, Wizard UX,
+                            <!-- 37, CLOSED DESIGN 09:08): Pro Staff one-page level ladder.
+                                 Header line 1 at -2 (line 2 declared, hidden since: honesty lives in the side
+                                 info), a 4x5 grid of 276x124 cards (y -26 to -726, 20px gaps;, UX,
                                  type 18 / 16 / 14px) each with a Cost line (rfPsCardNExtra), the recurring line at -726 (the
                                  Buy / Run result rides it; rfPsNote is gone) above the rfPsBuyBtn / rfPsFlushBtn row at -748.
                                  Each card is a GuiElement frame with a blank-slice Bitmap background (imageColor), a
@@ -1281,7 +1281,7 @@
                     <!-- CS table: top-flush with 404 bottom reserve so the last rows clear the
                          FIELD DETAIL band title (CS FieldDetail fix, applied in the HOST page). -->
                     <GuiElement profile="emptyPanel" id="csActionBar" position="0px 0px" size="1140px 0px">
-                        <!-- BUILD 18:48: this button owned the table-hiding consultant swap, which
+                        <!-- This button owned the table-hiding consultant swap, which
                              is now a hard engine VETO. Hidden rather than deleted so any stale
                              binding still resolves; its job belongs to the Fields|Pivot subnav. -->
                         <Button profile="buttonActivate" id="csBtnConsultant" position="884px -4px" size="256px 36px"
@@ -1290,7 +1290,7 @@
 
                     <!-- Inline Alex Chen consultant readout. Exclusive with rfHostTableRegion:
                          csBtnConsultant toggles which of the two is visible. Fixed Texts only -
-                         George NO-GO on TextElement.new rebuild, dialog XML nest, or SmoothList. -->
+                         NO-GO on TextElement.new rebuild, dialog XML nest, or SmoothList. -->
                     <GuiElement profile="RF_TableRegionShell" id="csConsultPanel" position="0px 0px"
                                 absoluteSizeOffset="0px 514px" visible="false">
                         <Text profile="RF_SectionTitle"   id="csConsTitle"    position="16px -12px"  size="700px 26px"  text=""/>
@@ -1411,10 +1411,10 @@
                             <Text profile="RF_ProductsTitle" id="csPivotTitle" position="10px -4px" size="1110px 18px" text=""/>
                             <!-- Left band: dial + status. -->
                             <Bitmap profile="RF_CsPivotDialFace" id="csPivotDialFace" position="10px -28px" size="92px 92px"/>
-                            <!-- BUILD 16:44d (Vera F1): inline size overrides the profile via loadFromXML, so the
+                            <!-- Inline size overrides the profile via loadFromXML, so the
                                  short hands had to be set HERE, not only on the profile. 92px face,
                                  radius 46: arm 31 = 67%, limits 27 = 59%. -->
-                            <!-- BUILD 15:30: hands now BASE on the dial hub instead of hanging from the
+                            <!-- Hands now BASE on the dial hub instead of hanging from the
                                  face top, because the rotation origin moved to the bar base (customPivot
                                  {w/2, 0} in CsRfPdaGuest). Face is 92x92 at 10,-28 so the hub is (56,-74);
                                  a 31px hand with its base there has its top at -74+31 = -43, and x is
@@ -1435,7 +1435,7 @@
                             <Text profile="RF_ProductCell" id="csPivotRate" position="10px -168px" size="354px 14px" text=""/>
                             <Text profile="RF_ProductCell" id="csPivotSchedule" position="10px -186px" size="354px 14px" text=""/>
                             <Text profile="RF_HintText" id="csPivotWarn" position="10px -204px" size="354px 14px" text=""/>
-                            <!-- Right remotes: 80x32, H/V gaps 20 (George ENGINE remote spacing). Same ids/onClick. -->
+                            <!-- Right remotes: 80x32, H/V gaps 20. Same ids/onClick. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnDoor" position="390px -28px" size="80px 32px"
                                     text="" onClick="onClickCsPivotDoor"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnPower" position="490px -28px" size="80px 32px"
@@ -1458,7 +1458,7 @@
                                     text="" onClick="onClickCsPivotMaxUp"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnMaxDn" position="890px -80px" size="80px 32px"
                                     text="" onClick="onClickCsPivotMaxDn"/>
-                            <!-- [BUILD 00:33] Auto/Manual chip: Manual hands Start/Stop to the player. -->
+                            <!-- [] Auto/Manual chip: Manual hands Start/Stop to the player. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnAutoManual" position="990px -80px" size="80px 32px"
                                     text="" onClick="onClickCsPivotAutoManual"/>
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnArmPlus" position="390px -132px" size="80px 32px"
@@ -1469,13 +1469,13 @@
                                  remote row, one chip whose label follows the fitted state. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnFit" position="890px -28px" size="80px 32px"
                                     text="" onClick="onClickCsPivotFit"/>
-                            <!-- [BUILD 18:42] Captions for the angle pairs and the rain key. -->
+                            <!-- [] Captions for the angle pairs and the rain key. -->
                             <Text profile="RF_ProductCell" id="csPivotCapMin" position="590px -62px" size="180px 16px" text=""/>
                             <Text profile="RF_ProductCell" id="csPivotCapMax" position="790px -62px" size="180px 16px" text=""/>
                             <Text profile="RF_ProductCell" id="csPivotCapFit" position="890px -12px" size="80px 16px" text=""/>
                             <Button profile="RF_CsPivotBtn" id="csBtnSchedule" position="590px -132px" size="250px 32px"
                                     text="" onClick="onClickCsSchedule"/>
-                            <!-- [SCS-046] Rain-key trip stepper, in the gap Schedule gave up (George
+                            <!-- [SCS-046] Rain-key trip stepper, in the gap Schedule gave up (
                                  CLOSED DESIGN 00:05). Angle Min/Max on this row are untouched. -->
                             <Button profile="RF_CsPivotBtn" id="csPivotBtnTripMinus" position="850px -132px" size="80px 32px"
                                     text="" onClick="onClickCsPivotTripMinus"/>
@@ -1541,11 +1541,11 @@
             <Text profile="RF_TreatTargetLine" id="mdDetailPressure" position="770px -92px" size="350px 20px" text=""/>
             <Text profile="RF_HintText" id="mdDetailEmpty" position="770px -64px" size="350px 44px"
                   textMaxNumLines="2" visible="false" text=""/>
-            <!-- BUILD 12:05 (George CLOSED DESIGN 09:45): the Open full Market plate is gone; this page is the Market. -->
+            <!-- 45): the Open full Market plate is gone; this page is the Market. -->
                         </GuiElement>
 
                         <!-- Page B — Events (fixed Text rows; no SmoothList thrash). -->
-                        <!-- BUILD 16:42 (George CLOSED DESIGN 16:25): Events is two cards like Contracts. Left = live
+                        <!-- 25): Events is two cards like Contracts. Left = live
                              events, eight fixed Text rows; right = the Event Settings summary and the plate that opens the
                              existing 800x800 MDMEventSettingsDialog (host/admin/master gate, never inlined). The EVENT /
                              STATE list stays in the dialog. No SmoothList in this band. -->
@@ -1595,9 +1595,9 @@
                         </GuiElement>
 
                         <!-- Page C — Contracts (read-only fixed rows). -->
-                        <!-- BUILD 10:47 (George CLOSED DESIGN 10:37): the Contracts band is two cards in the same
+                        <!-- 37): the Contracts band is two cards in the same
                              1130x344 slot. Left = open deals (fixed Text rows, read-only). Right = compact New Contract
-                             (quantity + window + confirm) for the crop picked in mdCommodityList above. BUILD 11:42:
+                             (quantity + window + confirm) for the crop picked in mdCommodityList above.:
                              the compact card is the only create path (Full form dropped). No SmoothList in this band.
                              Chips, Confirm and Event settings are RF_CsPivotBtn pivot plates with handleFocus=false:
                              mouse click only. Space (MENU_ACTIVATE) only paints a glyph on a Button, and Return
@@ -1633,7 +1633,7 @@
                                 <Text profile="RF_HintText" id="mdCtMore" textSize="13px" position="10px -186px" size="530px 20px" text=""/>
                                 <Text profile="RF_HintText" id="mdContractsEmpty" textSize="13px" position="10px -62px" size="530px 44px"
                                       textMaxNumLines="2" visible="false" text=""/>
-                                <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): pick an open deal, then Cancel it. The five
+                                <!-- 00): pick an open deal, then Cancel it. The five
                                      hit targets sit ON the row bands and paint nothing (RF_CtRowHit); they are declared
                                      after the row Texts so the transparent button draws over the text without hiding it.
                                      ONE Cancel chip, never one per row. handleFocus="false" and the profile's
@@ -1666,7 +1666,7 @@
                                 <Button profile="RF_CsPivotBtn" id="mdNcDays120" position="268px -164px" size="80px 32px" handleFocus="false" text="" onClick="onClickMdNcDays"/>
                                 <Text profile="RF_HintText" id="mdNcDaysUnit" position="360px -170px" size="180px 20px" text=""/>
                                 <!-- Total in six adjacent Text nodes: only the money and the days number are yellow
-                                     (RF_ProductCell), a Giants TextElement is one colour (BUILD 11:42). -->
+                                     (RF_ProductCell), a Giants TextElement is one colour. -->
                                 <Text profile="RF_HintText" id="mdNcSumLabel" position="10px -206px" size="60px 20px" text=""/>
                                 <Text profile="RF_ProductCell" id="mdNcSumMoney" position="72px -206px" size="200px 20px" text=""/>
                                 <Text profile="RF_HintText" id="mdNcSumFor" position="280px -206px" size="250px 20px" text=""/>

@@ -1,7 +1,7 @@
 -- =========================================================
 -- Realistic Farming Esc — shared module registry (NO HOST)
 -- =========================================================
--- Law: Ash Office/NOTE-Wizard-Esc-NO-HOST-module-stack-LAW-2026-08-02.md
+-- Law: Office/NOTE--Esc-NO-HOST-module-stack-LAW-2026-08-02.md
 -- Published ONLY on g_currentMission.rfEscModules (+ env g_rfEscModules).
 -- Never rfPdaHost / elected Soil owner.
 -- Module home (2026-08-09): cold → soilFertilizer; session last-closed;
@@ -25,7 +25,7 @@ local HUB_ENUM = {
     "dairy",
     "npcFavor",
     "fertilizerDepot",
-    -- BUILD 00:46 (Pro Staff Esc door): the ProStaff copy carries the new id so the
+    -- The ProStaff copy carries the new id so the
     -- SettingsHub last-module memory can hold it. The other nine door copies do not
     -- yet, and rememberClosedModule skips the hub write for an unknown id there.
     "prostaff",
@@ -228,7 +228,7 @@ function RfEscModules:registerModule(def)
         onHide = def.onHide,
         onWageOptionChanged = def.onWageOptionChanged,
         onWageReset = def.onWageReset,
-        -- Vera F2 2026-08-07: registerModule whitelists fields, so this was being
+        -- registerModule whitelists fields, so this was being
         -- dropped and the door could never ask the active module to open its own
         -- deep screen. Guests register it; keep it.
         onOpenFullMarket = def.onOpenFullMarket,
@@ -237,18 +237,18 @@ function RfEscModules:registerModule(def)
         onOpenConsultant = def.onOpenConsultant,
         onOpenSchedule = def.onOpenSchedule,
         onOpenHelp = def.onOpenHelp,
-        -- BUILD 19:15: the shared Esc sheet's row click. registerModule rebuilds the descriptor field
+        -- The shared Esc sheet's row click. registerModule rebuilds the descriptor field
         -- by field, so a handler that is not named here is silently dropped and the control is dead.
         -- That is what happened to onOpenFullMarket, onOpenConsultant, onPivotRemote, onLightTick,
         -- onMoverChanged and onPageStep before it.
         onSheetRow = def.onSheetRow,
         onPaintConsultant = def.onPaintConsultant,
-        -- Same trap again, BUILD 15:46: the CS guest registers onPivotRemote on
+        -- Same trap again,: the CS guest registers onPivotRemote on
         -- its module def (CsRfPdaGuest.lua) but it was missing here, so it was
         -- silently discarded and active.onPivotRemote was always nil. The Esc
         -- PIVOT buttons only worked through the global CsRfPdaGuest fallback.
         onPivotRemote = def.onPivotRemote,
-        -- Fourth time, BUILD 23:51 (Vera F1/F2): the MD guest registers onLightTick for
+        -- Fourth time,: the MD guest registers onLightTick for
         -- the quiet 2s price refresh. Without it here the field was dropped, so
         -- active.onLightTick was nil and every soft refresh fell back to the fat onShow -
         -- which made the whole 23:43 soft path a no-op.
@@ -258,19 +258,19 @@ function RfEscModules:registerModule(def)
         -- deleting a registration in case a consumer turns up - and it keeps the new
         -- warning meaningful instead of crying wolf every session.
         onMoverChanged = def.onMoverChanged,
-        -- BUILD 12:59 independence contract: a guest that registers its own selection
+        -- A guest that registers its own selection
         -- callback can be driven straight off the registry, so the host never has to find
         -- the guest object at all. That is the level that works with no globals, no env
         -- scanning and no mod names; the resolver in the host is only the fallback for
         -- companions that predate this.
         selectCommodityIndex = def.selectCommodityIndex,
         onLightTick = def.onLightTick,
-        -- Sixth instance, BUILD 14:04 (Brian TEST 10:29): NPC Favor registered onPageStep
-        -- for the shared row pager on BUILD 09:19 and this whitelist ate it, so the live
+        -- Sixth instance,: NPC Favor registered onPageStep
+        -- for the shared row pager on and this whitelist ate it, so the live
         -- MORE (1/2) button forwarded a step to nil and the roster never turned the page.
         -- The register-time warning below did name it, in a log nobody read back.
         onPageStep = def.onPageStep,
-        -- REPAIR-217: the six the Esc STOCK page needs forwarded. onSelectionIndex is the live path from
+        -- The six the Esc STOCK page needs forwarded. onSelectionIndex is the live path from
         -- onClickRfFwSelSelector; onActionActivate carries the rfFwAct chips; the quote pair and onModeStep
         -- carry the command chrome. Additive: no existing field changes.
         onSelectionStep = def.onSelectionStep,
@@ -279,13 +279,13 @@ function RfEscModules:registerModule(def)
         onQuoteConfirm = def.onQuoteConfirm,
         onQuoteCancel = def.onQuoteCancel,
         onModeStep = def.onModeStep,
-        -- BUILD 22:42 (George CLOSED DESIGN 21:26): the Worker Costs guest registers onHire /
+        -- 26): the Worker Costs guest registers onHire /
         -- onFire for the Esc page Hire / Fire buttons; carried so the host forwarders reach them
         -- through the registry (the warning below would otherwise name them as dropped).
         onHire = def.onHire,
         onFire = def.onFire,
     }
-    -- BUILD 23:51: this whitelist has now silently eaten a handler four times, so stop
+    -- This whitelist has now silently eaten a handler four times, so stop
     -- letting it do that quietly. Anything a caller passed that is not carried above gets
     -- named once, at register time, instead of turning into a handler that does nothing.
     for k in pairs(def) do
