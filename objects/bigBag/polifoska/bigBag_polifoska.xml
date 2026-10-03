@@ -30,7 +30,7 @@
 
     <base>
         <typeDesc>$l10n_typeDesc_pallet</typeDesc>
-        <filename>objects/bigBag/dap/bigBag_dap.i3d</filename>
+        <filename>objects/bigBag/polifoska/bigBag_polifoska.i3d</filename>
         <size width="1.25" length="1.25" height="1.75"/>
         <input allowed="false"/>
         <canBeReset>false</canBeReset>
