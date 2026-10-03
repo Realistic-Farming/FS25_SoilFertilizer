@@ -1534,6 +1534,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Viimeisin ajo: alle karttaportaan" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Viimeisin ajo: tuote kulutettu" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Viimeisin ajo: ei tälle kasville" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Viimeisin tauko: ei kasvavaa kasvustoa" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Kytke AUTO pois käsilevitystä varten" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Yksi työala, ei koko peltoa" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Enemmän ylittäisi ravinteen %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Käsisuunnitelman tavoitteet" eh="e44e77d3" />

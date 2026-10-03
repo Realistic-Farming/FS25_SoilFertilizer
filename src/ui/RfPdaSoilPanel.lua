@@ -848,6 +848,11 @@ RfPdaSoilPanel.TARGET_PDA_STATE = {
     SHORT_QUANTIZED    = { line = "sf_tgt_pda_state_quantized", note = "sf_tgt_pda_scope",   color = "fair" },
     APPLICATION_FAILED = { line = "sf_tgt_pda_state_failed",    note = "sf_tgt_n_failed",    color = "poor" },
 }
+-- The field's last no-crop pause (an AUTO refusal for no growing crop), in the card's "Last ..."
+-- form so it never reads as a pass. Its note is the manual hint (W1a's sf_tgt_n_manual meaning,
+-- sized for the 180px card), which Iris allows for this reason only; nothing was spent, so the
+-- litres line stays empty. Drawn in the card's fair colour.
+RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = "sf_tgt_pda_state_paused", note = "sf_tgt_pda_pause_hint" }
 RfPdaSoilPanel.TARGET_PDA_REL = {
     BELOW = "sf_tgt_pda_rel_below", APPROACHING = "sf_tgt_pda_rel_near", IDEAL = "sf_tgt_pda_rel_ok",
     ABOVE = "sf_tgt_pda_rel_high", UNDETERMINED = "sf_tgt_pda_rel_unknown",
@@ -869,6 +874,7 @@ RfPdaSoilPanel.TARGET_PDA_EN = {
     sf_tgt_pda_scope = "One footprint, not the whole field", sf_tgt_pda_binding = "More would overshoot %s",
     sf_tgt_n_failed = "Local N/P/K is not confirmed.", sf_tgt_d_litres = "Planned %s L, applied %s L",
     sf_tgt_pda_manual_targets = "Manual plan targets",
+    sf_tgt_pda_state_paused = "Last pause: no growing crop", sf_tgt_pda_pause_hint = "Turn AUTO off to apply manually",
 }
 
 local function targetPdaLitres(x)
@@ -917,9 +923,18 @@ function RfPdaSoilPanel.refreshTargetCard(page, entry)
     -- The last pass: one footprint's confirmed outcome on this field, for its current crop only.
     local pass = type(ss.getLastTargetPassForField) == "function" and ss:getLastTargetPassForField(fieldId) or nil
     if pass ~= nil and (rel == nil or rel.cropKey == nil or pass.cropKey ~= rel.cropKey) then pass = nil end
+    -- The last no-crop pause, under the same current-crop rule: the pause names no crop, so it
+    -- carries the field report's crop from when it was noted. The newer of the pass and the
+    -- pause is the field's state; on a tie, the pass.
+    local pause = type(ss.getLastTargetPauseForField) == "function" and ss:getLastTargetPauseForField(fieldId) or nil
+    if pause ~= nil and (rel == nil or rel.cropKey == nil or pause.fieldCrop ~= rel.cropKey) then pause = nil end
+    if pause ~= nil and pass ~= nil and not ((pause.notedAt or 0) > (pass.notedAt or 0)) then pause = nil end
     local copy = pass ~= nil and RfPdaSoilPanel.TARGET_PDA_STATE[pass.doseState] or nil
     local stateText, noteText, detailText, stateColor = tr(K.none), "", "", COLOR_DIM
-    if copy ~= nil then
+    if pause ~= nil then
+        local p = RfPdaSoilPanel.TARGET_PDA_PAUSE
+        stateText, noteText, stateColor = tr(p.line), tr(p.note), COLOR_FAIR
+    elseif copy ~= nil then
         stateText = tr(copy.line)
         noteText = tr(copy.note)
         if pass.doseState == "SHORT_BINDING" then noteText = string.format(noteText, tostring(pass.binding or "?")) end

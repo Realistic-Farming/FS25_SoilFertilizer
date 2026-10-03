@@ -1588,6 +1588,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Poslední průjezd: pod krokem mapy" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Poslední průjezd: produkt spotřebován" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Poslední průjezd: žádný pro plodinu" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Poslední pauza: bez rostoucí plodiny" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Pro ruční aplikaci vypněte AUTO" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Jedna stopa, ne celé pole" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Více by překročilo %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Cíle ručního plánu" eh="e44e77d3" />

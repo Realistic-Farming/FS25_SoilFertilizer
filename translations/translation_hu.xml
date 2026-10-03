@@ -1553,6 +1553,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Utolsó menet: lépés alatt" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Utolsó menet: termék elhasználva" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Utolsó menet: nincs erre a kultúrára" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Utolsó szünet: nincs növekvő kultúra" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Kézi kijuttatáshoz: AUTO ki" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Egy munkasáv, nem az egész tábla" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Több túllépné ezt: %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Kézi terv céljai" eh="e44e77d3" />

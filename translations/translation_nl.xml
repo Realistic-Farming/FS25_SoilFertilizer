@@ -1564,6 +1564,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Laatste gang: onder een kaartstap" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Laatste gang: product verbruikt" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Laatste gang: geen bij dit gewas" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Laatste pauze: geen gewas groeit" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="AUTO uit voor handmatig toedienen" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Eén werkstrook, niet het perceel" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Meer zou %s overschrijden" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Doelen handmatig plan" eh="e44e77d3" />

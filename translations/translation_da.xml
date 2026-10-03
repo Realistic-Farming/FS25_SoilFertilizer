@@ -1530,6 +1530,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Seneste kørsel: under et korttrin" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Seneste kørsel: produkt brugt" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Seneste kørsel: ingen for afgrøden" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Seneste pause: intet i vækst" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Slå AUTO fra for manuel spredning" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Én arbejdsflade, ikke hele marken" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mere ville overskride %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Mål for manuel plan" eh="e44e77d3" />

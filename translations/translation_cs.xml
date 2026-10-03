@@ -1560,6 +1560,8 @@
     <e k="sf_tgt_pda_state_quantized" v="上次作业：低于一级" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="上次作业：产品已消耗" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="上次作业：此作物暂无" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="上次暂停：没有生长中的作物" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="关闭自动即可手动施用" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="一条作业轨迹，并非整块田地" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="再多会超过 %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="手动计划目标" eh="e44e77d3" />

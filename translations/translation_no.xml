@@ -1562,6 +1562,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Siste runde: under et karttrinn" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Siste runde: produkt brukt" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Siste runde: ingen for avlingen" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Siste pause: ingen avling vokser" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Slå av AUTO for manuell spredning" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Én arbeidsflate, ikke hele jordet" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mer ville overskride %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Mål for manuell plan" eh="e44e77d3" />

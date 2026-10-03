@@ -1580,6 +1580,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Ultimo passaggio: sotto un gradino" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Ultimo passaggio: prodotto consumato" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Ultimo passaggio: nessuno su questa coltura" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Ultima pausa: nessuna coltura in crescita" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Disattiva AUTO per l'applicazione manuale" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Un'impronta, non tutto il campo" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Di più supererebbe %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Obiettivi del piano manuale" eh="e44e77d3" />
