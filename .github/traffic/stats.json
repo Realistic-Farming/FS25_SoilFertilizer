@@ -60677,51 +60677,46 @@
     "watchers": 12
   },
   {
-    "timestamp": "2026-10-03T06:15:26Z",
+    "timestamp": "2026-10-03T12:23:42Z",
     "date": "2026-10-03",
     "views": {
-      "count": 3749,
-      "uniques": 931
+      "count": 3613,
+      "uniques": 887
     },
     "clones": {
-      "count": 1748,
-      "uniques": 539
+      "count": 1909,
+      "uniques": 565
     },
     "referrers": [
       {
         "referrer": "github.com",
-        "count": 489,
-        "uniques": 198
+        "count": 463,
+        "uniques": 189
       },
       {
         "referrer": "Google",
-        "count": 483,
-        "uniques": 290
+        "count": 443,
+        "uniques": 277
       },
       {
         "referrer": "Bing",
-        "count": 89,
-        "uniques": 55
+        "count": 90,
+        "uniques": 54
       },
       {
         "referrer": "youtube.com",
-        "count": 88,
-        "uniques": 45
+        "count": 83,
+        "uniques": 42
       },
       {
         "referrer": "kingmods.net",
-        "count": 62,
-        "uniques": 31
+        "count": 59,
+        "uniques": 32
       },
       {
         "referrer": "DuckDuckGo",
-        "count": 28,
-        "uniques": 8
-      },
-      {
-        "referrer": "reddit.com",
-        "count": 9,
-        "uniques": 6
+        "count": 30,
+        "uniques": 7
       },
       {
         "referrer": "search.brave.com",
@@ -60734,7 +60729,12 @@
         "uniques": 6
       },
       {
-        "referrer": "modding-welt.com",
+        "referrer": "reddit.com",
+        "count": 8,
+        "uniques": 5
+      },
+      {
+        "referrer": "facebook.com",
         "count": 5,
         "uniques": 5
       }
@@ -60743,56 +60743,56 @@
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer",
         "title": "Overview",
-        "count": 1682,
-        "uniques": 736
+        "count": 1592,
+        "uniques": 699
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/releases",
         "title": "/releases",
-        "count": 389,
-        "uniques": 157
+        "count": 388,
+        "uniques": 152
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.5.0.0",
         "title": "/releases/tag/v2.5.0.0",
         "count": 284,
-        "uniques": 206
+        "uniques": 207
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/tree/development",
         "title": "/tree/development",
-        "count": 186,
-        "uniques": 38
+        "count": 188,
+        "uniques": 39
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/issues",
         "title": "/issues",
-        "count": 174,
-        "uniques": 85
+        "count": 168,
+        "uniques": 82
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/blob/main/README.md",
         "title": "/blob/main/README.md",
-        "count": 61,
+        "count": 58,
         "uniques": 37
-      },
-      {
-        "path": "/Realistic-Farming/FS25_SoilFertilizer/discussions",
-        "title": "/discussions",
-        "count": 47,
-        "uniques": 23
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/branches",
         "title": "/branches",
-        "count": 44,
+        "count": 45,
         "uniques": 18
+      },
+      {
+        "path": "/Realistic-Farming/FS25_SoilFertilizer/discussions",
+        "title": "/discussions",
+        "count": 41,
+        "uniques": 21
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/tree/main",
         "title": "/tree/main",
-        "count": 39,
-        "uniques": 12
+        "count": 31,
+        "uniques": 13
       },
       {
         "path": "/Realistic-Farming/FS25_SoilFertilizer/issues/995",
@@ -60805,7 +60805,7 @@
       {
         "assets": [
           {
-            "downloads": 275,
+            "downloads": 278,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
@@ -60814,7 +60814,7 @@
       {
         "assets": [
           {
-            "downloads": 1539,
+            "downloads": 1544,
             "name": "FS25_SoilFertilizer.zip"
           }
         ],
