@@ -517,6 +517,8 @@ function RfPdaMenuPage:onGuiSetupFinished()
     self.rfFrameworkGlanceShell = self:getDescendantById("rfFrameworkGlanceShell") or self.rfFrameworkGlanceShell
     self.rfFwStatusBlock = self:getDescendantById("rfFwStatusBlock") or self.rfFwStatusBlock
     self.rfFwTableBlock = self:getDescendantById("rfFwTableBlock") or self.rfFwTableBlock
+    self.rfFwSelSelector = self:getDescendantById("rfFwSelSelector") or self.rfFwSelSelector
+    self.rfFwModeSelector = self:getDescendantById("rfFwModeSelector") or self.rfFwModeSelector
     self.wcPageDashboard = self:getDescendantById("wcPageDashboard") or self.wcPageDashboard
     self.wcPageWages = self:getDescendantById("wcPageWages") or self.wcPageWages
     self.wcPageWorkers = self:getDescendantById("wcPageWorkers") or self.wcPageWorkers
@@ -1482,7 +1484,7 @@ function RfPdaMenuPage:_refreshPageHeader(active)
     local activeId = active ~= nil and active.id or nil
     local isMd = activeId == "marketDynamics"
     local isFw = activeId == "income" or activeId == "tax" or activeId == "dairy"
-            or activeId == "npcFavor" or activeId == "fertilizerDepot"
+            or activeId == "npcFavor" or activeId == "fertilizerDepot" or activeId == "stockGuard"
     if self.rfPageTitle then
         if isSoil then
             self.rfPageTitle:setText(tr("rf_pda_panel_soil", "Soil Fertilizer"))
@@ -1567,9 +1569,9 @@ function RfPdaMenuPage:_refreshSideInfo(activeId)
     local isWc = activeId == "workerCosts"
     local isMd = activeId == "marketDynamics"
     local isFw = activeId == "income" or activeId == "tax" or activeId == "dairy"
-            or activeId == "npcFavor" or activeId == "fertilizerDepot"
+            or activeId == "npcFavor" or activeId == "fertilizerDepot" or activeId == "stockGuard"
     local isFwStatus = activeId == "tax"
-    local isFwTable = activeId == "income" or activeId == "dairy" or activeId == "npcFavor" or activeId == "fertilizerDepot"
+    local isFwTable = activeId == "income" or activeId == "dairy" or activeId == "npcFavor" or activeId == "fertilizerDepot" or activeId == "stockGuard"
     local function setVis(el, visible)
         if el ~= nil and type(el.setVisible) == "function" then
             el:setVisible(visible)
@@ -1654,9 +1656,9 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
     local isWc = activeId == "workerCosts"
     local isMd = activeId == "marketDynamics"
     local isFw = activeId == "income" or activeId == "tax" or activeId == "dairy"
-            or activeId == "npcFavor" or activeId == "fertilizerDepot"
+            or activeId == "npcFavor" or activeId == "fertilizerDepot" or activeId == "stockGuard"
     local isFwStatus = activeId == "tax"
-    local isFwTable = activeId == "income" or activeId == "dairy" or activeId == "npcFavor" or activeId == "fertilizerDepot"
+    local isFwTable = activeId == "income" or activeId == "dairy" or activeId == "npcFavor" or activeId == "fertilizerDepot" or activeId == "stockGuard"
     local function setVis(el, visible)
         if el ~= nil and type(el.setVisible) == "function" then
             el:setVisible(visible)
@@ -1705,7 +1707,21 @@ function RfPdaMenuPage:_syncHostGuestChrome(activeId)
                           "rfFwRosterDetailCard", "rfFwFavorDetailCard", "rfFwSheetBox",
                           -- BUILD 19:15: the selected-row band goes dark with its sheet, so a row
                           -- read on Depot can never sit under another module's headers.
-                          "rfFwSheetBand" }) do
+                          "rfFwSheetBand",
+                          -- REPAIR-212: the nine FW ids StockGuard paints and NO other guest touches.
+                          -- Verified by grep over every lua file in the suite: outside this page, only
+                          -- SgRfPdaGuest names them, so nothing else ever repaints or clears them. Once
+                          -- Stock showed them they stayed on Dairy, NPC Favor and Depot, which is how a
+                          -- Farm/Site selector reading "FARM" ended up over another module's headers and
+                          -- how a live quote's Confirm and Cancel could sit on a page that cannot honour
+                          -- them. Same law as rfFwSheetBox above: they go dark on every refresh and
+                          -- SgRfPdaGuest alone shows them again in its own onShow, which runs after this.
+                          "rfFwSelSelector", "rfFwModeSelector",
+                          "rfFwAct1", "rfFwAct2", "rfFwAct3",
+                          "rfFwCmdBanner", "rfFwQuoteBody", "rfFwQuoteConfirm", "rfFwQuoteCancel",
+                          -- REPAIR-213: the two shells the selectors now live in. Hiding the shell hides the
+                          -- MTO with it, and SgRfPdaGuest shows both again in its own onShow.
+                          "rfFwSelShell", "rfFwModeShell" }) do
         local el = self:getDescendantById(id)
         if el ~= nil and type(el.setVisible) == "function" then
             el:setVisible(false)
@@ -2597,6 +2613,13 @@ function RfPdaMenuPage:_rfFwPageStep(delta)
             step = npcGuest.onPageStep
         end
     end
+    if type(step) ~= "function" and active.id == "stockGuard" then
+        local sgGuest = (type(mdResolve) == "function")
+                and mdResolve(SgRfPdaGuest, "SgRfPdaGuest") or SgRfPdaGuest
+        if sgGuest ~= nil and type(sgGuest.onPageStep) == "function" then
+            step = sgGuest.onPageStep
+        end
+    end
     if type(step) ~= "function" then
         return false
     end
@@ -2997,6 +3020,7 @@ function RfPdaMenuPage:refreshContent(rebuildLists)
     local doSoilListRebuild = rebuildLists or enteringSoil
     local doCsListRebuild = rebuildLists or enteringCs
     local doMdListRebuild = rebuildLists or enteringMd
+    local enteringSg = panelId == "stockGuard" and prevId ~= "stockGuard"
 
     -- Crop Stress home = field table + AGRONOMIST card (Samantha DESIGN 18:48).
     -- Entering CS always lands on subpage 1; PIVOT is never a sticky home.
@@ -3077,12 +3101,14 @@ function RfPdaMenuPage:refreshContent(rebuildLists)
         if self.rfHostBody and active ~= nil
             and active.id ~= "workerCosts"
             and active.id ~= "seasonalCropStress"
-            and active.id ~= "marketDynamics" then
+            and active.id ~= "marketDynamics"
+            and active.id ~= "stockGuard" then
             self.rfHostBody:setText(tr("rf_pda_host_placeholder",
                 "How to: when this module adds Esc detail, use it here. Until then, open Farm Tablet."))
         elseif self.rfHostBody and self.rfHostBody.setText
             and active ~= nil
-            and (active.id == "workerCosts" or active.id == "seasonalCropStress") then
+            and (active.id == "workerCosts" or active.id == "seasonalCropStress"
+                or active.id == "stockGuard") then
             self.rfHostBody:setText("")
         end
         if active ~= nil and active.id == "workerCosts" then
@@ -3145,6 +3171,10 @@ function RfPdaMenuPage:refreshContent(rebuildLists)
                         pcall(active.onShow, self.rfHostPlaceholder, true)
                     end
                 end
+            elseif active.id == "stockGuard" then
+                -- Soft refresh after page step: lightOnly keeps focus/page/hint/transport trail.
+                -- Full enter when rebuildLists or first selecting Stock from another module.
+                pcall(active.onShow, self.rfHostPlaceholder, not (rebuildLists or enteringSg))
             else
                 pcall(active.onShow, self.rfHostPlaceholder)
             end
@@ -3645,3 +3675,157 @@ function RfPdaMenuPage:onClickMdCancel()
     _mdGuestCall(self, "onCancelContract", self.rfHostPlaceholder or self)
 end
 
+-- ======================================================================================================
+-- REPAIR-217: the Esc STOCK page's own callbacks, rebased onto development.
+-- These eight are the ONLY functions the STOCK page adds to the shared door. Each one is reached from
+-- an onClick in xml/gui/RfPdaMenuPage.xml and forwards to the active guest, with a direct SgRfPdaGuest
+-- fallback for the case where the host cannot resolve an active panel.
+-- ======================================================================================================
+
+function RfPdaMenuPage:onClickRfFwAct1()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onActionActivate) == "function" then
+        pcall(active.onActionActivate, 1)
+        return
+    end
+    if SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onActionActivate) == "function" then
+        pcall(SgRfPdaGuest.onActionActivate, 1)
+    end
+end
+
+function RfPdaMenuPage:onClickRfFwAct2()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onActionActivate) == "function" then
+        pcall(active.onActionActivate, 2)
+        return
+    end
+    if SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onActionActivate) == "function" then
+        pcall(SgRfPdaGuest.onActionActivate, 2)
+    end
+end
+
+function RfPdaMenuPage:onClickRfFwAct3()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onActionActivate) == "function" then
+        pcall(active.onActionActivate, 3)
+        return
+    end
+    if SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onActionActivate) == "function" then
+        pcall(SgRfPdaGuest.onActionActivate, 3)
+    end
+end
+
+function RfPdaMenuPage:onClickRfFwQuoteConfirm()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onQuoteConfirm) == "function" then
+        pcall(active.onQuoteConfirm)
+        return
+    end
+    if SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onQuoteConfirm) == "function" then
+        pcall(SgRfPdaGuest.onQuoteConfirm)
+    end
+end
+
+function RfPdaMenuPage:onClickRfFwQuoteCancel()
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    if active ~= nil and type(active.onQuoteCancel) == "function" then
+        pcall(active.onQuoteCancel)
+        return
+    end
+    if SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onQuoteCancel) == "function" then
+        pcall(SgRfPdaGuest.onQuoteCancel)
+    end
+end
+
+function RfPdaMenuPage:onClickRfFwSelSelector()
+    local sel = self.rfFwSelSelector
+    if sel == nil then
+        sel = self:getDescendantById("rfFwSelSelector")
+        self.rfFwSelSelector = sel
+    end
+    if sel == nil or type(sel.getState) ~= "function" then
+        return
+    end
+    local idx = sel:getState() or 1
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active == nil or active.id ~= "stockGuard" then
+        return
+    end
+    local apply = active.onSelectionIndex
+    if type(apply) ~= "function" then
+        local sgGuest = (type(mdResolve) == "function") and mdResolve(SgRfPdaGuest, "SgRfPdaGuest") or SgRfPdaGuest
+        if sgGuest ~= nil and type(sgGuest.onSelectionIndex) == "function" then
+            apply = sgGuest.onSelectionIndex
+        end
+    end
+    if type(apply) ~= "function" then
+        return
+    end
+    local ok, moved = pcall(apply, idx)
+    if not ok then
+        SoilLogger.warning("RfPdaMenuPage: onSelectionIndex failed: %s", tostring(moved))
+        return
+    end
+    if moved ~= false then
+        self:refreshContent(false)
+    end
+end
+
+function RfPdaMenuPage:_rfFwSelectionStep(delta)
+    local host = self:_getHost()
+    local active = host and host:getActivePanel()
+    if active == nil then
+        return false
+    end
+    local step = active.onSelectionStep
+    if type(step) ~= "function" and active.id == "stockGuard" then
+        local sgGuest = (type(mdResolve) == "function")
+                and mdResolve(SgRfPdaGuest, "SgRfPdaGuest") or SgRfPdaGuest
+        if sgGuest ~= nil and type(sgGuest.onSelectionStep) == "function" then
+            step = sgGuest.onSelectionStep
+        end
+    end
+    if type(step) ~= "function" then
+        return false
+    end
+    local ok, moved = pcall(step, delta)
+    if not ok then
+        SoilLogger.warning("RfPdaMenuPage: onSelectionStep failed on %s: %s",
+            tostring(active.id), tostring(moved))
+        return false
+    end
+    if moved == false then
+        return false
+    end
+    self:refreshContent(false)
+    return true
+end
+
+function RfPdaMenuPage:onClickRfFwModeSelector()
+    local sel = self.rfFwModeSelector
+    if sel == nil then
+        sel = self:getDescendantById("rfFwModeSelector")
+        self.rfFwModeSelector = sel
+    end
+    if sel == nil or type(sel.getState) ~= "function" then
+        return
+    end
+    local idx = sel:getState() or 1
+    local host = self:_getHost()
+    local active = host and host.getActivePanel and host:getActivePanel()
+    local apply = nil
+    if active ~= nil and type(active.onModeStep) == "function" then
+        apply = active.onModeStep
+    elseif SgRfPdaGuest ~= nil and type(SgRfPdaGuest.onModeStep) == "function" then
+        apply = SgRfPdaGuest.onModeStep
+    end
+    if type(apply) == "function" then
+        pcall(apply, idx)
+    end
+end
