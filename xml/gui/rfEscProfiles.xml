@@ -307,6 +307,7 @@
         <frameBottomColor value="1 1 1 0.85"/>
     </Profile>
 
+
     <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
          art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
          measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
@@ -407,6 +408,23 @@
         <fitToContent value="false"/>
         <textAutoWidth value="false"/>
         <textAlignment value="center"/>
+    </Profile>
+    <!-- Multi-pivot Esc switcher (farm patches): keep arrows visible when needed. -->
+    <Profile name="RF_CsPivotSwitcher" extends="fs25_subCategorySelector">
+        <size value="540px 28px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px 0px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_CsPivotSwitcherText"/>
+    </Profile>
+    <Profile name="RF_CsPivotSwitcherText" extends="fs25_subCategorySelectorText">
+        <textSize value="14px"/>
+        <textBold value="false"/>
+        <textMaxWidth value="400px"/>
+        <textMaxNumLines value="1"/>
+        <textLayoutMode value="resize"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
     </Profile>
     <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 160px"/>
@@ -516,6 +534,44 @@
          blank.png + noSlice on a ThreePartBitmap paints the raw gui atlas (2026-08-04 lesson). -->
     <Profile name="RF_SubCategoryContainerBg" extends="fs25_subCategoryContainerBg">
         <width value="404px"/>
+    </Profile>
+
+    <!-- BUILD 22:25: RF-prefixed clones of MapFrame-local fs25_mapList* (~56px pitch). -->
+    <Profile name="RF_MapList" extends="fs25_subCategoryList" with="anchorTopCenter">
+        <absoluteSizeOffset value="0px 60px"/>
+    </Profile>
+    <Profile name="RF_MapListItem" extends="fs25_subCategoryListItem">
+        <height value="56px"/>
+        <hotspot value="0px 0px 0px 12px"/>
+        <imageSliceId value="gui.map_box"/>
+        <imageSelectedSliceId value="gui.map_box_selected"/>
+        <imageHighlightedSliceId value="gui.map_box_hover"/>
+    </Profile>
+    <Profile name="RF_MapListItemIconBg" extends="baseReference" with="anchorTopLeft">
+        <size value="40px 40px"/>
+        <position value="3px -3px"/>
+        <imageSliceId value="gui.map_box_colorOverlay"/>
+        <imageColor value="$preset_colorBlack"/>
+        <imageSelectedColor value="$preset_colorWhite"/>
+    </Profile>
+    <Profile name="RF_MapListColorTemplate" extends="baseReference">
+        <size value="1px 40px"/>
+        <imageColor value="$preset_colorTransparent"/>
+        <imageSelectedColor value="$preset_colorTransparent"/>
+    </Profile>
+    <Profile name="RF_MapListItemIcon" extends="fs25_subCategoryListItemIcon" with="anchorTopLeft">
+        <size value="34px 34px"/>
+        <position value="6px -6px"/>
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0 0 0 0"/>
+        <imageSelectedColor value="0 0 0 0"/>
+    </Profile>
+    <Profile name="RF_MapListItemName" extends="fs25_subCategoryListItemName" with="anchorTopLeft">
+        <width value="300px"/>
+        <position value="52px -12px"/>
+        <textSize value="16px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textSelectedColor value="0.659 0.878 0.290 1"/>
     </Profile>
 
     <Profile name="RF_PanelContentShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
@@ -644,6 +700,7 @@
     <Profile name="RF_FwColHeader" extends="RF_ColHeader">
         <textAlignment value="left"/>
     </Profile>
+
 
     <Profile name="RF_SmoothList" extends="emptyPanel" with="anchorStretchingYLeft pivotTopLeft"/>
 
@@ -866,5 +923,41 @@
     <Profile name="RF_InfoBoxBg" extends="baseReference" with="anchorStretchingYStretchingX">
         <filename value="$dataS/menu/blank.png"/>
         <imageColor value="0 0 0 0.35"/>
+    </Profile>
+
+    <!-- REPAIR-217: the F166 herd-advisory panel's profiles. The panel's elements come into
+         RfPdaMenuPage.xml in this same build, and without these they would fall back to the base
+         reference profile and log "Could not retrieve GUI profile". -->
+    <Profile name="RF_DairyAdvisoryDetailItem" extends="RF_ListRow">
+        <height value="22px"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryDetailLine" extends="RF_FwListCell">
+        <textSize value="15px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryDetailList" extends="RF_SmoothList">
+        <size value="1090px 440px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryItem" extends="RF_ListRow">
+        <height value="40px"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryLabel" extends="RF_FwListCell">
+        <textSize value="16px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryList" extends="RF_SmoothList">
+        <size value="1090px 200px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryReason" extends="RF_FwListCell">
+        <textSize value="15px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
     </Profile>
 </GUIProfiles>
