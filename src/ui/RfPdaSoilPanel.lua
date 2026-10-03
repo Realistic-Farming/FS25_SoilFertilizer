@@ -849,9 +849,10 @@ RfPdaSoilPanel.TARGET_PDA_STATE = {
     APPLICATION_FAILED = { line = "sf_tgt_pda_state_failed",    note = "sf_tgt_n_failed",    color = "poor" },
 }
 -- The field's last no-crop pause (an AUTO refusal for no growing crop), in the card's "Last ..."
--- form so it never reads as a pass. Its note is W1a's manual hint, which Iris allows for this
--- reason only; nothing was spent, so the litres line stays empty. Drawn in the card's fair colour.
-RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = "sf_tgt_pda_state_paused", note = "sf_tgt_n_manual" }
+-- form so it never reads as a pass. Its note is the manual hint (W1a's sf_tgt_n_manual meaning,
+-- sized for the 180px card), which Iris allows for this reason only; nothing was spent, so the
+-- litres line stays empty. Drawn in the card's fair colour.
+RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = "sf_tgt_pda_state_paused", note = "sf_tgt_pda_pause_hint" }
 RfPdaSoilPanel.TARGET_PDA_REL = {
     BELOW = "sf_tgt_pda_rel_below", APPROACHING = "sf_tgt_pda_rel_near", IDEAL = "sf_tgt_pda_rel_ok",
     ABOVE = "sf_tgt_pda_rel_high", UNDETERMINED = "sf_tgt_pda_rel_unknown",
@@ -873,7 +874,7 @@ RfPdaSoilPanel.TARGET_PDA_EN = {
     sf_tgt_pda_scope = "One footprint, not the whole field", sf_tgt_pda_binding = "More would overshoot %s",
     sf_tgt_n_failed = "Local N/P/K is not confirmed.", sf_tgt_d_litres = "Planned %s L, applied %s L",
     sf_tgt_pda_manual_targets = "Manual plan targets",
-    sf_tgt_pda_state_paused = "Last pause: no growing crop", sf_tgt_n_manual = "Turn AUTO off for manual application.",
+    sf_tgt_pda_state_paused = "Last pause: no growing crop", sf_tgt_pda_pause_hint = "Turn AUTO off to apply manually",
 }
 
 local function targetPdaLitres(x)

@@ -1562,6 +1562,7 @@
     <e k="sf_tgt_pda_state_failed" v="지난 작업: 제품 소모됨" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="지난 작업: 이 작물 없음" eh="b90d76c3" />
     <e k="sf_tgt_pda_state_paused" v="지난 일시 중지: 자라는 작물 없음" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="수동 살포하려면 자동을 끄세요" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="작업 흔적 하나, 필드 전체 아님" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="더 쓰면 %s 초과" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="수동 계획 목표" eh="e44e77d3" />

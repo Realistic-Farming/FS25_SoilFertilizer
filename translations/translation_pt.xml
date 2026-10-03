@@ -1581,7 +1581,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Última passagem: abaixo de um passo" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Última passagem: produto gasto" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Última passagem: nenhuma nesta cultura" eh="b90d76c3" />
-    <e k="sf_tgt_pda_state_paused" v="Última pausa: sem cultura em crescimento" eh="b294e56d" />
+    <e k="sf_tgt_pda_state_paused" v="Última pausa: nada em crescimento" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Desligue o AUTO para aplicação manual" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Uma pegada, não o campo todo" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mais ultrapassaria %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Alvos do plano manual" eh="e44e77d3" />

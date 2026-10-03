@@ -1594,6 +1594,7 @@
     <e k="sf_tgt_pda_state_failed" v="上次作業：產品已消耗" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="上次作業：此作物暫無" eh="b90d76c3" />
     <e k="sf_tgt_pda_state_paused" v="上次暫停：沒有生長中的作物" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="關閉自動即可手動施用" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="一條作業軌跡，並非整塊田地" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="再多會超過 %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="手動計畫目標" eh="e44e77d3" />

@@ -1534,7 +1534,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Son geçiş: bir adımın altında" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Son geçiş: ürün harcandı" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Son geçiş: bu üründe yok" eh="b90d76c3" />
-    <e k="sf_tgt_pda_state_paused" v="Son duraklama: büyüyen ürün yok" eh="b294e56d" />
+    <e k="sf_tgt_pda_state_paused" v="Son duraklama: ürün büyümüyor" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Manuel için OTO'yu kapatın" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Tek iz, tüm tarla değil" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Fazlası %s değerini aşar" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Manuel plan hedefleri" eh="e44e77d3" />

@@ -44,6 +44,7 @@ SELECT = ["--loads", "src/ui/RfPdaSoilPanel.lua", "--loads", "src/target/TargetA
 ENTRY_LINE = "    if TA.isCropPause(prev) and prev.fieldId == r.fieldId then return end\n"
 RECV_PREV = "    local prev = (old ~= nil and old.epoch == result.epoch) and old.result or nil\n"
 PRECEDENCE = "    if pause ~= nil and pass ~= nil and not ((pause.notedAt or 0) > (pass.notedAt or 0)) then pause = nil end\n"
+PAUSE_COPY = "RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = \"sf_tgt_pda_state_paused\", note = \"sf_tgt_pda_pause_hint\" }\n"
 
 MUTATIONS = [
  ("P01-farm-access-not-tested", TA,
@@ -125,13 +126,14 @@ MUTATIONS = [
     "    if copy ~= nil then\n", 1)],
   "the card never draws the pause (E4, C6)"),
  ("U05-pause-reads-as-none", PANEL,
-  [("RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = \"sf_tgt_pda_state_paused\", note = \"sf_tgt_n_manual\" }\n",
-    "RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = \"sf_tgt_pda_state_none\", note = \"sf_tgt_n_manual\" }\n", 1)],
+  [(PAUSE_COPY, PAUSE_COPY.replace("line = \"sf_tgt_pda_state_paused\"", "line = \"sf_tgt_pda_state_none\""), 1)],
   "the pause line reads as the pass line (E4, X0)"),
  ("U06-no-manual-hint", PANEL,
-  [("RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = \"sf_tgt_pda_state_paused\", note = \"sf_tgt_n_manual\" }\n",
-    "RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = \"sf_tgt_pda_state_paused\", note = \"sf_tgt_n_failed\" }\n", 1)],
+  [(PAUSE_COPY, PAUSE_COPY.replace("note = \"sf_tgt_pda_pause_hint\"", "note = \"sf_tgt_n_failed\""), 1)],
   "the pause's note is another reason's (E5, X0)"),
+ ("U08-hud-width-hint", PANEL,
+  [(PAUSE_COPY, PAUSE_COPY.replace("note = \"sf_tgt_pda_pause_hint\"", "note = \"sf_tgt_n_manual\""), 1)],
+  "the note is the HUD's wider manual hint again (E5, X0)"),
  ("U07-pass-colour", PANEL,
   [("        stateText, noteText, stateColor = tr(p.line), tr(p.note), COLOR_FAIR\n",
     "        stateText, noteText, stateColor = tr(p.line), tr(p.note), COLOR_GOOD\n", 1)],

@@ -7,7 +7,8 @@
 -- own); it is stamped on entry with the field report's crop (TA:fieldCropKey) on the peer
 -- that writes it, never in the result; the card shows it only while that stamp is the field
 -- report's crop, and only when it is newer than the last pass (a tie goes to the pass); it
--- reads "Last pause: no growing crop" with W1a's manual hint and no litres.
+-- reads "Last pause: no growing crop" with the manual hint (its own PDA key: W1a's meaning,
+-- sized for the 180px card, Bob's amended point 4) and no litres.
 --
 -- THE ENTRY-POINT BAR is group E: Tyson's field-2 case. A sprayer with a target product and
 -- AUTO on over a cut supported crop on an owned field, with no earlier pass, through the real
@@ -671,7 +672,7 @@ function H.lines(page)
   return tostring(cardText(page, "soilTargetState")) .. " | " .. tostring(cardText(page, "soilTargetReason"))
     .. " | " .. tostring(cardText(page, "soilTargetDetail"))
 end
-H.PAUSE_LINES = tostring(EN.sf_tgt_pda_state_paused) .. " | " .. tostring(EN.sf_tgt_n_manual) .. " | "
+H.PAUSE_LINES = tostring(EN.sf_tgt_pda_state_paused) .. " | " .. tostring(EN.sf_tgt_pda_pause_hint) .. " | "
 
 -- =====================================================================
 -- E. THE ENTRY-POINT BAR: Tyson's field-2 case. AUTO on over a cut supported crop on an
@@ -689,7 +690,7 @@ group(function()
   local page = openPda(newPage(true), 7)
   T.eq("E3 the card shows", cardVisible(page), true)
   T.eq("E4 NAMED: the state line reads the pause", cardText(page, "soilTargetState"), EN.sf_tgt_pda_state_paused)
-  T.eq("E5 NAMED: the note gives W1a's manual hint", cardText(page, "soilTargetReason"), EN.sf_tgt_n_manual)
+  T.eq("E5 NAMED: the note gives the manual hint", cardText(page, "soilTargetReason"), EN.sf_tgt_pda_pause_hint)
   T.eq("E6 NAMED: and the detail line is empty (nothing was spent)", cardText(page, "soilTargetDetail"), "")
   local col = page.ids.soilTargetState.color
   T.ok("E7 NAMED: a pause colour, the card's fair: neither REACHED's nor a failure's",
@@ -1026,29 +1027,44 @@ end)
 -- =====================================================================
 group(function()
   local PAUSE = RfPdaSoilPanel.TARGET_PDA_PAUSE or {}
-  T.eq("X0 the pause draws the new key with W1a's manual hint",
-       tostring(PAUSE.line) .. "/" .. tostring(PAUSE.note), "sf_tgt_pda_state_paused/sf_tgt_n_manual")
+  T.eq("X0 the pause draws its state key and the PDA's own manual hint",
+       tostring(PAUSE.line) .. "/" .. tostring(PAUSE.note), "sf_tgt_pda_state_paused/sf_tgt_pda_pause_hint")
   local EN_FB = RfPdaSoilPanel.TARGET_PDA_EN or {}
   T.eq("X1 the panel's English fallbacks are the en file's text",
        tostring(EN_FB.sf_tgt_pda_state_paused == EN.sf_tgt_pda_state_paused and EN.sf_tgt_pda_state_paused ~= nil)
-       .. "/" .. tostring(EN_FB.sf_tgt_n_manual == EN.sf_tgt_n_manual and EN.sf_tgt_n_manual ~= nil), "true/true")
-  local missing, copies, dashes, hashes, asPass, specs = {}, {}, {}, {}, {}, {}
+       .. "/" .. tostring(EN_FB.sf_tgt_pda_pause_hint == EN.sf_tgt_pda_pause_hint and EN.sf_tgt_pda_pause_hint ~= nil), "true/true")
+  local KEYS = { "sf_tgt_pda_state_paused", "sf_tgt_pda_pause_hint" }
+  local missing, copies, dashes, hashes, asPass, specs, overs = {}, {}, {}, {}, {}, {}, {}
   local PASS_KEYS = { "sf_tgt_pda_state_reached", "sf_tgt_pda_state_binding", "sf_tgt_pda_state_hardware",
                       "sf_tgt_pda_state_supply", "sf_tgt_pda_state_quantized", "sf_tgt_pda_state_failed",
                       "sf_tgt_pda_state_none" }
-  local e = LANG.en.sf_tgt_pda_state_paused
+  -- the W1b card lines a language's width is measured over (%s counted as one letter), as Bob's R-15 measured
+  local CARD_KEYS = { "sf_tgt_pda_state_reached", "sf_tgt_pda_state_binding", "sf_tgt_pda_state_hardware",
+                      "sf_tgt_pda_state_supply", "sf_tgt_pda_state_quantized", "sf_tgt_pda_state_failed",
+                      "sf_tgt_pda_state_none", "sf_tgt_pda_scope", "sf_tgt_n_failed", "sf_tgt_pda_binding" }
+  local function chars(s) local n = 0 for _ in s:gmatch("[^\128-\191]") do n = n + 1 end return n end
   for _, l in ipairs(LANGS) do
-    for _, k in ipairs({ "sf_tgt_pda_state_paused", "sf_tgt_n_manual" }) do
-      if LANG[l][k] == nil then missing[#missing + 1] = l .. ":" .. k end
+    local widest = 0
+    for _, ck in ipairs(CARD_KEYS) do
+      local c = LANG[l][ck]
+      if c ~= nil then widest = math.max(widest, chars((c.v:gsub("%%s", "N")))) end
+    end
+    for _, k in ipairs(KEYS) do
+      local x, e = LANG[l][k], LANG.en[k]
+      if x == nil then
+        missing[#missing + 1] = l .. ":" .. k
+      elseif e ~= nil then
+        if l ~= "en" and x.v == e.v then copies[#copies + 1] = l .. ":" .. k end
+        if x.eh ~= e.eh then hashes[#hashes + 1] = l .. ":" .. k end
+        if x.v:find("%", 1, true) then specs[#specs + 1] = l .. ":" .. k end
+        for _, bad in ipairs({ "\226\128\148", "\226\128\147", "\226\128\156", "\226\128\157", "\226\128\152", "\226\128\153" }) do
+          if x.v:find(bad, 1, true) then dashes[#dashes + 1] = l .. ":" .. k end
+        end
+        if chars(x.v) > widest then overs[#overs + 1] = l .. ":" .. k .. " " .. chars(x.v) .. ">" .. widest end
+      end
     end
     local x = LANG[l].sf_tgt_pda_state_paused
-    if x ~= nil and e ~= nil then
-      if l ~= "en" and x.v == e.v then copies[#copies + 1] = l end
-      if x.eh ~= e.eh then hashes[#hashes + 1] = l end
-      if x.v:find("%", 1, true) then specs[#specs + 1] = l end
-      for _, bad in ipairs({ "\226\128\148", "\226\128\147", "\226\128\156", "\226\128\157", "\226\128\152", "\226\128\153" }) do
-        if x.v:find(bad, 1, true) then dashes[#dashes + 1] = l end
-      end
+    if x ~= nil then
       for _, pk in ipairs(PASS_KEYS) do
         if LANG[l][pk] ~= nil and LANG[l][pk].v == x.v then asPass[#asPass + 1] = l .. ":" .. pk end
       end
@@ -1056,11 +1072,14 @@ group(function()
   end
   T.eq("X2 NAMED: both keys in all 27 languages", table.concat(missing, ","), "")
   T.eq("X3 NAMED: no translation is the English text", table.concat(copies, ","), "")
-  T.eq("X4 no format specifier (the line takes none)", table.concat(specs, ","), "")
+  T.eq("X4 no format specifier (the lines take none)", table.concat(specs, ","), "")
   T.eq("X5 no em dash, en dash or smart quote", table.concat(dashes, ","), "")
   T.eq("X6 every entry carries the English text's hash", table.concat(hashes, ","), "")
   T.eq("X7 NAMED: in no language does the pause read as any pass line", table.concat(asPass, ","), "")
+  local e = LANG.en.sf_tgt_pda_state_paused
   T.ok("X8 the English line is a pause in the card's 'Last ...' form", e ~= nil and e.v:find("^Last pause:") ~= nil)
+  T.eq("X9 NAMED: the fit: in every language both lines are no longer than its longest W1b card line",
+       table.concat(overs, ","), "")
 end)
 
 end

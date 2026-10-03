@@ -1581,7 +1581,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Ultima trecere: sub un pas" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Ultima trecere: produs consumat" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Ultima trecere: niciuna pe cultură" eh="b90d76c3" />
-    <e k="sf_tgt_pda_state_paused" v="Ultima pauză: nicio cultură în creștere" eh="b294e56d" />
+    <e k="sf_tgt_pda_state_paused" v="Ultima pauză: nimic nu crește" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Oprește AUTO pentru aplicare manuală" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="O amprentă, nu tot câmpul" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mai mult ar depăși %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Ținte plan manual" eh="e44e77d3" />

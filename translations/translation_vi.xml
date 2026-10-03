@@ -1533,7 +1533,8 @@
     <e k="sf_tgt_pda_state_quantized" v="Lượt gần nhất: dưới một bậc" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Lượt gần nhất: đã tiêu hao" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Lượt gần nhất: chưa có cho cây này" eh="b90d76c3" />
-    <e k="sf_tgt_pda_state_paused" v="Lần dừng gần nhất: không có cây đang phát triển" eh="b294e56d" />
+    <e k="sf_tgt_pda_state_paused" v="Lần dừng cuối: không có cây mọc" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Tắt TỰ ĐỘNG để bón thủ công" eh="05c625d3" />
     <e k="sf_tgt_pda_scope" v="Một vệt, không phải cả ruộng" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Thêm sẽ vượt quá %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Mục tiêu kế hoạch thủ công" eh="e44e77d3" />
