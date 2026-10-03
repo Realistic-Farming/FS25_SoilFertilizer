@@ -1560,6 +1560,7 @@
     <e k="sf_tgt_pda_state_quantized" v="前回: 1段階未満" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="前回: 資材を消費済み" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="前回: この作物ではなし" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="前回の一時停止: 生育中の作物なし" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="作業跡1つ、フィールド全体ではない" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="さらに使うと %s を超過" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="手動計画の目標" eh="e44e77d3" />

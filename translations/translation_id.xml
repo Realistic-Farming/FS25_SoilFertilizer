@@ -1580,6 +1580,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Lintasan terakhir: di bawah langkah" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Lintasan terakhir: produk terpakai" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Lintasan terakhir: belum untuk tanaman ini" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Jeda terakhir: tidak ada tanaman tumbuh" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Satu jejak, bukan seluruh ladang" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Lebih banyak akan melampaui %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Target rencana manual" eh="e44e77d3" />

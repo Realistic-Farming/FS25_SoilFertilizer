@@ -1533,6 +1533,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Senaste körning: under ett kartsteg" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Senaste körning: produkt förbrukad" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Senaste körning: ingen för grödan" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Senaste paus: ingen växande gröda" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="En arbetsyta, inte hela fältet" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mer skulle överskrida %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Mål för manuell plan" eh="e44e77d3" />

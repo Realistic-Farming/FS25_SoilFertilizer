@@ -1562,6 +1562,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Ostatni przejazd: poniżej kroku" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Ostatni przejazd: produkt zużyty" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Ostatni przejazd: brak dla tej uprawy" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Ostatnia pauza: brak rosnącej uprawy" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Jeden ślad, nie całe pole" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Więcej przekroczyłoby %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Cele planu ręcznego" eh="e44e77d3" />

@@ -72,6 +72,7 @@ function TA.new(soilSystem)
     self.states       = {}      -- server: vehicle object -> state
     self.client       = {}      -- client: vehicle object -> last confirmed result
     self.lastOutcomeByField = {} -- fieldId -> { result, at }: display only (PDA, W1b), never saved
+    self.lastPauseByField = {}   -- fieldId -> { result, at, fieldCrop }: display only (PDA), never saved
     self.epochCounter = 0
     self.aiMessageClass = nil
     return self
@@ -139,6 +140,7 @@ function TA:reset()
     self.states = {}
     self.client = {}
     self.lastOutcomeByField = {}
+    self.lastPauseByField = {}
 end
 
 --- [W1b] Remember a field's last confirmed footprint outcome, for the PDA. One result per
@@ -158,6 +160,47 @@ function TA:getLastOutcomeForField(fieldId)
     if rec == nil then return nil end
     local r = C.copy(rec.result)
     r.notedAt = rec.at
+    return r
+end
+
+--- [PDA pause] A refusal the PDA may name as its field's pause: the reason a surface names is
+--- UNSUPPORTED_CROP (no growing crop), the result names a field (MAINTENANCE 211), and denied
+--- access is not among its reasons. Access is tested on its own, never through the display
+--- order: the witness names an inaccessible field too, and this memory is per field on every
+--- peer, so another farm's refusal would read as the owner's own pause. Positional refusals
+--- (unread ground, the map edge, a crop boundary) say where the boom was, not what the field
+--- grows, and stay the HUD's; priming ranks below, holds carry no reason.
+function TA.isCropPause(r)
+    if type(r) ~= "table" or type(r.fieldId) ~= "number" then return false end
+    for _, x in ipairs(r.reasons or {}) do
+        if x == C.REASON.FARM_ACCESS then return false end
+    end
+    return C.primaryReason(r) == C.REASON.UNSUPPORTED_CROP
+end
+
+--- [PDA pause] Remember a field's last no-crop pause, for the PDA, on entry only: `prev` is the
+--- same vehicle's previous result, and a pause going on over the same field writes nothing (a
+--- refusal is stored every cycle). The entry is stamped with the field report's crop (fieldCropKey,
+--- the read the card's window uses) on this peer, never in the result, so the card keeps its
+--- current-crop rule for a pause that names no crop. A field that reports no crop stores nothing.
+--- Display only: cleared by reset, never saved, never read by the simulation.
+function TA:noteFieldPause(r, prev)
+    if not TA.isCropPause(r) then return end
+    if TA.isCropPause(prev) and prev.fieldId == r.fieldId then return end
+    local fields = self.soilSystem and self.soilSystem.fieldData
+    local stamp = self:fieldCropKey(r.fieldId, fields and fields[r.fieldId] or nil)
+    if stamp == nil then return end
+    if self.lastPauseByField == nil then self.lastPauseByField = {} end
+    self.lastPauseByField[r.fieldId] = { result = C.copy(r), at = now(), fieldCrop = stamp }
+end
+
+--- A copy of the field's last no-crop pause with `notedAt` and its `fieldCrop` stamp, or nil.
+function TA:getLastPauseForField(fieldId)
+    local rec = self.lastPauseByField and self.lastPauseByField[fieldId]
+    if rec == nil then return nil end
+    local r = C.copy(rec.result)
+    r.notedAt = rec.at
+    r.fieldCrop = rec.fieldCrop
     return r
 end
 
@@ -1342,8 +1385,10 @@ function TA:setResult(st, plan, cls)
     r.epoch = st.epoch
     local failed = st.result ~= nil and st.result.doseState == C.STATE.APPLICATION_FAILED
     local changed = st.result == nil or st.result.doseState ~= r.doseState
+    local prev = st.result
     st.result = r
     self:noteFieldOutcome(r)   -- remembered only when it is a footprint outcome (the writer's own test)
+    self:noteFieldPause(r, prev) -- remembered only on entry into a no-crop pause
     self:publish(st, changed or failed or r.doseState == C.STATE.APPLICATION_FAILED)
 end
 
@@ -1396,11 +1441,14 @@ function TA:receive(vehicle, result)
        and tonumber(result.epoch) ~= nil and tonumber(result.epoch) < old.epochSerial then
         return false
     end
+    -- the previous result counts only inside its epoch, as on the server (activate clears it)
+    local prev = (old ~= nil and old.epoch == result.epoch) and old.result or nil
     self.client[vehicle] = {
         epoch = result.epoch, epochSerial = tonumber(result.epoch), sequence = result.sequence,
         receivedAt = now(), result = C.copy(result),
     }
     self:noteFieldOutcome(result)
+    self:noteFieldPause(result, prev)
     return true
 end
 

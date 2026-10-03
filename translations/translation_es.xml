@@ -1533,6 +1533,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Última pasada: bajo un paso del mapa" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Última pasada: producto gastado" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Última pasada: ninguna en este cultivo" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Última pausa: sin cultivo en crecimiento" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Una huella, no todo el campo" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Más superaría %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Objetivos del plan manual" eh="e44e77d3" />

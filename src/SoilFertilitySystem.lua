@@ -6762,6 +6762,19 @@ function SoilFertilitySystem:getLastTargetPassForField(fieldId)
     return nil
 end
 
+--- [PDA pause] The field's last no-crop pause (an AUTO refusal for no growing crop on this
+--- field), a copy carrying `notedAt` and the `fieldCrop` stamp it was noted under, for the PDA;
+--- nil while SF-73 is locked or when this peer has seen none since load or join. Display only.
+--- getLastTargetPassForField above stays outcomes only.
+function SoilFertilitySystem:getLastTargetPauseForField(fieldId)
+    if not self:isTargetGateOpen() then return nil end
+    local ta = self.targetApplication
+    if ta == nil or type(ta.getLastPauseForField) ~= "function" then return nil end
+    local ok, r = pcall(ta.getLastPauseForField, ta, fieldId)
+    if ok then return r end
+    return nil
+end
+
 --- [W1b] The refusal reason a player surface names for a target result (the one display
 --- order the HUD and the PDA read, TargetNutrientCore.REASON_DISPLAY_ORDER), so another
 --- mod's view (FarmTablet, W1c) names the same reason. nil while SF-73 is locked, for an

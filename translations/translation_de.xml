@@ -1551,6 +1551,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Letzte Fahrt: unter Kartenstufe" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Letzte Fahrt: Produkt verbraucht" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Letzte Fahrt: keine für diese Kultur" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Letzte Pause: keine wachsende Kultur" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Eine Arbeitsfläche, nicht das Feld" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Mehr würde %s überschreiten" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Ziele des manuellen Plans" eh="e44e77d3" />

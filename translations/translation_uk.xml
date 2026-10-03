@@ -1533,6 +1533,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Останній прохід: нижче кроку" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Останній прохід: продукт витрачено" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Останній прохід: немає для культури" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Остання пауза: немає культури, що росте" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Один слід, не все поле" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Більше перевищило б %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Цілі ручного плану" eh="e44e77d3" />

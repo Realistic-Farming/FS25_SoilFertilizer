@@ -1593,6 +1593,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Dernier passage : sous un palier" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Dernier passage : produit consommé" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Dernier passage : aucun sur cette culture" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Dernière pause : aucune culture en croissance" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Une empreinte, pas tout le champ" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Plus dépasserait %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Cibles du plan manuel" eh="e44e77d3" />

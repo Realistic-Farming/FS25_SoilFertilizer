@@ -1522,6 +1522,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Последний проход: ниже шага" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Последний проход: продукт израсходован" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Последний проход: нет для культуры" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Последняя пауза: нет растущей культуры" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="Один след, не всё поле" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="Больше превысило бы %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Цели ручного плана" eh="e44e77d3" />

@@ -1598,6 +1598,7 @@
     <e k="sf_tgt_pda_state_quantized" v="Last pass: short, under a map step" eh="03b4dc16" />
     <e k="sf_tgt_pda_state_failed" v="Last pass: product spent" eh="15afe7ea" />
     <e k="sf_tgt_pda_state_none" v="Last pass: none on this crop" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Last pause: no growing crop" eh="b294e56d" />
     <e k="sf_tgt_pda_scope" v="One footprint, not the whole field" eh="d96e3c9b" />
     <e k="sf_tgt_pda_binding" v="More would overshoot %s" eh="53a1a1fe" />
     <e k="sf_tgt_pda_manual_targets" v="Manual plan targets" eh="e44e77d3" />
