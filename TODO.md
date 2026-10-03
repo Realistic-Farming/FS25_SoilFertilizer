@@ -225,3 +225,11 @@
 - [x] AN: `an/bigBag_an.i3d` loads `bigBag_an_diffuse.dds`; the urea copy `an/bigBag_an_diffuse.png` is deleted.
 - [x] Bar: `node tools/test/bigbag-labels-check.mjs` (16 rows; the same bar against development ebe20f77 fails 7 by assertion, naming the AN+UREA and DAP+POLIFOSKA shared labels).
 - [~] In game (owed): the shop preview and a placed bag for DAP, Polifoska and AN each show their own label; no texture or i3d warning for objects/bigBag in log.txt; the same on a dedicated-server client.
+
+## SF-73 section 7 target surface (2026-10-03: W1a #1084, W1b #1088, #1089, #1090)
+
+- [x] W1a: the rate panel's target block (`src/ui/SoilHUD.lua`), 46 keys in 27 locales; bar `SF-73-W1a-hud_target_block_spec_test.lua`.
+- [x] W1b: the PDA target card (`src/ui/RfPdaSoilPanel.lua`), the per-field last-pass memory (`src/target/TargetApplication.lua`), and the one reason order the HUD and the PDA share (`src/target/TargetNutrientCore.lua`); bar `SF-73-W1b-pda_target_card_spec_test.lua`.
+- [x] MAINTENANCE 211: the witness refusal names its field; bar `MAINT-211-refusal_fieldid_spec_test.lua`.
+- [x] The PDA last pause: the per-field pause memory and its guarded read; bar `SF-73-pda_last_pause_spec_test.lua`.
+- [~] In game (owed): TESTING rows 393, 405, 406 and 407, then Sasha's unlock of sf73_target.
