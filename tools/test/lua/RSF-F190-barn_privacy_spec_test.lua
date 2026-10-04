@@ -242,6 +242,11 @@ do
   scan(W)
   T.eq("D4 NAMED: losing the dog clears the barn key and the rows; the regained dog warns again",
     first .. "/" .. lost .. "/" .. barnToasts(), "1/|0/2")
+  W.mission.doghouses[W.dh1] = nil
+  local between = #W.dog:getWarnings(1)
+  W.mission.doghouses[W.dh1] = true
+  T.eq("D4b NAMED: a dog lost between scans: the getter re-reads it and returns nothing, and nothing returns once it is back",
+    between .. "/" .. #W.dog:getWarnings(1), "0/1")
 end
 do
   -- A nil field list (:118 at the trunk returns before the barn walk).
@@ -291,6 +296,15 @@ do
   scan(W)
   T.eq("M2 NAMED: a completed empty crop walk drops the crop key, and the recurrence warns again",
     cleared .. "/" .. cropToasts(), "BARN-ONE_livestock/2")
+  W.fieldOwner[44] = 2
+  local transferred = ids(W.dog:getWarnings(1))
+  W.fieldOwner[44] = 1
+  T.eq("M4 NAMED: a field transferred between scans is not returned (the CD-15 crop membership check)", transferred, "BARN-ONE_livestock")
+  g_localPlayer.farmId = 2
+  MC:publish(MessageType.PLAYER_FARM_CHANGED, g_localPlayer)
+  T.eq("M5 NAMED: a farm switch clears farm 1's barn rows and key and keeps its crop row and crop key",
+    keys(W, 1) .. "/" .. ids(W.dog.warnings[1]), "44_crop/44_crop")
+  g_localPlayer.farmId = 1
 end
 do
   -- Two barns whose ids cannot be read share the fallback key barn_livestock.
@@ -348,6 +362,13 @@ do
   if RELEASE ~= nil then run(RELEASE, { dogWarning = W.dog }) end
   T.eq("T8 NAMED: at unload the dog's subscriber is released and every row and key is gone",
     subscriberCount(W.dog) .. "/" .. ids(W.dog.warnings[1]) .. "/" .. keys(W, 1), "0//")
+end
+
+do
+  local W = world({ farm = 1, foreignSick = false })
+  W.dog:_notify(1, { { fieldId = "BARN-ONE", type = "livestock" } })
+  W.dog.warnings[1] = { { fieldId = "BARN-ONE", type = "livestock" } }
+  T.eq("T9 NAMED: a barn row with no binding (a display id alone) is never toasted or returned", barnToasts() .. "/" .. #W.dog:getWarnings(1), "0/0")
 end
 
 T.eq("strings unchanged: barn fallback", DogEarlyWarning.BARN_WARNING_FALLBACK, "Your dog senses something wrong at Barn %s.")
