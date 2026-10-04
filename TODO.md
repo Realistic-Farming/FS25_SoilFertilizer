@@ -239,3 +239,8 @@
 - [x] `src/DogEarlyWarning.lua`: the presentation context, the private barn bindings, the barn notifier and the pure getter; `src/main.lua` releases the dog at unload.
 - [x] Bars: `RSF-F190-barn_privacy_spec_test.lua` (two farms, main.lua's own dog statements); the F190 reader and F192 l10n benches given a farm-1 player and doghouse; battery `tools/test/mutate_f190_privacy.py`.
 - [~] In game (owed): two farms with a doghouse each and only farm 2's barn sick, on solo, listen host, pure client and dedicated; a spectator; a farm switch before a scan and during a toast; dog loss and regain; a barn transferred, removed and replaced; the provider absent; save and rejoin.
+
+## 2026-10-04 (Fred): the shared RF Esc door (Wizard, #1094)
+
+- [x] The four shared door files at the suite's STOCK page set, byte-same in all ten door mods; StockGuard's STOCK page chrome inert without StockGuard; the herd-advisory panel hidden.
+- [~] In game (owed): TESTING row 419.
