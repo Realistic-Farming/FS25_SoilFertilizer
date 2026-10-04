@@ -248,3 +248,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] Each barn row keeps a private binding to its placeable, re-checked before any toast or getter row: still in the roster, a husbandry, not being deleted, owned by that farm, with a live doghouse. A transferred, deleting or removed barn is not shown between scans, and getWarnings returns fresh copies, never the cache.
 - [x] A barn key is marked only after the HUD call returned, kept while any authorized barn uses it, and cleared when the dog is lost, so a regained dog warns again. A missing crop field list no longer skips the barn walk, and a crop walk that fails part-way keeps the previous crop rows and keys.
 - [x] The dog owns its PLAYER_FARM_CHANGED subscriber and checks the context every frame before its 60 s cadence, and main.lua releases it at unload. The crop warnings are unchanged for their own owner (CD-15).
+
+## 2026-10-04 (Fred): the shared RF Esc door at the suite's STOCK page set (Wizard, #1094)
+
+- [x] The four shared Esc door files (`xml/gui/RfPdaMenuPage.xml`, `src/ui/RfPdaMenuPage.lua`, `src/ui/RfEscModules.lua`, `xml/gui/rfEscProfiles.xml`) are at the set every door mod carries, byte-same in all ten (Wizard's STOCK page chain build, #1094, merged at aaf0feaf): wider sheet cells, the explanation band at up to four lines, the ids and callbacks StockGuard's STOCK page uses (inert without StockGuard), the hidden ids and profiles of DairyCore's herd-advisory panel, ProStaff in the closed-module list, and Soil Fertilizer's AUTO target card kept.
+- The door's in-game check is TESTING row 419. Docs by Fred's catch-up, on Tyson's word of 2026-10-04.
