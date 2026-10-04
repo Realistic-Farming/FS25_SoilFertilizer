@@ -23,6 +23,11 @@
 
 local R = LivestockWarningReader
 
+-- RSF-F190 own-farm privacy (brief v1.0 over #1054): the dog presents a barn only to the
+-- actual local player's own farm, so every dog row below runs as farm 1's player, beside
+-- the farm 1 doghouse the mission fixture places.
+g_localPlayer = { farmId = 1 }
+
 -- ── record fixtures ──────────────────────────────────────
 local function rec(cured, carrier) return { type = "x", cured = cured, isCarrier = carrier } end
 local ACTIVE   = function() return rec(false, false) end
@@ -439,3 +444,4 @@ T.eq("cadence unchanged", DogEarlyWarning.CADENCE_MS, 60000)
 g_currentMission = nil
 g_farmlandManager = nil
 g_i18n = nil
+g_localPlayer = nil
