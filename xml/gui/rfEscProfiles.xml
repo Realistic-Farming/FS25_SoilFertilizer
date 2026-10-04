@@ -261,7 +261,7 @@
     <Profile name="RF_ProductCellRight" extends="RF_ProductCell">
         <textAlignment value="right"/>
     </Profile>
-    <!-- BUILD 09:19 (PB-05): WHAT IF effect cell only. Two lines at the same 14px the
+    <!-- WHAT IF effect cell only. Two lines at the same 14px the
          PRODUCTS table already uses for its own cells, so a comma-joined consequence is
          printed whole instead of losing its last item to a one-line 110px column. Top
          aligned because a two-line cell that centres would not line up with the one-line
@@ -284,7 +284,7 @@
         <clipChildren value="true"/>
     </Profile>
 
-    <!-- Esc card frame so the three Soil cards read as one family (BUILD 12:59).
+    <!-- Esc card frame so the three Soil cards read as one family.
          hasFrame / frameThickness / frame*Color are real GuiElement profile keys
          (GuiElement.lua loadProfile 176-183) - verified against the decompile,
          not invented. Thin white rule; the grey fills underneath are unchanged. -->
@@ -307,14 +307,15 @@
         <frameBottomColor value="1 1 1 0.85"/>
     </Profile>
 
-    <!-- BUILD 16:44c: dial face is the Reinke panel's own POSITION scale, not invented
+
+    <!-- Dial face is the Reinke panel's own POSITION scale, not invented
          art. Atlas is that mod's textures/ControlDecals.dds (1024x1024); the dial island
          measured at x288 y354 400x400, which keeps 0/90/180/270 whole and excludes the
          word POSITION. imageUVs takes the pixel rect and GuiUtils.getUVs normalises it.
          filename is deliberately absent: CsRfPdaGuest resolves the live Reinke mod path
          at runtime, so nothing is redistributed and the face simply does not paint when
          that mod is not installed. -->
-    <!-- BUILD 15:30: the panel prints POSITION above its dial; the UV crop deliberately
+    <!-- The panel prints POSITION above its dial; the UV crop deliberately
          excludes that word (cropping it in clipped a cardinal), so it is set as text. -->
     <Profile name="RF_CsPivotDialLabel" extends="fs25_textDefault" with="anchorTopLeft">
         <textSize value="11px"/>
@@ -340,7 +341,7 @@
         <size value="92px 92px"/>
         <handleFocus value="false"/>
     </Profile>
-    <!-- BUILD 16:44c current arm: neutral chrome, ~68% radius. Full-radius ray bars replaced by a short hand;
+    <!-- Neutral chrome, ~68% radius. Full-radius ray bars replaced by a short hand;
          suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleCur" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
@@ -348,7 +349,7 @@
         <size value="5px 30px"/>
         <handleFocus value="false"/>
     </Profile>
-    <!-- BUILD 16:44c LimitA: green, ~59% radius. Full-radius ray bars replaced by a short hand;
+    <!-- Green, ~59% radius. Full-radius ray bars replaced by a short hand;
          suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleMin" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
@@ -356,7 +357,7 @@
         <size value="4px 26px"/>
         <handleFocus value="false"/>
     </Profile>
-    <!-- BUILD 16:44c LimitB: red, ~59% radius. Full-radius ray bars replaced by a short hand;
+    <!-- Red, ~59% radius. Full-radius ray bars replaced by a short hand;
          suite lime deliberately absent so the dial reads as the world instrument. -->
     <Profile name="RF_CsPivotNeedleMax" extends="baseReference" with="anchorTopLeft pivotTopLeft">
         <filename value="$dataS/menu/blank.png"/>
@@ -366,7 +367,7 @@
     </Profile>
     <!-- Pivot remotes: buttonActivate plate + hideKeyboardGlyph (SPACE off). Option A fs25_wideButton alone = chrome FAIL. -->
     <!-- Pivot remotes: vanilla ButtonOverlay SPACE chrome; labels painted as key
-         chips from CsRfPdaGuest, not as TextElement text. The BUILD 23:59 v2
+         chips from CsRfPdaGuest, not as TextElement text. The v2
          colorPreset plate is deliberately gone - it was a different chrome family.
          iconSize stays non-zero: 0x0 collapses the chip height. -->
     <Profile name="RF_CsPivotBtn" extends="buttonActivate" with="anchorTopLeft pivotTopLeft">
@@ -387,7 +388,7 @@
          that action's SPACE key chip on every button carrying it, which is what shoved each
          label out of its own 120px box and into the next button ("< BACK" + the neighbouring
          chip is what read as "BACKSPACE" on screen).
-         BUILD 00:06 correction (George CLOSED DESIGN 23:12, decompiled ButtonElement.lua /
+         12, decompiled ButtonElement.lua /
          ScreenElement.lua): the sentence that used to sit here calling hideKeyboardGlyph and
          isTriggerableByGlobalAction inert was wrong. Both are real ButtonElement fields:
          hideKeyboardGlyph (ButtonElement.lua default :22, profile :131) skips the SPACE chip at
@@ -408,15 +409,32 @@
         <textAutoWidth value="false"/>
         <textAlignment value="center"/>
     </Profile>
+    <!-- Multi-pivot Esc switcher (farm patches): keep arrows visible when needed. -->
+    <Profile name="RF_CsPivotSwitcher" extends="fs25_subCategorySelector">
+        <size value="540px 28px"/>
+        <absoluteSizeOffset value="56px 0px"/>
+        <position value="0px 0px"/>
+        <disableButtonsOnSingleText value="false"/>
+        <defaultProfileText value="RF_CsPivotSwitcherText"/>
+    </Profile>
+    <Profile name="RF_CsPivotSwitcherText" extends="fs25_subCategorySelectorText">
+        <textSize value="14px"/>
+        <textBold value="false"/>
+        <textMaxWidth value="400px"/>
+        <textMaxNumLines value="1"/>
+        <textLayoutMode value="resize"/>
+        <textAlignment value="center"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
     <Profile name="RF_ProductsRowsClip" extends="emptyPanel" with="anchorTopLeft pivotTopLeft">
         <size value="560px 160px"/>
         <clipChildren value="true"/>
     </Profile>
 
-    <!-- BUILD 16:19 card padding + zone splits.
+    <!-- card padding + zone splits.
          RF_EscCardRule: the 1px hairline between a card's upper and lower zone.
-         George ranked "gap only" first and a thin blank.png rule second, both GO;
-         Samantha asked for air AND one rule, so this is the rule half. Real
+         ranked "gap only" first and a thin blank.png rule second, both GO;
+         asked for air AND one rule, so this is the rule half. Real
          filename + explicit imageColor per the fence (a nil Bitmap paints purple).
          Size is set per instance because middle is 540 wide and right is 270.
          RF_ProductCellDense / *Right / RF_ProductColHeaderDense: 14px twins of the
@@ -487,7 +505,7 @@
         F9 page root: fill Esc paging content (uiInGameMenuPaging already sits
         past the 125px icon rail). Do NOT use vanilla uiInGameMenuFrame here —
         that profile is fixed 1400x756 + anchorMiddleCenter and leaves constant gutters.
-        George cite: extract/dataS/guiProfiles.xml uiInGameMenuFrame.
+        Extract/dataS/guiProfiles.xml uiInGameMenuFrame.
     -->
     <Profile name="RF_PageRoot" extends="emptyPanel" with="anchorStretchingYStretchingX">
         <size value="100% 100%"/>
@@ -495,7 +513,7 @@
         <position value="0px 0px"/>
     </Profile>
 
-    <!-- F8: side ~1/4 of Esc RF content (Wizard yellow line); wider than vanilla 410/463. -->
+    <!-- F8: side ~1/4 of Esc RF content; wider than vanilla 410/463. -->
     <!-- F10: keep side 520; shrink chrome overhang (was +53) and butt main — closes centre black bar. -->
     <Profile name="RF_SideColShell" extends="fs25_subCategoryContainer">
         <width value="520px"/>
@@ -516,6 +534,44 @@
          blank.png + noSlice on a ThreePartBitmap paints the raw gui atlas (2026-08-04 lesson). -->
     <Profile name="RF_SubCategoryContainerBg" extends="fs25_subCategoryContainerBg">
         <width value="404px"/>
+    </Profile>
+
+    <!-- RF-prefixed clones of MapFrame-local fs25_mapList* (~56px pitch). -->
+    <Profile name="RF_MapList" extends="fs25_subCategoryList" with="anchorTopCenter">
+        <absoluteSizeOffset value="0px 60px"/>
+    </Profile>
+    <Profile name="RF_MapListItem" extends="fs25_subCategoryListItem">
+        <height value="56px"/>
+        <hotspot value="0px 0px 0px 12px"/>
+        <imageSliceId value="gui.map_box"/>
+        <imageSelectedSliceId value="gui.map_box_selected"/>
+        <imageHighlightedSliceId value="gui.map_box_hover"/>
+    </Profile>
+    <Profile name="RF_MapListItemIconBg" extends="baseReference" with="anchorTopLeft">
+        <size value="40px 40px"/>
+        <position value="3px -3px"/>
+        <imageSliceId value="gui.map_box_colorOverlay"/>
+        <imageColor value="$preset_colorBlack"/>
+        <imageSelectedColor value="$preset_colorWhite"/>
+    </Profile>
+    <Profile name="RF_MapListColorTemplate" extends="baseReference">
+        <size value="1px 40px"/>
+        <imageColor value="$preset_colorTransparent"/>
+        <imageSelectedColor value="$preset_colorTransparent"/>
+    </Profile>
+    <Profile name="RF_MapListItemIcon" extends="fs25_subCategoryListItemIcon" with="anchorTopLeft">
+        <size value="34px 34px"/>
+        <position value="6px -6px"/>
+        <filename value="$dataS/menu/blank.png"/>
+        <imageColor value="0 0 0 0"/>
+        <imageSelectedColor value="0 0 0 0"/>
+    </Profile>
+    <Profile name="RF_MapListItemName" extends="fs25_subCategoryListItemName" with="anchorTopLeft">
+        <width value="300px"/>
+        <position value="52px -12px"/>
+        <textSize value="16px"/>
+        <textColor value="0.659 0.678 0.702 1"/>
+        <textSelectedColor value="0.659 0.878 0.290 1"/>
     </Profile>
 
     <Profile name="RF_PanelContentShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
@@ -542,7 +598,7 @@
     </Profile>
 
     <!-- MDM TOP commodities vs BOTTOM band: reserve = RF_TreatmentStrip 432 + 24 air, so the last crop row
-         clears the PRICE TREND card title (BUILD 09:32). MDM-only; do not change shared Soil table shell. -->
+         clears the PRICE TREND card title. MDM-only; do not change shared Soil table shell. -->
     <Profile name="RF_MdTableRegionShell" extends="emptyPanel" with="anchorStretchingYStretchingX pivotTopLeft">
         <absoluteSizeOffset value="0px 456px"/>
         <position value="0px 0px"/>
@@ -576,14 +632,14 @@
         <height value="520px"/>
     </Profile>
 
-    <!-- Wizard swatches: blank.png + imageColor (never nil filename); stretch fill parents -->
+    <!-- blank.png + imageColor (never nil filename); stretch fill parents -->
     <Profile name="RF_SideColBg" extends="baseReference" with="anchorStretchingYStretchingX">
         <filename value="$dataS/menu/blank.png"/>
         <imageColor value="0.165 0.176 0.157 0.92"/>
         <handleFocus value="false"/>
     </Profile>
 
-    <!-- Round 4: sidebar repaint with the vanilla glass slice (George, extract gui.xml UV 936 441 10 104).
+    <!-- Round 4: sidebar repaint with the vanilla glass slice.
          extends baseReference = gui atlas + engine white; NO blank.png, NO imageColor (vanilla tone is
          baked in the atlas pixels, zero tint). anchorStretchingYLeft -> x 0..404, full column height. -->
     <Profile name="RF_SideColUnderlay" extends="baseReference" with="anchorStretchingYLeft">
@@ -645,6 +701,7 @@
         <textAlignment value="left"/>
     </Profile>
 
+
     <Profile name="RF_SmoothList" extends="emptyPanel" with="anchorStretchingYLeft pivotTopLeft"/>
 
     <Profile name="RF_ListRow" extends="emptyPanel" with="anchorTopStretchingX pivotTopLeft">
@@ -689,7 +746,7 @@
         <height value="48px"/>
     </Profile>
 
-    <!-- BUILD 00:06 (George CLOSED DESIGN 23:12): NPC Favor scrollable tables inside rfFwTableBlock.
+    <!-- 12): NPC Favor scrollable tables inside rfFwTableBlock.
          Box = fixed top-left panel the SmoothList stretches into (mdCommodityList uses the engine
          fs25_subCategoryListContainer; these boxes are placed by px inside the 1140x780 bay instead).
          Roster rows 60px (two text lines), favor rows 32px (one line). Cells are RF_CellLeft at the
@@ -727,14 +784,14 @@
         <textVerticalAlignment value="middle"/>
     </Profile>
 
-    <!-- BUILD 17:21: the shared Esc table list. 28px rows are the sheet's own pitch, so the four
+    <!-- The shared Esc table list. 28px rows are the sheet's own pitch, so the four
          column headers above the box still line up; the clippers are 12px because the engine's own
          are 39px, sized for the 420px roster box. -->
     <Profile name="RF_FwSheetList" extends="RF_SmoothList">
         <size value="1112px 480px"/>
         <handleFocus value="false"/>
     </Profile>
-    <!-- BUILD 19:15: the Soil field-list family - 48px rows and 18px cells - so the shared table reads
+    <!-- The Soil field-list family - 48px rows and 18px cells - so the shared table reads
          at the same weight as the Soil list instead of a denser one. -->
     <Profile name="RF_FwSheetItem" extends="RF_ListRow">
         <height value="48px"/>
@@ -752,14 +809,14 @@
     <Profile name="RF_SheetStopClipper" extends="fs25_secondaryMenuStopClipper">
         <height value="24px"/>
     </Profile>
-    <!-- BUILD 19:15: the selected-row readout under the sheet. Three lines of hint text, top aligned. -->
+    <!-- The selected-row readout under the sheet. Three lines of hint text, top aligned. -->
     <Profile name="RF_SheetBand" extends="RF_HintText">
         <textSize value="18px"/>
         <textMaxNumLines value="3"/>
         <textVerticalAlignment value="top"/>
     </Profile>
 
-    <!-- BUILD 17:21 (George CLOSED DESIGN 14:00): an invisible per-row hit target for the Esc Market
+    <!-- 00): an invisible per-row hit target for the Esc Market
          contracts rows. It extends the pivot chip so the overlay-chip law's guards come with it
          (hideKeyboardGlyph, isTriggerableByGlobalAction false, so SPACE can never activate a row);
          nothing paints because fs25_wideButton's own background is emptyPanel-transparent, the icon
@@ -770,7 +827,7 @@
         <textSize value="1px"/>
     </Profile>
 
-    <!-- BUILD 11:40 (George CLOSED DESIGN 11:25): the in-card herd / milk breed lists on the Dairy cards.
+    <!-- 25): the in-card herd / milk breed lists on the Dairy cards.
          20px rows = four visible in the 80px box (today's density); the slider shows only when rows overflow. -->
     <Profile name="RF_DairyBreedList" extends="RF_SmoothList">
         <size value="520px 80px"/>
@@ -805,7 +862,7 @@
         <textSelectedColor value="0.95 0.95 0.95 1"/>
     </Profile>
 
-    <!-- BUILD 16:56: Soil fields table only (text -2 so RESISTANCE has room). CS/MDM tables keep the shared profiles above. -->
+    <!-- Soil fields table only (text -2 so RESISTANCE has room). CS/MDM tables keep the shared profiles above. -->
     <Profile name="RF_SoilColHeader" extends="RF_ColHeader">
         <textSize value="17px"/>
     </Profile>
@@ -866,5 +923,41 @@
     <Profile name="RF_InfoBoxBg" extends="baseReference" with="anchorStretchingYStretchingX">
         <filename value="$dataS/menu/blank.png"/>
         <imageColor value="0 0 0 0.35"/>
+    </Profile>
+
+    <!-- The F166 herd-advisory panel's profiles. The panel's elements come into
+         RfPdaMenuPage.xml in this same build, and without these they would fall back to the base
+         reference profile and log "Could not retrieve GUI profile". -->
+    <Profile name="RF_DairyAdvisoryDetailItem" extends="RF_ListRow">
+        <height value="22px"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryDetailLine" extends="RF_FwListCell">
+        <textSize value="15px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryDetailList" extends="RF_SmoothList">
+        <size value="1090px 440px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryItem" extends="RF_ListRow">
+        <height value="40px"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryLabel" extends="RF_FwListCell">
+        <textSize value="16px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryList" extends="RF_SmoothList">
+        <size value="1090px 200px"/>
+        <handleFocus value="false"/>
+    </Profile>
+    <Profile name="RF_DairyAdvisoryReason" extends="RF_FwListCell">
+        <textSize value="15px"/>
+        <textBold value="false"/>
+        <textMaxNumLines value="1"/>
+        <textVerticalAlignment value="middle"/>
     </Profile>
 </GUIProfiles>
