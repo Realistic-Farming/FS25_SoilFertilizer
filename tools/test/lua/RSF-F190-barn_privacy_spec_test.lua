@@ -208,6 +208,7 @@ do
   local rowsBefore = ids(a)
   if a[1] then a[1].fieldId = "CORRUPT" end
   a[#a + 1] = { fieldId = "INJECTED", type = "livestock" }
+  T.eq("E2b NAMED: a request for another farm never gets the context farm's own rows", #W.dog:getWarnings(2), 0)
   T.eq("D1 NAMED: the getter's rows and list are detached copies and carry no binding",
     rowsBefore .. "/" .. ids(W.dog:getWarnings(1)) .. "/" .. tostring(W.dog:getWarnings(1)[1] and W.dog:getWarnings(1)[1]._binding),
     "BARN-ONE_livestock/BARN-ONE_livestock/nil")
@@ -307,6 +308,25 @@ do
   g_localPlayer.farmId = 1
 end
 do
+  -- An unavailable crop walk keeps the crop keys even with no crop row to carry them: the dog's loss
+  -- drops the farm's rows (the crop owner's existing early return) and keeps its crop key.
+  local W = world({ farm = 1, foreignSick = false })
+  W.fields = { { farmland = { id = 44 } } }
+  W.fieldOwner[44] = 1
+  W.cropInfo[44] = { activeDisease = "late_blight" }
+  scan(W)
+  W.mission.doghouses[W.dh1] = nil
+  scan(W)
+  W.mission.doghouses[W.dh1] = true
+  W.fields = nil
+  scan(W)
+  local kept = keys(W, 1)
+  W.fields = { { farmland = { id = 44 } } }
+  scan(W)
+  T.eq("M6 NAMED: an unavailable crop walk sends no crop toast and prunes no crop key, so the still-sick field does not warn twice",
+    kept .. "/" .. cropToasts(), "44_crop/1")
+end
+do
   -- Two barns whose ids cannot be read share the fallback key barn_livestock.
   local a, b = barn(1, nil, true), barn(1, nil, true)
   local W = world({ farm = 1, foreignSick = false, extra = { a, b } })
@@ -328,26 +348,37 @@ end
 -- T. TOPOLOGIES, PURITY, THE UPDATE-TIME CHECK, UNLOAD
 -- ══════════════════════════════════════════════════════════════════════════
 do
-  local W = world({ player = false })   -- a dedicated server: no local player
+  local W = world({ player = false, ownSick = true })   -- a dedicated server: no local player, both barns sick
   scan(W)
-  T.eq("T1 a dedicated server presents no barn and returns empty lists", barnToasts() .. "/" .. #W.dog:getWarnings(1) .. "/" .. #W.dog:getWarnings(2), "0/0/0")
+  T.eq("T1 NAMED: a dedicated server presents no barn, of any farm, and returns empty lists", barnToasts() .. "/" .. #W.dog:getWarnings(1) .. "/" .. #W.dog:getWarnings(2), "0/0/0")
   W = world({ farm = 0 })               -- a spectator
   scan(W)
   T.eq("T2 a spectator (farm 0) sees and reads nothing", barnToasts() .. "/" .. #W.dog:getWarnings(0) .. "/" .. #W.dog:getWarnings(2), "0/0/0")
+  -- A non-ordinary farm that does exist: the base game's guided-tour farm (FarmManager GUIDED_TOUR 14),
+  -- with its own doghouse and a sick barn of its own.
+  W = world({ farm = 14 })
+  local dh14 = { getOwnerFarmId = function() return 14 end }
+  W.mission.doghouses[dh14] = true
+  W.placeables[#W.placeables + 1] = barn(14, "BARN-TOUR", true)
+  g_farmManager = { getFarms = function() return { { farmId = 1 }, { farmId = 2 }, { farmId = 14 } } end }
+  scan(W)
+  T.eq("T2b NAMED: a player on a non-ordinary farm (the guided tour's 14) is no presentation context: its own sick barn shows nothing",
+    barnToasts() .. "/" .. #W.dog:getWarnings(14), "0/0")
   W = world({ client = true, farm = 1 }) -- a pure client on farm 1
   scan(W)
   local internal2 = ids(W.dog.warnings[2])
   T.eq("T3 a pure client walks only its own farm's barns: farm 2's sick barn is never even cached", internal2 .. "/" .. barnToasts(), "/0")
 end
 do
-  local W = world({ farm = 1, ownSick = true, foreignSick = false })
+  local W = world({ farm = 1, ownSick = true })   -- both barns sick: a listen host caches farm 2's too
   scan(W)
   local before = keys(W, 1) .. "|" .. ids(W.dog.warnings[1]) .. "|" .. tostring(W.dog.lastScan)
   W.dog:getWarnings(1); W.dog:getWarnings(2); W.dog:getWarnings(1)
   T.eq("T4 the getter is pure: keys, cache and cadence unchanged", keys(W, 1) .. "|" .. ids(W.dog.warnings[1]) .. "|" .. tostring(W.dog.lastScan), before)
   -- The farm changes without a publish (a late actor): the next frame clears before the cadence.
   g_localPlayer.farmId = 2
-  T.eq("T5 a context the update has not caught up with returns empty for both farms", #W.dog:getWarnings(1) .. "/" .. #W.dog:getWarnings(2), "0/0")
+  T.eq("T5 NAMED: a context the update has not caught up with returns empty for both farms, never farm 2's cached barn",
+    #W.dog:getWarnings(1) .. "/" .. #W.dog:getWarnings(2), "0/0")
   tick(W, 1)
   T.eq("T5b the update-time check, before the cadence return, clears the old farm's barn rows and key and keeps no foreign row",
     keys(W, 1) .. "|" .. ids(W.dog.warnings[1]) .. "|" .. barnToasts(), "||1")
@@ -369,6 +400,11 @@ do
   W.dog:_notify(1, { { fieldId = "BARN-ONE", type = "livestock" } })
   W.dog.warnings[1] = { { fieldId = "BARN-ONE", type = "livestock" } }
   T.eq("T9 NAMED: a barn row with no binding (a display id alone) is never toasted or returned", barnToasts() .. "/" .. #W.dog:getWarnings(1), "0/0")
+  local shed = { getOwnerFarmId = function() return 1 end }   -- in the roster, owned by farm 1, not a husbandry
+  W.placeables[#W.placeables + 1] = shed
+  W.dog:_notify(1, { { fieldId = "SHED", type = "livestock", _binding = shed } })
+  W.dog.warnings[1] = { { fieldId = "SHED", type = "livestock", _binding = shed } }
+  T.eq("T9b NAMED: a row bound to a placeable that is not a husbandry is never toasted or returned", barnToasts() .. "/" .. #W.dog:getWarnings(1), "0/0")
 end
 
 T.eq("strings unchanged: barn fallback", DogEarlyWarning.BARN_WARNING_FALLBACK, "Your dog senses something wrong at Barn %s.")
