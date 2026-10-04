@@ -40,9 +40,9 @@
                                  position="8px -130px" width="380px" visible="false"/>
 
                 <!-- Soil/CS left info. -->
-                <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" visible="false" handleFocus="false">
+                <GuiElement profile="RF_SideInfoShell" id="rfSideInfoShell" position="26px -148px" size="368px 660px" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="368px 644px"
+                    <Text profile="RF_SideInfoBody" id="rfSideInfoBody" position="8px -8px" size="320px 644px"
                           textMaxNumLines="36" textVerticalAlignment="top" text=""/>
                 </GuiElement>
 
@@ -86,9 +86,9 @@
                     <RoundCorner profile="fs25_subCategorySelectorDot"/>
                 </BoxLayout>
                 <!-- WC lower/smaller side help (under page MTO; About consolidated here). -->
-                <GuiElement profile="RF_WcSideInfoShell" id="wcSideInfoShell" visible="false" handleFocus="false">
+                <GuiElement profile="RF_WcSideInfoShell" id="wcSideInfoShell" position="26px -80px" size="368px 240px" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_WcSideBody" id="wcSideInfoBody" position="8px -8px" size="364px 224px"
+                    <Text profile="RF_WcSideBody" id="wcSideInfoBody" position="8px -8px" size="320px 224px"
                           textMaxNumLines="12" textVerticalAlignment="top" text=""/>
                 </GuiElement>
             </GuiElement>
@@ -103,9 +103,9 @@
                 </BoxLayout>
                 <!-- MDM side help under page MTO (WC nest twin; hide Soil rfSideInfoShell when MDM active).
                      Round 2 D3: inline position removed; centres via shared RF_WcSideInfoShell -367. -->
-                <GuiElement profile="RF_WcSideInfoShell" id="mdSideInfoShell" visible="false" handleFocus="false">
+                <GuiElement profile="RF_WcSideInfoShell" id="mdSideInfoShell" position="26px -80px" size="368px 240px" visible="false" handleFocus="false">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_WcSideBody" id="mdSideInfoBody" position="8px -8px" size="364px 224px"
+                    <Text profile="RF_WcSideBody" id="mdSideInfoBody" position="8px -8px" size="320px 224px"
                           textMaxNumLines="12" textVerticalAlignment="top" text=""/>
                 </GuiElement>
             </GuiElement>
@@ -126,10 +126,10 @@
                      rfFilterBox once the subnav it was avoiding was retired. This element is
                      kept, never shown, and cleared every refresh, so the id still binds and a
                      stale nested copy cannot surface behind the live one. -->
-                <GuiElement profile="RF_WcSideInfoShell" id="csSideInfoShell" visible="false"
+                <GuiElement profile="RF_WcSideInfoShell" id="csSideInfoShell" position="26px -80px" size="368px 240px" visible="false"
                             handleFocus="false" clipChildren="true">
                     <Bitmap profile="RF_InfoBoxBg" handleFocus="false"/>
-                    <Text profile="RF_WcSideBody" id="csSideInfoBody" position="8px -8px" size="364px 224px"
+                    <Text profile="RF_WcSideBody" id="csSideInfoBody" position="8px -8px" size="320px 224px"
                           textMaxNumLines="12" textVerticalAlignment="top" text=""/>
                 </GuiElement>
             </GuiElement>
