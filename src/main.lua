@@ -820,6 +820,9 @@ local function unload(mission)
     if SoilScoutingBridge and SoilScoutingBridge.unregisterFarmTransitionSubscriber then
         SoilScoutingBridge.unregisterFarmTransitionSubscriber()
     end
+    -- RSF-F190: the dog releases its own farm-change subscriber and every barn binding
+    -- before its reference goes (its target is its own, never SoilScoutingBridge's).
+    if dogWarning ~= nil and dogWarning.delete ~= nil then pcall(dogWarning.delete, dogWarning) end
     if sfm ~= nil then
         sfm:delete()
         sfm = nil

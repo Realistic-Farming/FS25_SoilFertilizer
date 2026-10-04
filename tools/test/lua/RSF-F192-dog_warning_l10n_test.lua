@@ -14,9 +14,17 @@ T.eq("F192: field fallback is the exact English sentence", DogEarlyWarning.FIELD
 T.eq("F192: barn fallback is the exact English sentence", DogEarlyWarning.BARN_WARNING_FALLBACK, EN_BARN)
 
 local shown = {}
+-- RSF-F190 own-farm privacy (brief v1.0 over #1054): a barn warning reaches this machine's
+-- HUD only for the actual local player's own farm, with a live doghouse, from a row bound to
+-- a current roster husbandry that farm owns. The fixture is that world: player and doghouse
+-- on farm 1, and one barn placeable each barn row is bound to, as DogEarlyWarning:scan binds.
+g_localPlayer = { farmId = 1 }
+local BARN = { spec_husbandryAnimals = {}, getOwnerFarmId = function() return 1 end }
+local DOGHOUSE = { getOwnerFarmId = function() return 1 end }
 local function newHud()
   shown = {}
-  g_currentMission = { hud = { showBlinkingWarning = function(_self, msg, ms) shown[#shown + 1] = { msg = msg, ms = ms } end } }
+  g_currentMission = { hud = { showBlinkingWarning = function(_self, msg, ms) shown[#shown + 1] = { msg = msg, ms = ms } end },
+                       doghouses = { [DOGHOUSE] = true }, placeableSystem = { placeables = { BARN } } }
 end
 
 local function i18nWith(texts, opts)
@@ -46,7 +54,7 @@ end
 do
   g_i18n = i18nWith({ sf_dog_field_warning = "Feld #%s riecht komisch.", sf_dog_barn_warning = "Stall %s riecht komisch." })
   local dog = DogEarlyWarning.new({})
-  local out = notify(dog, { { fieldId = 12, type = "crop" }, { fieldId = "B3", type = "barn" } })
+  local out = notify(dog, { { fieldId = 12, type = "crop" }, { fieldId = "B3", type = "barn", _binding = BARN } })
   T.eq("F192: two warnings shown", #out, 2)
   T.eq("F192: localized field sentence", out[1].msg, "Feld #12 riecht komisch.")
   T.eq("F192: localized barn sentence", out[2].msg, "Stall B3 riecht komisch.")
@@ -85,7 +93,7 @@ end
 do
   g_i18n = i18nWith({ sf_dog_barn_warning = "Barn %s is 100%% off." })
   local dog = DogEarlyWarning.new({})
-  local out = notify(dog, { { fieldId = 4, type = "barn" } })
+  local out = notify(dog, { { fieldId = 4, type = "barn", _binding = BARN } })
   T.eq("F192: escaped %% is literal", out[1].msg, "Barn 4 is 100% off.")
 end
 
@@ -93,18 +101,18 @@ end
 do
   g_i18n = i18nWith({})
   local dog = DogEarlyWarning.new({})
-  local list = { { fieldId = 1, type = "crop" }, { fieldId = 2, type = "barn" } }
+  local list = { { fieldId = 1, type = "crop" }, { fieldId = 2, type = "barn", _binding = BARN } }
   local first = notify(dog, list)
   T.eq("F192: first pass warns for both", #first, 2)
   T.eq("F192: dedupe key set (field)", dog.notifiedFields[1]["1_crop"], true)
   T.eq("F192: dedupe key set (barn)", dog.notifiedFields[1]["2_barn"], true)
   local second = notify(dog, list)
   T.eq("F192: second pass repeats nothing", #second, 0)
-  local third = notify(dog, { { fieldId = 2, type = "barn" } })
+  local third = notify(dog, { { fieldId = 2, type = "barn", _binding = BARN } })
   T.eq("F192: still nothing new", #third, 0)
   T.eq("F192: stale field key cleaned", dog.notifiedFields[1]["1_crop"], nil)
   T.eq("F192: live barn key kept", dog.notifiedFields[1]["2_barn"], true)
-  local fourth = notify(dog, { { fieldId = 1, type = "crop" }, { fieldId = 2, type = "barn" } })
+  local fourth = notify(dog, { { fieldId = 1, type = "crop" }, { fieldId = 2, type = "barn", _binding = BARN } })
   T.eq("F192: a cleaned key warns again", #fourth, 1)
   T.eq("F192: ...and it is the field one", fourth[1].msg, "Your dog senses something wrong with Field #1.")
 end
@@ -129,3 +137,4 @@ do
   T.eq("F192: formatWarning tostrings a number", DogEarlyWarning.formatWarning("k", EN_BARN, 3), "Your dog senses something wrong at Barn 3.")
   T.eq("F192: formatWarning tostrings nil", DogEarlyWarning.formatWarning("k", EN_FIELD, nil), "Your dog senses something wrong with Field #nil.")
 end
+g_localPlayer = nil

@@ -241,3 +241,10 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] MAINTENANCE 211 (#1089): a refused pass names the field it was refused on, and the crop only when it is one supported crop, so the field is on the result for the PDA and the Tablet.
 - [x] The PDA last pause (#1090): the card names a field's last no-crop pause ("Last pause: no growing crop" with a card-sized manual hint) when it is newer than the field's last pass and while the field reports the same crop. Another farm's refusal is never shown as the owner's pause.
 - [~] Target mode and these surfaces stay LOCKED behind the sf73_target release gate until their in-game observations (TESTING rows 393, 405, 406 and 407) and Sasha's unlock. FarmTablet's view (W1c) shipped in FarmTablet #209.
+
+## 2026-10-04 (Fred): RSF-F190 own-farm barn-warning privacy (Unified A3, over #1054)
+
+- [x] The dog's barn warning belongs only to the local player's own farm. Detection may still cache every farm it scans, but a barn toast or a getWarnings row reaches this machine only for the actual local player's ordinary current farm; a dedicated server presents nothing, and a spectator or a non-ordinary farm gets nothing.
+- [x] Each barn row keeps a private binding to its placeable, re-checked before any toast or getter row: still in the roster, a husbandry, not being deleted, owned by that farm, with a live doghouse. A transferred, deleting or removed barn is not shown between scans, and getWarnings returns fresh copies, never the cache.
+- [x] A barn key is marked only after the HUD call returned, kept while any authorized barn uses it, and cleared when the dog is lost, so a regained dog warns again. A missing crop field list no longer skips the barn walk, and a crop walk that fails part-way keeps the previous crop rows and keys.
+- [x] The dog owns its PLAYER_FARM_CHANGED subscriber and checks the context every frame before its 60 s cadence, and main.lua releases it at unload. The crop warnings are unchanged for their own owner (CD-15).
