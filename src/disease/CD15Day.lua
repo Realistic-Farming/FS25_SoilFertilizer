@@ -260,7 +260,11 @@ function D.settleCell(c, gx, gz, input, ci)
             id = HybridStrains.selectOnset({ resistance = c.resistance, lastCrop = c.cropName, hybridBlockedUntilDay = c.hybridCooldownExpiryDay }, day)
         end
         if id == nil then
-            id = SoilDiseaseSystem.selectDisease(c.cropName, input.season, input.isWet, input.isCool, D.seed(ci.fieldId, gx, gz, day))
+            -- #1062's MINOR 2 (:117, :124): the cell's own wetness when the caller passed it (CD15Model
+            -- settleEntry, wetAt), else the day's weather flag.
+            local wet = ci.wet
+            if wet == nil then wet = input.isWet end
+            id = SoilDiseaseSystem.selectDisease(c.cropName, input.season, wet == true, input.isCool, D.seed(ci.fieldId, gx, gz, day))
         end
         if id ~= nil and G.isDiseaseName(id) then
             c.diseaseName = id
@@ -313,12 +317,14 @@ end
 --- destination may receive this source's disease. Sources run in (tz, tx, localKey)
 --- order, and a clean destination takes the identity in place on the first admitted
 --- hop, so a later source of another identity finds it competing and does nothing.
---- Returns the pairs applied.
-function D.spreadFrom(store, source, admits)
+--- member(gx, gz), when given, is the row discovery's membership admits for a destination
+--- that has none (#1062's MINOR 3, :133, :220), or nil. Returns the pairs applied.
+function D.spreadFrom(store, source, admits, member)
     local applied = 0
     for _, h in ipairs(D.HOPS) do
         local gx, gz = source.gx + h[1], source.gz + h[2]
         local dest = (gx >= 0 and gz >= 0) and store:get(gx, gz) or nil
+        if dest == nil and member ~= nil and gx >= 0 and gz >= 0 then dest = member(gx, gz) end
         if dest ~= nil and admits(dest, gx, gz, source.diseaseName) then
             local same = dest.diseaseName == source.diseaseName
             if dest.diseaseName == nil then
