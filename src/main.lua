@@ -286,6 +286,9 @@ source(modDirectory .. "src/disease/CD15Day.lua")
 source(modDirectory .. "src/disease/CD15Model.lua")
 -- Step 1b: the save participant on Soil's native save boundary (server only).
 source(modDirectory .. "src/disease/CD15Save.lua")
+-- Step 1c: candidate discovery and admission; production has no supported native profile, so
+-- every witness answers UNKNOWN_OCCURRENCE and nothing is admitted (server only).
+source(modDirectory .. "src/disease/CD15Admission.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")

@@ -261,7 +261,7 @@
 
 - [x] `src/disease/CD15Save.lua` (new): header, payload, completion, restore decision; `src/disease/CD15Model.lua`: RESTORING, FIRST_ACTIVATION, QUARANTINED, import and export of the day work, `fail`; header seams in `src/SoilFertilityManager.lua` and `src/integrations/SoilStateLedgerBridge.lua`; install and teardown in `src/main.lua`; the two pcall seams in `src/SoilFertilitySystem.lua`.
 - [x] Bars: `CD15-1b-save_participant_spec_test.lua` (E entry point, B, Q, D, L, C, F, O, W, J); group M in `CD15-1a-local_grid_spec_test.lua` (the seams); battery `tools/test/mutate_cd15_1b.py`.
-- [ ] Step 1c: discovery, classification, the whole-cell witness and admission (answering UNKNOWN_OCCURRENCE until a supported profile exists); it resumes the discovery cursor this payload already carries.
+- [x] Step 1c: discovery, classification, the whole-cell witness and admission (answering UNKNOWN_OCCURRENCE until a supported profile exists); it resumes the discovery cursor this payload already carries (2026-10-06, below).
 - [ ] Step 2's and 3's writers bring the re-entry invalidation of an open attempt (brief :91).
 - [~] In game (owed): a save and reload with Soil alone and with StockGuard; a save interrupted by quitting; a hand-deleted soilDisease.xml loads quarantined.
 
@@ -269,3 +269,10 @@
 
 - [x] 43 garbled title and description lines decoded back to the text already decided; nothing else touched.
 - [~] In game (owed): TESTING row 483.
+
+## CD-15 step 1c: discovery and admission (2026-10-06)
+
+- [x] `src/disease/CD15Admission.lua` (new): candidates from the cultivated polygons and the kept rows, the vocabulary classification, the whole-cell witness over every plane and overlapping pixel, admission, membership, the profile table (empty: UNKNOWN_OCCURRENCE until a profile is recorded); `src/disease/CD15Model.lua`: discovery in the update behind the hold, sharing the 256 bound, the cell's wetness passed to the day; `src/disease/CD15Day.lua`: MINOR 2's onset wetness and MINOR 3's membership path for spread; `src/main.lua`: one source line.
+- [x] Bars: `CD15-1c-admission_spec_test.lua` (E entry point, H, C, P, R, A, B, G, M); battery `tools/test/mutate_cd15_1c.py`.
+- [ ] A supported native profile (TESTING rows 32 and 33's numbers) before any cell is admitted in play.
+- [ ] Step 2's native writers call `CD15Admission.invalidate` on a native transition.

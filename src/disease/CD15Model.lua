@@ -38,8 +38,15 @@
 -- under pcall; a raise marks the model UNAVAILABLE with its reason (fail), logged once,
 -- and the field pass runs on.
 --
+-- DISCOVERY AND ADMISSION (step 1c, CD15Admission): what the day work leaves of the same 256
+-- bound goes to candidate discovery from the saved cursor, behind the same hold, so a held model
+-- discovers and admits nothing and its cursor stays. With no supported native profile (production
+-- until TESTING rows 32 and 33 record one) every witness answers UNKNOWN_OCCURRENCE before a read.
+-- A day's onset reads the cell's own wetness (wetAt, #1062's MINOR 2), and spread reaches a cell
+-- with no row only through discovery's membership (MINOR 3).
+--
 -- NOT HERE: the settle-before-mutation entry (:133) arrives with step 2's writers,
--- which are its only callers; candidate discovery and the native witness are 1c.
+-- which are its only callers.
 -- =========================================================
 
 CD15Model = CD15Model or {}
@@ -80,6 +87,7 @@ function M.new(system)
     self.failed = nil        -- the seam that threw, once
     self.occurrenceSeq = 0   -- the mission/save occurrence sequence 1c allocates from (:85)
     self.discoveryCursor = 0 -- 1c's discovery cursor, saved as an explicit start value (:220)
+    self.discovery = nil     -- 1c: CD15Admission's per-geometry state (membership, counts)
     return self
 end
 
@@ -218,9 +226,10 @@ function M:onDayChanged()
     self.queue[#self.queue + 1] = { input = input, phase = "SETTLE" }
 end
 
---- The bounded cursor: at most WORK_BOUND cells or sources per call.
+--- The bounded cursor: at most WORK_BOUND cells or sources per call, the day work first and
+--- discovery (1c) with what it leaves.
 function M:update(dt)
-    if g_server == nil or #self.queue == 0 then return end
+    if g_server == nil then return end
     if self:isHeld() then return end
     local budget, work = M.WORK_BOUND, 0
     while budget > 0 and #self.queue > 0 do
@@ -239,17 +248,26 @@ function M:update(dt)
         else
             local input = w.input
             local admits = function(dest, gx, gz, name) return self:admits(dest, gx, gz, name, input) end
+            -- MINOR 3: a destination with no row is reached only through discovery's membership.
+            local member = function(gx, gz)
+                if CD15Admission == nil or not CD15Grid.onGrid(self.geometry, gx, gz) then return nil end
+                return CD15Admission.memberRow(self, gx, gz, input.day)
+            end
             while budget > 0 and w.scursor <= #w.sources do
                 local s = w.sources[w.scursor]
                 w.scursor = w.scursor + 1
                 budget, work = budget - 1, work + 1
-                self.stats.spreadPairs = self.stats.spreadPairs + CD15Day.spreadFrom(self.store, s, admits)
+                self.stats.spreadPairs = self.stats.spreadPairs + CD15Day.spreadFrom(self.store, s, admits, member)
             end
             if w.scursor > #w.sources then
                 table.remove(self.queue, 1)
                 self.lastClosedDay = input.day
             end
         end
+    end
+    -- 1c: candidate discovery with what the day work left (CD15Admission, :220).
+    if budget > 0 and CD15Admission ~= nil and self:ensureGeometry() then
+        work = work + CD15Admission.discover(self, budget)
     end
     if work > self.stats.maxWork then self.stats.maxWork = work end
 end
@@ -258,7 +276,11 @@ function M:settleEntry(e, input)
     local c = self.store:get(e.gx, e.gz)
     if c == nil then return false end
     if c.lastSettledDay ~= nil and c.lastSettledDay >= input.day then return false end
-    CD15Day.settleCell(c, e.gx, e.gz, input, self:cellInputs(e.gx, e.gz))
+    local ci = self:cellInputs(e.gx, e.gz)
+    -- #1062's MINOR 2 (:117, :124): onset reads the cell's own wetness, passed in, never read here
+    -- by the day module; the rain bonus and the dry-day count stay on the day's weather.
+    ci.wet, ci.wetSource = self:wetAt(ci, input)
+    CD15Day.settleCell(c, e.gx, e.gz, input, ci)
     self.stats.settled = self.stats.settled + 1
     return true
 end
@@ -333,6 +355,7 @@ function M:getStatus()
         settled = self.stats.settled, spreadPairs = self.stats.spreadPairs, maxWork = self.stats.maxWork,
         restoreState = self.restoreState, quarantineReason = self.quarantineReason, failed = self.failed,
         occurrenceSeq = self.occurrenceSeq,
+        admission = CD15Admission ~= nil and CD15Admission.status(self) or nil,
     }
 end
 
@@ -340,5 +363,6 @@ function M:delete()
     self.queue = {}
     self.store = CD15Grid.newStore()
     self.geometry = nil
+    self.discovery = nil
     self.state, self.reason = "UNAVAILABLE", "DELETED"
 end

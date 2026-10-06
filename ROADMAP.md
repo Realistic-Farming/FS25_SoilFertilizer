@@ -275,3 +275,11 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 ## 2026-10-06 (Fred): the mod's title and description readable again in every language (MAINTENANCE row 221)
 
 - [x] `modDesc.xml`: 43 title and description lines (every language with a character outside plain ASCII, the Chinese, Japanese and Korean lines included) had been saved through the Windows cp1252 code page twice, so the mod manager showed garbled text such as "BÃƒÂ¶den". Each is decoded back to the exact text the file held before the damage (it matches the file at the parent of 319152ba, 2026-08-10, line for line, all 43 of them). No other line changes; the old translation block inside the XML comment further down keeps its bytes, since no player sees it. No translation tool was run.
+
+## 2026-10-06 (Fred): CD-15 step 1c, discovery and admission (CD-15 v1.14 :99-103, :220-222, :239-243)
+
+- [x] The local disease model now looks for standing crops itself. Each server update spends what the day's work leaves of its 256-cell bound walking the actual cultivated field polygons (and the cells it already keeps) from a saved cursor, and classifies each cell by every native pixel on every fruit and haulm plane that overlaps it, read with the crop's own state vocabulary: growing, harvest-ready or harvestable, and preparable or prepared crops are living; cut, withered and destroyed are not; anything it cannot account for is unknown, never empty.
+- [x] A cell holding one completely classified living crop is admitted at today: a new occurrence token from the saved sequence, the crop's name and an observed-current-crop witness, with no sowing reset and no invented history. A cell already kept for its history keeps its resistance and protection.
+- [x] The game has no recorded native read profile yet (the probe sessions in TESTING rows 32 and 33), so in play every cell answers UNKNOWN_OCCURRENCE before any pixel is read and nothing is admitted; the console status says why.
+- [x] #1062's MINOR 2 (onset reads the cell's own wetness) and MINOR 3 (spread reaches a discovered crop cell that has no row yet, through discovery).
+- Nothing changes for a player yet. Bob's intakes `BOB-INTAKE-CD15-1B-1C-2026-10-05.md` Part 2 and `BOB-INTAKE-CD15-1C-2026-10-06.md`. Next: step 2 (the native writers), which also gates on Design's quarantine answer.
