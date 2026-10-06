@@ -24,14 +24,22 @@
 -- size (CD15Grid.resolveGeometry). Until both exist the model is UNAVAILABLE with its
 -- reason and does no day work; it never guesses a grid.
 --
--- FIRST ACTIVATION. Step 1a has no save participant yet (1b), so every activation
--- starts on the ratified clean baseline with earlier history explicitly unavailable
--- (brief :97). Cells are allocated by admission (1c) and the native writers (step 2);
--- until those exist the grid stays empty in production and a day closes with no work.
+-- FIRST ACTIVATION AND RESTORE (step 1b). The save participant (CD15Save) holds the
+-- model in RESTORING from its install until the restore decides, and no day's work runs
+-- meanwhile. The decision is one of: RESTORED (a saved attempt's cells, day work and
+-- occurrence sequence, minting nothing), FIRST_ACTIVATION (no earlier CD-15 evidence:
+-- the ratified clean baseline with earlier history explicitly unavailable, brief :97),
+-- or QUARANTINED (evidence that did not form one valid attempt, :101): no day work, and
+-- the saves keep the quarantine. A model no participant holds (a client, or the 1a
+-- bench) runs as 1a did. Cells are allocated by admission (1c) and the native writers
+-- (step 2); until those exist the grid stays empty in production.
+--
+-- A SEAM THAT THREW (#1062's MINOR 1): SoilFertilitySystem calls onDayChanged and update
+-- under pcall; a raise marks the model UNAVAILABLE with its reason (fail), logged once,
+-- and the field pass runs on.
 --
 -- NOT HERE: the settle-before-mutation entry (:133) arrives with step 2's writers,
--- which are its only callers; candidate discovery and the native witness are 1c; the
--- save participant is 1b.
+-- which are its only callers; candidate discovery and the native witness are 1c.
 -- =========================================================
 
 CD15Model = CD15Model or {}
@@ -40,7 +48,10 @@ local M_mt = { __index = M }
 
 M.WORK_BOUND = 256
 M.BASELINE_CLEAN = "CLEAN_FIRST_ACTIVATION"
+M.BASELINE_RESTORED = "RESTORED_ATTEMPT"
 M.GAPS_KEPT = 64
+-- The restore states (step 1b). nil: no save participant holds this model.
+M.RESTORING, M.RESTORED, M.FIRST_ACTIVATION, M.QUARANTINED = "RESTORING", "RESTORED", "FIRST_ACTIVATION", "QUARANTINED"
 
 local function log(msg)
     if SoilLogger ~= nil and type(SoilLogger.info) == "function" then
@@ -64,7 +75,92 @@ function M.new(system)
     self.gaps = {}           -- { from, to, reason }: day ranges closed UNAVAILABLE
     self.lastClosedDay = nil
     self.stats = { settled = 0, spreadPairs = 0, maxWork = 0 }
+    self.restoreState = nil  -- step 1b: set by the save participant (awaitRestore)
+    self.quarantineReason = nil
+    self.failed = nil        -- the seam that threw, once
+    self.occurrenceSeq = 0   -- the mission/save occurrence sequence 1c allocates from (:85)
+    self.discoveryCursor = 0 -- 1c's discovery cursor, saved as an explicit start value (:220)
     return self
+end
+
+-- ---------------------------------------------------------
+-- Restore (step 1b)
+-- ---------------------------------------------------------
+--- The save participant holds the model until the restore decides.
+function M:awaitRestore()
+    self.restoreState = M.RESTORING
+end
+
+--- Is day work held? While RESTORING or QUARANTINED, and after a seam threw.
+function M:isHeld()
+    if self.failed ~= nil then return true end
+    local rs = self.restoreState
+    return rs ~= nil and rs ~= M.RESTORED and rs ~= M.FIRST_ACTIVATION
+end
+
+--- No earlier CD-15 evidence: the ratified clean baseline (:97).
+function M:firstActivation()
+    self.restoreState = M.FIRST_ACTIVATION
+    self.baseline = M.BASELINE_CLEAN
+    self.historyAvailable = false
+end
+
+--- Evidence that did not form one valid attempt: no day work, nothing reinitialized (:101).
+function M:quarantine(reason)
+    self.restoreState = M.QUARANTINED
+    self.quarantineReason = reason
+    self.queue = {}
+end
+
+--- A validated saved attempt (CD15Save.decodePayload): the cells, the day work and the
+--- occurrence sequence, exactly as saved. Nothing is minted.
+function M:importSaved(d)
+    self.store = d.store
+    self.lastDay, self.lastClosedDay = d.lastDay, d.lastClosedDay
+    self.gaps = d.gaps
+    self.queue = {}
+    for i, w in ipairs(d.queue) do
+        -- A SETTLE day restarts its cursor: a cell already settled through the day is skipped
+        -- (settleEntry), so the day still finishes exactly once.
+        self.queue[i] = { phase = w.phase, input = w.input, sources = w.sources, scursor = w.scursor }
+    end
+    self.occurrenceSeq, self.discoveryCursor = d.occurrenceSeq, d.discoveryCursor
+    self.baseline = M.BASELINE_RESTORED
+    self.historyAvailable = true
+    self.restoreState = M.RESTORED
+end
+
+--- The day-work state the payload carries (:218): plain copies.
+function M:exportWork()
+    local gaps, queue = {}, {}
+    for i, g in ipairs(self.gaps) do gaps[i] = { from = g.from, to = g.to, reason = g.reason } end
+    for i, w in ipairs(self.queue) do
+        local input = {}
+        for k, v in pairs(w.input) do input[k] = v end
+        local item = { phase = w.phase, input = input }
+        if w.phase == "SPREAD" then
+            item.scursor = w.scursor
+            item.sources = {}
+            for j, src in ipairs(w.sources or {}) do
+                local res = {}
+                for k, v in pairs(src.resistance or {}) do res[k] = v end
+                item.sources[j] = { gx = src.gx, gz = src.gz, diseaseName = src.diseaseName, resistance = res }
+            end
+        end
+        queue[i] = item
+    end
+    return { lastDay = self.lastDay, lastClosedDay = self.lastClosedDay, gaps = gaps, queue = queue,
+             occurrenceSeq = self.occurrenceSeq, discoveryCursor = self.discoveryCursor }
+end
+
+--- A seam threw (#1062's MINOR 1): UNAVAILABLE with its reason, logged once.
+function M:fail(where, err)
+    if self.failed ~= nil then return end
+    self.failed = tostring(where)
+    self.state, self.reason = "UNAVAILABLE", "SEAM_ERROR:" .. tostring(where)
+    if SoilLogger ~= nil and type(SoilLogger.warning) == "function" then
+        SoilLogger.warning("[CD15] %s raised (%s); local disease is unavailable for this session, the field pass runs on", tostring(where), tostring(err))
+    end
 end
 
 -- ---------------------------------------------------------
@@ -102,6 +198,7 @@ end
 --- Called from the existing server daily settlement.
 function M:onDayChanged()
     if g_server == nil then return end
+    if self:isHeld() then return end
     if not self:ensureGeometry() then return end
     local day, why, source = CD15Day.readDay(self.lastDay)
     self.daySource = source
@@ -124,6 +221,7 @@ end
 --- The bounded cursor: at most WORK_BOUND cells or sources per call.
 function M:update(dt)
     if g_server == nil or #self.queue == 0 then return end
+    if self:isHeld() then return end
     local budget, work = M.WORK_BOUND, 0
     while budget > 0 and #self.queue > 0 do
         local w = self.queue[1]
@@ -233,6 +331,8 @@ function M:getStatus()
         lastDay = self.lastDay, dayReason = self.dayReason, daySource = self.daySource,
         pendingDays = #self.queue, gaps = #self.gaps, lastClosedDay = self.lastClosedDay,
         settled = self.stats.settled, spreadPairs = self.stats.spreadPairs, maxWork = self.stats.maxWork,
+        restoreState = self.restoreState, quarantineReason = self.quarantineReason, failed = self.failed,
+        occurrenceSeq = self.occurrenceSeq,
     }
 end
 

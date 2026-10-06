@@ -26,6 +26,8 @@
 --   P  spread: one hop from a snapshot, identity rules, order, admission
 --   B  the 256-cell work bound, one settlement per cell per day
 --   R  the record and the tile store
+--   M  (CD-15 1b, #1062's MINOR 1) a seam that throws: the field pass runs on, the model
+--      UNAVAILABLE with its reason
 --
 --!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/DiseaseSystem.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/FieldSentry.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/disease/CD15Grid.lua, src/disease/CD15Day.lua, src/disease/CD15Model.lua
 
@@ -473,4 +475,34 @@ group("R", function()
     end)(), "0/nil/nil/nil/0/nil/nil")
     s:remove(3, 1)
     T.eq("R5 remove drops the key and an empty tile", s.count .. "/" .. tostring(s:get(3, 1)), "3/nil")
+end)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- M. A SEAM THAT THROWS (CD-15 1b, #1062's MINOR 1): the field pass runs on, the model is
+--    UNAVAILABLE with its reason, logged once
+-- ══════════════════════════════════════════════════════════════════════════
+group("M", function()
+    local sys, m = world({ day = 100, settings = { rainEffects = true } })
+    g_currentMission.cropStressManager = nil   -- no SCS: a dry day's rain step only reads the scale
+    local rainReads = 0
+    local realRain = sys.getEffectiveRainScale
+    sys.getEffectiveRainScale = function(s) rainReads = rainReads + 1 return realRain(s) end
+    m.onDayChanged = function() error("bench day") end
+    local okDay = pcall(newDay, sys, 101)
+    T.eq("M1 NAMED: a raising cd15:onDayChanged inside the real onEnvironmentUpdate: the daily pass returns normally and runs on to its rain step",
+        tostring(okDay) .. "/" .. tostring(rainReads > 0), "true/true")
+    T.eq("M2 NAMED: and the model is UNAVAILABLE with the seam's reason, logged once",
+        tostring(m.failed) .. "/" .. tostring(m.state) .. "/" .. tostring(m.reason) .. "/" .. count(WARN, "onDayChanged raised"), "onDayChanged/UNAVAILABLE/SEAM_ERROR:onDayChanged/1")
+    m.onDayChanged = nil
+    pcall(newDay, sys, 102)
+    T.eq("M3 a failed model does no further day work", tostring(m.lastDay) .. "/" .. count(WARN, "raised"), "nil/1")
+
+    sys, m = world({ day = 100 })
+    newDay(sys, 100)
+    m.update = function() error("bench update") end
+    local lastBefore = sys.lastUpdate
+    local okTick = pcall(tick, sys)
+    T.eq("M4 NAMED: a raising cd15:update inside the real update: the update returns normally and runs on past the seam",
+        tostring(okTick) .. "/" .. tostring(sys.lastUpdate == lastBefore + 16), "true/true")
+    T.eq("M5 NAMED: and the model is UNAVAILABLE with the seam's reason", tostring(m.failed) .. "/" .. tostring(m.reason), "update/SEAM_ERROR:update")
 end)

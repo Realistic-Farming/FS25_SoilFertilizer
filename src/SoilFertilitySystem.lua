@@ -2843,8 +2843,12 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
             g_SoilFertilityManager.organic:onDayChanged()
         end
         -- CD-15 step 1a: the local disease model captures its logical day here, at the
-        -- existing daily settlement (server only; nil on a client).
-        if self.cd15 ~= nil then self.cd15:onDayChanged() end
+        -- existing daily settlement (server only; nil on a client). [CD-15 1b, #1062's
+        -- MINOR 1] Under pcall: a raise marks the model unavailable and the pass runs on.
+        if self.cd15 ~= nil then
+            local okCd, errCd = pcall(self.cd15.onDayChanged, self.cd15)
+            if not okCd then self.cd15:fail("onDayChanged", errCd) end
+        end
     end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
@@ -2906,8 +2910,12 @@ function SoilFertilitySystem:update(dt)
     -- the pending flag.
     self:_scanRetryTick(dt)
 
-    -- CD-15 step 1a: the local disease day cursor, at most 256 cells a call.
-    if self.cd15 ~= nil then self.cd15:update(dt) end
+    -- CD-15 step 1a: the local disease day cursor, at most 256 cells a call. [CD-15 1b,
+    -- #1062's MINOR 1] Under pcall: a raise marks the model unavailable and the pass runs on.
+    if self.cd15 ~= nil then
+        local okCd, errCd = pcall(self.cd15.update, self.cd15, dt)
+        if not okCd then self.cd15:fail("update", errCd) end
+    end
 
     -- [SG2-4c-3] A condition owner that stood down withdraws `soil.groundCondition`.
     if self.groundConditionProperty ~= nil then self.groundConditionProperty:update() end
