@@ -264,3 +264,8 @@
 - [ ] Step 1c: discovery, classification, the whole-cell witness and admission (answering UNKNOWN_OCCURRENCE until a supported profile exists); it resumes the discovery cursor this payload already carries.
 - [ ] Step 2's and 3's writers bring the re-entry invalidation of an open attempt (brief :91).
 - [~] In game (owed): a save and reload with Soil alone and with StockGuard; a save interrupted by quitting; a hand-deleted soilDisease.xml loads quarantined.
+
+## 2026-10-06 (Fred): modDesc.xml encoding repair (MAINTENANCE row 221)
+
+- [x] 43 garbled title and description lines decoded back to the text already decided; nothing else touched.
+- [~] In game (owed): TESTING row 483.
