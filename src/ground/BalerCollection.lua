@@ -59,7 +59,10 @@
 -- lastBaleFillLevel and pads the chamber to capacity to drive the animation. The pad
 -- is representation, not material: inside that call a chamber increase changes no
 -- account and no reconciliation runs, and the buffer's debited share joins the finish
--- context, so the bale carries the chamber's material plus the buffer's.
+-- context, so the bale carries the chamber's material plus the buffer's. [SG2-5e-soil]
+-- When StockGuard frames the chamber, the chamber's material is the account its SG-1
+-- record holds, read BEFORE the pad (the full chamber's finishBale runs inside the pad's
+-- add, so a read at the finish could already include the pad).
 --
 -- SERVER ONLY. Standalone: with a StockGuard lease owning the pickup the frame stands
 -- aside (GroundMovementCarrier.begin) and nothing is sealed here: StockGuard holds the
@@ -622,10 +625,19 @@ function BC.aroundTick(vehicle, original, ...)
 end
 
 --- setIsUnloadingBale (instance): the partial round bale's pad scope.
+--- [SG2-5e-soil] StockGuard's chamber account is taken here, before the original pads the
+--- chamber (Baler.lua:1328-1347), into st.pad.account; nil when StockGuard is absent, the
+--- chamber is unframed or the read fails.
 function BC.aroundUnloading(vehicle, original, ...)
-    local st = (g_server ~= nil and vehicle.isServer and vehicle.spec_baler ~= nil) and BC.state(vehicle) or nil
+    local spec = vehicle.spec_baler
+    local st = (g_server ~= nil and vehicle.isServer and spec ~= nil) and BC.state(vehicle) or nil
     local outer = st ~= nil and st.pad or nil
-    if st ~= nil then st.pad = {} end
+    if st ~= nil then
+        local pad = {}
+        local okA, acc = pcall(BC.prePadAccount, vehicle, spec)
+        if okA then pad.account = acc end
+        st.pad = pad
+    end
     local packed = { pcall(original, vehicle, ...) }
     if st ~= nil then st.pad = outer end
     if not packed[1] then error(packed[2], 0) end
@@ -649,6 +661,16 @@ function BC.chamberAccount(vehicle, spec)
              refused = acc.refusedCarrierLitres, weighted = acc.knownWeightedPctSum }
 end
 
+--- [SG2-5e-soil] The chamber's account from StockGuard's record before the pad, reconciled to the
+--- chamber's native level as the full finish reconciles it (the level is still the material's), or nil.
+function BC.prePadAccount(vehicle, spec)
+    local acc = BC.chamberAccount(vehicle, spec)
+    if acc == nil then return nil end
+    local level = mainLevel(vehicle, spec)
+    if level ~= nil then BC.accountReconcileRecord(acc, level) end
+    return acc
+end
+
 function BC.aroundFinish(vehicle, original, ...)
     local st = (g_server ~= nil and vehicle.isServer) and BC.state(vehicle) or nil
     local spec = vehicle.spec_baler
@@ -657,13 +679,16 @@ function BC.aroundFinish(vehicle, original, ...)
         if st.pad ~= nil then
             -- A partial round bale: the chamber's material plus the buffer's share; the
             -- pad is not material, so the chamber is not reconciled to its padded level.
-            account = BC.copyAccount(st.main)
+            -- [SG2-5e-soil] The material is StockGuard's pre-pad account when its record has
+            -- one (aroundUnloading), otherwise Soil's own.
+            account = BC.copyAccount(st.pad.account or st.main)
             if st.pad.share ~= nil then BC.accountAddAccount(account, st.pad.share) end
         else
             local level = mainLevel(vehicle, spec)
             -- [SG2-5d] A chamber StockGuard frames holds its condition in SG-1's record (Bob's 5d Q4):
-            -- that account, reconciled to the chamber's native level, is the finish account. Only a
-            -- framed square chamber's record holds one, so an unframed chamber keeps Soil's own.
+            -- that account, reconciled to the chamber's native level, is the finish account. A framed
+            -- chamber's record holds one, square or (from StockGuard 5e-b) round; an unframed chamber
+            -- keeps Soil's own.
             local fromStockGuard = BC.chamberAccount(vehicle, spec)
             if fromStockGuard ~= nil then
                 if level ~= nil then BC.accountReconcileRecord(fromStockGuard, level) end

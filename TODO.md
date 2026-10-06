@@ -249,3 +249,10 @@
 
 - [x] The side info boxes start clear of the selected tab; text bodies 352 and 348 px wide, so line length and the right edge are unchanged; byte-same in all ten door mods.
 - [~] In game (owed): TESTING row 447.
+
+## SG2-5e-soil: the partial round bale's pre-pad account (2026-10-05, SG-2 :475, Soil's half)
+
+- [x] `src/ground/BalerCollection.lua`: `BC.prePadAccount`, captured in `aroundUnloading` before the pad; `aroundFinish`'s pad branch prefers it. The `:665` comment no longer says only a square chamber's record holds an account.
+- [x] Bars: `SG2-5e-soil_round_pad_account_spec_test.lua` (a plain round baler from `BALER_MODEL.newRound`, unloaded through its own wrapped `setIsUnloadingBale`); battery `tools/test/mutate_sg25es.py`.
+- [ ] StockGuard 5e-b frames the round chamber (Part 1), then 5e-d keeps the forming stock pending until dropBale.
+- [~] In game (owed, once 5e-b is in): a partial round bale with StockGuard and Soil both installed carries a wetness, not "unknown".

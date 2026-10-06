@@ -475,6 +475,24 @@ function BALER_MODEL.newNonStop(opts)
     return v, work
 end
 
+--- [SG2-5e-soil] A plain round baler, the kind StockGuard 5e-b frames: BALER_MODEL.new with
+--- round = true, NO buffer unit (the engine reads buffer#fillUnitIndex from the XML, nil when a
+--- baler has none, Baler.lua:434-435), the unfinished-bale unloading (:374-375; closed at load,
+--- :410), and its setIsUnloadingBale as the registered function copied into the instance.
+function BALER_MODEL.newRound(opts)
+    local o = {}
+    for k, val in pairs(opts or {}) do o[k] = val end
+    o.round = true
+    local v, work = BALER_MODEL.new(o)
+    local spec = v.spec_baler
+    v.setIsUnloadingBale = Baler.setIsUnloadingBale
+    spec.buffer = { fillUnitIndex = nil, unloadingStarted = false }
+    spec.unloadingState = Baler.UNLOADING_CLOSED
+    spec.canUnloadUnfinishedBale = o.canUnloadUnfinishedBale ~= false
+    spec.unfinishedBaleThreshold = o.unfinishedBaleThreshold or 10
+    return v, work
+end
+
 -- ── the ForageWagon (vehicles/specializations/ForageWagon.lua), part 2b ──────
 ForageWagon = ForageWagon or {}
 
