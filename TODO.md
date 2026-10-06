@@ -276,3 +276,10 @@
 - [x] Bars: `CD15-1c-admission_spec_test.lua` (E entry point, H, C, P, R, A, B, G, M); battery `tools/test/mutate_cd15_1c.py`.
 - [ ] A supported native profile (TESTING rows 32 and 33's numbers) before any cell is admitted in play.
 - [ ] Step 2's native writers call `CD15Admission.invalidate` on a native transition.
+
+## MAINTENANCE row 229: switched-off sections do not stamp (2026-10-06)
+
+- [x] `HookManager:cellsToStamp` (new) filters the cell sweep at the four `markBoomCells` call sites; `_switchedOffGround` and `HookManager.sectionLateralGround` (new) give each section's lateral ground from #sectionIndex work areas or tips, off from the preserver's saved state; a spraying section whose ground is unknown stops the filter.
+- [x] Bar: `MAINT-229-section_stamp_spec_test.lua` on `MAINT-229-section_boom_world.lua` (A boom-wide work area and a centre section, X the same boom driving along world X both ways, B Soil's own suppression, W per-section work areas, S lime, M multi-tank); battery `tools/test/mutate_maint229_section_stamp.py`.
+- [~] In game (owed): TESTING row 490.
+- [ ] MAINTENANCE row 230: the dose line (getBoomLineEndpoints) has the same span holes; not queued.
