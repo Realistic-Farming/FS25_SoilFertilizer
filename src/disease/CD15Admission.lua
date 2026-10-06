@@ -24,9 +24,10 @@
 -- THE PROFILE GATE (:220, :243; Bob's intake, Tyson 2026-09-30 "1c ships answering
 -- UNKNOWN_OCCURRENCE"). A KNOWN witness needs a supported native profile that records the worst
 -- synchronous read count and latency. TESTING rows 32 and 33 (the native cell probe) have no
--- result, so PROFILES is empty in production: every witness answers UNKNOWN_OCCURRENCE before any
--- pixel read, nothing is admitted, and the status names the reason. The procedure is whole and is
--- benched under a bench-only profile.
+-- result, so PROFILES is empty in production: discovery returns before its walk (the cursor stays,
+-- no candidate is examined, no pixel is read, nothing is admitted) and the status names
+-- UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE (Bob's amended production bar). The procedure is whole and
+-- is benched under a bench-only profile.
 --
 -- WHERE IT RUNS. CD15Model:update calls discover with what the day work left of the one 256 bound,
 -- behind the model's hold (RESTORING, QUARANTINED, a seam that threw), so a held model discovers and
@@ -319,6 +320,15 @@ end
 --- The model's discovery state. A changed geometry (checked every call) or plane set (checked at
 --- the start of each pass) rebuilds it, which invalidates every cached membership; the field
 --- polygons are re-read at the start of each pass.
+--- The fields' cumulative cell counts, so a candidate ordinal finds its field by binary search.
+local function withPrefix(d)
+    d.prefix, d.fieldCells = { 0 }, 0
+    for i, f in ipairs(d.fields or {}) do
+        d.fieldCells = d.fieldCells + f.w * f.h
+        d.prefix[i + 1] = d.fieldCells
+    end
+    return d
+end
 local function freshState(model, planes, planeFp)
     local fields, whyFields = A.resolveFields(model.geometry)
     local planeKey = planes ~= nil and planeFp or ("UNAVAILABLE:" .. tostring(planeFp))
@@ -326,7 +336,7 @@ local function freshState(model, planes, planeFp)
                 fields = fields, fieldsReason = whyFields, member = {}, lastReason = nil,
                 counts = { examined = 0, living = 0, notLiving = 0, unknown = 0, admitted = 0 } }
     model.discovery = d
-    return d
+    return withPrefix(d)
 end
 local function stateOf(model, passStart)
     local d = model.discovery
@@ -339,6 +349,7 @@ local function stateOf(model, passStart)
         local planeKey = planes ~= nil and planeFp or ("UNAVAILABLE:" .. tostring(planeFp))
         if planeKey ~= d.planeKey then return freshState(model, planes, planeFp) end
         d.fields, d.fieldsReason = A.resolveFields(model.geometry)
+        withPrefix(d)
     end
     return d
 end
@@ -346,25 +357,24 @@ end
 local function key(gx, gz) return tostring(gx) .. ":" .. tostring(gz) end
 
 --- The ordinal-th candidate (0-based): each field's cell box in field-id order, then the store's
---- rows in store order. Returns gx, gz, inPolygon (nil past the end) and the total.
+--- rows in store order. Returns gx, gz and the field (nil for a row; gx nil past the end). The field
+--- is found by binary search over the cumulative counts, not by walking the field list.
 local function candidateAt(model, d, ordinal, rows)
-    local o = ordinal
-    for _, f in ipairs(d.fields or {}) do
-        local n = f.w * f.h
-        if o < n then
-            local gz = f.gz0 + math.floor(o / f.w)
-            local gx = f.gx0 + (o % f.w)
-            return gx, gz, f
+    if ordinal < d.fieldCells then
+        local lo, hi = 1, #d.fields
+        while lo < hi do
+            local mid = math.floor((lo + hi + 1) / 2)
+            if d.prefix[mid] <= ordinal then lo = mid else hi = mid - 1 end
         end
-        o = o - n
+        local f, o = d.fields[lo], ordinal - d.prefix[lo]
+        return f.gx0 + (o % f.w), f.gz0 + math.floor(o / f.w), f
     end
+    local o = ordinal - d.fieldCells
     if o < #rows then return rows[o + 1].gx, rows[o + 1].gz, nil end
     return nil
 end
 local function candidateTotal(d, rows)
-    local n = 0
-    for _, f in ipairs(d.fields or {}) do n = n + f.w * f.h end
-    return n + #rows
+    return d.fieldCells + #rows
 end
 
 --- Classify one candidate cell, record its membership, and admit a living one at today.
@@ -393,12 +403,16 @@ end
 --- Discover up to `budget` candidates from the saved cursor. Returns the work done.
 function A.discover(model, budget)
     if budget <= 0 or model.geometry == nil then return 0 end
+    -- No supported profile: no witness can be KNOWN, so nothing could be admitted or become a member;
+    -- the walk would be constant cost with no output. Return before it: the cursor stays, and the
+    -- status names the reason (Bob's amended production bar).
+    local profile = A.supportedProfile()
+    if profile == nil then return 0 end
     local d = stateOf(model, model.discoveryCursor == 0)
     if d.fields == nil then d.lastReason = d.fieldsReason return 0 end
     local rows = model.store:orderedCells()
     local total = candidateTotal(d, rows)
     if total == 0 then return 0 end
-    local profile = A.supportedProfile()
     local day = CD15Day.readDay(model.lastDay)
     local work = 0
     while work < budget do
@@ -442,5 +456,6 @@ function A.status(model)
     return { profile = profile ~= nil and profile.id or nil, reads = A.stats.reads,
              examined = d ~= nil and d.counts.examined or 0, living = d ~= nil and d.counts.living or 0,
              unknown = d ~= nil and d.counts.unknown or 0, admitted = d ~= nil and d.counts.admitted or 0,
-             reason = d ~= nil and d.lastReason or nil, cursor = model.discoveryCursor }
+             reason = profile == nil and (A.UNKNOWN_OCCURRENCE .. ":NO_SUPPORTED_PROFILE") or (d ~= nil and d.lastReason or nil),
+             cursor = model.discoveryCursor }
 end

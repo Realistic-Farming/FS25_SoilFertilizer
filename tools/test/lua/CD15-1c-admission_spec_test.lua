@@ -461,8 +461,8 @@ group("E", function()
     resetDisk()
     resetWorld1c(false)
     LEDGER.present = false
-    -- A field over the whole map, and a second over a corner: 256 + 16 candidates, more than one
-    -- update's 256, so a save lands mid-pass. Growing wheat on every pixel of the default plane.
+    -- A field over the whole map and a second over a corner, growing wheat on every pixel of the
+    -- default plane: a world discovery WOULD admit, had it a profile.
     field(7, { 0, 0, 15, 15 })
     field(8, { 0, 0, 3, 3 })
     paint(1, -32, -32, 32, 32, 1, GROWING)
@@ -471,19 +471,18 @@ group("E", function()
     local held = W.model.discoveryCursor .. "/" .. status().examined
     loadAndStart()
     W.model:onDayChanged()
-    updates(1)
+    updates(3)
     local s = status()
-    T.eq("E1 NAMED [entry point]: main.lua's install held the model RESTORING (no discovery), then the barrier and the first activation; one update discovers 256 cells from the cursor, and with no supported native profile every witness answers UNKNOWN_OCCURRENCE before any pixel read: none read, nothing admitted, and the status names the reason",
-        held .. "|" .. tostring(s.profile) .. "|" .. s.reads .. "/" .. READS.n .. "|" .. s.examined .. "/" .. s.admitted .. "/" .. W.model.store.count .. "|" .. tostring(s.reason) .. "|" .. W.model.discoveryCursor,
-        "0/0|nil|0/0|256/0/0|UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE|256")
+    T.eq("E1 NAMED [entry point]: main.lua's install, the barrier and the first activation; with no supported native profile, as production has, discovery returns before its walk: no candidate examined, no pixel read, nothing admitted, the cursor where it was, and the status names UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE",
+        held .. "|" .. tostring(s.profile) .. "|" .. s.examined .. "/" .. s.reads .. "/" .. READS.n .. "/" .. s.admitted .. "/" .. W.model.store.count .. "|" .. tostring(s.reason) .. "|" .. W.model.discoveryCursor,
+        "0/0|nil|0/0/0/0/0|UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE|0")
     nativeSave("c1e_final")
     world("c1e_final", { valid = true, index = 2 })
     loadAndStart()
-    local cursorBack = W.model.discoveryCursor
-    updates(1)
-    T.eq("E2 NAMED [entry point]: the discovery cursor survives a real 1b save and reload (256 back, RESTORED), the pass resumes from it and wraps, and still nothing is read or admitted",
-        decision() .. "|" .. cursorBack .. "|" .. status().examined .. "/" .. status().admitted .. "/" .. READS.n .. "|" .. W.model.discoveryCursor,
-        "RESTORED|256|16/0/0|0")
+    updates(2)
+    T.eq("E2 NAMED [entry point]: through a real 1b save and reload (RESTORED) the cursor is unchanged, and still nothing is examined, read or admitted",
+        decision() .. "|" .. W.model.discoveryCursor .. "|" .. status().examined .. "/" .. READS.n .. "/" .. W.model.store.count .. "|" .. tostring(status().reason),
+        "RESTORED|0|0/0/0|UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE")
     unload()
 end)
 
@@ -662,9 +661,13 @@ group("B", function()
     W.model:onDayChanged()
     updates(1)
     local first = W.model.discoveryCursor .. "/" .. W.model.stats.maxWork
+    nativeSave("c1b_final")
+    world("c1b_final", { valid = true, index = 9 })
+    loadAndStart()
+    local back = decision() .. "/" .. W.model.discoveryCursor
     updates(1)
-    T.eq("B1 NAMED: one update does at most 256 cells of work (the day's empty settle and discovery together); the next resumes from the cursor and ends the pass",
-        first .. "|" .. W.model.discoveryCursor .. "/" .. W.model.stats.maxWork, "256/256|0/256")
+    T.eq("B1 NAMED: one update does at most 256 cells of work (the day's empty settle and discovery together); the cursor (256) survives a real 1b save and reload, and the next update resumes from it and ends the pass (the corner field's 16)",
+        first .. "|" .. back .. "|" .. status().examined .. "/" .. W.model.discoveryCursor .. "/" .. W.model.stats.maxWork, "256/256|RESTORED/256|16/0/16")
     unload()
 end)
 
