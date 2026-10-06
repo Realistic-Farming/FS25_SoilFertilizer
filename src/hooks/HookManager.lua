@@ -1909,19 +1909,18 @@ function HookManager:installSectionControlHook()
             if not rootX then return end
 
             local soilSys = sfm.soilSystem
-            local tips = sprayerSelf._sfSectionTip
+            -- MAINTENANCE row 232: the ground under each section, not halfway to its tip.
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
 
             for i, section in ipairs(vww.sections) do
                 -- Center sections CAN be suppressed: getIsWorkAreaActive() checks workArea.sectionIndex
-                -- → section.isActive for all sections including center. Center has no tip node, so its
-                -- position check falls back to rootX/rootZ (vehicle center = center strip position).
+                -- → section.isActive for all sections including center.
                 -- installSectionStatePreserver() restores isActive for all sections after work areas process.
                 if section.isActive then
-                    -- Midpoint between root and section outer edge (from preserver cache).
-                    -- Center section has no tip node → tips[i] = nil → falls back to rootX/rootZ.
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+                    -- "That section's world position": the section's own centre on the boom
+                    -- line (the boom-line centre for a section with no known ground).
+                    local here = samples[i][1]
+                    local sx, sz = here.x, here.z
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     if fieldId and fieldId > 0 then
@@ -2064,7 +2063,6 @@ function HookManager:installSeeAndSprayHook()
             local soilSys = sfm.soilSystem
             local ssCfg   = SoilConstants.SEE_AND_SPRAY
             local zone    = SoilConstants.ZONE
-            local tips    = sprayerSelf._sfSectionTip
 
             -- #678: when per-vehicle Variable Rate is on, See & Spray runs graduated -
             -- each non-skipped section gets a rate from its cell's pest/disease/weed
@@ -2079,81 +2077,101 @@ function HookManager:installSeeAndSprayHook()
             local vrCfg = SoilConstants.VARIABLE_RATE
             if variableOn then sensorMgr:clearSectionRates(vehicleId) end
 
-            for i, section in ipairs(vww.sections) do
-                if section.isActive then
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+            -- MAINTENANCE row 232: one point's reading. nil when the point is on no field
+            -- with soil data; else whether the product is not needed there and, with the
+            -- graduated rate on, the share of it the point needs.
+            local function readPoint(sx, sz)
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                if not fieldId or fieldId <= 0 then return nil end
+                local fd = soilSys.fieldData[fieldId]
+                if not fd then return nil end
+                local cellKey = tostring(
+                    math.floor(sx / zone.CELL_SIZE) * 10000 +
+                    math.floor(sz / zone.CELL_SIZE))
+                local cell = fd.zoneData and fd.zoneData[cellKey]
 
-                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                    if fieldId and fieldId > 0 then
-                        local fd = soilSys.fieldData[fieldId]
-                        if fd then
-                            local cellKey = tostring(
-                                math.floor(sx / zone.CELL_SIZE) * 10000 +
-                                math.floor(sz / zone.CELL_SIZE))
-                            local cell = fd.zoneData and fd.zoneData[cellKey]
+                -- [SF-19 item 5] Client fidelity: prefer the synced
+                -- per-pixel display maps, then the cell, then the field
+                -- scalar. See resolveCellPressure for the contract.
+                local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
+                -- Weed stays on the cell/field path: the brief leaves weed to
+                -- the game-native weed density map (queried below), so it is
+                -- not part of the pressure re-point.
+                local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
 
-                            -- [SF-19 item 5] Client fidelity: prefer the synced
-                            -- per-pixel display maps, then the cell, then the field
-                            -- scalar. See resolveCellPressure for the contract.
-                            local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
-                            -- Weed stays on the cell/field path: the brief leaves weed to
-                            -- the game-native weed density map (queried below), so it is
-                            -- not part of the pressure re-point.
-                            local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
-
-                            local skip = false
-                            if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
-                            if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
-                            if weedSS    then
-                                local weedsGone = false
-                                local groundTruth = false
-                                local fs = getWeedFieldState(fieldId)
-                                if fs then
-                                    local uok = pcall(function() fs:update(sx, sz) end)
-                                    if uok then
-                                        local ws = fs.weedState or -1
-                                        if ws >= 0 then
-                                            groundTruth = true
-                                            weedsGone = (ws == 0 or ws >= 7)
-                                        end
-                                    end
-                                end
-                                if not groundTruth then
-                                    weedsGone = (fd.herbicideDaysLeft or 0) > 0
-                                        or (cellWeed < ssCfg.WEED_THRESHOLD)
-                                end
-                                skip = skip or weedsGone
-                            end
-                            if skip then
-                                section.isActive = false
-                                if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
-                                sprayerSelf._sfSuppressedSections[i] = true
-                            elseif variableOn then
-                                -- #678: graduated rate from the active target's pressure.
-                                -- Maps [threshold .. FULL_RATE_PRESSURE] → [MIN_RATE .. MAX_RATE],
-                                -- then eases toward it (same 0.6/0.4 blend the NPK hook uses).
-                                local pressure, thr
-                                if pestSS then
-                                    pressure, thr = cellPest, ssCfg.PEST_THRESHOLD
-                                elseif diseaseSS then
-                                    pressure, thr = cellDisease, ssCfg.DISEASE_THRESHOLD
-                                else
-                                    pressure, thr = cellWeed, ssCfg.WEED_THRESHOLD
-                                end
-                                local full = ssCfg.FULL_RATE_PRESSURE or 50
-                                local frac = (full > thr) and ((pressure - thr) / (full - thr)) or 1
-                                -- Weeds pass a ground-truth check but cellWeed can be stale/0;
-                                -- never under-treat a section the check said needs spraying.
-                                if weedSS and (pressure or 0) <= 0 then frac = 1 end
-                                if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
-                                local rate = vrCfg.MIN_RATE + frac * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
-                                local prev = sensorMgr:getSectionRate(vehicleId, section) or rate
-                                rate = prev * 0.6 + rate * 0.4
-                                sensorMgr:setSectionRate(vehicleId, section, rate)
+                local skip = false
+                if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
+                if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
+                if weedSS    then
+                    local weedsGone = false
+                    local groundTruth = false
+                    local fs = getWeedFieldState(fieldId)
+                    if fs then
+                        local uok = pcall(function() fs:update(sx, sz) end)
+                        if uok then
+                            local ws = fs.weedState or -1
+                            if ws >= 0 then
+                                groundTruth = true
+                                weedsGone = (ws == 0 or ws >= 7)
                             end
                         end
+                    end
+                    if not groundTruth then
+                        weedsGone = (fd.herbicideDaysLeft or 0) > 0
+                            or (cellWeed < ssCfg.WEED_THRESHOLD)
+                    end
+                    skip = skip or weedsGone
+                end
+                if skip then return true, nil end
+                if not variableOn then return false, nil end
+
+                -- #678: graduated rate from the active target's pressure.
+                -- Maps [threshold .. FULL_RATE_PRESSURE] → [MIN_RATE .. MAX_RATE];
+                -- the section then eases toward it (same 0.6/0.4 blend the NPK hook uses).
+                local pressure, thr
+                if pestSS then
+                    pressure, thr = cellPest, ssCfg.PEST_THRESHOLD
+                elseif diseaseSS then
+                    pressure, thr = cellDisease, ssCfg.DISEASE_THRESHOLD
+                else
+                    pressure, thr = cellWeed, ssCfg.WEED_THRESHOLD
+                end
+                local full = ssCfg.FULL_RATE_PRESSURE or 50
+                local frac = (full > thr) and ((pressure - thr) / (full - thr)) or 1
+                -- Weeds pass a ground-truth check but cellWeed can be stale/0;
+                -- never under-treat a section the check said needs spraying.
+                if weedSS and (pressure or 0) <= 0 then frac = 1 end
+                if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+                return false, frac
+            end
+
+            -- The points across each section's own width (MAINTENANCE row 232). A section is
+            -- skipped only when every point that can be read says its product is not
+            -- needed, so a weed or a pressure anywhere under it keeps it spraying; the
+            -- graduated rate takes the highest share any point needs (never under-treat).
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
+            for i, section in ipairs(vww.sections) do
+                if section.isActive then
+                    local readable, allSkip, frac = 0, true, nil
+                    for _, pt in ipairs(samples[i]) do
+                        local skipHere, fracHere = readPoint(pt.x, pt.z)
+                        if skipHere ~= nil then
+                            readable = readable + 1
+                            if not skipHere then
+                                allSkip = false
+                                if fracHere ~= nil and (frac == nil or fracHere > frac) then frac = fracHere end
+                            end
+                        end
+                    end
+                    if readable > 0 and allSkip then
+                        section.isActive = false
+                        if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
+                        sprayerSelf._sfSuppressedSections[i] = true
+                    elseif readable > 0 and frac ~= nil then
+                        local rate = vrCfg.MIN_RATE + frac * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                        local prev = sensorMgr:getSectionRate(vehicleId, section) or rate
+                        rate = prev * 0.6 + rate * 0.4
+                        sensorMgr:setSectionRate(vehicleId, section, rate)
                     end
                 end
             end
@@ -2288,15 +2306,16 @@ function HookManager:installVariableRateHook()
             local vrCfg   = SoilConstants.VARIABLE_RATE
             local target  = vrCfg.NUTRIENT_TARGET
             local zone    = SoilConstants.ZONE
-            local tips    = sprayerSelf._sfSectionTip
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
 
             sensorMgr:clearSectionRates(vehicleId)
 
             for i, section in ipairs(vww.sections) do
                 if section.isActive and not section.isCenter then
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+                    -- MAINTENANCE row 232: "the cell directly under each boom section", the
+                    -- section's own centre on the boom line, not halfway to its tip.
+                    local here = samples[i][1]
+                    local sx, sz = here.x, here.z
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     local rate = vrCfg.MIN_RATE + (vrCfg.MAX_RATE - vrCfg.MIN_RATE) * 0.5  -- default mid
@@ -10555,14 +10574,21 @@ end
 --- while the section is off, VariableWorkWidth.lua:377-383) gives it exactly, from its
 --- nodes. Otherwise a side section reaches from the next tip inward on its side (or
 --- the frame's centre line) out to its own maxWidthNode, and a centre section covers
---- its tip either side. The outermost section on each side also owns everything
---- beyond it, which is where a boom-wide work area's corners sit. A section with
---- neither has no known ground. Returns [sectionIndex] = { lo, hi }.
-function HookManager.sectionLateralGround(obj, frame, activeSprayType)
+--- its tip either side. A section with neither has no known ground. Returns
+--- [sectionIndex] = { lo, hi } and [sectionIndex] = the local Z (along the travel) of
+--- the nodes that gave it: the boom line at that section.
+function HookManager.sectionLateralExtents(obj, frame, activeSprayType)
     local sections = obj.spec_variableWorkWidth.sections
-    local function lat(node)
-        local ok, x = pcall(localToLocal, node, frame, 0, 0, 0)
-        if ok and type(x) == "number" then return x end
+    local fwdSum, fwdN = {}, {}
+    local function lat(node, i)
+        local ok, x, _, z = pcall(localToLocal, node, frame, 0, 0, 0)
+        if ok and type(x) == "number" then
+            if type(z) == "number" then
+                fwdSum[i] = (fwdSum[i] or 0) + z
+                fwdN[i] = (fwdN[i] or 0) + 1
+            end
+            return x
+        end
         return nil
     end
     local ground = {}
@@ -10573,7 +10599,7 @@ function HookManager.sectionLateralGround(obj, frame, activeSprayType)
             if i ~= nil and sections[i] ~= nil and HookManager.workAreaInPass(wa, activeSprayType) then
                 local corners = { wa.start, wa.width, wa.height }
                 for k = 1, 3 do
-                    local x = corners[k] ~= nil and lat(corners[k]) or nil
+                    local x = corners[k] ~= nil and lat(corners[k], i) or nil
                     if x then
                         local g = ground[i]
                         if g == nil then
@@ -10590,7 +10616,7 @@ function HookManager.sectionLateralGround(obj, frame, activeSprayType)
     local tips = {}
     for i, section in ipairs(sections) do
         if ground[i] == nil and section.maxWidthNode ~= nil then
-            local t = lat(section.maxWidthNode)
+            local t = lat(section.maxWidthNode, i)
             if t then tips[#tips + 1] = { i = i, t = t, centre = section.isCenter == true } end
         end
     end
@@ -10615,6 +10641,20 @@ function HookManager.sectionLateralGround(obj, frame, activeSprayType)
             ground[a.i] = (sign > 0) and { inner, reach } or { -reach, -inner }
         end
     end
+    local fwd = {}
+    for i in pairs(ground) do
+        if fwdN[i] then fwd[i] = fwdSum[i] / fwdN[i] end
+    end
+    return ground, fwd
+end
+
+--- sectionLateralExtents, with the outermost section on each side also owning
+--- everything beyond it, which is where a boom-wide work area's corners sit (the
+--- stamp's ground, MAINTENANCE row 229). Returns [sectionIndex] = { lo, hi }.
+function HookManager.sectionLateralGround(obj, frame, activeSprayType)
+    local extents = HookManager.sectionLateralExtents(obj, frame, activeSprayType)
+    local ground = {}
+    for i, e in pairs(extents) do ground[i] = { e[1], e[2] } end
     local outer = {}   -- [1] = outermost on the +X side, [-1] = on the -X side
     for i, g in pairs(ground) do
         local side = (g[1] >= 0) and 1 or ((g[2] <= 0) and -1 or 0)
@@ -10626,6 +10666,65 @@ function HookManager.sectionLateralGround(obj, frame, activeSprayType)
     if outer[1] then ground[outer[1].i][2] = math.huge end
     if outer[-1] then ground[outer[-1].i][1] = -math.huge end
     return ground
+end
+
+-- =========================================================
+-- MAINTENANCE row 232: each section reads the ground under itself
+-- =========================================================
+-- Smart Sensor, See & Spray and Variable Rate each decided a section from one point
+-- halfway between the vehicle root and the section's tip, so an outer section read
+-- the ground inside an inner section's strip and the outer half of the boom was never
+-- read. They now read points on the boom line across the section's own width.
+HookManager.SECTION_SAMPLE_POINTS = 3
+
+--- Where the sprayer hooks read the ground under each section this tick, in world
+--- space: [sectionIndex] = { centre, then the others across its width }, each {x=, z=},
+--- spaced evenly across the section's own lateral ground on its boom line. A section
+--- whose ground is unknown gets one point, the boom-line centre (the preserver's) or
+--- the root. Cached on the sprayer per mission time and root position.
+function HookManager:sectionSamplePoints(sprayer)
+    local vww = sprayer.spec_variableWorkWidth
+    local sections = vww and vww.sections or {}
+    local now = g_currentMission and g_currentMission.time or 0
+    local rx, rz = sprayer._sfRootX, sprayer._sfRootZ
+    local cache = sprayer._sfSectionSampleCache
+    if cache and cache.t == now and cache.rx == rx and cache.rz == rz then return cache.points end
+
+    local fallback = {
+        x = sprayer._sfBoomCentreX or rx or 0,
+        z = sprayer._sfBoomCentreZ or rz or 0,
+    }
+    local points = {}
+    local frame = sprayer.components and sprayer.components[1] and sprayer.components[1].node or sprayer.rootNode
+    local extents, fwd = {}, {}
+    if frame ~= nil and #sections > 0 then
+        extents, fwd = HookManager.sectionLateralExtents(sprayer, frame, self:_activeSprayType(sprayer))
+    end
+    local n = HookManager.SECTION_SAMPLE_POINTS
+    local middle = math.floor(n / 2) + 1
+    for i = 1, #sections do
+        local e, f = extents[i], fwd[i]
+        local list = nil
+        if e and f then
+            local at = {}
+            for k = 1, n do
+                local lat = e[1] + (k - 0.5) / n * (e[2] - e[1])
+                local ok, wx, _, wz = pcall(localToWorld, frame, lat, 0, f)
+                if ok and type(wx) == "number" and type(wz) == "number" then
+                    at[k] = { x = wx, z = wz }
+                end
+            end
+            if at[middle] then
+                list = { at[middle] }
+                for k = 1, n do
+                    if k ~= middle and at[k] then list[#list + 1] = at[k] end
+                end
+            end
+        end
+        points[i] = list or { fallback }
+    end
+    sprayer._sfSectionSampleCache = { t = now, rx = rx, rz = rz, points = points }
+    return points
 end
 
 --- The lateral ground only obj's switched-off sections cover, as { frame, y, off }
