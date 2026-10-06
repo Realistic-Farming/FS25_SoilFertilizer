@@ -26,6 +26,7 @@
 
 local install, driveLane, twoRows, list, tenMetreSignature, otherPass =
     ORW.install, ORW.driveLane, ORW.twoRows, ORW.list, ORW.tenMetreSignature, ORW.otherPass
+local twoRowsAt, recordCellsInFrame = ORW.twoRowsAt, ORW.recordCellsInFrame
 
 local OVERLAP_ON  = { enabled = true, overlapPrevention = true,  fieldBoundaryControl = false, debugMode = false }
 local OVERLAP_OFF = { enabled = true, overlapPrevention = false, fieldBoundaryControl = false, debugMode = false }
@@ -61,6 +62,63 @@ do
     local ss, _, v = install("boundary", BOUNDARY_ON)
     local off = twoRows(v)
     T.eq("N3 field-boundary control's overlap copy reads the same record: only section 9", list(off), "9")
+end
+
+-- ══════════════════════════════════════════════════════════
+-- A: ANY HEADING. The record is laid in the sprayer's own frame, so a lane at 45 degrees to
+-- the world axes is stamped across its whole boom and only along its own boom line.
+-- ══════════════════════════════════════════════════════════
+local S45 = math.sqrt(0.5)
+do
+    -- Lane 2 22.5 m across (1.5 m of overlap): section 9's tip 1.5 m inside lane 1's sprayed
+    -- ground, section 8's 1.5 m outside it. A 2 m cell on a grid turned 45 degrees to the lane
+    -- reaches up to 1.41 m past the boom's edge, so a tip further out than that is never off.
+    -- The turn is not sprayed, so only lane 1's record can switch a section off.
+    local ss, _, v = install("overlap", OVERLAP_ON)
+    local off = twoRowsAt(v, 0, 0, S45, S45, 22.5, nil, true)
+    T.eq("A1 two rows at 45 degrees: only the section whose tip is over lane 1's ground switches off",
+         list(off), "9")
+end
+do
+    -- One lane at 45 degrees, stopped: where is the record, in the sprayer's last frame? The
+    -- lane ends at 30.5 m, where the 2 m grid (turned 45 degrees to it) has cell centres 0.61 m
+    -- ahead of the root, 1.08 m ahead of the boom line: past the half-cell band the record
+    -- keeps, inside what a cell merely touched by the line, or the root's line, would stamp.
+    local ss, _, v = install("overlap", OVERLAP_ON)
+    driveLane(v, 0, 0, S45, S45, 30.5)
+    local rx, rz = 30.5 * S45, 30.5 * S45
+    local ahead, outer, beyond = 0, 0, 0
+    local half = SoilConstants.ZONE.OVERLAP_CELL_SIZE / 2
+    for _, c in ipairs(recordCellsInFrame(ss, rx, rz, S45, S45)) do
+        if c.fwd > ORW.BOOM_FWD + half + 1e-6 then ahead = ahead + 1 end
+        if math.abs(c.lat) >= 10 then outer = outer + 1 end
+        if math.abs(c.lat) > 12 + 1e-6 then beyond = beyond + 1 end
+    end
+    T.eq("A2 lane end at 45 degrees: no recorded cell's centre lies more than half a cell ahead of the last boom line",
+         ahead, 0)
+    T.ok("A3 and the record reaches the boom's outer metres on both sides (" .. outer .. " cells past 10 m out)",
+         outer > 0)
+    T.eq("A4 and no recorded cell's centre lies past the boom's ends", beyond, 0)
+end
+
+-- ══════════════════════════════════════════════════════════
+-- W: GROUND ONLY SWITCHED-OFF SECTIONS COVERED IS NOT RECORDED (Option B)
+-- ══════════════════════════════════════════════════════════
+do
+    -- Lane 1's two outer sections on lane 2's side (tips 9 and 12 m out) are switched off
+    -- before the tick, as a section-control mod leaves them, and back on before the turn. So
+    -- lane 1 sprayed only to 6 m out, and lane 2's section 9 (tip 10 m out) is over fresh ground.
+    -- The centre section is given a tip node (1.5 m): with none its ground is unknown, and a
+    -- spraying section of unknown ground keeps every point (MAINTENANCE row 229's rule). The
+    -- turn is not sprayed, so lane 2 meets only lane 1's record.
+    local ss, _, v = install("overlap", OVERLAP_ON)
+    local secs = v.spec_variableWorkWidth.sections
+    secs[5].maxWidthNode = "mw5"
+    secs[8].isActive, secs[9].isActive = false, false
+    local off = twoRowsAt(v, 2, 0, 0, 1, 22, function()
+        secs[8].isActive, secs[9].isActive = true, true
+    end, true)
+    T.eq("W1 lane 1's switched-off sections left no record, so lane 2 keeps every section on", list(off), "")
 end
 
 -- ══════════════════════════════════════════════════════════

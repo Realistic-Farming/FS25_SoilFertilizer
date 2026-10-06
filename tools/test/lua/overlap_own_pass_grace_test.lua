@@ -35,6 +35,7 @@ local saved = {
     g_effectManager = g_effectManager, g_fieldManager = g_fieldManager,
     getWorldTranslation = getWorldTranslation, FillType = FillType, ToolType = ToolType,
     VehicleSystem = VehicleSystem,
+    localToLocal = localToLocal, localToWorld = localToWorld, worldToLocal = worldToLocal,
 }
 
 g_effectManager = { startEffects = function() end, stopEffects = function() end }
@@ -191,8 +192,28 @@ end
 -- Put the sprayer at root (rx, rz) heading (hx, hz) (unit vector).
 -- boomFwd: boom line relative to the root along travel (Hardi -0.46, Dino II -4.6).
 local boomFwd = BOOM_FWD
+-- The engine's frame transforms for the sprayer's one frame, its root at the current pose
+-- (MAINTENANCE row 234's overlap record lays its cells in that frame): local X is right of
+-- travel, local Z along it.
+local POSE = { hx = 0, hz = 1 }
+localToLocal = function(n, frame, _x, _y, _z)
+    local p, f = POS[n], POS[frame]
+    local dx, dz = p[1] - f[1], p[2] - f[2]
+    return dx * POSE.hz - dz * POSE.hx, 0, dx * POSE.hx + dz * POSE.hz
+end
+localToWorld = function(frame, lx, _ly, lz)
+    local f = POS[frame]
+    return f[1] + lx * POSE.hz + lz * POSE.hx, 0, f[2] - lx * POSE.hx + lz * POSE.hz
+end
+worldToLocal = function(frame, wx, _wy, wz)
+    local f = POS[frame]
+    local dx, dz = wx - f[1], wz - f[2]
+    return dx * POSE.hz - dz * POSE.hx, 0, dx * POSE.hx + dz * POSE.hz
+end
+
 local function place(rx, rz, hx, hz)
     local px, pz = hz, -hx
+    POSE.hx, POSE.hz = hx, hz
     POS.root = { rx, rz }
     local function at(lat, fwd) return { rx + lat * px + fwd * hx, rz + lat * pz + fwd * hz } end
     for i, lat in ipairs(HARDI_LAT) do
@@ -501,3 +522,4 @@ g_SoilFertilityManager, g_effectManager = saved.g_SoilFertilityManager, saved.g_
 g_fieldManager, getWorldTranslation = saved.g_fieldManager, saved.getWorldTranslation
 FillType, ToolType = saved.FillType, saved.ToolType
 VehicleSystem = saved.VehicleSystem
+localToLocal, localToWorld, worldToLocal = saved.localToLocal, saved.localToWorld, saved.worldToLocal

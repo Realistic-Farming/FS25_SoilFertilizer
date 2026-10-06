@@ -16,8 +16,6 @@
 # - The writer calls at the overlay-only stamp (a pass its sections do not govern) and in the
 #   multi-tank replay: no bar row drives a non-sectioned machine or a second tank. Each is the
 #   same one-line call beside its markBoomCells call.
-# - The record's line across the travel (the boom's own line, not the root's): the bar's
-#   sprayer has its boom 0.46 m behind the root, less than one record cell.
 # - The `false` distance or vehicle of a stamp with neither: no row stamps without both.
 # - The clears in onHarvest and _processOneDailyField (the day change and the herbicide
 #   expiry): the same one-line clear beside the session cells' reset; their entry points
@@ -60,9 +58,25 @@ MUTATIONS = [
   [("                        soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)\n                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234\n",
     "                        soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)\n", 1)],
   ["N1", "N1b"], "the sectioned pass does not write the record"),
- ("C1-cells-past-the-boom", HM,
-  [("        if centre >= lo and centre <= hi then\n", "        if true then\n", 1)],
-  ["N1"], "a cell the boom only grazes past its last node is stamped"),
+ ("C1-past-the-ends", HM,
+  [("        if clat < lo or clat > hi or math.abs(cfwd - fwd) > size * 0.5 then return end\n",
+    "        if math.abs(cfwd - fwd) > size * 0.5 then return end\n", 1)],
+  ["N1", "A4"], "a cell whose centre lies past the boom's ends is stamped"),
+ ("C2-ahead-of-the-line", HM,
+  [("        if clat < lo or clat > hi or math.abs(cfwd - fwd) > size * 0.5 then return end\n",
+    "        if clat < lo or clat > hi then return end\n", 1)],
+  ["A2"], "a cell whose centre lies ahead of the boom line is stamped"),
+ ("F1-switched-off-recorded", HM,
+  [("        if grounds ~= nil and HookManager._onlySwitchedOffAt(grounds, cx, cz) then return end\n",
+    "        if false then return end\n", 1)],
+  ["W1"], "ground only switched-off sections covered is recorded"),
+ ("AX1-world-axes", HM,
+  [("    ux, uz, vx, vz = ux / lu, uz / lu, vx / lv, vz / lv\n",
+    "    ux, uz, vx, vz = 1, 0, 0, 1\n", 1)],
+  ["A1", "A2"], "the record is laid along the world axes, not the sprayer's frame (the old axis row)"),
+ ("L1-root-line", HM,
+  [("    local fwd = fwdSum / n\n", "    local fwd = 0\n", 1)],
+  ["A2"], "the record lies on the root's line, ahead of the boom"),
  ("R1-reset-keeps-record", SFS,
   [("    if not hasCells and (field.sessionCoverageHa or 0) == 0 then return end\n    field.sessionCoverageHa       = 0\n    field.sessionCoverageFraction = 0\n    field.sessionCoverageCells    = {}\n    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234\n",
     "    if not hasCells and (field.sessionCoverageHa or 0) == 0 then return end\n    field.sessionCoverageHa       = 0\n    field.sessionCoverageFraction = 0\n    field.sessionCoverageCells    = {}\n", 1)],

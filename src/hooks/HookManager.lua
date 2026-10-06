@@ -2490,51 +2490,87 @@ function HookManager.isOverlapCellSprayedEarlier(field, x, z, sprayer, graceM)
     return HookManager.isCellSprayedEarlier(overlapStamp, sprayer, graceM)
 end
 
---- The overlap record's sweep: one point per OVERLAP_CELL_SIZE cell whose centre the
---- boom covers, along the same world axis as getBoomCellPositions and from the same
---- nodes, laid on the boom's own line (the mean of the nodes across that axis) rather
---- than through the root, which runs ahead of the boom. A cell only grazed past the
---- boom's last node is not stamped. nil with fewer than two nodes.
+--- The overlap record's sweep: the OVERLAP_CELL_SIZE cells along the boom's own line,
+--- laid in the sprayer's own frame (components[1].node, local X across the boom, as
+--- getBoomLineEndpoints uses), from the same nodes as the 10 m sweep. A cell is stamped
+--- when its centre lies across the boom's span (between the outer nodes) and within half
+--- a cell of the boom line (the mean of the nodes along the travel), so a cell the boom
+--- only grazes, past its end or ahead of it, is not; at any heading. A cell whose centre
+--- only switched-off sections cover is left out. Returns the cells' centres; nil with
+--- fewer than two nodes or no frame.
 function HookManager:getBoomOverlapPositions(vehicle)
     local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
-    local n, minX, maxX, minZ, maxZ, sumX, sumZ = 0, 0, 0, 0, 0, 0, 0
+    local frame = vehicle.components and vehicle.components[1] and vehicle.components[1].node or vehicle.rootNode
+    if frame == nil then return nil end
+    local n, lo, hi, fwdSum = 0, nil, nil, 0
     for _, node in ipairs(self:_collectBoomNodes(vehicle)) do
-        local ok, x, _, z = pcall(getWorldTranslation, node)
-        if ok and x and z then
-            if n == 0 then
-                minX, maxX, minZ, maxZ = x, x, z, z
-            else
-                minX, maxX = math.min(minX, x), math.max(maxX, x)
-                minZ, maxZ = math.min(minZ, z), math.max(maxZ, z)
-            end
-            n, sumX, sumZ = n + 1, sumX + x, sumZ + z
+        local ok, x, _, z = pcall(localToLocal, node, frame, 0, 0, 0)
+        if ok and type(x) == "number" and type(z) == "number" then
+            n = n + 1
+            if lo == nil or x < lo then lo = x end
+            if hi == nil or x > hi then hi = x end
+            fwdSum = fwdSum + z
         end
     end
-    if n < 2 then return nil end
-    local alongX = (maxX - minX) >= (maxZ - minZ)
-    local lo, hi = alongX and minX or minZ, alongX and maxX or maxZ
-    local across = alongX and (sumZ / n) or (sumX / n)
-    local pts = {}
-    for c = math.floor(lo / size), math.floor(hi / size) do
-        local centre = (c + 0.5) * size
-        if centre >= lo and centre <= hi then
-            pts[#pts + 1] = alongX and { x = centre, z = across } or { x = across, z = centre }
-        end
+    if n < 2 or hi <= lo then return nil end
+    local fwd = fwdSum / n
+    -- The frame's origin and axes in world space; everything below is arithmetic.
+    local okO, ox, _, oz = pcall(localToWorld, frame, 0, 0, 0)
+    local okU, ux, _, uz = pcall(localToWorld, frame, 1, 0, 0)
+    local okV, vx, _, vz = pcall(localToWorld, frame, 0, 0, 1)
+    if not (okO and okU and okV and type(ox) == "number" and type(ux) == "number" and type(vx) == "number") then
+        return nil
     end
-    if #pts == 0 then
-        local mid = (lo + hi) * 0.5
-        pts[1] = alongX and { x = mid, z = across } or { x = across, z = mid }
+    ux, uz, vx, vz = ux - ox, uz - oz, vx - ox, vz - oz
+    local lu, lv = math.sqrt(ux * ux + uz * uz), math.sqrt(vx * vx + vz * vz)
+    if lu <= 0 or lv <= 0 then return nil end
+    ux, uz, vx, vz = ux / lu, uz / lu, vx / lv, vz / lv
+    local grounds = self:_switchedOffGrounds(vehicle)
+    local pts, seen = {}, {}
+    local function consider(lat)
+        local wx, wz = ox + lat * ux + fwd * vx, oz + lat * uz + fwd * vz
+        local key = HookManager.overlapCellKey(wx, wz)
+        if seen[key] then return end
+        seen[key] = true
+        local cx = (math.floor(wx / size) + 0.5) * size
+        local cz = (math.floor(wz / size) + 0.5) * size
+        local dx, dz = cx - ox, cz - oz
+        local clat, cfwd = dx * ux + dz * uz, dx * vx + dz * vz
+        if clat < lo or clat > hi or math.abs(cfwd - fwd) > size * 0.5 then return end
+        if grounds ~= nil and HookManager._onlySwitchedOffAt(grounds, cx, cz) then return end
+        pts[#pts + 1] = { x = cx, z = cz }
     end
+    local step = size * 0.25
+    local lat = lo
+    while lat < hi do
+        consider(lat)
+        lat = lat + step
+    end
+    consider(hi)
     return pts
 end
 
---- Stamp this tick's overlap record beside a markBoomCells call: the finer sweep, less
---- what only switched-off sections cover (cellsToStamp at the record's cell size).
+--- True when the world point lies only on ground switched-off sections cover, for every
+--- object whose sections govern the pass (grounds from _switchedOffGrounds).
+function HookManager._onlySwitchedOffAt(grounds, x, z)
+    for _, g in ipairs(grounds) do
+        local ok, lat = pcall(worldToLocal, g.frame, x, g.y, z)
+        if not (ok and type(lat) == "number") then return false end
+        local inOff = false
+        for _, piece in ipairs(g.off) do
+            if lat >= piece[1] and lat <= piece[2] then inOff = true; break end
+        end
+        if not inOff then return false end
+    end
+    return true
+end
+
+--- Stamp this tick's overlap record beside a markBoomCells call.
 function HookManager:markOverlapRecord(soilSys, fieldId, vehicle)
     if soilSys == nil or type(soilSys.markOverlapCells) ~= "function" then return end
     local pts = self:getBoomOverlapPositions(vehicle)
     if pts == nil then return end
-    soilSys:markOverlapCells(fieldId, self:cellsToStamp(vehicle, pts, SoilConstants.ZONE.OVERLAP_CELL_SIZE), vehicle)
+    soilSys:markOverlapCells(fieldId, pts, vehicle)
 end
 
 -- =========================================================
@@ -10860,16 +10896,11 @@ function HookManager:_switchedOffGround(obj, activeSprayType)
     return { frame = frame, y = (ok and fy) or 0, off = off }
 end
 
---- MAINTENANCE row 229: the points markBoomCells may stamp. pts is the tick's cell
---- sweep (getBoomCellPositions), an axis-aligned line through the vehicle root. A
---- point is left out only when the sweep line's whole stretch through its 10 m cell
---- lies on ground that only switched-off sections cover, so a cell any sprayed ground
---- reaches is still stamped (the 10 m resolution is the zone grid's, as built), and the
---- cells stamped are always a subset of the ones the sweep alone would stamp. Returns
---- pts itself when no section that governs this pass is off. step: the cell size the
---- points stamp (the overlap record's, MAINTENANCE row 234); ZONE.CELL_SIZE by default.
-function HookManager:cellsToStamp(vehicle, pts, step)
-    if pts == nil or #pts < 2 or vehicle == nil then return pts end
+--- The switched-off ground of every object whose sections govern this pass (vehicle and
+--- its attached implements, each as _switchedOffGround gives it); nil when nothing is
+--- left out: no governing section is off, or a governing object with every section on
+--- keeps every point. Shared by cellsToStamp and the overlap record (MAINTENANCE 234).
+function HookManager:_switchedOffGrounds(vehicle)
     local grounds = {}
     local function fromObj(obj)
         if not obj then return true end
@@ -10880,15 +10911,29 @@ function HookManager:cellsToStamp(vehicle, pts, step)
         grounds[#grounds + 1] = g
         return true
     end
-    if not fromObj(vehicle) then return pts end
+    if not fromObj(vehicle) then return nil end
     if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
         for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-            if not fromObj(impl and impl.object) then return pts end
+            if not fromObj(impl and impl.object) then return nil end
         end
     end
-    if #grounds == 0 then return pts end
+    if #grounds == 0 then return nil end
+    return grounds
+end
 
-    local cellSize = step or SoilConstants.ZONE.CELL_SIZE
+--- MAINTENANCE row 229: the points markBoomCells may stamp. pts is the tick's cell
+--- sweep (getBoomCellPositions), an axis-aligned line through the vehicle root. A
+--- point is left out only when the sweep line's whole stretch through its 10 m cell
+--- lies on ground that only switched-off sections cover, so a cell any sprayed ground
+--- reaches is still stamped (the 10 m resolution is the zone grid's, as built), and the
+--- cells stamped are always a subset of the ones the sweep alone would stamp. Returns
+--- pts itself when no section that governs this pass is off.
+function HookManager:cellsToStamp(vehicle, pts)
+    if pts == nil or #pts < 2 or vehicle == nil then return pts end
+    local grounds = self:_switchedOffGrounds(vehicle)
+    if grounds == nil then return pts end
+
+    local cellSize = SoilConstants.ZONE.CELL_SIZE
     local alongX = pts[1].z == pts[2].z
     local function wholeStretchOff(g, ax, az, bx, bz)
         local okA, la = pcall(worldToLocal, g.frame, ax, g.y, az)
