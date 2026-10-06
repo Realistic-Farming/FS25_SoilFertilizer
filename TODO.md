@@ -283,3 +283,9 @@
 - [x] Bar: `MAINT-229-section_stamp_spec_test.lua` on `MAINT-229-section_boom_world.lua` (A boom-wide work area and a centre section, X the same boom driving along world X both ways, B Soil's own suppression, W per-section work areas, S lime, M multi-tank); battery `tools/test/mutate_maint229_section_stamp.py`.
 - [~] In game (owed): TESTING row 490.
 - [ ] MAINTENANCE row 230: the dose line (getBoomLineEndpoints) has the same span holes; not queued.
+
+## MAINTENANCE row 232: each section reads the ground under itself (2026-10-06)
+
+- [x] `HookManager:sectionSamplePoints` (new, cached per tick): points across each section's own lateral ground on its boom line, from `HookManager.sectionLateralExtents` (split out of #1104's `sectionLateralGround`, which is unchanged). Smart Sensor and Variable Rate read the centre point; See & Spray reads every point (skip only when all readable points say skip, the highest graduated share).
+- [x] Bar: `MAINT-232-section_sample_spec_test.lua` on `MAINT-232-section_sample_world.lua` (W weeds, P pest cells and the graduated rate, S Smart Sensor, V Variable Rate, C the points following the sprayer); battery `tools/test/mutate_maint232_section_sample.py`.
+- [~] In game (owed): TESTING row 492.
