@@ -843,6 +843,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionCoverageHa       = 0
         harvestField.sessionCoverageFraction = 0
         harvestField.sessionCoverageCells    = {}
+        harvestField.sessionOverlapOdo, harvestField.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
         harvestField.sessionLastProduct      = nil
         harvestField._geometricCoverageOwner = nil  -- #753
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
@@ -1310,6 +1311,7 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
     field._geometricCoverageOwner = nil  -- #753: re-detect geometric path each session
@@ -5286,6 +5288,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
     field.sessionLastProduct      = nil
     field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
@@ -5477,6 +5480,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     field.sessionCoverageHa       = 0
                     field.sessionCoverageFraction = 0
                     field.sessionCoverageCells    = {}
+                    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
                     field.sessionLastProduct      = nil
                     field._geometricCoverageOwner = nil  -- #753
                     field.sprayTrailPts           = nil
@@ -7000,6 +7004,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
         field.sessionCoverageHa       = 0
         field.sessionCoverageFraction = 0
         field.sessionCoverageCells    = {}
+        field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
         field._geometricCoverageOwner = nil  -- #753: re-detect geometric path for new product
         field.sprayTrailPts           = nil
     end
@@ -7344,6 +7349,43 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly, sta
     -- sprayer auto-shuts off rather than requiring the last fractional percent.
     if (field.sessionCoverageFraction or 0) >= 0.99 and field.sprayTrailPts then
         field.sprayTrailPts = nil
+    end
+end
+
+--- MAINTENANCE row 234: overlap prevention's own finer record (HookManager's
+--- getBoomOverlapPositions and isOverlapCellSprayedEarlier). Each point stamps its
+--- ZONE.OVERLAP_CELL_SIZE cell once, with the stamping vehicle and its driven distance,
+--- as markBoomCells stamps the 10 m session cells (false where either is unknown), and
+--- only where the cell's centre is inside the field polygon, as there. Two plain maps,
+--- not a table per cell. Session only and server only: never saved or sent, cleared
+--- with the session cells. Writes nothing else.
+---@param fieldId number
+---@param points table|nil  Array of {x=, z=} world positions
+---@param stampVehicle table|nil
+function SoilFertilitySystem:markOverlapCells(fieldId, points, stampVehicle)
+    if not points or #points == 0 then return end
+    local field = self.fieldData and self.fieldData[fieldId]
+    if not field then return end
+    if HookManager == nil or type(HookManager.overlapCellKey) ~= "function" then return end
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    local polyVerts = self:_getFieldPolyVerts(fieldId, field)
+    local odoMap, byMap = field.sessionOverlapOdo, field.sessionOverlapBy
+    if odoMap == nil or byMap == nil then
+        odoMap, byMap = {}, {}
+        field.sessionOverlapOdo, field.sessionOverlapBy = odoMap, byMap
+    end
+    local odo = stampVehicle and stampVehicle._sfOdoM or false
+    local by = stampVehicle or false
+    for _, pt in ipairs(points) do
+        local key = HookManager.overlapCellKey(pt.x, pt.z)
+        if odoMap[key] == nil then
+            local cx = (math.floor(pt.x / size) + 0.5) * size
+            local cz = (math.floor(pt.z / size) + 0.5) * size
+            if polyVerts == nil or _isPointInPoly(cx, cz, polyVerts) then
+                odoMap[key] = odo
+                byMap[key] = by
+            end
+        end
     end
 end
 

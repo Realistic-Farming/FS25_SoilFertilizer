@@ -943,6 +943,12 @@ local function leftStripSprayedEarlier()
   -- an earlier pass covered the strip under the LEFT section's tip (x = -6) only;
   -- the right tip shares the root's cell, which stays unsprayed
   stampPriorPass({ { x = -5, z = -15 }, { x = -5, z = -25 } })
+  -- MAINTENANCE row 234: overlap prevention reads its own 2 m record; the same earlier
+  -- pass covered those two 10 m cells (x -10..0, z -30..-10) whole, written by the real
+  -- overlap writer (SoilFertilitySystem:markOverlapCells).
+  local fine = {}
+  for x = -9, -1, 2 do for z = -29, -11, 2 do fine[#fine + 1] = { x = x, z = z } end end
+  W.ss:markOverlapCells(7, fine)
   g_currentMission.time = g_currentMission.time + 15000     -- older than the wing grace
 end
 local function bought() local n = 0 for _, m in ipairs(NATIVE.money) do if m < 0 then n = n - m end end return n end

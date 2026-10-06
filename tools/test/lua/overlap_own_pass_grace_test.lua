@@ -35,6 +35,7 @@ local saved = {
     g_effectManager = g_effectManager, g_fieldManager = g_fieldManager,
     getWorldTranslation = getWorldTranslation, FillType = FillType, ToolType = ToolType,
     VehicleSystem = VehicleSystem,
+    localToLocal = localToLocal, localToWorld = localToWorld, worldToLocal = worldToLocal,
 }
 
 g_effectManager = { startEffects = function() end, stopEffects = function() end }
@@ -191,8 +192,28 @@ end
 -- Put the sprayer at root (rx, rz) heading (hx, hz) (unit vector).
 -- boomFwd: boom line relative to the root along travel (Hardi -0.46, Dino II -4.6).
 local boomFwd = BOOM_FWD
+-- The engine's frame transforms for the sprayer's one frame, its root at the current pose
+-- (MAINTENANCE row 234's overlap record lays its cells in that frame): local X is right of
+-- travel, local Z along it.
+local POSE = { hx = 0, hz = 1 }
+localToLocal = function(n, frame, _x, _y, _z)
+    local p, f = POS[n], POS[frame]
+    local dx, dz = p[1] - f[1], p[2] - f[2]
+    return dx * POSE.hz - dz * POSE.hx, 0, dx * POSE.hx + dz * POSE.hz
+end
+localToWorld = function(frame, lx, _ly, lz)
+    local f = POS[frame]
+    return f[1] + lx * POSE.hz + lz * POSE.hx, 0, f[2] - lx * POSE.hx + lz * POSE.hz
+end
+worldToLocal = function(frame, wx, _wy, wz)
+    local f = POS[frame]
+    local dx, dz = wx - f[1], wz - f[2]
+    return dx * POSE.hz - dz * POSE.hx, 0, dx * POSE.hx + dz * POSE.hz
+end
+
 local function place(rx, rz, hx, hz)
     local px, pz = hz, -hx
+    POSE.hx, POSE.hz = hx, hz
     POS.root = { rx, rz }
     local function at(lat, fwd) return { rx + lat * px + fwd * hx, rz + lat * pz + fwd * hz } end
     for i, lat in ipairs(HARDI_LAT) do
@@ -435,13 +456,30 @@ do
     T.eq("K1 first pass round a 50 m radius curve: no section switched off", list(off), "")
 end
 
+-- Another vehicle's pass over x in [x0, x1), z in [z0, z1): its 10 m session cells, and
+-- (MAINTENANCE row 234) the overlap record the checks read, written by the production
+-- writer markOverlapCells with one point per record cell.
+local function otherPass(ss, other, x0, x1, z0, z1)
+    local cells = ss.fieldData[7].sessionCoverageCells
+    for cx = math.floor(x0 / 10), math.floor((x1 - 1) / 10) do
+        for cz = math.floor(z0 / 10), math.floor((z1 - 1) / 10) do
+            cells[tostring(cx * 10000 + cz)] = { ms = 0, odo = 0, by = other }
+        end
+    end
+    local size, pts = SoilConstants.ZONE.OVERLAP_CELL_SIZE, {}
+    for x = x0 + size / 2, x1, size do
+        for z = z0 + size / 2, z1, size do pts[#pts + 1] = { x = x, z = z } end
+    end
+    other._sfOdoM = 0
+    ss:markOverlapCells(7, pts, other)
+end
+
 -- ── O: ground another vehicle sprayed counts immediately ───────────────────
 do
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
     -- Another sprayer covered x in [10, 20) for z in [0, 60) moments ago.
-    local cells = ss.fieldData[7].sessionCoverageCells
     local other = {}
-    for cz = 0, 5 do cells[tostring(1 * 10000 + cz)] = { ms = 0, odo = 0, by = other } end
+    otherPass(ss, other, 10, 20, 0, 60)
     local off = driveLane(v, ss, hookMgr, 4, 3, 0, 1, 20)
     T.ok("O1 a section over another vehicle's fresh stamps switches off at once", off[8] or off[9])
     T.eq("O2 the centre (over this pass's own ground) stays on", off[5], nil)
@@ -455,9 +493,8 @@ do
     -- much unsprayed on a sprayer with per-section work areas.
     boomFwd = -4.6
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
-    local cells = ss.fieldData[7].sessionCoverageCells
     local other = {}
-    for cx = -3, 3 do cells[tostring(cx * 10000 + 5)] = { ms = 0, odo = 0, by = other } end
+    otherPass(ss, other, -30, 40, 50, 60)
     driveLane(v, ss, hookMgr, 4, 30, 0, 1, 21)          -- ends with root z = 51, boom z = 46.4
     T.eq("C1 root over the sprayed strip but boom not yet: centre still on",
          (v._sfOverlapSuppressedSections or {})[5], nil)
@@ -485,3 +522,4 @@ g_SoilFertilityManager, g_effectManager = saved.g_SoilFertilityManager, saved.g_
 g_fieldManager, getWorldTranslation = saved.g_fieldManager, saved.getWorldTranslation
 FillType, ToolType = saved.FillType, saved.ToolType
 VehicleSystem = saved.VehicleSystem
+localToLocal, localToWorld, worldToLocal = saved.localToLocal, saved.localToWorld, saved.worldToLocal
