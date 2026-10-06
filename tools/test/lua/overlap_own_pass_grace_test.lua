@@ -435,13 +435,30 @@ do
     T.eq("K1 first pass round a 50 m radius curve: no section switched off", list(off), "")
 end
 
+-- Another vehicle's pass over x in [x0, x1), z in [z0, z1): its 10 m session cells, and
+-- (MAINTENANCE row 234) the overlap record the checks read, written by the production
+-- writer markOverlapCells with one point per record cell.
+local function otherPass(ss, other, x0, x1, z0, z1)
+    local cells = ss.fieldData[7].sessionCoverageCells
+    for cx = math.floor(x0 / 10), math.floor((x1 - 1) / 10) do
+        for cz = math.floor(z0 / 10), math.floor((z1 - 1) / 10) do
+            cells[tostring(cx * 10000 + cz)] = { ms = 0, odo = 0, by = other }
+        end
+    end
+    local size, pts = SoilConstants.ZONE.OVERLAP_CELL_SIZE, {}
+    for x = x0 + size / 2, x1, size do
+        for z = z0 + size / 2, z1, size do pts[#pts + 1] = { x = x, z = z } end
+    end
+    other._sfOdoM = 0
+    ss:markOverlapCells(7, pts, other)
+end
+
 -- ── O: ground another vehicle sprayed counts immediately ───────────────────
 do
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
     -- Another sprayer covered x in [10, 20) for z in [0, 60) moments ago.
-    local cells = ss.fieldData[7].sessionCoverageCells
     local other = {}
-    for cz = 0, 5 do cells[tostring(1 * 10000 + cz)] = { ms = 0, odo = 0, by = other } end
+    otherPass(ss, other, 10, 20, 0, 60)
     local off = driveLane(v, ss, hookMgr, 4, 3, 0, 1, 20)
     T.ok("O1 a section over another vehicle's fresh stamps switches off at once", off[8] or off[9])
     T.eq("O2 the centre (over this pass's own ground) stays on", off[5], nil)
@@ -455,9 +472,8 @@ do
     -- much unsprayed on a sprayer with per-section work areas.
     boomFwd = -4.6
     local ss, hookMgr, v = install("overlap", OVERLAP_ON)
-    local cells = ss.fieldData[7].sessionCoverageCells
     local other = {}
-    for cx = -3, 3 do cells[tostring(cx * 10000 + 5)] = { ms = 0, odo = 0, by = other } end
+    otherPass(ss, other, -30, 40, 50, 60)
     driveLane(v, ss, hookMgr, 4, 30, 0, 1, 21)          -- ends with root z = 51, boom z = 46.4
     T.eq("C1 root over the sprayed strip but boom not yet: centre still on",
          (v._sfOverlapSuppressedSections or {})[5], nil)

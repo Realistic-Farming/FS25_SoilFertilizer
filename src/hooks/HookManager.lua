@@ -1811,8 +1811,8 @@ function HookManager:installSectionControlHook()
                         local fieldDataRef = soilSysRef and soilSysRef.fieldData
                         local fieldEntry   = (fieldDataRef and vehicleFieldId and vehicleFieldId > 0)
                                             and fieldDataRef[vehicleFieldId] or nil
-                        local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells or nil
-                        local zoneCell     = SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE or 10
+                        -- MAINTENANCE row 234: the overlap record, not the 10 m cells.
+                        local overlapRecord = fieldEntry and fieldEntry.sessionOverlapOdo or nil
                         local graceM       = sprayerSelf._sfOverlapGraceM
                                              or (SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_M or 15)
 
@@ -1847,12 +1847,9 @@ function HookManager:installSectionControlHook()
                                         end
                                     end
 
-                                    -- (2) Overlap: cell sprayed on an earlier pass.
-                                    if section.isActive and coveredCells then
-                                        local cx      = math.floor(sx / zoneCell)
-                                        local cz      = math.floor(sz / zoneCell)
-                                        local cellKey = tostring(cx * 10000 + cz)
-                                        if HookManager.isCellSprayedEarlier(coveredCells[cellKey], sprayerSelf, graceM) then
+                                    -- (2) Overlap: ground sprayed on an earlier pass.
+                                    if section.isActive and overlapRecord then
+                                        if HookManager.isOverlapCellSprayedEarlier(fieldEntry, sx, sz, sprayerSelf, graceM) then
                                             section.isActive = false
                                             if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
                                             sprayerSelf._sfSuppressedSections[i] = true
@@ -2462,6 +2459,85 @@ function HookManager.isCellSprayedEarlier(stamp, sprayer, graceM)
 end
 
 -- =========================================================
+-- MAINTENANCE row 234: overlap prevention's own finer record
+-- =========================================================
+-- Both overlap checks used to read the 10 m session cells, which are stamped whole
+-- when any part of a boom sweep touches them. So when the next row's section tip
+-- landed in a cell the previous row only grazed, that whole section switched off over
+-- ground nobody sprayed (aussieyoda, SF-1032). The checks now read a finer record:
+-- field.sessionOverlapOdo / sessionOverlapBy, a ZONE.OVERLAP_CELL_SIZE grid (2 m)
+-- stamped from the same boom nodes beside every markBoomCells call, server only, never
+-- saved, cleared where the session cells are cleared. The 10 m cells, and everything
+-- that reads them (the green square, pass %, the protection grants), are unchanged.
+
+--- The overlap record's key for a world point: one per OVERLAP_CELL_SIZE cell.
+function HookManager.overlapCellKey(x, z)
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    return math.floor(x / size) * 100000 + math.floor(z / size)
+end
+
+local overlapStamp = {}   -- reused: the record keeps two plain maps, not a table per cell
+
+--- HookManager.isCellSprayedEarlier's rule on the overlap record, at a world point.
+function HookManager.isOverlapCellSprayedEarlier(field, x, z, sprayer, graceM)
+    local odoMap = field and field.sessionOverlapOdo
+    if odoMap == nil then return false end
+    local key = HookManager.overlapCellKey(x, z)
+    local odo = odoMap[key]
+    if odo == nil then return false end
+    overlapStamp.odo = odo or nil
+    overlapStamp.by = field.sessionOverlapBy and field.sessionOverlapBy[key] or nil
+    return HookManager.isCellSprayedEarlier(overlapStamp, sprayer, graceM)
+end
+
+--- The overlap record's sweep: one point per OVERLAP_CELL_SIZE cell whose centre the
+--- boom covers, along the same world axis as getBoomCellPositions and from the same
+--- nodes, laid on the boom's own line (the mean of the nodes across that axis) rather
+--- than through the root, which runs ahead of the boom. A cell only grazed past the
+--- boom's last node is not stamped. nil with fewer than two nodes.
+function HookManager:getBoomOverlapPositions(vehicle)
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    local n, minX, maxX, minZ, maxZ, sumX, sumZ = 0, 0, 0, 0, 0, 0, 0
+    for _, node in ipairs(self:_collectBoomNodes(vehicle)) do
+        local ok, x, _, z = pcall(getWorldTranslation, node)
+        if ok and x and z then
+            if n == 0 then
+                minX, maxX, minZ, maxZ = x, x, z, z
+            else
+                minX, maxX = math.min(minX, x), math.max(maxX, x)
+                minZ, maxZ = math.min(minZ, z), math.max(maxZ, z)
+            end
+            n, sumX, sumZ = n + 1, sumX + x, sumZ + z
+        end
+    end
+    if n < 2 then return nil end
+    local alongX = (maxX - minX) >= (maxZ - minZ)
+    local lo, hi = alongX and minX or minZ, alongX and maxX or maxZ
+    local across = alongX and (sumZ / n) or (sumX / n)
+    local pts = {}
+    for c = math.floor(lo / size), math.floor(hi / size) do
+        local centre = (c + 0.5) * size
+        if centre >= lo and centre <= hi then
+            pts[#pts + 1] = alongX and { x = centre, z = across } or { x = across, z = centre }
+        end
+    end
+    if #pts == 0 then
+        local mid = (lo + hi) * 0.5
+        pts[1] = alongX and { x = mid, z = across } or { x = across, z = mid }
+    end
+    return pts
+end
+
+--- Stamp this tick's overlap record beside a markBoomCells call: the finer sweep, less
+--- what only switched-off sections cover (cellsToStamp at the record's cell size).
+function HookManager:markOverlapRecord(soilSys, fieldId, vehicle)
+    if soilSys == nil or type(soilSys.markOverlapCells) ~= "function" then return end
+    local pts = self:getBoomOverlapPositions(vehicle)
+    if pts == nil then return end
+    soilSys:markOverlapCells(fieldId, self:cellsToStamp(vehicle, pts, SoilConstants.ZONE.OVERLAP_CELL_SIZE), vehicle)
+end
+
+-- =========================================================
 -- OVERLAP PREVENTION: session-cell-based nozzle shutoff
 -- =========================================================
 -- Prepended to onStartWorkAreaProcessing (before VWW processes work areas).
@@ -2707,7 +2783,6 @@ function HookManager:installOverlapPreventionHook()
             end
 
             local zone    = SoilConstants.ZONE
-            local zoneCell = zone and zone.CELL_SIZE or 10
             local graceM   = sprayerSelf._sfOverlapGraceM or (zone and zone.OVERLAP_GRACE_M or 15)
             local nowMs    = g_currentMission and g_currentMission.time or 0
 
@@ -2751,18 +2826,15 @@ function HookManager:installOverlapPreventionHook()
                     -- outer edge is on fresh ground keeps spraying). Sections with no
                     -- tip node use the boom-line centre. One rule for every section:
                     -- HookManager.isCellSprayedEarlier (own stamps need graceM metres
-                    -- of driving, other vehicles' stamps count at once).
+                    -- of driving, other vehicles' stamps count at once), on the overlap
+                    -- record's cell under the tip (MAINTENANCE row 234).
                     local tx = tip and tip[1] or centreX
                     local tz = tip and tip[2] or centreZ
-                    local cx = math.floor(tx / zoneCell)
-                    local cz = math.floor(tz / zoneCell)
-                    local cellKey = tostring(cx * 10000 + cz)
-                    local stamp = coveredCells[cellKey]
-                    alreadySprayed = HookManager.isCellSprayedEarlier(stamp, sprayerSelf, graceM)
+                    alreadySprayed = HookManager.isOverlapCellSprayedEarlier(fieldEntry, tx, tz, sprayerSelf, graceM)
 
                     if doLog and i <= 4 then
                         SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampOdo=%s sprayedEarlier=%s",
-                            i, tx, tz, tostring(type(stamp) == "table" and stamp.odo or stamp),
+                            i, tx, tz, tostring(fieldEntry.sessionOverlapOdo and fieldEntry.sessionOverlapOdo[HookManager.overlapCellKey(tx, tz)]),
                             tostring(alreadySprayed))
                     end
                 end
@@ -6681,6 +6753,7 @@ function HookManager:installSprayerAreaHook()
                                                         else
                                                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)
                                                         end
+                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
                                                             soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
@@ -6742,10 +6815,12 @@ function HookManager:installSprayerAreaHook()
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
+                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)  -- overlay only
+                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call
@@ -10791,8 +10866,9 @@ end
 --- lies on ground that only switched-off sections cover, so a cell any sprayed ground
 --- reaches is still stamped (the 10 m resolution is the zone grid's, as built), and the
 --- cells stamped are always a subset of the ones the sweep alone would stamp. Returns
---- pts itself when no section that governs this pass is off.
-function HookManager:cellsToStamp(vehicle, pts)
+--- pts itself when no section that governs this pass is off. step: the cell size the
+--- points stamp (the overlap record's, MAINTENANCE row 234); ZONE.CELL_SIZE by default.
+function HookManager:cellsToStamp(vehicle, pts, step)
     if pts == nil or #pts < 2 or vehicle == nil then return pts end
     local grounds = {}
     local function fromObj(obj)
@@ -10812,7 +10888,7 @@ function HookManager:cellsToStamp(vehicle, pts)
     end
     if #grounds == 0 then return pts end
 
-    local cellSize = SoilConstants.ZONE.CELL_SIZE
+    local cellSize = step or SoilConstants.ZONE.CELL_SIZE
     local alongX = pts[1].z == pts[2].z
     local function wholeStretchOff(g, ax, az, bx, bz)
         local okA, la = pcall(worldToLocal, g.frame, ax, g.y, az)

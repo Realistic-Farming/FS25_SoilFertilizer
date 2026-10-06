@@ -1006,6 +1006,11 @@ SoilConstants.ZONE = {
     -- see HookManager.computeOverlapBoomGeometry). 15 m > the 14.1 m diagonal of a
     -- 10 m cell. Distance, not time: standing still or crawling never ages a stamp.
     OVERLAP_GRACE_M = 15,
+    -- MAINTENANCE row 234: overlap prevention reads its own finer record, a grid of this
+    -- many metres a side, so a section is switched off only over ground an earlier pass
+    -- really sprayed, not over a whole 10 m cell it grazed. Session only, server only,
+    -- never saved; the 10 m cells above keep the green square, pass % and the grants.
+    OVERLAP_CELL_SIZE = 2,
 }
 
 -- ========================================
