@@ -10649,6 +10649,10 @@ function HookManager:_switchedOffGround(obj, activeSprayType)
         local g = ground[i]
         if g then
             if isOn[i] then ons[#ons + 1] = g else offs[#offs + 1] = { g[1], g[2] } end
+        elseif isOn[i] then
+            -- A spraying section whose ground is unknown could reach any of it, so
+            -- nothing is left out.
+            return nil
         end
     end
     -- What only the switched-off sections cover: each off interval minus every on one.

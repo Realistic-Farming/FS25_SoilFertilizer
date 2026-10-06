@@ -101,6 +101,39 @@ do
     local ss3 = run(v3)
     T.eq("A6c the centre section on between switched-off neighbours: its column is still stamped",
          columnsByRow(ss3), "0,1,2,3")
+    local v4 = centreBoom()
+    switchOff(v4, { 4.5, 7.5, 10.5, 13.5, 16.5 })      -- every section on the +X side; the centre sprays
+    local ss4 = run(v4)
+    T.eq("A6d the centre section spraying, one whole side off: that side's outer column is not stamped",
+         columnsByRow(ss4), "0,1,2")
+end
+
+-- ══════════════════════════════════════════════════════════
+-- X: THE SAME BOOM DRIVING ALONG WORLD X, BOTH WAYS
+-- The boom then lies along world Z, so the sweep walks Z and each cell's stretch is
+-- read along Z. Heading +X puts the +X-side sections at the low rows, -X at the high.
+-- ══════════════════════════════════════════════════════════
+do
+    local ss = run(cpBoom(), false, nil, "+X")
+    local rows, nAlong, same = columnsByRow(ss, true)
+    T.eq("X0 heading +X, full width: every row the boom crosses is stamped", rows, "0,1,2,3,4")
+    T.ok("X0b at every step along the lane", nAlong == 5 and same)
+    local v = cpBoom()
+    switchOff(v, { 3, 6, -3, -6, 12, 15, 18 })
+    T.eq("X1 heading +X, middle and edge off: neither is stamped", columnsByRow(run(v, false, nil, "+X"), true), "1,3,4")
+    local v2 = cpBoom()
+    switchOff(v2, { 3, 6, -3, -6, 12, 15, 18 })
+    T.eq("X2 heading -X, the same sections off: the edge is now the high row", columnsByRow(run(v2, false, nil, "-X"), true), "0,1,3")
+end
+
+do
+    -- A centre section with no maxWidthNode has no known ground (VariableWorkWidth.lua:159-160).
+    -- While it sprays, it could reach any of the ground, so nothing is left out.
+    local v = centreBoom()
+    v.spec_variableWorkWidth.sections[6].maxWidthNode = nil
+    switchOff(v, { 4.5, -4.5, 7.5, -7.5 })
+    T.eq("A7 a spraying section with no known ground: everything the sweep reaches is stamped",
+         columnsByRow((run(v))), "0,1,2,3")
 end
 
 -- ══════════════════════════════════════════════════════════

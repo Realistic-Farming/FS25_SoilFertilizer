@@ -57,11 +57,23 @@ g_fillTypeManager = {
 
 -- ── The world: one vehicle pose, every node given in the vehicle's own frame ──
 -- Local X is lateral (the engine's working-width axis, WorkArea.lua:307-314), local
--- Z is along travel. The heading is +Z, so local X maps onto world X.
+-- Z is along travel. The heading is one of three: "+Z" (local X onto world +X, the
+-- default), "+X" (local Z onto world +X, local X onto world -Z) and "-X" (local Z onto
+-- world -X, local X onto world +Z). The lane's centre line is 25 across the travel.
 local LANE_X = 25
-local POSE = { x = LANE_X, z = 0 }
+local POSE = { x = LANE_X, z = 0, heading = "+Z" }
 local LOCAL = {}                                 -- node -> { lateral, forward }
-local function worldOf(lat, fwd) return POSE.x + lat, POSE.z + fwd end
+local function worldOf(lat, fwd)
+    if POSE.heading == "+X" then return POSE.x + fwd, POSE.z - lat end
+    if POSE.heading == "-X" then return POSE.x - fwd, POSE.z + lat end
+    return POSE.x + lat, POSE.z + fwd
+end
+local function localOf(wx, wz)                   -- the inverse of worldOf
+    local dx, dz = wx - POSE.x, wz - POSE.z
+    if POSE.heading == "+X" then return -dz, dx end
+    if POSE.heading == "-X" then return dz, -dx end
+    return dx, dz
+end
 getWorldTranslation = function(n)
     local l = LOCAL[n]
     if l == nil then error("no such node " .. tostring(n)) end
@@ -79,9 +91,14 @@ localToWorld = function(frame, lx, _ly, lz)
 end
 worldToLocal = function(frame, wx, _wy, wz)
     local f = LOCAL[frame]
-    return wx - POSE.x - f[1], 0, wz - POSE.z - f[2]
+    local lat, fwd = localOf(wx, wz)
+    return lat - f[1], 0, fwd - f[2]
 end
-getWorldRotation = function(_n) return 0, 0, 0 end   -- heading +Z
+getWorldRotation = function(_n)
+    if POSE.heading == "+X" then return 0, math.pi / 2, 0 end
+    if POSE.heading == "-X" then return 0, -math.pi / 2, 0 end
+    return 0, 0, 0
+end
 
 -- ── The engine's spray-type rule (Sprayer.lua:589-648, Foldable.lua:1141-1176) ──
 local function loadSprayTypes(v, xmlSprayTypes)
@@ -338,19 +355,23 @@ local function install(multiTank, suppress)
     return ss, hookMgr, rec
 end
 
--- One lane: 21 ticks along +Z at the lane's x.
+-- One lane: 21 ticks of 2 m along the heading, the lane's centre line at 25 across it.
 local TICKS = 21
 local function driveLane(v)
     for k = 0, TICKS - 1 do
-        POSE.x, POSE.z = LANE_X, 2 * k
+        if POSE.heading == "+X" then POSE.x, POSE.z = 2 * k, LANE_X
+        elseif POSE.heading == "-X" then POSE.x, POSE.z = 40 - 2 * k, LANE_X
+        else POSE.x, POSE.z = LANE_X, 2 * k end
         g_currentMission.time = g_currentMission.time + 100
         Sprayer.onStartWorkAreaProcessing(v, 100)
         Sprayer.onEndWorkAreaProcessing(v, 100, true)
     end
 end
-local function run(v, multiTank, suppress)
+local function run(v, multiTank, suppress, heading)
     local ss, hookMgr, rec = install(multiTank, suppress)
+    POSE.heading = heading or "+Z"
     driveLane(v)
+    POSE.heading = "+Z"
     return ss, hookMgr, rec
 end
 
@@ -360,11 +381,13 @@ local function decode(key)
     local cx = math.floor((k + 5000) / 10000)
     return cx, k - cx * 10000
 end
--- "cols per row": every row's stamped columns, and whether all rows agree.
-local function columnsByRow(ss)
+-- The stamped 10 m indices ACROSS the travel, per index along it, and whether all agree.
+-- Driving along Z the across index is the column (cx); driving along X it is the row (cz).
+local function columnsByRow(ss, alongX)
     local rows = {}
     for key in pairs(ss.fieldData[7].sessionCoverageCells) do
         local cx, cz = decode(key)
+        if alongX then cx, cz = cz, cx end
         rows[cz] = rows[cz] or {}
         rows[cz][#rows[cz] + 1] = cx
     end
