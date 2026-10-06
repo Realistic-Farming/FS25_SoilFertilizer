@@ -284,6 +284,8 @@ source(modDirectory .. "src/probe/CD15NativeCellProbe.lua")
 source(modDirectory .. "src/disease/CD15Grid.lua")
 source(modDirectory .. "src/disease/CD15Day.lua")
 source(modDirectory .. "src/disease/CD15Model.lua")
+-- Step 1b: the save participant on Soil's native save boundary (server only).
+source(modDirectory .. "src/disease/CD15Save.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
@@ -432,6 +434,12 @@ local function loadedMission(mission, node)
     -- before the store decides, and seeds the attempt ids.
     local okSave, errSave = pcall(installNativeSave, mission)
     if not okSave then SoilLogger.warning("[NativeSave] install failed: %s", tostring(errSave)) end
+    -- [CD-15 1b] The local disease save participant, on the same boundary (server only):
+    -- it holds the model until the restore decides.
+    if CD15Save ~= nil then
+        local okCd, errCd = pcall(CD15Save.installForMission, mission)
+        if not okCd then SoilLogger.warning("[CD15] save install failed: %s", tostring(errCd)) end
+    end
 
     -- CD-13: dog early-warning (passive crop disease alert when a doghouse is placed).
     if DogEarlyWarning ~= nil and sfm.soilSystem ~= nil then
@@ -807,6 +815,7 @@ local function unload(mission)
     -- and the participant, before the manager goes.
     if SoilNativeSave ~= nil and SoilNativeSave.current ~= nil then pcall(SoilNativeSave.current.close, SoilNativeSave.current, "MISSION_END") end
     if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil then pcall(GroundConditionSave.current.close, GroundConditionSave.current) end
+    if CD15Save ~= nil and CD15Save.current ~= nil then pcall(CD15Save.current.close, CD15Save.current) end
     -- SG-6: clear the joined-mission binding for exactly the mission being
     -- deleted (the legacy override stays disabled); StockGuard's own teardown
     -- may repeat this safely. The prepend's own argument is the exact object;

@@ -60,6 +60,12 @@ function SoilStateLedgerBridge.buildState(mgr)
         out.zoneYield = mgr.zoneYield:getStateTable()
     end
     out.lastSeenVersion = (mgr ~= nil and mgr.lastSeenVersion) or ""
+    -- [CD-15 1b] The local disease header, the same one saveSoilData writes into soilData.xml
+    -- (brief :85: one extensions.cd15Disease header in the selected backend, never the cells).
+    if CD15Save ~= nil and CD15Save.current ~= nil then
+        local okCd, header = pcall(CD15Save.current.headerForSave, CD15Save.current)
+        if okCd and header ~= nil then out.extensions = { cd15Disease = CD15Save.copyHeader(header) } end
+    end
     return out
 end
 
@@ -92,6 +98,11 @@ function SoilStateLedgerBridge.applyState(mgr, xmlRootMarked)
         mgr.zoneYield:applyStateTable(data.zoneYield)
     end
     mgr.lastSeenVersion = data.lastSeenVersion or ""
+    -- [CD-15 1b] The local disease header of this backend (nil when the block has none).
+    if CD15Save ~= nil then
+        local ext = type(data.extensions) == "table" and data.extensions or nil
+        CD15Save.noteLoadedHeader(CD15Save.headerFromTable(ext ~= nil and ext.cd15Disease or nil), "LEDGER")
+    end
     return true
 end
 

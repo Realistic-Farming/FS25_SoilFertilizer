@@ -1291,6 +1291,12 @@ function SoilFertilityManager:saveSoilData(missionInfo)
                 and savedByKey.groundMembership == true and savedByKey[MaterialDown.LAYER_KEY] == true and savedByKey[MaterialWetness.LAYER_KEY] == true
             GroundConditionSave.current:stampSoilData(xmlFile, layersSaved)
         end
+        -- [CD-15 1b] The local disease header (extensions.cd15Disease), the same one the
+        -- StateLedger bridge carries; the cell tree itself is only in soilDisease.xml.
+        if CD15Save ~= nil and CD15Save.current ~= nil then
+            local okCd, errCd = pcall(CD15Save.current.writeHeaderXML, CD15Save.current, xmlFile)
+            if not okCd then SoilLogger.warning("[CD15] header write failed: %s", tostring(errCd)) end
+        end
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
@@ -1411,6 +1417,7 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
     local savegamePath = g_currentMission.missionInfo.savegameDirectory
     if not savegamePath then
         SoilLogger.warning("loadSoilData: savegameDirectory not set yet (new career or early load) - starting with defaults")
+        if CD15Save ~= nil then CD15Save.noteLoadedHeader(nil, "NONE") end
         return
     end
 
@@ -1440,6 +1447,9 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
                 self.zoneYield:loadFromXMLFile(xmlFile, "soilData.zoneYield")
             end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
+            -- [CD-15 1b] The local disease header of this backend (the restore decides once
+            -- the native barrier has also passed).
+            if CD15Save ~= nil then CD15Save.noteLoadedXML(xmlFile) end
             delete(xmlFile)
             local fieldCount = 0
             if self.soilSystem.fieldData then
@@ -1448,9 +1458,13 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             SoilLogger.info("Soil data loaded from %s (%d fields)", xmlPath, fieldCount)
         else
             SoilLogger.error("loadSoilData: loadXMLFile returned nil for: %s", xmlPath)
+            -- [CD-15 1b] A file that exists and cannot be read is evidence, not a first activation.
+            if CD15Save ~= nil then CD15Save.noteLoadedHeader({ schema = -1, status = "UNREADABLE" }, "XML") end
         end
     else
         SoilLogger.info("No saved soil data found at %s, using defaults", xmlPath)
+        -- [CD-15 1b] No header in this backend.
+        if CD15Save ~= nil then CD15Save.noteLoadedHeader(nil, "NONE") end
         -- Fresh start: scanFields already seeded fieldData from GRLE layers (if available).
         -- Push that data to the density map layers now so the PDA DMV overlay and minimap
         -- heatmap show real values immediately rather than after the first fertilizer event.

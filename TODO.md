@@ -256,3 +256,11 @@
 - [x] Bars: `SG2-5e-soil_round_pad_account_spec_test.lua` (a plain round baler from `BALER_MODEL.newRound`, unloaded through its own wrapped `setIsUnloadingBale`); battery `tools/test/mutate_sg25es.py`.
 - [ ] StockGuard 5e-b frames the round chamber (Part 1), then 5e-d keeps the forming stock pending until dropBale.
 - [~] In game (owed, once 5e-b is in): a partial round bale with StockGuard and Soil both installed carries a wetness, not "unknown".
+
+## CD-15 step 1b: the save participant (2026-10-05)
+
+- [x] `src/disease/CD15Save.lua` (new): header, payload, completion, restore decision; `src/disease/CD15Model.lua`: RESTORING, FIRST_ACTIVATION, QUARANTINED, import and export of the day work, `fail`; header seams in `src/SoilFertilityManager.lua` and `src/integrations/SoilStateLedgerBridge.lua`; install and teardown in `src/main.lua`; the two pcall seams in `src/SoilFertilitySystem.lua`.
+- [x] Bars: `CD15-1b-save_participant_spec_test.lua` (E entry point, B, Q, D, L, C, F, O, W, J); group M in `CD15-1a-local_grid_spec_test.lua` (the seams); battery `tools/test/mutate_cd15_1b.py`.
+- [ ] Step 1c: discovery, classification, the whole-cell witness and admission (answering UNKNOWN_OCCURRENCE until a supported profile exists); it resumes the discovery cursor this payload already carries.
+- [ ] Step 2's and 3's writers bring the re-entry invalidation of an open attempt (brief :91).
+- [~] In game (owed): a save and reload with Soil alone and with StockGuard; a save interrupted by quitting; a hand-deleted soilDisease.xml loads quarantined.
