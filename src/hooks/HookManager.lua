@@ -6658,9 +6658,9 @@ function HookManager:installSprayerAreaHook()
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
                                                         if sectioned then
-                                                            soilSys:markBoomCells(fieldId, boomPts, false, self)
+                                                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
                                                         else
-                                                            soilSys:markBoomCells(fieldId, boomPts, true, self)
+                                                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)
                                                         end
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
@@ -6722,11 +6722,11 @@ function HookManager:installSprayerAreaHook()
                         soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
-                        soilSys:markBoomCells(fieldId, boomPts, false, self)
+                        soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
-                            soilSys:markBoomCells(fieldId, boomPts, true, self)  -- overlay only
+                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)  -- overlay only
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call
@@ -10528,6 +10528,216 @@ function HookManager:_collectBoomNodes(vehicle)
         end
     end
     return nodes
+end
+
+-- =========================================================
+-- MAINTENANCE row 229: a switched-off section does not stamp
+-- =========================================================
+-- The cell sweep is one span from the min to the max collected node, so a section
+-- switched off in the middle of the boom lies inside it, and a work area's corners
+-- hold a switched-off edge section in it (workAreaInPass is a spray-type test only).
+-- #475/#476 (RSF-836 invariant 1) decided that a switched-off section does not stamp.
+--
+-- "Off" is the state a section had before Soil's own per-tick section logic ran: the
+-- player's width, the engine, or another mod such as CoursePlay. The section state
+-- preserver saves it at the start of the tick (_sfSavedSectionStates), and the stamp
+-- runs inside the same tick's onEndWorkAreaProcessing, before the preserver restores
+-- and clears it. So Soil's own See & Spray, Smart Sensor, overlap and boundary
+-- suppressions keep stamping as before (Tyson's ruling, 2026-10-06, Option B).
+--
+-- Only the stamp is filtered. getBoomCellPositions returns what it always did, so the
+-- boom paint and the burn metering that share its points are untouched, and with no
+-- section off nothing here runs: a full-width pass stamps exactly what it did.
+
+--- The lateral ground each section covers, in obj's own frame (local X, the engine's
+--- working-width axis, WorkArea.lua:307-314, the frame getBoomLineEndpoints uses).
+--- A work area tied to the section (workArea.sectionIndex, which the engine idles
+--- while the section is off, VariableWorkWidth.lua:377-383) gives it exactly, from its
+--- nodes. Otherwise a side section reaches from the next tip inward on its side (or
+--- the frame's centre line) out to its own maxWidthNode, and a centre section covers
+--- its tip either side. The outermost section on each side also owns everything
+--- beyond it, which is where a boom-wide work area's corners sit. A section with
+--- neither has no known ground. Returns [sectionIndex] = { lo, hi }.
+function HookManager.sectionLateralGround(obj, frame, activeSprayType)
+    local sections = obj.spec_variableWorkWidth.sections
+    local function lat(node)
+        local ok, x = pcall(localToLocal, node, frame, 0, 0, 0)
+        if ok and type(x) == "number" then return x end
+        return nil
+    end
+    local ground = {}
+    local workAreas = obj.spec_workArea and obj.spec_workArea.workAreas
+    if workAreas then
+        for _, wa in ipairs(workAreas) do
+            local i = wa.sectionIndex
+            if i ~= nil and sections[i] ~= nil and HookManager.workAreaInPass(wa, activeSprayType) then
+                local corners = { wa.start, wa.width, wa.height }
+                for k = 1, 3 do
+                    local x = corners[k] ~= nil and lat(corners[k]) or nil
+                    if x then
+                        local g = ground[i]
+                        if g == nil then
+                            ground[i] = { x, x }
+                        else
+                            g[1] = math.min(g[1], x)
+                            g[2] = math.max(g[2], x)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local tips = {}
+    for i, section in ipairs(sections) do
+        if ground[i] == nil and section.maxWidthNode ~= nil then
+            local t = lat(section.maxWidthNode)
+            if t then tips[#tips + 1] = { i = i, t = t, centre = section.isCenter == true } end
+        end
+    end
+    local centreHalf = 0
+    for _, a in ipairs(tips) do
+        if a.centre and math.abs(a.t) > 0 then
+            centreHalf = math.max(centreHalf, math.abs(a.t))
+            ground[a.i] = { -math.abs(a.t), math.abs(a.t) }
+        end
+    end
+    for _, a in ipairs(tips) do
+        if not a.centre then
+            local reach = math.abs(a.t)
+            local inner = (centreHalf < reach) and centreHalf or 0
+            for _, b in ipairs(tips) do
+                if not b.centre and b.i ~= a.i and (b.t > 0) == (a.t > 0) then
+                    local r = math.abs(b.t)
+                    if r < reach and r > inner then inner = r end
+                end
+            end
+            local sign = (a.t > 0) and 1 or -1
+            ground[a.i] = (sign > 0) and { inner, reach } or { -reach, -inner }
+        end
+    end
+    local outer = {}   -- [1] = outermost on the +X side, [-1] = on the -X side
+    for i, g in pairs(ground) do
+        local side = (g[1] >= 0) and 1 or ((g[2] <= 0) and -1 or 0)
+        if side ~= 0 then
+            local reach = (side > 0) and g[2] or -g[1]
+            if outer[side] == nil or reach > outer[side].reach then outer[side] = { i = i, reach = reach } end
+        end
+    end
+    if outer[1] then ground[outer[1].i][2] = math.huge end
+    if outer[-1] then ground[outer[-1].i][1] = -math.huge end
+    return ground
+end
+
+--- The lateral ground only obj's switched-off sections cover, as { frame, y, off }
+--- where off is a list of { lo, hi }; nil when none of obj's sections is off.
+function HookManager:_switchedOffGround(obj, activeSprayType)
+    local sections = obj.spec_variableWorkWidth.sections
+    local saved = obj._sfSavedSectionStates
+    local isOn, anyOff = {}, false
+    for i, section in ipairs(sections) do
+        local s = saved and saved[i]
+        if s == nil then s = section.isActive ~= false end
+        isOn[i] = s and true or false
+        if not isOn[i] then anyOff = true end
+    end
+    if not anyOff then return nil end
+    local frame = obj.components and obj.components[1] and obj.components[1].node or obj.rootNode
+    if frame == nil then return nil end
+    local ground = HookManager.sectionLateralGround(obj, frame, activeSprayType)
+    local offs, ons = {}, {}
+    for i = 1, #sections do
+        local g = ground[i]
+        if g then
+            if isOn[i] then ons[#ons + 1] = g else offs[#offs + 1] = { g[1], g[2] } end
+        end
+    end
+    -- What only the switched-off sections cover: each off interval minus every on one.
+    local off = offs
+    for _, on in ipairs(ons) do
+        local rest = {}
+        for _, piece in ipairs(off) do
+            if on[2] < piece[1] or on[1] > piece[2] then
+                rest[#rest + 1] = piece
+            else
+                if piece[1] < on[1] then rest[#rest + 1] = { piece[1], on[1] } end
+                if on[2] < piece[2] then rest[#rest + 1] = { on[2], piece[2] } end
+            end
+        end
+        off = rest
+    end
+    if #off == 0 then return nil end
+    -- Neighbouring switched-off sections are one stretch of ground.
+    table.sort(off, function(a, b) return a[1] < b[1] end)
+    local merged = { off[1] }
+    for k = 2, #off do
+        local last, piece = merged[#merged], off[k]
+        if piece[1] <= last[2] then
+            if piece[2] > last[2] then last[2] = piece[2] end
+        else
+            merged[#merged + 1] = piece
+        end
+    end
+    off = merged
+    local ok, _, fy = pcall(getWorldTranslation, frame)
+    return { frame = frame, y = (ok and fy) or 0, off = off }
+end
+
+--- MAINTENANCE row 229: the points markBoomCells may stamp. pts is the tick's cell
+--- sweep (getBoomCellPositions), an axis-aligned line through the vehicle root. A
+--- point is left out only when the sweep line's whole stretch through its 10 m cell
+--- lies on ground that only switched-off sections cover, so a cell any sprayed ground
+--- reaches is still stamped (the 10 m resolution is the zone grid's, as built), and the
+--- cells stamped are always a subset of the ones the sweep alone would stamp. Returns
+--- pts itself when no section that governs this pass is off.
+function HookManager:cellsToStamp(vehicle, pts)
+    if pts == nil or #pts < 2 or vehicle == nil then return pts end
+    local grounds = {}
+    local function fromObj(obj)
+        if not obj then return true end
+        local activeSprayType = self:_activeSprayType(obj)
+        if not HookManager.sectionsInPass(obj, activeSprayType) then return true end
+        local g = self:_switchedOffGround(obj, activeSprayType)
+        if g == nil then return false end   -- a boom with every section on keeps every point
+        grounds[#grounds + 1] = g
+        return true
+    end
+    if not fromObj(vehicle) then return pts end
+    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
+            if not fromObj(impl and impl.object) then return pts end
+        end
+    end
+    if #grounds == 0 then return pts end
+
+    local cellSize = SoilConstants.ZONE.CELL_SIZE
+    local alongX = pts[1].z == pts[2].z
+    local function wholeStretchOff(g, ax, az, bx, bz)
+        local okA, la = pcall(worldToLocal, g.frame, ax, g.y, az)
+        local okB, lb = pcall(worldToLocal, g.frame, bx, g.y, bz)
+        if not (okA and okB and type(la) == "number" and type(lb) == "number") then return false end
+        local lo, hi = math.min(la, lb), math.max(la, lb)
+        for _, piece in ipairs(g.off) do
+            if lo >= piece[1] and hi <= piece[2] then return true end
+        end
+        return false
+    end
+    local out = {}
+    for _, pt in ipairs(pts) do
+        local ax, az, bx, bz
+        if alongX then
+            ax = math.floor(pt.x / cellSize) * cellSize
+            bx, az, bz = ax + cellSize, pt.z, pt.z
+        else
+            az = math.floor(pt.z / cellSize) * cellSize
+            bz, ax, bx = az + cellSize, pt.x, pt.x
+        end
+        local leaveOut = true
+        for _, g in ipairs(grounds) do
+            if not wholeStretchOff(g, ax, az, bx, bz) then leaveOut = false; break end
+        end
+        if not leaveOut then out[#out + 1] = pt end
+    end
+    return out
 end
 
 --- [SF-934] Record where a tillage / sowing tick actually worked, for the additive
