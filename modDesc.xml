@@ -117,7 +117,7 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_s" />
         </actionBinding>
         <actionBinding action="SF_VARIABLE_RATE">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_v" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rctrl KEY_v" />
         </actionBinding>
         <actionBinding action="SF_MINIMAP_ZOOM">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_period" />
@@ -139,7 +139,7 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_comma" />
         </actionBinding>
         <actionBinding action="SF_TOGGLE_HUD">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rctrl KEY_z" />
         </actionBinding>
         <actionBinding action="SF_HUD_DRAG">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_end" />

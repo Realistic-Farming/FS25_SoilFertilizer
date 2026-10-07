@@ -1346,6 +1346,15 @@ print("========================================")
 SoilLiveHint = SoilLiveHint or {}
 
 -- Stale default KEY per action, as actually printed by the shipped strings.
+-- A chord label can be TWO words. Only these qualifiers are ever consumed before a
+-- modifier: the word before a modifier is usually a sentence verb ("Press Alt+M"),
+-- and eating that would destroy the sentence. Harvested from the 280 chord
+-- instances already present in this suite's own human-authored translations, where
+-- the only two-word modifier phrase is "Right Shift", left in English in all 26.
+SoilLiveHint.QUALIFIER_WORDS = {
+    Right = true, Left = true, RIGHT = true, LEFT = true,
+}
+
 SoilLiveHint.ACTION_KEYS = {
     SF_HUD_DRAG        = "H",
     SF_VARIABLE_RATE   = "7",
@@ -1413,7 +1422,28 @@ function SoilLiveHint.swapChord(text, keyLetter, chord)
         if wStart < i then wStart = i end
         local word = string.sub(text, wStart, sPos - 1)
         local wordOk = (#word >= 3) and (string.match(string.sub(word, 1, 1), "%u") ~= nil)
-        -- Left edge: nothing lettered may butt against the modifier word.
+        -- Two-word labels: extend left over a QUALIFIER ("Right Shift+M"), never over
+        -- an arbitrary word. Walking back one word only is what turned
+        -- "Right Shift+M" into "Right <chord>" and left the qualifier on screen.
+        if rightOk and wordOk then
+            local qEnd = wStart - 1
+            if qEnd >= 1 and string.sub(text, qEnd, qEnd) == " " then
+                local qStart = qEnd
+                while qStart > 1
+                    and string.match(string.sub(text, qStart - 1, qStart - 1), "%a") ~= nil do
+                    qStart = qStart - 1
+                end
+                local qword = string.sub(text, qStart, qEnd - 1)
+                if SoilLiveHint.QUALIFIER_WORDS[qword] and qStart >= i then
+                    local qBefore = (qStart > 1)
+                        and string.sub(text, qStart - 1, qStart - 1) or ""
+                    if (qBefore == "") or (string.match(qBefore, "%a") == nil) then
+                        wStart = qStart
+                    end
+                end
+            end
+        end
+        -- Left edge: nothing lettered may butt against the chord label.
         local before = (wStart > 1) and string.sub(text, wStart - 1, wStart - 1) or ""
         local leftOk = (before == "") or (string.match(before, "%a") == nil)
         if rightOk and wordOk and leftOk then
