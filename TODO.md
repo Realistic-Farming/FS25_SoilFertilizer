@@ -295,3 +295,9 @@
 - [x] `ZONE.OVERLAP_CELL_SIZE` (2 m); `HookManager.overlapCellKey`, `isOverlapCellSprayedEarlier`, `getBoomOverlapPositions` (the record's cells laid along the boom in the sprayer's own frame, at any heading), `_switchedOffGrounds` (shared with `cellsToStamp`) and `markOverlapRecord` (new); `SoilFertilitySystem:markOverlapCells` (new) beside every `markBoomCells` call; both readers on the record at the tip; the record cleared at the five session-cell resets.
 - [x] Bar: `MAINT-234-overlap_record_spec_test.lua` on `MAINT-234-overlap_record_world.lua` (N two rows with 2 m of overlap and the unchanged 10 m record, A two rows and a lane end at 45 degrees, W switched-off sections, O another vehicle's pass, R the clears); battery `tools/test/mutate_maint234_overlap_record.py`. `overlap_own_pass_grace_test.lua` and `SF-73-target_entry_point_test.lua` write their other-vehicle passes to the record too.
 - [~] In game (owed): TESTING row 493.
+
+## MAINTENANCE row 244: constants on the manager (2026-10-07)
+
+- [x] `src/main.lua` load: `sfm.SoilConstants = SoilConstants` beside `mission.soilFertilityManager`.
+- [x] Bar: `MAINT-244-constants_on_manager_spec_test.lua` (E main.lua's own site in Soil's mod environment, FarmTablet's reads verbatim in its own); battery `tools/test/mutate_maint244.py`, 2 of 2.
+- [~] In game (owed): TESTING row 506.
