@@ -1908,7 +1908,11 @@ function SoilFertilityManager:_blendedWetness01(x, z, fieldId)
     if not (fid and fid > 0) then return rainScalar end
 
     local ok, scsMoisture = pcall(function()
-        local csm = g_cropStressManager
+        -- [MAINTENANCE row 248] SCS's manager from the mission (SCS main.lua:285), as CD15Model's
+        -- moistureSource reads it (src/disease/CD15Model.lua:317): SCS writes g_cropStressManager into
+        -- its own mod environment (getfenv(0), :282), so a bare read here is nil in a game and the
+        -- blend always fell back to the rain scalar. The bare global stays as the fallback.
+        local csm = (g_currentMission ~= nil and g_currentMission.cropStressManager) or g_cropStressManager
         if csm == nil or type(csm.getMoisture) ~= "function" then return nil end
         return csm:getMoisture(fid)
     end)

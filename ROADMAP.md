@@ -307,3 +307,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] `SoilConstants` is a global of Soil's own mod environment, and Soil published it on none of the manager fields FarmTablet's Soil app probes, so the Tablet painted N, P and K at factor 1 (Soil's internal units labelled "ppm": N a third of the real value, P 1.7 times it, K a quarter) and its treatment rows showed only the static product line. main.lua's load now sets `sfm.SoilConstants = SoilConstants` beside the mission handle, the first field the Tablet probes.
 - [x] Newly live in FarmTablet with no FarmTablet change: the Soil app's N, P and K read at Soil's own ppm scale (the same numbers Soil's own displays show), and its treatment rows name product rates (for example UREA in kg/ha). Design origin none.
 - The in-game check is TESTING row 506. FarmTablet's own cleanup is MAINTENANCE row 245.
+
+## 2026-10-08 (Fred): SF-55's moisture blend uses Seasonal Crop Stress in a game (MAINTENANCE row 248)
+
+- [x] `_blendedWetness01` read SCS through the bare global `g_cropStressManager`, which SCS sets only in its own mod environment, so every compaction and traffic-drag pass took the rain scalar. It now reads `g_currentMission.cropStressManager` first, as CD15Model already does. Wet ground now follows Crop Stress's moisture, not only rain: a field SCS holds wet (an irrigated one most of all) compacts and drags a standing crop as on a rainy day. Design origin SF-55 build brief v1.0 :53, :56, :94-97, CARRIES (Bob's R-15).
+- The in-game check is TESTING row 509.
