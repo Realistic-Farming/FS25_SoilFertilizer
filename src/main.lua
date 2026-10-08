@@ -759,6 +759,11 @@ local function load(mission)
         -- Cross-mod bridge: g_currentMission is a shared C++ object visible to all mods.
         -- getfenv(0) is per-mod scoped in FS25. Use mission property for reliable cross-mod detection.
         mission.soilFertilityManager = sfm
+        -- [MAINTENANCE row 244] Soil's constants ride the manager for consumers in other mods'
+        -- environments: SoilConstants is a global of this mod's environment only, so FarmTablet's
+        -- Soil app (SoilNutrientApp.lua:22-35, which probes mgr.SoilConstants first) never saw the
+        -- PPM_DISPLAY scale and painted N, P and K at factor 1.
+        sfm.SoilConstants = SoilConstants
         -- BUILD 19:23 (George CLOSED DESIGN 19:12): the Soil list-row merge module rides the same
         -- mission bridge for Crop Stress and Farm Tablet (getfenv(0) does not cross mods); they
         -- call buildGroups / readGroups on it and Soil alone drives the outline walks.
