@@ -6,7 +6,7 @@
 -- THE DEFECT THIS PINS (development 0e7dbdf): Soil registers with SettingsHub as selfPersisted
 -- (src/integrations/SoilSettingsHubBridge.lua:92-103), so the hub mirrors the values Soil registered with. Soil's
 -- own settings path (SoilSettingsUI:requestSettingChange, src/settings/SoilSettingsUI.lua:74-95, into
--- SoilNetworkEvents_RequestSettingChange, src/network/NetworkEvents.lua:1654-1680, which on the host writes
+-- SoilNetworkEvents_RequestSettingChange, src/network/NetworkEvents.lua:1654-1687, which on the host writes
 -- g_SoilFertilityManager.settings and saves) never tells the hub, so the Tablet showed the stale value.
 -- SettingsHub's row 258 PR lets a selfPersisted companion pass read(key); this passes one, reading the object
 -- the hub's own onChange (applyChange) writes.
