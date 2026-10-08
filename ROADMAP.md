@@ -308,6 +308,11 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] Newly live in FarmTablet with no FarmTablet change: the Soil app's N, P and K read at Soil's own ppm scale (the same numbers Soil's own displays show), and its treatment rows name product rates (for example UREA in kg/ha). Design origin none.
 - The in-game check is TESTING row 506. FarmTablet's own cleanup is MAINTENANCE row 245.
 
+## 2026-10-08 (Fred): SF-55's moisture blend uses Seasonal Crop Stress in a game (MAINTENANCE row 248)
+
+- [x] `_blendedWetness01` read SCS through the bare global `g_cropStressManager`, which SCS sets only in its own mod environment, so every compaction and traffic-drag pass took the rain scalar. It now reads `g_currentMission.cropStressManager` first, as CD15Model already does. Wet ground now follows Crop Stress's moisture, not only rain: a field SCS holds wet (an irrigated one most of all) compacts and drags a standing crop as on a rainy day. Design origin SF-55 build brief v1.0 :53, :56, :94-97, CARRIES (Bob's R-15).
+- The in-game check is TESTING row 509.
+
 ## 2026-10-08 (Fred): the Time Guard version-skew guard fires (MAINTENANCE row 251)
 
 - [x] The guard that keeps a soil process off a Time Guard without the simulation flow class could never fire: establishment read Time Guard's `TimeGuardScheduler` global, which lives in Time Guard's own mod environment, and growth credit and the viability mask read `tg.flowClasses`, which Time Guard never publishes. On Time Guard v1.0.0.0 (no simulation class; it first shipped in v1.0.1.0) all three registered and Time Guard filed them under calendar. Each now reads the class list through the instance, `tg.scheduler.FLOW_CLASSES`, nil-safe, so on v1.0.0.0 all three stay on Soil's own day tracking. SF-53's test fixture no longer invents `tg.flowClasses`. Design origin: CARRIES the establishment brief's coerce guard and SF-53's :39 (DESIGN-CHECK row 249); the brief's post-register assert was never built and is MAINTENANCE row 274.
