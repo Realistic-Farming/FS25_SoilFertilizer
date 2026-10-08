@@ -317,3 +317,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] The guard that keeps a soil process off a Time Guard without the simulation flow class could never fire: establishment read Time Guard's `TimeGuardScheduler` global, which lives in Time Guard's own mod environment, and growth credit and the viability mask read `tg.flowClasses`, which Time Guard never publishes. On Time Guard v1.0.0.0 (no simulation class; it first shipped in v1.0.1.0) all three registered and Time Guard filed them under calendar. Each now reads the class list through the instance, `tg.scheduler.FLOW_CLASSES`, nil-safe, so on v1.0.0.0 all three stay on Soil's own day tracking. SF-53's test fixture no longer invents `tg.flowClasses`. Design origin: CARRIES the establishment brief's coerce guard and SF-53's :39 (DESIGN-CHECK row 249); the brief's post-register assert was never built and is MAINTENANCE row 274.
 - The in-game check is TESTING row 516.
+
+## 2026-10-08 (Fred): the Tablet shows Soil's own settings changes (MAINTENANCE row 258)
+
+- [x] Soil registers with SettingsHub as selfPersisted, so the hub showed the values Soil registered with, and a change made in Soil's own settings (the settings page, the console commands, the settings network request) never reached the Tablet. The registration now passes SettingsHub a reader that answers Soil's live settings, so such a change shows in the Tablet at once on the host (and on every client within a second, for admin settings). Needs SettingsHub's row 258 reader support (SettingsHub #26); with an older SettingsHub the reader is ignored. Design origin none.
+- The in-game check is TESTING row 521.
