@@ -55,6 +55,15 @@ local function applyChange(key, value)
     end
 end
 
+-- [MAINTENANCE row 258] The hub asks for the live value (SettingsHub's read, row 258), so a change made in
+-- Soil's own settings (SoilSettingsUI:requestSettingChange, SoilNetworkEvents_RequestSettingChange, the console
+-- commands) shows in the Tablet without telling the hub. It reads the object applyChange writes.
+local function readValue(key)
+    local mgr = g_SoilFertilityManager
+    if mgr == nil or mgr.settings == nil then return nil end
+    return mgr.settings[key]
+end
+
 function SoilSettingsHubBridge.register(mgr)
     -- The reliable cross-mod handle is g_currentMission.settingsHub (the same one
     -- FarmTablet reads). The bare g_settingsHub global is only visible inside
@@ -99,6 +108,7 @@ function SoilSettingsHubBridge.register(mgr)
             -- the hub pushed a stale `enabled=false` over our real value every load,
             -- silently disabling the whole mod.
             selfPersisted = true,
+            read          = readValue,
         })
     end)
 

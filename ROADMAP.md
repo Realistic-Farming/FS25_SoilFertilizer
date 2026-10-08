@@ -312,3 +312,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] `_blendedWetness01` read SCS through the bare global `g_cropStressManager`, which SCS sets only in its own mod environment, so every compaction and traffic-drag pass took the rain scalar. It now reads `g_currentMission.cropStressManager` first, as CD15Model already does. Wet ground now follows Crop Stress's moisture, not only rain: a field SCS holds wet (an irrigated one most of all) compacts and drags a standing crop as on a rainy day. Design origin SF-55 build brief v1.0 :53, :56, :94-97, CARRIES (Bob's R-15).
 - The in-game check is TESTING row 509.
+
+## 2026-10-08 (Fred): the Tablet shows Soil's own settings changes (MAINTENANCE row 258)
+
+- [x] Soil registers with SettingsHub as selfPersisted, so the hub showed the values Soil registered with, and a change made in Soil's own settings (the settings page, the console commands, the settings network request) never reached the Tablet. The registration now passes SettingsHub a reader that answers Soil's live settings, so such a change shows in the Tablet at once on the host (and on every client within a second, for admin settings). Needs SettingsHub's row 258 reader support (SettingsHub #26); with an older SettingsHub the reader is ignored. Design origin none.
+- The in-game check is TESTING row 521.

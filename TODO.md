@@ -306,3 +306,9 @@
 
 - [x] `src/SoilFertilityManager.lua` `_blendedWetness01`: `g_currentMission.cropStressManager` first. Bar `MAINT-248-scs_moisture_handle_spec_test.lua` (E from `_checkVehicleCompaction`); battery `tools/test/mutate_maint248.py`, 1 of 1.
 - [~] In game (owed): TESTING row 509.
+
+## MAINTENANCE row 258: SettingsHub reader (2026-10-08)
+
+- [x] `src/integrations/SoilSettingsHubBridge.lua`: `readValue` (the settings object `applyChange` writes), passed as `read` in the registration.
+- [x] Bar: `MAINT-258-hub_reader_entry_spec_test.lua` (main.lua's registration site, Soil's own settings UI into NetworkEvents' request); battery `tools/test/mutate_maint258.py`, 2 of 2.
+- [~] In game (owed): TESTING row 521.
