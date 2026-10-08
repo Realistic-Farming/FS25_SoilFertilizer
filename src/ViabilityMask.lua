@@ -802,7 +802,13 @@ function ViabilityMask:registerDailyAccrual()
     -- Version-skew guard, the same one SF-18 carries: an older Time Guard
     -- silently coerces an unknown flowClass to calendar, which would run this
     -- on a clock it was never designed for.
-    if tg.flowClasses ~= nil and tg.flowClasses.simulation ~= true then
+    -- [MAINTENANCE row 251] Read the class list through the instance. TimeGuardScheduler is a
+    -- global in Time Guard's own mod environment, never ours, and Time Guard publishes no
+    -- flow-class field, so this reads its internal scheduler (TimeGuard.lua:38 sets
+    -- tg.scheduler in every version; the class table resolves through its metatable). The
+    -- simulation class first shipped in Time Guard v1.0.1.0; v1.0.0.0 lacks it.
+    local fc = type(tg.scheduler) == 'table' and tg.scheduler.FLOW_CLASSES or nil
+    if type(fc) == 'table' and fc.simulation ~= true then
         return false
     end
 

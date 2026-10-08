@@ -306,3 +306,9 @@
 
 - [x] `src/SoilFertilityManager.lua` `_blendedWetness01`: `g_currentMission.cropStressManager` first. Bar `MAINT-248-scs_moisture_handle_spec_test.lua` (E from `_checkVehicleCompaction`); battery `tools/test/mutate_maint248.py`, 1 of 1.
 - [~] In game (owed): TESTING row 509.
+
+## MAINTENANCE row 251: Time Guard skew guard (2026-10-08)
+
+- [x] `src/EstablishmentFailure.lua`, `src/GrowthCredit.lua`, `src/ViabilityMask.lua` `registerDailyAccrual`: the class list read through `tg.scheduler.FLOW_CLASSES`, nil-safe. SF-53's fixture models `scheduler`.
+- [x] Bar: `MAINT-251-timeguard_skew_guard_entry_spec_test.lua` (production's activateSoilSystem, Time Guard on the mission only, v1.0.0.0 and current shapes); battery `tools/test/mutate_maint251.py`, 9 of 9.
+- [~] In game (owed): TESTING row 516.
