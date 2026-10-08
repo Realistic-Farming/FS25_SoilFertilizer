@@ -34,7 +34,10 @@ do
     g_timeGuard = nil
     g_currentMission = {
         timeGuard = {
-            flowClasses = { simulation = true },
+            -- [MAINTENANCE row 251] Time Guard's real shape: no published flow-class field; the class
+            -- list is its scheduler's (TimeGuard.lua:38, TimeGuardScheduler.lua:29). The fixture used to
+            -- invent tg.flowClasses, which is why no bench saw the guard read a field nothing sets.
+            scheduler = { FLOW_CLASSES = { calendar = true, usage = true, event = true, simulation = true } },
             registerAccrual = function()
                 registerCalls = registerCalls + 1
                 return acceptRegistration

@@ -301,3 +301,9 @@
 - [x] `src/main.lua` load: `sfm.SoilConstants = SoilConstants` beside `mission.soilFertilityManager`.
 - [x] Bar: `MAINT-244-constants_on_manager_spec_test.lua` (E main.lua's own site in Soil's mod environment, FarmTablet's reads verbatim in its own); battery `tools/test/mutate_maint244.py`, 2 of 2.
 - [~] In game (owed): TESTING row 506.
+
+## MAINTENANCE row 251: Time Guard skew guard (2026-10-08)
+
+- [x] `src/EstablishmentFailure.lua`, `src/GrowthCredit.lua`, `src/ViabilityMask.lua` `registerDailyAccrual`: the class list read through `tg.scheduler.FLOW_CLASSES`, nil-safe. SF-53's fixture models `scheduler`.
+- [x] Bar: `MAINT-251-timeguard_skew_guard_entry_spec_test.lua` (production's activateSoilSystem, Time Guard on the mission only, v1.0.0.0 and current shapes); battery `tools/test/mutate_maint251.py`, 9 of 9.
+- [~] In game (owed): TESTING row 516.
