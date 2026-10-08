@@ -27,6 +27,10 @@
 --!env: modenv
 --!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/RSF-F211-s6b-baler_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/PolygonClip.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/BalerCollection.lua, src/ground/ForageWagonCollection.lua
 
+-- The whole bench runs inside one function, as RSF-F215 S7's does: the sources it loads are
+-- concatenated into one chunk, and their file-level locals with this file's would pass Lua's
+-- 200-local limit for a single function (MAINTENANCE row 297).
+local function F211_S6B_BENCH()
 local INFO, WARN = {}, {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end
 SoilLogger.debug = function() end
@@ -482,3 +486,5 @@ group("F", function()
     T.eq("F6 litres held back by the start-fill delay keep their condition in the buffer until the fill",
         waited .. "/" .. num(w:getFillUnitFillLevel(1)) .. "/" .. num(FWC.condition(w)), "0/100/150/" .. num((100 * 26.062992125984 + 50 * WET) / 150))
 end)
+end
+F211_S6B_BENCH()
