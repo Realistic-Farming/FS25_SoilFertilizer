@@ -301,3 +301,8 @@
 - [x] `src/main.lua` load: `sfm.SoilConstants = SoilConstants` beside `mission.soilFertilityManager`.
 - [x] Bar: `MAINT-244-constants_on_manager_spec_test.lua` (E main.lua's own site in Soil's mod environment, FarmTablet's reads verbatim in its own); battery `tools/test/mutate_maint244.py`, 2 of 2.
 - [~] In game (owed): TESTING row 506.
+
+## MAINTENANCE row 248: SF-55 reads SCS's mission handle (2026-10-08)
+
+- [x] `src/SoilFertilityManager.lua` `_blendedWetness01`: `g_currentMission.cropStressManager` first. Bar `MAINT-248-scs_moisture_handle_spec_test.lua` (E from `_checkVehicleCompaction`); battery `tools/test/mutate_maint248.py`, 1 of 1.
+- [~] In game (owed): TESTING row 509.
