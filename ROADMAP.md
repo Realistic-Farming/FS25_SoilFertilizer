@@ -322,3 +322,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] Soil registers with SettingsHub as selfPersisted, so the hub showed the values Soil registered with, and a change made in Soil's own settings (the settings page, the console commands, the settings network request) never reached the Tablet. The registration now passes SettingsHub a reader that answers Soil's live settings, so such a change shows in the Tablet at once on the host (and on every client within a second, for admin settings). Needs SettingsHub's row 258 reader support (SettingsHub #26); with an older SettingsHub the reader is ignored. Design origin none.
 - The in-game check is TESTING row 521.
+
+## 2026-10-08 (Fred): a square bale's condition reaches StockGuard's quality record (SG-3 Part 3, RSF-F215 v1.1)
+
+- [x] The yard ladder now tells its condition listeners which StockGuard operation was open when a bale was born, moved in or out of storage, or retired. StockGuard opens one around a square baler's finish, so the BIRTH of the bale that finish makes carries it, and StockGuard applies the bale's birth condition to its hidden quality record once (StockGuard's SG-3 Part 3). A daily step never carries one; StockGuard reads those on their own. Where no StockGuard operation is open, or StockGuard is not installed, nothing changes. This discharges the operation echo DESIGN-CHECK row 126 withheld; its RESET and multi-portion parts stay withheld.
+- The in-game check is TESTING row 527.

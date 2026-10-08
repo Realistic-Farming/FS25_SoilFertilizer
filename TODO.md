@@ -318,3 +318,9 @@
 - [x] `src/integrations/SoilSettingsHubBridge.lua`: `readValue` (the settings object `applyChange` writes), passed as `read` in the registration.
 - [x] Bar: `MAINT-258-hub_reader_entry_spec_test.lua` (main.lua's registration site, Soil's own settings UI into NetworkEvents' request); battery `tools/test/mutate_maint258.py`, 2 of 2.
 - [~] In game (owed): TESTING row 521.
+
+## SG-3 Part 3: the operation echo (2026-10-08)
+
+- [x] `src/YardLadder.lua`: `YardLadder._openOperationId()` reads `g_currentMission.stockGuard.readOpenOperation` (a dot call, pcall'd; a non-empty string id, or nil); BIRTH, both REBIND sites and RETIRE pass it to `_notifyChange`; ADVANCE passes none.
+- [x] Bar: `SG3-3-operation_echo_spec_test.lua` (HookManager:installAll's Baler collection; the BIRTH through `BC.aroundCreate`, the production door); battery `tools/test/mutate_sg3_3_echo.py`, 7 of 7.
+- [~] In game (owed): TESTING row 527.
