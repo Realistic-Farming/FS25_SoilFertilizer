@@ -153,8 +153,43 @@ function SoilSettingsUI:onFrameOpen(frame)
     local isAdmin = self:isPlayerAdmin()
 
     -- Section header with hint to open full settings panel
+    -- The old "(SHIFT+O ...)" named the WRONG action's key: SF_OPEN_SETTINGS
+    -- ships on Right Shift+S, while Right Shift+O is SF_TOGGLE_HUD. Read the
+    -- chord live from Soil's own helper rather than printing any default.
+    local sfHint = ""
+    if SoilLiveHint ~= nil and SoilLiveHint.chord ~= nil then
+        local c = SoilLiveHint.chord("SF_OPEN_SETTINGS")
+        if type(c) == "string" and c ~= "" then
+            sfHint = "  (" .. c .. " for full settings)"
+        end
+    end
     local ok, err = pcall(UIHelper.createSectionHeader, layout,
-        (tr("sf_section") or "Soil & Fertilizer") .. "  (SHIFT+O for full settings)")
+        (tr("sf_section") or "Soil & Fertilizer") .. sfHint)
+    -- This header is injected once per frame (soilFertilizer_initDone) and
+    -- Soil ships no INPUT_BINDINGS_CHANGED subscriber anywhere, so without
+    -- this the label would keep a chord from before a remap for the life of
+    -- the frame. createSectionHeader returns the element, which pcall hands
+    -- back as its second value on success.
+    if ok and err ~= nil and g_messageCenter ~= nil and MessageType ~= nil
+        and MessageType.INPUT_BINDINGS_CHANGED ~= nil then
+        local headerEl = err
+        pcall(function()
+            g_messageCenter:subscribe(MessageType.INPUT_BINDINGS_CHANGED,
+                function()
+                    pcall(function()
+                        local h = ""
+                        if SoilLiveHint ~= nil and SoilLiveHint.chord ~= nil then
+                            local c2 = SoilLiveHint.chord("SF_OPEN_SETTINGS")
+                            if type(c2) == "string" and c2 ~= "" then
+                                h = "  (" .. c2 .. " for full settings)"
+                            end
+                        end
+                        headerEl:setText((tr("sf_section")
+                            or "Soil & Fertilizer") .. h)
+                    end)
+                end, self)
+        end)
+    end
     if not ok then
         SoilLogger.warning("Failed to create section header: %s", tostring(err))
     end
