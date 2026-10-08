@@ -153,7 +153,9 @@ local TOKEN_PREFIX = "yl_"
 -- unwrap, a physical policy that is held; nothing emits it in this build. Each event:
 -- every listener's beforeChange, the change once, the row and portion coordinates
 -- committed, then every listener's afterChange (or invalidate, when its before failed or
--- its after throws). A listener error never blocks the change.
+-- its after throws). A listener error never blocks the change. [SG-3 Part 3] BIRTH, REBIND
+-- and RETIRE carry the StockGuard operation open around them (_openOperationId); ADVANCE
+-- never does (it is SG-3's route 2, a change with no joined operation).
 
 YardLadder.ROW_SCHEMA = 2
 YardLadder.PROFILE_ID = "SOIL_BALE_CONDITION_V1"
@@ -394,6 +396,21 @@ function YardLadder:unregisterListener(lease)
     return false
 end
 
+--- [SG-3 Part 3, RSF-F215] The StockGuard operation open around this change, echoed to the
+--- listeners ("An optional operationId is the exact current SG2 operation identity, echoed by
+--- Soil"). StockGuard publishes it through a trusted server read on its mission handle while
+--- its native bracket's original runs (today the square baler's finish, where a bale's BIRTH
+--- happens). Delegate-when-present: nil without StockGuard, without the read, outside any
+--- bracket, or on any answer that is not { operationId = <non-empty string> }.
+function YardLadder._openOperationId()
+    local mission = g_currentMission
+    local sg = mission ~= nil and mission.stockGuard or nil
+    if type(sg) ~= "table" or type(sg.readOpenOperation) ~= "function" then return nil end
+    local ok, open = pcall(sg.readOpenOperation)
+    if not ok or type(open) ~= "table" or type(open.operationId) ~= "string" or open.operationId == "" then return nil end
+    return open.operationId
+end
+
 --- One change, notified: every listener's before, the change once, the coordinates
 --- committed, every listener's after. `change(row)` performs the change on the live row
 --- and returns (resultRow, result): the row after (nil when retired) and the result.
@@ -529,7 +546,7 @@ function YardLadder:_rebindArriving(token, row, nodeId, bale, fillLevel)
         commitRow(r)
         self:_attach(token, nodeId, bale)
         return r, YardLadder.RESULT.APPLIED
-    end)
+    end, YardLadder._openOperationId())
     SoilLogger.debug("[YardLadder] rebound %s out of storage to node %s", token, tostring(nodeId))
 end
 
@@ -596,7 +613,7 @@ function YardLadder:_birth(nodeId, bale, uid, fillTypeName, fillLevel, farmId, c
         self:_attach(token, nodeId, bale)
         if uid ~= nil then self._byUid[uid] = token end
         return row, YardLadder.RESULT.APPLIED
-    end)
+    end, YardLadder._openOperationId())
     if created == nil then return end
 
     SoilLogger.debug("[YardLadder] birth %s node=%s farm=%s fill=%s cap=%s wetness=%s condition=%.1f",
@@ -681,7 +698,7 @@ function YardLadder:onBaleRemoved(nodeId, bale)
             commitRow(r)
             self:_detach(token)
             return r, YardLadder.RESULT.APPLIED
-        end)
+        end, YardLadder._openOperationId())
         return
     end
     self:_retire(token, row)
@@ -703,7 +720,7 @@ function YardLadder:_retire(token, row)
         self:_notifyChange(YardLadder.EVENT.RETIRE, row, function()
             remove()
             return nil, YardLadder.RESULT.APPLIED
-        end)
+        end, YardLadder._openOperationId())
     else
         remove()
     end
