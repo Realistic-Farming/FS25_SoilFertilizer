@@ -8110,37 +8110,37 @@
     {
       "referrer": "Google",
       "count": 433,
-      "uniques": 270
+      "uniques": 273
     },
     {
       "referrer": "github.com",
-      "count": 423,
-      "uniques": 188
+      "count": 421,
+      "uniques": 189
     },
     {
       "referrer": "youtube.com",
-      "count": 97,
+      "count": 94,
       "uniques": 54
     },
     {
       "referrer": "Bing",
-      "count": 82,
-      "uniques": 52
+      "count": 86,
+      "uniques": 56
     },
     {
       "referrer": "kingmods.net",
-      "count": 44,
+      "count": 39,
       "uniques": 31
     },
     {
       "referrer": "DuckDuckGo",
-      "count": 26,
-      "uniques": 8
+      "count": 31,
+      "uniques": 9
     },
     {
       "referrer": "realisticfarming.com",
-      "count": 12,
-      "uniques": 8
+      "count": 13,
+      "uniques": 9
     },
     {
       "referrer": "l.facebook.com",
@@ -8149,13 +8149,13 @@
     },
     {
       "referrer": "reddit.com",
-      "count": 8,
-      "uniques": 5
+      "count": 9,
+      "uniques": 6
     },
     {
-      "referrer": "search.brave.com",
-      "count": 7,
-      "uniques": 5
+      "referrer": "facebook.com",
+      "count": 6,
+      "uniques": 6
     }
   ]
 }
