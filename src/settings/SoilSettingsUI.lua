@@ -173,6 +173,15 @@ function SoilSettingsUI:onFrameOpen(frame)
     if ok and err ~= nil and g_messageCenter ~= nil and MessageType ~= nil
         and MessageType.INPUT_BINDINGS_CHANGED ~= nil then
         local headerEl = err
+        -- The frame is rebuilt each mission while the message centre lives for
+        -- the game session and does not dedupe subscribers, so subscribing
+        -- unconditionally added one closure over a dead header per mission.
+        -- Drop the PREVIOUS subscriber first, then record this one. Passing
+        -- `self` here would unsubscribe the frame that is about to subscribe
+        -- and leave the previous mission's closure alive, which is exactly the
+        -- accumulation this is meant to stop.
+        SoilSettingsUI.releaseHeaderSubscription()
+        SoilSettingsUI._headerSubscriber = self
         pcall(function()
             g_messageCenter:subscribe(MessageType.INPUT_BINDINGS_CHANGED,
                 function()
@@ -279,3 +288,24 @@ local function init()
 end
 
 init()
+
+--- Remove the header's binding-change subscription. Called before taking a new
+--- one and from teardown, so a second mission in one session cannot inherit the
+--- first mission's header element.
+function SoilSettingsUI.releaseHeaderSubscription(target)
+    local t = target or SoilSettingsUI._headerSubscriber
+    if t == nil then return end
+    if g_messageCenter ~= nil and MessageType ~= nil
+        and MessageType.INPUT_BINDINGS_CHANGED ~= nil then
+        pcall(function()
+            g_messageCenter:unsubscribe(MessageType.INPUT_BINDINGS_CHANGED, t)
+        end)
+    end
+    SoilSettingsUI._headerSubscriber = nil
+end
+
+if FSBaseMission ~= nil and Utils ~= nil and Utils.prependedFunction ~= nil then
+    FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, function()
+        SoilSettingsUI.releaseHeaderSubscription()
+    end)
+end

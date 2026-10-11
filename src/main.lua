@@ -1398,6 +1398,21 @@ function SoilLiveHint.chord(actionName)
     return "unassigned"
 end
 
+--- The live chord AND why, for a caller that must not print an imperative
+--- unless a real key exists. chord() above cannot say whether "unassigned" came
+--- from an unbound action or from a missing helper, and a hint that reads
+--- "unassigned to close" is the same defect as naming a factory key.
+---@param actionName string
+---@return string|nil chord
+---@return string kind  one of "live", "unassigned", "absent"
+function SoilLiveHint.chordKind(actionName)
+    local c = SoilLiveHint.chord(actionName)
+    if c == nil then return nil, "absent" end
+    local unassigned = (RfLiveBinding ~= nil and RfLiveBinding.UNASSIGNED) or "unassigned"
+    if c == unassigned or c == "unassigned" then return c, "unassigned" end
+    return c, "live"
+end
+
 --- Replace "<localised modifier>+<KEY>" with `chord`, wherever it appears.
 ---@param text string
 ---@param keyLetter string  the single stale key character, e.g. "H"

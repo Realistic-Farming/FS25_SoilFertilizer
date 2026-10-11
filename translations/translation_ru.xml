@@ -556,7 +556,6 @@
     <e k="sf_sprayer_target" v="Цель:" eh="31d43504" />
     <e k="sf_sprayer_burn_guaranteed" v="РИСК ОЖОГА: ГАРАНТИРОВАН" eh="422601c4" />
     <e k="sf_sprayer_burn_possible" v="РИСК ОЖОГА: ВОЗМОЖЕН" eh="25b251b6" />
-    <e k="sf_notify_welcome" v="Мод «Почва и удобрения» активен | Shift+O: настройки | Введите 'soilfertility' для команд" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Что нового в этой версии:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Спасибо, что используете мой мод &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Нашли баг? Напишите на GitHub!" eh="728e2cf3" />

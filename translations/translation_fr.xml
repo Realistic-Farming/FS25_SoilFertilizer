@@ -574,7 +574,6 @@
          NOTIFICATIONS
          ====================================================== -->
 		 
-    <e k="sf_notify_welcome" v="Mod Sol &amp; Fertilisation actif | Maj+O pour ouvrir les paramètres | Tapez 'soilfertility' pour les commandes" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nouveautés de cette version :" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Merci d'utiliser mon mod, ça me fait vraiment plaisir &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Vous avez trouvé un bug ? Merci de le signaler sur GitHub !" eh="728e2cf3" />

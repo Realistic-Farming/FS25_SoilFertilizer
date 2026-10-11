@@ -581,7 +581,6 @@
     <e k="sf_sprayer_burn_possible" v="비료 피해 위험: 가능성 있음" eh="25b251b6" />
 
     <!-- Notifications -->
-    <e k="sf_notify_welcome" v="토양 및 비료 모드 활성화 | Shift+O로 설정 열기 | 명령어를 보려면 'soilfertility' 입력" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="이번 버전의 새로운 기능:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="제 모드를 사용해 주셔서 정말 감사합니다 &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="버그를 발견하셨나요? GitHub에 보고해 주세요!" eh="728e2cf3" />
