@@ -559,7 +559,6 @@
     <e k="sf_sprayer_burn_guaranteed" v="RISIKO FOR SVIDNING: GARANTERET" eh="422601c4" />
     <e k="sf_sprayer_burn_possible" v="RISIKO FOR SVIDNING: MULIG" eh="25b251b6" />
 
-    <e k="sf_notify_welcome" v="Jord- &amp; gødningsmod aktivt | Shift+O for indstillinger | Skriv 'soilfertility' for kommandoer" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nyheder i denne version:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Tak fordi du bruger mit mod, det betyder meget for mig &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Fundet en fejl? Rapportér den venligst på GitHub!" eh="728e2cf3" />

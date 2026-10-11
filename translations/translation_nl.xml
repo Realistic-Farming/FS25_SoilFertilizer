@@ -582,7 +582,6 @@
     <e k="sf_sprayer_burn_possible" v="VERBRANDINGSRISICO: MOGELIJK" eh="25b251b6" />
 
     <!-- Notifications -->
-    <e k="sf_notify_welcome" v="Bodem &amp; Meststoffen Mod Actief | Shift+O voor instellingen | Typ 'soilfertility' voor commando's" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Nieuw in deze versie:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Bedankt voor het gebruiken van mijn mod, het betekent veel voor me &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Bug gevonden? Meld het op GitHub!" eh="728e2cf3" />

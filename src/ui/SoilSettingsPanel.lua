@@ -804,12 +804,34 @@ function SoilSettingsPanel:drawInfoBar()
             self:registerClick("reset_cat", rbX, rbY, rbW, bbH)
         end
     else
-        -- Close hint on landing
-        self:drawText(PX + PW - PAD, textY, TS_SMALL, tr("sf_panel_btn_close_hint"), C.hint, RenderText.ALIGN_RIGHT, false)
+        -- Close hint on landing.
+        -- The shipped string is "SHIFT+O to close" in every locale, and that
+        -- chord is SF_TOGGLE_HUD on development and nothing at all after this
+        -- PR. Route it through Soil's own live helper, and only when a LIVE
+        -- chord exists: there is no honest imperative to print otherwise, so
+        -- the row is suppressed rather than made to say "unassigned to close".
+        local closeHint = SoilSettingsPanel.closeHintText()
+        if closeHint ~= nil then
+            self:drawText(PX + PW - PAD, textY, TS_SMALL, closeHint, C.hint, RenderText.ALIGN_RIGHT, false)
+        end
     end
 end
 
 -- ── Landing page ──────────────────────────────────────────
+--- Text for the landing page's close hint, or nil to draw nothing.
+--- The shipped string is "SHIFT+O to close" in every locale, and that chord is
+--- SF_TOGGLE_HUD on development and nothing at all after this PR. Only a LIVE
+--- chord is substituted; with anything else there is no honest imperative to
+--- print, so the row is suppressed rather than made to say
+--- "unassigned to close".
+---@return string|nil
+function SoilSettingsPanel.closeHintText()
+    if SoilLiveHint == nil or SoilLiveHint.chordKind == nil then return nil end
+    local chord, kind = SoilLiveHint.chordKind("SF_OPEN_SETTINGS")
+    if kind ~= "live" or type(chord) ~= "string" or chord == "" then return nil end
+    return SoilLiveHint.swapChord(tr("sf_panel_btn_close_hint"), "O", chord)
+end
+
 function SoilSettingsPanel:drawLandingPage()
     -- Header above cards
     local headerY = CY_BOT + CH - 0.042

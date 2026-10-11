@@ -588,7 +588,6 @@
     <!-- ======================================================
          NOTIFICATIONS
          ====================================================== -->
-    <e k="sf_notify_welcome" v="Soil &amp; Fertilizer Mod aktivní | Shift+O pro otevření nastavení | Napište 'soilfertility' pro příkazy" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Co je nového v této verzi:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Děkuji za používání mého módu, znamená to pro mě hodně &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Našli jste chybu? Nahlaste ji prosím na GitHubu!" eh="728e2cf3" />

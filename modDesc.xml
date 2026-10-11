@@ -116,6 +116,12 @@
         <actionBinding action="SF_OPEN_SETTINGS">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_s" />
         </actionBinding>
+        <!-- [529] rshift+v restored. BOTH holders of the single development
+             clash on this chord moved when only one needed to, so the second
+             move is withdrawn: FC_HUD_EDIT goes to rshift+minus and this action
+             keeps its development default. Proven clear against 21 development
+             modDescs, 11 wave heads, 133 third-party installed chords and the
+             base game. -->
         <actionBinding action="SF_VARIABLE_RATE">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_v" />
         </actionBinding>
@@ -139,7 +145,7 @@
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_comma" />
         </actionBinding>
         <actionBinding action="SF_TOGGLE_HUD">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_o" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rctrl KEY_z" />
         </actionBinding>
         <actionBinding action="SF_HUD_DRAG">
             <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_end" />

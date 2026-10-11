@@ -588,7 +588,6 @@
     <!-- ======================================================
          NOTIFICATIONS
          ====================================================== -->
-    <e k="sf_notify_welcome" v="土壤肥料模组已加载 | Shift+O 打开设置 | 输入'soilfertility'执行指令" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="本次更新内容：" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="感谢使用本模组，对我意义重大 &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="遇到BUG？请到GitHub提交反馈！" eh="728e2cf3" />
