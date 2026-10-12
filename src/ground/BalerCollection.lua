@@ -62,7 +62,9 @@
 -- context, so the bale carries the chamber's material plus the buffer's. [SG2-5e-soil]
 -- When StockGuard frames the chamber, the chamber's material is the account its SG-1
 -- record holds, read BEFORE the pad (the full chamber's finishBale runs inside the pad's
--- add, so a read at the finish could already include the pad).
+-- add, so a read at the finish could already include the pad). [SG2-nonstop] When StockGuard
+-- frames a non-stop baler's buffer, the buffer's share is taken from the account its record
+-- holds, read before the pad's debit; otherwise from Soil's own buffer account.
 --
 -- SERVER ONLY. Standalone: with a StockGuard lease owning the pickup the frame stands
 -- aside (GroundMovementCarrier.begin) and nothing is sealed here: StockGuard holds the
@@ -600,6 +602,9 @@ function BC.bufferChange(vehicle, st, appliedDelta)
     elseif appliedDelta < -BC.EPSILON then
         local taken = BC.accountTake(st.buffer, -appliedDelta)
         if st.pad ~= nil then
+            -- [SG2-nonstop] A buffer StockGuard frames holds its material in SG-1's record: the
+            -- share is taken from that account, read before the pad (aroundUnloading).
+            if st.pad.bufferAccount ~= nil then taken = BC.accountTake(st.pad.bufferAccount, -appliedDelta) end
             st.pad.share = st.pad.share or BC.newAccount()
             BC.accountAddAccount(st.pad.share, taken)
         elseif st.tick ~= nil then
@@ -628,6 +633,8 @@ end
 --- [SG2-5e-soil] StockGuard's chamber account is taken here, before the original pads the
 --- chamber (Baler.lua:1328-1347), into st.pad.account; nil when StockGuard is absent, the
 --- chamber is unframed or the read fails.
+--- [SG2-nonstop] A non-stop baler's buffer account is taken here the same way, before the pad
+--- debits the buffer's share (:1338-1341), into st.pad.bufferAccount.
 function BC.aroundUnloading(vehicle, original, ...)
     local spec = vehicle.spec_baler
     local st = (g_server ~= nil and vehicle.isServer and spec ~= nil) and BC.state(vehicle) or nil
@@ -635,7 +642,18 @@ function BC.aroundUnloading(vehicle, original, ...)
     if st ~= nil then
         local pad = {}
         local okA, acc = pcall(BC.prePadAccount, vehicle, spec)
-        if okA then pad.account = acc end
+        if okA then
+            pad.account = acc
+        else
+            -- [MAINTENANCE row 219] The bale then takes Soil's own chamber account: say why.
+            SoilLogger.warning("[BalerCollection] pre-pad chamber read failed, Soil's own account used: %s", tostring(acc))
+        end
+        local okB, bufferAcc = pcall(BC.preBufferAccount, vehicle, spec)
+        if okB then
+            pad.bufferAccount = bufferAcc
+        else
+            SoilLogger.warning("[BalerCollection] pre-pad buffer read failed, Soil's own account used: %s", tostring(bufferAcc))
+        end
         st.pad = pad
     end
     local packed = { pcall(original, vehicle, ...) }
@@ -650,15 +668,33 @@ end
 
 --- finishBale: the chamber's account is captured before the native clears it
 --- (square) or creates first (round).
---- [SG2-5d] The chamber's account from StockGuard's SG-1 record, in this module's fields, or nil.
-function BC.chamberAccount(vehicle, spec)
+--- [SG2-nonstop] A fill unit's account from StockGuard's SG-1 record, in this module's fields, or nil.
+function BC.unitAccount(vehicle, fillUnitIndex)
     local sys = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilSystem or nil
     local prop = sys ~= nil and sys.groundConditionProperty or nil
     if prop == nil or type(prop.readChamberAccount) ~= "function" then return nil end
-    local ok, acc = pcall(prop.readChamberAccount, prop, vehicle, spec.fillUnitIndex)
+    local ok, acc = pcall(prop.readChamberAccount, prop, vehicle, fillUnitIndex)
     if not ok or type(acc) ~= "table" then return nil end
     return { carrier = acc.carrierLitres, known = acc.knownCarrierLitres, unknown = acc.unknownCarrierLitres,
              refused = acc.refusedCarrierLitres, weighted = acc.knownWeightedPctSum }
+end
+
+--- [SG2-5d] The chamber's account from StockGuard's SG-1 record, in this module's fields, or nil.
+function BC.chamberAccount(vehicle, spec)
+    return BC.unitAccount(vehicle, spec.fillUnitIndex)
+end
+
+--- [SG2-nonstop] A non-stop baler's buffer account from StockGuard's record before the pad,
+--- reconciled to the buffer's native level as the chamber's is, or nil (no buffer unit, StockGuard
+--- absent, the buffer unframed, or the read fails).
+function BC.preBufferAccount(vehicle, spec)
+    local index = spec.buffer ~= nil and spec.buffer.fillUnitIndex or nil
+    if index == nil then return nil end
+    local acc = BC.unitAccount(vehicle, index)
+    if acc == nil then return nil end
+    local ok, level = pcall(vehicle.getFillUnitFillLevel, vehicle, index)
+    if ok and finite(level) then BC.accountReconcileRecord(acc, level) end
+    return acc
 end
 
 --- [SG2-5e-soil] The chamber's account from StockGuard's record before the pad, reconciled to the

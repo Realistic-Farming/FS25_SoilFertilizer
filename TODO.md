@@ -324,3 +324,10 @@
 - [x] `src/YardLadder.lua`: `YardLadder._openOperationId()` reads `g_currentMission.stockGuard.readOpenOperation` (a dot call, pcall'd; a non-empty string id, or nil); BIRTH, both REBIND sites and RETIRE pass it to `_notifyChange`; ADVANCE passes none.
 - [x] Bar: `SG3-3-operation_echo_spec_test.lua` (HookManager:installAll's Baler collection; the BIRTH through `BC.aroundCreate`, the production door); battery `tools/test/mutate_sg3_3_echo.py`, 7 of 7.
 - [~] In game (owed): TESTING row 527.
+
+## SG-2 non-stop framing, PR 1: the partial bale's buffer share (2026-10-12)
+
+- [x] `src/ground/BalerCollection.lua`: `BC.unitAccount` (the chamber read generalized to any fill unit; `BC.chamberAccount` calls it), `BC.preBufferAccount`, captured in `aroundUnloading` beside the chamber's; `bufferChange`'s pad branch takes the share from it when present. MAINTENANCE row 219's warning on a failed capture, chamber or buffer.
+- [x] Bars: `SG2-nonstop-soil_buffer_share_spec_test.lua` (E entry point, P, N, X, R); battery `tools/test/mutate_sg2_nonstop.py`, 8 of 8.
+- [ ] StockGuard frames the non-stop baler (PR 2), then 5e-d live, then 3b and 5e-d save.
+- [~] In game (owed): TESTING row 551.
