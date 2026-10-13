@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0.0] - 2026-10-12
+
+> **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.
+
+> **Remove FillType Extender.** Soil & Fertilizer now raises the game's fill type limit itself (to 1,023 types), so large maps that needed FillType Extender no longer do. Running both is what made the wrong products arrive in multiplayer.
+
+### Fixed: sprayers and spreaders
+- **Overlap:** on a field you have already fully sprayed this session, the overlap block holds on every pass: the tank stays put, the field is not fertilized twice, and you are not charged. Overlap prevention no longer switches sections off over ground the last row only grazed, or on their own pass.
+- **Coverage (Pass %):** a switched-off boom section (width control, the machine, or a mod such as Courseplay) no longer marks ground as sprayed; Pass % reaches 100% on rigs without section control at any rate; multi-tank rigs build coverage as you spray; a fertilizer pass no longer counts twice; the base game's insecticide builds coverage across passes; and protection switches on at 80% coverage even after the day's pressure reduction is used up.
+- **Smart Sensor, See & Spray and Variable Rate** read the ground under each boom section, so outer sections no longer decide from inner ground. See & Spray's centre honours its no-target decision.
+- **Herbicide:** recognised by spray type, weed reduction scales with the sections actually spraying, reaching protection no longer repaints the whole field's weeds, herbicide-withered weeds no longer count as pressure, and the daily weed read measures the whole field.
+- Switching Multi-tank application off works. Lime spread by the Streumaster FW 212 TD Profi and the Bredal K105 is tracked at its real width. Headland slivers are guarded by the boom's real width.
+- With AUTO rate on, liming a field whose pH is not known yet keeps your rate instead of throwing an error every few seconds.
+
+### Fixed: fields, soil and harvest
+- With Experimental Systems off (the default), a nutrient-depleted field yields less again at harvest, as before.
+- A field bought mid-session joins the soil simulation straight away, and a sold field leaves it. A fresh save whose fields load late is scanned once they arrive.
+- Fertilizing well-stocked ground or tilling low organic matter no longer overshoots the scale, and tillage nutrient changes no longer flip with travel direction.
+- Amendment burn accrues again, is measured on covered ground, and ignores cut, withered and wheel-flattened crops. Crop establishment kills are written reliably and dead crops are cleared.
+- With Mud System Physics or Use Your Tyres, airing down, sinking or tyre wear no longer raises the compaction estimate. With Seasonal Crop Stress installed, wet ground follows its soil moisture, so an irrigated field compacts under heavy machinery.
+- The harvest yield correction applies only to delivered grain, by Soil's own share.
+
+### Fixed: multiplayer and servers
+- **The dedicated-server stutter is fixed:** soil map sync is incremental and sent in small patches.
+- Multiplayer security: the sync, organic, sprayer and fungicide-treatment requests are checked on the server, a client can only treat its own or contracted fields, and only the acting farm pays. Oversized messages are dropped.
+- The full field sync always sends bounded batches, so maps with more than 32 fields no longer get refused.
+- The farm dog's sick-barn warning goes only to that barn's own farm and works again with Realistic Livestock 1.4.
+
+### Fixed: interface and translations
+- 420 French Canadian texts read French instead of Chinese; missing translations are filled in for every language; French and Czech HUD status words, the German ppm label and the Korean Field Detail label are fixed; the title and description read correctly in the mod manager.
+- The DAP and AN big bags show their own labels. Multi-buy pricing on three liquid tanks is fixed. Drain Vehicle refunds at the shop price.
+- The field info box shows the amendment burn risk and the drilling-window advisory, and a growing field's yield once. The settings panel's Admin button has no blank space before its label.
+- Keyboard defaults no longer collide with other mods or the look keys, and help names the right keys.
+
+### Added
+- **Farm dog early warning** for sick animals in your barns.
+- **Soil Esc page:** a continuous pH map with a gradient legend, field fungicide resistance, why a soil patch is blocked or ahead, owned field lists grouped by GPS outline, and a note when a field's simulation is asleep.
+- **Soil test kit (handful):** shows the band word and the figure for N, P, K and pH.
+- A reworked version dialog, a Soil HUD that follows the base game's theme and can be resized, a HUD show/hide toggle and actions in the Control Center, and Farm Tablet reading Soil's ppm scale.
+- **Sprayed-area lime and chemical pH:** lime and pH products work on the area actually sprayed.
+
+### Experimental Systems (off by default)
+- **Target N/P/K (AUTO):** the sprayer meters N/P/K products against the crop's remaining need under the boom, pauses with a reason when it should not spend (for example no growing crop), and the PDA, HUD and rate panel show the crop window and each target pass.
+- **Ground material:** hay, grass and straw on the ground keep their age and wetness through tedding, raking, mowing and baling; bales are born with the condition of what their chamber took in and keep it through saves and storage; the condition is saved together with the terrain.
+- **Stock Guard integration:** with Stock Guard installed, the condition of ground material travels with what loaders, balers and forage wagons pick up.
+- Groundwork for local crop disease (no visible change yet).
+
 ### Added
 - **StockGuard capacity participation (SG-6, Soil half).** A new `SoilCapacityIntegration` module (protocol 2: `beginCapacityLoad`, `prepareGroundTypes`, `endCapacityLoad`) lets StockGuard have Soil's twelve solid ground definitions prepared before the engine initializes the ground manager, so the engine registers them itself. While a mission is joined, the old late fallback (Lua insertion, texture rebuild, tip hook) is skipped in every phase and the ground-tip wrapper stays in pure delegation. Soil alone is unchanged.
 
