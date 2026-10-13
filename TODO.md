@@ -331,3 +331,9 @@
 - [x] Bars: `SG2-nonstop-soil_buffer_share_spec_test.lua` (E entry point, P, N, X, R); battery `tools/test/mutate_sg2_nonstop.py`, 8 of 8.
 - [ ] StockGuard frames the non-stop baler (PR 2), then 5e-d live, then 3b and 5e-d save.
 - [~] In game (owed): TESTING row 551.
+
+## MAINTENANCE row 302: the field hook returns the engine's task (2026-10-13)
+
+- [x] `src/ui/RfPdaSoilMerge.lua`: `ensureSubscribed` wraps `FieldManager.plowField` and `cultivateField` with `Utils.overwrittenFunction`; `markWorked` marks the farmland dirty after the engine's function has run and returns its results unchanged.
+- [x] Bar: `MAINT-302-field_hook_returns_task_test.lua` (the hook installed through `buildGroups`, the engine's own task returned, the dirty mark after the engine, and the engine's `updateField` lime and manure branches), 24 of 24; development's hook fails 11. Battery `tools/test/mutate_maint302.cjs`, 6 of 6.
+- [~] In game (owed): TESTING row 555.
